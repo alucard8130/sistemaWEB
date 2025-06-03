@@ -12,25 +12,35 @@
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
-                <th>Nombre</th>
+                <th>Numero</th>
                 <th>Ubicación</th>
                 <th>Superficie (m²)</th>
                 <th>Empresa</th>
+                <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
             {% for local in locales %}
                 <tr>
-                    <td>{{ local.nombre }}</td>
+                    <td>{{ local.numero }}</td>
                     <td>{{ local.ubicacion }}</td>
                     <td>{{ local.superficie_m2 }}</td>
                     <td>{{ local.empresa.nombre }}</td>
+                    <td>
+                    {% if request.user.is_superuser or local.empresa == request.user.perfilusuario.empresa %}
+                        <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-primary">Editar</a>
+                        <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
+                    {% else %}
+                        <span class="text-muted">Solo lectura</span>
+                    {% endif %}
+                    </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="4">No hay locales registrados.</td></tr>
+                <tr><td colspan="5">No hay locales registrados.</td></tr>
             {% endfor %}
         </tbody>
     </table>
+    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
 </div>
 </body>
 </html>

@@ -25,6 +25,9 @@
                     <a class="nav-link" href="{% url 'admin:auth_user_add' %}">Alta de usuarios</a>
                 </li>
                 {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'lista_locales' %}">Locales comerciales</a>
+                </li>
                 </ul>
                 <span class="navbar-text text-white me-3">
                     Bienvenido, {{ usuario.username }}
