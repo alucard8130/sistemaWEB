@@ -10,7 +10,7 @@
     <!-- Barra de navegación -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">GAC Ver 1</a>
+            <a class="navbar-brand" href="#">GAC V1.0</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuNavbar" aria-controls="menuNavbar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -20,6 +20,11 @@
                         <a class="nav-link" href="{% url 'empresa_lista' %}">Empresas</a>
                     </li>
                     <!-- Puedes agregar más secciones aquí -->
+                     {% if request.user.is_superuser %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin:auth_user_add' %}">Alta de usuarios</a>
+                </li>
+                {% endif %}
                 </ul>
                 <span class="navbar-text text-white me-3">
                     Bienvenido, {{ usuario.username }}
@@ -33,7 +38,7 @@
 
     <!-- Contenido -->
     <div class="container mt-4">
-        <h1>Panel principal</h1>
+        <h1>Gestor Administrativo Condominal</h1>
         <p>Selecciona una opción del menú para comenzar.</p>
     </div>
 

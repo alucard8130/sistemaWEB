@@ -8,7 +8,10 @@
 <body>
     <div class="container mt-4">
         <h2>Empresas registradas</h2>
-        <a href="{% url 'empresa_crear' %}" class="btn btn-success mb-3">+ Nueva empresa</a>
+        {% if request.user.is_superuser %}
+            <a href="{% url 'empresa_crear' %}" class="btn btn-success mb-3">+ Nueva empresa</a>
+        {% endif %}
+
         <table class="table table-bordered table-striped">
             <thead class="table-dark">
                 <tr>
@@ -19,9 +22,6 @@
                     <th>Acciones</th>
                 </tr>
             </thead>
-            <td>
-</td>
-
             <tbody>
                 {% for empresa in empresas %}
                     <tr>
@@ -30,11 +30,11 @@
                         <td>{{ empresa.telefono }}</td>
                         <td>{{ empresa.email }}</td>
                         <td>
-                            {% if empresa.pk %}
+                            {% if request.user.is_superuser %}
                                 <a href="{% url 'empresa_editar' empresa.pk %}" class="btn btn-sm btn-primary">Editar</a>
                                 <a href="{% url 'empresa_eliminar' empresa.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
                             {% else %}
-                                <span class="text-muted">Sin ID</span>
+                                <span class="text-muted">Solo lectura</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -45,7 +45,9 @@
                 {% endfor %}
             </tbody>
         </table>
+
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
     </div>
 </body>
 </html>
+
