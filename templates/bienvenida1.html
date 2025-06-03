@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenido</title>
+</head>
+<body>
+    <h1>¡Bienvenido {{ usuario.username }}!</h1>
+    <p>Este es tu panel de inicio. Selecciona una opción en el menú o desde aquí inicia tus registros.</p>
+    <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">Cerrar sesión</button>
+</form>
+
+</body>
+</html>

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'empresas',
+    'principal',
 ]
 
 MIDDLEWARE = [
@@ -69,8 +70,8 @@ TEMPLATES = [
 ]
 
 
-TEMPLATES[0]['DIRS'] = [os.path.join(BASE_DIR, 'templates')]
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+TEMPLATES[0]['DIRS'] = [BASE_DIR, 'templates']
+STATICFILES_DIRS = [BASE_DIR, 'static']
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
@@ -132,5 +133,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-LOGIN_REDIRECT_URL = '/admin/'
+
+LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/login/'
