@@ -31,3 +31,29 @@ class Factura(models.Model):
 
     class Meta:
         ordering = ['-fecha_emision']
+
+
+class Pago(models.Model):
+    factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')
+    fecha_pago = models.DateField()
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
+
+    @property
+    def total_pagado(self):
+        return sum(pago.monto for pago in self.pagos.all())
+
+    @property
+    def saldo_pendiente(self):
+        return self.monto - self.total_pagado
+
+    def actualizar_estatus(self):
+        if self.saldo_pendiente <= 0:
+            self.estatus = 'pagada'
+        else:
+            self.estatus = 'pendiente'
+        self.save()
+         

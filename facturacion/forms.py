@@ -1,5 +1,5 @@
 from django import forms
-from .models import Factura
+from .models import Factura, Pago
 
 class FacturaForm(forms.ModelForm):
     class Meta:
@@ -19,3 +19,16 @@ class FacturaForm(forms.ModelForm):
             self.fields['local'].queryset = self.fields['local'].queryset.filter(empresa=empresa)
             self.fields['area_comun'].queryset = self.fields['area_comun'].queryset.filter(empresa=empresa)
       
+class PagoForm(forms.ModelForm):
+    class Meta:
+        model = Pago
+        fields = ['fecha_pago', 'monto']
+        widgets = {
+            'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def clean_monto(self):
+        monto = self.cleaned_data['monto']
+        if monto <= 0:
+            raise forms.ValidationError("El monto debe ser mayor que cero.")
+        return monto    

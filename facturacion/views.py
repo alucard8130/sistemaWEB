@@ -1,11 +1,11 @@
 
 # Create your views here.
 from datetime import date
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect,get_object_or_404
 from areas.models import AreaComun
 from empresas.models import Empresa
 from locales.models import LocalComercial
-from .forms import FacturaForm
+from .forms import FacturaForm, PagoForm
 from .models import Factura
 from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
@@ -183,4 +183,34 @@ def confirmar_facturacion(request):
         'total_areas': total_areas,
         'año': año,
         'mes': mes
+    })
+
+@login_required
+def registrar_pago(request, factura_id):
+    factura = get_object_or_404(Factura, pk=factura_id)
+
+    if factura.estatus == 'pagada' or factura.saldo_pendiente <= 0:
+        messages.warning(request, "La factura ya está completamente pagada. No se pueden registrar más pagos.")
+        return redirect('lista_facturas')
+
+    if request.method == 'POST':
+        form = PagoForm(request.POST)
+        if form.is_valid():
+            pago = form.save(commit=False)
+            if pago.monto > factura.saldo_pendiente:
+                form.add_error('monto', f"El monto excede el saldo pendiente (${factura.saldo_pendiente:.2f}).")
+            else:
+                pago.factura = factura
+                pago.registrado_por = request.user
+                pago.save()
+                factura.actualizar_estatus()
+                messages.success(request, f"Pago registrado. Saldo restante: ${factura.saldo_pendiente:.2f}")
+                return redirect('lista_facturas')
+    else:
+        form = PagoForm()
+
+    return render(request, 'facturacion/registrar_pago.html', {
+        'factura': factura,
+        'form': form,
+        'saldo': factura.saldo_pendiente,
     })
