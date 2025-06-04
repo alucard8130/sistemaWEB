@@ -61,7 +61,7 @@ class Pago(models.Model):
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')
     fecha_pago = models.DateField()
     monto = models.DecimalField(max_digits=10, decimal_places=2)
-    forma_pago = models.CharField(max_length=20, choices=FORMAS_PAGO)
+    forma_pago = models.CharField(max_length=20, choices=FORMAS_PAGO, default='transferencia')
     registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
 
     def __str__(self):

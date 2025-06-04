@@ -22,7 +22,7 @@ class FacturaForm(forms.ModelForm):
 class PagoForm(forms.ModelForm):
     class Meta:
         model = Pago
-        fields = ['fecha_pago', 'monto']
+        fields = ['fecha_pago', 'monto', 'forma_pago']
         widgets = {
             'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
         }
