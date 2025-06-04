@@ -10,7 +10,8 @@ class AreaComun(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     #cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, blank=True, null=True)
     #cliente = models.CharField(max_length=100, blank=True, null=True)
-    cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
+    #cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
+    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT)  # 👈 sin null=True, blank=True
     numero = models.CharField(max_length=100)
     cuota = models.DecimalField(max_digits=10, decimal_places=2)
     ubicacion = models.CharField(blank=True, null=True)
