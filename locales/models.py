@@ -25,3 +25,6 @@ class LocalComercial(models.Model):
 
     def __str__(self):
         return f"{self.numero} ({self.empresa.nombre})"
+
+    class Meta:
+        unique_together = ('empresa', 'numero')  # 👈 Unicidad compuesta
