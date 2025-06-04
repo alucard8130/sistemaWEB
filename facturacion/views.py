@@ -210,7 +210,7 @@ def registrar_pago(request, factura_id):
         form = PagoForm()
 
     return render(request, 'facturacion/registrar_pago.html', {
-        'factura': factura,
         'form': form,
+        'factura': factura,
         'saldo': factura.saldo_pendiente,
     })

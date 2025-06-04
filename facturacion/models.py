@@ -25,13 +25,28 @@ class Factura(models.Model):
     estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
     observaciones = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
-
+    
+    class Meta:
+        ordering = ['-fecha_emision']
+    
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"
 
-    class Meta:
-        ordering = ['-fecha_emision']
+  
+    @property
+    def total_pagado(self):
+        return sum(pago.monto for pago in self.pagos.all())
 
+    @property
+    def saldo_pendiente(self):
+        return self.monto - self.total_pagado
+    
+    def actualizar_estatus(self):
+        if self.saldo_pendiente <= 0:
+            self.estatus = 'pagada'
+        else:
+            self.estatus = 'pendiente'
+        self.save()
 
 class Pago(models.Model):
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')
@@ -42,18 +57,5 @@ class Pago(models.Model):
     def __str__(self):
         return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
 
-    @property
-    def total_pagado(self):
-        return sum(pago.monto for pago in self.pagos.all())
-
-    @property
-    def saldo_pendiente(self):
-        return self.monto - self.total_pagado
-
-    def actualizar_estatus(self):
-        if self.saldo_pendiente <= 0:
-            self.estatus = 'pagada'
-        else:
-            self.estatus = 'pendiente'
-        self.save()
+    
          

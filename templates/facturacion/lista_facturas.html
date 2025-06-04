@@ -37,6 +37,8 @@
                 <th>Fecha emisión</th>
                 <th>Fecha Vencimiento</th>
                 <th>Estatus</th>
+                <th>Saldo</th>
+                <th>Pago</th>
             </tr>
         </thead>
         <tbody>
@@ -58,11 +60,20 @@
                     <td>{{ factura.fecha_emision }}</td>
                     <td>{{ factura.fecha_vencimiento }}</td>
                     <td>{{ factura.get_estatus_display }}</td>
+                    <td>${{ factura.saldo_pendiente }}</td>
+                    <td>
+                        {% if factura.saldo_pendiente > 0 %}
+                            <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-success">Registrar pago</a>
+                        {% else %}
+                            <span class="text-muted">Pagada</span>
+                        {% endif %}
+                    </td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="9">No hay facturas registradas.</td>
+                    <td colspan="10">No hay facturas registradas.</td>
                 </tr>
+                
             {% endfor %}
         </tbody>
     </table>
