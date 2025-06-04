@@ -23,7 +23,7 @@ class Factura(models.Model):
         ('cancelada', 'Cancelada'),
     ]
     estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
-    observaciones = models.TextField(blank=True, null=True)
+    observaciones = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
 
     def __str__(self):

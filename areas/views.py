@@ -21,7 +21,8 @@ def crear_area(request):
     perfil = getattr(user, 'perfilusuario', None)
 
     if request.method == 'POST':
-        form = AreaComunForm(request.POST, user=user)
+        #form = AreaComunForm(request.POST, user=user)
+        form = AreaComunForm(request.POST or None,  user=request.user)
         if form.is_valid():
             area = form.save(commit=False)
             if not user.is_superuser:

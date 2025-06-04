@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmar Facturacion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h3>Confirmar facturación automática de {{ mes }}/{{ año }}</h3>
+    
+    <div class="alert alert-info">
+        <ul>
+            <li><strong>{{ total_locales }}</strong> locales comerciales por facturar</li>
+            <li><strong>{{ total_areas }}</strong> áreas comunes por facturar</li>
+        </ul>
+    </div>
+
+    {% if total_locales == 0 and total_areas == 0 %}
+        <div class="alert alert-warning">Ya se han facturado todos los locales y áreas este mes.</div>
+        <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Regresar</a>
+    {% else %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
+                <label class="form-check-label" for="locales">Facturar Locales Comerciales</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="areas" id="areas" checked {% if total_areas == 0 %}disabled{% endif %}>
+                <label class="form-check-label" for="areas">Facturar Áreas Comunes</label>
+            </div>
+            <button type="submit" class="btn btn-warning mt-3">Generar facturación</button>
+            <a href="{% url 'lista_facturas' %}" class="btn btn-secondary mt-3">Cancelar</a>
+        </form>
+    {% endif %}
+</div>
+</body>
+</html>

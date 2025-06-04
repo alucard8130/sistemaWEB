@@ -1,5 +1,7 @@
 from django import forms
 from .models import AreaComun
+from clientes.models import Cliente
+from empresas.models import Empresa
 
 
 class AreaComunForm(forms.ModelForm):
@@ -11,11 +13,18 @@ class AreaComunForm(forms.ModelForm):
             'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
         }
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
+        #self.user = kwargs.pop('user', None)
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if not self.user.is_superuser:
+        #if not self.user.is_superuser:
+         #   self.fields['empresa'].widget = forms.HiddenInput()
+        if user and not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
+            empresa = user.perfilusuario.empresa
+            self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
+        else:
+            self.fields['cliente'].queryset = Cliente.objects.all()
 
     def clean(self):
         cleaned_data = super().clean()

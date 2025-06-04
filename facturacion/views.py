@@ -1,7 +1,10 @@
 
 # Create your views here.
+from datetime import date
 from django.shortcuts import render, redirect
+from areas.models import AreaComun
 from empresas.models import Empresa
+from locales.models import LocalComercial
 from .forms import FacturaForm
 from .models import Factura
 from django.utils.timezone import now
@@ -60,4 +63,124 @@ def lista_facturas(request):
         'facturas': facturas,
         'empresas': empresas,
         'empresa_seleccionada': int(empresa_id) if empresa_id else None
+    })
+
+
+def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
+    hoy = date.today()
+    año, mes = hoy.year, hoy.month
+
+    facturas_creadas = 0
+
+    if request.user.is_superuser:
+        if facturar_locales:
+            locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False)
+        if facturar_areas:
+            areas = AreaComun.objects.filter(activo=True, cliente__isnull=False)
+    else:
+        empresa = request.user.perfilusuario.empresa
+        if facturar_locales:
+            locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
+        if facturar_areas:
+            areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
+
+    if facturar_locales:
+        for local in locales:
+            existe = Factura.objects.filter(
+                cliente=local.cliente,
+                local=local,
+                fecha_emision__year=año,
+                fecha_emision__month=mes
+            ).exists()
+            if not existe:
+                folio = f"CM-{año}-{mes:02d}-{local.pk}"
+                Factura.objects.create(
+                    empresa=local.empresa,
+                    cliente=local.cliente,
+                    local=local,
+                    folio=folio,
+                    fecha_emision=hoy,
+                    fecha_vencimiento=date(año, mes, 28),
+                    monto=local.cuota,
+                    estatus='pendiente',
+                    observaciones='Factura generada automáticamente'
+                )
+                facturas_creadas += 1
+
+    if facturar_areas:
+        for area in areas:
+            existe = Factura.objects.filter(
+                cliente=area.cliente,
+                area_comun=area,
+                fecha_emision__year=año,
+                fecha_emision__month=mes
+            ).exists()
+            if not existe:
+                folio = f"AC-{año}-{mes:02d}-{area.pk}"
+                Factura.objects.create(
+                    empresa=area.empresa,
+                    cliente=area.cliente,
+                    area_comun=area,
+                    folio=folio,
+                    fecha_emision=hoy,
+                    fecha_vencimiento=date(año, mes, 28),
+                    monto=area.cuota,
+                    estatus='pendiente',
+                    observaciones='Factura generada automáticamente'
+                )
+                facturas_creadas += 1
+
+    messages.success(request, f"{facturas_creadas} facturas generadas para {hoy.strftime('%B %Y')}")
+    return redirect('lista_facturas')
+
+
+#@login_required
+#def confirmar_facturacion(request):
+ #   if request.method == 'POST':
+  #      facturar_locales = 'locales' in request.POST
+   #     facturar_areas = 'areas' in request.POST
+    #    return facturar_mes_actual(request, facturar_locales, facturar_areas)
+
+    #return render(request, 'facturacion/confirmar_facturacion.html')
+
+@login_required
+def confirmar_facturacion(request):
+    hoy = now().date()
+    año, mes = hoy.year, hoy.month
+
+    empresa = None
+    if not request.user.is_superuser:
+        empresa = request.user.perfilusuario.empresa
+
+    # FILTRAR locales y áreas activos con cliente
+    if request.user.is_superuser:
+        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False)
+        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False)
+    else:
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
+
+    # CONTAR locales no facturados aún este mes
+    total_locales = sum(
+        not Factura.objects.filter(cliente=l.cliente, local=l,
+                                   fecha_emision__year=año, fecha_emision__month=mes).exists()
+        for l in locales
+    )
+
+    total_areas = sum(
+        not Factura.objects.filter(cliente=a.cliente, area_comun=a,
+                                   fecha_emision__year=año, fecha_emision__month=mes).exists()
+        for a in areas
+    )
+
+    if request.method == 'POST':
+        facturar_locales = 'locales' in request.POST
+        facturar_areas = 'areas' in request.POST
+        return facturar_mes_actual(request, facturar_locales, facturar_areas)
+
+    return render(request, 'facturacion/confirmar_facturacion.html', {
+        'total_locales': total_locales,
+        'total_areas': total_areas,
+        'año': año,
+        'mes': mes
     })
