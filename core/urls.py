@@ -19,7 +19,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from principal.views import bienvenida
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
-from locales.views import crear_local, editar_local, eliminar_local, lista_locales
+from locales.views import crear_local, editar_local, eliminar_local, lista_locales, locales_inactivos, reactivar_local
 
 
 urlpatterns = [
@@ -35,6 +35,9 @@ urlpatterns = [
     path('locales/crear/', crear_local, name='crear_local'),
     path('locales/editar/<int:pk>/', editar_local, name='editar_local'),
     path('locales/eliminar/<int:pk>/', eliminar_local, name='eliminar_local'),
+    path('locales/inactivos/', locales_inactivos, name='locales_inactivos'),
+    path('locales/reactivar/<int:pk>/', reactivar_local, name='reactivar_local'),
+
 
 
 ]

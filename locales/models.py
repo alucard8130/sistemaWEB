@@ -19,6 +19,7 @@ class LocalComercial(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     fecha_baja = models.DateTimeField(blank=True, null=True)
+    activo = models.BooleanField(default=True)
     observaciones = models.TextField(blank=True, null=True)
 
 

@@ -28,6 +28,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'lista_locales' %}">Locales comerciales</a>
                 </li>
+                {% if request.user.is_superuser %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'locales_inactivos' %}">Locales inactivos</a>
+                </li>
+                {% endif %}
                 </ul>
                 <span class="navbar-text text-white me-3">
                     Bienvenido, {{ usuario.username }}

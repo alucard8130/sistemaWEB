@@ -6,6 +6,7 @@ from .models import LocalComercial
 from .forms import LocalComercialForm
 from principal.models import PerfilUsuario  # si usas perfil para la empresa
 from django.shortcuts import get_object_or_404
+from django.contrib.admin.views.decorators import staff_member_required
 
 
 # Create your views here.
@@ -96,10 +97,11 @@ def crear_local(request):
 @login_required
 def lista_locales(request):
     if request.user.is_superuser:
-        locales = LocalComercial.objects.all()
+        #locales = LocalComercial.objects.all()
+        locales = LocalComercial.objects.filter(activo=True)
     else:
         empresa = getattr(request.user.perfilusuario, 'empresa', None)
-        locales = LocalComercial.objects.filter(empresa=empresa)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
     return render(request, 'locales/lista_locales.html', {'locales': locales})
 
 
@@ -138,7 +140,25 @@ def eliminar_local(request, pk):
         local = get_object_or_404(LocalComercial, pk=pk, empresa=perfil.empresa)
 
     if request.method == 'POST':
-        local.delete()
+        #local.delete()
+        local.activo = False
+        local.save()
         return redirect('lista_locales')
 
     return render(request, 'locales/eliminar_local.html', {'local': local})
+
+@staff_member_required
+def locales_inactivos(request):
+    locales = LocalComercial.objects.filter(activo=False)
+    return render(request, 'locales/locales_inactivos.html', {'locales': locales})
+
+@staff_member_required
+def reactivar_local(request, pk):
+    local = get_object_or_404(LocalComercial, pk=pk, activo=False)
+
+    if request.method == 'POST':
+        local.activo = True
+        local.save()
+        return redirect('locales_inactivos')
+
+    return render(request, 'locales/reactivar_confirmacion.html', {'local': local})
