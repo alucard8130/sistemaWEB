@@ -1,21 +1,67 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Iniciar sesión</title>
+    <title>Iniciar sesión - GAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            background: linear-gradient(to right, #e0f7fa, #ffffff);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .login-box {
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .login-logo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        .form-control {
+            border-radius: 10px;
+        }
+        .btn-primary {
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h2>Iniciar sesión</h2>
-    {% if form.errors %}
-        <p style="color:red;">Usuario o contraseña incorrectos</p>
-    {% endif %}
-    <form method="post">
-        {% csrf_token %}
-        <label for="username">Usuario:</label>
-        {{ form.username }} <br><br>
-        <label for="password">Contraseña:</label>
-        {{ form.password }} <br><br>
-        <button type="submit">Ingresar</button>
-    </form>
+    <div class="login-box">
+        <img src="{% static 'img/logo2.png' %}" alt="Logo" class="login-logo">
+        <div class="login-title">Gestor Administrativo Condomimal</div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3 text-start">
+                <label for="id_username" class="form-label">Usuario</label>
+                <input type="text" name="username" autofocus required class="form-control" id="id_username">
+            </div>
+            <div class="mb-3 text-start">
+                <label for="id_password" class="form-label">Contraseña</label>
+                <input type="password" name="password" required class="form-control" id="id_password">
+            </div>
+            {% if form.errors %}
+                <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary w-100">Iniciar sesión</button>
+        </form>
+    </div>
 </body>
 </html>
