@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard de Saldos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <h2 class="mb-4">Dashboard de Saldos</h2>
+
+    <form method="get" class="row mb-4 g-3">
+        {% if empresas %}
+        <div class="col-md-4">
+            <label>Empresa:</label>
+            <select name="empresa" class="form-select">
+                {% for empresa in empresas %}
+                <option value="{{ empresa.id }}" {% if empresa.id == empresa_id %}selected{% endif %}>{{ empresa.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="col-md-4">
+            <label>Cliente:</label>
+            <select name="cliente" class="form-select">
+                <option value="">-- Todos --</option>
+                {% for cliente in clientes %}
+                <option value="{{ cliente.id }}" {% if cliente.id == cliente_id %}selected{% endif %}>{{ cliente.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label>Vigencia:</label>
+            <select name="rango" class="form-select">
+                <option value="">-- Todas --</option>
+                <option value="0-30" {% if rango == '0-30' %}selected{% endif %}>0-30 días</option>
+                <option value="31-60" {% if rango == '31-60' %}selected{% endif %}>31-60 días</option>
+                <option value="61-90" {% if rango == '61-90' %}selected{% endif %}>61-90 días</option>
+                <option value="90+" {% if rango == '90+' %}selected{% endif %}>Más de 90 días</option>
+            </select>
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+        </div>
+    </form>
+
+    <canvas id="chartSaldos" height="100"></canvas>
+
+    <table class="table table-bordered mt-4">
+        <thead class="table-dark">
+            <tr>
+                <th>Cliente</th>
+                <th>Empresa</th>
+                <th>Local / Área</th>
+                <th>Monto</th>
+                <th>Saldo</th>
+                <th>Vencimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factura in facturas %}
+            <tr>
+                <td>{{ factura.cliente.nombre }}</td>
+                <td>{{ factura.empresa.nombre }}</td>
+                <td>
+                    {% if factura.local %}Local {{ factura.local.numero }}{% endif %}
+                    {% if factura.area_comun %}Área {{ factura.area_comun.numero }}{% endif %}
+                </td>
+                <td>${{ factura.monto }}</td>
+                <td>${{ factura.saldo }}</td>
+                <td>{{ factura.fecha_vencimiento }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+const ctx = document.getElementById('chartSaldos');
+const chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: ['0-30 días', '31-60 días', '61-90 días', '90+ días'],
+        datasets: [{
+        label: 'Saldo pendiente ($)',
+        data: [
+            {{ saldo_0_30 }},
+            {{ saldo_31_60 }},
+            {{ saldo_61_90 }},
+            {{ saldo_90_mas }}
+        ],
+        backgroundColor: ['#198754', '#ffc107', '#fd7e14', '#dc3545'],
+        borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            },
+            title: {
+                display: true,
+                text: 'Distribución de saldos por vencimiento'
+            }
+        }
+    }
+});
+</script>
+</body>
+</html>

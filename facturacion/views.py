@@ -3,6 +3,7 @@
 from datetime import date
 from django.shortcuts import render, redirect,get_object_or_404
 from areas.models import AreaComun
+from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
 from .forms import FacturaForm, PagoForm
@@ -10,6 +11,11 @@ from .models import Factura, Pago
 from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from datetime import date, timedelta
+from django.db.models import Sum, F, ExpressionWrapper, fields
+from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, Coalesce, ExpressionWrapper
+
+
 
 @login_required
 def crear_factura(request):
@@ -233,4 +239,74 @@ def pagos_por_origen(request):
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
         'tipo': tipo,
+    })
+
+@login_required
+def dashboard_saldos(request):
+    hoy = date.today()
+    hoy_30 = hoy + timedelta(days=30)
+    hoy_60 = hoy + timedelta(days=60)
+    hoy_90 = hoy + timedelta(days=90)
+
+    rango = request.GET.get('rango')
+    cliente_id = request.GET.get('cliente')
+    empresa_id = request.GET.get('empresa') if request.user.is_superuser else request.user.perfilusuario.empresa.id
+
+    facturas = Factura.objects.filter(estatus='pendiente', empresa_id=empresa_id)
+
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+
+    # Filtros de rango visual
+    if rango == '0-30':
+        facturas = facturas.filter(fecha_vencimiento__lte=hoy_30)
+    elif rango == '31-60':
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy_30, fecha_vencimiento__lte=hoy_60)
+    elif rango == '61-90':
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy_60, fecha_vencimiento__lte=hoy_90)
+    elif rango == '90+':
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy_90)
+
+    # Subconsulta: total pagado por factura
+    from facturacion.models import Pago
+
+    pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')).values('factura')\
+    .annotate(total_pagado=Sum('monto')).values('total_pagado')
+
+    # Anotamos saldo pendiente
+    facturas = facturas.annotate(
+    total_pagado=Coalesce(Subquery(pagos_subquery, output_field=DecimalField()), Value(0)),
+    saldo_pendiente=ExpressionWrapper(
+        F('monto') - Coalesce(Subquery(pagos_subquery, output_field=DecimalField()), Value(0)),
+        output_field=DecimalField()
+    )
+)    
+
+    # Para el gráfico: totales por grupo
+    saldo_0_30 = facturas.filter(fecha_vencimiento__lte=hoy_30).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
+    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy_30, fecha_vencimiento__lte=hoy_60).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
+    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy_60, fecha_vencimiento__lte=hoy_90).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
+    saldo_90_mas = facturas.filter(fecha_vencimiento__gt=hoy_90).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
+
+
+    #facturas = facturas.annotate(
+     #   saldo=ExpressionWrapper(
+      #      F('monto') - Sum('pagos__monto'),
+       #     output_field=fields.DecimalField(max_digits=10, decimal_places=2)
+        #)
+    #).select_related('cliente', 'empresa', 'local', 'area_comun').order_by('-fecha_vencimiento')
+
+    clientes = Cliente.objects.filter(empresa_id=empresa_id)
+    empresas = Empresa.objects.all() if request.user.is_superuser else None
+
+    return render(request, 'dashboard/saldos.html', {
+        'facturas': facturas,
+        'clientes': clientes,
+        'empresas': empresas,
+        'rango': rango,
+        'cliente_id': int(cliente_id) if cliente_id else None,
+        'saldo_0_30': saldo_0_30,
+        'saldo_31_60': saldo_31_60,
+        'saldo_61_90': saldo_61_90,
+        'saldo_90_mas': saldo_90_mas,
     })
