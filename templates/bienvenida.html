@@ -23,23 +23,28 @@
             padding-top: 40px;
         }
         .welcome-box {
-            max-width: 500px;
-            padding: 30px;
+            max-width: 600px;
+            padding: 100px;
             background: #fff;
             border-radius: 20px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.1);
+            box-shadow: 0 0 40px rgba(0,0,0,0.1);
             text-align: center;
         }
         .welcome-logo {
-            width: 70px;
-            margin-bottom: 15px;
+            width: 80px;
+            margin-bottom: 5px;
         }
         .welcome-title {
             font-size: 1.6rem;
-            font-weight: 600;
+            font-weight: 700;
             color: #2c3e50;
             margin-bottom: 25px;
         }
+        .lead {
+            font-size: 1.2rem;
+            color: #34495e;
+        }
+
         footer {
             text-align: center;
             padding: 10px;
@@ -48,8 +53,10 @@
         }
         .navbar-brand img {
             height: 30px;
-            margin-right: 8px;
+            margin-right: 1px;
+            margin-left: -100px;
         }
+
     </style>
 </head>
 <body>
@@ -82,22 +89,26 @@
                     {% endif %}
                    <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger btn-sm ">Cerrar sesión</button>
+                    <button type="submit" class="btn btn-danger btn-sm "> Cerrar sesión</button>
                 </ul>
             </div>
        
         </div>
     </nav>
-
+    <div class="alert alert-primary mt-2">
+    Bienvenido <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+    {% if empresa %}
+        – Empresa: <strong>{{ empresa.nombre }}</strong>
+    {% else %}
+        – <strong>Administrador General</strong>
+    {% endif %}
+</div>
     <!-- 🔹 Caja central -->
     <div class="main-content">
         <div class="welcome-box">
             <img src="{% static 'img/logo2.png' %}" alt="Logo" class="welcome-logo">
             <div class="welcome-title">Bienvenido a GAC</div>
-            <p class="lead">Sistema de Gestión Administrativa Condominal</p>
-            <span class="">
-                Usuario: {{ usuario.username }}
-            </span>
+            <p class="lead"><strong> Sistema de Gestión Administrativa Condominal</strong></p>
         </div>
     </div>
 

@@ -29,8 +29,8 @@ def crear_local(request):
     perfil = getattr(user, 'perfilusuario', None)
     
     if request.method == 'POST':
-        form = LocalComercialForm(request.POST, user=user)
-        #form = LocalComercialForm(request.POST or None, user=request.user)
+        #form = LocalComercialForm(request.POST, user=user)
+        form = LocalComercialForm(request.POST or None, user=request.user)
 
         if form.is_valid():
             local = form.save(commit=False)
@@ -38,12 +38,15 @@ def crear_local(request):
             if not user.is_superuser:
                 #if perfil and perfil.empresa:
                 local.empresa = perfil.empresa
+                
             #local.save()
                 #else:
                     #return render(request, 'error.html', {'mensaje': 'No tienes empresa asignada.'})
-            local.save()
-            return redirect('lista_locales')
+                local.save()
+                return redirect('lista_locales')
+        
     else:
+        
         form = LocalComercialForm(user=user)
         # Si no es superusuario, asignamos la empresa inicial al form
         if not user.is_superuser and perfil and perfil.empresa:
