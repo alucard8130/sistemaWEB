@@ -80,6 +80,7 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'lista_clientes' %}">Clientes</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'crear_factura' %}">Facturacion</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'lista_facturas' %}">Facturas</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'pagos_por_origen' %}?tipo=local">Pagos por Local/Área</a></li>
 
                     {% if request.user.is_superuser %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'admin:auth_user_add' %}">Usuarios</a></li>

@@ -6,7 +6,7 @@ from areas.models import AreaComun
 from empresas.models import Empresa
 from locales.models import LocalComercial
 from .forms import FacturaForm, PagoForm
-from .models import Factura
+from .models import Factura, Pago
 from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -213,4 +213,24 @@ def registrar_pago(request, factura_id):
         'form': form,
         'factura': factura,
         'saldo': factura.saldo_pendiente,
+    })
+
+from django.db.models import Q
+
+@login_required
+def pagos_por_origen(request):
+    tipo = request.GET.get('tipo')  # 'local' o 'area'
+    pagos = Pago.objects.select_related('factura', 'factura__cliente', 'factura__empresa')
+
+    if tipo == 'local':
+        pagos = pagos.filter(factura__local__isnull=False)
+    elif tipo == 'area':
+        pagos = pagos.filter(factura__area_comun__isnull=False)
+
+    if not request.user.is_superuser:
+        pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
+
+    return render(request, 'facturacion/pagos_por_origen.html', {
+        'pagos': pagos,
+        'tipo': tipo,
     })
