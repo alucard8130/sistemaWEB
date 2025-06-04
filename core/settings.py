@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'principal',
     'locales',
     'areas',
+    'clientes',
 ]
 
 MIDDLEWARE = [
