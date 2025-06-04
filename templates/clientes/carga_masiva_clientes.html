@@ -1,0 +1,12 @@
+<div class="container mt-4">
+    <h2>Carga masiva de clientes desde Excel</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="archivo" class="form-label">Archivo Excel (.xlsx):</label>
+            <input type="file" name="archivo" id="archivo" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Cargar</button>
+        <a href="{% url 'lista_clientes' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>

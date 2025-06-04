@@ -2,8 +2,12 @@
 # Create your views here.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from empresas.models import Empresa
 from .models import Cliente
 from .forms import ClienteForm
+from django.contrib.admin.views.decorators import staff_member_required
+import openpyxl
+from django.contrib import messages
 
 @login_required
 def lista_clientes(request):
@@ -61,3 +65,41 @@ def eliminar_cliente(request, pk):
         return redirect('lista_clientes')
 
     return render(request, 'clientes/eliminar_cliente.html', {'cliente': cliente})
+
+@staff_member_required
+def carga_masiva_clientes(request):
+    if request.method == 'POST' and request.FILES.get('archivo'):
+        archivo = request.FILES['archivo']
+        wb = openpyxl.load_workbook(archivo)
+        hoja = wb.active
+
+        insertados = 0
+        duplicados = 0
+        errores = 0
+
+        for fila in hoja.iter_rows(min_row=2, values_only=True):
+            nombre, rfc, telefono, email, empresa_nombre = fila
+
+            try:
+                empresa = Empresa.objects.get(nombre__iexact=empresa_nombre)
+                existe = Cliente.objects.filter(nombre=nombre, empresa=empresa, activo=True).exists()
+
+                if existe:
+                    duplicados += 1
+                else:
+                    Cliente.objects.create(
+                        nombre=nombre,
+                        rfc=rfc,
+                        telefono=telefono,
+                        email=email,
+                        empresa=empresa
+                    )
+                    insertados += 1
+            except Exception:
+                errores += 1
+                continue
+
+        messages.success(request, f"Insertados: {insertados}, Duplicados: {duplicados}, Errores: {errores}")
+        return redirect('lista_clientes')
+
+    return render(request, 'clientes/carga_masiva_clientes.html')

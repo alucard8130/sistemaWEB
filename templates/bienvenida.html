@@ -21,6 +21,11 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'lista_clientes' %}">Clientes</a>
+                        {% if request.user.is_superuser %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'carga_masiva_clientes' %}">Cargar clientes</a>
+                            </li>
+                        {% endif %}
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'lista_areas' %}">Áreas comunes</a>
