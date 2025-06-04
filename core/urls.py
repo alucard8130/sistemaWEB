@@ -19,8 +19,14 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from principal.views import bienvenida
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
-from locales.views import crear_local, editar_local, eliminar_local, lista_locales, locales_inactivos, reactivar_local
-
+from locales.views import (
+    crear_local, editar_local, eliminar_local, lista_locales, 
+    locales_inactivos, reactivar_local
+    )
+from areas.views import (
+    lista_areas, crear_area, editar_area, eliminar_area,
+    areas_inactivas, reactivar_area
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -37,6 +43,12 @@ urlpatterns = [
     path('locales/eliminar/<int:pk>/', eliminar_local, name='eliminar_local'),
     path('locales/inactivos/', locales_inactivos, name='locales_inactivos'),
     path('locales/reactivar/<int:pk>/', reactivar_local, name='reactivar_local'),
+    path('areas/', lista_areas, name='lista_areas'),
+    path('areas/crear/', crear_area, name='crear_area'),
+    path('areas/editar/<int:pk>/', editar_area, name='editar_area'),
+    path('areas/eliminar/<int:pk>/', eliminar_area, name='eliminar_area'),
+    path('areas/inactivas/', areas_inactivas, name='areas_inactivas'),
+    path('areas/reactivar/<int:pk>/', reactivar_area, name='reactivar_area'),
 
 
 

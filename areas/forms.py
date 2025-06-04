@@ -1,0 +1,31 @@
+from django import forms
+from .models import AreaComun
+
+
+class AreaComunForm(forms.ModelForm):
+    class Meta:
+        model = AreaComun
+        fields = ['num_contrato','numero', 'ubicacion', 'superficie_m2', 'cuota', 'status', 'empresa', 'cliente', 'observaciones']
+        widgets = {
+            'fecha_inicio': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
+        }
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if not self.user.is_superuser:
+            self.fields['empresa'].widget = forms.HiddenInput()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        nombre = cleaned_data.get('nombre')
+        empresa = cleaned_data.get('empresa')
+
+        if nombre and empresa:
+            qs = AreaComun.objects.filter(nombre__iexact=nombre, empresa=empresa, activo=True)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("Ya existe un área común con ese nombre en esta empresa.")
+        return cleaned_data

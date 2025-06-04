@@ -2,17 +2,17 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Editar Local</title>
+    <title>Editar Area</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 <div class="container mt-5">
-    <h2>Editar Local: {{ local.numero }}</h2>
+    <h2>Editar Area Comun: {{ area.numero }}</h2>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit" class="btn btn-primary">Guardar cambios</button>
-        <a href="{% url 'lista_locales' %}" class="btn btn-secondary">Cancelar</a>
+        <a href="{% url 'lista_areas' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
 </body>

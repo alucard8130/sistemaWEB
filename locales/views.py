@@ -1,21 +1,27 @@
 
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.shortcuts import render, redirect
-from empresas.models import Empresa
+from django.shortcuts import render, redirect, get_object_or_404
+#from empresas.models import Empresa
 from .models import LocalComercial
 from .forms import LocalComercialForm
-from principal.models import PerfilUsuario  # si usas perfil para la empresa
-from django.shortcuts import get_object_or_404
-from django.contrib.admin.views.decorators import staff_member_required
+#from principal.models import PerfilUsuario  # si usas perfil para la empresa
+#from django.shortcuts import get_object_or_404
+#from django.contrib.admin.views.decorators import staff_member_required
 
 
 # Create your views here.
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.shortcuts import render, redirect
-from .forms import LocalComercialForm
-from .models import LocalComercial
-from empresas.models import Empresa
-from principal.models import PerfilUsuario
+
+@login_required
+def lista_locales(request):
+    user = request.user
+    if user.is_superuser:
+        #locales = LocalComercial.objects.all()
+        locales = LocalComercial.objects.filter(activo=True)
+    else:
+        #empresa = getattr(request.user.perfilusuario, 'empresa', None)
+        empresa = user.perfilusuario.empresa
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
+    return render(request, 'locales/lista_locales.html', {'locales': locales})
 
 @login_required
 def crear_local(request):
@@ -23,106 +29,49 @@ def crear_local(request):
     perfil = getattr(user, 'perfilusuario', None)
     
     if request.method == 'POST':
-        #form = LocalComercialForm(request.POST, user=user)
-        form = LocalComercialForm(request.POST or None, user=request.user)
+        form = LocalComercialForm(request.POST, user=user)
+        #form = LocalComercialForm(request.POST or None, user=request.user)
 
         if form.is_valid():
             local = form.save(commit=False)
-
             # Si no es superusuario, asignamos su empresa
             if not user.is_superuser:
-                if perfil and perfil.empresa:
-                    local.empresa = perfil.empresa
-                else:
-                    return render(request, 'error.html', {'mensaje': 'No tienes empresa asignada.'})
-
+                #if perfil and perfil.empresa:
+                local.empresa = perfil.empresa
+            #local.save()
+                #else:
+                    #return render(request, 'error.html', {'mensaje': 'No tienes empresa asignada.'})
             local.save()
             return redirect('lista_locales')
     else:
         form = LocalComercialForm(user=user)
-
         # Si no es superusuario, asignamos la empresa inicial al form
         if not user.is_superuser and perfil and perfil.empresa:
             form.fields['empresa'].initial = perfil.empresa
 
     return render(request, 'locales/crear_local.html', {'form': form})
 
-
-"""@login_required
-def crear_local(request):
-    if request.user.is_superuser:
-        if request.method == 'POST':
-            form = LocalComercialForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect('lista_locales')
-        else:
-            form = LocalComercialForm()
-    else:
-        perfil = getattr(request.user, 'perfilusuario', None)
-        if not perfil or not perfil.empresa:
-            return render(request, 'error.html', {'mensaje': 'No tienes empresa asignada.'})
-
-        if request.method == 'POST':
-            form = LocalComercialForm(request.POST)
-            if form.is_valid():
-                local = form.save(commit=False)
-                local.empresa = perfil.empresa
-                local.save()
-                return redirect('lista_locales')
-        else:
-            form = LocalComercialForm()
-    return render(request, 'locales/crear_local.html', {'form': form})"""
-
-
-
-"""@login_required
-def crear_local(request):
-    if request.user.is_superuser:
-        empresa = None
-    else:
-        empresa = getattr(request.user.perfilusuario, 'empresa', None)
-
-    if request.method == 'POST':
-        form = LocalComercialForm(request.POST)
-        if form.is_valid():
-            local = form.save(commit=False)
-            local.empresa = empresa if empresa else Empresa.objects.first()  # opcional
-            local.save()
-            return redirect('lista_locales')
-    else:
-        form = LocalComercialForm()
-    return render(request, 'locales/crear_local.html', {'form': form})"""
-
-@login_required
-def lista_locales(request):
-    if request.user.is_superuser:
-        #locales = LocalComercial.objects.all()
-        locales = LocalComercial.objects.filter(activo=True)
-    else:
-        empresa = getattr(request.user.perfilusuario, 'empresa', None)
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
-    return render(request, 'locales/lista_locales.html', {'locales': locales})
-
-
 @login_required
 def editar_local(request, pk):
     user = request.user
-    perfil = getattr(user, 'perfilusuario', None)
-
+    local= get_object_or_404(LocalComercial, pk=pk)
+    #perfil = getattr(user, 'perfilusuario', None)
     # Filtrar el local según permisos
-    if user.is_superuser:
-        local = get_object_or_404(LocalComercial, pk=pk)
-    else:
-        local = get_object_or_404(LocalComercial, pk=pk, empresa=perfil.empresa)
+    if not user.is_superuser and local.empresa != user.perfilusuario.empresa:
+        return redirect('lista_locales')
+    #if user.is_superuser:
+        #local = get_object_or_404(LocalComercial, pk=pk)
+    #else:
+     #   local = get_object_or_404(LocalComercial, pk=pk, empresa=perfil.empresa)
 
     if request.method == 'POST':
         form = LocalComercialForm(request.POST, instance=local, user=user)
         if form.is_valid():
             local = form.save(commit=False)
-            if not user.is_superuser:
-                local.empresa = perfil.empresa  # reforzar seguridad
-            local.save()
+            form.save()
+            #if not user.is_superuser:
+             #   local.empresa = perfil.empresa  # reforzar seguridad
+            #local.save()
             return redirect('lista_locales')
     else:
         form = LocalComercialForm(instance=local, user=user)
@@ -132,12 +81,15 @@ def editar_local(request, pk):
 @login_required
 def eliminar_local(request, pk):
     user = request.user
-    perfil = getattr(user, 'perfilusuario', None)
+    local= get_object_or_404(LocalComercial, pk=pk)
+    if not user.is_superuser and local.empresa != user.perfilusuario.empresa:
+        return redirect('lista_locales')
+    #perfil = getattr(user, 'perfilusuario', None)
 
-    if user.is_superuser:
-        local = get_object_or_404(LocalComercial, pk=pk)
-    else:
-        local = get_object_or_404(LocalComercial, pk=pk, empresa=perfil.empresa)
+    #if user.is_superuser:
+     #   local = get_object_or_404(LocalComercial, pk=pk)
+    #else:
+     #   local = get_object_or_404(LocalComercial, pk=pk, empresa=perfil.empresa)
 
     if request.method == 'POST':
         #local.delete()
@@ -147,12 +99,14 @@ def eliminar_local(request, pk):
 
     return render(request, 'locales/eliminar_local.html', {'local': local})
 
-@staff_member_required
+#@staff_member_required
+@user_passes_test(lambda u: u.is_staff)
 def locales_inactivos(request):
     locales = LocalComercial.objects.filter(activo=False)
     return render(request, 'locales/locales_inactivos.html', {'locales': locales})
 
-@staff_member_required
+#@staff_member_required
+@user_passes_test(lambda u: u.is_staff)
 def reactivar_local(request, pk):
     local = get_object_or_404(LocalComercial, pk=pk, activo=False)
 
