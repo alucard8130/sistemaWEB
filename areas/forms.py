@@ -5,9 +5,9 @@ from .models import AreaComun
 class AreaComunForm(forms.ModelForm):
     class Meta:
         model = AreaComun
-        fields = ['num_contrato','numero', 'ubicacion', 'superficie_m2', 'cuota', 'status', 'empresa', 'cliente', 'observaciones']
+        fields = ['num_contrato','numero','cliente','empresa', 'ubicacion', 'superficie_m2', 'cuota','fecha_inicial', 'fecha_fin', 'status',  'observaciones']
         widgets = {
-            'fecha_inicio': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),
             'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
         }
     def __init__(self, *args, **kwargs):

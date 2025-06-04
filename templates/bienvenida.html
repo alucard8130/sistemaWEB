@@ -71,6 +71,9 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'lista_locales' %}">Locales</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'lista_areas' %}">Áreas comunes</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'lista_clientes' %}">Clientes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'crear_factura' %}">Facturacion</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'lista_facturas' %}">Facturas</a></li>
+
                     {% if request.user.is_superuser %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'admin:auth_user_add' %}">Usuarios</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'carga_masiva_clientes' %}">Carga masiva</a></li>
@@ -79,7 +82,7 @@
                     {% endif %}
                    <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
-                    <button type="submit">Cerrar sesión</button>
+                    <button type="submit" class="btn btn-danger btn-sm ">Cerrar sesión</button>
                 </ul>
             </div>
        

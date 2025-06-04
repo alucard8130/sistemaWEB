@@ -6,7 +6,7 @@ class LocalComercialForm(forms.ModelForm):
     class Meta:
         model = LocalComercial
         #exclude = ['empresa']  # será asignada desde la vista para usuarios normales
-        fields = ['numero', 'ubicacion', 'superficie_m2', 'cuota', 'status', 'empresa', 'cliente', 'observaciones']
+        fields = ['numero', 'cliente','empresa', 'superficie_m2', 'cuota','ubicacion', 'status', 'observaciones']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # obtenemos el usuario desde la vista

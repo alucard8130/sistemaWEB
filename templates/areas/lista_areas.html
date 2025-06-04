@@ -8,7 +8,7 @@
 <body>
 <div class="container mt-4">
     <h2>Áreas comunes</h2>
-    <a href="{% url 'crear_area' %}" class="btn btn-success mb-3">+ Nueva área</a>
+    <a href="{% url 'crear_area' %}" class="btn btn-success mb-3">+ Nueva área </a>
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
@@ -30,7 +30,7 @@
                     <td>{{ area.ubicacion }}</td>
                     <td>{{ area.empresa.nombre }}</td>
                     <td>{{ area.superficie_m2 }}</td>
-                    <td>{{ area.fecha_inico }}</td>
+                    <td>{{ area.fecha_inicial }}</td>
                     <td>{{ area.fecha_fin }}</td>
                     <td>
                     {% if request.user.is_superuser or local.empresa == request.user.perfilusuario.empresa %}
