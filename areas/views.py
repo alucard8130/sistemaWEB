@@ -1,5 +1,7 @@
 
 # Create your views here.
+from decimal import Decimal
+from pyexpat.errors import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import AreaComun
@@ -82,3 +84,30 @@ def reactivar_area(request, pk):
         return redirect('areas_inactivas')
 
     return render(request, 'areas/reactivar_confirmacion.html', {'area': area})
+
+
+@login_required
+def incrementar_cuotas_areas(request):
+    if request.method == 'POST':
+        porcentaje = request.POST.get('porcentaje')
+        try:
+            porcentaje = Decimal(porcentaje)
+            empresa = None
+            if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+                empresa = request.user.perfilusuario.empresa
+                areas = AreaComun.objects.filter(empresa=empresa, activo=True)
+            else:
+                areas = AreaComun.objects.filter(activo=True)
+
+            for area in areas:
+                cuota_anterior = area.cuota
+                incremento = cuota_anterior * (porcentaje / Decimal('100'))
+                area.cuota += incremento
+                area.save()
+
+            messages.success(request, f'Se incrementaron las cuotas en un {porcentaje}% para todas las áreas comunes activas.')
+            return redirect('lista_areas')
+        except:
+            messages.error(request, 'Porcentaje inválido.')
+
+    return render(request, 'areas/incrementar_c_areas.html')

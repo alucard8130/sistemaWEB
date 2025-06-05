@@ -97,6 +97,7 @@
                         {% if request.user.is_superuser %}
                         <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
                         {% endif %}
+                        <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
                     </ul>
                 </li>
 
@@ -107,6 +108,7 @@
                         {% if request.user.is_superuser %}
                         <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivas</a></li>
                         {% endif %}
+                        <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
                     </ul>
                 </li>
 
@@ -117,7 +119,6 @@
                         <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Facturas y Pagos</a></li>
                         <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard</a></li>
-                        <li><a class="dropdown-item" href="{% url 'incrementar_cuotas' %}">Incrementar Cuotas Locales</a></li>
                     </ul>
                 </li>
 

@@ -13,9 +13,11 @@
         <thead class="table-dark">
             <tr>
                 <th>Número</th>
-                <th>Ubicación</th>
-                <th>Superficie (m²)</th>
+                <th>Cliente</th>
                 <th>Empresa</th>
+                <th>Superficie (m²)</th>
+                <th>Cuota</th>
+                <th>Ubicación</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -23,9 +25,11 @@
             {% for local in locales %}
                 <tr>
                     <td>{{ local.numero }}</td>
-                    <td>{{ local.ubicacion }}</td>
-                    <td>{{ local.superficie_m2 }}</td>
+                    <td>{{ local.cliente.nombre }}</td>
                     <td>{{ local.empresa.nombre }}</td>
+                    <td>{{ local.superficie_m2 }}</td>
+                    <td>{{ local.cuota }}</td>
+                    <td>{{ local.ubicacion }}</td>
                     <td>
                         {% if request.user.is_superuser %}
                             <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-primary">Editar</a>

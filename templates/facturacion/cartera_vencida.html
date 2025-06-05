@@ -34,12 +34,14 @@
 
         <div class="col-md-3">
             <label for="dias" class="form-label">Antigüedad</label>
-            <select name="dias" id="dias" class="form-select">
-                <option value="">Todas</option>
-                <option value="30" {% if request.GET.dias == '30' %}selected{% endif %}>30+ días</option>
-                <option value="60" {% if request.GET.dias == '60' %}selected{% endif %}>60+ días</option>
-                <option value="90" {% if request.GET.dias == '90' %}selected{% endif %}>90+ días</option>
-                <option value="120" {% if request.GET.dias == '120' %}selected{% endif %}>120+ días</option>
+            <select name="rango" id="rango" class="form-select me-2">
+          <!--  <select name="dias" id="dias" class="form-select"> -->
+                <option value="">-- Todos --</option>
+                <option value="menor30" {% if rango_seleccionado == 'menor30' %}selected{% endif %}>Menos de 30 días</option>
+                <option value="30a60" {% if rango_seleccionado == '30a60' %}selected{% endif %}>30 a 60 días</option>
+                <option value="60a90" {% if rango_seleccionado == '60a90' %}selected{% endif %}>60 a 90 días</option>
+                <option value="90a180" {% if rango_seleccionado == '90a180' %}selected{% endif %}>90 a 180 días</option>
+                <option value="mas180" {% if rango_seleccionado == 'mas180' %}selected{% endif %}>Más de 180 días</option>
             </select>
         </div>
 

@@ -248,10 +248,6 @@ def pagos_por_origen(request):
 @login_required
 def dashboard_saldos(request):
     hoy = timezone.now().date()
-    #hoy = date.today()
-    hoy_30 = hoy + timedelta(days=30)
-    hoy_60 = hoy + timedelta(days=60)
-    hoy_90 = hoy + timedelta(days=90)
 
     rango = request.GET.get('rango')
     cliente_id = request.GET.get('cliente')
@@ -264,13 +260,13 @@ def dashboard_saldos(request):
 
     # Filtros de rango visual
     if rango == '0-30':
-        facturas = facturas.filter(fecha_vencimiento__lte=hoy_30)
+        facturas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=30))
     elif rango == '31-60':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy_30, fecha_vencimiento__lte=hoy_60)
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30), fecha_vencimiento__lte=hoy - timedelta(days=60))
     elif rango == '61-90':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy_60, fecha_vencimiento__lte=hoy_90)
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=90))
     elif rango == '90+':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy_90)
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180))
 
     # Subconsulta: total pagado por factura
     from facturacion.models import Pago
@@ -290,21 +286,28 @@ def dashboard_saldos(request):
 )    
 
     # Para el gráfico: totales por grupo
-    saldo_0_30 = facturas.filter(fecha_vencimiento__lte=hoy_30).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy_30, fecha_vencimiento__lte=hoy_60).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy_60, fecha_vencimiento__lte=hoy_90).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_90_mas = facturas.filter(fecha_vencimiento__gt=hoy_90).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_0_30 = facturas.filter(fecha_vencimiento__lte=hoy- timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_90_mas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
 
-
-    #facturas = facturas.annotate(
-     #   saldo=ExpressionWrapper(
-      #      F('monto') - Sum('pagos__monto'),
-       #     output_field=fields.DecimalField(max_digits=10, decimal_places=2)
-        #)
-    #).select_related('cliente', 'empresa', 'local', 'area_comun').order_by('-fecha_vencimiento')
 
     clientes = Cliente.objects.filter(empresa_id=empresa_id)
     empresas = Empresa.objects.all() if request.user.is_superuser else None
+
+    #KPI de pagos
+    # Filtrar pagos activos
+    pagos = Pago.objects.filter(factura__activo=True)
+
+    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+        empresa = request.user.perfilusuario.empresa
+        pagos = pagos.filter(factura__empresa=empresa)
+    else:
+        empresa = None
+
+    pagos_locales = pagos.filter(factura__local__isnull=False).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_areas = pagos.filter(factura__area_comun__isnull=False).aggregate(total=Sum('monto'))['total'] or 0
+
 
     return render(request, 'dashboard/saldos.html', {
         'facturas': facturas,
@@ -316,43 +319,65 @@ def dashboard_saldos(request):
         'saldo_31_60': saldo_31_60,
         'saldo_61_90': saldo_61_90,
         'saldo_90_mas': saldo_90_mas,
+        'pagos_locales': pagos_locales,
+        'pagos_areas': pagos_areas,
+        'empresa': empresa,
     })
+
 
 @login_required
 def cartera_vencida(request):
     hoy = timezone.now().date()
+    filtro = request.GET.get('rango')
+
     facturas = Factura.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
     )
-
-    # Filtrar por empresa
+     # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
     elif request.GET.get('empresa'):
         facturas = facturas.filter(empresa_id=request.GET['empresa'])
-
+    
     # Filtrar por cliente
     if request.GET.get('cliente'):
         facturas = facturas.filter(cliente_id=request.GET['cliente'])
 
-    # Filtrar por días de vencimiento
-    dias = request.GET.get('dias')
-    if dias:
-        dias = int(dias)
-        fecha_limite = hoy - timedelta(days=dias)
-        facturas = facturas.filter(fecha_vencimiento__lte=fecha_limite)
+
+    # Aplicar filtros de rango de días vencidos
+    if filtro == 'menor30':
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
+    elif filtro == '30a60':
+        facturas = facturas.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=30),
+            fecha_vencimiento__gt=hoy - timedelta(days=60)
+        )
+    elif filtro == '60a90':
+        facturas = facturas.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=60),
+            fecha_vencimiento__gt=hoy - timedelta(days=90)
+        )
+    elif filtro == '90a180':
+        facturas = facturas.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=90),
+            fecha_vencimiento__gt=hoy - timedelta(days=180)
+        )
+    elif filtro == 'mas180':
+        facturas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
 
     # Días de atraso
     for f in facturas:
         f.dias_vencidos = (hoy - f.fecha_vencimiento).days
+    
 
     return render(request, 'facturacion/cartera_vencida.html', {
         'facturas': facturas,
         'hoy': hoy,
         'empresas': Empresa.objects.all(),
-        'clientes': Cliente.objects.all()
+        'clientes': Cliente.objects.all(),
+        'rango_seleccionado': filtro
     })
 
 @login_required

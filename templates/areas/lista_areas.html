@@ -12,13 +12,15 @@
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
-                <th>Numero Contrato</th>
+                <th>Contrato</th>
                 <th>Numero</th>
-                <th>Ubicación</th>
+                <th>Cliente</th>
                 <th>Empresa</th>
-                <th>Superficie</th>
+                <th>Superficie (m²)</th>
+                <th>Cuota</th>
                 <th>Fecha Inicio</th>
                 <th>Fecha Fin</th>
+                <th>Ubicación</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -27,11 +29,13 @@
                 <tr>
                     <td>{{ area.num_contrato }}</td>
                     <td>{{ area.numero }}</td>
-                    <td>{{ area.ubicacion }}</td>
+                    <td>{{ area.cliente.nombre }}</td>
                     <td>{{ area.empresa.nombre }}</td>
                     <td>{{ area.superficie_m2 }}</td>
+                    <td>{{ area.cuota }}</td>
                     <td>{{ area.fecha_inicial }}</td>
                     <td>{{ area.fecha_fin }}</td>
+                    <td>{{ area.ubicacion }}</td>
                     <td>
                     {% if request.user.is_superuser or local.empresa == request.user.perfilusuario.empresa %}
                         <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-primary">Editar</a>
@@ -42,7 +46,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="8">No hay áreas registradas.</td></tr>
+                <tr><td colspan="9">No hay áreas registradas.</td></tr>
             {% endfor %}
         </tbody>
     </table>

@@ -59,10 +59,5 @@ urlpatterns = [
     path('clientes/carga-masiva/', carga_masiva_clientes, name='carga_masiva_clientes'),
     path('facturas/', include('facturacion.urls')),
     path('locales/', include('locales.urls')),
-
-
-    
-
-
-
+    path('areas/', include('areas.urls')),
 ]

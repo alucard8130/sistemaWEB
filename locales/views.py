@@ -146,4 +146,4 @@ def incrementar_cuotas_locales(request):
         except:
             messages.error(request, 'Porcentaje inválido.')
     
-    return render(request, 'locales/incrementar_cuotas.html')
+    return render(request, 'locales/incrementar_c_locales.html')

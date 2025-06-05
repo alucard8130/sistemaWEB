@@ -33,10 +33,10 @@
             <label>Vigencia:</label>
             <select name="rango" class="form-select">
                 <option value="">-- Todas --</option>
-                <option value="0-30" {% if rango == '0-30' %}selected{% endif %}>0-30 días</option>
-                <option value="31-60" {% if rango == '31-60' %}selected{% endif %}>31-60 días</option>
+                <option value="90+" {% if rango == '90+' %}selected{% endif %}>0-30 Dias</option>
                 <option value="61-90" {% if rango == '61-90' %}selected{% endif %}>61-90 días</option>
-                <option value="90+" {% if rango == '90+' %}selected{% endif %}>Más de 90 días</option>
+                <option value="31-60" {% if rango == '31-60' %}selected{% endif %}>31-60 días</option>
+                <option value="0-30" {% if rango == '0-30' %}selected{% endif %}>Mas de 90 Dias</option> 
             </select>
         </div>
         <div class="col-12">
@@ -46,68 +46,76 @@
             <a href="{% url 'bienvenida' %}" class="btn btn-secondary"> </a>
             Volver al Menú Principal            
         </div>
-    </form>
-    <div style="max-width: 700px; margin: 0 auto;">
-        <canvas id="chartSaldos"></canvas>
+        <div class="row mt-4">
+    <!-- Gráfico de saldos -->
+    <div class="col-md-6">
+        <div class="card p-3 shadow rounded-4 text-center">
+            <h5 class="mb-2">Saldos por vencimiento</h5>
+            <canvas id="chartSaldos" height="240"></canvas>
+        </div>
     </div>
 
-   <!-- <canvas id="chartSaldos" height="30"></canvas> -->
-
-   <!-- <table class="table table-bordered mt-4">
-        <thead class="table-dark">
-            <tr>
-                <th>Cliente</th>
-                <th>Empresa</th>
-                <th>Local / Área</th>
-                <th>Monto</th>
-                <th>Saldo</th>
-                <th>Vencimiento</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for factura in facturas %}
-            <tr>
-                <td>{{ factura.cliente.nombre }}</td>
-                <td>{{ factura.empresa.nombre }}</td>
-                <td>
-                    {% if factura.local %}Local {{ factura.local.numero }}{% endif %}
-                    {% if factura.area_comun %}Área {{ factura.area_comun.numero }}{% endif %}
-                </td>
-                <td>${{ factura.monto }}</td>
-                <td>${{ factura.saldo_pendiente }}</td>
-                <td>{{ factura.fecha_vencimiento }}</td>
-            </tr>
-            {% endfor %} -->
-        </tbody>
-    </table>
+    <!-- Gráfico de pagos -->
+    <div class="col-md-6">
+        <div class="card p-3 shadow rounded-4 text-center">
+            <h5 class="mb-2">Distribución de pagos</h5>
+            <canvas id="graficoPagos" height="240"></canvas>
+        </div>
+    </div>
 </div>
+
+<!-- Chart 1: Saldos por vencimiento -->
 <script>
 const ctx = document.getElementById('chartSaldos');
-const chart = new Chart(ctx, {
+new Chart(ctx, {
     type: 'doughnut',
     data: {
-        labels: ['0-30 días', '31-60 días', '61-90 días', '90+ días'],
+        labels: ['0-30 días','31-60 días','61-90 días','90+ días'],
         datasets: [{
-        label: 'Saldo pendiente ($)',
-        data: [
-            {{ saldo_0_30 }},
-            {{ saldo_31_60 }},
-            {{ saldo_61_90 }},
-            {{ saldo_90_mas }}
-        ],
-        backgroundColor: ['#198754', '#ffc107', '#fd7e14', '#dc3545'],
-        borderWidth: 1
+            label: 'Saldo pendiente ($)',
+            data: [
+                {{ saldo_90_mas }},
+                {{ saldo_61_90 }},
+                {{ saldo_31_60 }},
+                {{ saldo_0_30 }}
+            ],
+            backgroundColor: ['#198754', '#ffc107', '#fd7e14', '#dc3545'],
+            borderWidth: 1
         }]
     },
     options: {
         responsive: true,
         plugins: {
-            legend: {
-                position: 'left',
-            },
+            legend: { position: 'left' },
             title: {
                 display: true,
                 text: 'Distribución de saldos por vencimiento'
+            }
+        }
+    }
+});
+</script>
+
+<!-- Chart 2: Pagos por origen -->
+<script>
+const ctxPagos = document.getElementById('graficoPagos').getContext('2d');
+new Chart(ctxPagos, {
+    type: 'doughnut',
+    data: {
+        labels: ['Locales', 'Áreas Comunes'],
+        datasets: [{
+            data: [{{ pagos_locales }}, {{ pagos_areas }}],
+            backgroundColor: ['#0d6efd', '#20c997'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'left' },
+            title: {
+                display: true,
+                text: 'Pagos por origen'
             }
         }
     }
