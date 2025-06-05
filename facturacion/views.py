@@ -12,11 +12,11 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from datetime import date, timedelta
-#from django.db.models import Sum, F, ExpressionWrapper, fields
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, ExpressionWrapper
 from django.db.models.functions import Coalesce
 import openpyxl
 from django.http import HttpResponse
+from django.db.models import Q
 
 
 
@@ -43,17 +43,6 @@ def crear_factura(request):
 
     return render(request, 'facturacion/crear_factura.html', {'form': form})
 
-"""@login_required
-def lista_facturas(request):
-    if request.user.is_superuser:
-        facturas = Factura.objects.all()
-    else:
-        empresa = request.user.perfilusuario.empresa
-        facturas = Factura.objects.filter(empresa=empresa)
-
-    return render(request, 'facturacion/lista_facturas.html', 
-        {'facturas': facturas})
-from empresas.models import Empresa"""
 
 @login_required
 def lista_facturas(request):
@@ -75,7 +64,7 @@ def lista_facturas(request):
         'empresa_seleccionada': int(empresa_id) if empresa_id else None
     })
 
-
+@login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     hoy = date.today()
     año, mes = hoy.year, hoy.month
@@ -142,16 +131,6 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
 
     messages.success(request, f"{facturas_creadas} facturas generadas para {hoy.strftime('%B %Y')}")
     return redirect('lista_facturas')
-
-
-#@login_required
-#def confirmar_facturacion(request):
- #   if request.method == 'POST':
-  #      facturar_locales = 'locales' in request.POST
-   #     facturar_areas = 'areas' in request.POST
-    #    return facturar_mes_actual(request, facturar_locales, facturar_areas)
-
-    #return render(request, 'facturacion/confirmar_facturacion.html')
 
 @login_required
 def confirmar_facturacion(request):
@@ -225,7 +204,6 @@ def registrar_pago(request, factura_id):
         'saldo': factura.saldo_pendiente,
     })
 
-from django.db.models import Q
 
 @login_required
 def pagos_por_origen(request):
@@ -329,6 +307,7 @@ def dashboard_saldos(request):
 def cartera_vencida(request):
     hoy = timezone.now().date()
     filtro = request.GET.get('rango')
+    origen = request.GET.get('origen')
 
     facturas = Factura.objects.filter(
         estatus='pendiente',
@@ -345,6 +324,11 @@ def cartera_vencida(request):
     if request.GET.get('cliente'):
         facturas = facturas.filter(cliente_id=request.GET['cliente'])
 
+    # Filtrar por origen (local o área)
+    if origen == 'local':
+        facturas = facturas.filter(local__isnull=False)
+    elif origen == 'area':
+        facturas = facturas.filter(area_comun__isnull=False)
 
     # Aplicar filtros de rango de días vencidos
     if filtro == 'menor30':

@@ -23,6 +23,15 @@
         {% endif %}
 
         <div class="col-md-3">
+            <label for="origen" class="form-label">Origen</label>
+            <select name="origen" id="origen" class="form-select">
+                <option value="">Todos</option>
+                <option value="local" {% if request.GET.origen == 'local' %}selected{% endif %}>Local Comercial</option>
+                <option value="area" {% if request.GET.origen == 'area' %}selected{% endif %}>Área Común</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
             <label for="cliente" class="form-label">Cliente</label>
             <select name="cliente" id="cliente" class="form-select">
                 <option value="">Todos</option>
