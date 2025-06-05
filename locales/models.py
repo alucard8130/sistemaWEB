@@ -6,10 +6,8 @@ from empresas.models import Empresa
 # Create your models here.
 class LocalComercial(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    #cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
-    #cliente = models.CharField(max_length=100, null=True, blank=True)  # Cambiado a CharField para evitar problemas de referencia circular
-    #cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
-    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT)  # 👈 sin null=True, blank=True
+    propietario = models.CharField(max_length=255)  # Propietario del local
+    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT,null=True,blank=True) 
     numero = models.CharField(max_length=100)
     ubicacion = models.CharField(max_length=255, blank=True, null=True)
     superficie_m2 = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)

@@ -13,6 +13,7 @@
         <thead class="table-dark">
             <tr>
                 <th>Número</th>
+                <th>Propietario</th>
                 <th>Cliente</th>
                 <th>Empresa</th>
                 <th>Superficie (m²)</th>
@@ -25,6 +26,7 @@
             {% for local in locales %}
                 <tr>
                     <td>{{ local.numero }}</td>
+                    <td>{{ local.propietario }}</td>
                     <td>{{ local.cliente.nombre }}</td>
                     <td>{{ local.empresa.nombre }}</td>
                     <td>{{ local.superficie_m2 }}</td>
@@ -41,7 +43,7 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="5">No hay locales registrados.</td>
+                    <td colspan="8">No hay locales registrados.</td>
                 </tr>
             {% endfor %}
         </tbody>
