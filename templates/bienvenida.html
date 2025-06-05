@@ -98,6 +98,9 @@
                         <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
                         {% endif %}
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva' %}">Carga Masiva</a></li>
+                        {% endif %}
                     </ul>
                 </li>
 

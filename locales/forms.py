@@ -32,3 +32,6 @@ class LocalComercialForm(forms.ModelForm):
             if duplicado.exists():
                 raise forms.ValidationError(f"Ya existe un local con número '{numero}' en esta empresa.")
         return cleaned_data
+    
+class LocalCargaMasivaForm(forms.Form):
+    archivo = forms.FileField(label='Archivo Excel (.xlsx)')

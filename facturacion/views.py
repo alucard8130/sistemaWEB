@@ -21,6 +21,7 @@ from django.db.models import Q
 from facturacion.models import Pago
 from decimal import Decimal
 from unidecode import unidecode
+#import unidecode
 
 
 

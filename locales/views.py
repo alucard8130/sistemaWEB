@@ -2,10 +2,17 @@
 from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+import openpyxl
+#import unidecode
+from clientes.models import Cliente
+from empresas.models import Empresa
+import locales
 from .models import LocalComercial
-from .forms import LocalComercialForm
-
+from .forms import LocalCargaMasivaForm, LocalComercialForm
+from django.contrib.admin.views.decorators import staff_member_required
+from unidecode import unidecode
 
 
 # Create your views here.
@@ -144,3 +151,79 @@ def incrementar_cuotas_locales(request):
             messages.error(request, 'Porcentaje inválido.')
     
     return render(request, 'locales/incrementar_c_locales.html')
+
+def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
+    if not valor:
+        return None
+    val = str(valor).strip().replace(',', '')
+    try:
+        return modelo.objects.get(pk=int(val))
+    except (ValueError, modelo.DoesNotExist):
+        todos = modelo.objects.all()
+        candidatos = [
+            obj for obj in todos
+            if unidecode(val).lower() in unidecode(str(getattr(obj, campo))).lower()
+        ]
+        if len(candidatos) == 1:
+            return candidatos[0]
+        elif len(candidatos) > 1:
+            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos])
+            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
+        raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
+
+@staff_member_required
+def carga_masiva_locales(request):
+    if request.method == 'POST':
+        form = LocalCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                empresa_val, propietraio_val, cliente_val, numero, ubicacion, superficie_m2, cuota, status, observaciones = row
+                try:
+                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
+                    propietario = buscar_por_id_o_nombre(Cliente, propietraio_val) if propietraio_val else None
+                    cliente = buscar_por_id_o_nombre(Cliente, cliente_val) if cliente_val else None
+                    # Puedes ajustar el campo status si manejas valores específicos en tu modelo
+                    LocalComercial.objects.create(
+                        empresa=empresa,
+                        propietario=propietario.nombre if propietario else "",
+                        cliente=cliente.nombre if cliente else "",
+                        numero=str(numero),
+                        ubicacion=ubicacion or "",
+                        superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
+                        cuota=Decimal(cuota),
+                        status=status or "ocupado",
+                        observaciones=observaciones or ""
+                    )
+                except Exception as e:
+                    errores.append(f"Fila {i}: {e}")
+
+            if errores:
+                messages.error(request, "Algunos locales no se cargaron:<br>" + "<br>".join(errores))
+            else:
+                messages.success(request, "¡Locales cargados exitosamente!")
+            return redirect('carga_masiva')
+    else:
+        form = LocalCargaMasivaForm()
+    return render(request, 'locales/carga_masiva.html', {'form': form})
+
+@staff_member_required
+def plantilla_locales_excel(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Plantilla Locales"
+    ws.append([
+        'empresa','propietario', 'cliente', 'numero', 'ubicacion', 'superficie_m2', 'cuota', 'status', 'observaciones'
+    ])
+    ws.append([
+        'Torre Reforma','Tiendas Soriana SA de CV', 'Juan Pérez', '101', 'Planta Baja', '120.5', '3000.00', 'ocupado', 'Local nuevo'
+    ])
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=plantilla_locales.xlsx'
+    wb.save(response)
+    return response
