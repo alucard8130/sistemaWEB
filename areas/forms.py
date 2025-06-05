@@ -66,3 +66,6 @@ class AsignarClienteForm(forms.ModelForm):
             self.add_error('fecha_fin', 'Debe ingresar la fecha fin.')
 
         return cleaned_data    
+
+class AreaComunCargaMasivaForm(forms.Form):
+    archivo = forms.FileField(label='Archivo Excel (.xlsx)')

@@ -112,6 +112,9 @@
                         <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivas</a></li>
                         {% endif %}
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
+                        {% endif %}
                     </ul>
                 </li>
 
