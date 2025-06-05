@@ -514,7 +514,13 @@ def carga_masiva_facturas(request):
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
+            COLUMNAS_ESPERADAS = 9  # Cambia según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row is None:
+                    continue
+                if len(row) != COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    continue
                 folio, empresa_val, cliente_val, local_val, area_val, monto, fecha_emision, fecha_vencimiento, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
@@ -540,10 +546,10 @@ def carga_masiva_facturas(request):
                 messages.error(request, "Algunas facturas no se cargaron:<br>" + "<br>".join(errores))
             else:
                 messages.success(request, "¡Facturas cargadas exitosamente!")
-            return redirect('carga_masiva')
+            return redirect('carga_masiva_facturas')
     else:
         form = FacturaCargaMasivaForm()
-    return render(request, 'facturacion/carga_masiva.html', {'form': form})
+    return render(request, 'facturacion/carga_masiva_facturas.html', {'form': form})
 
 
 @staff_member_required

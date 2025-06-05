@@ -11,6 +11,6 @@ urlpatterns = [
     path('cartera/', views.cartera_vencida, name='cartera_vencida'),
     path('cartera/exportar/excel/', views.exportar_cartera_excel, name='exportar_cartera_excel'),
     path('pagos/exportar/excel/', views.exportar_pagos_excel, name='exportar_pagos_excel'),
-    path('carga-masiva/', views.carga_masiva_facturas, name='carga_masiva'),
+    path('carga-masiva/', views.carga_masiva_facturas, name='carga_masiva_facturas'),
     path('plantilla-facturas/', views.plantilla_facturas_excel, name='plantilla_facturas_excel'),
 ]

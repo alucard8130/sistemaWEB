@@ -29,7 +29,7 @@ from areas.views import (
     areas_inactivas, reactivar_area
 )
 
-from clientes.views import carga_masiva_clientes, lista_clientes, crear_cliente, editar_cliente, eliminar_cliente
+from clientes.views import carga_masiva_clientes, lista_clientes, crear_cliente, editar_cliente, eliminar_cliente, plantilla_clientes_excel
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -56,9 +56,7 @@ urlpatterns = [
     path('clientes/crear/', crear_cliente, name='crear_cliente'),
     path('clientes/editar/<int:pk>/', editar_cliente, name='editar_cliente'),
     path('clientes/eliminar/<int:pk>/', eliminar_cliente, name='eliminar_cliente'),
-    path('clientes/carga-masiva/', carga_masiva_clientes, name='carga_masiva_clientes'),
     path('facturas/', include('facturacion.urls')),
     path('locales/', include('locales.urls')),
     path('areas/', include('areas.urls')),
-    
 ]

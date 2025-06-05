@@ -180,7 +180,13 @@ def carga_masiva_locales(request):
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
+            COLUMNAS_ESPERADAS = 9  # Cambia según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row is None:
+                    continue
+                if len(row) != COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    continue
                 empresa_val, propietraio_val, cliente_val, numero, ubicacion, superficie_m2, cuota, status, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
@@ -205,10 +211,10 @@ def carga_masiva_locales(request):
                 messages.error(request, "Algunos locales no se cargaron:<br>" + "<br>".join(errores))
             else:
                 messages.success(request, "¡Locales cargados exitosamente!")
-            return redirect('carga_masiva')
+            return redirect('carga_masiva_locales')
     else:
         form = LocalCargaMasivaForm()
-    return render(request, 'locales/carga_masiva.html', {'form': form})
+    return render(request, 'locales/carga_masiva_locales.html', {'form': form})
 
 @staff_member_required
 def plantilla_locales_excel(request):

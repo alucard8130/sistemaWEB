@@ -23,3 +23,8 @@ class ClienteForm(forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("Ya existe un cliente con ese RFC en esta empresa.")
         return cleaned_data
+
+
+class ClienteCargaMasivaForm(forms.Form):
+    archivo = forms.FileField(label='Archivo Excel (.xlsx)')
+

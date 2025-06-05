@@ -8,15 +8,23 @@
 <body>
 <div class="container mt-4">
     <h2>Carga masiva de clientes desde Excel</h2>
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+      {% endfor %}
+    {% endif %}
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="mb-3">
             <label for="archivo" class="form-label">Archivo Excel (.xlsx):</label>
             <input type="file" name="archivo" id="archivo" class="form-control" required>
         </div>
-        <button type="submit" class="btn btn-primary">Cargar</button>
-        <a href="{% url 'lista_clientes' %}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Cargar Clientes</button>
+        <a href="{% url 'plantilla_clientes_excel' %}" class="btn btn-outline-info mb-3">Descargar plantilla(.xlsx)</a>
     </form>
+    <div class="container mt-4"></div>
+        <a href="{% url 'lista_clientes' %}" class="btn btn-secondary">Cancelar</a>
+    </div>    
 </div>
 </body>
 </html>

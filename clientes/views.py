@@ -1,10 +1,11 @@
 
 # Create your views here.
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from empresas.models import Empresa
 from .models import Cliente
-from .forms import ClienteForm
+from .forms import ClienteCargaMasivaForm, ClienteForm
 from django.contrib.admin.views.decorators import staff_member_required
 import openpyxl
 from django.contrib import messages
@@ -68,38 +69,50 @@ def eliminar_cliente(request, pk):
 
 @staff_member_required
 def carga_masiva_clientes(request):
-    if request.method == 'POST' and request.FILES.get('archivo'):
-        archivo = request.FILES['archivo']
-        wb = openpyxl.load_workbook(archivo)
-        hoja = wb.active
-
-        insertados = 0
-        duplicados = 0
-        errores = 0
-
-        for fila in hoja.iter_rows(min_row=2, values_only=True):
-            nombre, rfc, telefono, email, empresa_nombre = fila
-
-            try:
-                empresa = Empresa.objects.get(nombre__iexact=empresa_nombre)
-                existe = Cliente.objects.filter(nombre=nombre, empresa=empresa, activo=True).exists()
-
-                if existe:
-                    duplicados += 1
-                else:
+    if request.method == 'POST':
+        form = ClienteCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                nombre, rfc, telefono, email, direccion, observaciones = row
+                try:
+                    if not rfc:
+                        raise Exception("RFC vacío")
+                    if Cliente.objects.filter(rfc__iexact=rfc.strip()).exists():
+                        raise Exception(f"RFC duplicado: {rfc}")
                     Cliente.objects.create(
                         nombre=nombre,
-                        rfc=rfc,
+                        rfc=rfc.strip(),
                         telefono=telefono,
                         email=email,
-                        empresa=empresa
+                        direccion=direccion,
+                        observaciones=observaciones or ""
                     )
-                    insertados += 1
-            except Exception:
-                errores += 1
-                continue
+                except Exception as e:
+                    errores.append(f"Fila {i}: {e}")
 
-        messages.success(request, f"Insertados: {insertados}, Duplicados: {duplicados}, Errores: {errores}")
-        return redirect('lista_clientes')
+            if errores:
+                messages.error(request, "Algunos clientes no se cargaron:<br>" + "<br>".join(errores))
+            else:
+                messages.success(request, "¡Clientes cargados exitosamente!")
+            return redirect('carga_masiva_clientes')
+    else:
+        form = ClienteCargaMasivaForm()
+    return render(request, 'clientes/carga_masiva_clientes.html', {'form': form})
 
-    return render(request, 'clientes/carga_masiva_clientes.html')
+@staff_member_required
+def plantilla_clientes_excel(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Plantilla Clientes"
+    ws.append(['nombre', 'rfc', 'telefono', 'email', 'direccion', 'observaciones'])
+    ws.append(['Juan Pérez', 'JUPE800101ABC', '5551234567', 'juanperez@email.com', 'Av. Reforma 123', 'Cliente frecuente'])
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=plantilla_clientes.xlsx'
+    wb.save(response)
+    return response
