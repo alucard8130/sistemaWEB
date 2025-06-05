@@ -1,6 +1,5 @@
 
 # Create your views here.
-from datetime import date
 from django.shortcuts import render, redirect,get_object_or_404
 from areas.models import AreaComun
 from clientes.models import Cliente
@@ -9,6 +8,7 @@ from locales.models import LocalComercial
 from .forms import FacturaForm, PagoForm
 from .models import Factura, Pago
 from django.utils.timezone import now
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from datetime import date, timedelta
@@ -245,7 +245,8 @@ def pagos_por_origen(request):
 
 @login_required
 def dashboard_saldos(request):
-    hoy = date.today()
+    hoy = timezone.now().date()
+    #hoy = date.today()
     hoy_30 = hoy + timedelta(days=30)
     hoy_60 = hoy + timedelta(days=60)
     hoy_90 = hoy + timedelta(days=90)
@@ -313,4 +314,41 @@ def dashboard_saldos(request):
         'saldo_31_60': saldo_31_60,
         'saldo_61_90': saldo_61_90,
         'saldo_90_mas': saldo_90_mas,
+    })
+
+@login_required
+def cartera_vencida(request):
+    hoy = timezone.now().date()
+    facturas = Factura.objects.filter(
+        estatus='pendiente',
+        fecha_vencimiento__lt=hoy,
+        activo=True
+    )
+
+    # Filtrar por empresa
+    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+    elif request.GET.get('empresa'):
+        facturas = facturas.filter(empresa_id=request.GET['empresa'])
+
+    # Filtrar por cliente
+    if request.GET.get('cliente'):
+        facturas = facturas.filter(cliente_id=request.GET['cliente'])
+
+    # Filtrar por días de vencimiento
+    dias = request.GET.get('dias')
+    if dias:
+        dias = int(dias)
+        fecha_limite = hoy - timedelta(days=dias)
+        facturas = facturas.filter(fecha_vencimiento__lte=fecha_limite)
+
+    # Días de atraso
+    for f in facturas:
+        f.dias_vencidos = (hoy - f.fecha_vencimiento).days
+
+    return render(request, 'facturacion/cartera_vencida.html', {
+        'facturas': facturas,
+        'hoy': hoy,
+        'empresas': Empresa.objects.all(),
+        'clientes': Cliente.objects.all()
     })

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Cartera Vencida</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2 class="mb-4">Cartera Vencida</h2>
+
+    <form method="get" class="row g-3 mb-4">
+        {% if request.user.is_superuser %}
+        <div class="col-md-3">
+            <label for="empresa" class="form-label">Empresa</label>
+            <select name="empresa" id="empresa" class="form-select">
+                <option value="">Todas</option>
+                {% for emp in empresas %}
+                    <option value="{{ emp.id }}" {% if request.GET.empresa == emp.id|stringformat:'s' %}selected{% endif %}>{{ emp.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="col-md-3">
+            <label for="cliente" class="form-label">Cliente</label>
+            <select name="cliente" id="cliente" class="form-select">
+                <option value="">Todos</option>
+                {% for cli in clientes %}
+                    <option value="{{ cli.id }}" {% if request.GET.cliente == cli.id|stringformat:'s' %}selected{% endif %}>{{ cli.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label for="dias" class="form-label">Antigüedad</label>
+            <select name="dias" id="dias" class="form-select">
+                <option value="">Todas</option>
+                <option value="30" {% if request.GET.dias == '30' %}selected{% endif %}>30+ días</option>
+                <option value="60" {% if request.GET.dias == '60' %}selected{% endif %}>60+ días</option>
+                <option value="90" {% if request.GET.dias == '90' %}selected{% endif %}>90+ días</option>
+                <option value="120" {% if request.GET.dias == '120' %}selected{% endif %}>120+ días</option>
+            </select>
+        </div>
+
+        <div class="col-md-3 align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+    </form>
+
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Folio</th>
+                <th>Cliente</th>
+                <th>Empresa</th>
+                <th>Local / Área</th>
+                <th>Monto</th>
+                <th>Saldo Pendiente</th>
+                <th>Vencida desde</th>
+                <th>Días vencidos</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for factura in facturas %}
+            <tr>
+                <td>{{ factura.folio }}</td>
+                <td>{{ factura.cliente.nombre }}</td>
+                <td>{{ factura.empresa.nombre }}</td>
+                <td>
+                    {% if factura.local %} Local {{ factura.local.numero }}
+                    {% elif factura.area_comun %} Área {{ factura.area_comun.numero }}
+                    {% endif %}
+                </td>
+                <td>${{ factura.monto }}</td>
+                <td>${{ factura.saldo_pendiente }}</td>
+                <td>{{ factura.fecha_vencimiento }}</td>
+                <td>{{ factura.dias_vencidos }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8">No hay facturas vencidas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
+</div>
+</body>
+</html>

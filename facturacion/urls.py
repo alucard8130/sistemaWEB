@@ -8,6 +8,6 @@ urlpatterns = [
     path('factura/<int:factura_id>/pago/', views.registrar_pago, name='registrar_pago'),
     path('pagos-origen/', views.pagos_por_origen, name='pagos_por_origen'),
     path('dashboard-saldos/', views.dashboard_saldos, name='dashboard_saldos'),
-
+    path('cartera/', views.cartera_vencida, name='cartera_vencida'),
 
 ]
