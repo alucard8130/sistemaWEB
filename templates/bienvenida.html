@@ -119,6 +119,9 @@
                         <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Facturas y Pagos</a></li>
                         <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva' %}">Carga Masiva</a></li>
+                        {% endif %}
                     </ul>
                 </li>
 

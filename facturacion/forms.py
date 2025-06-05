@@ -32,3 +32,6 @@ class PagoForm(forms.ModelForm):
         if monto <= 0:
             raise forms.ValidationError("El monto debe ser mayor que cero.")
         return monto    
+    
+class FacturaCargaMasivaForm(forms.Form):
+    archivo = forms.FileField(label='Archivo Excel (.xlsx)')    

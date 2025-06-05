@@ -5,11 +5,12 @@ from areas.models import AreaComun
 from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
-from .forms import FacturaForm, PagoForm
+from .forms import FacturaForm, PagoForm,FacturaCargaMasivaForm
 from .models import Factura, Pago
 from django.utils.timezone import now
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from datetime import date, timedelta
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, ExpressionWrapper
@@ -18,7 +19,8 @@ import openpyxl
 from django.http import HttpResponse
 from django.db.models import Q
 from facturacion.models import Pago
-
+from decimal import Decimal
+from unidecode import unidecode
 
 
 
@@ -478,3 +480,90 @@ def exportar_pagos_excel(request):
     response['Content-Disposition'] = 'attachment; filename=pagos.xlsx'
     wb.save(response)
     return response
+
+
+def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
+    """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas). Reporta conflicto si hay varias."""
+    if not valor:
+        return None
+    val = str(valor).strip().replace(',', '')
+    try:
+        return modelo.objects.get(pk=int(val))
+    except (ValueError, modelo.DoesNotExist):
+        todos = modelo.objects.all()
+        # Lista de coincidencias insensibles a acentos y mayúsculas
+        candidatos = [
+            obj for obj in todos
+            if unidecode(val).lower() in unidecode(str(getattr(obj, campo))).lower()
+        ]
+        if len(candidatos) == 1:
+            return candidatos[0]
+        elif len(candidatos) > 1:
+            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos])
+            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
+        raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
+
+
+@staff_member_required
+def carga_masiva_facturas(request):
+    if request.method == 'POST':
+        form = FacturaCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                folio, empresa_val, cliente_val, local_val, area_val, monto, fecha_emision, fecha_vencimiento, observaciones = row
+                try:
+                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
+                    cliente = buscar_por_id_o_nombre(Cliente, cliente_val)
+                    local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
+                    area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
+
+                    Factura.objects.create(
+                        folio=str(folio),
+                        empresa=empresa,
+                        cliente=cliente,
+                        local=local,
+                        area_comun=area,
+                        monto=Decimal(monto),
+                        fecha_emision=fecha_emision,
+                        fecha_vencimiento=fecha_vencimiento,
+                        observaciones=observaciones or "",
+                    )
+                except Exception as e:
+                    errores.append(f"Fila {i}: {e}")
+
+            if errores:
+                messages.error(request, "Algunas facturas no se cargaron:<br>" + "<br>".join(errores))
+            else:
+                messages.success(request, "¡Facturas cargadas exitosamente!")
+            return redirect('carga_masiva')
+    else:
+        form = FacturaCargaMasivaForm()
+    return render(request, 'facturacion/carga_masiva.html', {'form': form})
+
+
+@staff_member_required
+def plantilla_facturas_excel(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Plantilla Facturas"
+
+    # Encabezados (ajusta según tu modelo)
+    ws.append([
+        'folio', 'empresa_id', 'cliente_id', 'local_id', 'area_id', 'monto', 
+        'fecha_emision', 'fecha_vencimiento', 'observaciones'
+    ])
+    # Fila de ejemplo (puedes poner valores ficticios)
+    ws.append([
+        'FAC001', 'Torre Reforma', 'Juan Pérez', 'L-101', '', '1500.00', '2025-06-10', '2025-07-10', 'Cuota mensual'
+    ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=plantilla_facturas.xlsx'
+    wb.save(response)
+    return response        
