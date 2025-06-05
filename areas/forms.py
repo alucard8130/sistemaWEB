@@ -38,3 +38,31 @@ class AreaComunForm(forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("Ya existe un área común con ese nombre en esta empresa.")
         return cleaned_data
+
+class AsignarClienteForm(forms.ModelForm):
+    class Meta:
+        model = AreaComun
+        fields = ['cliente','fecha_inicial', 'fecha_fin']
+        widgets = {
+            'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['cliente'].queryset = Cliente.objects.all()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        cliente = cleaned_data.get('cliente')
+        fecha_inicial = cleaned_data.get('fecha_inicial')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        if not cliente:
+            self.add_error('cliente', 'Debe seleccionar un cliente.')
+        if not fecha_inicial:
+            self.add_error('fecha_inicial', 'Debe ingresar la fecha inicial.')
+        if not fecha_fin:
+            self.add_error('fecha_fin', 'Debe ingresar la fecha fin.')
+
+        return cleaned_data    

@@ -72,14 +72,14 @@
 
         <div class="collapse navbar-collapse" id="navbarOpciones">
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-
+                {% if request.user.is_superuser %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Empresas</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Lista</a></li>
+                            <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Lista</a></li>    
                     </ul>
                 </li>
-
+                {% endif %}    
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Clientes</a>
                     <ul class="dropdown-menu">

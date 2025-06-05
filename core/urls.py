@@ -60,4 +60,5 @@ urlpatterns = [
     path('facturas/', include('facturacion.urls')),
     path('locales/', include('locales.urls')),
     path('areas/', include('areas.urls')),
+    
 ]

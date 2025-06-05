@@ -1,11 +1,11 @@
 
 # Create your views here.
 from decimal import Decimal
-from pyexpat.errors import messages
+from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import AreaComun
-from .forms import AreaComunForm
+from .forms import AreaComunForm, AsignarClienteForm
 
 @login_required
 def lista_areas(request):
@@ -106,8 +106,23 @@ def incrementar_cuotas_areas(request):
                 area.save()
 
             messages.success(request, f'Se incrementaron las cuotas en un {porcentaje}% para todas las áreas comunes activas.')
-            return redirect('lista_areas')
+            return redirect('incrementar_c_areas')
         except:
             messages.error(request, 'Porcentaje inválido.')
 
     return render(request, 'areas/incrementar_c_areas.html')
+
+@login_required
+def asignar_cliente_area(request, pk):
+    area = get_object_or_404(AreaComun, pk=pk, status='disponible')
+    if request.method == 'POST':
+        form = AsignarClienteForm(request.POST, instance=area)
+        if form.is_valid():
+            area = form.save(commit=False)
+            area.status = 'ocupado'
+            area.save()
+            messages.success(request, 'Cliente asignado correctamente.')
+            return redirect('lista_areas')
+    else:
+        form = AsignarClienteForm(instance=area)
+    return render(request, 'areas/asignar_cliente.html', {'form': form, 'area': area})

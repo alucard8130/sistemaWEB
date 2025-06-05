@@ -1,14 +1,11 @@
 
 from decimal import Decimal
-from pyexpat.errors import messages
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import render, redirect, get_object_or_404
-#from empresas.models import Empresa
 from .models import LocalComercial
 from .forms import LocalComercialForm
-#from principal.models import PerfilUsuario  # si usas perfil para la empresa
-#from django.shortcuts import get_object_or_404
-#from django.contrib.admin.views.decorators import staff_member_required
+
 
 
 # Create your views here.
@@ -142,7 +139,7 @@ def incrementar_cuotas_locales(request):
                 local.save()
 
             messages.success(request, f'Se incrementaron las cuotas en un {porcentaje}% para todos los locales activos.')
-            return redirect('lista_locales')
+            return redirect('incrementar_c_locales')
         except:
             messages.error(request, 'Porcentaje inválido.')
     

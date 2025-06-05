@@ -8,6 +8,12 @@
 <body>
 <div class="container mt-4">
     <h2>Incrementar cuotas de locales</h2>
+    <!-- Bloque para mostrar mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
     <form method="post" class="mt-4">
         {% csrf_token %}
         <div class="mb-3">
