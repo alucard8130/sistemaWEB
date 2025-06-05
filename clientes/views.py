@@ -3,6 +3,7 @@
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from unidecode import unidecode
 from empresas.models import Empresa
 from .models import Cliente
 from .forms import ClienteCargaMasivaForm, ClienteForm
@@ -67,6 +68,22 @@ def eliminar_cliente(request, pk):
 
     return render(request, 'clientes/eliminar_cliente.html', {'cliente': cliente})
 
+def buscar_empresa(valor):
+    if not valor:
+        raise Exception("Empresa vacía")
+    val = str(valor).strip().replace(',', '')
+    try:
+        return Empresa.objects.get(pk=int(val))
+    except (ValueError, Empresa.DoesNotExist):
+        todos = Empresa.objects.all()
+        candidatos = [e for e in todos if unidecode(val).lower() in unidecode(e.nombre).lower()]
+        if len(candidatos) == 1:
+            return candidatos[0]
+        elif len(candidatos) > 1:
+            conflicto = "; ".join([f"ID={e.pk}, nombre='{e.nombre}'" for e in candidatos])
+            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en Empresa: {conflicto}")
+        raise Exception(f"No se encontró '{valor}' en Empresa")
+
 @staff_member_required
 def carga_masiva_clientes(request):
     if request.method == 'POST':
@@ -76,28 +93,37 @@ def carga_masiva_clientes(request):
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
+            exitos = 0
+            COLUMNAS_ESPERADAS = 5  # Cambia según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                nombre, rfc, telefono, email, direccion, observaciones = row
+                if row is None:
+                    continue
+                if len(row) != COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    continue
+                empresa_val, nombre, rfc, telefono, email = row
                 try:
-                    if not rfc:
-                        raise Exception("RFC vacío")
-                    if Cliente.objects.filter(rfc__iexact=rfc.strip()).exists():
-                        raise Exception(f"RFC duplicado: {rfc}")
+                    empresa = buscar_empresa(empresa_val)
+                    if not nombre:
+                        raise Exception("Nombre vacío")
+                    if rfc and Cliente.objects.filter(rfc__iexact=rfc.strip(), empresa=empresa).exists():
+                        raise Exception(f"RFC duplicado para empresa: {rfc}")
                     Cliente.objects.create(
+                        empresa=empresa,
                         nombre=nombre,
-                        rfc=rfc.strip(),
+                        rfc=rfc.strip() if rfc else None,
                         telefono=telefono,
                         email=email,
-                        direccion=direccion,
-                        observaciones=observaciones or ""
+                        activo=True
                     )
+                    exitos += 1
                 except Exception as e:
                     errores.append(f"Fila {i}: {e}")
 
+            if exitos:
+                messages.success(request, f"¡{exitos} clientes cargados exitosamente!")
             if errores:
                 messages.error(request, "Algunos clientes no se cargaron:<br>" + "<br>".join(errores))
-            else:
-                messages.success(request, "¡Clientes cargados exitosamente!")
             return redirect('carga_masiva_clientes')
     else:
         form = ClienteCargaMasivaForm()
@@ -108,8 +134,8 @@ def plantilla_clientes_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Plantilla Clientes"
-    ws.append(['nombre', 'rfc', 'telefono', 'email', 'direccion', 'observaciones'])
-    ws.append(['Juan Pérez', 'JUPE800101ABC', '5551234567', 'juanperez@email.com', 'Av. Reforma 123', 'Cliente frecuente'])
+    ws.append(['empresa', 'nombre', 'rfc', 'telefono', 'email'])
+    ws.append(['Torre Reforma', 'Juan Pérez', 'JUPE800101ABC', '5551234567', 'juan@email.com'])
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )

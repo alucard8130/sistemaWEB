@@ -17,6 +17,7 @@
                 <th>Teléfono</th>
                 <th>Email</th>
                 <th>Empresa</th>
+                <th>Activo</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -28,6 +29,7 @@
                 <td>{{ cliente.telefono }}</td>
                 <td>{{ cliente.email }}</td>
                 <td>{{ cliente.empresa.nombre }}</td>
+                <td>{{ cliente.activo }}</td>
                 <td>
                     {% if request.user.is_superuser %}
                         <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-primary">Editar</a>

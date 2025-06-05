@@ -4,7 +4,7 @@ from .models import Cliente
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
-        fields = ['nombre', 'rfc', 'telefono', 'email', 'empresa', 'activo']
+        fields = ['empresa','nombre', 'rfc', 'telefono', 'email', 'activo']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -14,7 +14,7 @@ class ClienteForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        #nombre = cleaned_data.get('nombre')
+        nombre = cleaned_data.get('nombre')
         empresa = cleaned_data.get('empresa')
         rfc= cleaned_data.get('rfc')
 

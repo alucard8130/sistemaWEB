@@ -28,7 +28,7 @@ class AreaComun(models.Model):
     observaciones = models.CharField(blank=True, null=True)
 
     widgets = {
-            'fecha_inicio': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),
             'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
         }
     
