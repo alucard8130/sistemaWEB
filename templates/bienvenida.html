@@ -74,9 +74,11 @@
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                 {% if request.user.is_superuser %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Empresas</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Configuracion</a>
                     <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Lista</a></li>    
+                            <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
+                            <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Usuarios</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
                     </ul>
                 </li>
                 {% endif %}    
@@ -134,13 +136,6 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'pagos_por_origen' %}?tipo=local">Informe Pagos</a>
                 </li>
-
-                {% if request.user.is_superuser %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'admin:auth_user_add' %}">Usuarios</a>
-                </li>
-                {% endif %}
-
                 <li class="nav-item">
                     <form method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
