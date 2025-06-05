@@ -58,7 +58,7 @@ urlpatterns = [
     path('clientes/eliminar/<int:pk>/', eliminar_cliente, name='eliminar_cliente'),
     path('clientes/carga-masiva/', carga_masiva_clientes, name='carga_masiva_clientes'),
     path('facturas/', include('facturacion.urls')),
-    
+    path('locales/', include('locales.urls')),
 
 
     
