@@ -375,6 +375,12 @@ def exportar_cartera_excel(request):
 
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+        
+    origen = request.GET.get('origen')
+    if origen == 'local':
+        facturas = facturas.filter(local__isnull=False)
+    elif origen == 'area':
+        facturas = facturas.filter(area_comun__isnull=False)
 
     # Crear libro y hoja
     wb = openpyxl.Workbook()
