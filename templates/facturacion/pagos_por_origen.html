@@ -13,6 +13,7 @@
         <a href="{% url 'pagos_por_origen' %}?tipo=local" class="btn btn-primary">Locales</a>
         <a href="{% url 'pagos_por_origen' %}?tipo=area" class="btn btn-secondary">Áreas comunes</a>
     </div>
+    <a href="{% url 'exportar_pagos_excel' %}" class="btn btn-outline-success mb-3">Exportar pagos a Excel</a>
 
     <table class="table table-bordered">
         <thead class="table-dark">
@@ -23,6 +24,7 @@
                 <th>Monto</th>
                 <th>Forma de pago</th>
                 <th>Factura</th>
+                <th>Local \ Area</th>
             </tr>
         </thead>
         <tbody>
@@ -34,6 +36,15 @@
                     <td>${{ pago.monto }}</td>
                     <td>{{ pago.forma_pago|title }}</td>
                     <td>{{ pago.factura.folio }}</td>
+                    <td>
+                        {% if pago.factura.local %}
+                            Local: {{ pago.factura.local.numero }}
+                        {% elif pago.factura.area_comun %}
+                            Área: {{ pago.factura.area_comun.numero }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                 </tr>
             {% empty %}
                 <tr><td colspan="6">No hay pagos registrados.</td></tr>

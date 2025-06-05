@@ -15,6 +15,8 @@ from datetime import date, timedelta
 #from django.db.models import Sum, F, ExpressionWrapper, fields
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, ExpressionWrapper
 from django.db.models.functions import Coalesce
+import openpyxl
+from django.http import HttpResponse
 
 
 
@@ -352,3 +354,102 @@ def cartera_vencida(request):
         'empresas': Empresa.objects.all(),
         'clientes': Cliente.objects.all()
     })
+
+@login_required
+def exportar_cartera_excel(request):
+    hoy = timezone.now().date()
+    facturas = Factura.objects.filter(
+        estatus='pendiente',
+        fecha_vencimiento__lt=hoy,
+        activo=True
+    )
+
+    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+
+    # Crear libro y hoja
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Cartera Vencida"
+
+    # Encabezados
+    ws.append([
+        'Folio', 'Cliente', 'Empresa', 'Local/Área', 'Monto',
+        'Saldo Pendiente', 'Fecha Vencimiento', 'Días Vencidos'
+    ])
+
+    # Contenido
+    for factura in facturas:
+        dias_vencidos = (hoy - factura.fecha_vencimiento).days
+        origen = f"Local {factura.local.numero}" if factura.local else f"Área {factura.area_comun.numero}" if factura.area_comun else "-"
+        ws.append([
+            factura.folio,
+            factura.cliente.nombre,
+            factura.empresa.nombre,
+            origen,
+            float(factura.monto),
+            float(factura.saldo_pendiente),
+            str(factura.fecha_vencimiento),
+            dias_vencidos
+        ])
+
+    # Respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=cartera_vencida.xlsx'
+    wb.save(response)
+    return response
+
+@login_required
+def exportar_pagos_excel(request):
+    pagos = Pago.objects.select_related('factura', 'registrado_por').all()
+
+    # Si el usuario no es superusuario, filtra por su empresa
+    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+        pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Pagos"
+
+    # Encabezados
+    ws.append([
+        'Factura (Folio)',
+        'Empresa',
+        'Cliente',
+        'Monto del Pago',
+        'Fecha de Pago',
+        'Forma de Pago',
+        'Registrado por'
+        'Origen (Local/Área)'
+    ])
+
+    # Contenido
+    for pago in pagos:
+        factura = pago.factura
+        empresa = factura.empresa.nombre
+        cliente = factura.cliente.nombre
+        origen = ''
+        if pago.factura.local:
+            origen = f"Local {pago.factura.local.numero}"
+        elif pago.factura.area_comun:   
+            origen = f"Área {pago.factura.area_comun.numero}"
+        ws.append([
+            factura.folio,
+            empresa,
+            cliente,
+            float(pago.monto),
+            pago.fecha_pago.strftime('%Y-%m-%d'),
+            pago.forma_pago,
+            pago.registrado_por.get_full_name() if pago.registrado_por else '—',
+            origen  
+        ])
+
+    # Respuesta
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=pagos.xlsx'
+    wb.save(response)
+    return response
