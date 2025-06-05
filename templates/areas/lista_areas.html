@@ -37,11 +37,12 @@
                     <td>{{ area.fecha_fin }}</td>
                     <td>{{ area.ubicacion }}</td>
                     <td>
-                    {% if request.user.is_superuser or local.empresa == request.user.perfilusuario.empresa %}
                         <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-primary">Editar</a>
+                    {% if request.user.is_superuser or local.empresa == request.user.perfilusuario.empresa %}
+                        
                         <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
                     {% else %}
-                        <span class="text-muted">Restricted</span>
+                        <span class="text-muted"></span>
                     {% endif %}
                     {% if area.status == 'disponible' %}
                         <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-primary btn-sm">Asignar cliente</a>
