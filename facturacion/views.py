@@ -12,8 +12,10 @@ from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from datetime import date, timedelta
-from django.db.models import Sum, F, ExpressionWrapper, fields
-from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, Coalesce, ExpressionWrapper
+#from django.db.models import Sum, F, ExpressionWrapper, fields
+from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, ExpressionWrapper
+from django.db.models.functions import Coalesce
+
 
 
 
@@ -270,23 +272,25 @@ def dashboard_saldos(request):
     # Subconsulta: total pagado por factura
     from facturacion.models import Pago
 
-    pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')).values('factura')\
-    .annotate(total_pagado=Sum('monto')).values('total_pagado')
-
+    pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
+    .values('factura') \
+    .annotate(total_pagado_dash=Coalesce(Sum('monto'), Value(0,output_field=DecimalField()))) \
+    .values('total_pagado_dash')
+    
     # Anotamos saldo pendiente
     facturas = facturas.annotate(
-    total_pagado=Coalesce(Subquery(pagos_subquery, output_field=DecimalField()), Value(0)),
-    saldo_pendiente=ExpressionWrapper(
-        F('monto') - Coalesce(Subquery(pagos_subquery, output_field=DecimalField()), Value(0)),
+    total_pagado_dash=Coalesce(Subquery(pagos_subquery), Value(0,output_field=DecimalField())),
+    saldo_pendiente_dash=ExpressionWrapper(
+        F('monto') - Coalesce(Subquery(pagos_subquery), Value(0,output_field=DecimalField())),
         output_field=DecimalField()
     )
 )    
 
     # Para el gráfico: totales por grupo
-    saldo_0_30 = facturas.filter(fecha_vencimiento__lte=hoy_30).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
-    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy_30, fecha_vencimiento__lte=hoy_60).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
-    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy_60, fecha_vencimiento__lte=hoy_90).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
-    saldo_90_mas = facturas.filter(fecha_vencimiento__gt=hoy_90).aggregate(total=Sum('saldo_pendiente'))['total'] or 0
+    saldo_0_30 = facturas.filter(fecha_vencimiento__lte=hoy_30).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy_30, fecha_vencimiento__lte=hoy_60).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy_60, fecha_vencimiento__lte=hoy_90).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_90_mas = facturas.filter(fecha_vencimiento__gt=hoy_90).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
 
 
     #facturas = facturas.annotate(
