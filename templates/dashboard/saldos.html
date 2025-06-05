@@ -21,6 +21,14 @@
         </div>
         {% endif %}
         <div class="col-md-2">
+            <label>Origen:</label>
+                <select name="origen" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="local" {% if origen == 'local' %}selected{% endif %}>Locales</option>
+                    <option value="area" {% if origen == 'area' %}selected{% endif %}>Áreas comunes</option>
+                </select>
+        </div>
+        <div class="col-md-2">
             <label>Cliente:</label>
             <select name="cliente" class="form-select">
                 <option value="">-- Todos --</option>

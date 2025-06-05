@@ -17,6 +17,7 @@ from django.db.models.functions import Coalesce
 import openpyxl
 from django.http import HttpResponse
 from django.db.models import Q
+from facturacion.models import Pago
 
 
 
@@ -226,13 +227,14 @@ def pagos_por_origen(request):
 @login_required
 def dashboard_saldos(request):
     hoy = timezone.now().date()
-
     rango = request.GET.get('rango')
     cliente_id = request.GET.get('cliente')
     empresa_id = request.GET.get('empresa') if request.user.is_superuser else request.user.perfilusuario.empresa.id
+    origen = request.GET.get('origen')
 
     facturas = Factura.objects.filter(estatus='pendiente', empresa_id=empresa_id)
 
+    # Filtrar por cliente
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
 
@@ -247,8 +249,6 @@ def dashboard_saldos(request):
         facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180))
 
     # Subconsulta: total pagado por factura
-    from facturacion.models import Pago
-
     pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
     .values('factura') \
     .annotate(total_pagado_dash=Coalesce(Sum('monto'), Value(0,output_field=DecimalField()))) \
@@ -272,6 +272,15 @@ def dashboard_saldos(request):
 
     clientes = Cliente.objects.filter(empresa_id=empresa_id)
     empresas = Empresa.objects.all() if request.user.is_superuser else None
+    pagos = Pago.objects.filter(factura__activo=True)
+
+    # Aplica filtro de origen a pagos y facturas
+    if origen == 'local':
+        pagos = pagos.filter(factura__local__isnull=False)
+        facturas = facturas.filter(local__isnull=False)
+    elif origen == 'area':
+        pagos = pagos.filter(factura__area_comun__isnull=False)
+        facturas = facturas.filter(area_comun__isnull=False)
 
     #KPI de pagos
     # Filtrar pagos activos
@@ -300,6 +309,7 @@ def dashboard_saldos(request):
         'pagos_locales': pagos_locales,
         'pagos_areas': pagos_areas,
         'empresa': empresa,
+        'origen': origen,
     })
 
 
