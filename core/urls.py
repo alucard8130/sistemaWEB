@@ -18,7 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
-from principal.views import bienvenida, reiniciar_sistema
+from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
     crear_local, editar_local, eliminar_local, lista_locales, 
@@ -62,4 +62,5 @@ urlpatterns = [
     path('locales/', include('locales.urls')),
     path('areas/', include('areas.urls')),
     path('reiniciar-sistema/', reiniciar_sistema, name='reiniciar_sistema'),
+    path('respaldo-empresa/', respaldo_empresa_excel, name='respaldo_empresa_excel'),
 ]

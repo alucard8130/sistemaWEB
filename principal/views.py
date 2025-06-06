@@ -1,9 +1,11 @@
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import transaction
+import openpyxl
 from empresas.models import Empresa
 from clientes.models import Cliente
 from locales.models import LocalComercial
@@ -38,3 +40,65 @@ def reiniciar_sistema(request):
             messages.error(request, f'Error al reiniciar: {e}')
         return redirect('bienvenida')
     return render(request, 'reiniciar_sistema.html')
+
+@staff_member_required
+def respaldo_empresa_excel(request):
+    from django.shortcuts import render
+    # Si no hay empresa seleccionada, muestra el formulario
+    if request.method == 'GET' and 'empresa_id' not in request.GET:
+        empresas = Empresa.objects.all()
+        return render(request, 'respaldo_empresas.html', {'empresas': empresas})
+
+    empresa_id = request.GET.get('empresa_id')
+    empresa = Empresa.objects.get(pk=empresa_id)
+
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # Borra hoja por defecto
+
+    # CLIENTES
+    ws = wb.create_sheet("Clientes")
+    ws.append(['id', 'nombre', 'rfc', 'telefono', 'email', 'activo'])
+    for c in Cliente.objects.filter(empresa=empresa):
+        ws.append([c.id, c.nombre, c.rfc, c.telefono, c.email, c.activo])
+
+    # LOCALES
+    ws = wb.create_sheet("Locales")
+    ws.append(['id', 'numero', 'cliente', 'ubicacion', 'superficie_m2', 'cuota', 'status', 'activo', 'observaciones'])
+    for l in LocalComercial.objects.filter(empresa=empresa):
+        ws.append([l.id, l.numero, l.cliente.nombre if l.cliente else "", l.ubicacion, l.superficie_m2, l.cuota, l.status, l.activo, l.observaciones])
+
+    # ÁREAS COMUNES
+    ws = wb.create_sheet("Áreas Comunes")
+    ws.append(['num_contrato', 'cliente', 'numero', 'cuota', 'ubicacion', 'superficie_m2', 'status', 'fecha_inicial', 'fecha_fin', 'activo', 'observaciones'])
+    for a in AreaComun.objects.filter(empresa=empresa):
+        ws.append([
+            a.num_contrato, a.cliente.nombre if a.cliente else '', a.numero, a.cuota, a.ubicacion, a.superficie_m2,
+            a.status, str(a.fecha_inicial) if a.fecha_inicial else '', str(a.fecha_fin) if a.fecha_fin else '', a.activo, a.observaciones
+        ])
+
+    # FACTURAS
+    ws = wb.create_sheet("Facturas")
+    ws.append(['folio', 'cliente', 'local', 'area_comun', 'monto', 'fecha_emision', 'fecha_vencimiento', 'estatus'])
+    for f in Factura.objects.filter(empresa=empresa):
+        ws.append([
+            f.folio, f.cliente.nombre if f.cliente else '', 
+            f.local.numero if f.local else '', f.area_comun.numero if f.area_comun else '',
+            f.monto, str(f.fecha_emision), str(f.fecha_vencimiento), f.estatus
+        ])
+
+    # PAGOS
+    ws = wb.create_sheet("Pagos")
+    ws.append(['id', 'factura', 'fecha_pago', 'monto', 'registrado_por'])
+    for p in Pago.objects.filter(factura__empresa=empresa):
+        ws.append([
+            p.id, p.factura.folio if p.factura else '', str(p.fecha_pago), p.monto, 
+            p.registrado_por.get_full_name() if p.registrado_por else ''
+        ])
+
+    # Responde el archivo Excel
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename=respaldo_empresa_{empresa.nombre}.xlsx'
+    wb.save(response)
+    return response
