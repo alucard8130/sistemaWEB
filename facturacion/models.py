@@ -54,13 +54,13 @@ class Pago(models.Model):
         ('transferencia', 'Transferencia'),
         ('cheque', 'Cheque'),
         ('tarjeta', 'Tarjeta'),
-        ('nota de credito', 'Nota de Crédito'),
+        ('nota_credito', 'Nota de Crédito'),
         ('deposito', 'Depósito'),
         ('efectivo', 'Efectivo'),
         ('otro', 'Otro'),
     ]
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')
-    fecha_pago = models.DateField()
+    fecha_pago = models.DateField(blank=True, null=True)
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     forma_pago = models.CharField(max_length=20, choices=FORMAS_PAGO, default='transferencia')
     registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)

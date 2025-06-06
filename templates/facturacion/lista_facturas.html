@@ -76,7 +76,11 @@
                         {% else %}
                             <span class="text-muted"></span>
                         {% endif %}
-                        <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
+                        {% if factura.estatus != 'pagada' %}
+                            <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
+                        {% else %}
+                            <span class="text-muted"></span>
+                        {% endif %}    
                     </td>
                 </tr>
             {% empty %}

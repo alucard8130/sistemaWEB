@@ -24,6 +24,7 @@ from unidecode import unidecode
 from django.db.models.functions import TruncMonth, TruncYear
 from datetime import datetime
 from django.db.models import Sum
+from django.db import transaction
 
 
 
@@ -193,6 +194,7 @@ def confirmar_facturacion(request):
     })
 
 @login_required
+@transaction.atomic
 def registrar_pago(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
 
@@ -204,13 +206,27 @@ def registrar_pago(request, factura_id):
         form = PagoForm(request.POST)
         if form.is_valid():
             pago = form.save(commit=False)
+            pago.factura = factura           # SIEMPRE antes de save()
+            pago.registrado_por = request.user
+
+            if pago.forma_pago == 'nota_credito':
+                pago.save()
+                factura.estatus = 'cancelada'
+                factura.save()
+                messages.success(request, "La factura ha sido cancelada por nota de crédito.")
+                return redirect('lista_facturas')
+
             if pago.monto > factura.saldo_pendiente:
                 form.add_error('monto', f"El monto excede el saldo pendiente (${factura.saldo_pendiente:.2f}).")
             else:
-                pago.factura = factura
-                pago.registrado_por = request.user
                 pago.save()
-                factura.actualizar_estatus()
+                pagos_validos = factura.pagos.exclude(forma_pago='nota_credito')
+                total_pagado = sum([p.monto for p in pagos_validos])
+                if total_pagado >= factura.monto:
+                    factura.estatus = 'pagada'
+                else:
+                    factura.estatus = 'pendiente'
+                factura.save()
                 messages.success(request, f"Pago registrado. Saldo restante: ${factura.saldo_pendiente:.2f}")
                 return redirect('lista_facturas')
     else:
@@ -236,7 +252,11 @@ def pagos_por_origen(request):
     if not request.user.is_superuser:
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
 
-    total_pagos = pagos.aggregate(total=Sum('monto'))['total'] or 0
+    #total_pagos = pagos.aggregate(total=Sum('monto'))['total'] or 0
+    # Solo pagos válidos (excluyendo nota de crédito)
+    pagos_validos = pagos.exclude(forma_pago='nota_credito')
+    #pagos_validos = Pago.objects.filter(factura=Factura).exclude(forma_pago='nota_credito')
+    total_pagos = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
 
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
@@ -344,7 +364,9 @@ def dashboard_pagos(request):
     elif origen == 'area':
         filtro &= Q(factura__area_comun__isnull=False)
 
-    pagos = Pago.objects.filter(filtro)
+    #pagos = Pago.objects.filter(filtro)
+    pagos = Pago.objects.exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or 0
+
 
     # Filtros de fechas
     if anio:
