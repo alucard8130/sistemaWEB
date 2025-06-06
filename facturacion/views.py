@@ -21,7 +21,9 @@ from django.db.models import Q
 from facturacion.models import Pago
 from decimal import Decimal
 from unidecode import unidecode
-#import unidecode
+from django.db.models.functions import TruncMonth, TruncYear
+from datetime import datetime
+
 
 
 
@@ -230,89 +232,142 @@ def pagos_por_origen(request):
 @login_required
 def dashboard_saldos(request):
     hoy = timezone.now().date()
-    rango = request.GET.get('rango')
     cliente_id = request.GET.get('cliente')
-    empresa_id = request.GET.get('empresa') if request.user.is_superuser else request.user.perfilusuario.empresa.id
     origen = request.GET.get('origen')
+    es_super = request.user.is_superuser
 
-    facturas = Factura.objects.filter(estatus='pendiente', empresa_id=empresa_id)
+    # Empresa según usuario
+    if es_super:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get('empresa')
+        if not empresa_id or empresa_id == "todas":
+            filtro_empresa = Q()
+        else:
+            filtro_empresa = Q(empresa_id=empresa_id)
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = Empresa.objects.filter(id=empresa.id)
+        empresa_id = empresa.id
+        filtro_empresa = Q(empresa_id=empresa_id)
 
-    # Filtrar por cliente
+    # Filtrado base de facturas pendientes
+    facturas = Factura.objects.filter(estatus='pendiente').filter(filtro_empresa)
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
-
-    # Filtros de rango visual
-    if rango == '0-30':
-        facturas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=30))
-    elif rango == '31-60':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30), fecha_vencimiento__lte=hoy - timedelta(days=60))
-    elif rango == '61-90':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=90))
-    elif rango == '90+':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180))
+    if origen == 'local':
+        facturas = facturas.filter(local__isnull=False)
+    elif origen == 'area':
+        facturas = facturas.filter(area_comun__isnull=False)
 
     # Subconsulta: total pagado por factura
     pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
-    .values('factura') \
-    .annotate(total_pagado_dash=Coalesce(Sum('monto'), Value(0,output_field=DecimalField()))) \
-    .values('total_pagado_dash')
-    
-    # Anotamos saldo pendiente
+        .values('factura') \
+        .annotate(total_pagado_dash=Coalesce(Sum('monto'), Value(0, output_field=DecimalField()))) \
+        .values('total_pagado_dash')
     facturas = facturas.annotate(
-    total_pagado_dash=Coalesce(Subquery(pagos_subquery), Value(0,output_field=DecimalField())),
-    saldo_pendiente_dash=ExpressionWrapper(
-        F('monto') - Coalesce(Subquery(pagos_subquery), Value(0,output_field=DecimalField())),
-        output_field=DecimalField()
+        total_pagado_dash=Coalesce(Subquery(pagos_subquery), Value(0, output_field=DecimalField())),
+        saldo_pendiente_dash=ExpressionWrapper(
+            F('monto') - Coalesce(Subquery(pagos_subquery), Value(0, output_field=DecimalField())),
+            output_field=DecimalField()
+        )
     )
-)    
 
-    # Para el gráfico: totales por grupo
-    saldo_0_30 = facturas.filter(fecha_vencimiento__lte=hoy- timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_90_mas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    # Saldos por grupo de vencimiento (puedes cambiar los días según tu lógica)
+    saldo_0_30 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_91_180 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_181_mas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
 
-
-    clientes = Cliente.objects.filter(empresa_id=empresa_id)
-    empresas = Empresa.objects.all() if request.user.is_superuser else None
-    pagos = Pago.objects.filter(factura__activo=True)
-
-    # Aplica filtro de origen a pagos y facturas
-    if origen == 'local':
-        pagos = pagos.filter(factura__local__isnull=False)
-        facturas = facturas.filter(local__isnull=False)
-    elif origen == 'area':
-        pagos = pagos.filter(factura__area_comun__isnull=False)
-        facturas = facturas.filter(area_comun__isnull=False)
-
-    #KPI de pagos
-    # Filtrar pagos activos
-    pagos = Pago.objects.filter(factura__activo=True)
-
-    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
-        empresa = request.user.perfilusuario.empresa
-        pagos = pagos.filter(factura__empresa=empresa)
-    else:
-        empresa = None
-
-    pagos_locales = pagos.filter(factura__local__isnull=False).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_areas = pagos.filter(factura__area_comun__isnull=False).aggregate(total=Sum('monto'))['total'] or 0
-
+    clientes = Cliente.objects.filter(empresa__in=empresas)
 
     return render(request, 'dashboard/saldos.html', {
         'facturas': facturas,
         'clientes': clientes,
         'empresas': empresas,
-        'rango': rango,
+        'empresa_id': str(empresa_id) if empresa_id else "",
         'cliente_id': int(cliente_id) if cliente_id else None,
         'saldo_0_30': saldo_0_30,
         'saldo_31_60': saldo_31_60,
         'saldo_61_90': saldo_61_90,
-        'saldo_90_mas': saldo_90_mas,
-        'pagos_locales': pagos_locales,
-        'pagos_areas': pagos_areas,
-        'empresa': empresa,
+        'saldo_91_180': saldo_91_180,
+        'saldo_181_mas': saldo_181_mas,
         'origen': origen,
+        'es_super': es_super,
+    })
+
+@login_required
+def dashboard_pagos(request):
+    es_super = request.user.is_superuser
+
+    if es_super:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get('empresa')
+        if not empresa_id or empresa_id == "todas":
+            filtro_empresa = Q()
+        else:
+            filtro_empresa = Q(factura__empresa_id=empresa_id)
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = Empresa.objects.filter(id=empresa.id)
+        empresa_id = empresa.id
+        filtro_empresa = Q(factura__empresa_id=empresa_id)
+
+    cliente_id = request.GET.get('cliente')
+    origen = request.GET.get('origen')
+    anio = request.GET.get('anio')
+    mes = request.GET.get('mes')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    filtro = Q(factura__activo=True) & filtro_empresa
+
+    if cliente_id:
+        filtro &= Q(factura__cliente_id=cliente_id)
+    if origen == 'local':
+        filtro &= Q(factura__local__isnull=False)
+    elif origen == 'area':
+        filtro &= Q(factura__area_comun__isnull=False)
+
+    pagos = Pago.objects.filter(filtro)
+
+    # Filtros de fechas
+    if anio:
+        pagos = pagos.filter(fecha_pago__year=anio)
+    if mes:
+        pagos = pagos.filter(fecha_pago__month=mes)
+    if fecha_inicio and fecha_fin:
+        try:
+            # Valida fechas
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__range=[fecha_i, fecha_f])
+        except:
+            pass
+
+    # Pagos por mes para el gráfico
+    #pagos_por_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+
+    pagos_por_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    pagos_por_anio = pagos.annotate(anio=TruncYear('fecha_pago')).values('anio').annotate(total=Sum('monto')).order_by('anio')
+
+    clientes = Cliente.objects.filter(empresa__in=empresas)
+
+    return render(request, 'dashboard/pagos.html', {
+        'pagos': pagos,
+        'empresas': empresas,
+        'empresa_id': str(empresa_id) if empresa_id else "",
+        'clientes': clientes,
+        'cliente_id': int(cliente_id) if cliente_id else None,
+        'origen': origen,
+        'es_super': es_super,
+        #'pagos_por_mes': pagos_por_mes,
+        'pagos_por_mes': pagos_por_mes,
+        'pagos_por_anio': pagos_por_anio,
+        'anio': anio,
+        'mes': mes,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
     })
 
 

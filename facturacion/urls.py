@@ -8,6 +8,7 @@ urlpatterns = [
     path('factura/<int:factura_id>/pago/', views.registrar_pago, name='registrar_pago'),
     path('pagos-origen/', views.pagos_por_origen, name='pagos_por_origen'),
     path('dashboard-saldos/', views.dashboard_saldos, name='dashboard_saldos'),
+    path('dashboard-pagos/', views.dashboard_pagos, name='dashboard_pagos'),
     path('cartera/', views.cartera_vencida, name='cartera_vencida'),
     path('cartera/exportar/excel/', views.exportar_cartera_excel, name='exportar_cartera_excel'),
     path('pagos/exportar/excel/', views.exportar_pagos_excel, name='exportar_pagos_excel'),
