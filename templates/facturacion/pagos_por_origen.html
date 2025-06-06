@@ -3,18 +3,12 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Informe Cobros</title>
+    <title>Informe Ingresos por origen</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-<div class="container mt-5">
-    <h2>Listado de Cobros por {{ tipo|title }}</h2>
-
-    <div class="mb-3">
-        <a href="{% url 'pagos_por_origen' %}?tipo=local" class="btn btn-primary">Locales</a>
-        <a href="{% url 'pagos_por_origen' %}?tipo=area" class="btn btn-secondary">Áreas comunes</a>
-        <a href="{% url 'exportar_pagos_excel' %}" class="btn btn-outline-success mb-3">Exportar cobros a Excel</a>
-    </div>
+<div class="container mt-2" >
+    <h2>Reporte Ingresos por {{ tipo|title }}</h2>
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card text-white bg-success shadow rounded-4 text-center">
@@ -22,20 +16,24 @@
                     <div style="font-size:2.4rem; font-weight: bold;">
                         ${{ total_pagos|floatformat:2|intcomma }}
                     </div>
-                    <div class="mt-1" style="font-size: 1.2rem;">Total de Pagos</div>
+                    <div class="mt-1" style="font-size: 1.2rem;">Total de Ingresos</div>
                 </div>
             </div>
         </div>
          <!-- Puedes agregar más KPIs aquí si lo deseas -->
     </div>
-    <table class="table table-bordered mt-4">
+    <div class="mb-2">
+        <a href="{% url 'pagos_por_origen' %}?tipo=local" class="btn btn-primary">Locales</a>
+        <a href="{% url 'pagos_por_origen' %}?tipo=area" class="btn btn-secondary">Áreas Comunes</a>
+    </div>
+    <table class="table table-bordered mt-2">
         <thead class="table-dark">
             <tr>
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th>Empresa</th>
                 <th>Monto</th>
-                <th>Forma de pago</th>
+                <th>Forma de cobro</th>
                 <th>Factura</th>
                 <th>Local \ Area</th>
             </tr>
@@ -60,12 +58,13 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="6">No hay cobros registrados.</td></tr>
+                <tr><td colspan="6">No hay ingresos registrados.</td></tr>
             {% endfor %}
         </tbody>
         
     </table>
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
+    <a href="{% url 'exportar_pagos_excel' %}" class="btn btn-outline-success">Exportar Ingresos</a>
 </div>
 </body>
 </html>
