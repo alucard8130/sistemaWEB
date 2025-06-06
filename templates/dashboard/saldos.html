@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -39,7 +40,7 @@
         <div class="col-md-2">
             <label>Origen:</label>
             <select name="origen" class="form-select" onchange="this.form.submit()">
-                <option value="">Locales y áreas</option>
+                <option value="">Todos</option>
                 <option value="local" {% if origen == "local" %}selected{% endif %}>Solo locales</option>
                 <option value="area" {% if origen == "area" %}selected{% endif %}>Solo áreas comunes</option>
             </select>
@@ -63,23 +64,23 @@
                 <ul class="list-group">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         Menos de 30 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_0_30|floatformat:2 }}</span>
+                        <span class="badge bg-warning rounded-pill">${{ saldo_0_30|floatformat:2|intcomma }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         31 a 60 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_31_60|floatformat:2 }}</span>
+                        <span class="badge bg-warning rounded-pill">${{ saldo_31_60|floatformat:2|intcomma }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         61 a 90 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_61_90|floatformat:2 }}</span>
+                        <span class="badge bg-warning rounded-pill">${{ saldo_61_90|floatformat:2|intcomma }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         91 a 180 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_91_180|floatformat:2 }}</span>
+                        <span class="badge bg-warning rounded-pill">${{ saldo_91_180|floatformat:2|intcomma }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         Más de 180 días
-                        <span class="badge bg-danger rounded-pill">${{ saldo_181_mas|floatformat:2 }}</span>
+                        <span class="badge bg-danger rounded-pill">${{ saldo_181_mas|floatformat:2|intcomma }}</span>
                     </li>
                 </ul>
             </div>
@@ -109,7 +110,7 @@
             responsive: true,
             plugins: {
                 legend: { position: 'left' },
-                title: { display: true, text: 'Distribución de saldos por vencimiento' }
+                title: { display: true, text: '' }
             }
         }
     });
