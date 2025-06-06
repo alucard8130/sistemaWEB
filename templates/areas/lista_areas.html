@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -31,8 +32,8 @@
                     <td>{{ area.numero }}</td>
                     <td>{{ area.cliente.nombre }}</td>
                     <td>{{ area.empresa.nombre }}</td>
-                    <td>{{ area.superficie_m2 }}</td>
-                    <td>{{ area.cuota }}</td>
+                    <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
+                    <td>${{ area.cuota|floatformat:2|intcomma }}</td>
                     <td>{{ area.fecha_inicial }}</td>
                     <td>{{ area.fecha_fin }}</td>
                     <td>{{ area.ubicacion }}</td>

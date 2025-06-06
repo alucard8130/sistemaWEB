@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -29,8 +30,8 @@
                     <td>{{ local.propietario }}</td>
                     <td>{{ local.cliente.nombre }}</td>
                     <td>{{ local.empresa.nombre }}</td>
-                    <td>{{ local.superficie_m2 }}</td>
-                    <td>{{ local.cuota }}</td>
+                    <td>{{ local.superficie_m2|floatformat:2|intcomma }}</td>
+                    <td>${{ local.cuota|floatformat:2|intcomma }}</td>
                     <td>{{ local.ubicacion }}</td>
                     <td>
                         <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-primary">Editar</a>

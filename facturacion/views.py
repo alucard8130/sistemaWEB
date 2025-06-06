@@ -23,7 +23,7 @@ from decimal import Decimal
 from unidecode import unidecode
 from django.db.models.functions import TruncMonth, TruncYear
 from datetime import datetime
-
+from django.db.models import Sum
 
 
 
@@ -224,9 +224,12 @@ def pagos_por_origen(request):
     if not request.user.is_superuser:
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
 
+    total_pagos = pagos.aggregate(total=Sum('monto'))['total'] or 0
+
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
         'tipo': tipo,
+        'total_pagos': total_pagos,
     })
 
 @login_required

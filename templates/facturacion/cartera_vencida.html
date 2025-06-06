@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -85,8 +86,8 @@
                     {% elif factura.area_comun %} Área {{ factura.area_comun.numero }}
                     {% endif %}
                 </td>
-                <td>${{ factura.monto }}</td>
-                <td>${{ factura.saldo_pendiente }}</td>
+                <td>${{ factura.monto|floatformat:2|intcomma }}</td>
+                <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
                 <td>{{ factura.fecha_vencimiento }}</td>
                 <td>{{ factura.dias_vencidos }}</td>
             </tr>
