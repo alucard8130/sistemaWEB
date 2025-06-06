@@ -12,7 +12,7 @@
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit" class="btn btn-primary">Guardar factura</button>
-        <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Cancelar</a>
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
 </body>
