@@ -1,21 +1,22 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Registrar Pagos</title>
+    <title>Registrar Cobros</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 <div class="container mt-5">
-    <h3>Registrar pago - Factura {{ factura.folio }}</h3>
-    <p><strong>Monto total:</strong> ${{ factura.monto }}</p>
-    <p><strong>Pagado:</strong> ${{ factura.total_pagado }}</p>
-    <p><strong>Saldo pendiente:</strong> ${{ saldo }}</p>
+    <h3>Registrar cobro - Factura {{ factura.folio }}</h3>
+    <p><strong>Monto total:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
+    <p><strong>Cobrado:</strong> ${{ factura.total_pagado|floatformat:2|intcomma }}</p>
+    <p><strong>Saldo pendiente:</strong> ${{ saldo|floatformat:2|intcomma }}</p>
 
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit" class="btn btn-success">Registrar pago</button>
+        <button type="submit" class="btn btn-success">Registrar cobro</button>
         <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>

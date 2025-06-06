@@ -1,6 +1,7 @@
 
 # Create your models here.
 from django.db import models
+from django.conf import settings
 from empresas.models import Empresa
 from clientes.models import Cliente
 from locales.models import LocalComercial
@@ -53,9 +54,9 @@ class Pago(models.Model):
         ('transferencia', 'Transferencia'),
         ('cheque', 'Cheque'),
         ('tarjeta', 'Tarjeta'),
-        ('credito', 'Crédito'),
-        ('efectivo', 'Efectivo'),
+        ('nota de credito', 'Nota de Crédito'),
         ('deposito', 'Depósito'),
+        ('efectivo', 'Efectivo'),
         ('otro', 'Otro'),
     ]
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')
@@ -66,6 +67,17 @@ class Pago(models.Model):
 
     def __str__(self):
         return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
+    
+class FacturaAuditoria(models.Model):
+    factura = models.ForeignKey('Factura', on_delete=models.CASCADE)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    campo = models.CharField(max_length=100)
+    valor_anterior = models.CharField(max_length=200, blank=True, null=True)
+    valor_nuevo = models.CharField(max_length=200, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.factura.folio} - {self.campo} cambiado por {self.usuario} el {self.fecha}"    
 
     
          

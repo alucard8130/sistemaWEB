@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Facturas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<h3>Editar Factura ({{ factura.folio }})</h3>
+<form method="post" class="mb-3">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Guardar cambios</button>
+    <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+
+<h5>Historial de Cambios</h5>
+<table class="table table-sm table-striped">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Usuario</th>
+            <th>Campo</th>
+            <th>Valor anterior</th>
+            <th>Valor nuevo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in auditorias %}
+        <tr>
+            <td>{{ log.fecha|date:"d/m/Y H:i" }}</td>
+            <td>{{ log.usuario }}</td>
+            <td>{{ log.campo }}</td>
+            <td>{{ log.valor_anterior }}</td>
+            <td>{{ log.valor_nuevo }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center">Sin historial.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</body>
+</html>

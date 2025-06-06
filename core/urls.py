@@ -18,18 +18,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
+from areas import views
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
     crear_local, editar_local, eliminar_local, lista_locales, 
-    locales_inactivos, reactivar_local
-    )
+    locales_inactivos, reactivar_local)
 from areas.views import (
     lista_areas, crear_area, editar_area, eliminar_area,
-    areas_inactivas, reactivar_area
-)
-
-from clientes.views import carga_masiva_clientes, lista_clientes, crear_cliente, editar_cliente, eliminar_cliente, plantilla_clientes_excel
+    areas_inactivas, reactivar_area)
+from clientes.views import (
+    carga_masiva_clientes, lista_clientes, crear_cliente, 
+    editar_cliente, eliminar_cliente, plantilla_clientes_excel)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

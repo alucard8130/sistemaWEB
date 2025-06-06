@@ -5,8 +5,8 @@ from areas.models import AreaComun
 from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
-from .forms import FacturaForm, PagoForm,FacturaCargaMasivaForm
-from .models import Factura, Pago
+from .forms import FacturaEditForm, FacturaForm, PagoForm,FacturaCargaMasivaForm
+from .models import Factura, FacturaAuditoria, Pago
 from django.utils.timezone import now
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
@@ -43,6 +43,18 @@ def crear_factura(request):
             factura.folio = f"MAN-{now().year}-{count:04d}"
             factura.save()
             messages.success(request, "Factura creada correctamente.")
+
+            # Crea log por cada campo
+            for field in form.fields:
+                valor = getattr(factura, field)
+                FacturaAuditoria.objects.create(
+                    factura=factura,
+                    usuario=request.user,
+                    campo=field,
+                    valor_anterior='--CREADA--',
+                    valor_nuevo=valor
+                )
+
             return redirect('lista_facturas')
     else:
         form = FacturaForm(user=request.user)
@@ -632,3 +644,42 @@ def plantilla_facturas_excel(request):
     response['Content-Disposition'] = 'attachment; filename=plantilla_facturas.xlsx'
     wb.save(response)
     return response        
+
+@login_required
+def editar_factura(request, factura_id):
+    factura = get_object_or_404(Factura, pk=factura_id)
+    
+     # Bloqueo si la factura está pagada
+    if factura.estatus == 'pagada':
+        messages.warning(request, "Esta factura ya está pagada y no puede ser editada.")
+        return redirect('lista_facturas')    
+
+    if request.method == 'POST':
+        form = FacturaEditForm(request.POST, instance=factura)
+        if form.is_valid():
+            factura_original = Factura.objects.get(pk=factura_id)
+            factura_modificada = form.save(commit=False)
+
+            # Comparar y guardar auditoría
+            for field in form.changed_data:
+                valor_anterior = getattr(factura_original, field)
+                valor_nuevo = getattr(factura_modificada, field)
+                if str(valor_anterior) != str(valor_nuevo):
+                    FacturaAuditoria.objects.create(
+                        factura=factura,
+                        usuario=request.user,
+                        campo=field,
+                        valor_anterior=valor_anterior,
+                        valor_nuevo=valor_nuevo
+                    )
+            factura_modificada.save()
+            return redirect('lista_facturas')
+    else:
+        form = FacturaEditForm(instance=factura)
+    # Opcional: mostrar historial de auditoría de esta factura
+    auditorias = FacturaAuditoria.objects.filter(factura=factura).order_by('-fecha')
+    return render(request, 'facturacion/editar_factura.html', {
+        'form': form,
+        'factura': factura,
+        'auditorias': auditorias,
+    })

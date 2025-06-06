@@ -34,4 +34,9 @@ class PagoForm(forms.ModelForm):
         return monto    
     
 class FacturaCargaMasivaForm(forms.Form):
-    archivo = forms.FileField(label='Archivo Excel (.xlsx)')    
+    archivo = forms.FileField(label='Archivo Excel (.xlsx)')
+
+class FacturaEditForm(forms.ModelForm):
+    class Meta:
+        model = Factura
+        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto', 'estatus', 'observaciones']    
