@@ -44,10 +44,6 @@ def crear_local(request):
             if not user.is_superuser:
                 #if perfil and perfil.empresa:
                 local.empresa = perfil.empresa
-                
-            #local.save()
-                #else:
-                    #return render(request, 'error.html', {'mensaje': 'No tienes empresa asignada.'})
                 local.save()
                 return redirect('lista_locales')
         
@@ -180,14 +176,14 @@ def carga_masiva_locales(request):
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
-            COLUMNAS_ESPERADAS = 9  # Cambia según tus columnas
+            COLUMNAS_ESPERADAS = 10  # Cambia según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                empresa_val, propietraio_val, cliente_val, numero, ubicacion, superficie_m2, cuota, status, observaciones = row
+                empresa_val, propietraio_val, cliente_val, numero, ubicacion, superficie_m2, cuota, giro, status, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     propietario = buscar_por_id_o_nombre(Cliente, propietraio_val) if propietraio_val else None
@@ -201,6 +197,7 @@ def carga_masiva_locales(request):
                         ubicacion=ubicacion or "",
                         superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
                         cuota=Decimal(cuota),
+                        giro=giro or "",
                         status=status or "ocupado",
                         observaciones=observaciones or ""
                     )
@@ -222,10 +219,10 @@ def plantilla_locales_excel(request):
     ws = wb.active
     ws.title = "Plantilla Locales"
     ws.append([
-        'empresa','propietario', 'cliente', 'numero', 'ubicacion', 'superficie_m2', 'cuota', 'status', 'observaciones'
+        'empresa','propietario', 'cliente', 'numero', 'ubicacion', 'superficie_m2', 'cuota','giro', 'status', 'observaciones'
     ])
     ws.append([
-        'Torre Reforma','Tiendas Soriana SA de CV', 'Juan Pérez', '101', 'Planta Baja', '120.5', '3000.00', 'ocupado', 'Local nuevo'
+        'Torre Reforma','Tiendas Soriana SA de CV', 'Juan Pérez', '101', 'Planta Baja', '120.5', 'venta ropa','3000.00', 'ocupado', 'Local nuevo'
     ])
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

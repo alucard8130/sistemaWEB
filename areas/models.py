@@ -7,12 +7,13 @@ from empresas.models import Empresa
 # Create your models here.
 class AreaComun(models.Model):
     num_contrato = models.AutoField(primary_key=True)
-    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT, null=True, blank=True) 
     numero = models.CharField(max_length=100)
-    cuota = models.DecimalField(max_digits=10, decimal_places=2)
-    ubicacion = models.CharField(blank=True, null=True)
+    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT, null=True, blank=True) 
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     superficie_m2 = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    cuota = models.DecimalField(max_digits=10, decimal_places=2)
+    giro = models.CharField(max_length=100, blank=True, null=True)
+    ubicacion = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
     STATUS_CHOICES = [
         ('ocupado', 'Ocupado'),

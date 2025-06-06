@@ -12,6 +12,7 @@ class LocalComercial(models.Model):
     ubicacion = models.CharField(max_length=255, blank=True, null=True)
     superficie_m2 = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     cuota = models.DecimalField(max_digits=100, decimal_places=2)
+    giro = models.CharField(max_length=255, blank=True, null=True)
     STATUS_CHOICES = [
         ('ocupado', 'Ocupado'),
         ('disponible', 'Disponible'),

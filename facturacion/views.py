@@ -212,8 +212,9 @@ def registrar_pago(request, factura_id):
             if pago.forma_pago == 'nota_credito':
                 pago.save()
                 factura.estatus = 'cancelada'
+                factura.monto = 0
                 factura.save()
-                messages.success(request, "La factura ha sido cancelada por nota de crédito.")
+                messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
                 return redirect('lista_facturas')
 
             if pago.monto > factura.saldo_pendiente:
@@ -365,8 +366,8 @@ def dashboard_pagos(request):
         filtro &= Q(factura__area_comun__isnull=False)
 
     #pagos = Pago.objects.filter(filtro)
-    pagos = Pago.objects.exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or 0
-
+    #pagos = Pago.objects.exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or 0
+    pagos = Pago.objects.exclude(forma_pago='nota_credito').filter(filtro)
 
     # Filtros de fechas
     if anio:

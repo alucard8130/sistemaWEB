@@ -19,6 +19,7 @@
                 <th>Empresa</th>
                 <th>Superficie (m²)</th>
                 <th>Cuota</th>
+                <th>Giro</th>
                 <th>Fecha Inicio</th>
                 <th>Fecha Fin</th>
                 <th>Ubicación</th>
@@ -34,6 +35,7 @@
                     <td>{{ area.empresa.nombre }}</td>
                     <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
                     <td>${{ area.cuota|floatformat:2|intcomma }}</td>
+                    <td>{{ area.giro }}</td>
                     <td>{{ area.fecha_inicial }}</td>
                     <td>{{ area.fecha_fin }}</td>
                     <td>{{ area.ubicacion }}</td>

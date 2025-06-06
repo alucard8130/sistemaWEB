@@ -26,13 +26,29 @@ class PagoForm(forms.ModelForm):
         widgets = {
             'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
         }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Monto no requerido desde el principio (el clean lo maneja)
+        self.fields['monto'].required = False
 
-    def clean_monto(self):
-        monto = self.cleaned_data['monto']
-        if monto <= 0:
-            raise forms.ValidationError("El monto debe ser mayor que cero.")
-        return monto    
-    
+    def clean(self):
+        cleaned_data = super().clean()
+        forma_pago = cleaned_data.get('forma_pago')
+        monto = cleaned_data.get('monto')
+        if forma_pago != 'nota_credito' and (monto is None or monto == 0):
+            self.add_error('monto', 'El monto es obligatorio excepto para Nota de Crédito.')
+        # Opcional: Si es nota de crédito, pone monto a cero
+        if forma_pago == 'nota_credito':
+            cleaned_data['monto'] = 0
+        return cleaned_data
+        
+    def clean_fecha_pago(self):
+        fecha_pago = self.cleaned_data['fecha_pago']
+        if fecha_pago == None:
+            raise forms.ValidationError("La fecha de pago es obligatoria.")
+        return fecha_pago
+
+
 class FacturaCargaMasivaForm(forms.Form):
     archivo = forms.FileField(label='Archivo Excel (.xlsx)')
 

@@ -165,14 +165,14 @@ def carga_masiva_areas(request):
             ws = wb.active
             errores = []
             exitos = 0
-            COLUMNAS_ESPERADAS = 10  # Cambia según tus columnas
+            COLUMNAS_ESPERADAS = 11  # Cambia según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                empresa_val, cliente_val, numero, cuota, ubicacion, superficie_m2, status, fecha_inicial, fecha_fin, observaciones = row
+                empresa_val, cliente_val, numero, cuota, ubicacion, superficie_m2, giro, status, fecha_inicial, fecha_fin, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     cliente = buscar_por_id_o_nombre(Cliente, cliente_val) if cliente_val else None
@@ -185,6 +185,7 @@ def carga_masiva_areas(request):
                         cuota=Decimal(cuota),
                         ubicacion=ubicacion or "",
                         superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
+                        giro=giro or "",
                         status=status or "ocupado",
                         fecha_inicial=fecha_inicial,
                         fecha_fin=fecha_fin,
@@ -209,11 +210,11 @@ def plantilla_areas_excel(request):
     ws = wb.active
     ws.title = "Plantilla Áreas"
     ws.append([
-        'empresa', 'cliente', 'numero', 'cuota', 'ubicacion', 'superficie_m2',
+        'empresa', 'cliente', 'numero', 'cuota', 'ubicacion', 'superficie_m2','giro',
         'status', 'fecha_inicial', 'fecha_fin', 'observaciones'
     ])
     ws.append([
-        'Torre Reforma', 'Juan Pérez', 'A101', '1500.00', 'Roof Garden', '200.0',
+        'Torre Reforma', 'Juan Pérez', 'A101', '1500.00', 'Roof Garden', '200.0','Restaurante',
         'ocupado', '2024-07-01', '2024-12-31', 'Área exclusiva'
     ])
     response = HttpResponse(

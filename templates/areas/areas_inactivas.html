@@ -15,6 +15,7 @@
                 <th>Numero Area</th>
                 <th>Empresa</th>
                 <th>Ubicación</th>
+                <th>Giro</th>
                 <th>Acción</th>
             </tr>
         </thead>
@@ -25,6 +26,7 @@
                 <td>{{ area.numero }}</td>
                 <td>{{ area.empresa.nombre }}</td>
                 <td>{{ area.ubicacion }}</td>
+                <td>{{ area.giro }}</td>
                 <td>
                     <form method="post" action="{% url 'reactivar_area' area.pk %}">
                         {% csrf_token %}

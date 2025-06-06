@@ -20,5 +20,22 @@
         <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
+<script>
+function checkFormaPago() {
+    var forma = document.getElementById("id_forma_pago").value;
+    var montoField = document.getElementById("id_monto");
+    if(forma === "nota_credito") {
+        montoField.value = "";
+        montoField.disabled = true;
+    } else {
+        montoField.disabled = false;
+    }
+}
+window.onload = function(){
+    document.getElementById("id_forma_pago").addEventListener("change", checkFormaPago);
+    checkFormaPago();
+};
+</script>
+
 </body>
 </html>

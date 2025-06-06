@@ -6,7 +6,7 @@ from empresas.models import Empresa
 class LocalComercialForm(forms.ModelForm):
     class Meta:
         model = LocalComercial
-        fields = ['numero', 'propietario','cliente','empresa', 'superficie_m2', 'cuota','ubicacion', 'status', 'observaciones']
+        fields = ['numero', 'propietario','cliente','empresa', 'superficie_m2', 'cuota','giro','ubicacion', 'status', 'observaciones']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # obtenemos el usuario desde la vista
