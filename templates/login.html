@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <title>Iniciar sesión - GAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         html, body {
             height: 100%;
@@ -31,8 +32,9 @@
             text-align: center;
         }
         .login-logo {
-            width: 80px;
-            margin-bottom: 15px;
+            width: 100px;
+            margin-bottom: 20px;
+            border-radius: 12px; /* opcional si queda cuadrado */
         }
         .login-title {
             font-size: 1.5rem;
@@ -48,9 +50,11 @@
         }
         footer {
             text-align: center;
-            padding: 10px;
-            font-size: 0.9rem;
-            color: #777;
+            padding: 12px;
+            font-size: 0.85rem;
+            color: #aaa;
+            background-color: #f8f9fa;
+            margin-top: auto;
         }
     </style>
 </head>
@@ -63,12 +67,19 @@
                 {% csrf_token %}
                 <div class="mb-3 text-start">
                     <label for="id_username" class="form-label">Usuario</label>
-                    <input type="text" name="username" autofocus required class="form-control" id="id_username">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                        <input type="text" name="username" autofocus required class="form-control" id="id_username">
+                    </div>
                 </div>
+
                 <div class="mb-3 text-start">
                     <label for="id_password" class="form-label">Contraseña</label>
-                    <input type="password" name="password" required class="form-control" id="id_password">
-                </div>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" name="password" required class="form-control" id="id_password">
+                    </div>
+                </div>    
                 {% if form.errors %}
                     <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
                 {% endif %}
