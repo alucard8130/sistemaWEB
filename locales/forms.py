@@ -11,15 +11,17 @@ class LocalComercialForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # obtenemos el usuario desde la vista
         super().__init__(*args, **kwargs)
-
-        #self.fields['cliente'].queryset = Cliente.objects.all().order_by('nombre')
-
+     
         if user and not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
             empresa = user.perfilusuario.empresa
             self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
         else:
             self.fields['cliente'].queryset = Cliente.objects.all()
+        # Deshabilita el campo cliente si se está editando un local existente
+        if self.instance and self.instance.pk:
+            self.fields['cliente'].disabled = True
+
 
     def clean(self):
         cleaned_data = super().clean()

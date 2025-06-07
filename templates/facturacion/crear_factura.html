@@ -6,14 +6,95 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-<div class="container mt-5">
+<div class="container mt-4">
     <h2>Crear Factura Manual</h2>
+    <!-- Mensajes de error -->
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+    {% endif %}
+    <div class=" mb-4">
+        
+    </div>
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
+        <div class="mb-5">
+            {{ form.cliente.label_tag }}
+            {{ form.cliente }}
+            {% if form.cliente.errors %}
+                <div class="text-danger">{{ form.cliente.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-5">
+            {{ form.tipo_origen.label_tag }}
+            {{ form.tipo_origen }}
+            {% if form.tipo_origen.errors %}
+                <div class="text-danger">{{ form.tipo_origen.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-5" id="campo_local">
+            {{ form.local.label_tag }}
+            {{ form.local }}
+            {% if form.local.errors %}
+                <div class="text-danger">{{ form.local.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-5" id="campo_area">
+            {{ form.area_comun.label_tag }}
+            {{ form.area_comun }}
+            {% if form.area_comun.errors %}
+                <div class="text-danger">{{ form.area_comun.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-5">
+            {{ form.fecha_vencimiento.label_tag }}
+            {{ form.fecha_vencimiento }}
+            {% if form.fecha_vencimiento.errors %}
+                <div class="text-danger">{{ form.fecha_vencimiento.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-5">
+            {{ form.monto.label_tag }}
+            {{ form.monto }}
+            {% if form.monto.errors %}
+                <div class="text-danger">{{ form.monto.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-5">
+            {{ form.observaciones.label_tag }}
+            {{ form.observaciones }}
+            {% if form.observaciones.errors %}
+                <div class="text-danger">{{ form.observaciones.errors }}</div>
+            {% endif %}
+        </div>
+
+        {% if pedir_superuser %}
+        <div class="alert alert-warning">
+            Para autorizar este cambio, un superusuario debe ingresar su usuario y contraseña:
+            <div class="mb-2">
+                <input type="text" name="superuser_username" class="form-control mb-1" placeholder="Usuario superusuario" required>
+                <input type="password" name="superuser_password" class="form-control" placeholder="Contraseña superusuario" required>
+            </div>
+        </div>
+        {% endif %}
         <button type="submit" class="btn btn-primary">Guardar factura</button>
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
+
+<script>
+function mostrarOrigen() {
+    var tipo = document.getElementById("id_tipo_origen").value;
+    document.getElementById("campo_local").style.display = tipo === "local" ? "block" : "none";
+    document.getElementById("campo_area").style.display = tipo === "area_comun" ? "block" : "none";
+}
+document.addEventListener("DOMContentLoaded", function() {
+    mostrarOrigen();
+    document.getElementById("id_tipo_origen").addEventListener("change", mostrarOrigen);
+});
+</script>
 </body>
 </html>

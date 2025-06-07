@@ -25,42 +25,117 @@ from django.db.models.functions import TruncMonth, TruncYear
 from datetime import datetime
 from django.db.models import Sum
 from django.db import transaction
+from django.contrib.auth import authenticate
 
 
 
 @login_required
 def crear_factura(request):
+    superuser_auth_ok = False
+
     if request.method == 'POST':
         form = FacturaForm(request.POST, user=request.user)
+        superuser_username = request.POST.get('superuser_username')
+        superuser_password = request.POST.get('superuser_password')
+
         if form.is_valid():
             factura = form.save(commit=False)
-            if request.user.is_superuser:
-                factura.empresa = factura.cliente.empresa
-            else:
-                factura.empresa = request.user.perfilusuario.empresa
+            tipo_origen = form.cleaned_data['tipo_origen']
+            cliente = factura.cliente
+            conflicto = False
+            conflicto_tipo = ""
+            
+            if tipo_origen == 'local':
+                factura.area_comun = None
+            elif tipo_origen == 'area_comun':
+                factura.local = None
+            #factura.save()
 
-            # Crear folio único
-            count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
-            factura.folio = f"MAN-{now().year}-{count:04d}"
-            factura.save()
-            messages.success(request, "Factura creada correctamente.")
+            # --- VALIDACIÓN DE LOCAL ---
+            if factura.local:
+                local_cliente = factura.local.cliente
+                # Si el local YA tiene cliente y es diferente, CONFLICTO
+                if local_cliente and local_cliente != cliente:
+                    conflicto = True
+                    conflicto_tipo = "local"
+                # Si el local NO tiene cliente, verifica que NO existan otras facturas con diferente cliente
+                elif not local_cliente:
+                    facturas_otros_clientes = Factura.objects.filter(
+                        local=factura.local
+                    ).exclude(cliente=cliente)
+                    if facturas_otros_clientes.exists():
+                        conflicto = True
+                        conflicto_tipo = "local"
+            
+            # --- VALIDACIÓN DE ÁREA ---
+            if factura.area_comun:
+                area_cliente = factura.area_comun.cliente
+                if area_cliente and area_cliente != cliente:
+                    conflicto = True
+                    conflicto_tipo = "area"
+                elif not area_cliente:
+                    facturas_otros_clientes = Factura.objects.filter(
+                        area_comun=factura.area_comun
+                    ).exclude(cliente=cliente)
+                    if facturas_otros_clientes.exists():
+                        conflicto = True
+                        conflicto_tipo = "area"
 
-            # Crea log por cada campo
-            for field in form.fields:
-                valor = getattr(factura, field)
-                FacturaAuditoria.objects.create(
-                    factura=factura,
-                    usuario=request.user,
-                    campo=field,
-                    valor_anterior='--CREADA--',
-                    valor_nuevo=valor
-                )
+            # -- AUTORIZACIÓN DE SUPERUSER EN CASO DE CONFLICTO --
+            if conflicto:
+                if superuser_username and superuser_password:
+                    superuser = authenticate(username=superuser_username, password=superuser_password)
+                    if superuser and superuser.is_superuser:
+                        superuser_auth_ok = True
+                    else:
+                        form.add_error(None, "La autenticación de superusuario es incorrecta. No se creó la factura.")
+                else:
+                    form.add_error(None, f"El cliente del {conflicto_tipo} seleccionado no coincide. Contacta al superusuario para autorizar el cambio.")
+                    
+            if not conflicto or superuser_auth_ok:
+                # Solo ahora asigna empresa y cliente
+                if request.user.is_superuser:
+                    factura.empresa = factura.cliente.empresa
+                else:
+                    factura.empresa = request.user.perfilusuario.empresa
 
-            return redirect('lista_facturas')
+                factura.save()
+
+                # Folio único
+                count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
+                factura.folio = f"MAN-{now().year}-{count:04d}"
+                factura.save()
+
+                # Si el local/área no tiene cliente (o conflicto y autorizado), asígnalo
+                if factura.local and (factura.local.cliente is None or superuser_auth_ok):
+                    factura.local.cliente = cliente
+                    factura.local.save()
+                if factura.area_comun and (factura.area_comun.cliente is None or superuser_auth_ok):
+                    factura.area_comun.cliente = cliente
+                    factura.area_comun.save()
+
+                # Crea log por cada campo
+                for field in form.fields:
+                    if hasattr(factura, field):
+                        valor = getattr(factura, field)
+                    FacturaAuditoria.objects.create(
+                        factura=factura,
+                        usuario=request.user,
+                        campo=field,
+                        valor_anterior='--CREADA--',
+                        valor_nuevo=valor
+                    )
+
+                messages.success(request, "Factura creada correctamente.")
+                return redirect('lista_facturas')
+
     else:
         form = FacturaForm(user=request.user)
 
-    return render(request, 'facturacion/crear_factura.html', {'form': form})
+    return render(request, 'facturacion/crear_factura.html', {
+        'form': form,
+        'pedir_superuser': superuser_auth_ok is False and request.method == 'POST'
+    })
 
 
 @login_required
