@@ -11,6 +11,7 @@ from clientes.models import Cliente
 from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import Factura, Pago
+from principal.models import AuditoriaCambio
 # Create your views here.
 
 @login_required
@@ -102,3 +103,11 @@ def respaldo_empresa_excel(request):
     response['Content-Disposition'] = f'attachment; filename=respaldo_empresa_{empresa.nombre}.xlsx'
     wb.save(response)
     return response
+
+@staff_member_required  # Solo para admin/superusuario, opcional
+def reporte_auditoria(request):
+    modelo = request.GET.get('modelo')
+    queryset = AuditoriaCambio.objects.all().order_by('-fecha_cambio')
+    if modelo in ['local', 'area', 'factura']:
+        queryset = queryset.filter(modelo=modelo)
+    return render(request, 'auditoria/reporte.html', {'auditorias': queryset, 'modelo': modelo})

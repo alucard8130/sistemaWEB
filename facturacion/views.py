@@ -6,7 +6,8 @@ from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
 from .forms import FacturaEditForm, FacturaForm, PagoForm,FacturaCargaMasivaForm
-from .models import Factura, FacturaAuditoria, Pago
+from .models import Factura, Pago
+from principal.models import AuditoriaCambio, PerfilUsuario
 from django.utils.timezone import now
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
@@ -763,21 +764,23 @@ def editar_factura(request, factura_id):
                 valor_anterior = getattr(factura_original, field)
                 valor_nuevo = getattr(factura_modificada, field)
                 if str(valor_anterior) != str(valor_nuevo):
-                    FacturaAuditoria.objects.create(
-                        factura=factura,
-                        usuario=request.user,
+                    AuditoriaCambio.objects.create(
+                        modelo='factura',
+                        objeto_id=factura.pk,
                         campo=field,
                         valor_anterior=valor_anterior,
-                        valor_nuevo=valor_nuevo
+                        valor_nuevo=valor_nuevo,
+                        usuario=request.user,
                     )
             factura_modificada.save()
             return redirect('lista_facturas')
     else:
         form = FacturaEditForm(instance=factura)
     # Opcional: mostrar historial de auditoría de esta factura
-    auditorias = FacturaAuditoria.objects.filter(factura=factura).order_by('-fecha')
+    #auditorias = AuditoriaCambio.objects.filter(factura=factura).order_by('-fecha')
     return render(request, 'facturacion/editar_factura.html', {
         'form': form,
         'factura': factura,
-        'auditorias': auditorias,
+       # 'auditorias': auditorias,
     })
+

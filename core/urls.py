@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
+from principal.views import reporte_auditoria
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -63,4 +64,5 @@ urlpatterns = [
     path('areas/', include('areas.urls')),
     path('reiniciar-sistema/', reiniciar_sistema, name='reiniciar_sistema'),
     path('respaldo-empresa/', respaldo_empresa_excel, name='respaldo_empresa_excel'),
+    path('auditoria/', reporte_auditoria, name='reporte_auditoria'),
 ]

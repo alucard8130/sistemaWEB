@@ -9,6 +9,7 @@ import openpyxl
 from clientes.models import Cliente
 from empresas.models import Empresa
 import locales
+from principal.models import AuditoriaCambio
 from .models import LocalComercial
 from .forms import LocalCargaMasivaForm, LocalComercialForm
 from django.contrib.admin.views.decorators import staff_member_required
@@ -60,23 +61,28 @@ def crear_local(request):
 def editar_local(request, pk):
     user = request.user
     local= get_object_or_404(LocalComercial, pk=pk)
-    #perfil = getattr(user, 'perfilusuario', None)
-    # Filtrar el local según permisos
+ 
     if not user.is_superuser and local.empresa != user.perfilusuario.empresa:
         return redirect('lista_locales')
-    #if user.is_superuser:
-        #local = get_object_or_404(LocalComercial, pk=pk)
-    #else:
-     #   local = get_object_or_404(LocalComercial, pk=pk, empresa=perfil.empresa)
 
     if request.method == 'POST':
         form = LocalComercialForm(request.POST, instance=local, user=user)
         if form.is_valid():
-            local = form.save(commit=False)
+            local_original = LocalComercial.objects.get(pk=pk)
+            local_modificado = form.save(commit=False)
+            for field in form.changed_data:
+                valor_anterior = getattr(local_original, field)
+                valor_nuevo = getattr(local_modificado, field)
+                AuditoriaCambio.objects.create(
+                    modelo='local',
+                    objeto_id=local.pk,
+                    campo=field,
+                    valor_anterior=valor_anterior,
+                    valor_nuevo=valor_nuevo,
+                    usuario=request.user,
+                )
             form.save()
-            #if not user.is_superuser:
-             #   local.empresa = perfil.empresa  # reforzar seguridad
-            #local.save()
+            messages.success(request, "Local actualizado correctamente.")
             return redirect('lista_locales')
     else:
         form = LocalComercialForm(instance=local, user=user)
@@ -89,15 +95,8 @@ def eliminar_local(request, pk):
     local= get_object_or_404(LocalComercial, pk=pk)
     if not user.is_superuser and local.empresa != user.perfilusuario.empresa:
         return redirect('lista_locales')
-    #perfil = getattr(user, 'perfilusuario', None)
-
-    #if user.is_superuser:
-     #   local = get_object_or_404(LocalComercial, pk=pk)
-    #else:
-     #   local = get_object_or_404(LocalComercial, pk=pk, empresa=perfil.empresa)
 
     if request.method == 'POST':
-        #local.delete()
         local.activo = False
         local.save()
         return redirect('lista_locales')

@@ -6,9 +6,10 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 import openpyxl
-
 from clientes.models import Cliente
 from empresas.models import Empresa
+from locales.forms import LocalComercialForm
+from principal.models import AuditoriaCambio
 from .models import AreaComun
 from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm
 from unidecode import unidecode
@@ -55,9 +56,24 @@ def editar_area(request, pk):
         return redirect('lista_areas')
 
     if request.method == 'POST':
-        form = AreaComunForm(request.POST, instance=area, user=user)
+        form = AreaComunForm(request.POST, instance=area)
         if form.is_valid():
+            area_original = AreaComun.objects.get(pk=pk)
+            area_modificada = form.save(commit=False)
+
+            for field in form.changed_data:
+                valor_ant = getattr(area_original, field)
+                valor_nuevo = getattr(area_modificada, field)
+                AuditoriaCambio.objects.create(
+                    modelo='area',
+                    objeto_id=area.pk,
+                    campo=field,
+                    valor_anterior=valor_ant,
+                    valor_nuevo=valor_nuevo,
+                    usuario=request.user,
+                )
             form.save()
+            messages.success(request, "Area Comun actualizada correctamente.")
             return redirect('lista_areas')
     else:
         form = AreaComunForm(instance=area, user=user)

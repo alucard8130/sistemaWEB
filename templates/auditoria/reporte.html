@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Auditoría</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2>Reporte de Auditoría</h2>
+    <form method="get" class="mb-3">
+        <select name="modelo" class="form-select" style="max-width: 250px; display: inline-block;">
+            <option value="">Todos los módulos</option>
+            <option value="local" {% if modelo == 'local' %}selected{% endif %}>Locales Comerciales</option>
+            <option value="area" {% if modelo == 'area' %}selected{% endif %}>Áreas Comunes</option>
+            <option value="factura" {% if modelo == 'factura' %}selected{% endif %}>Facturas</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm ms-2">Filtrar</button>
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary btn-sm ms-2">Menú principal</a>
+    </form>
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>Módulo</th>
+                <th>ID</th>
+                <th>Campo</th>
+                <th>Valor anterior</th>
+                <th>Valor nuevo</th>
+                <th>Usuario</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for log in auditorias %}
+            <tr>
+                <td>{{ log.fecha_cambio|date:"Y-m-d H:i" }}</td>
+                <td>{{ log.get_modelo_display }}</td>
+                <td>{{ log.objeto_id }}</td>
+                <td>{{ log.campo }}</td>
+                <td>{{ log.valor_anterior }}</td>
+                <td>{{ log.valor_nuevo }}</td>
+                <td>{{ log.usuario.get_full_name|default:log.usuario.username }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">No hay registros de auditoría.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

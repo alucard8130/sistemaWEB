@@ -68,16 +68,7 @@ class Pago(models.Model):
     def __str__(self):
         return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
     
-class FacturaAuditoria(models.Model):
-    factura = models.ForeignKey('Factura', on_delete=models.CASCADE)
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    fecha = models.DateTimeField(auto_now_add=True)
-    campo = models.CharField(max_length=100)
-    valor_anterior = models.CharField(max_length=200, blank=True, null=True)
-    valor_nuevo = models.CharField(max_length=200, blank=True, null=True)
-
-    def __str__(self):
-        return f"{self.factura.folio} - {self.campo} cambiado por {self.usuario} el {self.fecha}"    
+    
 
     
          
