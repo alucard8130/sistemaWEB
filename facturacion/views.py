@@ -119,7 +119,7 @@ def crear_factura(request):
                 for field in form.fields:
                     if hasattr(factura, field):
                         valor = getattr(factura, field)
-                    FacturaAuditoria.objects.create(
+                    AuditoriaCambio.objects.create(
                         factura=factura,
                         usuario=request.user,
                         campo=field,
@@ -776,11 +776,8 @@ def editar_factura(request, factura_id):
             return redirect('lista_facturas')
     else:
         form = FacturaEditForm(instance=factura)
-    # Opcional: mostrar historial de auditoría de esta factura
-    #auditorias = AuditoriaCambio.objects.filter(factura=factura).order_by('-fecha')
     return render(request, 'facturacion/editar_factura.html', {
         'form': form,
         'factura': factura,
-       # 'auditorias': auditorias,
     })
 
