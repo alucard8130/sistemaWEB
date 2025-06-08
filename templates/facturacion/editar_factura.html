@@ -8,6 +8,12 @@
 <body>
 <div class="container mt-5">
     <h2>Editar Factura ({{ factura.folio }})</h2>
+        <!-- Bloque para mostrar mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
     <form method="post" class="mb-3">       
         {% csrf_token %}
         {{ form.as_p }}

@@ -9,7 +9,12 @@
 <body>
 <div class="container mt-4">
     <h2 class="mb-4">Cartera Vencida</h2>
-
+        <!-- Bloque para mostrar mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
     <form method="get" class="row g-3 mb-4">
         {% if request.user.is_superuser %}
         <div class="col-md-3">

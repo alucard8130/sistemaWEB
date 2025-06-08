@@ -8,6 +8,12 @@
 <body>
 <div class="container mt-4">
     <h2>Clientes</h2>
+        <!-- Bloque para mostrar mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
     <a href="{% url 'crear_cliente' %}" class="btn btn-success mb-3">+ Nuevo cliente</a>
     <table class="table table-bordered">
         <thead class="table-dark">
