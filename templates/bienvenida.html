@@ -157,16 +157,6 @@
                         {% endif %}
                     </ul>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'pagos_por_origen' %}?tipo=local">Informe Pagos</a>
-                </li>
-
-                {% if request.user.is_superuser %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'admin:auth_user_add' %}">Usuarios</a>
-                </li>
-                {% endif %}
-
                 <li class="nav-item d-flex align-items-center">
                     <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center mb-0">
                 <li class="nav-item">
@@ -190,7 +180,7 @@
         <h1 class="welcome-title mb-1">Bienvenido {{ request.user.get_full_name|default:request.user.username }}</h1>
 
         {% if empresa %}
-            <p class="text-muted mb-3">Empsresa: <strong>{{ empresa.nombre }}</strong></p>
+            <p class="text-muted mb-3">Empresa: <strong>{{ empresa.nombre }}</strong></p>
         {% else %}
             <p class="text-muted mb-3">Administrador General</p>
         {% endif %}
