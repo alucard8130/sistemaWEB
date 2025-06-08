@@ -146,7 +146,8 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Facturación</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Cobros Facturas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Facturas y cobros </a></li>
+                        <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación mensual</a></li>
                         <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
                         <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Informe Ingresos</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
