@@ -26,7 +26,9 @@ class AreaComunForm(forms.ModelForm):
          
         # Deshabilita el campo cliente si se está editando un local existente
         if self.instance and self.instance.pk:
-            self.fields['cliente'].disabled = True    
+            self.fields['cliente'].disabled = True
+            self.fields['numero'].disabled = True
+            self.fields['status'].disabled = True    
 
     def clean(self):
         cleaned_data = super().clean()
