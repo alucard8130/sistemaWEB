@@ -35,7 +35,7 @@ def reiniciar_sistema(request):
                 LocalComercial.objects.all().delete()
                 AreaComun.objects.all().delete()
                 Cliente.objects.all().delete()
-                Empresa.objects.all().delete()
+                #Empresa.objects.all().delete()
             messages.success(request, '¡El sistema fue reiniciado exitosamente!')
         except Exception as e:
             messages.error(request, f'Error al reiniciar: {e}')

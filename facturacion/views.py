@@ -120,7 +120,8 @@ def crear_factura(request):
                     if hasattr(factura, field):
                         valor = getattr(factura, field)
                     AuditoriaCambio.objects.create(
-                        factura=factura,
+                        modelo='factura',
+                        objeto_id=factura.pk,
                         usuario=request.user,
                         campo=field,
                         valor_anterior='--CREADA--',
