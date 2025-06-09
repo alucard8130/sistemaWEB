@@ -60,13 +60,16 @@
 
     <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
     <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>
+    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Volver al menú</a>
 
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
                 <th>Folio</th>
-                <th>Empresa</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Cliente</th>
                 <th>Local/Área</th>
                 <th>Monto</th>
@@ -81,13 +84,15 @@
             {% for factura in facturas %}
                 <tr>
                     <td>{{ factura.folio }}</td>
-                    <td>{{ factura.empresa.nombre }}</td>
+                    {% if request.user.is_superuser %}
+                        <td>{{ factura.empresa.nombre }}</td>
+                    {% endif %}
                     <td>{{ factura.cliente.nombre }}</td>
                     <td>
                         {% if factura.local %}
-                            Local: {{ factura.local.numero }}
+                            {{ factura.local.numero }}
                         {% elif factura.area_comun %}
-                            Área: {{ factura.area_comun.numero }}
+                            {{ factura.area_comun.numero }}
                         {% else %}
                             -
                         {% endif %}
@@ -119,8 +124,7 @@
             {% endfor %}
         </tbody>
     </table>
-    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">
-    Exportar a Excel
+    
 </a>
 </div>
 </body>

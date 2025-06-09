@@ -340,16 +340,30 @@ def registrar_pago(request, factura_id):
 
 @login_required
 def pagos_por_origen(request):
-    tipo = request.GET.get('tipo')  # 'local' o 'area'
-    pagos = Pago.objects.select_related('factura', 'factura__cliente', 'factura__empresa')
+    empresa_id = request.GET.get('empresa')
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
+    #tipo = request.GET.get('tipo')  # 'local' o 'area'
+    #pagos = Pago.objects.select_related('factura', 'factura__cliente', 'factura__empresa')
 
-    if tipo == 'local':
-        pagos = pagos.filter(factura__local__isnull=False)
-    elif tipo == 'area':
-        pagos = pagos.filter(factura__area_comun__isnull=False)
+    if request.user.is_superuser:
+        pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all()
+        empresas = Empresa.objects.all()
+        locales = LocalComercial.objects.filter(activo=True)
+        areas = AreaComun.objects.filter(activo=True)
+    else:
+        empresa = request.user.perfilusuario.empresa
+        pagos = Pago.objects.select_related('factura').filter(factura__empresa=empresa)
+        empresas = None
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
 
-    if not request.user.is_superuser:
-        pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
+    if empresa_id:
+        pagos = pagos.filter(factura__empresa_id=empresa_id)
+    if local_id:
+        pagos = pagos.filter(factura__local_id=local_id)
+    if area_id:
+        pagos = pagos.filter(factura__area_comun_id=area_id)
 
    
     pagos_validos = pagos.exclude(forma_pago='nota_credito')
@@ -357,8 +371,14 @@ def pagos_por_origen(request):
 
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
-        'tipo': tipo,
+        #'tipo': tipo,
         'total_pagos': total_pagos,
+        'empresas': empresas,
+        'empresa_seleccionada': int(empresa_id) if empresa_id else None,
+        'locales': locales,
+        'areas': areas,
+        'local_id': local_id,
+        'area_id': area_id,
     })
 
 @login_required
@@ -625,53 +645,42 @@ def exportar_cartera_excel(request):
 
 @login_required
 def exportar_pagos_excel(request):
-    pagos = Pago.objects.select_related('factura', 'registrado_por').all()
+    empresa_id = request.GET.get('empresa')
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
 
-    # Si el usuario no es superusuario, filtra por su empresa
-    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+    pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all()
+    if not request.user.is_superuser:
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
-     # Filtro por origen (local o área)
-    tipo = request.GET.get('tipo')  # 'local' o 'area'
-    if tipo == 'local':
-        pagos = pagos.filter(factura__local__isnull=False)
-    elif tipo == 'area':
-        pagos = pagos.filter(factura__area_comun__isnull=False)
+    if empresa_id:
+        pagos = pagos.filter(factura__empresa_id=empresa_id)
+    if local_id:
+        pagos = pagos.filter(factura__local_id=local_id)
+    if area_id:
+        pagos = pagos.filter(factura__area_comun_id=area_id)
     # Crear libro y hoja
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Pagos"
+    ws.title = "Ingresos"
 
     # Encabezados
     ws.append([
-        'Factura (Folio)',
-        'Empresa',
-        'Cliente',
-        'Monto del Pago',
-        'Fecha de Pago',
-        'Forma de Pago',
-        'Registrado por'
-        'Origen (Local/Área)'
+        'Local/Área','Cliente','Monto Cobro','Forma de Cobro','Folio Factura', 'Empresa',  
+        'Fecha Cobro', 
     ])
 
     # Contenido
     for pago in pagos:
         factura = pago.factura
-        empresa = factura.empresa.nombre
-        cliente = factura.cliente.nombre
-        origen = ''
-        if pago.factura.local:
-            origen = f"Local {pago.factura.local.numero}"
-        elif pago.factura.area_comun:   
-            origen = f"Área {pago.factura.area_comun.numero}"
+        local_area = factura.local.numero if factura.local else factura.area_comun.numero if factura.area_comun else '-'
         ws.append([
-            factura.folio,
-            empresa,
-            cliente,
+            local_area,
+            factura.cliente.nombre,
             float(pago.monto),
-            pago.fecha_pago.strftime('%Y-%m-%d'),
             pago.forma_pago,
-            pago.registrado_por.get_full_name() if pago.registrado_por else '—',
-            origen  
+            factura.folio,
+            factura.empresa.nombre,
+            pago.fecha_pago.strftime('%Y-%m-%d') 
         ])
 
     # Respuesta

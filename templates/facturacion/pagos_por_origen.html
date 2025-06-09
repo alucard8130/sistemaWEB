@@ -8,17 +8,54 @@
 </head>
 <body>
 <div class="container mt-2" >
-    <h2>Reporte Ingresos por {{ tipo|title }}</h2>
+    <h2>Reporte Ingresos</h2>
         <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
     {% endif %}
-    <div class="mb-3">
-        <a href="{% url 'pagos_por_origen' %}?tipo=local" class="btn btn-primary">Locales</a>
-        <a href="{% url 'pagos_por_origen' %}?tipo=area" class="btn btn-secondary">Áreas Comunes</a>
+<form method="get" class="row g-2 mb-3">
+    {% if request.user.is_superuser %}
+    <div class="col-auto">
+        <label for="empresa">Empresa:</label>
+        <select name="empresa" id="empresa" class="form-select">
+            <option value="">-- Todas --</option>
+            {% for empresa in empresas %}
+                <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
+                    {{ empresa.nombre }}
+                </option>
+            {% endfor %}
+        </select>
     </div>
+    {% endif %}
+    <div class="col-auto">
+        <label for="local_id">Local:</label>
+        <select name="local_id" id="local_id" class="form-select">
+            <option value="">Todos los locales</option>
+            {% for local in locales %}
+                <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
+                    {{ local }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <label for="area_id">Área común:</label>
+        <select name="area_id" id="area_id" class="form-select">
+            <option value="">Todas las áreas</option>
+            {% for area in areas %}
+                <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
+                    {{ area }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto align-self-end">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{% url 'pagos_por_origen' %}" class="btn btn-secondary">Limpiar filtro</a>
+    </div>
+</form>
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card text-white bg-success shadow rounded-4 text-center">
@@ -35,38 +72,42 @@
     <div class="mb-2"> 
         
         <a href="{% url 'exportar_pagos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">Exportar Ingresos</a>
-        <a href="{% url 'bienvenida' %}" class="btn btn-outline-primary">Volver al menú</a>
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
     </div>
     <table class="table table-bordered mt-2">
         <thead class="table-dark">
             <tr>
-                <th>Fecha</th>
+                <th>Local \ Area</th>
                 <th>Cliente</th>
-                <th>Empresa</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}    
                 <th>Monto</th>
                 <th>Forma de cobro</th>
                 <th>Factura</th>
-                <th>Local \ Area</th>
+                <th>Fecha Cobro</th>
             </tr>
         </thead>
         <tbody>
             {% for pago in pagos %}
                 <tr>
-                    <td>{{ pago.fecha_pago }}</td>
-                    <td>{{ pago.factura.cliente.nombre }}</td>
-                    <td>{{ pago.factura.empresa.nombre }}</td>
-                    <td>${{ pago.monto|floatformat:2|intcomma }}</td>
-                    <td>{{ pago.forma_pago|title }}</td>
-                    <td>{{ pago.factura.folio }}</td>
                     <td>
                         {% if pago.factura.local %}
-                            Local: {{ pago.factura.local.numero }}
+                            {{ pago.factura.local.numero }}
                         {% elif pago.factura.area_comun %}
-                            Área: {{ pago.factura.area_comun.numero }}
+                            {{ pago.factura.area_comun.numero }}
                         {% else %}
                             -
                         {% endif %}
                     </td>
+                    <td>{{ pago.factura.cliente.nombre }}</td>
+                    {% if request.user.is_superuser %}
+                        <td>{{ pago.factura.empresa.nombre }}</td>
+                    {% endif %}
+                    <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                    <td>{{ pago.forma_pago|title }}</td>
+                    <td>{{ pago.factura.folio }}</td>
+                    <td>{{ pago.fecha_pago }}</td>  
                 </tr>
             {% empty %}
                 <tr><td colspan="6">No hay ingresos registrados.</td></tr>
