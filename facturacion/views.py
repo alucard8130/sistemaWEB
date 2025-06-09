@@ -351,10 +351,8 @@ def pagos_por_origen(request):
     if not request.user.is_superuser:
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
 
-    #total_pagos = pagos.aggregate(total=Sum('monto'))['total'] or 0
-    # Solo pagos válidos (excluyendo nota de crédito)
+   
     pagos_validos = pagos.exclude(forma_pago='nota_credito')
-    #pagos_validos = Pago.objects.filter(factura=Factura).exclude(forma_pago='nota_credito')
     total_pagos = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
 
     return render(request, 'facturacion/pagos_por_origen.html', {
