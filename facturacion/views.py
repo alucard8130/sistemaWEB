@@ -165,11 +165,6 @@ def lista_facturas(request):
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id)
 
-    print("area_id:", area_id)
-    print("Facturas filtradas:", facturas.count())
-    for f in facturas:
-        print(f.folio, f.area_comun_id)
-
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': facturas,
         'empresas': empresas,
@@ -215,7 +210,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     local=local,
                     folio=folio,
                     fecha_emision=hoy,
-                    fecha_vencimiento=date(año, mes, 28),
+                    fecha_vencimiento=date(año, mes, 1),
                     monto=local.cuota,
                     estatus='pendiente',
                     observaciones='Factura generada automáticamente'
