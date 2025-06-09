@@ -141,8 +141,20 @@ def crear_factura(request):
 
 @login_required
 def lista_facturas(request):
+    facturas = Factura.objects.all()
+    #clientes = Cliente.objects.all()
+    #locales = LocalComercial.objects.all()
+    #areas = AreaComun.objects.all()
     empresas = Empresa.objects.all() if request.user.is_superuser else []
+    
+    #cliente_id = request.GET.get('cliente')
+    
+    #local_id = request.GET.get('local')
     empresa_id = request.GET.get('empresa')
+    #area_id = request.GET.get('area_comun') or None
+    #area_id = request.GET.get('area_comun')
+
+    
 
     if request.user.is_superuser:
         if empresa_id:
@@ -152,11 +164,18 @@ def lista_facturas(request):
     else:
         empresa = request.user.perfilusuario.empresa
         facturas = Factura.objects.filter(empresa=empresa)
+    
+    
+    #print("Area seleccionada:", area_id)
+    #print("Area ID seleccionado:", area_id)
+    #print("Áreas disponibles:", areas)
+
 
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': facturas,
         'empresas': empresas,
         'empresa_seleccionada': int(empresa_id) if empresa_id else None
+        
     })
 
 @login_required
