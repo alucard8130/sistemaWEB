@@ -51,7 +51,7 @@
             <label for="dias" class="form-label">Antigüedad</label>
             <select name="rango" id="rango" class="form-select me-2">
           <!--  <select name="dias" id="dias" class="form-select"> -->
-                <option value="">-- Todos --</option>
+                <option value="">Todos</option>
                 <option value="menor30" {% if rango_seleccionado == 'menor30' %}selected{% endif %}>Menos de 30 días</option>
                 <option value="30a60" {% if rango_seleccionado == '30a60' %}selected{% endif %}>30 a 60 días</option>
                 <option value="60a90" {% if rango_seleccionado == '60a90' %}selected{% endif %}>60 a 90 días</option>
@@ -62,6 +62,7 @@
 
         <div class="col-md-3 align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'cartera_vencida' %}" class="btn btn-secondary">Limpiar</a>
         </div>
     </form>
   <!--  <a href="{% url 'exportar_cartera_excel' %}" class="btn btn-outline-success mb-3">Exportar a Excel</a> -->

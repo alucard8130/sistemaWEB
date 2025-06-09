@@ -104,7 +104,10 @@ def crear_factura(request):
 
                 # Folio único
                 count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
-                factura.folio = f"MAN-{now().year}-{count:04d}"
+                if tipo_origen == 'local':
+                    factura.folio = f"CM-{now().year}{now().month:02d}F{count:04d}"
+                elif tipo_origen == 'area_comun':    
+                    factura.folio = f"AC-{now().year}{now().month:02d }F{count:04d}"
                 factura.save()
 
                 # Si el local/área no tiene cliente (o conflicto y autorizado), asígnalo
@@ -203,7 +206,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 fecha_emision__month=mes
             ).exists()
             if not existe:
-                folio = f"CM-{año}-{mes:02d}-{local.pk}"
+                folio = f"CM-{año}{mes:02d}"
                 Factura.objects.create(
                     empresa=local.empresa,
                     cliente=local.cliente,
@@ -226,14 +229,14 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 fecha_emision__month=mes
             ).exists()
             if not existe:
-                folio = f"AC-{año}-{mes:02d}-{area.pk}"
+                folio = f"AC-{año}{mes:02d}"
                 Factura.objects.create(
                     empresa=area.empresa,
                     cliente=area.cliente,
                     area_comun=area,
                     folio=folio,
                     fecha_emision=hoy,
-                    fecha_vencimiento=date(año, mes, 28),
+                    fecha_vencimiento=date(año, mes, 1),
                     monto=area.cuota,
                     estatus='pendiente',
                     observaciones='Factura generada automáticamente'
@@ -302,14 +305,17 @@ def registrar_pago(request, factura_id):
             pago.registrado_por = request.user
 
             if pago.forma_pago == 'nota_credito':
-                pago.save()
-                factura.estatus = 'cancelada'
-                factura.monto = 0
-                factura.save()
-                messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
-                return redirect('lista_facturas')
+                if factura.total_pagado > 0:
+                    form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
+                else:    
+                    pago.save()
+                    factura.estatus = 'cancelada'
+                    factura.monto = 0
+                    factura.save()
+                    messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
+                    return redirect('lista_facturas')
 
-            if pago.monto > factura.saldo_pendiente:
+            elif pago.monto > factura.saldo_pendiente:
                 form.add_error('monto', f"El monto excede el saldo pendiente (${factura.saldo_pendiente:.2f}).")
             else:
                 pago.save()
@@ -564,6 +570,7 @@ def cartera_vencida(request):
 
 @login_required
 def exportar_cartera_excel(request):
+    cliente_id = request.GET.get('cliente')
     hoy = timezone.now().date()
     facturas = Factura.objects.filter(
         estatus='pendiente',
@@ -579,6 +586,10 @@ def exportar_cartera_excel(request):
         facturas = facturas.filter(local__isnull=False)
     elif origen == 'area':
         facturas = facturas.filter(area_comun__isnull=False)
+
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+
 
     # Crear libro y hoja
     wb = openpyxl.Workbook()
@@ -797,3 +808,51 @@ def editar_factura(request, factura_id):
         'factura': factura,
     })
 
+@login_required
+def exportar_lista_facturas_excel(request):
+    empresa_id = request.GET.get('empresa')
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
+    
+    facturas = Factura.objects.all().select_related('cliente', 'empresa', 'local', 'area_comun')
+    
+    if not request.user.is_superuser:
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)  
+    
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+    if local_id:
+        facturas = facturas.filter(local_id=local_id)
+    if area_id:
+        facturas = facturas.filter(area_comun_id=area_id)
+    # Crear libro y hoja
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Lista de Facturas"
+    # Encabezados
+    ws.append([
+        'Folio', 'Empresa', 'Cliente', 'Local/Área', 'Monto',
+        'Fecha Emisión', 'Fecha Vencimiento', 'saldo','Estatus', 'Observaciones'
+    ])
+    # Contenido
+    for factura in facturas:
+        local_area = factura.local.numero if factura.local else (factura.area_comun.numero if factura.area_comun else '-')
+        ws.append([
+            factura.folio,
+            factura.empresa.nombre,
+            factura.cliente.nombre,
+            local_area,
+            float(factura.monto),
+            factura.fecha_emision.strftime('%Y-%m-%d'),
+            factura.fecha_vencimiento.strftime('%Y-%m-%d'),
+            float(factura.saldo_pendiente),
+            factura.estatus,
+            factura.observaciones or ''
+        ])
+    # Respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=lista_facturas.xlsx'
+    wb.save(response)
+    return response

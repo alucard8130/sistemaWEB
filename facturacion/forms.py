@@ -19,7 +19,7 @@ class FacturaForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Oculta ambos campos al inicio
+        # campos no requeridos
         self.fields['local'].required = False
         self.fields['area_comun'].required = False
 

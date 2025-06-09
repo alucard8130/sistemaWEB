@@ -119,6 +119,9 @@
             {% endfor %}
         </tbody>
     </table>
+    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">
+    Exportar a Excel
+</a>
 </div>
 </body>
 </html>
