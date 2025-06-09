@@ -142,41 +142,42 @@ def crear_factura(request):
 
 @login_required
 def lista_facturas(request):
-    facturas = Factura.objects.all()
-    #clientes = Cliente.objects.all()
-    #locales = LocalComercial.objects.all()
-    #areas = AreaComun.objects.all()
-    empresas = Empresa.objects.all() if request.user.is_superuser else []
-    
-    #cliente_id = request.GET.get('cliente')
-    
-    #local_id = request.GET.get('local')
     empresa_id = request.GET.get('empresa')
-    #area_id = request.GET.get('area_comun') or None
-    #area_id = request.GET.get('area_comun')
-
-    
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
 
     if request.user.is_superuser:
-        if empresa_id:
-            facturas = Factura.objects.filter(empresa_id=empresa_id)
-        else:
-            facturas = Factura.objects.all()
+        facturas = Factura.objects.all()
+        empresas = Empresa.objects.all()
+        locales = LocalComercial.objects.filter(activo=True)
+        areas = AreaComun.objects.filter(activo=True)
     else:
         empresa = request.user.perfilusuario.empresa
         facturas = Factura.objects.filter(empresa=empresa)
-    
-    
-    #print("Area seleccionada:", area_id)
-    #print("Area ID seleccionado:", area_id)
-    #print("Áreas disponibles:", areas)
+        empresas = None
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
 
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+    if local_id:
+        facturas = facturas.filter(local_id=local_id)
+    if area_id:
+        facturas = facturas.filter(area_comun_id=area_id)
+
+    print("area_id:", area_id)
+    print("Facturas filtradas:", facturas.count())
+    for f in facturas:
+        print(f.folio, f.area_comun_id)
 
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': facturas,
         'empresas': empresas,
-        'empresa_seleccionada': int(empresa_id) if empresa_id else None
-        
+        'empresa_seleccionada': int(empresa_id) if empresa_id else None,
+        'locales': locales,
+        'areas': areas,
+        'local_id': local_id,
+        'area_id': area_id,
     })
 
 @login_required

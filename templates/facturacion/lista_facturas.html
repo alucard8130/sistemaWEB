@@ -8,18 +8,19 @@
 </head>
 <body>
 <div class="container mt-1">
-    <h2>Facturas Generadas</h2>  
+    <h2>Facturas Generadas</h2>
     <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
     {% endif %}
-{% if request.user.is_superuser %}
-    <form method="get" class="mb-2">
-        <label for="empresa">Filtrar por empresa:</label>
-        <div class="d-flex" style="max-width: 400px;">
-            <select name="empresa" id="empresa" class="form-select me-2">
+
+    <form method="get" class="row g-2 mb-3">
+        {% if request.user.is_superuser %}
+        <div class="col-auto">
+            <label for="empresa">Empresa:</label>
+            <select name="empresa" id="empresa" class="form-select">
                 <option value="">-- Todas --</option>
                 {% for empresa in empresas %}
                     <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
@@ -27,13 +28,38 @@
                     </option>
                 {% endfor %}
             </select>
+        </div>
+        {% endif %}
+        <div class="col-auto">
+            <label for="local_id">Local:</label>
+            <select name="local_id" id="local_id" class="form-select">
+                <option value="">Todos los locales</option>
+                {% for local in locales %}
+                    <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
+                        {{ local }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label for="area_id">Área común:</label>
+            <select name="area_id" id="area_id" class="form-select">
+                <option value="">Todas las áreas</option>
+                {% for area in areas %}
+                    <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
+                        {{ area }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
-        </div>   
+            <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Limpiar filtro</a>
+        </div>
     </form>
-{% endif %}
+
     <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
     <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>
-    
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Volver al menú</a>
 
     <table class="table table-bordered">
@@ -79,18 +105,17 @@
                         {% endif %}
                         {% if factura.estatus == 'pagada' %}
                             <span class="text-muted"></span>
-                        {% elif factura.estatus == 'cancelada' %}      
+                        {% elif factura.estatus == 'cancelada' %}
                             <span class="text-muted"></span>
                         {% else %}
                             <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
-                        {% endif %}    
+                        {% endif %}
                     </td>
                 </tr>
             {% empty %}
                 <tr>
                     <td colspan="10">No hay facturas registradas.</td>
                 </tr>
-                
             {% endfor %}
         </tbody>
     </table>

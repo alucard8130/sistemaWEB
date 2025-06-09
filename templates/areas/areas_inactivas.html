@@ -11,7 +11,6 @@
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
-                <th>Numero Contrato</th>
                 <th>Numero Area</th>
                 <th>Empresa</th>
                 <th>Ubicación</th>
@@ -22,7 +21,6 @@
         <tbody>
             {% for area in areas %}
             <tr>
-                <td>{{ area.num_contrato }}</td>
                 <td>{{ area.numero }}</td>
                 <td>{{ area.empresa.nombre }}</td>
                 <td>{{ area.ubicacion }}</td>

@@ -6,7 +6,7 @@ from empresas.models import Empresa
 
 # Create your models here.
 class AreaComun(models.Model):
-    num_contrato = models.AutoField(primary_key=True)
+    #num_contrato = models.AutoField(primary_key=True)
     numero = models.CharField(max_length=100)
     cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT, null=True, blank=True) 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)

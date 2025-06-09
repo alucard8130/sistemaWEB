@@ -7,7 +7,7 @@ from empresas.models import Empresa
 class AreaComunForm(forms.ModelForm):
     class Meta:
         model = AreaComun
-        fields = ['num_contrato','numero','cliente','empresa', 'ubicacion', 'superficie_m2', 'cuota','giro','fecha_inicial', 'fecha_fin', 'status',  'observaciones']
+        fields = ['numero','cliente','empresa', 'ubicacion', 'superficie_m2', 'cuota','giro','fecha_inicial', 'fecha_fin', 'status',  'observaciones']
         widgets = {
             'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),
             'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
