@@ -64,11 +64,12 @@ class PagoForm(forms.ModelForm):
         cleaned_data = super().clean()
         forma_pago = cleaned_data.get('forma_pago')
         monto = cleaned_data.get('monto')
+    
         if forma_pago != 'nota_credito' and (monto is None or monto == 0):
             self.add_error('monto', 'El monto es obligatorio excepto para Nota de Crédito.')
-        # Opcional: Si es nota de crédito, pone monto a cero
+        
         if forma_pago == 'nota_credito':
-            cleaned_data['monto'] = 0
+            cleaned_data['monto'] = 0  # Si es nota de crédito, pone monto a cero
         return cleaned_data
         
     def clean_fecha_pago(self):

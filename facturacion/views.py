@@ -305,17 +305,17 @@ def registrar_pago(request, factura_id):
             pago.registrado_por = request.user
 
             if pago.forma_pago == 'nota_credito':
-                if factura.total_pagado > 0:
-                    form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
-                else:    
-                    pago.save()
-                    factura.estatus = 'cancelada'
-                    factura.monto = 0
-                    factura.save()
-                    messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
-                    return redirect('lista_facturas')
+                #if factura.total_pagado > 0:
+                    #form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
+                #else:    
+                pago.save()
+                factura.estatus = 'cancelada'
+                factura.monto = 0  # Saldo pendiente a 0
+                factura.save()
+                messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
+                return redirect('lista_facturas')
 
-            elif pago.monto > factura.saldo_pendiente:
+            if pago.monto > factura.saldo_pendiente:
                 form.add_error('monto', f"El monto excede el saldo pendiente (${factura.saldo_pendiente:.2f}).")
             else:
                 pago.save()
@@ -632,7 +632,13 @@ def exportar_pagos_excel(request):
     # Si el usuario no es superusuario, filtra por su empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
-
+     # Filtro por origen (local o área)
+    tipo = request.GET.get('tipo')  # 'local' o 'area'
+    if tipo == 'local':
+        pagos = pagos.filter(factura__local__isnull=False)
+    elif tipo == 'area':
+        pagos = pagos.filter(factura__area_comun__isnull=False)
+    # Crear libro y hoja
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Pagos"

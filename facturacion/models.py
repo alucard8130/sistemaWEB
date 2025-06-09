@@ -40,7 +40,10 @@ class Factura(models.Model):
 
     @property
     def saldo_pendiente(self):
-        return self.monto - self.total_pagado
+        if  self.estatus == 'cancelada':
+            return 0
+        if self.estatus == 'pagada' or 'pendiente':
+            return self.monto - self.total_pagado
     
     def actualizar_estatus(self):
         if self.saldo_pendiente <= 0:

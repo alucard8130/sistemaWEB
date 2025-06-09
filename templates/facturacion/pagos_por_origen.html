@@ -15,6 +15,10 @@
             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
     {% endif %}
+    <div class="mb-3">
+        <a href="{% url 'pagos_por_origen' %}?tipo=local" class="btn btn-primary">Locales</a>
+        <a href="{% url 'pagos_por_origen' %}?tipo=area" class="btn btn-secondary">Áreas Comunes</a>
+    </div>
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card text-white bg-success shadow rounded-4 text-center">
@@ -28,9 +32,10 @@
         </div>
          <!-- Puedes agregar más KPIs aquí si lo deseas -->
     </div>
-    <div class="mb-2">
-        <a href="{% url 'pagos_por_origen' %}?tipo=local" class="btn btn-primary">Locales</a>
-        <a href="{% url 'pagos_por_origen' %}?tipo=area" class="btn btn-secondary">Áreas Comunes</a>
+    <div class="mb-2"> 
+        
+        <a href="{% url 'exportar_pagos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">Exportar Ingresos</a>
+        <a href="{% url 'bienvenida' %}" class="btn btn-outline-primary">Volver al menú</a>
     </div>
     <table class="table table-bordered mt-2">
         <thead class="table-dark">
@@ -69,8 +74,7 @@
         </tbody>
         
     </table>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
-    <a href="{% url 'exportar_pagos_excel' %}" class="btn btn-outline-success">Exportar Ingresos</a>
+</a>
 </div>
 </body>
 </html>
