@@ -158,6 +158,15 @@
                         {% endif %}
                     </ul>
                 </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Proveedores</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'proveedor_crear' %}">Nuevo Proveedor</a></li>
+                        <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Lista</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_proveedores' %}">Carga Masiva</a></li>
+                        {% endif %}
+                    </ul>
                 <li class="nav-item d-flex align-items-center">
                     <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center mb-0">
                 <li class="nav-item">
