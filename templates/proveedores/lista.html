@@ -15,7 +15,9 @@
                 <th>RFC</th>
                 <th>Teléfono</th>
                 <th>Email</th>
+                {% if request.user.is_superuser %}
                 <th>Empresa</th>
+                {% endif %}
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -26,7 +28,9 @@
                 <td>{{ proveedor.rfc }}</td>
                 <td>{{ proveedor.telefono }}</td>
                 <td>{{ proveedor.email }}</td>
-                <td>{{ proveedor.empresa.nombre }}</td>
+                {% if request.user.is_superuser %}
+                    <td>{{ proveedor.empresa.nombre }}</td>
+                {% endif %} 
                 <td>
                     <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-sm btn-primary">Editar</a>
                 </td>

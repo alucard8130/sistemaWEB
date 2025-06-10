@@ -22,7 +22,10 @@
                 <th>Número</th>
                 <th>Propietario</th>
                 <th>Cliente</th>
-                <th>Empresa</th>
+                
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Superficie (m²)</th>
                 <th>Cuota</th>
                 <th>Giro</th>
@@ -36,7 +39,9 @@
                     <td>{{ local.numero }}</td>
                     <td>{{ local.propietario }}</td>
                     <td>{{ local.cliente.nombre }}</td>
-                    <td>{{ local.empresa.nombre }}</td>
+                    {% if request.user.is_superuser %}
+                        <td>{{ local.empresa.nombre }}</td>
+                    {% endif %}
                     <td>{{ local.superficie_m2|floatformat:2|intcomma }}</td>
                     <td>${{ local.cuota|floatformat:2|intcomma }}</td>
                     <td>{{ local.giro }}</td>

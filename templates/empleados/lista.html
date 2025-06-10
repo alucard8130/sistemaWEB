@@ -13,9 +13,12 @@
             <tr>
                 <th>Nombre</th>
                 <th>Puesto</th>
+                <th>Departamento</th>
                 <th>Teléfono</th>
                 <th>Email</th>
-                <th>Empresa</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -24,9 +27,12 @@
             <tr>
                 <td>{{ empleado.nombre }}</td>
                 <td>{{ empleado.puesto }}</td>
+                <td>{{ empleado.departamento }}</td>
                 <td>{{ empleado.telefono }}</td>
                 <td>{{ empleado.email }}</td>
-                <td>{{ empleado.empresa.nombre }}</td>
+                {% if request.user.is_superuser %}
+                    <td>{{ empleado.empresa.nombre }}</td>
+                {% endif %}
                 <td>
                     <a href="{% url 'empleado_editar' empleado.id %}" class="btn btn-sm btn-primary">Editar</a>
                 </td>

@@ -22,6 +22,10 @@
                 <th>RFC</th>
                 <th>Teléfono</th>
                 <th>Email</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th> 
+                {% endif %}
+                <th>Activo</th>
                 <th>Empresa</th>
                 <th>Activo</th>
                 <th>Acciones</th>
@@ -34,7 +38,9 @@
                 <td>{{ cliente.rfc }}</td>
                 <td>{{ cliente.telefono }}</td>
                 <td>{{ cliente.email }}</td>
-                <td>{{ cliente.empresa.nombre }}</td>
+                {% if request.user.is_superuser %}
+                    <td>{{ cliente.empresa.nombre }}</td>
+                {% endif %}
                 <td>{{ cliente.activo }}</td>
                 <td>
                     {% if request.user.is_superuser %}

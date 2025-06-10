@@ -21,7 +21,9 @@
             <tr>
                 <th>Numero</th>
                 <th>Cliente</th>
-                <th>Empresa</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Sup. m²</th>
                 <th>Cuota</th>
                 <th>Giro</th>
@@ -36,7 +38,9 @@
                 <tr>
                     <td>{{ area.numero }}</td>
                     <td>{{ area.cliente.nombre }}</td>
-                    <td>{{ area.empresa.nombre }}</td>
+                    {% if request.user.is_superuser %}
+                        <td>{{ area.empresa.nombre }}</td>
+                    {% endif %}
                     <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
                     <td>${{ area.cuota|floatformat:2|intcomma }}</td>
                     <td>{{ area.giro }}</td>
