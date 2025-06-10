@@ -7,90 +7,62 @@
     <title>Iniciar sesión - GAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            background: linear-gradient(to right, #e0f7fa, #ffffff);
-            display: flex;
-            flex-direction: column;
-            font-family: 'Segoe UI', sans-serif;
-        }
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-box {
-            width: 100%;
-            max-width: 400px;
-            padding: 30px;
-            background: #fff;
-            border-radius: 20px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .login-logo {
-            width: 100px;
-            margin-bottom: 20px;
-            border-radius: 12px; /* opcional si queda cuadrado */
-        }
-        .login-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 25px;
-        }
-        .form-control {
-            border-radius: 10px;
-        }
-        .btn-primary {
-            border-radius: 10px;
-        }
-        footer {
-            text-align: center;
-            padding: 12px;
-            font-size: 0.85rem;
-            color: #aaa;
-            background-color: #f8f9fa;
-            margin-top: auto;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-<body>
-    <div class="main-content">
-        <div class="login-box">
-            <img src="{% static 'img/logo.png' %}" alt="Logo" class="login-logo">
-            <div class="login-title">Gestor Administrativo Condominal</div>
-            <form method="post">
-                {% csrf_token %}
-                <div class="mb-3 text-start">
-                    <label for="id_username" class="form-label">Usuario</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                        <input type="text" name="username" autofocus required class="form-control" id="id_username">
-                    </div>
-                </div>
-
-                <div class="mb-3 text-start">
-                    <label for="id_password" class="form-label">Contraseña</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                        <input type="password" name="password" required class="form-control" id="id_password">
-                    </div>
-                </div>    
-                {% if form.errors %}
-                    <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
-                {% endif %}
-                <button type="submit" class="btn btn-primary w-100">Iniciar sesión</button>
-            </form>
+    <body>
+        <!-- Toggle para Modo Oscuro -->
+        <div class="text-end p-3">
+            <button class="btn btn-outline-secondary btn-sm" id="toggleDark">
+                <i class="bi bi-moon"></i> Modo oscuro
+            </button>
         </div>
-    </div>
 
-    <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
-    </footer>
-</body>
+        <div class="main-content">
+            <div class="login-box">
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold mb-1 login-title border-bottom pb-2 d-inline-block">GESTOR ADMINISTRATIVO CONDOMINAL</h3>
+                </div>
+                <img src="{% static 'img/logo.png' %}" alt="Logo" class="login-logo mt-0 mb-3">
+                <!--div class="login-title">Gestor Administrativo Condominal</div-->
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3 text-start">
+                        <label for="id_username" class="form-label">Usuario</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                            <input type="text" name="username" autofocus required class="form-control" id="id_username">
+                        </div>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label for="id_password" class="form-label">Contraseña</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <input type="password" name="password" required class="form-control" id="id_password">
+                        </div>
+                    </div>    
+                    {% if form.errors %}
+                        <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión</button>
+                </form>
+            </div>
+        </div>
+
+        <footer>
+            © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+            Creado por Jaime M. Estrada Bernabé
+        </footer>
+            <script>
+                const toggleBtn = document.getElementById('toggleDark');
+                toggleBtn.addEventListener('click', () => {
+                    document.body.classList.toggle('dark-mode');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    toggleBtn.innerHTML = isDark
+                        ? '<i class="bi bi-sun"></i> Modo claro'
+                        : '<i class="bi bi-moon"></i> Modo oscuro';
+                });
+            </script>
+    </body>
 </html>
