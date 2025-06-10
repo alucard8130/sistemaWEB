@@ -10,7 +10,8 @@ class FacturaForm(forms.ModelForm):
 
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun', 'fecha_vencimiento', 'monto', 'observaciones']
+        #fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto', 'estatus','observaciones']
+        fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto', 'observaciones']
         widgets = {
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}),
         }
@@ -85,7 +86,7 @@ class FacturaCargaMasivaForm(forms.Form):
 class FacturaEditForm(forms.ModelForm):
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto', 'estatus', 'observaciones']    
+        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota', 'estatus', 'observaciones']    
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -7,70 +7,75 @@
 </head>
 <body>
 <div class="container mt-4">
-    <h2>Crear Factura Manual</h2>
-    <!-- Mensajes de error -->
-    {% if form.non_field_errors %}
-        <div class="alert alert-danger">
-            {% for error in form.non_field_errors %}
-                {{ error }}
-            {% endfor %}
-        </div>
-    {% endif %}
-    <div class=" mb-4">
-        
+<h2>Crear Factura Manual</h2>
+ <!-- Mensajes de error -->
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">
+    {% for error in form.non_field_errors %}
+        {{ error }}
+    {% endfor %}
     </div>
+{% endif %}
+</div>
+<div class="container mt-4">
     <form method="post">
         {% csrf_token %}
-        <div class="mb-5">
+        <div class="mb-3">
             {{ form.cliente.label_tag }}
             {{ form.cliente }}
             {% if form.cliente.errors %}
                 <div class="text-danger">{{ form.cliente.errors }}</div>
             {% endif %}
         </div>
-        <div class="mb-5">
+        <div class="mb-3">
             {{ form.tipo_origen.label_tag }}
             {{ form.tipo_origen }}
             {% if form.tipo_origen.errors %}
                 <div class="text-danger">{{ form.tipo_origen.errors }}</div>
             {% endif %}
         </div>
-        <div class="mb-5" id="campo_local">
+        <div class="mb-3">
+            {{ form.tipo_cuota.label_tag }}
+            {{ form.tipo_cuota }}
+            {% if form.tipo_cuota.errors %}
+                <div class="text-danger">{{ form.tipo_cuota.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-3" id="campo_local">
             {{ form.local.label_tag }}
             {{ form.local }}
             {% if form.local.errors %}
                 <div class="text-danger">{{ form.local.errors }}</div>
             {% endif %}
         </div>
-        <div class="mb-5" id="campo_area">
+        <div class="mb-3" id="campo_area">
             {{ form.area_comun.label_tag }}
             {{ form.area_comun }}
             {% if form.area_comun.errors %}
                 <div class="text-danger">{{ form.area_comun.errors }}</div>
             {% endif %}
         </div>
-        <div class="mb-5">
+        <div class="mb-3">
             {{ form.fecha_vencimiento.label_tag }}
             {{ form.fecha_vencimiento }}
             {% if form.fecha_vencimiento.errors %}
                 <div class="text-danger">{{ form.fecha_vencimiento.errors }}</div>
             {% endif %}
         </div>
-        <div class="mb-5">
+        <div class="mb-3">
             {{ form.monto.label_tag }}
             {{ form.monto }}
             {% if form.monto.errors %}
                 <div class="text-danger">{{ form.monto.errors }}</div>
             {% endif %}
         </div>
-        <div class="mb-5">
+        <div class="mb-3">
             {{ form.observaciones.label_tag }}
             {{ form.observaciones }}
             {% if form.observaciones.errors %}
                 <div class="text-danger">{{ form.observaciones.errors }}</div>
             {% endif %}
         </div>
-
         {% if pedir_superuser %}
         <div class="alert alert-warning">
             Para autorizar este cambio, un superusuario debe ingresar su usuario y contraseña:
@@ -84,7 +89,7 @@
         <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
-
+<!-- Script para mostrar/ocultar campos según tipo de origen -->
 <script>
 function mostrarOrigen() {
     var tipo = document.getElementById("id_tipo_origen").value;

@@ -12,12 +12,20 @@ class Factura(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     local = models.ForeignKey(LocalComercial, on_delete=models.SET_NULL, null=True, blank=True)
     area_comun = models.ForeignKey(AreaComun, on_delete=models.SET_NULL, null=True, blank=True)
-
-    folio = models.CharField(max_length=50, unique=True)
+    TIPO_CUOTA_CHOICES = [
+        ('mantenimiento', 'Mantenimiento'),
+        ('renta', 'Renta'),
+        ('deposito garantia', 'Deposito Garantía'),
+        ('servicios', 'Servicios'),
+        ('extraordinaria', 'Extraordinaria'),
+        ('penalidad', 'Penalidad'),
+        ('publicidad', 'Publicidad'),
+    ]   
+    tipo_cuota= models.CharField(max_length=100, choices=TIPO_CUOTA_CHOICES)
+    folio = models.CharField(max_length=100, unique=True)
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField(blank=True, null=True)
-    monto = models.DecimalField(max_digits=10, decimal_places=2)
-
+    monto = models.DecimalField(max_digits=20, decimal_places=2)
     STATUS_CHOICES = [
         ('pendiente', 'Pendiente'),
         ('pagada', 'Pagada'),
@@ -27,11 +35,13 @@ class Factura(models.Model):
     observaciones = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
     
+    def __str__(self):
+        return f"{self.folio} - {self.cliente.nombre}"
+    
     class Meta:
         ordering = ['-fecha_emision']
     
-    def __str__(self):
-        return f"{self.folio} - {self.cliente.nombre}"
+    
 
   
     @property
@@ -64,8 +74,8 @@ class Pago(models.Model):
     ]
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')
     fecha_pago = models.DateField(blank=True, null=True)
-    monto = models.DecimalField(max_digits=10, decimal_places=2)
-    forma_pago = models.CharField(max_length=20, choices=FORMAS_PAGO, default='transferencia')
+    monto = models.DecimalField(max_digits=20, decimal_places=2)
+    forma_pago = models.CharField(max_length=100, choices=FORMAS_PAGO, default='transferencia')
     registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
