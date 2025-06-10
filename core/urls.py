@@ -67,4 +67,5 @@ urlpatterns = [
     path('auditoria/', reporte_auditoria, name='reporte_auditoria'),
     path('proveedores/', include('proveedores.urls')),
     path('empleados/', include('empleados.urls')),
+    path('gastos/', include('gastos.urls')),
 ]
