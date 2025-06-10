@@ -167,6 +167,12 @@
                         <li><a class="dropdown-item" href="{% url 'proveedor_crear' %}">Nuevo Proveedor</a></li>
                         <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Lista</a></li>
                     </ul>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Empleados</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'empleado_crear' %}">Nuevo Empleado</a></li>
+                        <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Lista</a></li>
+                    </ul>    
                 <li class="nav-item d-flex align-items-center">
                     <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center mb-0">
                         {% csrf_token %}

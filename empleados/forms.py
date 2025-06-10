@@ -11,3 +11,5 @@ class EmpleadoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user and not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
+
+        self.fields['empresa'].required = False

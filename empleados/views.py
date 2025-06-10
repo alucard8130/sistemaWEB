@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .forms import EmpleadoForm
 from .models import Empleado
 
+
 @login_required
 def empleado_crear(request):
     if request.method == 'POST':
@@ -41,3 +42,4 @@ def empleado_lista(request):
         empresa = request.user.perfilusuario.empresa
         empleados = Empleado.objects.filter(empresa=empresa, activo=True)
     return render(request, 'empleados/lista.html', {'empleados': empleados})
+
