@@ -108,6 +108,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Clientes</a>
                     <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Nuevo Cliente</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista</a></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_clientes' %}">Carga Masiva</a></li>
@@ -118,6 +119,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Locales</a>
                     <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nueva Local</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista</a></li>
                         {% if request.user.is_superuser %}
                         <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
@@ -132,6 +134,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Áreas Comunes</a>
                     <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'crear_area' %}">Nueva Área</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista</a></li>
                         {% if request.user.is_superuser %}
                         <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivas</a></li>
@@ -146,8 +149,8 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Facturación</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Informe Facturas </a></li>
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Cobros Facturas </a></li>
                         <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
                         <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
@@ -163,14 +166,9 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'proveedor_crear' %}">Nuevo Proveedor</a></li>
                         <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Lista</a></li>
-                        {% if request.user.is_superuser %}
-                            <li><a class="dropdown-item" href="{% url 'carga_masiva_proveedores' %}">Carga Masiva</a></li>
-                        {% endif %}
                     </ul>
                 <li class="nav-item d-flex align-items-center">
                     <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center mb-0">
-                <li class="nav-item">
-                    <form method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-primary btn-sm">
                             <i class="bi bi-box-arrow-right me-1"></i> Cerrar sesión

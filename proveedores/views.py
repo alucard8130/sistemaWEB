@@ -32,15 +32,15 @@ def proveedor_lista(request):
 @login_required
 def proveedor_editar(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)
-    # Sólo el superusuario o usuarios de la empresa pueden editar
+    # Solo el superusuario o usuarios de la empresa pueden editar
     if not request.user.is_superuser and proveedor.empresa != request.user.perfilusuario.empresa:
         return redirect('proveedor_lista')
 
     if request.method == 'POST':
-        form = ProveedorForm(request.POST, instance=proveedor)
+        form = ProveedorForm(request.POST, instance=proveedor, user=request.user)
         if form.is_valid():
             form.save()
             return redirect('proveedor_lista')
     else:
-        form = ProveedorForm(instance=proveedor)
+        form = ProveedorForm(instance=proveedor, user=request.user)
     return render(request, 'proveedores/editar.html', {'form': form, 'proveedor': proveedor})

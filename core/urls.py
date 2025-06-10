@@ -66,4 +66,5 @@ urlpatterns = [
     path('respaldo-empresa/', respaldo_empresa_excel, name='respaldo_empresa_excel'),
     path('auditoria/', reporte_auditoria, name='reporte_auditoria'),
     path('proveedores/', include('proveedores.urls')),
+    path('empleados/', include('empleados.urls')),
 ]

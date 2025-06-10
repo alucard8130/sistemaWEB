@@ -8,8 +8,9 @@
 <div class="container mt-4">
     <h2>Alta de Proveedor</h2>
     <form method="post">
-        {% csrf_token %}
-        {% for field in form %}
+    {% csrf_token %}
+    {% for field in form %}
+        {% if field.field.widget.input_type != "hidden" %}
             <div class="mb-3">
                 {{ field.label_tag }}
                 {{ field }}
@@ -17,7 +18,10 @@
                     <div class="text-danger">{{ field.errors }}</div>
                 {% endif %}
             </div>
-        {% endfor %}
+        {% else %}
+            {{ field }}
+        {% endif %}
+    {% endfor %}
         <button type="submit" class="btn btn-success">Guardar</button>
         <a href="{% url 'proveedor_lista' %}" class="btn btn-secondary">Cancelar</a>
     </form>
