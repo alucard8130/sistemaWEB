@@ -11,4 +11,8 @@ class PresupuestoForm(forms.ModelForm):
             'mes': forms.Select(choices=[('', '---')] + [(i, i) for i in range(1,13)]),
             'monto': forms.NumberInput(attrs={'step': '0.01'}),
         }
-  
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # Recibes el usuario desde la vista
+        super().__init__(*args, **kwargs)
+        

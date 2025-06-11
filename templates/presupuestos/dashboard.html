@@ -28,9 +28,11 @@
             <select name="anio" class="form-select" onchange="this.form.submit()">
                 {% for y in 2022|get_range:2030 %}
                     <option value="{{ y }}" {% if y == anio %}selected{% endif %}>{{ y }}</option>
-                {% endfor %}
+                {% endfor %}    
             </select>
+            
         </div>
+        
         <div class="col-md-2">
             <label>Mes:</label>
             <select name="mes" class="form-select" onchange="this.form.submit()">
@@ -41,6 +43,7 @@
             </select>
         </div>
     </form>
+    
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card shadow-sm text-center p-3">
@@ -65,6 +68,9 @@
         <h5 class="mb-3">Evolución Presupuesto vs Gasto Real</h5>
         <canvas id="graficoLineal" height="100"></canvas>
     </div>
+    <div class="mt-4"> 
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
+          </div>
 </div>
 </body>
 </html>
