@@ -12,7 +12,9 @@
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Empresa</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Grupo</th>
                 <th>Subgrupo</th>
                 <th>Tipo de Gasto</th>
@@ -25,7 +27,9 @@
         <tbody>
         {% for p in presupuestos %}
             <tr>
+        {% if request.user.is_superuser %}
                 <td>{{ p.empresa }}</td>
+        {% endif %}
                 <td>{{ p.grupo }}</td>
                 <td>{{ p.subgrupo }}</td>
                 <td>{{ p.tipo_gasto }}</td>

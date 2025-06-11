@@ -1,5 +1,7 @@
 
 {% load humanize %}
+{% load math_filters %}
+{{ valor|div:1000 }}
 {% load range_filters %}
 <!DOCTYPE html>
 <html lang="es">
@@ -33,8 +35,8 @@
             <label>Mes:</label>
             <select name="mes" class="form-select" onchange="this.form.submit()">
                 <option value="0" {% if mes == 0 %}selected{% endif %}>Todo el año</option>
-                {% for i, m in "01 Ene,02 Feb,03 Mar,04 Abr,05 May,06 Jun,07 Jul,08 Ago,09 Sep,10 Oct,11 Nov,12 Dic".split(",") %}
-                    <option value="{{ i|slice:":2"|int }}" {% if mes == i|slice:":2"|int %}selected{% endif %}>{{ m|slice:"3:" }}</option>
+                {% for m in meses_esp %}
+                    <option value="{{ forloop.counter }}" {% if mes == forloop.counter %}selected{% endif %}>{{ m }}</option>
                 {% endfor %}
             </select>
         </div>

@@ -75,6 +75,10 @@ def dashboard_presupuestal(request):
 
     if not empresa:
         # Si no hay empresa, devuelve página vacía o mensaje amigable
+        meses_esp = [
+                "01 Ene", "02 Feb", "03 Mar", "04 Abr", "05 May", "06 Jun",
+                "07 Jul", "08 Ago", "09 Sep", "10 Oct", "11 Nov", "12 Dic"
+        ]
         contexto = {
             'empresas': empresas,
             'empresa_id': None,
@@ -86,6 +90,7 @@ def dashboard_presupuestal(request):
             'total_presupuestado': 0,
             'total_gastado': 0,
             'es_super': es_super,
+            'meses_esp': meses_esp,
         }
         return render(request, 'presupuestos/dashboard.html', contexto)
 
