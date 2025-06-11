@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>confirmar eliminar ppto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container mt-4">
+    <h3>¿Seguro que quieres eliminar el presupuesto de <strong>${{ presupuesto.monto|floatformat:2 }}</strong>?</h3>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'presupuesto_lista' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+</body>
+</html>

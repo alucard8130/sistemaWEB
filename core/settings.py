@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'proveedores',
     'empleados',
     'gastos',
+    'presupuestos',
   
 ]
 
