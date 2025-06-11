@@ -1,5 +1,7 @@
 # presupuestos/forms.py
 from django import forms
+
+from empresas.models import Empresa
 from .models import Presupuesto
 
 class PresupuestoForm(forms.ModelForm):
@@ -16,3 +18,13 @@ class PresupuestoForm(forms.ModelForm):
         user = kwargs.pop('user', None)  # Recibes el usuario desde la vista
         super().__init__(*args, **kwargs)
         
+        # Si el usuario no es superusuario, limita la empresa
+        if user and not user.is_superuser:
+            if hasattr(user, 'perfilusuario'):
+                self.fields['empresa'].queryset = Empresa.objects.filter(pk=user.perfilusuario.empresa.id)
+                self.fields['empresa'].initial = user.perfilusuario.empresa
+                self.fields['empresa'].widget.attrs['readonly'] = True
+                self.fields['empresa'].widget.attrs['disabled'] = True
+            
+            # Elimina el campo del form si no es superusuario
+                self.fields.pop('empresa')

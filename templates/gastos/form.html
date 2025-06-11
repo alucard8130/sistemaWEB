@@ -6,13 +6,13 @@
 </head>
 <body>
 
-<div class="container mt-4">
-    <h2>{% if modo == 'crear' %}Nuevo{% else %}Editar{% endif %} Gasto</h2>
+<div class="container mt-5">
+    <h2>{% if modo == 'crear' %}Registrar{% else %}Editar{% endif %} Gasto</h2>
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {% for field in form %}
             {% if field.field.widget.input_type != "hidden" %}
-                <div class="mb-3">
+                <div class="mb-4" >
                     {{ field.label_tag }} {{ field }}
                     {% if field.errors %}
                         <div class="text-danger">{{ field.errors }}</div>
@@ -26,5 +26,5 @@
         <a href="{% url 'gastos_lista' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
-</body>
+</body> 
 </html>

@@ -19,6 +19,7 @@ class TipoGastoForm(forms.ModelForm):
         }
 
 class GastoForm(forms.ModelForm):
+ 
     class Meta:
         model = Gasto
         fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'comprobante', 'observaciones']

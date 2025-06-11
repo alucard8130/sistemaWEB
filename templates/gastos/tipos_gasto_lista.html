@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Registrar Cobros</title>
+    <title>Alta tipo de gasto</title>
         <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
@@ -13,7 +13,7 @@
 </head>
 <body>
 <div class="container mt-4">
-    <h2>Tipos de Gasto</h2>
+    <h2>Lista tipos de gasto</h2>
     <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-success mb-2">+ Nuevo Tipo de Gasto</a>
     <table class="table table-striped">
         <thead>

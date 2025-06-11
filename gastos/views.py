@@ -73,6 +73,7 @@ def gasto_nuevo(request):
             gasto = form.save(commit=False)
             if not request.user.is_superuser:
                 gasto.empresa = request.user.perfilusuario.empresa
+
             gasto.save()
             return redirect('gastos_lista')
     else:

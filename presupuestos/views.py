@@ -23,24 +23,33 @@ def presupuesto_lista(request):
 @login_required
 def presupuesto_nuevo(request):
     if request.method == 'POST':
-        form = PresupuestoForm(request.POST)
+        form = PresupuestoForm(request.POST,user=request.user)
         if form.is_valid():
+            presupuesto = form.save(commit=False)
+            # Solo para usuarios normales, asigna empresa directamente
+            if not request.user.is_superuser:
+                presupuesto.empresa = request.user.perfilusuario.empresa
+            presupuesto.save()
             form.save()
             return redirect('presupuesto_lista')
     else:
-        form = PresupuestoForm()
+        form = PresupuestoForm(user=request.user)
     return render(request, 'presupuestos/form.html', {'form': form})
 
 @login_required
 def presupuesto_editar(request, pk):
     presupuesto = get_object_or_404(Presupuesto, pk=pk)
     if request.method == 'POST':
-        form = PresupuestoForm(request.POST, instance=presupuesto)
+        form = PresupuestoForm(request.POST, instance=presupuesto,user=request.user)
         if form.is_valid():
+            presupuesto = form.save(commit=False)
+            if not request.user.is_superuser:
+                presupuesto.empresa = request.user.perfilusuario.empresa
+            presupuesto.save()
             form.save()
             return redirect('presupuesto_lista')
     else:
-        form = PresupuestoForm(instance=presupuesto)
+        form = PresupuestoForm(instance=presupuesto,user=request.user)
     return render(request, 'presupuestos/form.html', {'form': form, 'presupuesto': presupuesto})
 
 @login_required

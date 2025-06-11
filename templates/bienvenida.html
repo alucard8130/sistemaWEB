@@ -151,19 +151,27 @@
     </li>
 
     <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Facturación</a>
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura</a></li>
             <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Cobros Facturas </a></li>
             <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
-            <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
-            <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
+            
             <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Informe Ingresos</a></li>
             <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
             {% if request.user.is_superuser %}
                 <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
             {% endif %}
         </ul>
+    </li>
+    <!-- MENÚ cartera -->
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
+            <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
+        </ul>
+    </li>
         <!-- MENÚ CATÁLOGOS -->
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Catálogos</a>
@@ -179,15 +187,21 @@
     </li>
     <!-- MENÚ GASTOS -->
     <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Gastos</a>
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Egresos</a>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Gasto</a></li>
-            <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Informe Gastos</a></li>
+            <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Informe Egresos</a></li>
+            
+        </ul>
+    </li>
+    <!-- MENÚ PPTOS -->
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
+        <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{% url 'presupuesto_nuevo'%}">Registrar PPTO</a></li>
             <li><a class="dropdown-item" href="{% url 'presupuesto_lista'%}">Reporte PPTO</a></li>
             <li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>
         </ul>
-    </li>
     </li>
 
     <li class="nav-item d-flex align-items-center">
