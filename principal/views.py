@@ -8,9 +8,11 @@ from django.db import transaction
 import openpyxl
 from empresas.models import Empresa
 from clientes.models import Cliente
+from gastos.models import Gasto
 from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import Factura, Pago
+from presupuestos.models import Presupuesto
 from principal.models import AuditoriaCambio
 # Create your views here.
 
@@ -36,6 +38,9 @@ def reiniciar_sistema(request):
                 AreaComun.objects.all().delete()
                 Cliente.objects.all().delete()
                 #Empresa.objects.all().delete()
+                #Gasto.objects.all().delete()  
+                #Presupuesto.objects.all().delete()  
+
             messages.success(request, '¡El sistema fue reiniciado exitosamente!')
         except Exception as e:
             messages.error(request, f'Error al reiniciar: {e}')

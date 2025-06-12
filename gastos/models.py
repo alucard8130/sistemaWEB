@@ -4,6 +4,8 @@ from django.db import models
 from empleados.models import Empleado
 from empresas.models import Empresa
 from proveedores.models import Proveedor
+from django.conf import settings
+from django.contrib.auth.models import User
 
 
 class GrupoGasto(models.Model):
@@ -50,5 +52,6 @@ class Gasto(models.Model):
     observaciones = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.fecha} - {self.tipo_gasto} - ${self.monto}"    
+        return f"{self.fecha} - {self.tipo_gasto} - ${self.monto}"  
 
+   

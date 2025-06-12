@@ -74,10 +74,4 @@ class GastoForm(forms.ModelForm):
             raise forms.ValidationError('Debes seleccionar un proveedor o un empleado.')
         return cleaned_data
 
-#class Pago_solicitudForm(forms.ModelForm):
- #   class Meta:
-  #      model = Pago_solicitud
-   #     fields = ['fecha_pago', 'monto', 'forma_pago','comprobante']
-    #    widgets = {
-     #       'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
-      #  }     
+   

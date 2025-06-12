@@ -109,7 +109,8 @@ def gasto_nuevo(request):
 
             if not request.user.is_superuser:
                 gasto.empresa = request.user.perfilusuario.empresa
-
+                
+            gasto.estatus = 'pendiente'    
             gasto.save()
             return redirect('gastos_lista')
     else:
