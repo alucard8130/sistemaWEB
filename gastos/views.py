@@ -1,13 +1,21 @@
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-
+from django.http import HttpResponse
+from openpyxl import Workbook
 from empleados.models import Empleado
 from empresas.models import Empresa
+from presupuestos.models import Presupuesto
 from proveedores.models import Proveedor
 from .forms import GastoForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
 from .models import Gasto, PagoGasto, SubgrupoGasto, TipoGasto
-
+from datetime import datetime
+from django.utils.timezone import localtime
+from django.db.models.functions import TruncMonth
+from django.db.models import Sum, Q, F, Value
+import calendar
+from django.db.models import Q, Sum
+from django.utils.dateparse import parse_date
 # Create your views here.
 @login_required
 def subgrupo_gasto_crear(request):
@@ -66,8 +74,6 @@ def gastos_lista(request):
     gastos = Gasto.objects.all()
     proveedores = Proveedor.objects.filter(activo=True)
     empleados = Empleado.objects.filter(activo=True)
-    #tipos_gasto = Gasto.objects.values_list('tipo_gasto', flat=True).distinct()
-    #tipos_gasto = Gasto._meta.get_field('tipo_gasto').choices
     tipos_gasto = TipoGasto.objects.all()
 
     proveedor_id = request.GET.get('proveedor')
@@ -168,7 +174,7 @@ def registrar_pago_gasto(request, gasto_id):
         'gasto': gasto,
         'saldo_restante': saldo_restante
     })
-# views.py
+
 
 @login_required
 def gasto_detalle(request, pk):
@@ -179,10 +185,7 @@ def gasto_detalle(request, pk):
         'gasto': gasto,
         'pagos': pagos,
     })
-# views.py
 
-from django.db.models import Q, Sum
-from django.utils.dateparse import parse_date
 
 @login_required
 def reporte_pagos_gastos(request):
@@ -236,3 +239,170 @@ def reporte_pagos_gastos(request):
         
         # Si tienes catálogos de proveedores, empleados y formas de pago pásalos aquí
     })
+
+@login_required
+def dashboard_pagos_gastos(request):
+    es_super = request.user.is_superuser
+    anio_actual = datetime.now().year
+    anio = int(request.GET.get('anio', anio_actual))
+
+    empresas = Empresa.objects.all() if es_super else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
+    empresa_id = request.GET.get('empresa')
+    proveedor_id = request.GET.get('proveedor')
+    empleado_id = request.GET.get('empleado')
+    forma_pago = request.GET.get('forma_pago')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    # --- FILTROS BÁSICOS ---
+    base_gastos = Q(fecha__year=anio)
+    if es_super and empresa_id:
+        base_gastos &= Q(empresa_id=empresa_id)
+    elif not es_super:
+        base_gastos &= Q(empresa=request.user.perfilusuario.empresa)
+    if proveedor_id:
+        base_gastos &= Q(proveedor_id=proveedor_id)
+    if empleado_id:
+        base_gastos &= Q(empleado_id=empleado_id)
+
+    # Gastos registrados ese año y filtro empresa
+    gastos = Gasto.objects.filter(base_gastos)
+
+    # PAGOS
+    pagos = PagoGasto.objects.filter(gasto__in=gastos)
+    if forma_pago:
+        pagos = pagos.filter(forma_pago=forma_pago)
+    if fecha_inicio:
+        pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
+    if fecha_fin:
+        pagos = pagos.filter(fecha_pago__lte=fecha_fin)
+
+    # PAGOS POR MES
+    pagos_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    pagos_mensuales = [0] * 12
+    for p in pagos_mes:
+        mes_idx = p['mes'].month - 1
+        pagos_mensuales[mes_idx] = float(p['total'])
+
+    # SALDOS PENDIENTES (por mes)
+    saldos_mes = []
+    for m in range(1, 13):
+        # Gastos registrados ese mes
+        gastos_mes = gastos.filter(fecha__month=m)
+        monto_gastos_mes = gastos_mes.aggregate(total=Sum('monto'))['total'] or 0
+        pagos_gastos_mes = PagoGasto.objects.filter(
+            gasto__in=gastos_mes,
+        ).aggregate(total=Sum('monto'))['total'] or 0
+        saldo = float(monto_gastos_mes) - float(pagos_gastos_mes or 0)
+        saldos_mes.append(saldo)
+
+    # PRESUPUESTO POR MES
+    presupuesto_mes = []
+    for m in range(1, 13):
+        pres = Presupuesto.objects.filter(empresa__in=empresas, anio=anio, mes=m).aggregate(total=Sum('monto'))['total'] or 0
+        presupuesto_mes.append(float(pres))
+
+    # KPI totales
+    total_pagado = sum(pagos_mensuales)
+    total_pendiente = sum(saldos_mes)
+    total_presupuesto = sum(presupuesto_mes)
+
+    # Catálogos
+    proveedores = Proveedor.objects.all()
+    empleados = Empleado.objects.all()
+    FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
+    meses = [calendar.month_abbr[m] for m in range(1, 13)]
+
+    return render(request, 'gastos/dashboard_pagos.html', {
+        'empresas': empresas,
+        'empresa_id': empresa_id,
+        'anio': anio,
+        'total_pagado': total_pagado,
+        'total_pendiente': total_pendiente,
+        'total_presupuesto': total_presupuesto,
+        'meses': meses,
+        'pagos_mensuales': pagos_mensuales,
+        'saldos_mes': saldos_mes,
+        'presupuesto_mes': presupuesto_mes,
+        'proveedores': proveedores,
+        'empleados': empleados,
+        'proveedor_id': proveedor_id,
+        'empleado_id': empleado_id,
+        'formas_pago': FORMAS_PAGO,
+        'forma_pago_actual': forma_pago,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'es_super': es_super,
+    })
+
+#exportar pagos de gastos a Excel
+@login_required
+def exportar_pagos_gastos_excel(request):
+    es_super = request.user.is_superuser
+    anio = request.GET.get('anio')
+    if anio and anio.isdigit():
+        anio = int(anio)
+    else:
+        anio = datetime.now().year
+    empresa_id = request.GET.get('empresa')
+    proveedor_id = request.GET.get('proveedor')
+    empleado_id = request.GET.get('empleado')
+    forma_pago = request.GET.get('forma_pago')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    
+    # Filtro de empresa
+    if es_super and empresa_id:
+        gastos = Gasto.objects.filter(empresa_id=empresa_id, fecha__year=anio)
+    else:
+        gastos = Gasto.objects.filter(empresa=request.user.perfilusuario.empresa, fecha__year=anio)
+
+    # Otros filtros
+    if proveedor_id:
+        gastos = gastos.filter(proveedor_id=proveedor_id)
+    if empleado_id:
+        gastos = gastos.filter(empleado_id=empleado_id)
+    if fecha_inicio:
+        gastos = gastos.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        gastos = gastos.filter(fecha__lte=fecha_fin)
+
+    # Solo los pagos
+    pagos = PagoGasto.objects.filter(gasto__in=gastos)
+    if forma_pago:
+        pagos = pagos.filter(forma_pago=forma_pago)
+
+    # --- Generar Excel ---
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pagos de Gastos"
+    ws.append([
+        "Fecha pago", "Empresa", "Proveedor/Empleado", "Concepto", 
+        "Forma de pago", "Monto", "Estatus"
+    ])
+
+    for pago in pagos.select_related('gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado'):
+        gasto = pago.gasto
+        # Mostrar proveedor o empleado
+        origen = gasto.proveedor.nombre if gasto.proveedor else (
+            gasto.empleado.nombre if gasto.empleado else ''
+        )
+        ws.append([
+            pago.fecha_pago.strftime('%d/%m/%Y') if pago.fecha_pago else '',
+            gasto.empresa.nombre if gasto.empresa else '',
+            origen,
+            gasto.descripcion,
+            pago.get_forma_pago_display(),
+            float(pago.monto),
+            gasto.estatus
+        ])
+
+    # --- Respuesta HTTP ---
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    filename = f"pagos_gastos_{anio}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    wb.save(response)
+    return response

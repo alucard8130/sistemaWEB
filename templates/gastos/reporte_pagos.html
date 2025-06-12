@@ -59,8 +59,13 @@
 
         <div class="col-md-2 align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-secondary">Limpiar</a>
         </div>
         <div>
+            
+            <a href="{% url 'exportar_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-success ">
+                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+            </a>
             <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar Menu</a>
         </div>
         

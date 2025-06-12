@@ -30,9 +30,7 @@
                     <option value="{{ y }}" {% if y == anio %}selected{% endif %}>{{ y }}</option>
                 {% endfor %}    
             </select>
-            
         </div>
-        
         <div class="col-md-2">
             <label>Mes:</label>
             <select name="mes" class="form-select" onchange="this.form.submit()">
@@ -40,6 +38,7 @@
                 {% for m in meses_esp %}
                     <option value="{{ forloop.counter }}" {% if mes == forloop.counter %}selected{% endif %}>{{ m }}</option>
                 {% endfor %}
+                
             </select>
         </div>
     </form>
@@ -48,29 +47,29 @@
         <div class="col-md-4">
             <div class="card shadow-sm text-center p-3">
                 <div class="h6">Total Presupuestado</div>
-                <div class="display-6 text-success">${{ total_presupuestado|floatformat:2|intcomma }}</div>
+                <div class="display-8 text-success">${{ total_presupuestado|floatformat:2|intcomma }}</div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card shadow-sm text-center p-3">
-                <div class="h6">Total Gastado</div>
-                <div class="display-6 text-danger">${{ total_gastado|floatformat:2|intcomma }}</div>
+                <div class="h6">Total Egresos</div>
+                <div class="display-8 text-danger">${{ total_gastado|floatformat:2|intcomma }}</div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card shadow-sm text-center p-3">
                 <div class="h6">% Ejercido</div>
-                <div class="display-6">{{ total_gastado|div:total_presupuestado|floatformat:2 }}%</div>
+                <div class="display-8">{{ total_gastado|div:total_presupuestado|floatformat:2 }}%</div>
             </div>
         </div>
     </div>
+
     <div class="card p-4">
-        <h5 class="mb-3">Evolución Presupuesto vs Gasto Real</h5>
-        <canvas id="graficoLineal" height="100"></canvas>
+        <h5 class="mb-3">Evolución Presupuesto vs Egresos registrados</h5>
+        <canvas id="graficoLineal" style="height: 300px"></canvas>
     </div>
-    <div class="mt-4"> 
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
-          </div>
+    <div class="mt-2"><a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a></div>
+    
 </div>
 </body>
 </html>
