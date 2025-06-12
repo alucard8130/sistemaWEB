@@ -43,6 +43,7 @@ class GastoForm(forms.ModelForm):
 
         self.fields['empresa'].required = False
         self.fields['descripcion'].required = True
+        self.fields['comprobante'].required = True
 
         # Por defecto vacíos si no hay empresa
         self.fields['proveedor'].queryset = Proveedor.objects.none()

@@ -3,9 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 
 from empleados.models import Empleado
+from empresas.models import Empresa
 from proveedores.models import Proveedor
 from .forms import GastoForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
-from .models import Gasto, SubgrupoGasto, TipoGasto
+from .models import Gasto, PagoGasto, SubgrupoGasto, TipoGasto
 
 # Create your views here.
 @login_required
@@ -166,4 +167,72 @@ def registrar_pago_gasto(request, gasto_id):
         'form': form,
         'gasto': gasto,
         'saldo_restante': saldo_restante
+    })
+# views.py
+
+@login_required
+def gasto_detalle(request, pk):
+    gasto = get_object_or_404(Gasto, pk=pk)
+    pagos = gasto.pagos.all().order_by('fecha_pago')
+
+    return render(request, 'gastos/gasto_detalle.html', {
+        'gasto': gasto,
+        'pagos': pagos,
+    })
+# views.py
+
+from django.db.models import Q, Sum
+from django.utils.dateparse import parse_date
+
+@login_required
+def reporte_pagos_gastos(request):
+    es_super = request.user.is_superuser
+    pagos = PagoGasto.objects.select_related('gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado')
+
+    # Filtros
+    empresas = Empresa.objects.all() if es_super else Empresa.objects.filter(pk=request.user.perfilusuario.empresa.id)
+    empresa_id = request.GET.get('empresa')
+    proveedor_id = request.GET.get('proveedor')
+    empleado_id = request.GET.get('empleado')
+    forma_pago = request.GET.get('forma_pago')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    if not es_super:
+        pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
+    elif empresa_id:
+        pagos = pagos.filter(gasto__empresa_id=empresa_id)
+
+    if proveedor_id:
+        pagos = pagos.filter(gasto__proveedor_id=proveedor_id)
+    if empleado_id:
+        pagos = pagos.filter(gasto__empleado_id=empleado_id)
+    if forma_pago:
+        pagos = pagos.filter(forma_pago=forma_pago)
+    if fecha_inicio:
+        pagos = pagos.filter(fecha_pago__gte=parse_date(fecha_inicio))
+    if fecha_fin:
+        pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
+
+    total = pagos.aggregate(total=Sum('monto'))['total'] or 0
+
+    proveedores = Proveedor.objects.all()
+    empleados = Empleado.objects.all()
+    FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
+    
+    return render(request, 'gastos/reporte_pagos.html', {
+        'pagos': pagos,
+        'empresas': empresas,
+        'empresa_id': empresa_id,
+        'proveedores': proveedores,
+        'empleados': empleados,
+        'forma_pago_actual': forma_pago,
+        'total': total,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'proveedor_id': proveedor_id,
+        'empleado_id': empleado_id,
+        'formas_pago': FORMAS_PAGO,
+        
+        # Si tienes catálogos de proveedores, empleados y formas de pago pásalos aquí
     })

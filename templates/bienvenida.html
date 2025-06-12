@@ -157,7 +157,7 @@
             <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Cobros Facturas </a></li>
             <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
             
-            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Informe Ingresos</a></li>
+            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Ingresos</a></li>
             <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
             {% if request.user.is_superuser %}
                 <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
@@ -193,7 +193,7 @@
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Nueva Solicitud</a></li>
             <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Informe Solicitudes</a></li>
-            
+            <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Egresos</a></li>
         </ul>
     </li>
     <!-- MENÚ PPTOS -->
