@@ -1,3 +1,4 @@
+{% load archivo_existe %}
 {% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
@@ -86,6 +87,7 @@
                 <th>Forma de cobro</th>
                 <th>Factura</th>
                 <th>Fecha Cobro</th>
+                <th>Comprobante</th>
             </tr>
         </thead>
         <tbody>
@@ -108,6 +110,12 @@
                     <td>{{ pago.forma_pago|title }}</td>
                     <td>{{ pago.factura.folio }}</td>
                     <td>{{ pago.fecha_pago }}</td>  
+                    <td>
+                        {% if pago.comprobante and pago.comprobante|archivo_existe %}
+                            <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
+                        {% elif pago.comprobante %}
+                            
+                        {% endif %}
                 </tr>
             {% empty %}
                 <tr><td colspan="6">No hay ingresos registrados.</td></tr>

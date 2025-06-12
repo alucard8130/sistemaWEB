@@ -39,7 +39,7 @@ def crear_factura(request):
     superuser_auth_ok = False
 
     if request.method == 'POST':
-        form = FacturaForm(request.POST, user=request.user)
+        form = FacturaForm(request.POST, request.FILES, user=request.user)
         superuser_username = request.POST.get('superuser_username')
         superuser_password = request.POST.get('superuser_password')
 
@@ -307,7 +307,7 @@ def registrar_pago(request, factura_id):
         return redirect('lista_facturas')
 
     if request.method == 'POST':
-        form = PagoForm(request.POST)
+        form = PagoForm(request.POST,request.FILES)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.factura = factura           # SIEMPRE antes de save()

@@ -19,7 +19,7 @@
     <p><strong>Cobrado:</strong> ${{ factura.total_pagado|floatformat:2|intcomma }}</p>
     <p><strong>Saldo pendiente:</strong> ${{ saldo|floatformat:2|intcomma }}</p>
 
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit" class="btn btn-success">Registrar cobro</button>
