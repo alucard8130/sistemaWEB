@@ -179,7 +179,9 @@
             <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
             <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Empleados</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+            {% if request.user.is_superuser %}
+                <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+            {% endif %}
             <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
             <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
             <!-- Agrega aquí más catálogos si lo deseas -->

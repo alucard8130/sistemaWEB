@@ -7,8 +7,8 @@
 </head>
 <body>
 <div class="container mt-5">
-    <h2>Registrar Pago para la Solicitud #{{ gasto.id }}</h2>
-    <p><strong>Concepto:</strong> {{ gasto.concepto }}</p>
+    <h2>Registrar Pago para la Solicitud numero: {{ gasto.id }}</h2>
+    <p><strong>Concepto:</strong> {{ gasto.descripcion }}</p>
     <p><strong>Monto original:</strong> ${{ gasto.monto|floatformat:2|intcomma }}</p>
     <p><strong>Pagado:</strong> ${{ gasto.total_pagado|floatformat:2|intcomma }}</p>
     <p><strong>Saldo restante:</strong> ${{ saldo_restante|floatformat:2|intcomma }}</p>

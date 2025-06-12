@@ -15,6 +15,7 @@
 <div class="container mt-4">
     <h2>Lista tipos de gasto</h2>
     <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-success mb-2">+ Nuevo Tipo de Gasto</a>
+    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-2">Volver al menú</a>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -42,7 +43,7 @@
         {% endfor %}
         </tbody>
     </table>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
+    
 </div>
 </body>
 </html>
