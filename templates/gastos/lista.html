@@ -1,5 +1,5 @@
 {% load humanize %}
-
+{% load archivo_existe %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,7 +9,37 @@
 <body>
 <div class="container mt-4">
     <h2>Reporte Egresos</h2>
+    <form method="get" class="row g-2 mb-3">
+    <div class="col">
+        <select name="proveedor" class="form-select">
+            <option value="">Todos los proveedores</option>
+            {% for proveedor in proveedores %}
+                <option value="{{ proveedor.id }}" {% if proveedor_id == proveedor.id|stringformat:"s" %}selected{% endif %}>{{ proveedor.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col">
+        <select name="empleado" class="form-select">
+            <option value="">Todos los empleados</option>
+            {% for empleado in empleados %}
+                <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col">
+        <select name="tipo_gasto" class="form-select">
+            <option value="">Todos los tipos</option>
+            {% for tipo in tipos_gasto %}
+                <option value="{{ tipo.id }}" {% if tipo_gasto_sel == tipo.id %}selected{% endif %}>{{ tipo }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+    </div>
+</form>
     <a href="{% url 'gasto_nuevo' %}" class="btn btn-success mb-2">+ Nuevo Gasto</a>
+    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-2">Volver al menú</a>
     <table class="table table-bordered">
         <thead>
             <tr>
@@ -22,6 +52,7 @@
                 <th>Descripción</th>
                 <th>Monto</th>
                 <th>Acciones</th>
+                <th>Comprobante</th>
             </tr>
         </thead>
         <tbody>
@@ -44,13 +75,20 @@
                     <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-primary btn-sm">Editar</a>
                     <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-danger btn-sm">Eliminar</a>
                 </td>
-            </tr>
+                <td>
+                    {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
+                        <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver Comprobante</a>
+                    {% elif gasto.comprobante %}
+                        
+                    {% endif %}             
+                </td>
+            </tr>   
         {% empty %}
             <tr><td colspan="8">No hay gastos registrados.</td></tr>
         {% endfor %}
         </tbody>
     </table>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
+    
 </div>
 </body> 
 </html>

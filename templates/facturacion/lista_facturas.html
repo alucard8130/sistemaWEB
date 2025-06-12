@@ -122,7 +122,7 @@
                     </td>
                     <td>
                         {% if factura.cfdi and factura.cfdi|archivo_existe %}
-                            <a href="{{ factura.cfdi.url }}" target="_blank">Ver CFDI</a>
+                            <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-light btn-sm"> Ver CFDI</a>
                         {% elif factura.cfdi %}
                             
                         {% endif %}

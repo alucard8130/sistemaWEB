@@ -40,7 +40,7 @@ class Gasto(models.Model):
     descripcion = models.CharField(max_length=255, blank=True)
     fecha = models.DateField()
     monto = models.DecimalField(max_digits=12, decimal_places=2)
-    comprobante = models.FileField(upload_to='comprobantes/', blank=True, null=True)
+    comprobante = models.FileField(upload_to='comprobantes_gastos/', blank=True, null=True)
     observaciones = models.TextField(blank=True, null=True)
 
     def __str__(self):

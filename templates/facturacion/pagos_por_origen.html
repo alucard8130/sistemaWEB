@@ -112,7 +112,7 @@
                     <td>{{ pago.fecha_pago }}</td>  
                     <td>
                         {% if pago.comprobante and pago.comprobante|archivo_existe %}
-                            <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
+                            <a href="{{ pago.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver Comprobante</a>
                         {% elif pago.comprobante %}
                             
                         {% endif %}
