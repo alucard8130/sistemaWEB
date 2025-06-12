@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from empleados.models import Empleado
 from proveedores.models import Proveedor
-from .forms import GastoForm, SubgrupoGastoForm, TipoGastoForm
+from .forms import GastoForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
 from .models import Gasto, SubgrupoGasto, TipoGasto
 
 # Create your views here.
@@ -140,3 +140,30 @@ def gasto_eliminar(request, pk):
         gasto.delete()
         return redirect('gastos_lista')
     return render(request, 'gastos/confirmar_eliminar.html', {'gasto': gasto})
+
+@login_required
+def registrar_pago_gasto(request, gasto_id):
+    gasto = get_object_or_404(Gasto, pk=gasto_id)
+    pagos = gasto.pagos.all()
+    saldo_restante = gasto.monto - sum([p.monto for p in pagos])
+
+    if request.method == 'POST':
+        form = PagoGastoForm(request.POST)
+        if form.is_valid():
+            pago = form.save(commit=False)
+            pago.gasto = gasto
+            pago.registrado_por = request.user
+            if pago.monto > saldo_restante:
+                form.add_error('monto', f"El monto excede el saldo pendiente (${saldo_restante:.2f})")
+            else:
+                pago.save()
+                gasto.actualizar_estatus()
+                return redirect('gastos_lista')
+    else:
+        form = PagoGastoForm()
+
+    return render(request, 'gastos/registrar_pago.html', {
+        'form': form,
+        'gasto': gasto,
+        'saldo_restante': saldo_restante
+    })

@@ -51,6 +51,7 @@
                 <th>Proveedor/Empleado</th>
                 <th>Descripción</th>
                 <th>Monto</th>
+                <th>Saldo</th>
                 <th>Status</th>
                 <th>Acciones</th>
                 <th>CFDI</th>
@@ -72,13 +73,21 @@
                 {% endif %}
                 <td>{{ gasto.descripcion }}</td>
                 <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
-
+                <td>${{ gasto.saldo_restante|floatformat:2|intcomma }}</td>
                 <td>{{ gasto.get_estatus_display }}</td>
-                
                 <td>
-                    <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-primary btn-sm">Editar</a>
-                    <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-danger btn-sm">Eliminar</a>
-                </td>
+                        {% if gasto.saldo_restante > 0 %}
+                            <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-success btn-sm">Registrar Pago</a>
+                            <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-primary btn-sm">Editar</a>
+                        {% else %}
+                            <span class="text-muted"></span>
+                        {% endif %}
+                       
+                        {% if user.is_superuser %}
+                            <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                        {% endif %}   
+                    </td>
+    
                 <td>
                     {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
                         <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver CFDI</a>

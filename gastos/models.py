@@ -1,6 +1,7 @@
 
 # Create your models here.
 from django.db import models
+from django.db.models import Sum
 from empleados.models import Empleado
 from empresas.models import Empresa
 from proveedores.models import Proveedor
@@ -54,4 +55,48 @@ class Gasto(models.Model):
     def __str__(self):
         return f"{self.fecha} - {self.tipo_gasto} - ${self.monto}"  
 
+    @property
+    def total_pagado(self):
+        return sum(p.monto for p in self.pagos.all())
+
+    @property
+    def saldo_restante(self):
+        total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
+        return self.monto - total_pagado
+
+    
+    def actualizar_estatus(self):
+        total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
+        if total_pagado >= self.monto:
+            self.estatus = 'pagado'
+        elif total_pagado == 0:
+            self.estatus = 'pendiente'
+        else:
+            self.estatus = 'pendiente'  # O podrías poner un "parcial" si agregas esa opción
+        self.save()
    
+        
+
+from django.db import models
+from django.contrib.auth.models import User
+
+class PagoGasto(models.Model):
+    gasto = models.ForeignKey('Gasto', on_delete=models.CASCADE, related_name='pagos')
+    fecha_pago = models.DateField()
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+    forma_pago = models.CharField(
+        max_length=30,
+        choices=[('transferencia', 'Transferencia'),('efectivo', 'Efectivo') , ('cheque', 'Cheque'), ('tarjeta', 'Tarjeta')],
+        default='transferencia'
+    )
+    referencia = models.CharField(max_length=100, blank=True, null=True)
+    registrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        ordering = ['-fecha_pago']
+
+    def __str__(self):
+        return f'Pago de ${self.monto} para gasto {self.gasto.id}'
+
+    
+  
