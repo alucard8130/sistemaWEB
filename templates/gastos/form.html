@@ -50,17 +50,14 @@
 </div>
 <script>
 function mostrarOrigen() {
-    const radios = document.getElementsByName("origen_tipo");
-    let tipo = "";
-    radios.forEach(radio => { if (radio.checked) tipo = radio.value; });
+     var tipo = document.getElementById("id_origen_tipo").value;
     document.getElementById('campo_proveedor').style.display = tipo === "proveedor" ? "block" : "none";
     document.getElementById('campo_empleado').style.display = tipo === "empleado" ? "block" : "none";
 }
 document.addEventListener("DOMContentLoaded", function() {
     mostrarOrigen();
-    document.querySelectorAll('input[name="origen_tipo"]').forEach(function(radio) {
-        radio.addEventListener("change", mostrarOrigen);
-    });
+   document.getElementById("id_origen_tipo").addEventListener("change", mostrarOrigen);
+
 });
 </script>
 </body> 

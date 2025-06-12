@@ -41,7 +41,14 @@ class Gasto(models.Model):
     fecha = models.DateField()
     monto = models.DecimalField(max_digits=12, decimal_places=2)
     comprobante = models.FileField(upload_to='comprobantes_gastos/', blank=True, null=True)
+    STATUS_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('pagada', 'Pagada'),
+        ('cancelada', 'Cancelada'),
+    ]
+    estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
     observaciones = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.fecha} - {self.tipo_gasto} - ${self.monto}"    
+

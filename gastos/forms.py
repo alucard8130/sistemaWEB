@@ -22,11 +22,7 @@ class TipoGastoForm(forms.ModelForm):
         }
 
 class GastoForm(forms.ModelForm):
-    origen_tipo = forms.ChoiceField(
-        choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],
-        widget=forms.RadioSelect,
-        label="Tipo de origen",
-    )
+    origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True)
 
  
     class Meta:
@@ -77,4 +73,11 @@ class GastoForm(forms.ModelForm):
         if not proveedor and not empleado:
             raise forms.ValidationError('Debes seleccionar un proveedor o un empleado.')
         return cleaned_data
-     
+
+#class Pago_solicitudForm(forms.ModelForm):
+ #   class Meta:
+  #      model = Pago_solicitud
+   #     fields = ['fecha_pago', 'monto', 'forma_pago','comprobante']
+    #    widgets = {
+     #       'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
+      #  }     
