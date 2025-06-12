@@ -18,8 +18,7 @@
                 {% endif %}
                 <th>Fecha</th>
                 <th>Tipo de Gasto</th>
-                <th>Proveedor</th>
-                <th>Empleado</th>
+                <th>Proveedor/Empleado</th>
                 <th>Descripción</th>
                 <th>Monto</th>
                 <th>Acciones</th>
@@ -34,8 +33,11 @@
                 
                 <td>{{ gasto.fecha }}</td>
                 <td>{{ gasto.tipo_gasto }}</td>
-                <td>{{ gasto.proveedor }}</td>
-                <td>{{ gasto.empleado }}</td>
+                {% if gasto.proveedor %}
+                    <td>{{ gasto.proveedor.nombre }}</td>
+                {% else %}
+                    <td>{{ gasto.empleado.nombre }}</td>
+                {% endif %}
                 <td>{{ gasto.descripcion }}</td>
                 <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
                 <td>

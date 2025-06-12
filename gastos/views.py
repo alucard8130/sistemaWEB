@@ -68,9 +68,15 @@ def gastos_lista(request):
 @login_required
 def gasto_nuevo(request):
     if request.method == 'POST':
-        form = GastoForm(request.POST, request.FILES, user=request.user)
+        form = GastoForm(request.POST or None, request.FILES, user=request.user)
         if form.is_valid():
             gasto = form.save(commit=False)
+            origen = form.cleaned_data['origen_tipo']
+            if origen == 'proveedor':
+                gasto.empleado = None
+            elif origen == 'empleado':
+                gasto.proveedor = None
+
             if not request.user.is_superuser:
                 gasto.empresa = request.user.perfilusuario.empresa
 
@@ -88,7 +94,7 @@ def gasto_editar(request, pk):
     if not request.user.is_superuser and gasto.empresa != request.user.perfilusuario.empresa:
         return redirect('gastos_lista')
     if request.method == 'POST':
-        form = GastoForm(request.POST, request.FILES, instance=gasto, user=request.user)
+        form = GastoForm(request.POST or None, request.FILES, instance=gasto, user=request.user)
         if form.is_valid():
             form.save()
             return redirect('gastos_lista')

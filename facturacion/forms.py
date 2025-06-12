@@ -11,7 +11,7 @@ class FacturaForm(forms.ModelForm):
     class Meta:
         model = Factura
         #fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto', 'estatus','observaciones']
-        fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto', 'observaciones']
+        fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto','fact_sat', 'observaciones']
         widgets = {
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}),
         }
@@ -52,7 +52,7 @@ class FacturaForm(forms.ModelForm):
 class PagoForm(forms.ModelForm):
     class Meta:
         model = Pago
-        fields = ['fecha_pago', 'monto', 'forma_pago']
+        fields = ['fecha_pago', 'monto', 'forma_pago','comprobante']
         widgets = {
             'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
         }

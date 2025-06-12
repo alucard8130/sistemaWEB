@@ -18,7 +18,7 @@
 {% endif %}
 </div>
 <div class="container mt-4">
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="mb-3">
             {{ form.cliente.label_tag }}
@@ -67,6 +67,13 @@
             {{ form.monto }}
             {% if form.monto.errors %}
                 <div class="text-danger">{{ form.monto.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.fact_sat.label_tag }}
+            {{ form.fact_sat }}
+            {% if form.fact_sat.errors %}
+                <div class="text-danger">{{ form.fact_sat.errors }}</div>
             {% endif %}
         </div>
         <div class="mb-3">

@@ -23,6 +23,7 @@ class Factura(models.Model):
     ]   
     tipo_cuota= models.CharField(max_length=100, choices=TIPO_CUOTA_CHOICES)
     folio = models.CharField(max_length=100, unique=True)
+    fact_sat = models.FileField(upload_to='fact_sat/', max_length=255, blank=True, null=True)
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField(blank=True, null=True)
     monto = models.DecimalField(max_digits=20, decimal_places=2)
@@ -41,8 +42,6 @@ class Factura(models.Model):
     class Meta:
         ordering = ['-fecha_emision']
     
-    
-
   
     @property
     def total_pagado(self):
@@ -76,6 +75,7 @@ class Pago(models.Model):
     fecha_pago = models.DateField(blank=True, null=True)
     monto = models.DecimalField(max_digits=20, decimal_places=2)
     forma_pago = models.CharField(max_length=100, choices=FORMAS_PAGO, default='transferencia')
+    comprobante = models.FileField(upload_to='comprobantes/', blank=True, null=True)
     registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
