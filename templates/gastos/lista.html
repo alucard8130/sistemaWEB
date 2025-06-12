@@ -3,12 +3,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Informe gastos</title>
+    <title>Lista Solicitudes de Gasto</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 <div class="container mt-4">
-    <h2>Reporte Egresos</h2>
+    <h2>Solicitudes Gastos</h2>
     <form method="get" class="row g-2 mb-3">
     <div class="col">
         <select name="proveedor" class="form-select">
@@ -38,7 +38,7 @@
         <button type="submit" class="btn btn-primary">Filtrar</button>
     </div>
 </form>
-    <a href="{% url 'gasto_nuevo' %}" class="btn btn-success mb-2">+ Nuevo Gasto</a>
+    <a href="{% url 'gasto_nuevo' %}" class="btn btn-success mb-2">+ Nueva Solicitud</a>
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-2">Volver al menú</a>
     <table class="table table-bordered">
         <thead>
@@ -51,8 +51,9 @@
                 <th>Proveedor/Empleado</th>
                 <th>Descripción</th>
                 <th>Monto</th>
+                <th>Status</th>
                 <th>Acciones</th>
-                <th>Comprobante</th>
+                <th>CFDI</th>
             </tr>
         </thead>
         <tbody>
@@ -71,13 +72,16 @@
                 {% endif %}
                 <td>{{ gasto.descripcion }}</td>
                 <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
+
+                <td>{{ gasto.get_estatus_display }}</td>
+                
                 <td>
                     <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-primary btn-sm">Editar</a>
                     <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-danger btn-sm">Eliminar</a>
                 </td>
                 <td>
                     {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
-                        <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver Comprobante</a>
+                        <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver CFDI</a>
                     {% elif gasto.comprobante %}
                         
                     {% endif %}             
