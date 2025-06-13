@@ -3,6 +3,7 @@
 {% load math_filters %}
 {% load presupuesto_tags %}
 
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -14,10 +15,12 @@
 <h3>Presupuesto {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
 <form method="post">
     {% csrf_token %}
-    
     <div class="table-responsive">
-        <p>Tipos: {{ tipos|length }}</p>
-        <p>Jerarquia: {{ jerarquia }}</p>    
+        <pre>
+            grupos: {{ jerarquia.keys|length }}
+            subgrupos: {{ jerarquia.values.0.keys|length }}
+            tipos: {{ jerarquia.values.0.values.0|length }}
+        </pre>
         <table class="table table-bordered table-sm align-middle">
             <thead>
                 <tr>
@@ -39,11 +42,12 @@
                             <td>{{ tipo.nombre }}</td>
                             {% for mes in meses %}
                                 <td>
-                                    {% get_presupuesto presup_dict tipo.id mes as presup %}
-                                    <input type="number" step="0.01" min="0"
-                                        name="presupuesto_{{ tipo.id }}_{{ mes }}"
-                                        class="form-control form-control-sm"
-                                        value="{% if presup %}{{ presup.monto|floatformat:2 }}{% else %}0{% endif %}">
+                                    {% with presup=presup_dict|get_item:tipo.id|get_item:mes %}
+                                        <input type="number" step="0.01" min="0"
+                                            name="presupuesto_{{ tipo.id }}_{{ mes }}"
+                                            class="form-control form-control-sm"
+                                            value="{% if presup %}{{ presup.monto|floatformat:2 }}{% else %}0{% endif %}">
+                                    {% endwith %}
                                 </td>
                             {% endfor %}
                         </tr>
