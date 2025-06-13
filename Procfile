@@ -1,1 +1,1 @@
-web: gunicorn sistema_empresarial.wsgi
+web: gunicorn core.wsgi
