@@ -239,3 +239,58 @@ def matriz_presupuesto(request):
         "empresa": empresa,
         "is_super": request.user.is_superuser,
     })
+
+@login_required
+def matriz_simple_presupuesto(request):
+    anio = int(request.GET.get('anio', now().year))
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get('empresa')
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    meses = list(range(1, 13))
+    meses_nombres = [month_name[m].capitalize() for m in meses]
+    tipos = TipoGasto.objects.all().order_by('nombre')
+    presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
+
+    # Calcular totales por mes
+    totales_mes = {mes: 0 for mes in meses}
+    for tipo in tipos:
+        for mes in meses:
+            key = (tipo.id, mes)
+            pres = presup_dict.get(key)
+            if pres:
+                totales_mes[mes] += float(pres.monto)
+
+    if request.method == "POST":
+        for tipo in tipos:
+            for mes in meses:
+                key = f"presupuesto_{tipo.id}_{mes}"
+                monto = request.POST.get(key)
+                if monto is not None:
+                    monto = float(monto or 0)
+                    obj, created = Presupuesto.objects.get_or_create(
+                        empresa=empresa, tipo_gasto=tipo, anio=anio, mes=mes,
+                        defaults={"monto": monto}
+                    )
+                    if not created and obj.monto != monto:
+                        obj.monto = monto
+                        obj.save()
+        messages.success(request, "Presupuestos actualizados")
+        return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
+
+    return render(request, "presupuestos/matriz_simple.html", {
+        "tipos": tipos,
+        "meses": meses,
+        "meses_nombres": meses_nombres,
+        "presup_dict": presup_dict,
+        "anio": anio,
+        "empresas": empresas,
+        "empresa": empresa,
+        "is_super": request.user.is_superuser,
+        "totales_mes": totales_mes,
+    })
