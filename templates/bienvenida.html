@@ -16,7 +16,7 @@
         <div class="container-fluid px-5">
             <a class="navbar-brand d-flex align-items-center" href="#">
                 <img src="{% static 'img/logo.png' %}" alt="Logo" class="navbar-logo">
-                <span class="ms-1 fw-bold welcome-title-logo">GAC</span>
+                <span class="ms-1 fw-bold welcome-title-logo"></span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarOpciones" aria-controls="navbarOpciones" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -103,7 +103,9 @@
                             <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
                             <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Empleados</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+                            {% if request.user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+                            {% endif %}
                             <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
                             <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
                             <!-- Agrega aquí más catálogos si lo deseas -->
@@ -152,7 +154,7 @@
     <main class="main-content">
         <div class="welcome-box text-center">
             <img src="{% static 'img/logo.png' %}" alt="Logo" class="welcome-logo">
-            <p class="mb-5 text-muted mt-0">Gestor Administrativo Condominal<br><strong>GAC</strong></p>
+            <p class="mb-5 text-muted mt-0"><strong>Gestor Administrativo Condominal</strong><br></p>
             <hr class="welcome-divider mb-4">
             <br>
             <h1 class="welcome-title mb-1">Bienvenido <br> {{ request.user.get_full_name|default:request.user.username }}</h1>
