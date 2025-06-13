@@ -192,7 +192,7 @@
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Egresos</a>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Nueva Solicitud</a></li>
-            <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Informe Solicitudes</a></li>
+            <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Reporte Solicitudes</a></li>
             <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Egresos</a></li>
             <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Egresos</a></li>
         </ul>
@@ -202,6 +202,7 @@
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{% url 'presupuesto_nuevo'%}">Registrar PPTO</a></li>
+            <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Registrar PPTOver2</a></li>
             <li><a class="dropdown-item" href="{% url 'presupuesto_lista'%}">Reporte PPTO</a></li>
             <li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>
         </ul>
