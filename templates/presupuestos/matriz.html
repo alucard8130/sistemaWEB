@@ -12,50 +12,52 @@
 </head>
 <body>
 <div class="container mt-4">
-<h3>Presupuesto {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
 <form method="post">
     {% csrf_token %}
     <div class="table-responsive">
-        <pre>
-            grupos: {{ jerarquia.keys|length }}
-            subgrupos: {{ jerarquia.values.0.keys|length }}
-            tipos: {{ jerarquia.values.0.values.0|length }}
-        </pre>
+        
+
         <table class="table table-bordered table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Grupo</th>
-                    <th>Subgrupo</th>
-                    <th>Tipo de Gasto</th>
-                    {% for mes_nombre in meses_nombres %}
-                        <th>{{ mes_nombre }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-            {% for grupo, subgrupos in jerarquia.items %}
-                {% for subgrupo, tipos in subgrupos.items %}
-                    {% for tipo in tipos %}
-                        <tr>
-                            <td>{{ grupo.nombre }}</td>
-                            <td>{{ subgrupo.nombre }}</td>
-                            <td>{{ tipo.nombre }}</td>
-                            {% for mes in meses %}
-                                <td>
-                                    {% with presup=presup_dict|get_item:tipo.id|get_item:mes %}
-                                        <input type="number" step="0.01" min="0"
-                                            name="presupuesto_{{ tipo.id }}_{{ mes }}"
-                                            class="form-control form-control-sm"
-                                            value="{% if presup %}{{ presup.monto|floatformat:2 }}{% else %}0{% endif %}">
-                                    {% endwith %}
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
+    <thead>
+        <tr>
+            <th>Grupo</th>
+            <th>Subgrupo</th>
+            <th>Tipo de Gasto</th>
+            {% for mes_nombre in meses_nombres %}
+                <th>{{ mes_nombre }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for grupo, subgrupos in jerarquia.items %}
+            {% for subgrupo, tipos in subgrupos.items %}
+                {% for tipo in tipos %}
+                    <tr>
+                        {% if forloop.first and forloop.parentloop.first %}
+                            <td rowspan="{{ subgrupos|length|add:'0'|mul:tipos|length }}">{{ grupo.nombre }}</td>
+                        {% endif %}
+                        {% if forloop.first %}
+                            <td rowspan="{{ tipos|length }}">{{ subgrupo.nombre }}</td>
+                        {% endif %}
+                        <td>{{ tipo.nombre }}</td>
+                        {% for mes in meses %}
+                            <td>
+                                {% with key=tipo.id|stringformat:"s"|add:"_"|add:mes|stringformat:"s" %}
+                                    <input type="number" step="0.01" min="0"
+                                        name="presupuesto_{{ tipo.id }}_{{ mes }}"
+                                        class="form-control form-control-sm"
+                                        value="{% if presup_dict|get_item:tipo.id|get_item:mes %}{{ presup_dict|get_item:tipo.id|get_item:mes.monto }}{% else %}0{% endif %}">
+                                {% endwith %}
+                            </td>
+                        {% endfor %}
+                    </tr>
                 {% endfor %}
             {% endfor %}
-            </tbody>
-        </table>
+        {% endfor %}
+    </tbody>
+</table>
+
+
     </div>
     <button class="btn btn-success">Guardar cambios</button>
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar Menú</a>

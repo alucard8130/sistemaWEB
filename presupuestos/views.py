@@ -165,8 +165,15 @@ def matriz_presupuesto(request):
 
     # Prepara jerarquía y rowspans
     tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
-        'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre'
-    )
+        'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre')
+    print("TIPOS TOTAL:", tipos.count())
+    if tipos.count() == 0:
+        print("¡No hay tipos de gasto en la BD!")       
+    
+
+
+   
+
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
 
@@ -174,12 +181,31 @@ def matriz_presupuesto(request):
     jerarquia = defaultdict(lambda: defaultdict(list))
     subgrupo_rowspan = defaultdict(int)
     grupo_rowspan = defaultdict(int)
+
+    print(f"Total tipos: {tipos.count()}")
+    for tipo in tipos:
+        print("Tipo:", tipo.nombre, "| Subgrupo:", tipo.subgrupo, "| Grupo:", tipo.subgrupo.grupo)
+
+
     for tipo in tipos:
         grupo = tipo.subgrupo.grupo
         subgrupo = tipo.subgrupo
         jerarquia[grupo][subgrupo].append(tipo)
         subgrupo_rowspan[subgrupo] += 1
         grupo_rowspan[grupo] += 1
+    
+    # Al final, conviértelo:
+    jerarquia = dict(jerarquia)
+    for grupo, subgrupos in jerarquia.items():
+        jerarquia[grupo] = dict(subgrupos)
+
+
+    print('Grupos:', len(jerarquia))
+    for grupo, subgrupos in jerarquia.items():
+        print('  Subgrupos:', len(subgrupos))
+    for subgrupo, tipos in subgrupos.items():
+        print('    Tipos:', len(tipos))
+    
 
     # -------- SUBTOTALES POR SUBGRUPO Y GRUPO ----------
     #subgrupo_subtotales = defaultdict(lambda: defaultdict(float))
@@ -226,7 +252,9 @@ def matriz_presupuesto(request):
                         obj.save()
         messages.success(request, "Presupuestos actualizados")
         return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
-
+        
+    print('jerarquia:', jerarquia)
+    print('presup_dict:', presup_dict)
     return render(request, "presupuestos/matriz.html", {
         "tipos": tipos,
         "meses": meses,
@@ -241,4 +269,5 @@ def matriz_presupuesto(request):
         "empresas": empresas,
         "empresa": empresa,
         "is_super": request.user.is_superuser,
+        
     })
