@@ -87,7 +87,6 @@
                             <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-danger btn-sm">Eliminar</a>
                         {% endif %}   
                     </td>
-    
                 <td>
                     {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
                         <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver CFDI</a>
@@ -95,6 +94,10 @@
                         
                     {% endif %}             
                 </td>
+                <td>
+                        <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-info btn-sm">Ver detalle</a>
+                                        <!-- ...otros botones como Editar, Registrar Pago... -->
+                    </td>
             </tr>   
         {% empty %}
             <tr><td colspan="8">No hay gastos registrados.</td></tr>

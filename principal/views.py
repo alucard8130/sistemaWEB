@@ -6,6 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import transaction
 import openpyxl
+from empleados.models import Empleado
 from empresas.models import Empresa
 from clientes.models import Cliente
 from gastos.models import Gasto
@@ -14,6 +15,7 @@ from areas.models import AreaComun
 from facturacion.models import Factura, Pago
 from presupuestos.models import Presupuesto
 from principal.models import AuditoriaCambio
+from proveedores.models import Proveedor
 # Create your views here.
 
 @login_required
@@ -31,15 +33,17 @@ def reiniciar_sistema(request):
     if request.method == 'POST':
         try:
             with transaction.atomic():
-                # Orden: pagos > facturas > locales/areas > clientes > empresas
+                # Orden: pagos > facturas > locales/areas > clientes > empresas etc...
                 Pago.objects.all().delete()
                 Factura.objects.all().delete()
                 LocalComercial.objects.all().delete()
                 AreaComun.objects.all().delete()
                 Cliente.objects.all().delete()
                 #Empresa.objects.all().delete()
-                #Gasto.objects.all().delete()  
-                #Presupuesto.objects.all().delete()  
+                Proveedor.objects.all().delete() 
+                Empleado.objects.all().delete()  
+                Gasto.objects.all().delete()  
+                Presupuesto.objects.all().delete()  
 
             messages.success(request, '¡El sistema fue reiniciado exitosamente!')
         except Exception as e:
@@ -75,10 +79,10 @@ def respaldo_empresa_excel(request):
 
     # ÁREAS COMUNES
     ws = wb.create_sheet("Áreas Comunes")
-    ws.append(['num_contrato', 'cliente', 'numero', 'cuota', 'ubicacion', 'superficie_m2', 'status', 'fecha_inicial', 'fecha_fin', 'activo', 'observaciones'])
+    ws.append([ 'cliente', 'numero', 'cuota', 'ubicacion', 'superficie_m2', 'status', 'fecha_inicial', 'fecha_fin', 'activo', 'observaciones'])
     for a in AreaComun.objects.filter(empresa=empresa):
         ws.append([
-            a.num_contrato, a.cliente.nombre if a.cliente else '', a.numero, a.cuota, a.ubicacion, a.superficie_m2,
+             a.cliente.nombre if a.cliente else '', a.numero, a.cuota, a.ubicacion, a.superficie_m2,
             a.status, str(a.fecha_inicial) if a.fecha_inicial else '', str(a.fecha_fin) if a.fecha_fin else '', a.activo, a.observaciones
         ])
 
@@ -100,6 +104,42 @@ def respaldo_empresa_excel(request):
             p.id, p.factura.folio if p.factura else '', str(p.fecha_pago), p.monto, 
             p.registrado_por.get_full_name() if p.registrado_por else ''
         ])
+    # GASTOS
+    ws = wb.create_sheet("Gastos")  
+    ws.append(['id', 'proveedor', 'empleado','descripcion', 'monto','tipo_gasto', 'fecha'])
+    for g in Gasto.objects.filter(empresa=empresa):
+        ws.append([g.id,str(g.proveedor),str(g.empleado), g.descripcion, g.monto, str(g.tipo_gasto), str(g.fecha)])  
+
+    #pago gastos
+    ws = wb.create_sheet("Pagos Gastos")
+    ws.append(['id', 'referencia', 'fecha_pago', 'monto', 'registrado_por'])
+    for g in Gasto.objects.filter(empresa=empresa):
+        for pago in g.pagos.all():
+            ws.append([
+                pago.id, pago.referencia, str(pago.fecha_pago), pago.monto, 
+                pago.registrado_por.get_full_name() if pago.registrado_por else ''
+            ])
+
+    # PRESUPUESTOS
+    ws = wb.create_sheet("Presupuestos")
+    ws.append(['id', 'empresa', 'grupo', 'subgrupo', 'tipo_gasto', 'anio', 'mes', 'monto'])
+    for p in Presupuesto.objects.filter(empresa=empresa):
+        ws.append([
+            p.id, p.empresa.nombre if p.empresa else '', str(p.grupo), str(p.subgrupo), 
+            str(p.tipo_gasto), p.anio, p.mes, p.monto
+        ])  
+    # EMPLEADOS
+    ws = wb.create_sheet("Empleados")
+    ws.append(['id', 'nombre', 'email', 'telefono', 'puesto', 'activo'])
+    for e in Empleado.objects.filter(empresa=empresa):
+        ws.append([e.id, e.nombre, e.email, e.telefono, e.puesto, e.activo])
+    # PROVEEDORES
+    ws = wb.create_sheet("Proveedores")
+    ws.append(['id', 'nombre', 'rfc', 'telefono', 'email', 'activo'])
+    for p in Proveedor.objects.filter(empresa=empresa):
+        ws.append([p.id, str(p.nombre), p.rfc, p.telefono, p.email, p.activo])
+    # 
+
 
     # Responde el archivo Excel
     response = HttpResponse(

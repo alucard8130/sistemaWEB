@@ -8,4 +8,5 @@ urlpatterns = [
     path('<int:pk>/editar/', views.presupuesto_editar, name='presupuesto_editar'),
     path('<int:pk>/eliminar/', views.presupuesto_eliminar, name='presupuesto_eliminar'),
     path('dashboard/', views.dashboard_presupuestal, name='dashboard_presupuestal'),
+    path('presupuestos/matriz/', views.matriz_presupuesto, name='matriz_presupuesto'),
 ]

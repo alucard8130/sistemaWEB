@@ -1,14 +1,19 @@
 
 # Create your views here.
+from pyexpat.errors import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-
-from gastos.models import Gasto
+from django.contrib import messages
+from gastos.models import Gasto, GrupoGasto, TipoGasto
 from .models import Presupuesto
 from .forms import PresupuestoForm
 from django.utils.timezone import now
 from django.db.models import Sum
 from empresas.models import Empresa
+from calendar import month_name
+from collections import defaultdict
+from decimal import Decimal
+
 
 
 @login_required
@@ -142,3 +147,98 @@ def dashboard_presupuestal(request):
         'es_super': es_super,
     }
     return render(request, 'presupuestos/dashboard.html', contexto)
+
+# Matriz de presupuestos por tipo de gasto y mes
+@login_required
+def matriz_presupuesto(request):
+    anio = int(request.GET.get('anio', now().year))
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get('empresa')
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    meses = list(range(1, 13))
+    meses_nombres = [month_name[m].capitalize() for m in meses]
+
+    # Prepara jerarquía y rowspans
+    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
+        'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre'
+    )
+    presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
+
+    # -------------- JERARQUÍA -------------
+    jerarquia = defaultdict(lambda: defaultdict(list))
+    subgrupo_rowspan = defaultdict(int)
+    grupo_rowspan = defaultdict(int)
+    for tipo in tipos:
+        grupo = tipo.subgrupo.grupo
+        subgrupo = tipo.subgrupo
+        jerarquia[grupo][subgrupo].append(tipo)
+        subgrupo_rowspan[subgrupo] += 1
+        grupo_rowspan[grupo] += 1
+
+    # -------- SUBTOTALES POR SUBGRUPO Y GRUPO ----------
+    #subgrupo_subtotales = defaultdict(lambda: defaultdict(float))
+    #grupo_subtotales = defaultdict(lambda: defaultdict(float))
+    subgrupo_subtotales = defaultdict(lambda: defaultdict(lambda: Decimal('0')))
+    grupo_subtotales = defaultdict(lambda: defaultdict(lambda: Decimal('0')))
+    for grupo, subgrupos in jerarquia.items():
+        for subgrupo, tiposg in subgrupos.items():
+            for mes in meses:
+                subtotal = sum(
+                    presup_dict.get((tipo.id, mes), None).monto 
+                    if presup_dict.get((tipo.id, mes), None) else Decimal('0') 
+                    for tipo in tiposg
+                )
+                subgrupo_subtotales[subgrupo][mes] = subtotal
+                grupo_subtotales[grupo][mes] += subtotal
+
+    # ------------ GUARDADO DE PRESUPUESTO ---------------
+    if request.method == "POST":
+        for tipo in tipos:
+            for mes in meses:
+                key = f"presupuesto_{tipo.id}_{mes}"
+                monto = request.POST.get(key)
+                if monto is not None:
+                    monto = float(monto or 0)
+                    grupo = tipo.subgrupo.grupo
+                    subgrupo = tipo.subgrupo
+                    obj, created = Presupuesto.objects.get_or_create(
+                        empresa=empresa,
+                        tipo_gasto=tipo,
+                        anio=anio,
+                        mes=mes,
+                        defaults={
+                            "monto": monto,
+                            "grupo": grupo,
+                            "subgrupo": subgrupo,
+                        }
+                    )
+                    # Actualiza si ya existe y cambia el monto
+                    if not created and (obj.monto != monto or obj.grupo != grupo or obj.subgrupo != subgrupo):
+                        obj.monto = monto
+                        obj.grupo = grupo
+                        obj.subgrupo = subgrupo
+                        obj.save()
+        messages.success(request, "Presupuestos actualizados")
+        return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
+
+    return render(request, "presupuestos/matriz.html", {
+        "tipos": tipos,
+        "meses": meses,
+        "meses_nombres": meses_nombres,
+        "jerarquia": jerarquia,
+        "grupo_rowspan": grupo_rowspan,
+        "subgrupo_rowspan": subgrupo_rowspan,
+        "subgrupo_subtotales": subgrupo_subtotales,
+        "grupo_subtotales": grupo_subtotales,
+        "presup_dict": presup_dict,
+        "anio": anio,
+        "empresas": empresas,
+        "empresa": empresa,
+        "is_super": request.user.is_superuser,
+    })

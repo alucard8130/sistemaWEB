@@ -96,7 +96,7 @@ class PagoGasto(models.Model):
         ordering = ['-fecha_pago']
 
     def __str__(self):
-        return f'Pago de ${self.monto} para gasto {self.gasto.id}'
+        return f'Pago de ${self.monto} para solicitud {self.gasto.id}'
 
     
   

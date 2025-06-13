@@ -13,5 +13,9 @@ urlpatterns = [
     path('<int:pk>/editar/', views.gasto_editar, name='gasto_editar'),
     path('<int:pk>/eliminar/', views.gasto_eliminar, name='gasto_eliminar'),
     path('gastos/<int:gasto_id>/pago/', views.registrar_pago_gasto, name='registrar_pago_gasto'),
+    path('detalle/<int:pk>/', views.gasto_detalle, name='gasto_detalle'),
+    path('reporte-pagos/', views.reporte_pagos_gastos, name='reporte_pagos_gastos'),
+    path('gastos/dashboard-pagos/', views.dashboard_pagos_gastos, name='dashboard_pagos_gastos'),
+    path('gastos/exportar-excel/', views.exportar_pagos_gastos_excel, name='exportar_pagos_gastos_excel'),
 
 ]
