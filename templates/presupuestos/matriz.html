@@ -1,63 +1,78 @@
 {% load humanize %}
-{% load dict_extras %}
-{% load math_filters %}
-{% load presupuesto_tags %}
-
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Presupuestos</title>
+    <title>Matriz de Presupuesto</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        input[type="number"] { min-width: 80px; }
+        td, th { vertical-align: middle !important; }
+        .subtotal-row { background: #e9ecef; font-weight: bold; }
+        .total-row { background: #dde1f1; font-weight: bold; }
+    </style>
 </head>
 <body>
 <div class="container mt-4">
+<h3>Presupuesto {{ anio }} {% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
 <form method="post">
     {% csrf_token %}
     <div class="table-responsive">
-        
-
         <table class="table table-bordered table-sm align-middle">
-    <thead>
-        <tr>
-            <th>Grupo</th>
-            <th>Subgrupo</th>
-            <th>Tipo de Gasto</th>
-            {% for mes_nombre in meses_nombres %}
-                <th>{{ mes_nombre }}</th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for grupo, subgrupos in jerarquia.items %}
-            {% for subgrupo, tipos in subgrupos.items %}
-                {% for tipo in tipos %}
-                    <tr>
-                        {% if forloop.first and forloop.parentloop.first %}
-                            <td rowspan="{{ subgrupos|length|add:'0'|mul:tipos|length }}">{{ grupo.nombre }}</td>
-                        {% endif %}
-                        {% if forloop.first %}
-                            <td rowspan="{{ tipos|length }}">{{ subgrupo.nombre }}</td>
-                        {% endif %}
-                        <td>{{ tipo.nombre }}</td>
-                        {% for mes in meses %}
-                            <td>
-                                {% with key=tipo.id|stringformat:"s"|add:"_"|add:mes|stringformat:"s" %}
-                                    <input type="number" step="0.01" min="0"
-                                        name="presupuesto_{{ tipo.id }}_{{ mes }}"
-                                        class="form-control form-control-sm"
-                                        value="{% if presup_dict|get_item:tipo.id|get_item:mes %}{{ presup_dict|get_item:tipo.id|get_item:mes.monto }}{% else %}0{% endif %}">
-                                {% endwith %}
-                            </td>
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Subgrupo</th>
+                    <th>Tipo de Gasto</th>
+                    {% for mes_nombre in meses_nombres %}
+                        <th>{{ mes_nombre }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for grupo in jerarquia %}
+                {% for subgrupo in grupo.subgrupos %}
+                    {% for tipo in subgrupo.tipos %}
+                        <tr>
+                            {% if forloop.parentloop.parentloop.first and forloop.parentloop.first and forloop.first %}
+                                <td rowspan="{{ grupo.rowspan }}">{{ grupo.obj.nombre }}</td>
+                            {% endif %}
+                            {% if forloop.parentloop.first and forloop.first %}
+                                <td rowspan="{{ subgrupo.rowspan }}">{{ subgrupo.obj.nombre }}</td>
+                            {% endif %}
+                            <td>{{ tipo.nombre }}</td>
+                            {% for mes in meses %}
+                                <td>
+  {% with llave=tipo.id|stringformat:"s"|add:","|add:mes|stringformat:"s" %}
+    {% with pres=presup_dict|get_tuple_item:llave %}
+      <input type="number" step="0.01" min="0"
+             name="presupuesto_{{ tipo.id }}_{{ mes }}"
+             class="form-control form-control-sm"
+             value="{% if pres %}{{ pres.monto|floatformat:2 }}{% else %}0{% endif %}">
+    {% endwith %}
+  {% endwith %}
+</td>
+
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                    <!-- Subtotal Subgrupo -->
+                    <tr class="subtotal-row">
+                        <td colspan="3">Subtotal {{ subgrupo.obj.nombre }}</td>
+                        {% for monto in subgrupo.subtotal %}
+                            <td>${{ monto|floatformat:2|intcomma }}</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
+                <!-- Subtotal Grupo -->
+                <tr class="total-row">
+                    <td colspan="3">TOTAL {{ grupo.obj.nombre }}</td>
+                    {% for monto in grupo.subtotal %}
+                        <td>${{ monto|floatformat:2|intcomma }}</td>
+                    {% endfor %}
+                </tr>
             {% endfor %}
-        {% endfor %}
-    </tbody>
-</table>
-
-
+            </tbody>
+        </table>
     </div>
     <button class="btn btn-success">Guardar cambios</button>
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar Menú</a>
