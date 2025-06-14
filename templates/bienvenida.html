@@ -14,13 +14,13 @@
     <!-- 🔹 Navbar superior -->
     <nav class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
         <div class="container-fluid px-5">
-            <a class="navbar-brand d-flex align-items-center" href="#">
+            <!--a-- class="navbar-brand d-flex align-items-center" href="#">
                 <img src="{% static 'img/logo.png' %}" alt="Logo" class="navbar-logo">
                 <span class="ms-1 fw-bold welcome-title-logo"></span>
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarOpciones" aria-controls="navbarOpciones" aria-expanded="false" aria-label="Toggle navigation">
+            </!--a-->
+            <!--button-- class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarOpciones" aria-controls="navbarOpciones" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
-            </button>
+            </!--button-->
             <div class="collapse navbar-collapse d-flex justify-content-between align-items-center" id="navbarOpciones">
                 <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center">
                     {% if request.user.is_superuser %}
@@ -140,13 +140,14 @@
                         </form>
                     </li>
                 </ul>
-            </div>
-            <!-- Toggle para Modo Oscuro -->
+                <!-- Toggle para Modo Oscuro -->
             <div class="ms-auto d-flex align-items-center">
                 <button class="btn btn-outline-secondary btn-sm" id="toggleDark" title="Modo oscuro">
                     <i class="bi bi-moon"></i> Modo oscuro
                 </button>
             </div>
+            </div>
+            
         </div>
     </nav>
 
