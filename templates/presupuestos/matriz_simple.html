@@ -1,5 +1,6 @@
-{% load humanize %}
-{% load dict_extras %}
+
+{% load presupuesto_tags %}
+{% load dict_extras humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -27,23 +28,25 @@
                 </tr>
             </thead>
             <tbody>
-                {% for tipo in tipos %}
-<tr>
+               {% for tipo in tipos %}
+  <tr>
     <td>{{ tipo.nombre }}</td>
     {% for mes in meses %}
-        <td>
-            {% with clave=tipo.id|stringformat:"s"|add:","|add:mes|stringformat:"s" %}
-                {% with p=presup_dict|get_tuple:clave %}
-                    <input type="number" step="0.01" min="0"
-                        name="presupuesto_{{ tipo.id }}_{{ mes }}"
-                        class="form-control form-control-sm"
-                        value="{% if p %}{{ p.monto|floatformat:2 }}{% else %}0{% endif %}">
-                {% endwith %}
-            {% endwith %}
-        </td>
+      {% with clave=tipo.id|stringformat:"s"|add:","|add:mes|stringformat:"s" %}
+        {% with presup=presup_dict|get_presupuesto:clave %}
+          <td>
+            <input type="number" step="0.01" min="0"
+                name="presupuesto_{{ tipo.id }}_{{ mes }}"
+                class="form-control form-control-sm"
+                value="{% if presup %}{{ presup.monto }}{% else %}0{% endif %}">
+          </td>
+        {% endwith %}
+      {% endwith %}
     {% endfor %}
-</tr>
+  </tr>
 {% endfor %}
+
+
 
             </tbody>
             <tfoot>

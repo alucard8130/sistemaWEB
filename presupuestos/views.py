@@ -252,19 +252,23 @@ def matriz_simple_presupuesto(request):
         empresas = None
 
     meses = list(range(1, 13))
-    meses_nombres = [month_name[m].capitalize() for m in meses]
-    tipos = TipoGasto.objects.all().order_by('nombre')
+    meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by('subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre')
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
 
-    # Calcular totales por mes
-    totales_mes = {mes: 0 for mes in meses}
-    for tipo in tipos:
-        for mes in meses:
-            key = (tipo.id, mes)
-            pres = presup_dict.get(key)
+    # Calcula el total por mes (diccionario)
+    totales_mes = {mes: Decimal('0.00') for mes in meses}
+    for mes in meses:
+        for tipo in tipos:
+            pres = presup_dict.get((tipo.id, mes))
             if pres:
-                totales_mes[mes] += float(pres.monto)
+                totales_mes[mes] += pres.monto or Decimal('0.00')    
+
+
+
+
 
     if request.method == "POST":
         for tipo in tipos:
@@ -272,14 +276,26 @@ def matriz_simple_presupuesto(request):
                 key = f"presupuesto_{tipo.id}_{mes}"
                 monto = request.POST.get(key)
                 if monto is not None:
-                    monto = float(monto or 0)
-                    obj, created = Presupuesto.objects.get_or_create(
-                        empresa=empresa, tipo_gasto=tipo, anio=anio, mes=mes,
-                        defaults={"monto": monto}
-                    )
-                    if not created and obj.monto != monto:
-                        obj.monto = monto
-                        obj.save()
+                    try:
+                        monto_val = float(monto or 0)
+                        obj, created = Presupuesto.objects.get_or_create(
+                            empresa=empresa,
+                            tipo_gasto=tipo,
+                            anio=anio,
+                            mes=mes,
+                            defaults={
+                                "monto": monto_val,
+                                "grupo": tipo.subgrupo.grupo,
+                                "subgrupo": tipo.subgrupo,
+                            }
+                        )
+                        if not created and obj.monto != monto_val:
+                            obj.monto = monto_val
+                            obj.grupo = tipo.subgrupo.grupo
+                            obj.subgrupo = tipo.subgrupo
+                            obj.save()
+                    except Exception as e:
+                        print(f"[ERROR] Al guardar presupuesto: {e}")
         messages.success(request, "Presupuestos actualizados")
         return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
 
@@ -287,10 +303,10 @@ def matriz_simple_presupuesto(request):
         "tipos": tipos,
         "meses": meses,
         "meses_nombres": meses_nombres,
+        "totales_mes": totales_mes, 
         "presup_dict": presup_dict,
         "anio": anio,
         "empresas": empresas,
         "empresa": empresa,
         "is_super": request.user.is_superuser,
-        "totales_mes": totales_mes,
     })
