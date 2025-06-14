@@ -4,7 +4,7 @@ from pyexpat.errors import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from gastos.models import Gasto, GrupoGasto, TipoGasto
+from gastos.models import Gasto, GrupoGasto, TipoGasto, SubgrupoGasto
 from .models import Presupuesto
 from .forms import PresupuestoForm
 from django.utils.timezone import now
@@ -13,6 +13,7 @@ from empresas.models import Empresa
 from calendar import month_name
 from collections import defaultdict
 from decimal import Decimal
+
 
 
 
@@ -161,113 +162,151 @@ def matriz_presupuesto(request):
         empresas = None
 
     meses = list(range(1, 13))
-    meses_nombres = [month_name[m].capitalize() for m in meses]
+    meses_nombres = [month_name[m] for m in meses]
 
-    # Prepara jerarquía y rowspans
-    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
-        'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre')
-    print("TIPOS TOTAL:", tipos.count())
-    if tipos.count() == 0:
-        print("¡No hay tipos de gasto en la BD!")       
-    
+    # --- Organiza la jerarquía con rowspans ---
+    jerarquia = []
+    grupo_queryset = GrupoGasto.objects.all()
+    for grupo in grupo_queryset:
+        grupo_dict = {
+            "obj": grupo,
+            "subgrupos": [],
+            "rowspan": 0,
+            "subtotal": [0]*12,
+        }
+        subgrupos_queryset = SubgrupoGasto.objects.filter(grupo=grupo)
+        for subgrupo in subgrupos_queryset:
+            tipos = list(TipoGasto.objects.filter(subgrupo=subgrupo))
+            if tipos:
+                subgrupo_dict = {
+                    "obj": subgrupo,
+                    "tipos": tipos,
+                    "rowspan": len(tipos),
+                    "subtotal": [0]*12,
+                }
+                grupo_dict["subgrupos"].append(subgrupo_dict)
+                grupo_dict["rowspan"] += len(tipos)
+        if grupo_dict["rowspan"]:
+            jerarquia.append(grupo_dict)
 
+    # Obtén presupuestos existentes
+    presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = {}
+    for p in presupuestos:
+        presup_dict[(p.tipo_gasto_id, p.mes)] = p
 
-   
+    # Suma subtotales (por subgrupo y grupo)
+    for grupo in jerarquia:
+        for subgrupo in grupo["subgrupos"]:
+            for mes in meses:
+                suma = 0
+                for tipo in subgrupo["tipos"]:
+                    monto = presup_dict.get((tipo.id, mes), None)
+                    if monto:
+                        suma += float(monto.monto)
+                subgrupo["subtotal"][mes-1] = suma
+                grupo["subtotal"][mes-1] += suma
 
+    if request.method == "POST":
+        for grupo in jerarquia:
+            for subgrupo in grupo["subgrupos"]:
+                for tipo in subgrupo["tipos"]:
+                    for mes in meses:
+                        key = f"presupuesto_{tipo.id}_{mes}"
+                        monto = request.POST.get(key)
+                        if monto is not None:
+                            monto = float(monto or 0)
+                            obj, created = Presupuesto.objects.get_or_create(
+                                empresa=empresa,
+                                tipo_gasto=tipo,
+                                anio=anio,
+                                mes=mes,
+                                defaults={"monto": monto}
+                            )
+                            if not created and obj.monto != monto:
+                                obj.monto = monto
+                                obj.save()
+        messages.success(request, "Presupuestos actualizados.")
+        return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
+
+    return render(request, "presupuestos/matriz.html", {
+        "jerarquia": jerarquia,
+        "meses": meses,
+        "meses_nombres": meses_nombres,
+        "presup_dict": presup_dict,
+        "anio": anio,
+        "empresas": empresas,
+        "empresa": empresa,
+        "is_super": request.user.is_superuser,
+    })
+
+@login_required
+def matriz_simple_presupuesto(request):
+    anio = int(request.GET.get('anio', now().year))
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get('empresa')
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    meses = list(range(1, 13))
+    meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by('subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre')
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
 
-    # -------------- JERARQUÍA -------------
-    jerarquia = defaultdict(lambda: defaultdict(list))
-    subgrupo_rowspan = defaultdict(int)
-    grupo_rowspan = defaultdict(int)
-
-    print(f"Total tipos: {tipos.count()}")
-    for tipo in tipos:
-        print("Tipo:", tipo.nombre, "| Subgrupo:", tipo.subgrupo, "| Grupo:", tipo.subgrupo.grupo)
-
-
-    for tipo in tipos:
-        grupo = tipo.subgrupo.grupo
-        subgrupo = tipo.subgrupo
-        jerarquia[grupo][subgrupo].append(tipo)
-        subgrupo_rowspan[subgrupo] += 1
-        grupo_rowspan[grupo] += 1
-    
-    # Al final, conviértelo:
-    jerarquia = dict(jerarquia)
-    for grupo, subgrupos in jerarquia.items():
-        jerarquia[grupo] = dict(subgrupos)
+    # Calcula el total por mes (diccionario)
+    totales_mes = {mes: Decimal('0.00') for mes in meses}
+    for mes in meses:
+        for tipo in tipos:
+            pres = presup_dict.get((tipo.id, mes))
+            if pres:
+                totales_mes[mes] += pres.monto or Decimal('0.00')    
 
 
-    print('Grupos:', len(jerarquia))
-    for grupo, subgrupos in jerarquia.items():
-        print('  Subgrupos:', len(subgrupos))
-    for subgrupo, tipos in subgrupos.items():
-        print('    Tipos:', len(tipos))
-    
 
-    # -------- SUBTOTALES POR SUBGRUPO Y GRUPO ----------
-    #subgrupo_subtotales = defaultdict(lambda: defaultdict(float))
-    #grupo_subtotales = defaultdict(lambda: defaultdict(float))
-    subgrupo_subtotales = defaultdict(lambda: defaultdict(lambda: Decimal('0')))
-    grupo_subtotales = defaultdict(lambda: defaultdict(lambda: Decimal('0')))
-    for grupo, subgrupos in jerarquia.items():
-        for subgrupo, tiposg in subgrupos.items():
-            for mes in meses:
-                subtotal = sum(
-                    presup_dict.get((tipo.id, mes), None).monto 
-                    if presup_dict.get((tipo.id, mes), None) else Decimal('0') 
-                    for tipo in tiposg
-                )
-                subgrupo_subtotales[subgrupo][mes] = subtotal
-                grupo_subtotales[grupo][mes] += subtotal
 
-    # ------------ GUARDADO DE PRESUPUESTO ---------------
+
     if request.method == "POST":
         for tipo in tipos:
             for mes in meses:
                 key = f"presupuesto_{tipo.id}_{mes}"
                 monto = request.POST.get(key)
                 if monto is not None:
-                    monto = float(monto or 0)
-                    grupo = tipo.subgrupo.grupo
-                    subgrupo = tipo.subgrupo
-                    obj, created = Presupuesto.objects.get_or_create(
-                        empresa=empresa,
-                        tipo_gasto=tipo,
-                        anio=anio,
-                        mes=mes,
-                        defaults={
-                            "monto": monto,
-                            "grupo": grupo,
-                            "subgrupo": subgrupo,
-                        }
-                    )
-                    # Actualiza si ya existe y cambia el monto
-                    if not created and (obj.monto != monto or obj.grupo != grupo or obj.subgrupo != subgrupo):
-                        obj.monto = monto
-                        obj.grupo = grupo
-                        obj.subgrupo = subgrupo
-                        obj.save()
+                    try:
+                        monto_val = float(monto or 0)
+                        obj, created = Presupuesto.objects.get_or_create(
+                            empresa=empresa,
+                            tipo_gasto=tipo,
+                            anio=anio,
+                            mes=mes,
+                            defaults={
+                                "monto": monto_val,
+                                "grupo": tipo.subgrupo.grupo,
+                                "subgrupo": tipo.subgrupo,
+                            }
+                        )
+                        if not created and obj.monto != monto_val:
+                            obj.monto = monto_val
+                            obj.grupo = tipo.subgrupo.grupo
+                            obj.subgrupo = tipo.subgrupo
+                            obj.save()
+                    except Exception as e:
+                        print(f"[ERROR] Al guardar presupuesto: {e}")
         messages.success(request, "Presupuestos actualizados")
         return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
-        
-    print('jerarquia:', jerarquia)
-    print('presup_dict:', presup_dict)
-    return render(request, "presupuestos/matriz.html", {
+
+    return render(request, "presupuestos/matriz_simple.html", {
         "tipos": tipos,
         "meses": meses,
         "meses_nombres": meses_nombres,
-        "jerarquia": jerarquia,
-        "grupo_rowspan": grupo_rowspan,
-        "subgrupo_rowspan": subgrupo_rowspan,
-        "subgrupo_subtotales": subgrupo_subtotales,
-        "grupo_subtotales": grupo_subtotales,
+        "totales_mes": totales_mes, 
         "presup_dict": presup_dict,
         "anio": anio,
         "empresas": empresas,
         "empresa": empresa,
         "is_super": request.user.is_superuser,
-        
     })

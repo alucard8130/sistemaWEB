@@ -125,9 +125,11 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'presupuesto_nuevo'%}">Registrar PPTO</a></li>
-                            <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Registrar PPTOver2</a></li>
-                            <li><a class="dropdown-item" href="{% url 'presupuesto_lista'%}">Reporte PPTO</a></li>
+                            {% if request.user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url 'matriz_simple_presupuesto'%}">Registrar PPTO</a></li>
+                            {% endif %}
+                           <li><a class="dropdown-item" href="{% url 'presupuesto_nuevo'%}">Registrar Presupuesto</a></li>
+                            <li><a class="dropdown-item" href="{% url 'presupuesto_lista'%}">Reporte Prespuesto</a></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>
                         </ul>
                     </li>
