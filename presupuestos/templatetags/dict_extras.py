@@ -2,10 +2,21 @@ from django import template
 
 register = template.Library()
 
-
 @register.filter
 def get_item(dictionary, key):
+    # Si la clave llega como string "1,2", convíertela en tupla de int
+    if isinstance(key, str) and ',' in key:
+        parts = key.split(',')
+        try:
+            key = (int(parts[0]), int(parts[1]))
+        except Exception:
+            pass
     return dictionary.get(key)
+
+
+#@register.filter
+#def get_item(dictionary, key):
+ #   return dictionary.get(key)
 
 @register.filter
 def get_tuple_item(d, args):

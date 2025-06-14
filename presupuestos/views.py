@@ -243,6 +243,7 @@ def matriz_presupuesto(request):
 @login_required
 def matriz_simple_presupuesto(request):
     anio = int(request.GET.get('anio', now().year))
+
     if request.user.is_superuser:
         empresas = Empresa.objects.all()
         empresa_id = request.GET.get('empresa')
@@ -266,10 +267,6 @@ def matriz_simple_presupuesto(request):
             if pres:
                 totales_mes[mes] += pres.monto or Decimal('0.00')    
 
-
-
-
-
     if request.method == "POST":
         for tipo in tipos:
             for mes in meses:
@@ -277,23 +274,27 @@ def matriz_simple_presupuesto(request):
                 monto = request.POST.get(key)
                 if monto is not None:
                     try:
-                        monto_val = float(monto or 0)
-                        obj, created = Presupuesto.objects.get_or_create(
-                            empresa=empresa,
-                            tipo_gasto=tipo,
-                            anio=anio,
-                            mes=mes,
-                            defaults={
-                                "monto": monto_val,
-                                "grupo": tipo.subgrupo.grupo,
-                                "subgrupo": tipo.subgrupo,
-                            }
-                        )
-                        if not created and obj.monto != monto_val:
-                            obj.monto = monto_val
-                            obj.grupo = tipo.subgrupo.grupo
-                            obj.subgrupo = tipo.subgrupo
-                            obj.save()
+                        monto_val = Decimal(monto) if monto else Decimal('0.00')
+                        obj = presup_dict.get((tipo.id, mes))
+                        # Solo guarda si el monto es > 0 o si ya existe el presupuesto (permitir actualizar a cero si lo deseas)
+                        if monto_val > 0 or obj:
+                            if obj:
+                                # Actualiza solo si cambia el monto
+                                if obj.monto != monto_val:
+                                    obj.monto = monto_val
+                                    obj.grupo = tipo.subgrupo.grupo
+                                    obj.subgrupo = tipo.subgrupo
+                                    obj.save()
+                            else:
+                                Presupuesto.objects.create(
+                                    empresa=empresa,
+                                    tipo_gasto=tipo,
+                                    anio=anio,
+                                    mes=mes,
+                                    monto=monto_val,
+                                    grupo=tipo.subgrupo.grupo,
+                                    subgrupo=tipo.subgrupo,
+                                )
                     except Exception as e:
                         print(f"[ERROR] Al guardar presupuesto: {e}")
         messages.success(request, "Presupuestos actualizados")

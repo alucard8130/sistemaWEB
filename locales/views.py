@@ -182,10 +182,10 @@ def carga_masiva_locales(request):
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                empresa_val, propietraio_val, cliente_val, numero, ubicacion, superficie_m2, cuota, giro, status, observaciones = row
+                empresa_val, propietario_val, cliente_val, numero, ubicacion, superficie_m2, cuota, giro, status, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
-                    propietario = buscar_por_id_o_nombre(Cliente, propietraio_val) if propietraio_val else None
+                    propietario = buscar_por_id_o_nombre(Cliente, propietario_val) if propietario_val else None
                     cliente = buscar_por_id_o_nombre(Cliente, cliente_val) if cliente_val else None
                     # Puedes ajustar el campo status si manejas valores específicos en tu modelo
                     LocalComercial.objects.create(
