@@ -15,6 +15,8 @@
 <body>
 <div class="container mt-4">
 <h3>Presupuesto {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
+<p>PRESUP_DICT: {{ presup_dict }}</p>
+
 <form method="post">
     {% csrf_token %}
     <div class="table-responsive">
@@ -32,17 +34,23 @@
                 <tr>
                     <td>{{ tipo.nombre }}</td>
                     {% for mes in meses %}
-                            
-                            {% with key=tipo.id|stringformat:"s"|add:","|add:mes|stringformat:"s" %}
-                                {% with presup=presup_dict|get_item:key %}
+                        {% with key=tipo.id|add:"-"|add:mes %}    
+                            {% with pres=presup_dict|get_item:key %}
+                               
                                     <td>
+                                        <!-- DEBUG -->
+                                        clave: {{ clave }},
+                                        pres: {{ pres }},
+                                        monto: {% if pres %}{{ pres.monto }}{% else %}0{% endif %}
                                         <input type="number" step="0.01" min="0"
                                         name="presupuesto_{{ tipo.id }}_{{ mes }}"
                                         class="form-control form-control-sm"
                                         value="{% if pres %}{{ pres.monto|floatformat:2 }}{% else %}0{% endif %}">
+                                        <span style="font-size:10px;color:gray">[{{ key }}: {% if pres %}OK{% else %}NO{% endif %}]</span>
                                     </td>
-                                {% endwith %}
+                             
                             {% endwith %}
+                        {% endwith %}
                         </td>
                     {% endfor %}
                 </tr>

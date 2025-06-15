@@ -1,0 +1,77 @@
+# Gestor Administrativo Condominal (GAC)
+
+**Developer & Licensor:** Jaime Martin Estrada Bernabé
+
+## Description
+
+Gestor Administrativo Condominal (GAC) is a specialized software for the efficient management and administration of condominiums and similar real estate properties. This tool streamlines billing, collections, expense control, and reporting, tailored for the unique needs of condominium administrators.
+
+---
+
+## License
+
+### Commercial Software License Agreement
+
+**Licensor:** Jaime Martin Estrada Bernabé  
+**Country:** Mexico
+
+#### 1. Purpose
+
+The Licensor grants the Licensee a **non-exclusive, non-transferable, and limited license** to use the software named **"Gestor Administrativo Condominal (GAC)"**, in accordance with the terms and conditions set forth below.
+
+#### 2. Granted Rights
+
+- The Licensee may install and use GAC on [specify number of devices/licenses] exclusively for commercial and management purposes within their organization.
+- The Licensee may make backup copies of the software solely for internal safeguarding purposes.
+
+#### 3. Restrictions
+
+- Copying, modifying, decompiling, disassembling, reverse engineering, renting, leasing, sublicensing, selling, or distributing the software is not permitted without the express written consent of the Licensor.
+- The Licensee may not assign or transfer the software to third parties, in whole or in part, without prior written consent from the Licensor.
+
+#### 4. Intellectual Property
+
+GAC and all associated documentation are the exclusive property of the Licensor and are protected by national and international intellectual property laws. This license does not constitute a sale of the software or its copyrights.
+
+#### 5. Support and Updates
+
+The Licensor will provide **technical support and updates for one (1) year** from the date the license is acquired. Support and updates may be renewed upon agreement after this period.
+
+#### 6. Warranty and Liability
+
+The Licensor does not guarantee that the software is error-free or that its operation will be uninterrupted. The Licensor shall not be liable for any direct or indirect damages arising from the use or inability to use the software.
+
+#### 7. Duration and Termination
+
+This license is effective from the date of acceptance and remains valid as long as the Licensee complies with these terms. The Licensor may terminate the license upon breach, requiring the Licensee to cease use and delete all copies of the software.
+
+#### 8. Applicable Law
+
+This agreement is governed by the laws of **Mexico**, and both parties waive any other jurisdiction.
+
+---
+
+## Pricing Plans
+
+The use of **Gestor Administrativo Condominal (GAC)** is subject to the following licensing fees:
+
+- **Monthly Plan:**  
+  USD $80.00 per month, with recurring monthly billing.
+- **Annual Plan:**  
+  USD $900.00 per year, with recurring annual billing.
+
+The Licensee may choose the plan that best fits their needs. Payment is required for activation and continued use of the software and technical support. The Licensor reserves the right to suspend or terminate the license in case of non-payment.
+
+---
+
+## Contact
+
+For purchase, technical support, or additional information, please contact:
+
+**Jaime Martin Estrada Bernabé**  
+Email: codefullstack@infinitummail.com  
+Location: Mexico
+
+---
+
+© Jaime Martin Estrada Bernabé. All rights reserved.

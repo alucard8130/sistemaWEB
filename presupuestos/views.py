@@ -243,6 +243,7 @@ def matriz_presupuesto(request):
 @login_required
 def matriz_simple_presupuesto(request):
     anio = int(request.GET.get('anio', now().year))
+    meses = int(request.GET.get('meses', 12))  # Por defecto, 12 meses
 
     if request.user.is_superuser:
         empresas = Empresa.objects.all()
@@ -256,8 +257,10 @@ def matriz_simple_presupuesto(request):
     meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
     tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by('subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre')
-    presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
+    presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio, mes__in=meses)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
+    for k in presup_dict:
+        print("Llave dict:", k, "Tipo:", type(k))
 
     # Calcula el total por mes (diccionario)
     totales_mes = {mes: Decimal('0.00') for mes in meses}
@@ -299,6 +302,8 @@ def matriz_simple_presupuesto(request):
                         print(f"[ERROR] Al guardar presupuesto: {e}")
         messages.success(request, "Presupuestos actualizados")
         return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
+    
+    print("PRESUP_DICT:", presup_dict)
 
     return render(request, "presupuestos/matriz_simple.html", {
         "tipos": tipos,
