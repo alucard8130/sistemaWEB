@@ -18,7 +18,7 @@
                 <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center ms-auto">
                     {% if request.user.is_superuser %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Configuracion</a>
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Configuración</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
                             <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Usuarios</a></li>
@@ -129,15 +129,15 @@
                 </ul>
                 <!-- Botón Cerrar sesión y Modo oscuro -->
                 <div class="d-flex align-items-center ms-auto">
-                    <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center mb-0 me-3">
+                    <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center mb-0 ms-5">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-primary btn-sm ms-3">
+                        <button type="submit" class="btn btn-primary btn-sm">
                             <i class="bi bi-box-arrow-right me-1"></i> Cerrar sesión
                         </button>
                     </form>
-                     <!-- Toggle para Modo Oscuro -->
-                    <button class="btn btn-outline-secondary btn-sm" id="toggleDark" title="Modo oscuro">
-                        <i class="bi bi-moon"></i> Modo oscuro
+                     <!-- Dark button -->
+                    <button id="toggleDark" class="toggle-switch">
+                        <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
                     </button>
                 </div>
             </div>

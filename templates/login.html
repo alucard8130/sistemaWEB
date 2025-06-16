@@ -10,13 +10,14 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
     <body>
-        <!-- Toggle para Modo Oscuro -->
-        <div class="text-end p-3">
-            <button class="btn btn-outline-secondary btn-sm" id="toggleDark">
-                <i class="bi bi-moon"></i> Modo oscuro
-            </button>
+         <!-- Dark button -->
+        <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+            <div class="d-flex align-items-center ms-auto">  
+                <button id="toggleDark" class="toggle-switch">
+                    <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
+                </button>
+            </div>
         </div>
-
         <div class="main-content">
             <div class="login-box">
                 <div class="text-center mb-4">
@@ -44,12 +45,12 @@
                     {% if form.errors %}
                         <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
                     {% endif %}
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión</button>
+                    <button type="submit" class="btn btn-primary w-50">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión
+                    </button>
                 </form>
             </div>
         </div>
-
         <footer>
             © {% now "Y" %} GAC. Todos los derechos reservados. <br>
             Creado por Jaime M. Estrada Bernabé
