@@ -15,6 +15,20 @@ html, body {
     justify-content: center;
 }
 
+.btn.btn-primary {
+    background-color: rgb(61, 95, 206);
+    border-color: #fff;
+    color: #fff;
+    border-radius: 0.5rem; /* esquinas redondas */
+    transition: background 0.3s ease, color 0.3s ease;
+}    
+
+.btn.btn-primary:hover {
+    background-color: #2c3e50;
+    border-color: #fff;
+    color: #fff;  
+}
+
 footer {
     text-align: center;
     padding: 12px;
@@ -27,8 +41,25 @@ footer {
 
 /* Estílos Generales Dark */
 body.dark-mode {
-    background: linear-gradient(to right, #1f1f1f, #121212);
+    background: linear-gradient(to right, #1f1f1f, #02255b, #680963, #4c0383);
     color: #f0f0f0;
+}
+
+body.dark-mode .btn-primary {
+    background-color: #1b2a41; /* Azul marino elegante #1f1f1f, #02255b */
+    border:none;
+    color: #fff;
+    border-radius: 10px;
+}
+        
+body.dark-mode .btn-primary:hover {
+    background-color: #04367f;  
+    border-radius: 5px;
+}
+
+body.dark-mode footer {
+    background-color: #2c2c2c;  /* fondo más oscuro */
+    color: #666;                /* texto más claro */
 }
 
 /* Estílo para login.html light*/
@@ -60,8 +91,8 @@ body.dark-mode {
 }
 
 .login-title { /* modo claro*/
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 1.3rem;
+    font-weight: 500;
     color: #2c3e50;
     margin-bottom: 15px; /* menos espacio antes del formulario */
 }
@@ -78,20 +109,12 @@ body.dark-mode {
     border-radius: 10px;
 }
 
-.btn-primary {
-    border-radius: 10px;
-}
-
 /* Estílo para login.html Dark*/
 body.dark-mode .login-title {
-    color: #a9c5e7; /* Azul claro elegante */
+    color: #a4afba; 
     position: relative;
     padding-bottom: 10px;
     margin-bottom: 20px;
-}
-body.dark-mode footer {
-    background-color: #2c2c2c;  /* fondo más oscuro */
-    color: #666;                /* texto más claro */
 }
 
 body.dark-mode .login-box {
@@ -127,20 +150,42 @@ body.dark-mode .input-group-text {
     border-color: #416691;
 }
 
-body.dark-mode .btn-primary {
-    background-color: #274472;  /* tono más claro que el fondo */
-    border-color: #fff;
-    color: #fff;
-}
-        
-body.dark-mode .btn-primary:hover {
-    background-color: #416691;  /* tono más claro al pasar el mouse */
-    border-color: #fff;
+/*=== Estílos para bienvenida.html light ===*/
+.navbar {
+    font-family: 'Montserrat', sans-serif;
 }
 
-/*=== Estílos para bienvenida.html light ===*/
 .navbar-logo {
     height: 80px; 
+}
+
+.navbar .navbar-nav .nav-item .nav-link {
+    color: #2c3e50;
+    transition: color 0.3s ease, background 0.3s ease;
+}
+
+.navbar-nav .nav-item .nav-link:hover,
+.navbar-nav .nav-item .nav-link:focus {
+    color: #fff;
+    background: #04367f;
+    border-radius: 0.5rem;
+}
+
+
+.dropdown-menu {
+    background-color: #fff !important; /* blanco sólido */
+    border: 1px solid #dee2e6; /* borde gris claro */
+    border-radius: 10px; /* esquinas redondeadas */
+    box-shadow: 0 8px 16px rgba(13, 110, 253, 0.25); /* Sombra azul suave */
+    padding: 10px;
+    z-index: 1050; /* asegura que quede encima de otros elementos */
+}
+.dropdown-item {
+    color: #2c3e50 !important; /* texto oscuro */
+    border-radius: 5px;
+}
+.dropdown-item:hover {
+    background-color: rgba(0, 123, 255, 0.2); /* gris claro al pasar el mouse */
 }
 
 .welcome-title-logo {
@@ -193,22 +238,6 @@ body:not(.dark-mode) .welcome-box:hover {
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
-.dropdown-menu {
-    background-color: #ffffff !important; /* blanco sólido */
-    border: 1px solid #dee2e6; /* borde gris claro */
-    border-radius: 10px; /* esquinas redondeadas */
-    box-shadow: 0 8px 16px rgba(13, 110, 253, 0.25); /* Sombra azul suave */
-    padding: 10px;
-    z-index: 1050; /* asegura que quede encima de otros elementos */
-}
-.dropdown-item {
-    padding: 10px 20px;
-    border-radius: 5px;
-}
-.dropdown-item:hover {
-    background-color: #f8f9fa; /* gris claro al pasar el mouse */
-}
-
 .shadow-navbar {
     border: 1px solid rgba(0, 0, 0, 0.1); /* Borde sutil gris */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Sombra suave alrededor */
@@ -225,8 +254,7 @@ body:not(.dark-mode) .welcome-box:hover {
    
 /*Estilos bienvenida.html Dark*/
 body.dark-mode .navbar {
-    background-color: #1f1f1f !important;
-    box-shadow: none !important;
+    font-family: 'Montserrat', sans-serif;
 }
 
 body.dark-mode .navbar .nav-link,
@@ -236,12 +264,13 @@ color: #e0e0e0 !important;
 }
 
 body.dark-mode .btn-outline-secondary {
-    border-color: #e0e0e0 !important;
+    background-color: #1b2a41;
+    border-radius: 10px;
 }
 
 body.dark-mode .btn-outline-secondary:hover {
-    background-color: #333333;
-    color: #ffffff !important;
+    background-color: #04367f;
+    border-radius: 10px;
 }
 
 body.dark-mode .shadow-navbar {
@@ -254,20 +283,33 @@ body.dark-mode .shadow-navbar:hover {
     box-shadow: 0 0 50px rgba(100, 180, 255, 0.5) !important; /* Sombra azul más intensa */
 }
 
-body.dark-mode .dropdown-menu {
-    background-color: #1b2a41 !important; /* gris oscuro */
-    border: 1px solid #444 !important; /* borde gris más oscuro */
-    box-shadow: 0 8px 16px rgba(0, 123, 255, 0.25); /* misma sombra azul */
-    color: #f8f9fa !important; /* texto claro */
+body.dark-mode .navbar-nav .nav-item .nav-link {
+    color: #bdbcad;
+    transition: color 0.3s ease, background 0.3s ease;
 }
+
+body.dark-mode .navbar-nav .nav-item .nav-link:hover,
+body.dark-mode .navbar-nav .nav-item .nav-link:focus {
+    color: #fff;
+    background: #04367f;
+    border-radius: 0.5rem;
+}
+
+body.dark-mode .dropdown-menu {
+    background-color: #1b2a41 !important; /* Azul marino elegante */
+    border: 1px solid #444 !important; /* borde gris más oscuro */
+    box-shadow: 0 0 50px rgba(100, 180, 255, 0.3); /* misma sombra azul */
+    color: #f0f0f0 !important; /* texto claro */
+}    
 
 body.dark-mode .dropdown-item {
     color: #f8f9fa !important; /* texto claro */
 }
 
 body.dark-mode .dropdown-item:hover {
-    background-color: #3c3c3c !important; /* gris más claro al pasar */
+    background-color: #3f3f3f!important; /* gris más claro al pasar */
     color: #ffffff !important;
+    border-radius: 0.5rem;
 }
 
 body.dark-mode .welcome-box {
@@ -284,13 +326,14 @@ body.dark-mode .welcome-box:hover {
 }
 
 body.dark-mode .welcome-divider {
-    border-color: #f8f9fa !important;
+    border-color: rgba(100, 180, 255, 0.6) ;      
     opacity: 0.7;
     transition: border-color 0.3s ease;
 }
 
 body.dark-mode .welcome-title {
-    color: #a9c5e7; /* Azul claro elegante */
+    color: #ccc; /* Azul claro elegante */
+    font-family: 'Montserrat', sans-serif;
 }
 
 body.dark-mode .text-muted {
@@ -299,4 +342,41 @@ body.dark-mode .text-muted {
 
 body.dark-mode .welcome-title-logo {
     color: #e0e0e0; /* Gris muy claro o blanco suave */
+}
+
+/*Dark button*/
+.toggle-switch {
+    width: 50px;
+    height: 26px;
+    background: #fff;
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s ease-in-out;
+    border: 0px solid #918c8c;
+    display: inline-block;
+}
+
+.toggle-switch.active {
+    background: #4c0383; 
+}
+
+.toggle-ball {
+    width: 22px;
+    height: 22px;
+    /*background: #e0e0e0; /*Background Circle*/
+    border-radius: 50%;
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    transition: left 0.3s ease-in-out;
+    font-size: 16px;
+    text-align: center;
+    line-height: 22px;
+    color: #1b2a41; /* Moon icon*/
+}
+
+.toggle-switch.active .toggle-ball {
+    left: 27px;
+    color: #e0e0e0; /* Sun icon */
 }

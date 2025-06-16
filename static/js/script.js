@@ -7,18 +7,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Botón para cambiar el modo oscuro
     const toggleBtn = document.getElementById('toggleDark');
-    toggleBtn.innerHTML = isDark
-        ?'<i class="bi bi-sun"></i> Modo claro'
-        :'<i class="bi bi-moon"></i> Modo oscuro';
-        
+    const ball = toggleBtn.querySelector('.toggle-ball');
+
+    // Actualizar icono según estado
+    ball.innerHTML = isDark
+        ?'<i class="bi bi-brightness-high-fill"></i>'
+        :'<i class="bi bi-moon-fill"></i>';
+    
+    if (isDark) {
+        toggleBtn.classList.add('active');
+    }
 
     toggleBtn.addEventListener('click', () => {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         localStorage.setItem('dark-mode', isDark);
-        toggleBtn.innerHTML = isDark
-            ?'<i class="bi bi-sun"></i> Modo claro'
-            :'<i class="bi bi-moon"></i> Modo oscuro';
+        
+    // Actualizar icono según estado
+    ball.innerHTML = isDark
+            ?'<i class="bi bi-brightness-high-fill"></i>'
+            :'<i class="bi bi-moon-fill"></i>';
+
+    // Aplicar o quitar estado "active" en el interruptor
+    if (isDark) {
+        toggleBtn.classList.add('active');
+    } else {
+        toggleBtn.classList.remove('active');
+    }
     });
 });
 
