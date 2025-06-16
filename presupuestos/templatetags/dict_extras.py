@@ -99,8 +99,11 @@ def get_item(dictionary, key):
     return dictionary.get(key)
 
 @register.filter
-def dict_index(d, key):
-    return d.get(key, [])
+def dict_index(d, k):
+    try:
+        return d[k]
+    except Exception:
+        return None
 
 @register.filter
 def dict_index_nested(d, key):
@@ -110,8 +113,12 @@ def dict_index_nested(d, key):
     return d.get(key, {})
 
 @register.filter
+def sum_list(lst):
+    return sum(lst) if lst else 0
+
+"""@register.filter
 def sum_list(iterable):
-    """Suma los valores de una lista (ignora None y cadenas)."""
+    #Suma los valores de una lista (ignora None y cadenas)
     if iterable is None:
         return 0
     try:
@@ -120,15 +127,15 @@ def sum_list(iterable):
         # Si iterable es un dict, suma los valores numéricos
         if isinstance(iterable, dict):
             return sum([v or 0 for v in iterable.values() if isinstance(v, (int, float))])
-        return 0
+        return 0 """
     
 @register.filter
 def dict_key(d, key):
-    return d.get(key)    
-
+    return d.get(key)   
+ 
 @register.filter
-def list_index(lst, idx):
+def list_index(l, i):
     try:
-        return lst[idx]
-    except (IndexError, TypeError):
-        return ''
+        return l[i-1]  # OJO: si tu forloop.counter0, usa simplemente l[i]
+    except Exception:
+        return 0

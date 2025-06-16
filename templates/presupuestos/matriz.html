@@ -82,10 +82,12 @@
                         <tr class="table-info">
                             <td colspan="3" class="text-end">Subtotal {{ subgrupo.nombre }}</td>
                             {% for i in meses %}
-                                <td>{{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                                <td>
+                                    {{ subtotales_subgrupo|dict_index:subgrupo.id|list_index:forloop.counter0|floatformat:2|intcomma }}
+                                </td>
                             {% endfor %}
                             <td class="fw-bold">
-                                {{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|sum_list|floatformat:2|intcomma }}
+                                {{ subtotales_subgrupo|dict_index:subgrupo.id|sum_list|floatformat:2|intcomma }}
                             </td>
                         </tr>
                     {% endfor %}
@@ -93,15 +95,15 @@
                     <tr class="table-primary">
                         <td colspan="3" class="text-end">TOTAL {{ grupo.nombre }}</td>
                         {% for i in meses %}
-                            <td>{{ subtotales_grupo|dict_index:grupo.grupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                            <td>
+                                {{ subtotales_grupo|dict_index:grupo.id|list_index:forloop.counter0|floatformat:2|intcomma }}
+                            </td>
                         {% endfor %}
                         <td class="fw-bold">
-                            {{ subtotales_grupo|dict_index:grupo.grupo_obj.id|sum_list|floatformat:2|intcomma }}
+                            {{ subtotales_grupo|dict_index:grupo.id|sum_list|floatformat:2|intcomma }}
                         </td>
                     </tr>
                 {% endfor %}
-                
-                </tr>
                 </tbody>
                 <tfoot>
                     <tr class="table-warning">
@@ -109,7 +111,7 @@
                         {% for total in totales_mes %}
                             <td><strong>{{ total|floatformat:2|intcomma }}</strong></td>
                         {% endfor %}
-                        <td></td>
+                        <td><strong>{{ totales_mes|sum_list|floatformat:2|intcomma }}</strong></td>
                     </tr>
                 </tfoot>
             </table>
