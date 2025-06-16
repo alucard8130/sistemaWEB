@@ -25,15 +25,17 @@ class SubgrupoGasto(models.Model):
        # verbose_name_plural = "Subgrupos de Gasto"
 
     def __str__(self):
-        return f"{self.grupo.nombre} / {self.nombre}"
-
+        #return f"{self.grupo.nombre} / {self.nombre}"
+        return f"{self.nombre}"
+    
 class TipoGasto(models.Model):
     subgrupo = models.ForeignKey(SubgrupoGasto, on_delete=models.CASCADE, related_name='tipos')
     nombre = models.CharField(max_length=100)
     descripcion = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
-        return f"{self.subgrupo.nombre}-{self.nombre}"
+        #return f"{self.subgrupo.nombre}-{self.nombre}"
+        return f"{self.nombre}"
 
 class Gasto(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)

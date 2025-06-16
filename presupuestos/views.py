@@ -17,14 +17,14 @@ from decimal import Decimal
 
 
 
-@login_required
+"""@login_required
 def presupuesto_lista(request):
     if request.user.is_superuser:
         presupuestos = Presupuesto.objects.all()
     else:
         empresa = request.user.perfilusuario.empresa
         presupuestos = Presupuesto.objects.filter(empresa=empresa)
-    return render(request, 'presupuestos/lista.html', {'presupuestos': presupuestos})
+    return render(request, 'presupuestos/lista.html', {'presupuestos': presupuestos})"""
 
 @login_required
 def presupuesto_nuevo(request):

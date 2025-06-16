@@ -14,17 +14,19 @@
     </style>
 </head>
 <body>
-<div class="container mt-4">
-    <h3>Presupuesto {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
+<div class="container mt-2">
+    
     <!-- Filtros de año y empresa -->
     <form method="get" class="row g-2 mb-3">
         <div class="col-auto">
-            <label for="anio" class="form-label">Año:</label>
+            <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
             <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
                 {% for a in anios %}
                     <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
                 {% endfor %}
             </select>
+            
+            <button class="btn btn-success ">Guardar cambios</button>
         </div>
         {% if is_super %}
         <div class="col-auto">
@@ -36,7 +38,10 @@
             </select>
         </div>
         {% endif %}
+        <h3>Presupuesto {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
+        
     </form>
+        
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="anio" value="{{ anio }}">
@@ -44,6 +49,7 @@
             <input type="hidden" name="empresa" value="{{ empresa.id }}">
         {% endif %}
         <div class="table-responsive">
+            
             <table class="table table-bordered table-sm align-middle">
                 <thead>
                     <tr>
