@@ -97,3 +97,38 @@ def get_presupuesto(presup_dict, tipo_id, mes):
 @register.filter
 def get_item(dictionary, key):
     return dictionary.get(key)
+
+@register.filter
+def dict_index(d, key):
+    return d.get(key, [])
+
+@register.filter
+def dict_index_nested(d, key):
+    """Devuelve el valor de la siguiente clave, usado para dicts anidados."""
+    if d is None:
+        return None
+    return d.get(key, {})
+
+@register.filter
+def sum_list(iterable):
+    """Suma los valores de una lista (ignora None y cadenas)."""
+    if iterable is None:
+        return 0
+    try:
+        return sum([x or 0 for x in iterable if isinstance(x, (int, float))])
+    except Exception:
+        # Si iterable es un dict, suma los valores numéricos
+        if isinstance(iterable, dict):
+            return sum([v or 0 for v in iterable.values() if isinstance(v, (int, float))])
+        return 0
+    
+@register.filter
+def dict_key(d, key):
+    return d.get(key)    
+
+@register.filter
+def list_index(lst, idx):
+    try:
+        return lst[idx]
+    except (IndexError, TypeError):
+        return ''

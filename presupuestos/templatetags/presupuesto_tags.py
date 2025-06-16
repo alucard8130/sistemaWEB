@@ -14,3 +14,4 @@ def get_presupuesto(presup_dict, tipo_id, mes):
     Uso: {% get_presupuesto presup_dict tipo.id mes as presup %}
     """
     return presup_dict.get((tipo_id, mes), None)
+

@@ -151,12 +151,11 @@ def dashboard_presupuestal(request):
 
 # Matriz de presupuestos por tipo de gasto y mes
 @login_required
-@login_required
-@login_required
 def matriz_presupuesto(request):
     anio = int(request.GET.get('anio', now().year))
     now_year = now().year
-    anios = list(range(now_year, 2021, -1))  # Ejemplo: [2024, 2023, 2022]
+    anios = list(range(now_year, 2021, -1))
+
     if request.user.is_superuser:
         empresas = Empresa.objects.all()
         empresa_id = request.GET.get('empresa')
@@ -168,30 +167,58 @@ def matriz_presupuesto(request):
     meses = list(range(1, 13))
     meses_nombres = [month_name[m].capitalize() for m in meses]
 
-    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo')
+    # Construye la estructura de grupos -> subgrupos -> tipos (para usar en el template)
+    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
+        'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre'
+    )
+    grupos_lista = []
+    # {grupo: {subgrupo: [tipos]}}
+    grupos_dict = defaultdict(lambda: defaultdict(list))
+    for tipo in tipos:
+        grupos_dict[tipo.subgrupo.grupo][tipo.subgrupo].append(tipo)
+    for grupo, subgrupos in grupos_dict.items():
+        subgrupos_lista = []
+        for subgrupo, tipos_ in subgrupos.items():
+            tipos_lista = []
+            for tipo in tipos_:
+                tipos_lista.append({'id': tipo.id, 'nombre': str(tipo), 'tipo_obj': tipo})
+            subgrupos_lista.append({'id': subgrupo.id, 'nombre': str(subgrupo), 'tipos': tipos_lista, 'subgrupo_obj': subgrupo})
+        grupos_lista.append({'id': grupo.id, 'nombre': str(grupo), 'subgrupos': subgrupos_lista, 'grupo_obj': grupo})
+
+    # Consulta presupuestos existentes
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
 
-    # --- Calcular totales por mes (columna) ---
+    # Totales generales por mes
     totales_mes = []
     for mes in meses:
-        total = sum(
-            presup_dict.get((tipo.id, mes)).monto
-            for tipo in tipos
-            if presup_dict.get((tipo.id, mes))
-        )
-        totales_mes.append(total)
+        total_mes = 0
+        for tipo in tipos:
+            p = presup_dict.get((tipo.id, mes))
+            total_mes += p.monto if p else 0
+        totales_mes.append(total_mes)
 
-    # --- (opcional) Calcular totales por tipo de gasto (fila) ---
-    totales_tipo = []
-    for tipo in tipos:
-        total = sum(
-            presup_dict.get((tipo.id, mes)).monto
-            for mes in meses
-            if presup_dict.get((tipo.id, mes))
-        )
-        totales_tipo.append(total)
+    # Subtotales
+    subtotales_grupo = {}
+    subtotales_subgrupo = {}
+    subtotales_tipo = {}
+    for grupo, subgrupos in grupos_dict.items():
+        subtotal_grupo = [0] * 12
+        for subgrupo, tipos_gasto in subgrupos.items():
+            subtotal_subgrupo = [0] * 12
+            for tipo in tipos_gasto:
+                subtotal_tipo = []
+                for i, mes in enumerate(meses):
+                    p = presup_dict.get((tipo.id, mes))
+                    valor = p.monto if p else 0
+                    subtotal_tipo.append(valor)
+                    subtotal_subgrupo[i] += valor
+                    subtotal_grupo[i] += valor
+                subtotales_tipo[tipo.id] = subtotal_tipo
+            subtotales_subgrupo[subgrupo.id] = subtotal_subgrupo
+        subtotales_grupo[grupo.id] = subtotal_grupo
 
+    # Guardado de presupuestos por POST
     if request.method == "POST":
         for tipo in tipos:
             for mes in meses:
@@ -212,7 +239,7 @@ def matriz_presupuesto(request):
         return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
 
     return render(request, "presupuestos/matriz.html", {
-        "tipos": tipos,
+        "grupos_lista": grupos_lista,
         "meses": meses,
         "meses_nombres": meses_nombres,
         "presup_dict": presup_dict,
@@ -221,7 +248,9 @@ def matriz_presupuesto(request):
         "empresas": empresas,
         "empresa": empresa,
         "totales_mes": totales_mes,
-        "totales_tipo": totales_tipo,  # opcional, para totales por fila
+        "subtotales_grupo": subtotales_grupo,
+        "subtotales_subgrupo": subtotales_subgrupo,
+        "subtotales_tipo": subtotales_tipo,
         "is_super": request.user.is_superuser,
     })
 
