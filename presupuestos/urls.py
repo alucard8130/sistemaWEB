@@ -9,5 +9,5 @@ urlpatterns = [
     path('<int:pk>/eliminar/', views.presupuesto_eliminar, name='presupuesto_eliminar'),
     path('dashboard/', views.dashboard_presupuestal, name='dashboard_presupuestal'),
     path('presupuestos/matriz/', views.matriz_presupuesto, name='matriz_presupuesto'),
-    path('presupuestos/matriz_simple/', views.matriz_simple_presupuesto, name='matriz_simple_presupuesto'),
+    #path('presupuestos/matriz_simple/', views.matriz_simple_presupuesto, name='matriz_simple_presupuesto'),
 ]

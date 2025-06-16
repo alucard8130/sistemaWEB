@@ -151,8 +151,12 @@ def dashboard_presupuestal(request):
 
 # Matriz de presupuestos por tipo de gasto y mes
 @login_required
+@login_required
+@login_required
 def matriz_presupuesto(request):
     anio = int(request.GET.get('anio', now().year))
+    now_year = now().year
+    anios = list(range(now_year, 2021, -1))  # Ejemplo: [2024, 2023, 2022]
     if request.user.is_superuser:
         empresas = Empresa.objects.all()
         empresa_id = request.GET.get('empresa')
@@ -162,88 +166,70 @@ def matriz_presupuesto(request):
         empresas = None
 
     meses = list(range(1, 13))
-    meses_nombres = [month_name[m] for m in meses]
+    meses_nombres = [month_name[m].capitalize() for m in meses]
 
-    # --- Organiza la jerarquía con rowspans ---
-    jerarquia = []
-    grupo_queryset = GrupoGasto.objects.all()
-    for grupo in grupo_queryset:
-        grupo_dict = {
-            "obj": grupo,
-            "subgrupos": [],
-            "rowspan": 0,
-            "subtotal": [0]*12,
-        }
-        subgrupos_queryset = SubgrupoGasto.objects.filter(grupo=grupo)
-        for subgrupo in subgrupos_queryset:
-            tipos = list(TipoGasto.objects.filter(subgrupo=subgrupo))
-            if tipos:
-                subgrupo_dict = {
-                    "obj": subgrupo,
-                    "tipos": tipos,
-                    "rowspan": len(tipos),
-                    "subtotal": [0]*12,
-                }
-                grupo_dict["subgrupos"].append(subgrupo_dict)
-                grupo_dict["rowspan"] += len(tipos)
-        if grupo_dict["rowspan"]:
-            jerarquia.append(grupo_dict)
-
-    # Obtén presupuestos existentes
+    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo')
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
-    presup_dict = {}
-    for p in presupuestos:
-        presup_dict[(p.tipo_gasto_id, p.mes)] = p
+    presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
 
-    # Suma subtotales (por subgrupo y grupo)
-    for grupo in jerarquia:
-        for subgrupo in grupo["subgrupos"]:
-            for mes in meses:
-                suma = 0
-                for tipo in subgrupo["tipos"]:
-                    monto = presup_dict.get((tipo.id, mes), None)
-                    if monto:
-                        suma += float(monto.monto)
-                subgrupo["subtotal"][mes-1] = suma
-                grupo["subtotal"][mes-1] += suma
+    # --- Calcular totales por mes (columna) ---
+    totales_mes = []
+    for mes in meses:
+        total = sum(
+            presup_dict.get((tipo.id, mes)).monto
+            for tipo in tipos
+            if presup_dict.get((tipo.id, mes))
+        )
+        totales_mes.append(total)
+
+    # --- (opcional) Calcular totales por tipo de gasto (fila) ---
+    totales_tipo = []
+    for tipo in tipos:
+        total = sum(
+            presup_dict.get((tipo.id, mes)).monto
+            for mes in meses
+            if presup_dict.get((tipo.id, mes))
+        )
+        totales_tipo.append(total)
 
     if request.method == "POST":
-        for grupo in jerarquia:
-            for subgrupo in grupo["subgrupos"]:
-                for tipo in subgrupo["tipos"]:
-                    for mes in meses:
-                        key = f"presupuesto_{tipo.id}_{mes}"
-                        monto = request.POST.get(key)
-                        if monto is not None:
-                            monto = float(monto or 0)
-                            obj, created = Presupuesto.objects.get_or_create(
-                                empresa=empresa,
-                                tipo_gasto=tipo,
-                                anio=anio,
-                                mes=mes,
-                                defaults={"monto": monto}
-                            )
-                            if not created and obj.monto != monto:
-                                obj.monto = monto
-                                obj.save()
-        messages.success(request, "Presupuestos actualizados.")
+        for tipo in tipos:
+            for mes in meses:
+                key = f"presupuesto_{tipo.id}_{mes}"
+                monto = request.POST.get(key)
+                if monto is not None:
+                    monto = float(monto or 0)
+                    grupo = tipo.subgrupo.grupo
+                    subgrupo = tipo.subgrupo
+                    obj, created = Presupuesto.objects.get_or_create(
+                        empresa=empresa, tipo_gasto=tipo, anio=anio, mes=mes,
+                        defaults={"monto": monto, "grupo": grupo, "subgrupo": subgrupo}
+                    )
+                    if not created and obj.monto != monto:
+                        obj.monto = monto
+                        obj.save()
+        messages.success(request, "Presupuestos actualizados")
         return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
 
     return render(request, "presupuestos/matriz.html", {
-        "jerarquia": jerarquia,
+        "tipos": tipos,
         "meses": meses,
         "meses_nombres": meses_nombres,
         "presup_dict": presup_dict,
         "anio": anio,
+        "anios": anios,
         "empresas": empresas,
         "empresa": empresa,
+        "totales_mes": totales_mes,
+        "totales_tipo": totales_tipo,  # opcional, para totales por fila
         "is_super": request.user.is_superuser,
     })
 
-@login_required
+"""@login_required
 def matriz_simple_presupuesto(request):
     anio = int(request.GET.get('anio', now().year))
-    meses = int(request.GET.get('meses', 12))  # Por defecto, 12 meses
+    meses = int(request.GET.get('meses', 12)) 
+     # Por defecto, 12 meses
 
     if request.user.is_superuser:
         empresas = Empresa.objects.all()
@@ -254,7 +240,8 @@ def matriz_simple_presupuesto(request):
         empresas = None
 
     meses = list(range(1, 13))
-    meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    #meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    meses_nombres = [month_name[m].capitalize() for m in meses]
 
     tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by('subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre')
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio, mes__in=meses)
@@ -315,4 +302,4 @@ def matriz_simple_presupuesto(request):
         "empresas": empresas,
         "empresa": empresa,
         "is_super": request.user.is_superuser,
-    })
+    })"""

@@ -39,11 +39,10 @@ def get_item(dictionary, key):
         except Exception:
             return None
     return dictionary.get(key)"""
-@register.filter
+"""@register.filter
 def get_item(dictionary, key):
-    """
-    Permite recibir una tupla, o un string tipo '12-3' y lo convierte a (12,3)
-    """
+    
+    
     if not dictionary or not key:
         return None
     if isinstance(key, str):
@@ -53,10 +52,16 @@ def get_item(dictionary, key):
         elif ',' in key:
             k1, k2 = key.split(',')
             key = (int(k1), int(k2))
-    return dictionary.get(key)
+    return dictionary.get(key)"""
 #@register.filter
 #def get_item(dictionary, key):
  #   return dictionary.get(key)
+#@register.filter
+#def get_item(dictionary, key):
+    # Si la clave es string tipo "1,5", conviértela en tupla
+ #   if isinstance(key, str) and ',' in key:
+  #      key = tuple(int(k) for k in key.split(','))
+   # return dictionary.get(key)
 
 @register.filter
 def get_tuple_item(d, args):
@@ -76,11 +81,19 @@ def get_tuple(d, args):
     key = (int(id_str), int(mes_str))
     return d.get(key)
 
-@register.filter
+"""@register.filter
 def get_presupuesto(d, key):
-    """key debe ser 'tipoid,mes' como string"""
+    
     try:
         tipoid, mes = key.split(',')
         return d.get((int(tipoid), int(mes)))
     except Exception:
-        return None
+        return None"""
+    
+@register.simple_tag
+def get_presupuesto(presup_dict, tipo_id, mes):
+    return presup_dict.get((tipo_id, mes))    
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)

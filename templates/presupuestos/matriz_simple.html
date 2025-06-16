@@ -34,12 +34,14 @@
                 <tr>
                     <td>{{ tipo.nombre }}</td>
                     {% for mes in meses %}
-                        {% with key=tipo.id|add:"-"|add:mes %}    
+                    {% with key=tipo.id|stringformat:"s"|add:","|add:mes|stringformat:"s" %}
+                          
                             {% with pres=presup_dict|get_item:key %}
+
                                
                                     <td>
                                         <!-- DEBUG -->
-                                        clave: {{ clave }},
+                                        key: {{ key }},
                                         pres: {{ pres }},
                                         monto: {% if pres %}{{ pres.monto }}{% else %}0{% endif %}
                                         <input type="number" step="0.01" min="0"
