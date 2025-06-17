@@ -174,40 +174,36 @@ def matriz_presupuesto(request):
     # ¿Cerrado?
     cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
     bloqueado = cierre.cerrado if cierre else False
-    # --- Recuperar flag de sesión ---
-    key = f'presupuesto_superuser_ok_{empresa.id}_{anio}'
-
-    superuser_auth_ok = request.session.get(key, False)
-    # Lógica de autorización para desbloquear edición si está cerrado
     pedir_superuser = False
-    #superuser_auth_ok = False
-    
 
-    if bloqueado and not request.user.is_superuser and not superuser_auth_ok:
+    # ----------- NUEVO: lógica para abrir presupuesto con superuser -------------
+    if bloqueado and not request.user.is_superuser:
         if request.method == "POST" and 'superuser_username' in request.POST:
             username = request.POST.get('superuser_username')
             password = request.POST.get('superuser_password')
             superuser = authenticate(username=username, password=password)
             if superuser and superuser.is_superuser:
-                request.session[key] = True
-                superuser_auth_ok = True
-                messages.success(request, "Autorización de superusuario exitosa. Ahora puedes modificar el presupuesto.")
-                # ¡OJO! Puedes redirigir aquí si quieres refrescar el contexto
+                # Reabrir presupuesto
+                cierre.cerrado = False
+                cierre.fecha_cierre = None
+                cierre.cerrado_por = None
+                cierre.save()
+                messages.success(request, "Presupuesto reabierto correctamente. Ahora puedes editarlo.")
                 return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
             else:
                 pedir_superuser = True
                 messages.error(request, "Usuario o contraseña de superusuario incorrectos.")
         else:
             pedir_superuser = True
-    #else:
-     #   superuser_auth_ok = True
 
-    # La edición solo está habilitada si: 1) no está bloqueado, 2) es superuser o 3) acaba de ser autorizado
-    #edicion_habilitada = (not bloqueado) or request.user.is_superuser or superuser_auth_ok
-    edicion_habilitada = request.user.is_superuser or not bloqueado or superuser_auth_ok
+    # Ahora recalcula bloqueado
+    cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
+    bloqueado = cierre.cerrado if cierre else False
 
+    # Edición habilitada si no está bloqueado o si eres superusuario
+    edicion_habilitada = not bloqueado or request.user.is_superuser
 
-    # Construcción de estructura (igual)
+    # --- Resto de la vista igual ---
     tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
         'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre'
     )
@@ -227,7 +223,7 @@ def matriz_presupuesto(request):
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
 
-    # Totales, subtotales (igual)
+    # Totales, subtotales
     totales_mes = []
     for mes in meses:
         total_mes = 0
@@ -272,15 +268,14 @@ def matriz_presupuesto(request):
                     if not created and obj.monto != monto:
                         obj.monto = monto
                         obj.save()
-        # Si lo cierra usuario normal
-        #if not bloqueado and not request.user.is_superuser:
-        if "cerrar_presupuesto" in request.POST and (not bloqueado or request.user.is_superuser or superuser_auth_ok):    
+        # Cerrar presupuesto solo si corresponde
+        if "cerrar_presupuesto" in request.POST and edicion_habilitada:
             cierre, created = PresupuestoCierre.objects.get_or_create(empresa=empresa, anio=anio)
             cierre.cerrado = True
             cierre.cerrado_por = request.user
             cierre.fecha_cierre = now()
             cierre.save()
-            messages.success(request, "¡Presupuesto cerrado! Ahora solo puede ser editado por superusuarios.")
+            messages.success(request, "¡Presupuesto cerrado! Solo el superusuario puede volver a abrirlo.")
             return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
         else:
             messages.success(request, "Presupuestos actualizados")
@@ -302,10 +297,10 @@ def matriz_presupuesto(request):
         "is_super": request.user.is_superuser,
         "edicion_habilitada": edicion_habilitada,
         "pedir_superuser": pedir_superuser,
-        "superuser_auth_ok": superuser_auth_ok,
         "bloqueado": bloqueado,
         "cierre": cierre,
     })
+
 
 
 @login_required

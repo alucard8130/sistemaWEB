@@ -133,9 +133,16 @@ def sum_list(iterable):
 def dict_key(d, key):
     return d.get(key)   
  
-@register.filter
+"""@register.filter
 def list_index(l, i):
     try:
         return l[i-1]  # OJO: si tu forloop.counter0, usa simplemente l[i]
     except Exception:
-        return 0
+        return 0"""
+    
+@register.filter
+def list_index(lst, idx):
+    try:
+        return lst[int(idx)]
+    except Exception:
+        return ""    
