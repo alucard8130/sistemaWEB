@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 import openpyxl
 from gastos.models import Gasto, GrupoGasto, TipoGasto, SubgrupoGasto
-from .models import Presupuesto, PresupuestoCierre
+from .models import Presupuesto
 from .forms import PresupuestoForm
 from django.utils.timezone import now
 from django.db.models import Sum
@@ -16,7 +16,6 @@ from collections import defaultdict
 from decimal import Decimal
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
-from django.contrib.auth import authenticate
 
 
 
@@ -159,7 +158,6 @@ def matriz_presupuesto(request):
     now_year = now().year
     anios = list(range(now_year, 2021, -1))
 
-    # Empresa y permisos
     if request.user.is_superuser:
         empresas = Empresa.objects.all()
         empresa_id = request.GET.get('empresa')
@@ -171,47 +169,12 @@ def matriz_presupuesto(request):
     meses = list(range(1, 13))
     meses_nombres = [month_name[m].capitalize() for m in meses]
 
-    # ¿Cerrado?
-    cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
-    bloqueado = cierre.cerrado if cierre else False
-    # --- Recuperar flag de sesión ---
-    key = f'presupuesto_superuser_ok_{empresa.id}_{anio}'
-
-    superuser_auth_ok = request.session.get(key, False)
-    # Lógica de autorización para desbloquear edición si está cerrado
-    pedir_superuser = False
-    #superuser_auth_ok = False
-    
-
-    if bloqueado and not request.user.is_superuser and not superuser_auth_ok:
-        if request.method == "POST" and 'superuser_username' in request.POST:
-            username = request.POST.get('superuser_username')
-            password = request.POST.get('superuser_password')
-            superuser = authenticate(username=username, password=password)
-            if superuser and superuser.is_superuser:
-                request.session[key] = True
-                superuser_auth_ok = True
-                messages.success(request, "Autorización de superusuario exitosa. Ahora puedes modificar el presupuesto.")
-                # ¡OJO! Puedes redirigir aquí si quieres refrescar el contexto
-                return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
-            else:
-                pedir_superuser = True
-                messages.error(request, "Usuario o contraseña de superusuario incorrectos.")
-        else:
-            pedir_superuser = True
-    #else:
-     #   superuser_auth_ok = True
-
-    # La edición solo está habilitada si: 1) no está bloqueado, 2) es superuser o 3) acaba de ser autorizado
-    #edicion_habilitada = (not bloqueado) or request.user.is_superuser or superuser_auth_ok
-    edicion_habilitada = request.user.is_superuser or not bloqueado or superuser_auth_ok
-
-
-    # Construcción de estructura (igual)
+    # Construye la estructura de grupos -> subgrupos -> tipos (para usar en el template)
     tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
         'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre'
     )
     grupos_lista = []
+    # {grupo: {subgrupo: [tipos]}}
     grupos_dict = defaultdict(lambda: defaultdict(list))
     for tipo in tipos:
         grupos_dict[tipo.subgrupo.grupo][tipo.subgrupo].append(tipo)
@@ -224,10 +187,11 @@ def matriz_presupuesto(request):
             subgrupos_lista.append({'id': subgrupo.id, 'nombre': str(subgrupo), 'tipos': tipos_lista, 'subgrupo_obj': subgrupo})
         grupos_lista.append({'id': grupo.id, 'nombre': str(grupo), 'subgrupos': subgrupos_lista, 'grupo_obj': grupo})
 
+    # Consulta presupuestos existentes
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
 
-    # Totales, subtotales (igual)
+    # Totales generales por mes
     totales_mes = []
     for mes in meses:
         total_mes = 0
@@ -236,6 +200,7 @@ def matriz_presupuesto(request):
             total_mes += p.monto if p else 0
         totales_mes.append(total_mes)
 
+    # Subtotales
     subtotales_grupo = {}
     subtotales_subgrupo = {}
     subtotales_tipo = {}
@@ -255,8 +220,8 @@ def matriz_presupuesto(request):
             subtotales_subgrupo[subgrupo.id] = subtotal_subgrupo
         subtotales_grupo[grupo.id] = subtotal_grupo
 
-    # Guardado de presupuestos (solo si habilitado)
-    if request.method == "POST" and edicion_habilitada:
+    # Guardado de presupuestos por POST
+    if request.method == "POST":
         for tipo in tipos:
             for mes in meses:
                 key = f"presupuesto_{tipo.id}_{mes}"
@@ -272,18 +237,7 @@ def matriz_presupuesto(request):
                     if not created and obj.monto != monto:
                         obj.monto = monto
                         obj.save()
-        # Si lo cierra usuario normal
-        #if not bloqueado and not request.user.is_superuser:
-        if "cerrar_presupuesto" in request.POST and (not bloqueado or request.user.is_superuser or superuser_auth_ok):    
-            cierre, created = PresupuestoCierre.objects.get_or_create(empresa=empresa, anio=anio)
-            cierre.cerrado = True
-            cierre.cerrado_por = request.user
-            cierre.fecha_cierre = now()
-            cierre.save()
-            messages.success(request, "¡Presupuesto cerrado! Ahora solo puede ser editado por superusuarios.")
-            return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
-        else:
-            messages.success(request, "Presupuestos actualizados")
+        messages.success(request, "Presupuestos actualizados")
         return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
 
     return render(request, "presupuestos/matriz.html", {
@@ -300,13 +254,7 @@ def matriz_presupuesto(request):
         "subtotales_subgrupo": subtotales_subgrupo,
         "subtotales_tipo": subtotales_tipo,
         "is_super": request.user.is_superuser,
-        "edicion_habilitada": edicion_habilitada,
-        "pedir_superuser": pedir_superuser,
-        "superuser_auth_ok": superuser_auth_ok,
-        "bloqueado": bloqueado,
-        "cierre": cierre,
     })
-
 
 @login_required
 def exportar_presupuesto_excel(request):

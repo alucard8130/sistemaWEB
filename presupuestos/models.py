@@ -20,3 +20,16 @@ class Presupuesto(models.Model):
         if self.mes:
             periodo += f"-{self.mes:02d}"
         return f"{self.empresa} | {self.grupo} | {self.tipo_gasto} | {periodo}: ${self.monto:,.2f}"
+
+class PresupuestoCierre(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    anio = models.PositiveIntegerField()
+    cerrado = models.BooleanField(default=False)
+    cerrado_por = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    fecha_cierre = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('empresa', 'anio')
+
+    def __str__(self):
+        return f"{self.empresa} - {self.anio} ({'CERRADO' if self.cerrado else 'ABIERTO'})"
