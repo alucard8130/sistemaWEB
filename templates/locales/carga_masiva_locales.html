@@ -1,12 +1,29 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- 
+      Created by: Jaime Estrada
+      Modified by: María Martínez
+      Date of creation: 05/06/2025
+      Date of modification: 17/06/2025
+      Description: Bulk upload of premises
+  -->
     <meta charset="UTF-8">
     <title>Carga Masiva Locales</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  </head>
 <body>
-
+    <!-- Dark button -->
+    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+        <div class="d-flex align-items-center ms-auto">  
+            <button id="toggleDark" class="toggle-switch">
+                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
+            </button>
+        </div>
+    </div>
 <div class="container mt-4">
     <h2>Carga Masiva de Locales</h2>
     {% if messages %}
@@ -27,5 +44,10 @@
       <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Cancelar</a>
     </div>  
 </div>
+    <footer>
+        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+        Creado por Jaime M. Estrada Bernabé
+    </footer>
+    <script src="{% static 'js/script.js' %}"></script>
 </body>
 </html>

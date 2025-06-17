@@ -3,58 +3,65 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- 
+        Created by: Jaime Estrada
+        Modified by: María Martínez
+        Date of creation: 05/06/2025
+        Date of modification: 17/06/2025
+        Description: Login page for the application
+    -->
     <meta charset="UTF-8">
     <title>Iniciar sesión - GAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-    <body>
-         <!-- Dark button -->
-        <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-            <div class="d-flex align-items-center ms-auto">  
-                <button id="toggleDark" class="toggle-switch">
-                    <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-                </button>
-            </div>
+<body>
+    <!-- Dark button -->
+    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+        <div class="d-flex align-items-center ms-auto">  
+            <button id="toggleDark" class="toggle-switch">
+                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
+            </button>
         </div>
-        <div class="main-content">
-            <div class="login-box">
-                <div class="text-center mb-4">
-                    <h3 class="fw-bold mb-1 login-title border-bottom pb-2 d-inline-block">GESTOR ADMINISTRATIVO CONDOMINAL</h3>
-                </div>
-                <img src="{% static 'img/logo.png' %}" alt="Logo" class="login-logo mt-0 mb-3">
-                <!--div class="login-title">Gestor Administrativo Condominal</div-->
+    </div>
+    <div class="main-content">
+        <div class="login-box">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold mb-1 login-title border-bottom pb-2 d-inline-block">GESTOR ADMINISTRATIVO CONDOMINAL</h3>
+            </div>
+            <img src="{% static 'img/logo.png' %}" alt="Logo" class="login-logo mt-0 mb-3">
+            <!--div class="login-title">Gestor Administrativo Condominal</div-->
 
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3 text-start">
-                        <label for="id_username" class="form-label">Usuario</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                            <input type="text" name="username" autofocus required class="form-control" id="id_username">
-                        </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3 text-start">
+                    <label for="id_username" class="form-label">Usuario</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                        <input type="text" name="username" autofocus required class="form-control" id="id_username">
                     </div>
-                    <div class="mb-3 text-start">
-                        <label for="id_password" class="form-label">Contraseña</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                            <input type="password" name="password" required class="form-control" id="id_password">
-                        </div>
-                    </div>    
-                    {% if form.errors %}
-                        <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
-                    {% endif %}
-                    <button type="submit" class="btn btn-primary w-50">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión
-                    </button>
-                </form>
-            </div>
+                </div>
+                <div class="mb-3 text-start">
+                    <label for="id_password" class="form-label">Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" name="password" required class="form-control" id="id_password">
+                    </div>
+                </div>    
+                {% if form.errors %}
+                    <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
+                {% endif %}
+                <button type="submit" class="btn btn-primary w-50">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión
+                </button>
+            </form>
         </div>
-        <footer>
-            © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-            Creado por Jaime M. Estrada Bernabé
-        </footer>
-            <script src="{% static 'js/script.js' %}"></script>
-    </body>
+    </div>
+    <footer>
+        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+        Creado por Jaime M. Estrada Bernabé
+    </footer>
+    <script src="{% static 'js/script.js' %}"></script>
+</body>
 </html>
