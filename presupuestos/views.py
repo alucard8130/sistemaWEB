@@ -5,11 +5,11 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 import openpyxl
-from gastos.models import Gasto, GrupoGasto, TipoGasto, SubgrupoGasto
+from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
 from .models import Presupuesto, PresupuestoCierre
 from .forms import PresupuestoForm
 from django.utils.timezone import now
-from django.db.models import Sum
+from django.db.models import Sum,F
 from empresas.models import Empresa
 from calendar import month_name
 from collections import defaultdict
@@ -17,8 +17,11 @@ from decimal import Decimal
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from django.contrib.auth import authenticate
-
-
+import calendar
+from openpyxl.styles import Font, Alignment
+from django.db.models.functions import ExtractYear,ExtractMonth
+from io import BytesIO
+from datetime import datetime
 
 """@login_required
 def presupuesto_lista(request):
@@ -302,7 +305,6 @@ def matriz_presupuesto(request):
     })
 
 
-
 @login_required
 def exportar_presupuesto_excel(request):
     anio = int(request.GET.get('anio', now().year))
@@ -365,4 +367,164 @@ def exportar_presupuesto_excel(request):
     response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     response['Content-Disposition'] = f'attachment; filename={nombre_archivo}'
     wb.save(response)
+    return response
+
+
+@login_required
+def reporte_presupuesto_vs_gasto(request):
+    
+    anio = int(request.GET.get('anio', datetime.now().year))
+    meses = list(range(1, 13))
+    meses_nombres = [calendar.month_name[m] for m in meses]
+
+    # Empresa y permisos (igual que tu flujo)
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get('empresa')
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
+        'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre'
+    )
+
+    # Diccionario: {(tipo_id, mes): monto}
+    presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = {(p.tipo_gasto_id, p.mes): float(p.monto) for p in presupuestos}
+
+    # Diccionario: {(tipo_id, mes): monto}
+    gastos = (PagoGasto.objects
+    .annotate(
+        anio_pago=ExtractYear('fecha_pago'),
+        mes_pago=ExtractMonth('fecha_pago'),
+        tipo_id=F('gasto__tipo_gasto_id')
+    )
+    .filter(anio_pago=anio, gasto__empresa=empresa)
+    .values('tipo_id', 'mes_pago')
+    .annotate(total=Sum('monto'))
+)
+
+    #gastos = PagoGasto.objects.filter(empresa=empresa, anio=anio).values('tipo_gasto_id', 'mes').annotate(total=Sum('monto'))
+    gastos_dict = {(g['tipo_id'], g['mes_pago']): float(g['total']) for g in gastos}
+
+    # Estructura: grupos > subgrupos > tipos > meses
+    grupos_dict = defaultdict(lambda: defaultdict(list))
+    for tipo in tipos:
+        grupos_dict[tipo.subgrupo.grupo][tipo.subgrupo].append(tipo)
+
+    comparativo = []
+    for grupo, subgrupos in grupos_dict.items():
+        grupo_row = {'nombre': str(grupo), 'subgrupos': [], 'total': [0]*12, 'total_gasto': [0]*12, 'total_var': [0]*12,'pct_var': [None]*12}
+        for subgrupo, tipos_ in subgrupos.items():
+            subgrupo_row = {'nombre': str(subgrupo), 'tipos': [], 'total': [0]*12, 'total_gasto': [0]*12, 'total_var': [0]*12, 'pct_var': [None]*12}
+            for tipo in tipos_:
+                row = {'nombre': str(tipo), 'meses': []}
+                for i, mes in enumerate(meses):
+                    presupuesto = presup_dict.get((tipo.id, mes), 0)
+                    gasto = gastos_dict.get((tipo.id, mes), 0)
+                    variacion = gasto - presupuesto
+                    row['meses'].append({'presupuesto': presupuesto, 'gasto': gasto, 'variacion': variacion})
+                    subgrupo_row['total'][i] += presupuesto
+                    subgrupo_row['total_gasto'][i] += gasto
+                    subgrupo_row['total_var'][i] += variacion
+                    grupo_row['total'][i] += presupuesto
+                    grupo_row['total_gasto'][i] += gasto
+                    grupo_row['total_var'][i] += variacion
+                subgrupo_row['tipos'].append(row)
+                # Calcula % variación mensual para el subgrupo
+            for i in range(12):
+                if subgrupo_row['total'][i]:
+                    subgrupo_row['pct_var'][i] = round(subgrupo_row['total_var'][i] / subgrupo_row['total'][i] * 100)
+                else:
+                    subgrupo_row['pct_var'][i] = ''
+            grupo_row['subgrupos'].append(subgrupo_row)
+                # Calcula % variación mensual para el grupo
+            for i in range(12):
+                if grupo_row['total'][i]:
+                    grupo_row['pct_var'][i] = round(grupo_row['total_var'][i] / grupo_row['total'][i] * 100)
+                else:
+                    grupo_row['pct_var'][i] = ''
+                    #grupo_row['subgrupos'].append(subgrupo_row)
+            comparativo.append(grupo_row)
+
+    # Exportar a Excel
+    if request.GET.get('excel') == '1':
+        return exportar_comparativo_excel(anio, empresa, meses_nombres, comparativo)
+    # Calcula los totales generales por mes (presupuesto, real, variación)
+    tot_gen_presup = [0] * 12
+    tot_gen_real = [0] * 12
+    tot_gen_var = [0] * 12
+    tot_gen_pct = [None] * 12
+
+    for i in range(12):
+        for grupo in comparativo:
+            tot_gen_presup[i] += grupo['total'][i]
+            tot_gen_real[i] += grupo['total_gasto'][i]
+            tot_gen_var[i] += grupo['total_var'][i]
+        # Porcentaje, evita división por cero
+        if tot_gen_presup[i]:
+            tot_gen_pct[i] = round(tot_gen_var[i] / tot_gen_presup[i] * 100)
+        else:
+            tot_gen_pct[i] = None
+
+
+    return render(request, "presupuestos/reporte_comparativo.html", {
+        "anio": anio,
+        "anios": list(range(datetime.now().year, 2021, -1)),
+        "empresa": empresa,
+        "empresas": empresas,
+        "meses": meses,
+        "meses_nombres": meses_nombres,
+        "comparativo": comparativo,
+        "tot_gen_presup": tot_gen_presup,
+        "tot_gen_real": tot_gen_real,
+        "tot_gen_var": tot_gen_var,
+        "tot_gen_pct": tot_gen_pct,
+    })
+
+def exportar_comparativo_excel(anio, empresa, meses_nombres, comparativo):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Presupuesto vs Gasto"
+
+    row_num = 1
+    # Header
+    ws.append(["Grupo", "Subgrupo", "Tipo de Gasto"] + sum([[m, "Real", "Var"] for m in meses_nombres], []))
+    for cell in ws[row_num]:
+        cell.font = Font(bold=True)
+    row_num += 1
+
+    for grupo in comparativo:
+        for subgrupo in grupo['subgrupos']:
+            for tipo in subgrupo['tipos']:
+                fila = [grupo['nombre'], subgrupo['nombre'], tipo['nombre']]
+                for mes in tipo['meses']:
+                    fila.extend([mes['presupuesto'], mes['gasto'], mes['variacion']])
+                ws.append(fila)
+                row_num += 1
+            # Subtotal subgrupo
+            fila = [grupo['nombre'], f"Subtotal {subgrupo['nombre']}", ""]
+            for i in range(12):
+                fila.extend([subgrupo['total'][i], subgrupo['total_gasto'][i], subgrupo['total_var'][i]])
+            ws.append(fila)
+            row_num += 1
+        # Subtotal grupo
+        fila = [f"TOTAL {grupo['nombre']}", "", ""]
+        for i in range(12):
+            fila.extend([grupo['total'][i], grupo['total_gasto'][i], grupo['total_var'][i]])
+        ws.append(fila)
+        row_num += 1
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    response = HttpResponse(
+        #content=openpyxl.writer.excel.save_virtual_workbook(wb),
+        content=output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename=Comparativo_{empresa}_{anio}.xlsx'
     return response

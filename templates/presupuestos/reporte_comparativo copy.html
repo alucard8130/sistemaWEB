@@ -1,0 +1,137 @@
+{% load humanize %}
+{% load dict_extras %}
+{% load presupuesto_tags %}
+{% load get_range %}
+{% load porcentaje_extras %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reporte comparativo Presupuesto vs Gasto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        td, th { vertical-align: middle !important; text-align: right;}
+        .table-info, .table-primary, .table-warning { font-weight: bold; }
+        th, td:first-child, td:nth-child(2), td:nth-child(3) { text-align: left !important; }
+        .neg { color: #b02a37; }
+        .pos { color: #198754; }
+    </style>
+</head>
+<body>
+<div class="container mt-3">
+    <h4>Comparativo Presupuesto vs Gasto real {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h4>
+    <form method="get" class="mb-3">
+        <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;">
+            {% for a in anios %}
+                <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+        {% if empresas %}
+            <select name="empresa" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;">
+                {% for emp in empresas %}
+                    <option value="{{ emp.id }}" {% if emp.id == empresa.id %}selected{% endif %}>{{ emp.nombre }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+        <a class="btn btn-outline-success" href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&excel=1">Exportar a Excel</a>
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle">
+            <thead>
+                <tr>
+                    <th rowspan="2">Grupo</th>
+                    <th rowspan="2">Subgrupo</th>
+                    <th rowspan="2">Tipo de Gasto</th>
+                    {% for mes_nombre in meses_nombres %}
+                        <th colspan="4">{{ mes_nombre }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for mes in meses_nombres %}
+                        <th>Presup.</th>
+                        <th>Real</th>
+                        <th>Var.</th>
+                        <th>% Var.</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for grupo in comparativo %}
+                {% for subgrupo in grupo.subgrupos %}
+                    {% for tipo in subgrupo.tipos %}
+                        <tr>
+                            <td>{{ grupo.nombre }}</td>
+                            <td>{{ subgrupo.nombre }}</td>
+                            <td>{{ tipo.nombre }}</td>
+                            {% for m in tipo.meses %}
+                                <td>{{ m.presupuesto|floatformat:0|intcomma }}</td>
+                                <td>{{ m.gasto|floatformat:0|intcomma }}</td>
+                                <td class="{% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% endif %}">{{ m.variacion|floatformat:0|intcomma }}</td>
+                                <td>
+                                    {% if m.presupuesto %}
+                                        {{ m.variacion|porcentaje:m.presupuesto }}
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                    <tr class="table-info">
+                        <td>{{ grupo.nombre }}</td>
+                        <td colspan="2" class="text-end">Subtotal {{ subgrupo.nombre }}</td>
+                        {% for i in "0"|get_range:12 %}
+                            <td>{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
+                            <td>{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+                            <td class="{% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% endif %}">
+                                {{ subgrupo.total_var|index:i|floatformat:0|intcomma }}
+                            </td>
+                            <td>
+                                {% if subgrupo.pct_var|index:i != '' %}
+                                    {{ subgrupo.pct_var|index:i }}%
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                <tr class="table-primary">
+                    <td colspan="2" class="text-end">TOTAL {{ grupo.nombre }}</td>
+                    <td></td>
+                    {% for i in "0"|get_range:12 %}
+                        <td>{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
+                        <td>{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+                        <td class="{% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% endif %}">
+                            {{ grupo.total_var|index:i|floatformat:0|intcomma }}
+                        </td>
+                        <td>
+                            {% if grupo.pct_var|index:i != '' %}
+                                {{ grupo.pct_var|index:i }}%
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+
+            {# -------- TOTAL GENERAL --------- #}
+            <tr class="table-warning">
+                <td colspan="3" class="text-end"><strong>TOTAL GENERAL</strong></td>
+                {% for i in "0"|get_range:12 %}
+                    <td><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
+                    <td><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
+                    <td>
+                        <strong class="{% if tot_gen_var|index:i < 0 %}neg{% elif tot_gen_var|index:i > 0 %}pos{% endif %}">
+                            {{ tot_gen_var|index:i|floatformat:0|intcomma }}
+                        </strong>
+                    </td>
+                    <td>
+                        {% if tot_gen_pct|index:i != None %}
+                            <strong>{{ tot_gen_pct|index:i }}%</strong>
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

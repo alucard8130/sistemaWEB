@@ -11,4 +11,5 @@ urlpatterns = [
     path('presupuestos/matriz/', views.matriz_presupuesto, name='matriz_presupuesto'),
     #path('presupuestos/matriz_simple/', views.matriz_simple_presupuesto, name='matriz_simple_presupuesto'),
     path('presupuestos/exportar_excel/', views.exportar_presupuesto_excel, name='exportar_presupuesto_excel'),
+    path('presupuestos/comparativo/', views.reporte_presupuesto_vs_gasto, name='reporte_presupuesto_vs_gasto'),
 ]

@@ -118,11 +118,8 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
                         <ul class="dropdown-menu">
-                            {% if request.user.is_superuser %}
-                                <li><a class="dropdown-item" href="">Registrar PPTO</a></li>
-                            {% endif %}
-                                <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Crear Presupuesto</a></li>
-                            
+                            <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Crear Presupuesto</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo</a></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>
                         </ul>
                     </li>

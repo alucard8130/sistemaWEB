@@ -146,3 +146,10 @@ def list_index(lst, idx):
         return lst[int(idx)]
     except Exception:
         return ""    
+
+@register.filter
+def index(lst, i):
+    try:
+        return lst[i]
+    except:
+        return ''    
