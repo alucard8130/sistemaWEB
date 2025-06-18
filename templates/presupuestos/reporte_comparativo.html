@@ -16,67 +16,32 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css"/>
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"/>
     <style>
-        body {
-            background: #f7f9fb;
-        }
-        .header-bar {
-            background: #22334d;
-            color: #fff;
-            padding: 18px 0 18px 0;
-            border-radius: 0 0 18px 18px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 18px 0 #00122b18;
-        }
-        .logo-mini {
-            height: 48px;
-            margin-right: 14px;
-            vertical-align: middle;
-        }
-        .table-wrapper-corp {
-            border-radius: 12px;
-            box-shadow: 0 2px 10px 0 #22334d16;
-            background: #fff;
-            padding: 18px;
-        }
-        h4.corp-title {
-            color: #22334d;
-            font-weight: 600;
-            font-size: 1.35rem;
-            letter-spacing: .02em;
-            margin-bottom: 22px;
-        }
+        body { background: #f7f9fb; }
+        .header-bar { background: #22334d; color: #fff; padding: 18px 0; border-radius: 0 0 18px 18px; margin-bottom: 25px; box-shadow: 0 4px 18px 0 #00122b18;}
+        .logo-mini { height: 48px; margin-right: 14px; vertical-align: middle;}
+        .table-wrapper-corp { border-radius: 12px; box-shadow: 0 2px 10px 0 #22334d16; background: #fff; padding: 18px;}
+        h4.corp-title { color: #22334d; font-weight: 600; font-size: 1.35rem; letter-spacing: .02em; margin-bottom: 22px;}
         th, td { white-space: nowrap; }
         td, th { vertical-align: middle !important; text-align: right;}
         th, td:first-child, td:nth-child(2), td:nth-child(3) { text-align: left !important; }
-        .table > :not(caption) > * > * {
-            border-bottom-width: 1.5px;
-        }
+        .table > :not(caption) > * > * { border-bottom-width: 1.5px; }
         .table-info, .table-primary, .table-warning { font-weight: bold; }
         .table-info { background: #eaf3fa !important; }
         .table-primary { background: #dde7fa !important; }
         .table-warning { background: #fff8e1 !important; }
         .neg { color: #b02a37; font-weight: 600; }
         .pos { color: #198754; font-weight: 600; }
+        .neutro { color: #999; font-weight: 600; }
+        .flecha-mini { font-size: 1.1em; vertical-align: middle; margin-left: 2px; margin-right:2px;}
         tr.data-row:hover { background: #f4f7fb !important; }
         .dataTables_scrollBody { overflow-x: auto !important; }
         .dataTables_wrapper { width: 100%; }
         .dataTables_scroll { margin-bottom: 0 !important; }
-        /* Top horizontal scroll bar visible */
-        .dt-top-scroll {
-            overflow-x: auto;
-            margin-bottom: 0;
-        }
-        .dt-top-scroll::-webkit-scrollbar {
-            height: 8px;
-            background: #dde7fa;
-        }
-        .dt-top-scroll::-webkit-scrollbar-thumb {
-            background: #22334d40;
-            border-radius: 4px;
-        }
-        .dttooltip {
-            border-bottom: 1px dashed #555; cursor: help;
-        }
+        .dt-top-scroll { overflow-x: auto;overflow-y: hidden; margin-bottom: 0;height: 18px;width: 100%;background: transparent; }
+        .dt-top-scroll-inner {height: 1px; /* invisible pero toma el ancho */}
+        .dttooltip { border-bottom: 1px dashed #555; cursor: help;}
+        .total-anual-cell { background: #f4f8fa; font-weight: 700; border-left: 2px solid #dee2e6;}
+
     </style>
 </head>
 <body>
@@ -117,12 +82,13 @@
                 <table id="reporte-comparativo" class="table table-bordered table-sm align-middle" style="width:100%;">
                     <thead>
                         <tr>
-                            <th rowspan="2">Grupo</th>
-                            <th rowspan="2">Subgrupo</th>
-                            <th rowspan="2">Tipo de Gasto</th>
+                            <th rowspan="3">Grupo</th>
+                            <th rowspan="3">Subgrupo</th>
+                            <th rowspan="3">Tipo de Gasto</th>
                             {% for mes_nombre in meses_nombres %}
                                 <th colspan="4">{{ mes_nombre }}</th>
                             {% endfor %}
+                            <th colspan="4" class="total-anual-cell text-center">TOTAL ANUAL</th>
                         </tr>
                         <tr>
                             {% for mes in meses_nombres %}
@@ -131,6 +97,10 @@
                                 <th>Var.</th>
                                 <th>% Var.</th>
                             {% endfor %}
+                            <th>Presup.</th>
+                            <th>Real</th>
+                            <th>Var.</th>
+                            <th>% Var.</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -144,8 +114,12 @@
                                     {% for m in tipo.meses %}
                                         <td>{{ m.presupuesto|floatformat:0|intcomma }}</td>
                                         <td>{{ m.gasto|floatformat:0|intcomma }}</td>
-                                        <td class="{% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% endif %}">
+                                        <td class="{% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% else %}neutro{% endif %}">
                                             {{ m.variacion|floatformat:0|intcomma }}
+                                            {% if m.variacion > 0 %}<span class="flecha-mini pos" title="Gasto superior al presupuesto">&#8593;</span>
+                                            {% elif m.variacion < 0 %}<span class="flecha-mini neg" title="Gasto inferior al presupuesto">&#8595;</span>
+                                            {% else %}<span class="flecha-mini neutro" title="Sin variación">&#8594;</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             {% if m.presupuesto %}
@@ -155,6 +129,23 @@
                                             {% endif %}
                                         </td>
                                     {% endfor %}
+                                    <td class="total-anual-cell">{{ tipo.total_anual_presup|floatformat:0|intcomma }}</td>
+                                    <td class="total-anual-cell">{{ tipo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                                    <td class="total-anual-cell 
+                                        {% if tipo.total_anual_var < 0 %}neg{% elif tipo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+                                        {{ tipo.total_anual_var|floatformat:0|intcomma }}
+                                        {% if tipo.total_anual_var > 0 %}<span class="flecha-mini pos" title="Gasto superior al presupuesto">&#8593;</span>
+                                        {% elif tipo.total_anual_var < 0 %}<span class="flecha-mini neg" title="Gasto inferior al presupuesto">&#8595;</span>
+                                        {% else %}<span class="flecha-mini neutro" title="Sin variación">&#8594;</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="total-anual-cell">
+                                        {% if tipo.total_anual_presup %}
+                                            <span class="dttooltip" title="Variación anual respecto al presupuesto">
+                                                {{ tipo.total_anual_pct }}%
+                                            </span>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                             {% endfor %}
                             <tr class="table-info">
@@ -164,8 +155,12 @@
                                 {% for i in "0"|get_range:12 %}
                                     <td>{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
                                     <td>{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
-                                    <td class="{% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% endif %}">
+                                    <td class="{% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                                         {{ subgrupo.total_var|index:i|floatformat:0|intcomma }}
+                                        {% if subgrupo.total_var|index:i > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                        {% elif subgrupo.total_var|index:i < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                        {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if subgrupo.pct_var|index:i != '' %}
@@ -175,6 +170,23 @@
                                         {% endif %}
                                     </td>
                                 {% endfor %}
+                                <td class="total-anual-cell">{{ subgrupo.total_anual_presup|floatformat:0|intcomma }}</td>
+                                <td class="total-anual-cell">{{ subgrupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                                <td class="total-anual-cell 
+                                    {% if subgrupo.total_anual_var < 0 %}neg{% elif subgrupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+                                    {{ subgrupo.total_anual_var|floatformat:0|intcomma }}
+                                    {% if subgrupo.total_anual_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                    {% elif subgrupo.total_anual_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                    {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                    {% endif %}
+                                </td>
+                                <td class="total-anual-cell">
+                                    {% if subgrupo.total_anual_presup %}
+                                        <span class="dttooltip" title="Variación anual respecto al presupuesto">
+                                            {{ subgrupo.total_anual_pct }}%
+                                        </span>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% endfor %}
                         <tr class="table-primary">
@@ -184,8 +196,12 @@
                             {% for i in "0"|get_range:12 %}
                                 <td>{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
                                 <td>{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
-                                <td class="{% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% endif %}">
+                                <td class="{% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                                     {{ grupo.total_var|index:i|floatformat:0|intcomma }}
+                                    {% if grupo.total_var|index:i > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                    {% elif grupo.total_var|index:i < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                    {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if grupo.pct_var|index:i != '' %}
@@ -195,6 +211,23 @@
                                     {% endif %}
                                 </td>
                             {% endfor %}
+                            <td class="total-anual-cell">{{ grupo.total_anual_presup|floatformat:0|intcomma }}</td>
+                            <td class="total-anual-cell">{{ grupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                            <td class="total-anual-cell 
+                                {% if grupo.total_anual_var < 0 %}neg{% elif grupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+                                {{ grupo.total_anual_var|floatformat:0|intcomma }}
+                                {% if grupo.total_anual_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                {% elif grupo.total_anual_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                {% endif %}
+                            </td>
+                            <td class="total-anual-cell">
+                                {% if grupo.total_anual_presup %}
+                                    <span class="dttooltip" title="Variación anual respecto al presupuesto">
+                                        {{ grupo.total_anual_pct }}%
+                                    </span>
+                                {% endif %}
+                            </td>
                         </tr>
                     {% endfor %}
                     <tr class="table-warning">
@@ -205,8 +238,12 @@
                             <td><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
                             <td><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
                             <td>
-                                <strong class="{% if tot_gen_var|index:i < 0 %}neg{% elif tot_gen_var|index:i > 0 %}pos{% endif %}">
+                                <strong class="{% if tot_gen_var|index:i < 0 %}neg{% elif tot_gen_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                                     {{ tot_gen_var|index:i|floatformat:0|intcomma }}
+                                    {% if tot_gen_var|index:i > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                    {% elif tot_gen_var|index:i < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                    {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                    {% endif %}
                                 </strong>
                             </td>
                             <td>
@@ -215,11 +252,29 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
+                        <td class="total-anual-cell"><strong>{{ total_general_presup|floatformat:0|intcomma }}</strong></td>
+                        <td class="total-anual-cell"><strong>{{ total_general_real|floatformat:0|intcomma }}</strong></td>
+                        <td class="total-anual-cell 
+                            {% if total_general_var < 0 %}neg{% elif total_general_var > 0 %}pos{% else %}neutro{% endif %}">
+                            <strong>
+                                {{ total_general_var|floatformat:0|intcomma }}
+                                {% if total_general_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                {% elif total_general_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td class="total-anual-cell">
+                            {% if total_general_presup %}
+                                <span class="dttooltip" title="Variación anual respecto al presupuesto">
+                                    <strong>{{ total_general_pct }}%</strong>
+                                </span>
+                            {% endif %}
+                        </td>
                     </tr>
                     </tbody>
                 </table>
             </div>
-            <!-- Barra de scroll inferior (default DataTables) -->
         </div>
     </div>
 <!-- DataTables scripts y sincronización scroll -->
@@ -228,8 +283,7 @@
 <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
 <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 <script>
-// DataTable + scroll + columnas fijas
-$(document).ready(function() {
+    $(document).ready(function() {
     var table = $('#reporte-comparativo').DataTable({
         scrollX: true,
         scrollY: '65vh',
@@ -246,22 +300,31 @@ $(document).ready(function() {
         }
     });
 
-    // Sincroniza scroll superior e inferior
-    // Crea un scroll dummy arriba
-    var $scrollHead = $('<div class="dt-top-scroll"></div>');
-    $('#dt-top-scroll').append($scrollHead);
-    var $tableScroll = $('.dataTables_scrollBody');
-    function syncScroll() { $scrollHead.scrollLeft($tableScroll.scrollLeft()); }
-    function syncTableScroll() { $tableScroll.scrollLeft($scrollHead.scrollLeft()); }
-    $scrollHead.width($tableScroll.get(0).scrollWidth);
-    $scrollHead.height(18);
-    $scrollHead.on('scroll', syncTableScroll);
-    $tableScroll.on('scroll', syncScroll);
+    // Barra de scroll arriba sincronizada con tabla
+    var $scrollBody = $('.dataTables_scrollBody');
+    var $topScrollbar = $('#top-scrollbar');
+    var $topScrollbarInner = $('#top-scrollbar-inner');
 
-    // Estilo corporativo: tooltips bootstrap (puedes usar tippy.js o bootstrap tooltips)
+    // Ajusta el ancho del dummy interno al ancho del contenido scrollable
+    function updateScrollbarWidth() {
+        $topScrollbarInner.width($scrollBody.get(0).scrollWidth);
+    }
+    updateScrollbarWidth();
+
+    // Sincroniza scroll horizontal ambos sentidos
+    $topScrollbar.on('scroll', function() {
+        $scrollBody.scrollLeft($topScrollbar.scrollLeft());
+    });
+    $scrollBody.on('scroll', function() {
+        $topScrollbar.scrollLeft($scrollBody.scrollLeft());
+    });
+
+    // Si la tabla cambia de tamaño (por resize o filtros), re-ajusta ancho
+    window.addEventListener('resize', updateScrollbarWidth);
+
+    // Bootstrap tooltips si los usas
     $('[title]').tooltip({html: true, placement: 'top'});
 });
 </script>
 </body>
 </html>
-

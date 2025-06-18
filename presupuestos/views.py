@@ -23,14 +23,6 @@ from django.db.models.functions import ExtractYear,ExtractMonth
 from io import BytesIO
 from datetime import datetime
 
-"""@login_required
-def presupuesto_lista(request):
-    if request.user.is_superuser:
-        presupuestos = Presupuesto.objects.all()
-    else:
-        empresa = request.user.perfilusuario.empresa
-        presupuestos = Presupuesto.objects.filter(empresa=empresa)
-    return render(request, 'presupuestos/lista.html', {'presupuestos': presupuestos})"""
 
 @login_required
 def presupuesto_nuevo(request):
@@ -372,7 +364,6 @@ def exportar_presupuesto_excel(request):
 
 @login_required
 def reporte_presupuesto_vs_gasto(request):
-    
     anio = int(request.GET.get('anio', datetime.now().year))
     meses = list(range(1, 13))
     meses_nombres = [calendar.month_name[m] for m in meses]
@@ -396,17 +387,15 @@ def reporte_presupuesto_vs_gasto(request):
 
     # Diccionario: {(tipo_id, mes): monto}
     gastos = (PagoGasto.objects
-    .annotate(
-        anio_pago=ExtractYear('fecha_pago'),
-        mes_pago=ExtractMonth('fecha_pago'),
-        tipo_id=F('gasto__tipo_gasto_id')
+        .annotate(
+            anio_pago=ExtractYear('fecha_pago'),
+            mes_pago=ExtractMonth('fecha_pago'),
+            tipo_id=F('gasto__tipo_gasto_id')
+        )
+        .filter(anio_pago=anio, gasto__empresa=empresa)
+        .values('tipo_id', 'mes_pago')
+        .annotate(total=Sum('monto'))
     )
-    .filter(anio_pago=anio, gasto__empresa=empresa)
-    .values('tipo_id', 'mes_pago')
-    .annotate(total=Sum('monto'))
-)
-
-    #gastos = PagoGasto.objects.filter(empresa=empresa, anio=anio).values('tipo_gasto_id', 'mes').annotate(total=Sum('monto'))
     gastos_dict = {(g['tipo_id'], g['mes_pago']): float(g['total']) for g in gastos}
 
     # Estructura: grupos > subgrupos > tipos > meses
@@ -415,12 +404,43 @@ def reporte_presupuesto_vs_gasto(request):
         grupos_dict[tipo.subgrupo.grupo][tipo.subgrupo].append(tipo)
 
     comparativo = []
+    # Totales generales anuales
+    total_general_presup = 0
+    total_general_real = 0
+    total_general_var = 0
+
     for grupo, subgrupos in grupos_dict.items():
-        grupo_row = {'nombre': str(grupo), 'subgrupos': [], 'total': [0]*12, 'total_gasto': [0]*12, 'total_var': [0]*12,'pct_var': [None]*12}
+        grupo_row = {
+            'nombre': str(grupo),
+            'subgrupos': [],
+            'total': [0]*12,
+            'total_gasto': [0]*12,
+            'total_var': [0]*12,
+            'pct_var': [None]*12,
+        }
+        grupo_total_presup = 0
+        grupo_total_gasto = 0
+        grupo_total_var = 0
+
         for subgrupo, tipos_ in subgrupos.items():
-            subgrupo_row = {'nombre': str(subgrupo), 'tipos': [], 'total': [0]*12, 'total_gasto': [0]*12, 'total_var': [0]*12, 'pct_var': [None]*12}
+            subgrupo_row = {
+                'nombre': str(subgrupo),
+                'tipos': [],
+                'total': [0]*12,
+                'total_gasto': [0]*12,
+                'total_var': [0]*12,
+                'pct_var': [None]*12,
+            }
+            subgrupo_total_presup = 0
+            subgrupo_total_gasto = 0
+            subgrupo_total_var = 0
+
             for tipo in tipos_:
                 row = {'nombre': str(tipo), 'meses': []}
+                anual_presup = 0
+                anual_gasto = 0
+                anual_var = 0
+
                 for i, mes in enumerate(meses):
                     presupuesto = presup_dict.get((tipo.id, mes), 0)
                     gasto = gastos_dict.get((tipo.id, mes), 0)
@@ -432,26 +452,61 @@ def reporte_presupuesto_vs_gasto(request):
                     grupo_row['total'][i] += presupuesto
                     grupo_row['total_gasto'][i] += gasto
                     grupo_row['total_var'][i] += variacion
+
+                    anual_presup += presupuesto
+                    anual_gasto += gasto
+                    anual_var += variacion
+
+                # Totales anuales por tipo
+                row['total_anual_presup'] = anual_presup
+                row['total_anual_gasto'] = anual_gasto
+                row['total_anual_var'] = anual_var
+                row['total_anual_pct'] = int(round(anual_var / anual_presup * 100)) if anual_presup else ''
+
                 subgrupo_row['tipos'].append(row)
-                # Calcula % variación mensual para el subgrupo
+
+                subgrupo_total_presup += anual_presup
+                subgrupo_total_gasto += anual_gasto
+                subgrupo_total_var += anual_var
+
+            # Totales mensuales y anuales por subgrupo
             for i in range(12):
                 if subgrupo_row['total'][i]:
                     subgrupo_row['pct_var'][i] = round(subgrupo_row['total_var'][i] / subgrupo_row['total'][i] * 100)
                 else:
                     subgrupo_row['pct_var'][i] = ''
+            subgrupo_row['total_anual_presup'] = subgrupo_total_presup
+            subgrupo_row['total_anual_gasto'] = subgrupo_total_gasto
+            subgrupo_row['total_anual_var'] = subgrupo_total_var
+            subgrupo_row['total_anual_pct'] = int(round(subgrupo_total_var / subgrupo_total_presup * 100)) if subgrupo_total_presup else ''
+
             grupo_row['subgrupos'].append(subgrupo_row)
-                # Calcula % variación mensual para el grupo
-            for i in range(12):
-                if grupo_row['total'][i]:
-                    grupo_row['pct_var'][i] = round(grupo_row['total_var'][i] / grupo_row['total'][i] * 100)
-                else:
-                    grupo_row['pct_var'][i] = ''
-                    #grupo_row['subgrupos'].append(subgrupo_row)
-            comparativo.append(grupo_row)
+
+            grupo_total_presup += subgrupo_total_presup
+            grupo_total_gasto += subgrupo_total_gasto
+            grupo_total_var += subgrupo_total_var
+
+        # Totales mensuales y anuales por grupo
+        for i in range(12):
+            if grupo_row['total'][i]:
+                grupo_row['pct_var'][i] = round(grupo_row['total_var'][i] / grupo_row['total'][i] * 100)
+            else:
+                grupo_row['pct_var'][i] = ''
+        grupo_row['total_anual_presup'] = grupo_total_presup
+        grupo_row['total_anual_gasto'] = grupo_total_gasto
+        grupo_row['total_anual_var'] = grupo_total_var
+        grupo_row['total_anual_pct'] = int(round(grupo_total_var / grupo_total_presup * 100)) if grupo_total_presup else ''
+
+        comparativo.append(grupo_row)
+
+        total_general_presup += grupo_total_presup
+        total_general_real += grupo_total_gasto
+        total_general_var += grupo_total_var
 
     # Exportar a Excel
     if request.GET.get('excel') == '1':
         return exportar_comparativo_excel(anio, empresa, meses_nombres, comparativo)
+
     # Calcula los totales generales por mes (presupuesto, real, variación)
     tot_gen_presup = [0] * 12
     tot_gen_real = [0] * 12
@@ -463,12 +518,13 @@ def reporte_presupuesto_vs_gasto(request):
             tot_gen_presup[i] += grupo['total'][i]
             tot_gen_real[i] += grupo['total_gasto'][i]
             tot_gen_var[i] += grupo['total_var'][i]
-        # Porcentaje, evita división por cero
         if tot_gen_presup[i]:
             tot_gen_pct[i] = round(tot_gen_var[i] / tot_gen_presup[i] * 100)
         else:
             tot_gen_pct[i] = None
 
+    # Totales anuales generales
+    total_general_pct = int(round(total_general_var / total_general_presup * 100)) if total_general_presup else ''
 
     return render(request, "presupuestos/reporte_comparativo.html", {
         "anio": anio,
@@ -482,6 +538,11 @@ def reporte_presupuesto_vs_gasto(request):
         "tot_gen_real": tot_gen_real,
         "tot_gen_var": tot_gen_var,
         "tot_gen_pct": tot_gen_pct,
+        # Totales anuales generales
+        "total_general_presup": total_general_presup,
+        "total_general_real": total_general_real,
+        "total_general_var": total_general_var,
+        "total_general_pct": total_general_pct,
     })
 
 def exportar_comparativo_excel(anio, empresa, meses_nombres, comparativo):
@@ -489,40 +550,117 @@ def exportar_comparativo_excel(anio, empresa, meses_nombres, comparativo):
     ws = wb.active
     ws.title = "Presupuesto vs Gasto"
 
-    row_num = 1
     # Header
-    ws.append(["Grupo", "Subgrupo", "Tipo de Gasto"] + sum([[m, "Real", "Var"] for m in meses_nombres], []))
-    for cell in ws[row_num]:
+    encabezado = ["Grupo", "Subgrupo", "Tipo de Gasto"]
+    for m in meses_nombres:
+        encabezado += [m, "Real", "Var", "% Var"]
+    encabezado += ["Total Presupuesto", "Total Gasto", "Total Variación", "% Variación"]
+    ws.append(encabezado)
+    for cell in ws[1]:
         cell.font = Font(bold=True)
-    row_num += 1
+
+    def porcentaje_var(presupuesto, variacion):
+        try:
+            return (variacion / presupuesto) * 100 if presupuesto else 0
+        except ZeroDivisionError:
+            return 0
+
+    total_presupuesto_general = 0
+    total_gasto_general = 0
+    total_var_general = 0
 
     for grupo in comparativo:
         for subgrupo in grupo['subgrupos']:
             for tipo in subgrupo['tipos']:
                 fila = [grupo['nombre'], subgrupo['nombre'], tipo['nombre']]
+                total_presupuesto = 0
+                total_gasto = 0
+                total_var = 0
                 for mes in tipo['meses']:
-                    fila.extend([mes['presupuesto'], mes['gasto'], mes['variacion']])
+                    fila.extend([
+                        mes['presupuesto'],
+                        mes['gasto'],
+                        mes['variacion'],
+                        porcentaje_var(mes['presupuesto'], mes['variacion'])
+                    ])
+                    total_presupuesto += mes['presupuesto']
+                    total_gasto += mes['gasto']
+                    total_var += mes['variacion']
+                fila.extend([
+                    total_presupuesto,
+                    total_gasto,
+                    total_var,
+                    porcentaje_var(total_presupuesto, total_var)
+                ])
                 ws.append(fila)
-                row_num += 1
+                total_presupuesto_general += total_presupuesto
+                total_gasto_general += total_gasto
+                total_var_general += total_var
             # Subtotal subgrupo
             fila = [grupo['nombre'], f"Subtotal {subgrupo['nombre']}", ""]
+            total_presupuesto = sum(subgrupo['total'])
+            total_gasto = sum(subgrupo['total_gasto'])
+            total_var = sum(subgrupo['total_var'])
             for i in range(12):
-                fila.extend([subgrupo['total'][i], subgrupo['total_gasto'][i], subgrupo['total_var'][i]])
+                fila.extend([
+                    subgrupo['total'][i],
+                    subgrupo['total_gasto'][i],
+                    subgrupo['total_var'][i],
+                    porcentaje_var(subgrupo['total'][i], subgrupo['total_var'][i])
+                ])
+            fila.extend([
+                total_presupuesto,
+                total_gasto,
+                total_var,
+                porcentaje_var(total_presupuesto, total_var)
+            ])
             ws.append(fila)
-            row_num += 1
         # Subtotal grupo
         fila = [f"TOTAL {grupo['nombre']}", "", ""]
+        total_presupuesto = sum(grupo['total'])
+        total_gasto = sum(grupo['total_gasto'])
+        total_var = sum(grupo['total_var'])
         for i in range(12):
-            fila.extend([grupo['total'][i], grupo['total_gasto'][i], grupo['total_var'][i]])
+            fila.extend([
+                grupo['total'][i],
+                grupo['total_gasto'][i],
+                grupo['total_var'][i],
+                porcentaje_var(grupo['total'][i], grupo['total_var'][i])
+            ])
+        fila.extend([
+            total_presupuesto,
+            total_gasto,
+            total_var,
+            porcentaje_var(total_presupuesto, total_var)
+        ])
         ws.append(fila)
-        row_num += 1
+
+    # Total general (al final)
+    fila = ["TOTAL GENERAL", "", ""]
+    # Suma mensual general (asumiendo que puedes sumar por mes)
+    for i in range(12):
+        mes_presupuesto = sum(grupo['total'][i] for grupo in comparativo)
+        mes_gasto = sum(grupo['total_gasto'][i] for grupo in comparativo)
+        mes_var = sum(grupo['total_var'][i] for grupo in comparativo)
+        fila.extend([
+            mes_presupuesto,
+            mes_gasto,
+            mes_var,
+            porcentaje_var(mes_presupuesto, mes_var)
+        ])
+    fila.extend([
+        total_presupuesto_general,
+        total_gasto_general,
+        total_var_general,
+        porcentaje_var(total_presupuesto_general, total_var_general)
+    ])
+    ws.append(fila)
 
     output = BytesIO()
     wb.save(output)
     output.seek(0)
     
     response = HttpResponse(
-        #content=openpyxl.writer.excel.save_virtual_workbook(wb),
         content=output.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
