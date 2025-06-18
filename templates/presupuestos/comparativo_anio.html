@@ -1,0 +1,124 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Presupuestos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+<h2>Comparativo de presupuesto{% if anio1 and anio2 %} {{ anio1 }} vs {{ anio2 }}{% endif %}</h2>
+
+  {% if anios_disponibles %}
+    <form method="get" class="mb-3">
+      <div class="row g-2">
+        <div class="col-auto">
+          <select name="anio1" class="form-select">
+            {% for anio in anios_disponibles %}
+              <option value="{{ anio }}" {% if anio == anio1 %}selected{% endif %}>{{ anio }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <select name="anio2" class="form-select">
+            {% for anio in anios_disponibles %}
+              <option value="{{ anio }}" {% if anio == anio2 %}selected{% endif %}>{{ anio }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary">Comparar</button>
+          <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
+        </div>
+      </div>
+    </form>
+
+    <table class="table table-bordered">
+      <thead class="table-light">
+        <tr>
+          <th>Grupo</th>
+          <th>Subgrupo</th>
+          <th>Tipo de gasto</th>
+          <th>{{ anio1 }}</th>
+          <th>{{ anio2 }}</th>
+          <th>Variación</th>
+          <th>Variación %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for grupo, data in comparativo.items %}
+          {# Fila de total por Grupo #}
+          <tr class="table-primary">
+            <td>{{ grupo }}</td>
+            <td colspan="2"><strong>Total Grupo</strong></td>
+            <td>{{ data.totales.valor1|floatformat:0|intcomma }}</td>
+            <td>{{ data.totales.valor2|floatformat:0|intcomma }}</td>
+            <td>{{ data.totales.variacion|floatformat:0|intcomma }}</td>
+            <td>
+              {% if data.totales.variacion_pct is not None %}
+                {{ data.totales.variacion_pct|floatformat:0 }}%
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% for subgrupo, subdata in data.subgrupos.items %}
+            {# Fila de total por Subgrupo #}
+            <tr class="table-secondary">
+              <td></td>
+              <td>{{ subgrupo }}</td>
+              <td><strong>Total Subgrupo</strong></td>
+              <td>{{ subdata.totales.valor1|floatformat:0|intcomma }}</td>
+              <td>{{ subdata.totales.valor2|floatformat:0|intcomma }}</td>
+              <td>{{ subdata.totales.variacion|floatformat:0|intcomma }}</td>
+              <td>
+                {% if subdata.totales.variacion_pct is not None %}
+                  {{ subdata.totales.variacion_pct|floatformat:0 }}%
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+            {% for tipo, vals in subdata.tipos.items %}
+              {# Fila de detalle por Tipo de gasto #}
+              <tr>
+                <td></td>
+                <td></td>
+                <td>{{ tipo }}</td>
+                <td>{{ vals.valor1|floatformat:0|intcomma }}</td>
+                <td>{{ vals.valor2|floatformat:0|intcomma }}</td>
+                <td>{{ vals.variacion|floatformat:0|intcomma }}</td>
+                <td>
+                  {% if vals.variacion_pct is not None %}
+                    {{ vals.variacion_pct|floatformat:0 }}%
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-secondary">
+        <tr>
+          <th colspan="3">Total General</th>
+          <th>{{ totales.valor1|floatformat:0|intcomma }}</th>
+          <th>{{ totales.valor2|floatformat:0|intcomma }}</th>
+          <th>{{ totales.variacion|floatformat:0|intcomma }}</th>
+          <th>
+            {% if totales.variacion_pct is not None %}
+              {{ totales.variacion_pct|floatformat:0 }}%
+            {% else %}
+              -
+            {% endif %}
+          </th>
+        </tr>
+      </tfoot>
+    </table>
+  {% else %}
+    <p class="text-warning">No existen registros de presupuesto. Agrega al menos uno para visualizar el comparativo.</p>
+  {% endif %}
+  </div>
+</body>
+</html>

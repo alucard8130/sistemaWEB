@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 import openpyxl
+from facturacion.models import Pago
 from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
 from .models import Presupuesto, PresupuestoCierre
 from .forms import PresupuestoForm
@@ -21,7 +22,7 @@ import calendar
 from openpyxl.styles import Font, Alignment
 from django.db.models.functions import ExtractYear,ExtractMonth
 from io import BytesIO
-from datetime import datetime
+from datetime import date, datetime
 
 
 @login_required
@@ -666,3 +667,225 @@ def exportar_comparativo_excel(anio, empresa, meses_nombres, comparativo):
     )
     response['Content-Disposition'] = f'attachment; filename=Comparativo_{empresa}_{anio}.xlsx'
     return response
+
+@login_required
+def comparativo_presupuesto_anio(request):
+    # 1. Obtener lista de años disponibles
+    anios = list(
+        Presupuesto.objects
+        .values_list('anio', flat=True)
+        .distinct()
+        .order_by('anio')
+    )
+
+    # Si no hay registros
+    if not anios:
+        return render(request, 'presupuestos/comparativo_anio.html', {
+            'comparativo': {},
+            'anio1': None,
+            'anio2': None,
+            'anios_disponibles': [],
+            'totales': None,
+        })
+
+    # 2. Determinar años a comparar: GET o últimos dos
+    default1, default2 = (anios[-2], anios[-1]) if len(anios) > 1 else (anios[0], anios[0])
+    try:
+        anio1 = int(request.GET.get('anio1', default1))
+        anio2 = int(request.GET.get('anio2', default2))
+    except (TypeError, ValueError):
+        anio1, anio2 = default1, default2
+
+    # 3. Consulta y agregación
+    datos = (
+        Presupuesto.objects
+        .filter(anio__in=[anio1, anio2])
+        .values(
+            'grupo__nombre',
+            'subgrupo__nombre',
+            'tipo_gasto__nombre',
+            'anio'
+        )
+        .annotate(total=Sum('monto'))
+        .order_by(
+            'grupo__nombre',
+            'subgrupo__nombre',
+            'tipo_gasto__nombre',
+            'anio'
+        )
+    )
+
+    # 4. Reconstruir datos en estructura anidada con subtotales
+    estructura = {}
+    for item in datos:
+        grp = item['grupo__nombre']
+        sub = item['subgrupo__nombre']
+        tip = item['tipo_gasto__nombre']
+        monto = item['total']
+        year = item['anio']
+
+        # Inicializar jerarquía
+        estructura.setdefault(grp, {'subgrupos': {}, 'totales': {'valor1':0,'valor2':0}})
+        grp_obj = estructura[grp]
+        grp_obj['totales'][f'valor{1 if year==anio1 else 2}'] += monto
+
+        subs = grp_obj['subgrupos']
+        subs.setdefault(sub, {'tipos': {}, 'totales': {'valor1':0,'valor2':0}})
+        sub_obj = subs[sub]
+        sub_obj['totales'][f'valor{1 if year==anio1 else 2}'] += monto
+
+        # Detalle por tipo de gasto
+        sub_obj['tipos'][tip] = sub_obj['tipos'].get(tip, {'valor1':0,'valor2':0})
+        sub_obj['tipos'][tip][f'valor{1 if year==anio1 else 2}'] += monto
+
+    # Calcular variaciones en cada nivel
+    # Tipos
+    for grp_obj in estructura.values():
+        for sub_obj in grp_obj['subgrupos'].values():
+            for tip, vals in sub_obj['tipos'].items():
+                v1 = vals['valor1']
+                v2 = vals['valor2']
+                diff = v2 - v1
+                pct = (diff / v1 * 100) if v1 else None
+                vals.update({'variacion': diff, 'variacion_pct': pct})
+            # Subgrupo
+            v1 = sub_obj['totales']['valor1']
+            v2 = sub_obj['totales']['valor2']
+            diff = v2 - v1
+            pct = (diff / v1 * 100) if v1 else None
+            sub_obj['totales'].update({'variacion': diff, 'variacion_pct': pct})
+        # Grupo
+        v1 = grp_obj['totales']['valor1']
+        v2 = grp_obj['totales']['valor2']
+        diff = v2 - v1
+        pct = (diff / v1 * 100) if v1 else None
+        grp_obj['totales'].update({'variacion': diff, 'variacion_pct': pct})
+
+    # 5. Totales generales
+    total1 = sum(g['totales']['valor1'] for g in estructura.values())
+    total2 = sum(g['totales']['valor2'] for g in estructura.values())
+    diff = total2 - total1
+    pct = (diff / total1 * 100) if total1 else None
+    totales = {'valor1': total1, 'valor2': total2, 'variacion': diff, 'variacion_pct': pct}
+
+    # 6. Renderizar
+    return render(request, 'presupuestos/comparativo_anio.html', {
+        'comparativo': estructura,
+        'anio1': anio1,
+        'anio2': anio2,
+        'anios_disponibles': anios,
+        'totales': totales,
+    })
+
+def comparativo_presupuesto_vs_gastos(request):
+    # 1. Años disponibles (presupuesto.anio y pago.fecha_pago__year)
+    años_presupuesto = Presupuesto.objects.values_list('anio', flat=True)
+    años_pagos = (
+        PagoGasto.objects
+        .annotate(year=ExtractYear('fecha_pago'))
+        .values_list('year', flat=True)
+    )
+    años = sorted(set(años_presupuesto) | set(años_pagos))
+
+    # 2. Año seleccionado (por GET o último)
+    default_anio = años[-1] if años else date.today().year
+    try:
+        anio = int(request.GET.get('anio', default_anio))
+    except (TypeError, ValueError):
+        anio = default_anio
+
+    # 3. Agregaciones de presupuesto por mes y jerarquía
+    qs_pres = (
+        Presupuesto.objects
+        .filter(anio=anio)
+        .values(
+            'grupo__nombre',     # GrupoGasto.nombre
+            'subgrupo__nombre',  # SubgrupoGasto.nombre (puede ser null)
+            'tipo_gasto__nombre',# TipoGasto.nombre (puede ser null)
+            'mes'                # mes (1–12 o null)
+        )
+        .annotate(presupuesto=Sum('monto'))
+    )
+
+    # 4. Agregaciones de pagos de gasto por mes y jerarquía
+    qs_pagos = (
+        PagoGasto.objects
+        .annotate(
+            year=ExtractYear('fecha_pago'),
+            mes=ExtractMonth('fecha_pago')
+        )
+        .filter(year=anio)
+        .values(
+            'gasto__tipo_gasto__subgrupo__grupo__nombre',  # GrupoGasto.nombre
+            'gasto__tipo_gasto__subgrupo__nombre',         # SubgrupoGasto.nombre
+            'gasto__tipo_gasto__nombre',                   # TipoGasto.nombre
+            'mes'                                          # mes (1–12)
+        )
+        .annotate(gasto=Sum('monto'))
+    )
+
+    # 5. Construir estructura anidada y acumular montos
+    meses = list(range(1, 13))
+    estructura = {}
+    # Inicializar nodos
+    for rec in list(qs_pres) + list(qs_pagos):
+        if 'grupo__nombre' in rec:
+            grp = rec['grupo__nombre']
+            sub = rec['subgrupo__nombre']
+            tip = rec['tipo_gasto__nombre']
+        else:
+            grp = rec['gasto__tipo_gasto__subgrupo__grupo__nombre']
+            sub = rec['gasto__tipo_gasto__subgrupo__nombre']
+            tip = rec['gasto__tipo_gasto__nombre']
+        estructura.setdefault(grp, {
+            'subgrupos': {},
+            'totales': {'presupuesto': 0, 'gasto': 0}
+        })
+        estructura[grp]['subgrupos'].setdefault(sub, {
+            'tipos': {},
+            'totales': {'presupuesto': 0, 'gasto': 0}
+        })
+        estructura[grp]['subgrupos'][sub]['tipos'].setdefault(
+            tip,
+            {'presupuesto': {m: 0 for m in meses}, 'gasto': {m: 0 for m in meses}}
+        )
+
+    # Rellenar valores de presupuesto
+    for item in qs_pres:
+        grp = item['grupo__nombre']; sub = item['subgrupo__nombre']; tip = item['tipo_gasto__nombre']
+        m = item['mes'] or 0; val = item['presupuesto']
+        estructura[grp]['subgrupos'][sub]['tipos'][tip]['presupuesto'][m] = val
+        estructura[grp]['subgrupos'][sub]['totales']['presupuesto'] += val
+        estructura[grp]['totales']['presupuesto'] += val
+
+    # Rellenar valores de gasto
+    for item in qs_pagos:
+        grp = item['gasto__tipo_gasto__subgrupo__grupo__nombre']
+        sub = item['gasto__tipo_gasto__subgrupo__nombre']
+        tip = item['gasto__tipo_gasto__nombre']
+        m = item['mes'] or 0; val = item['gasto']
+        estructura[grp]['subgrupos'][sub]['tipos'][tip]['gasto'][m] = val
+        estructura[grp]['subgrupos'][sub]['totales']['gasto'] += val
+        estructura[grp]['totales']['gasto'] += val
+
+    # 6. Calcular totales mensuales y anuales
+    totales_meses = {m: {'presupuesto': 0, 'gasto': 0} for m in meses}
+    tot_anual = {'presupuesto': 0, 'gasto': 0}
+    for grp_obj in estructura.values():
+        for sub_obj in grp_obj['subgrupos'].values():
+            for tipo_vals in sub_obj['tipos'].values():
+                for m in meses:
+                    totales_meses[m]['presupuesto'] += tipo_vals['presupuesto'][m]
+                    totales_meses[m]['gasto']       += tipo_vals['gasto'][m]
+    tot_anual['presupuesto'] = sum(v['presupuesto'] for v in totales_meses.values())
+    tot_anual['gasto']       = sum(v['gasto']      for v in totales_meses.values())
+
+    # 7. Renderizar
+    return render(request, 'presupuestos/comparativo_presupuesto_vs_gastos.html', {
+        'estructura': estructura,
+        'meses': meses,
+        'totales_meses': totales_meses,
+        'tot_anual': tot_anual,
+        'anio': anio,
+        'anios_disponibles': años,
+    })

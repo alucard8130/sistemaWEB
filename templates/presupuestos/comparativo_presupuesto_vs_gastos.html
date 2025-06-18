@@ -1,0 +1,131 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Presupuestos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+
+  <h2>Comparativo Presupuesto vs Gastos – Año {{ anio }}</h2>
+
+  <form method="get" class="mb-3">
+    <div class="row g-2">
+      <div class="col-auto">
+        <select name="anio" class="form-select">
+          {% for y in anios_disponibles %}
+            <option value="{{ y }}" {% if y == anio %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Mostrar</button>
+      </div>
+    </div>
+  </form>
+
+  <table class="table table-bordered table-sm">
+    <thead class="table-light">
+      <tr>
+        <th>Grupo</th>
+        <th>Subgrupo</th>
+        <th>Tipo de gasto</th>
+        {% for m in meses %}
+          <th>{{ m|date:"F" }}</th>
+        {% endfor %}
+        <th>Total Presupuesto</th>
+        <th>Total Gastos</th>
+        <th>Variación</th>
+        <th>Variación %</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for grupo, grp in estructura.items %}
+        {# Fila Total Grupo #}
+        {% with diff=grp.totales.gasto|add:-grp.totales.presupuesto %}
+        <tr class="table-primary">
+          <td>{{ grupo }}</td>
+          <td colspan="{{ meses|length|add:'2' }}"><strong>Total Grupo</strong></td>
+          {% for m in meses %}
+            <td>{{ grp.presupuesto_por_mes.m|default:"0"|floatformat:2 }} / {{ grp.gasto_por_mes.m|default:"0"|floatformat:2 }}</td>
+          {% endfor %}
+          <td>{{ grp.totales.presupuesto|floatformat:2 }}</td>
+          <td>{{ grp.totales.gasto|floatformat:2 }}</td>
+          <td>{{ diff|floatformat:2 }}</td>
+          <td>
+            {% if grp.totales.presupuesto %}
+              {{ (diff|div:grp.totales.presupuesto|mul:100)|floatformat:2 }}%
+            {% else %}-{% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+
+        {# Filas Total Subgrupo y detalle Tipo #}
+        {% for sub, subobj in grp.subgrupos.items %}
+          {% with diff=subobj.totales.gasto|add:-subobj.totales.presupuesto %}
+          <tr class="table-secondary">
+            <td></td>
+            <td>{{ sub }}</td>
+            <td colspan="{{ meses|length }}"><strong>Total Subgrupo</strong></td>
+            <td>{{ subobj.totales.presupuesto|floatformat:2 }}</td>
+            <td>{{ subobj.totales.gasto|floatformat:2 }}</td>
+            <td>{{ diff|floatformat:2 }}</td>
+            <td>
+              {% if subobj.totales.presupuesto %}
+                {{ (diff|div:subobj.totales.presupuesto|mul:100)|floatformat:2 }}%
+              {% else %}-{% endif %}
+            </td>
+          </tr>
+          {% endwith %}
+
+          {% for tipo, vals in subobj.tipos.items %}
+            {% with
+                pres_total=vals.presupuesto.values|sum,
+                gst_total=vals.gasto.values|sum
+            %}
+            <tr>
+              <td></td>
+              <td></td>
+              <td>{{ tipo }}</td>
+              {% for m in meses %}
+                <td>{{ vals.presupuesto_por_mes.m|default:"0"|floatformat:2 }} / {{ vals.gasto_por_mes.m|default:"0"|floatformat:2 }}</td>
+              {% endfor %}
+              <td>{{ pres_total|floatformat:2 }}</td>
+              <td>{{ gst_total|floatformat:2 }}</td>
+              {% with diff=gst_total|add:-pres_total %}
+              <td>{{ diff|floatformat:2 }}</td>
+              <td>
+                {% if pres_total %}
+                  {{ ((diff|div:pres_total)|mul:100)|floatformat:2 }}%
+                {% else %}-{% endif %}
+              </td>
+              {% endwith %}
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        {% endfor %}
+      {% endfor %}
+    </tbody>
+    <tfoot class="table-secondary">
+      <tr>
+        <th colspan="3">Total General</th>
+        {% for m in meses %}
+          <th>{{ totales_meses.m.presupuesto|default:"0"|floatformat:2 }} / {{ totales_meses.m.gasto|default:"0"|floatformat:2 }}</th>
+        {% endfor %}
+        {% with diff=tot_anual.gasto|add:-tot_anual.presupuesto %}
+        <th>{{ tot_anual.presupuesto|floatformat:2 }}</th>
+        <th>{{ tot_anual.gasto|floatformat:2 }}</th>
+        <th>{{ diff|floatformat:2 }}</th>
+        <th>
+          {% if tot_anual.presupuesto %}
+            {{ ((diff|div:tot_anual.presupuesto)|mul:100)|floatformat:2 }}%
+          {% else %}-{% endif %}
+        </th>
+        {% endwith %}
+      </tr>
+    </tfoot>
+  </table>
+</div>
+</body>
+</html>
