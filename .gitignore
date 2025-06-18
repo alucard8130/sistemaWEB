@@ -1,6 +1,7 @@
 # Entorno virtual
 venv/
 .env
+env/
 
 # Archivos de configuración y secretos
 *.env

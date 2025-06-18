@@ -1,3 +1,4 @@
+{% load static %}
 {% load humanize %}
 {% load dict_extras %}
 {% load presupuesto_tags %}
@@ -8,6 +9,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <!-- 
+        Created by: Jaime Estrada
+        Modified by: María Martínez
+        Date of creation: 05/06/2025
+        Date of modification: 17/06/2025
+        Description: Budget vs Expenditure Comparison Report
+    -->
     <title>Reporte comparativo Presupuesto vs Gasto</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Bootstrap 5 + DataTables -->
@@ -15,6 +23,8 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css"/>
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
         body { background: #f7f9fb; }
         .header-bar { background: #22334d; color: #fff; padding: 18px 0; border-radius: 0 0 18px 18px; margin-bottom: 25px; box-shadow: 0 4px 18px 0 #00122b18;}
@@ -45,6 +55,14 @@
     </style>
 </head>
 <body>
+    <!-- Dark button -->
+    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+        <div class="d-flex align-items-center ms-auto">  
+            <button id="toggleDark" class="toggle-switch">
+                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
+            </button>
+        </div>
+    </div>
     <div class="header-bar d-flex align-items-center px-4 mb-4">
         <img src="{% static 'img/logo.png' %}" alt="Logo" class="logo-mini"/>
         <div>
@@ -326,5 +344,11 @@
     $('[title]').tooltip({html: true, placement: 'top'});
 });
 </script>
+    <!-- 🔹 Footer -->
+    <footer>
+        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+        Creado por Jaime M. Estrada Bernabé
+    </footer>
+    <script src="{% static 'js/script.js' %}"></script>
 </body>
 </html>
