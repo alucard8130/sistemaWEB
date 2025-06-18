@@ -17,5 +17,7 @@ urlpatterns = [
     path('reporte-pagos/', views.reporte_pagos_gastos, name='reporte_pagos_gastos'),
     path('gastos/dashboard-pagos/', views.dashboard_pagos_gastos, name='dashboard_pagos_gastos'),
     path('gastos/exportar-excel/', views.exportar_pagos_gastos_excel, name='exportar_pagos_gastos_excel'),
+    path('subgrupos/', views.subgrupos_gasto_lista, name='subgrupos_gasto_lista'),
+    path('subgrupos/<int:pk>/eliminar/', views.subgrupo_gasto_eliminar, name='subgrupo_gasto_eliminar'),
 
 ]

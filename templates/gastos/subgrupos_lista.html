@@ -31,13 +31,22 @@
             <tr>
                 <th>Grupo</th>
                 <th>Subgrupo</th>
+                <th>Acciones</th>
+
             </tr>
+            
         </thead>
         <tbody>
             {% for sub in subgrupos %}
             <tr>
                 <td>{{ sub.grupo.nombre }}</td>
                 <td>{{ sub.nombre }}</td>
+                <td>
+                    <a href="{% url 'subgrupo_gasto_eliminar' sub.pk %}"class="btn btn-sm btn-danger">
+>
+                        <i class="bi bi-trash"></i> Eliminar
+                    </a>
+                </td>
             </tr>
             {% empty %}
             <tr>
@@ -45,6 +54,7 @@
             </tr>
             {% endfor %}
         </tbody>
+
     </table>
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
 </div>

@@ -16,6 +16,9 @@ from django.db.models import Sum, Q, F, Value
 import calendar
 from django.db.models import Q, Sum
 from django.utils.dateparse import parse_date
+from django.contrib import messages
+
+
 # Create your views here.
 @login_required
 def subgrupo_gasto_crear(request):
@@ -29,13 +32,27 @@ def subgrupo_gasto_crear(request):
     return render(request, 'gastos/subgrupo_crear.html', {'form': form})
 
 @login_required
+def subgrupo_gasto_eliminar(request, pk):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para eliminar subgrupos de gasto.")
+        return redirect('subgrupos_gasto_lista')  # Cambia por el nombre de tu lista
+
+    subgrupo = get_object_or_404(SubgrupoGasto, pk=pk)
+    if request.method == 'POST':
+        subgrupo.delete()
+        messages.success(request, "Subgrupo de gasto eliminado correctamente.")
+        return redirect('subgrupos_gasto_lista')
+    return render(request, 'gastos/subgrupo_gasto_confirmar_eliminar.html', {'subgrupo': subgrupo})
+
+@login_required
 def subgrupos_gasto_lista(request):
-    subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
+    #subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
+    subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre')
     return render(request, 'gastos/subgrupos_lista.html', {'subgrupos': subgrupos})
 
 @login_required
 def tipos_gasto_lista(request):
-    tipos = TipoGasto.objects.select_related('subgrupo__grupo').all()
+    tipos = TipoGasto.objects.select_related('subgrupo__grupo').all().order_by('subgrupo__grupo__nombre')
     return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': tipos})
 
 @login_required
