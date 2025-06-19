@@ -42,9 +42,9 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Nuevo Cliente</a></li>
                             <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista</a></li>
-                            {% if request.user.is_superuser %}
+                          <!--  {% if request.user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_clientes' %}">Carga Masiva</a></li>
-                            {% endif %}
+                            {% endif %}  -->
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
