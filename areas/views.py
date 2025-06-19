@@ -181,26 +181,46 @@ def carga_masiva_areas(request):
             ws = wb.active
             errores = []
             exitos = 0
-            COLUMNAS_ESPERADAS = 11  # Cambia según tus columnas
+            COLUMNAS_ESPERADAS = 16  # empresa, nombre_cliente, rfc_cliente, email_cliente, numero, cuota, deposito, ubicacion, superficie_m2, tipo_area, cantidad_areas, giro, status, fecha_inicial, fecha_fin, observaciones
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                empresa_val, cliente_val, numero, cuota, ubicacion, superficie_m2, giro, status, fecha_inicial, fecha_fin, observaciones = row
+                empresa_val, nombre_cliente, rfc_cliente, email_cliente, numero, cuota, deposito, ubicacion, superficie_m2, tipo_area, cantidad_areas, giro, status, fecha_inicial, fecha_fin, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
-                    cliente = buscar_por_id_o_nombre(Cliente, cliente_val) if cliente_val else None
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
                     if not numero:
                         raise Exception("Número vacío")
+                    # Validar que el número de área no se repita para la empresa
+                    if AreaComun.objects.filter(empresa=empresa, numero=str(numero)).exists():
+                        errores.append(f"Fila {i}: El número de área '{numero}' ya existe para la empresa '{empresa}'.")
+                        continue
+                    # Crear cliente solo si el RFC no existe
+                    cliente = None
+                    if rfc_cliente:
+                        cliente, creado = Cliente.objects.get_or_create(
+                            rfc=rfc_cliente,
+                            defaults={
+                                'nombre': nombre_cliente,
+                                'empresa': empresa,
+                                'email': email_cliente
+                            }
+                        )
                     AreaComun.objects.create(
                         empresa=empresa,
                         cliente=cliente,
                         numero=str(numero),
                         cuota=Decimal(cuota),
+                        deposito=Decimal(deposito) if deposito else None,
                         ubicacion=ubicacion or "",
                         superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
+                        tipo_area=tipo_area or "",
+                        cantidad_areas=int(cantidad_areas) if cantidad_areas else 1,
                         giro=giro or "",
                         status=status or "ocupado",
                         fecha_inicial=fecha_inicial,
@@ -218,7 +238,7 @@ def carga_masiva_areas(request):
             return redirect('carga_masiva_areas')
     else:
         form = AreaComunCargaMasivaForm()
-    return render(request, 'areas/carga_masiva_areas.html', {'form': form})  
+    return render(request, 'areas/carga_masiva_areas.html', {'form': form}) 
 
 @staff_member_required
 def plantilla_areas_excel(request):
@@ -226,11 +246,11 @@ def plantilla_areas_excel(request):
     ws = wb.active
     ws.title = "Plantilla Áreas"
     ws.append([
-        'empresa', 'cliente', 'numero', 'cuota', 'ubicacion', 'superficie_m2','giro',
+        'empresa', 'cliente','rfc_cliente', 'email_cliente','numero', 'cuota','deposito', 'ubicacion', 'superficie_m2','tipo_area','cantidad_areas','giro' ,
         'status', 'fecha_inicial', 'fecha_fin', 'observaciones'
     ])
     ws.append([
-        'Torre Reforma', 'Juan Pérez', 'A101', '1500.00', 'Roof Garden', '200.0','Restaurante',
+        'Torre Reforma', 'Juan Pérez','XXX-XXX-XXX','email@ejemplo.com', 'A101', '1500.00','1500', 'Roof Garden', '200.0','Modulo','1','Restaurante',
         'ocupado', '2024-07-01', '2024-12-31', 'Área exclusiva'
     ])
     response = HttpResponse(

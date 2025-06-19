@@ -45,7 +45,10 @@
                 {% endif %}
                 <th>Sup. m²</th>
                 <th>Cuota</th>
+                <th>Deposito</th>
                 <th>Giro</th>
+                <th>Tipo</th>
+                <th>Cantidad</th>
                 <th>Fecha Inicio</th>
                 <th>Fecha Fin</th>
                 <th>Ubicación</th>
@@ -62,7 +65,10 @@
                     {% endif %}
                     <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
                     <td>${{ area.cuota|floatformat:2|intcomma }}</td>
+                    <td>${{ area.deposito|floatformat:2|intcomma }}</td>
                     <td>{{ area.giro }}</td>
+                    <td>{{ area.tipo_area }}</td>
+                    <td>{{ area.cantidad_areas }}</td>
                     <td>{{ area.fecha_inicial }}</td>
                     <td>{{ area.fecha_fin }}</td>
                     <td>{{ area.ubicacion }}</td>
@@ -80,7 +86,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="9">No hay áreas registradas.</td></tr>
+                <tr><td colspan="13">No hay áreas registradas.</td></tr>
             {% endfor %}
         </tbody>
     </table>

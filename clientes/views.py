@@ -14,10 +14,10 @@ from django.contrib import messages
 @login_required
 def lista_clientes(request):
     if request.user.is_superuser:
-        clientes = Cliente.objects.filter(activo=True).order_by('nombre')
+        clientes = Cliente.objects.filter(activo=True).order_by('id')
     else:
         empresa = request.user.perfilusuario.empresa
-        clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by('nombre')
+        clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by('id')
     return render(request, 'clientes/lista_clientes.html', {'clientes': clientes})
 
 @login_required
