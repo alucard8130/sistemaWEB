@@ -460,29 +460,52 @@ def carga_masiva_gastos(request):
             ws = wb.active
             errores = []
             exitos = 0
-            COLUMNAS_ESPERADAS = 9  # empresa, proveedor, empleado, tipo_gasto, monto, saldo, descripcion, fecha, observaciones
+            COLUMNAS_ESPERADAS = 10  # empresa, proveedor, empleado, tipo_gasto, monto, saldo, descripcion, fecha, observaciones
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                empresa_val, proveedor_val, empleado_val, tipo_gasto, monto, saldo, descripcion, fecha, observaciones = row
+                empresa_val, proveedor_val, empleado_val,rfc_empleado, tipo_gasto_val, monto, saldo, descripcion, fecha, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     if not empresa:
                         errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
                         continue
 
-                    # Proveedor: busca por nombre, crea si no existe
+                    # Proveedor: busca por nombre y empresa, crea si no existe
                     proveedor = None
                     if proveedor_val:
-                        proveedor, _ = Proveedor.objects.get_or_create(nombre=proveedor_val)
+                        proveedor, _ = Proveedor.objects.get_or_create(
+                            nombre=proveedor_val,
+                            empresa=empresa
+                        )
 
-                    # Empleado: busca por nombre, crea si no existe
+                    # Empleado: busca por nombre y empresa, crea si no existe
                     empleado = None
-                    if empleado_val:
-                        empleado, _ = Empleado.objects.get_or_create(nombre=empleado_val)
+                    if rfc_empleado:
+                        empleado, _ = Empleado.objects.get_or_create(
+                            rfc=rfc_empleado,
+                            defaults={'nombre': empleado_val, 'empresa': empresa}
+                        )
+                    elif empleado_val:
+                        empleado, _ = Empleado.objects.get_or_create(
+                            nombre=empleado_val,
+                            empresa=empresa
+                        )
+
+                    # Tipo de gasto: busca por nombre
+                    """tipo_gasto_inst = None
+                    if tipo_gasto_val:
+                        tipo_gasto_inst = TipoGasto.objects.filter(nombre=tipo_gasto_val).first()
+                        if not tipo_gasto_inst:
+                            errores.append(f"Fila {i}: No se encontró el tipo de gasto '{tipo_gasto_val}'")
+                            continue"""
+                    # Tipo de gasto: crea automáticamente si no existe
+                    tipo_gasto_inst = None
+                    if tipo_gasto_val:
+                        tipo_gasto_inst, _ = TipoGasto.objects.get_or_create(nombre=tipo_gasto_val)        
 
                     try:
                         monto_decimal = Decimal(monto)
@@ -499,7 +522,8 @@ def carga_masiva_gastos(request):
                         empresa=empresa,
                         proveedor=proveedor,
                         empleado=empleado,
-                        tipo_gasto=tipo_gasto or "",
+                        rfc_empleado=rfc_empleado,
+                        tipo_gasto=tipo_gasto_inst,
                         monto=monto_decimal,
                         saldo=saldo_decimal,
                         descripcion=descripcion or "",
@@ -527,7 +551,7 @@ def descargar_plantilla_gastos(request):
 
     # Ajusta los encabezados según los campos que necesitas en la carga masiva
     encabezados = [
-        'empresa', 'proveedor', 'empleado','tipo_gasto','monto','saldo','descripcion', 'fecha', 'observaciones'
+        'empresa', 'proveedor', 'empleado','rfc_empleado','tipo_gasto','monto','saldo','descripcion', 'fecha', 'observaciones'
     ]
     ws.append(encabezados)
 
