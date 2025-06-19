@@ -23,11 +23,11 @@ def lista_locales(request):
     user = request.user
     if user.is_superuser:
         #locales = LocalComercial.objects.all()
-        locales = LocalComercial.objects.filter(activo=True)
+        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
     else:
         #empresa = getattr(request.user.perfilusuario, 'empresa', None)
         empresa = user.perfilusuario.empresa
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
     return render(request, 'locales/lista_locales.html', {'locales': locales})
 
 @login_required
@@ -185,13 +185,42 @@ def carga_masiva_locales(request):
                 empresa_val, propietario_val, cliente_val, numero, ubicacion, superficie_m2, cuota, giro, status, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
-                    propietario = buscar_por_id_o_nombre(Cliente, propietario_val) if propietario_val else None
-                    cliente = buscar_por_id_o_nombre(Cliente, cliente_val) if cliente_val else None
+                    #propietario = buscar_por_id_o_nombre(Cliente, propietario_val) if propietario_val else None
+                    #cliente = buscar_por_id_o_nombre(Cliente, cliente_val) if cliente_val else None
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
+                    """if propietario_val and not propietario:
+                        errores.append(f"Fila {i}: No se encontró el propietario '{propietario_val}'")
+                        continue
+                    if cliente_val and not cliente:
+                        errores.append(f"Fila {i}: No se encontró el cliente '{cliente_val}'")
+                        continue"""
+                    propietario=None
+                    if propietario_val:
+                        propietario, _ = Cliente.objects.get_or_create(
+                            nombre=propietario_val,
+                            defaults={'empresa': empresa}
+                        )
+                    if not propietario.empresa:
+                        propietario.empresa = empresa
+                        propietario.save()
+
+                    if cliente_val:
+                        cliente, _ = Cliente.objects.get_or_create(
+                            nombre=cliente_val,
+                            defaults={'empresa': empresa}
+                        )
+                    if not cliente.empresa:
+                        cliente.empresa = empresa
+                        cliente.save()    
                     # Puedes ajustar el campo status si manejas valores específicos en tu modelo
                     LocalComercial.objects.create(
                         empresa=empresa,
-                        propietario=propietario.nombre if propietario else "",
-                        cliente=cliente.nombre if cliente else "",
+                        propietario=propietario,
+                        #propietario=propietario.nombre if propietario else "",
+                        cliente=cliente,
+                        #cliente=cliente.nombre if cliente else "",
                         numero=str(numero),
                         ubicacion=ubicacion or "",
                         superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
@@ -221,7 +250,7 @@ def plantilla_locales_excel(request):
         'empresa','propietario', 'cliente', 'numero', 'ubicacion', 'superficie_m2', 'cuota','giro', 'status', 'observaciones'
     ])
     ws.append([
-        'Torre Reforma','Tiendas Soriana SA de CV', 'Juan Pérez', '101', 'Planta Baja', '120.5', 'venta ropa','3000.00', 'ocupado', 'Local nuevo'
+        'Torre Reforma','Tiendas Soriana SA de CV', 'Juan Pérez', '101', 'Planta Baja', '120.5', '3000.00','venta ropa', 'ocupado', 'Local nuevo'
     ])
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

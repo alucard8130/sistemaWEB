@@ -21,10 +21,10 @@ from django.contrib.admin.views.decorators import staff_member_required
 def lista_areas(request):
     user = request.user
     if user.is_superuser:
-        areas = AreaComun.objects.filter(activo=True)
+        areas = AreaComun.objects.filter(activo=True).order_by('numero')
     else:
         empresa = user.perfilusuario.empresa
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
     return render(request, 'areas/lista_areas.html', {'areas': areas})
 
 @login_required
