@@ -27,7 +27,7 @@ class GastoForm(forms.ModelForm):
  
     class Meta:
         model = Gasto
-        fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'comprobante', 'observaciones']
+        fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'comprobante', 'observaciones','retencion_iva', 'retencion_isr', 'retencion_isr']
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date'}),
             'descripcion': forms.TextInput(attrs={'class': 'form-control'}),

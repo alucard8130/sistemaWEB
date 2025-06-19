@@ -450,7 +450,7 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
 
 
-
+@login_required
 def carga_masiva_gastos(request):
     if request.method == 'POST':
         form = GastosCargaMasivaForm(request.POST, request.FILES)
@@ -460,32 +460,48 @@ def carga_masiva_gastos(request):
             ws = wb.active
             errores = []
             exitos = 0
-            COLUMNAS_ESPERADAS = 8  # Ajusta según tus columnas: empresa, descripcion, monto, fecha, tipo_gasto, observaciones
+            COLUMNAS_ESPERADAS = 9  # empresa, proveedor, empleado, tipo_gasto, monto, saldo, descripcion, fecha, observaciones
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                empresa_val, proveedor, empleado,tipo_gasto,monto,descripcion,fecha, observaciones = row
+                empresa_val, proveedor_val, empleado_val, tipo_gasto, monto, saldo, descripcion, fecha, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     if not empresa:
                         errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
                         continue
 
+                    # Proveedor: busca por nombre, crea si no existe
+                    proveedor = None
+                    if proveedor_val:
+                        proveedor, _ = Proveedor.objects.get_or_create(nombre=proveedor_val)
+
+                    # Empleado: busca por nombre, crea si no existe
+                    empleado = None
+                    if empleado_val:
+                        empleado, _ = Empleado.objects.get_or_create(nombre=empleado_val)
+
                     try:
                         monto_decimal = Decimal(monto)
                     except (InvalidOperation, TypeError, ValueError):
                         errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
                         continue
+                    try:
+                        saldo_decimal = Decimal(saldo)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de saldo '{saldo}' no es válido.")
+                        continue
 
                     Gasto.objects.create(
                         empresa=empresa,
-                        proveedor=proveedor or "",
-                        empleado=empleado or "",
+                        proveedor=proveedor,
+                        empleado=empleado,
                         tipo_gasto=tipo_gasto or "",
                         monto=monto_decimal,
+                        saldo=saldo_decimal,
                         descripcion=descripcion or "",
                         fecha=fecha,
                         observaciones=observaciones or ""
@@ -496,9 +512,9 @@ def carga_masiva_gastos(request):
                     errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
 
             if exitos:
-                messages.success(request, f"¡{exitos} solicitudes cargadas exitosamente!")
+                messages.success(request, f"¡{exitos} gastos cargados exitosamente!")
             if errores:
-                messages.error(request, "Algunas solicitudes no se cargaron:<br>" + "<br>".join(errores))
+                messages.error(request, "Algunos gastos no se cargaron:<br>" + "<br>".join(errores))
             return redirect('carga_masiva_gastos')
     else:
         form = GastosCargaMasivaForm()
@@ -511,12 +527,12 @@ def descargar_plantilla_gastos(request):
 
     # Ajusta los encabezados según los campos que necesitas en la carga masiva
     encabezados = [
-        'empresa', 'proveedor', 'empleado','tipo_gasto','monto','descripcion', 'fecha', 'observaciones'
+        'empresa', 'proveedor', 'empleado','tipo_gasto','monto','saldo','descripcion', 'fecha', 'observaciones'
     ]
     ws.append(encabezados)
 
     # Puedes agregar una fila de ejemplo si lo deseas
-    ws.append(['EMPRESA S.A.','proveedor ejemplo','', 'Papelería', '1200.50','Compra de hojas', '2025-06-19','carga_inicial'])
+    ws.append(['EMPRESA S.A.','proveedor ejemplo','', 'Papelería', '1200.50','0','Compra de hojas', '2025-06-19','carga_inicial'])
 
     output = BytesIO()
     wb.save(output)

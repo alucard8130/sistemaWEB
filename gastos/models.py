@@ -53,6 +53,8 @@ class Gasto(models.Model):
     ]
     estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
     observaciones = models.TextField(blank=True, null=True)
+    retencion_iva = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    retencion_isr = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.fecha} - {self.tipo_gasto} - ${self.monto}"  
