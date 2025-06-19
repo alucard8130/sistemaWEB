@@ -34,6 +34,8 @@ class GastoForm(forms.ModelForm):
             'observaciones': forms.Textarea(attrs={'rows':2}),
         }
 
+      
+
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
@@ -90,3 +92,5 @@ class PagoGastoForm(forms.ModelForm):
             'referencia': forms.TextInput(attrs={'class': 'form-control'}),
         }
    
+class GastosCargaMasivaForm(forms.Form):
+        archivo = forms.FileField(label='Archivo Excel (.xlsx)')     

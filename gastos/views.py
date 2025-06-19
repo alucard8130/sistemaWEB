@@ -1,13 +1,17 @@
 
+from decimal import Decimal, InvalidOperation
+from io import BytesIO
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from openpyxl import Workbook
+import openpyxl
+from unidecode import unidecode
 from empleados.models import Empleado
 from empresas.models import Empresa
 from presupuestos.models import Presupuesto
 from proveedores.models import Proveedor
-from .forms import GastoForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
+from .forms import GastoForm, GastosCargaMasivaForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
 from .models import Gasto, PagoGasto, SubgrupoGasto, TipoGasto
 from datetime import datetime
 from django.utils.timezone import localtime
@@ -422,4 +426,105 @@ def exportar_pagos_gastos_excel(request):
     filename = f"pagos_gastos_{anio}.xlsx"
     response['Content-Disposition'] = f'attachment; filename={filename}'
     wb.save(response)
+    return response
+
+def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
+    """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas). Reporta conflicto si hay varias."""
+    if not valor:
+        return None
+    val = str(valor).strip().replace(',', '')
+    try:
+        return modelo.objects.get(pk=int(val))
+    except (ValueError, modelo.DoesNotExist):
+        todos = modelo.objects.all()
+        # Lista de coincidencias insensibles a acentos y mayúsculas
+        candidatos = [
+            obj for obj in todos
+            if unidecode(val).lower() in unidecode(str(getattr(obj, campo))).lower()
+        ]
+        if len(candidatos) == 1:
+            return candidatos[0]
+        elif len(candidatos) > 1:
+            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos])
+            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
+        raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
+
+
+
+def carga_masiva_gastos(request):
+    if request.method == 'POST':
+        form = GastosCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            exitos = 0
+            COLUMNAS_ESPERADAS = 8  # Ajusta según tus columnas: empresa, descripcion, monto, fecha, tipo_gasto, observaciones
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row is None:
+                    continue
+                if len(row) != COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    continue
+                empresa_val, proveedor, empleado,tipo_gasto,monto,descripcion,fecha, observaciones = row
+                try:
+                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
+
+                    try:
+                        monto_decimal = Decimal(monto)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
+                        continue
+
+                    Gasto.objects.create(
+                        empresa=empresa,
+                        proveedor=proveedor or "",
+                        empleado=empleado or "",
+                        tipo_gasto=tipo_gasto or "",
+                        monto=monto_decimal,
+                        descripcion=descripcion or "",
+                        fecha=fecha,
+                        observaciones=observaciones or ""
+                    )
+                    exitos += 1
+                except Exception as e:
+                    import traceback
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+
+            if exitos:
+                messages.success(request, f"¡{exitos} solicitudes cargadas exitosamente!")
+            if errores:
+                messages.error(request, "Algunas solicitudes no se cargaron:<br>" + "<br>".join(errores))
+            return redirect('carga_masiva_gastos')
+    else:
+        form = GastosCargaMasivaForm()
+    return render(request, 'gastos/carga_masiva_gastos.html', {'form': form})
+
+def descargar_plantilla_gastos(request):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Plantilla Gastos"
+
+    # Ajusta los encabezados según los campos que necesitas en la carga masiva
+    encabezados = [
+        'empresa', 'proveedor', 'empleado','tipo_gasto','monto','descripcion', 'fecha', 'observaciones'
+    ]
+    ws.append(encabezados)
+
+    # Puedes agregar una fila de ejemplo si lo deseas
+    ws.append(['EMPRESA S.A.','proveedor ejemplo','', 'Papelería', '1200.50','Compra de hojas', '2025-06-19','carga_inicial'])
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=plantilla_gastos.xlsx'
     return response

@@ -108,6 +108,7 @@
                             {% endif %}
                             <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
                             <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
+                            
                             <!-- Agrega aquí más catálogos si lo deseas -->
                         </ul>
                     </li>
@@ -119,6 +120,10 @@
                             <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Reporte Solicitudes</a></li>
                             <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Egresos</a></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Egresos</a></li>
+                            {% if request.user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
+                    
+                            {% endif %}
                         </ul>
                     </li>
                     <!-- MENÚ PPTOS -->

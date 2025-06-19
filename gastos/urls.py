@@ -19,5 +19,7 @@ urlpatterns = [
     path('gastos/exportar-excel/', views.exportar_pagos_gastos_excel, name='exportar_pagos_gastos_excel'),
     path('subgrupos/', views.subgrupos_gasto_lista, name='subgrupos_gasto_lista'),
     path('subgrupos/<int:pk>/eliminar/', views.subgrupo_gasto_eliminar, name='subgrupo_gasto_eliminar'),
+    path('gastos/carga-masiva/', views.carga_masiva_gastos, name='carga_masiva_gastos'),
+    path('gastos/descargar-plantilla/', views.descargar_plantilla_gastos, name='descargar_plantilla_gastos'),
 
 ]
