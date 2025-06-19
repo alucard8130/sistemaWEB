@@ -94,7 +94,7 @@
                 <th>Monto</th>
                 <th>T.Cuota</th>
                 <th>Fecha Vencimiento</th>
-                <th>Fecha emisión</th>
+              <!--  <th>Fecha emisión</th>  -->
                 <th>Saldo</th>
                 <th>Status</th>
                 <th>Acciones</th>
@@ -121,7 +121,7 @@
                     <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                     <td>{{ factura.tipo_cuota}}</td>
                     <td>{{ factura.fecha_vencimiento }}</td>
-                    <td>{{ factura.fecha_emision }}</td>
+                  <!--  <td>{{ factura.fecha_emision }}</td>  -->
                     <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
                     <td>{{ factura.get_estatus_display }}</td>
                     <td>

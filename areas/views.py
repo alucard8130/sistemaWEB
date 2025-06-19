@@ -229,7 +229,8 @@ def carga_masiva_areas(request):
                     )
                     exitos += 1
                 except Exception as e:
-                    errores.append(f"Fila {i}: {e}")
+                    import traceback
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
 
             if exitos:
                 messages.success(request, f"¡{exitos} áreas cargadas exitosamente!")
