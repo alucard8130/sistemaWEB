@@ -10,25 +10,28 @@ from django.contrib.auth.models import User
 
 
 class GrupoGasto(models.Model):
+    empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.nombre
 
 class SubgrupoGasto(models.Model):
+    empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     grupo = models.ForeignKey('GrupoGasto', on_delete=models.CASCADE, related_name='subgrupos')
     nombre = models.CharField(max_length=100)
 
-    #class Meta:
-     #   unique_together = ('grupo', 'nombre')
-      #  verbose_name = "Subgrupo de Gasto"
-       # verbose_name_plural = "Subgrupos de Gasto"
+    class Meta:
+        unique_together = ('grupo', 'nombre')
+        verbose_name = "Subgrupo de Gasto"
+        verbose_name_plural = "Subgrupos de Gasto"
 
     def __str__(self):
         return f"{self.grupo.nombre} / {self.nombre}"
         #return f"{self.nombre}"
     
 class TipoGasto(models.Model):
+    empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     subgrupo = models.ForeignKey(SubgrupoGasto, on_delete=models.CASCADE, related_name='tipos')
     nombre = models.CharField(max_length=100)
     descripcion = models.CharField(max_length=255, blank=True)
@@ -76,7 +79,7 @@ class Gasto(models.Model):
         elif total_pagado == 0:
             self.estatus = 'pendiente'
         else:
-            self.estatus = 'pendiente'  # O podrías poner un "parcial" si agregas esa opción
+            self.estatus = 'parcial'  # O podrías poner un "parcial" si agregas esa opción
         self.save()
    
         
