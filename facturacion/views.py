@@ -908,3 +908,91 @@ def exportar_lista_facturas_excel(request):
     response['Content-Disposition'] = 'attachment; filename=lista_facturas.xlsx'
     wb.save(response)
     return response
+
+@staff_member_required
+def carga_masiva_facturas_cobradas(request):
+    if request.method == 'POST':
+        form = FacturaCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            COLUMNAS_ESPERADAS = 10  # Cambia según tus columnas
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row is None:
+                    continue
+                if len(row) != COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    continue
+                folio, empresa_val, cliente_val, local_val, area_val, tipo_cuota, monto, fecha_emision, fecha_vencimiento, observaciones = row
+                try:
+                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
+
+                    # Validar folio único por empresa
+                    if Factura.objects.filter(folio=str(folio), empresa=empresa).exists():
+                        errores.append(f"Fila {i}: El folio '{folio}' ya existe para la empresa '{empresa}'.")
+                        continue
+
+                    # Validar local o área
+                    local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
+                    area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
+                    if local_val and not local:
+                        errores.append(f"Fila {i}: No se encontró el local '{local_val}'")
+                        continue
+                    if area_val and not area:
+                        errores.append(f"Fila {i}: No se encontró el área '{area_val}'")
+                        continue
+
+                    # Buscar o crear cliente
+                    cliente, _ = Cliente.objects.get_or_create(
+                        nombre=cliente_val,
+                        empresa=empresa
+                    )
+
+                    # Validar y convertir monto
+                    try:
+                        cuota_decimal = Decimal(monto)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
+                        continue
+
+                    Factura.objects.create(
+                        folio=str(folio),
+                        empresa=empresa,
+                        cliente=cliente,
+                        local=local,
+                        area_comun=area,
+                        tipo_cuota=tipo_cuota,
+                        monto=cuota_decimal,
+                        fecha_emision=fecha_emision,
+                        fecha_vencimiento=fecha_vencimiento,
+                        observaciones=observaciones or "",    
+                    )
+                    # Registrar el pago automáticamente
+                    Pago.objects.create(
+                        factura=folio,
+                        fecha_pago=fecha_vencimiento,
+                        monto=cuota_decimal,
+                        forma_pago='transferencia',
+                        comprobante="",
+                        registrado_por=request.user if request.user.is_authenticated else None,
+                        observaciones=observaciones or ""
+                    )    
+                    Factura.actualizar_estatus()
+
+                except Exception as e:
+                    import traceback
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+
+            if errores:
+                messages.error(request, "Algunas facturas no se cargaron:<br>" + "<br>".join(errores))
+            else:
+                messages.success(request, "¡Facturas cargadas exitosamente!")
+            return redirect('carga_masiva_facturas_cobradas')
+    else:
+        form = FacturaCargaMasivaForm()
+    return render(request, 'facturacion/carga_masiva_facturas_cobradas.html', {'form': form})
