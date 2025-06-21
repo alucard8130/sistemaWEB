@@ -30,8 +30,8 @@ from areas.views import (
     lista_areas, crear_area, editar_area, eliminar_area,
     areas_inactivas, reactivar_area)
 from clientes.views import (
-    carga_masiva_clientes, lista_clientes, crear_cliente, 
-    editar_cliente, eliminar_cliente, plantilla_clientes_excel)
+    carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
+    editar_cliente, eliminar_cliente, plantilla_clientes_excel, reactivar_cliente)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -70,6 +70,8 @@ urlpatterns = [
     path('empleados/', include('empleados.urls')),
     path('gastos/', include('gastos.urls')),
     path('presupuestos/', include('presupuestos.urls')),
+    path('clientes/inactivos/', clientes_inactivos, name='clientes_inactivos'),
+    path('clientes/reactivar/<int:pk>/', reactivar_cliente, name='reactivar_cliente'),
 ]
 
 if settings.DEBUG:

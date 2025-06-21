@@ -142,3 +142,18 @@ def plantilla_clientes_excel(request):
     response['Content-Disposition'] = 'attachment; filename=plantilla_clientes.xlsx'
     wb.save(response)
     return response
+
+@login_required
+def clientes_inactivos(request):
+    clientes = Cliente.objects.filter(activo=False)
+    return render(request, 'clientes/clientes_inactivos.html', {'clientes': clientes})
+
+def reactivar_cliente(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk, activo=False)
+
+    if request.method == 'POST':
+        cliente.activo = True
+        cliente.save()
+        return redirect('clientes_inactivos')
+
+    return render(request, 'clientes/reactivar_confirmacion.html', {'cliente': cliente})
