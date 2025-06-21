@@ -1,0 +1,151 @@
+    <!-- 
+        Created by: Jaime Estrada
+        Modified by: María Martínez
+        Date of creation: 05/06/2025
+        Date of modification: 20/06/2025
+        Description: Code nabvar
+    -->
+<!-- 🔹 Top Navbar -->
+<nav class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+    <div class="container-fluid px-5">
+        <div class="collapse navbar-collapse d-flex justify-content-between align-items-center" id="navbarOpciones">
+            <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center ms-auto">
+                {% if request.user.is_superuser %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Configuración</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Usuarios</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
+                        <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Menús existentes, ajústalos si quieres anidar en catálogos -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Clientes</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Nuevo Cliente</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_clientes' %}">Carga Masiva</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Locales</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nuevo Local</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
+                        {% endif %}
+                        <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Áreas Comunes</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'crear_area' %}">Nueva Área</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivos</a></li>
+                        {% endif %}
+                        <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Cobros Facturas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
+                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                <!-- MENÚ cartera -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
+                        <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
+                    </ul>
+                </li>
+                <!-- MENÚ CATÁLOGOS -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Catálogos</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Empleados</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+                        {% endif %}
+                        <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
+                        <!-- Agrega aquí más catálogos si lo deseas -->
+                    </ul>
+                </li>
+                <!-- MENÚ GASTOS -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Egresos</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Nueva Solicitud</a></li>
+                        <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Reporte Solicitudes</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Egresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Egresos</a></li>
+                    </ul>
+                </li>
+                <!-- MENÚ PPTOS -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Crear Presupuesto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo vs Gasto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_anio' %}">Comparativo vs Ppto</a></li>
+                        <!-- <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_vs_gastos' %}">Comparativo vs Gasto2</a></li> -->
+                        
+                        <li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center gap-3 ms-auto">
+                <!-- Logged in user info -->
+                <div class="text-end fw-semibold d-block">
+                    <i class="bi bi-person-circle me-1"></i>
+                    {% if request.user.is_superuser %}
+                        Administrador
+                    {% else %}
+                        Usuario
+                    {% endif %}
+                </div>
+
+                <!-- Logout button -->
+                <form method="post" action="{% url 'logout' %}" class="mb-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-box-arrow-right me-1"></i> Salir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+        <!-- Dark button -->
+    <div class="d-flex align-items-center ms-auto">  
+        <button id="toggleDark" class="toggle-switch">
+            <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
+        </button>
+    </div>
+</nav>
