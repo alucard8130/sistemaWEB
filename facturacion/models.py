@@ -6,6 +6,7 @@ from empresas.models import Empresa
 from clientes.models import Cliente
 from locales.models import LocalComercial
 from areas.models import AreaComun
+from django.db.models import Sum
 
 class Factura(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -55,10 +56,13 @@ class Factura(models.Model):
             return self.monto - self.total_pagado
     
     def actualizar_estatus(self):
-        if self.saldo_pendiente <= 0:
-            self.estatus = 'pagada'
+        total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
+        if total_pagado >= self.monto:
+            self.estatus = 'Cobrada'
+        elif total_pagado == 0:
+            self.estatus = 'Pendiente'
         else:
-            self.estatus = 'pendiente'
+            self.estatus = 'Pendiente'  # O podrías poner un "parcial" si agregas esa opción
         self.save()
 
 class Pago(models.Model):

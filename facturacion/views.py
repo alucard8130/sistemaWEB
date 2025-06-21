@@ -146,8 +146,6 @@ def crear_factura(request):
         'pedir_superuser': conflicto and not superuser_auth_ok and request.method == 'POST'
     })
 
-
-
 @login_required
 def lista_facturas(request):
     empresa_id = request.GET.get('empresa')
@@ -702,18 +700,17 @@ def exportar_pagos_excel(request):
 
 
 def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
-    """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas). Reporta conflicto si hay varias."""
+    """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas y espacios)."""
     if not valor:
         return None
-    val = str(valor).strip().replace(',', '')
+    val = unidecode(str(valor)).strip().lower()
     try:
         return modelo.objects.get(pk=int(val))
     except (ValueError, modelo.DoesNotExist):
         todos = modelo.objects.all()
-        # Lista de coincidencias insensibles a acentos y mayúsculas
         candidatos = [
             obj for obj in todos
-            if unidecode(val).lower() in unidecode(str(getattr(obj, campo))).lower()
+            if unidecode(str(getattr(obj, campo))).strip().lower() == val
         ]
         if len(candidatos) == 1:
             return candidatos[0]
@@ -774,7 +771,7 @@ def carga_masiva_facturas(request):
                         errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
                         continue
 
-                    Factura.objects.create(
+                    factura=Factura.objects.create(
                         folio=str(folio),
                         empresa=empresa,
                         cliente=cliente,
@@ -786,6 +783,21 @@ def carga_masiva_facturas(request):
                         fecha_vencimiento=fecha_vencimiento,
                         observaciones=observaciones or "",
                     )
+                    #para cargar las facturas con saldo, Pago.objects.create debe apagarse
+                    Pago.objects.create(
+                        factura=Factura.objects.get(folio=str(folio), empresa=empresa),
+                        monto=cuota_decimal,
+                        forma_pago='carga_masiva',
+                        fecha_pago=fecha_emision,
+                        registrado_por=request.user,
+                        observaciones=observaciones or "",
+                    )
+                
+                    factura.actualizar_estatus()  # ✅ Correcto
+                    print(f"[DEBUG] Factura creada: {folio} para {cliente.nombre} ({empresa.nombre})")
+                    ##################################################################3
+                except ValueError as ve:
+                    errores.append(f"Fila {i}: Error de valor - {str(ve)}")     
                 except Exception as e:
                     import traceback
                     errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
@@ -960,7 +972,7 @@ def carga_masiva_facturas_cobradas(request):
                         errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
                         continue
 
-                    Factura.objects.create(
+                    factura=Factura.objects.create(
                         folio=str(folio),
                         empresa=empresa,
                         cliente=cliente,
@@ -970,20 +982,22 @@ def carga_masiva_facturas_cobradas(request):
                         monto=cuota_decimal,
                         fecha_emision=fecha_emision,
                         fecha_vencimiento=fecha_vencimiento,
-                        observaciones=observaciones or "",    
+                        observaciones=observaciones or "",
                     )
-                    # Registrar el pago automáticamente
                     Pago.objects.create(
-                        factura=folio,
-                        fecha_pago=fecha_vencimiento,
+                        factura=Factura.objects.get(folio=str(folio), empresa=empresa),
                         monto=cuota_decimal,
-                        forma_pago='transferencia',
-                        comprobante="",
-                        registrado_por=request.user if request.user.is_authenticated else None,
-                        observaciones=observaciones or ""
-                    )    
-                    Factura.actualizar_estatus()
+                        forma_pago='carga_masiva',
+                        fecha_pago=fecha_emision,
+                        registrado_por=request.user,
+                        observaciones=observaciones or "",
+                    )
+                    
+                    factura.actualizar_estatus()  # ✅ Correcto
 
+                    print(f"[DEBUG] Factura creada: {folio} para {cliente.nombre} ({empresa.nombre})")
+                except ValueError as ve:
+                    errores.append(f"Fila {i}: Error de valor - {str(ve)}")     
                 except Exception as e:
                     import traceback
                     errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")

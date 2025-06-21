@@ -75,11 +75,11 @@ class Gasto(models.Model):
     def actualizar_estatus(self):
         total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
         if total_pagado >= self.monto:
-            self.estatus = 'pagado'
+            self.estatus = 'Pagado'
         elif total_pagado == 0:
-            self.estatus = 'pendiente'
+            self.estatus = 'Pendiente'
         else:
-            self.estatus = 'parcial'  # O podrías poner un "parcial" si agregas esa opción
+            self.estatus = 'Pendiente'  # O podrías poner un "parcial" si agregas esa opción
         self.save()
    
         
