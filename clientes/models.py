@@ -13,7 +13,8 @@ class Cliente(models.Model):
     activo = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.nombre} {self.rfc} ({self.empresa.nombre})"
+        return f"{self.nombre}"
+        #return f"{self.nombre} {self.rfc} ({self.empresa.nombre})"
 
     class Meta:
         unique_together = ('empresa', 'rfc')

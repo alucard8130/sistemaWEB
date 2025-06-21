@@ -46,7 +46,8 @@ class AreaComun(models.Model):
         }
     
     def __str__(self):
-        return f"{self.numero} ({self.empresa.nombre})"
+        #return f"{self.numero} ({self.empresa.nombre})"
+        return f"{self.numero}"
 
     class Meta:
         unique_together = ('empresa', 'numero')

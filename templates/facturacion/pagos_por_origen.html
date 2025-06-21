@@ -75,7 +75,7 @@
         <a href="{% url 'pagos_por_origen' %}" class="btn btn-secondary">Limpiar filtro</a>
     </div>
 </form>
-    <div class="row mb-4">
+   <!-- <div class="row mb-4">
         <div class="col-md-4">
             <div class="card text-white bg-success shadow rounded-4 text-center">
                 <div class="card-body">
@@ -85,14 +85,15 @@
                     <div class="mt-1" style="font-size: 1.2rem;">Total de Ingresos</div>
                 </div>
             </div>
-        </div>
-         <!-- Puedes agregar más KPIs aquí si lo deseas -->
-    </div>
+        </div> -->
+         <!-- Puedes agregar más KPIs aquí si lo deseas 
+    </div>  -->
     <div class="mb-2"> 
         
         <a href="{% url 'exportar_pagos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">Exportar Ingresos</a>
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
     </div>
+    <div class="alert alert-info"><strong>Total cobrado:</strong> ${{ total_pagos|floatformat:2|intcomma }}</div>
     <table class="table table-bordered mt-2">
         <thead class="table-dark">
             <tr>

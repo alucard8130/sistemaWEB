@@ -87,13 +87,15 @@
         </div>
         
     </form>
-
+    <div class="alert alert-info"><strong>Total pagado:</strong> ${{ total|floatformat:2|intcomma }}</div>
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
                 <th>Fecha Pago</th>
                 <th>Monto</th>
-                <th>Empresa</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Proveedor/Empleado</th>
                 <th>Forma de Pago</th>
                 <th>Registrado por</th>
@@ -105,7 +107,9 @@
             <tr>
                 <td>{{ pago.fecha_pago }}</td>
                 <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                {% if request.user.is_superuser %}
                 <td>{{ pago.gasto.empresa.nombre }}</td>
+                {% endif %}
                 <td>
                     {% if pago.gasto.proveedor %}
                         {{ pago.gasto.proveedor.nombre }}
@@ -124,7 +128,7 @@
             {% endfor %}
         </tbody>
     </table>
-    <div class="alert alert-info"><strong>Total pagado:</strong> ${{ total|floatformat:2|intcomma }}</div>
+    
     
 </div>
     <!-- 🔹 Footer -->

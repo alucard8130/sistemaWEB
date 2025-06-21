@@ -97,6 +97,7 @@
               <!--  <th>Fecha emisión</th>  -->
                 <th>Saldo</th>
                 <th>Status</th>
+                <th>Concepto</th>
                 <th>Acciones</th>
                 <th>CFDI</th>
             </tr>
@@ -123,7 +124,9 @@
                     <td>{{ factura.fecha_vencimiento }}</td>
                   <!--  <td>{{ factura.fecha_emision }}</td>  -->
                     <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
+                    
                     <td>{{ factura.get_estatus_display }}</td>
+                    <td>{{factura.observaciones}}</td>
                     <td>
                             {% if factura.saldo_pendiente > 0 %}    
                             <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-success">Reg Cobro</a>
@@ -137,8 +140,11 @@
                         {% else %}
                             <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
                         {% endif %}
+                        
                     </td>
+                    
                     <td>
+                        
                         {% if factura.cfdi and factura.cfdi|archivo_existe %}
                             <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-light btn-sm"> Ver CFDI</a>
                         {% elif factura.cfdi %}

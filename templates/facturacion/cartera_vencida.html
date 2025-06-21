@@ -89,7 +89,9 @@
             <tr>
                 <th>Folio</th>
                 <th>Cliente</th>
-                <th>Empresa</th>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Local / Área</th>
                 <th>Monto</th>
                 <th>Saldo Pendiente</th>
@@ -102,7 +104,9 @@
             <tr>
                 <td>{{ factura.folio }}</td>
                 <td>{{ factura.cliente.nombre }}</td>
-                <td>{{ factura.empresa.nombre }}</td>
+                {% if request.user.is_superuser %}
+                    <td>{{ factura.empresa.nombre }}</td>
+                {% endif %}
                 <td>
                     {% if factura.local %} Local {{ factura.local.numero }}
                     {% elif factura.area_comun %} Área {{ factura.area_comun.numero }}
