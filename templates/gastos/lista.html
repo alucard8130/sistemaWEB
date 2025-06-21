@@ -27,6 +27,12 @@
     </div>
 <div class="container mt-4">
     <h2>Solicitudes Gastos</h2>
+    <!-- Bloque para mostrar mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
     <form method="get" class="row g-2 mb-3">
     <div class="col">
         <select name="proveedor" class="form-select">

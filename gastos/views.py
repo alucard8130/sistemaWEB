@@ -115,9 +115,9 @@ def gastos_lista(request):
     tipo_gasto = request.GET.get('tipo_gasto')
 
     if request.user.is_superuser:
-        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto')
+        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto').order_by('-fecha')
     else:
-        gastos = Gasto.objects.filter(empresa=request.user.perfilusuario.empresa)
+        gastos = Gasto.objects.filter(empresa=request.user.perfilusuario.empresa).order_by('-fecha')
 
     if proveedor_id:
         gastos = gastos.filter(proveedor_id=proveedor_id)
@@ -199,6 +199,7 @@ def registrar_pago_gasto(request, gasto_id):
             else:
                 pago.save()
                 gasto.actualizar_estatus()
+                messages.success(request, f"Pago registrado. Saldo restante: ${gasto.saldo_restante:.2f}")
                 return redirect('gastos_lista')
     else:
         form = PagoGastoForm()

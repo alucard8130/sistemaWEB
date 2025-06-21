@@ -61,12 +61,8 @@
                 {% endif %}
                 <td>{{ cliente.activo }}</td>
                 <td>
-                    {% if request.user.is_superuser %}
                         <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-primary">Editar</a>
-                        <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
-                    {% else %}
-                        <span class="text-muted"></span>
-                    {% endif %}
+                        <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-danger">Eliminar</a>        
                 </td>
             </tr>
             {% empty %}

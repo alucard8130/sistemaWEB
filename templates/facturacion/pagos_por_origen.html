@@ -106,6 +106,7 @@
                 <th>Forma de cobro</th>
                 <th>Factura</th>
                 <th>Fecha Cobro</th>
+                <th>Comentarios</th>
                 <th>Comprobante</th>
             </tr>
         </thead>
@@ -128,7 +129,8 @@
                     <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                     <td>{{ pago.forma_pago|title }}</td>
                     <td>{{ pago.factura.folio }}</td>
-                    <td>{{ pago.fecha_pago }}</td>  
+                    <td>{{ pago.fecha_pago }}</td> 
+                    <td>{{ pago.observaciones}}</td> 
                     <td>
                         {% if pago.comprobante and pago.comprobante|archivo_existe %}
                             <a href="{{ pago.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver Comprobante</a>

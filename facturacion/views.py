@@ -153,13 +153,13 @@ def lista_facturas(request):
     area_id = request.GET.get('area_id')
 
     if request.user.is_superuser:
-        facturas = Factura.objects.all().order_by('folio')
+        facturas = Factura.objects.all().order_by('-fecha_vencimiento')
         empresas = Empresa.objects.all()
         locales = LocalComercial.objects.filter(activo=True)
         areas = AreaComun.objects.filter(activo=True)
     else:
         empresa = request.user.perfilusuario.empresa
-        facturas = Factura.objects.filter(empresa=empresa).order_by('folio')
+        facturas = Factura.objects.filter(empresa=empresa).order_by('-fecha_vencimiento')
         empresas = None
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
         areas = AreaComun.objects.filter(empresa=empresa, activo=True)
@@ -333,7 +333,8 @@ def registrar_pago(request, factura_id):
                 else:
                     factura.estatus = 'pendiente'
                 factura.save()
-                messages.success(request, f"Pago registrado. Saldo restante: ${factura.saldo_pendiente:.2f}")
+                factura.actualizar_estatus()  # Actualiza el estatus de la factura
+                messages.success(request, f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}")
                 return redirect('lista_facturas')
     else:
         form = PagoForm()
@@ -342,6 +343,16 @@ def registrar_pago(request, factura_id):
         'form': form,
         'factura': factura,
         'saldo': factura.saldo_pendiente,
+    })
+
+@login_required
+def facturas_detalle(request, pk):
+    factura = get_object_or_404(Factura, pk=pk)
+    cobros = factura.pagos.all().order_by('fecha_pago')
+
+    return render(request, 'facturacion/facturas_detalle.html', {
+        'factura': factura,
+        'cobros': cobros,
     })
 
 
@@ -354,23 +365,23 @@ def pagos_por_origen(request):
     #pagos = Pago.objects.select_related('factura', 'factura__cliente', 'factura__empresa')
 
     if request.user.is_superuser:
-        pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all()
+        pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all().order_by('-fecha_pago')
         empresas = Empresa.objects.all()
         locales = LocalComercial.objects.filter(activo=True)
         areas = AreaComun.objects.filter(activo=True)
     else:
         empresa = request.user.perfilusuario.empresa
-        pagos = Pago.objects.select_related('factura').filter(factura__empresa=empresa)
+        pagos = Pago.objects.select_related('factura').filter(factura__empresa=empresa).order_by('-fecha_pago')
         empresas = None
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
         areas = AreaComun.objects.filter(empresa=empresa, activo=True)
 
     if empresa_id:
-        pagos = pagos.filter(factura__empresa_id=empresa_id)
+        pagos = pagos.filter(factura__empresa_id=empresa_id).order_by('fecha_pago')
     if local_id:
-        pagos = pagos.filter(factura__local_id=local_id)
+        pagos = pagos.filter(factura__local_id=local_id).order_by('fecha_pago')
     if area_id:
-        pagos = pagos.filter(factura__area_comun_id=area_id)
+        pagos = pagos.filter(factura__area_comun_id=area_id).order_by('fecha_pago')
 
    
     pagos_validos = pagos.exclude(forma_pago='nota_credito')
@@ -545,19 +556,19 @@ def cartera_vencida(request):
     ).order_by('folio')
      # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
-        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa).order_by('-fecha_vencimiento')
     elif request.GET.get('empresa'):
-        facturas = facturas.filter(empresa_id=request.GET['empresa'])
+        facturas = facturas.filter(empresa_id=request.GET['empresa']).order_by('-fecha_vencimiento')
     
     # Filtrar por cliente
     if request.GET.get('cliente'):
-        facturas = facturas.filter(cliente_id=request.GET['cliente'])
+        facturas = facturas.filter(cliente_id=request.GET['cliente']).order_by('-fecha_vencimiento')
 
     # Filtrar por origen (local o área)
     if origen == 'local':
-        facturas = facturas.filter(local__isnull=False)
+        facturas = facturas.filter(local__isnull=False).order_by('-fecha_vencimiento')
     elif origen == 'area':
-        facturas = facturas.filter(area_comun__isnull=False)
+        facturas = facturas.filter(area_comun__isnull=False).order_by('-fecha_vencimiento')
 
     # Aplicar filtros de rango de días vencidos
     if filtro == 'menor30':

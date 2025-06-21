@@ -26,7 +26,7 @@
             </button>
         </div>
     </div>
-    <h2>Facturas Generadas</h2>
+    <h2>Facturas Ingresos</h2>
     <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
@@ -100,6 +100,7 @@
                 <th>Concepto</th>
                 <th>Acciones</th>
                 <th>CFDI</th>
+                <th>Detalle</th>
             </tr>
         </thead>
         <tbody>
@@ -130,16 +131,11 @@
                     <td>
                             {% if factura.saldo_pendiente > 0 %}    
                             <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-success">Reg Cobro</a>
-                        {% else %}
-                            <span class="text-muted"></span>
-                        {% endif %}
-                        {% if factura.estatus == 'cobrada' %}
-                            <span class="text-muted"></span>
-                        {% elif factura.estatus == 'cancelada' %}
-                            <span class="text-muted"></span>
-                        {% else %}
                             <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
+                        {% else %}
+                            <span class="text-muted"></span>
                         {% endif %}
+                      
                         
                     </td>
                     
@@ -150,6 +146,10 @@
                         {% elif factura.cfdi %}
                             
                         {% endif %}
+                    </td>
+                        <td>
+                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-info btn-sm">Ver detalle</a>
+                        </td>
                 </tr>
             {% empty %}
                 <tr>

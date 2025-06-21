@@ -48,7 +48,7 @@
                 <th>Cuota</th>
                 <th>Giro</th>
                 <th>Status</th>
-                <th>Ubicación</th>
+              <!--  <th>Ubicación</th> -->
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -65,15 +65,10 @@
                     <td>${{ local.cuota|floatformat:2|intcomma }}</td>
                     <td>{{ local.giro }}</td>
                     <td> {{ local.get_status_display }}</td>    
-                    <td>{{ local.ubicacion }}</td>
+                   <!-- <td>{{ local.ubicacion }}</td>-->
                     <td>
                         <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-primary">Editar</a>
-                        {% if request.user.is_superuser %}
-                            
-                            <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
-                        {% else %}
-                            <span class="text-muted"></span>
-                        {% endif %}
+                        <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
                     </td>
                 </tr>
             {% empty %}
