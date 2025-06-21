@@ -27,12 +27,14 @@ class GastoForm(forms.ModelForm):
  
     class Meta:
         model = Gasto
-        fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'comprobante', 'observaciones']
+        fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'comprobante', 'observaciones','retencion_iva', 'retencion_isr', 'retencion_isr']
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date'}),
             'descripcion': forms.TextInput(attrs={'class': 'form-control'}),
             'observaciones': forms.Textarea(attrs={'rows':2}),
         }
+
+      
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -85,8 +87,10 @@ class PagoGastoForm(forms.ModelForm):
         fields = ['fecha_pago', 'monto', 'forma_pago', 'referencia']
         widgets = {
             'fecha_pago': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'monto': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
+            'monto': forms.NumberInput(attrs={'step': '1.00', 'class': 'form-control'}),
             'forma_pago': forms.Select(attrs={'class': 'form-select'}),
             'referencia': forms.TextInput(attrs={'class': 'form-control'}),
         }
    
+class GastosCargaMasivaForm(forms.Form):
+        archivo = forms.FileField(label='Archivo Excel (.xlsx)')     

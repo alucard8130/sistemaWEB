@@ -11,7 +11,19 @@ class AreaComun(models.Model):
     cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT, null=True, blank=True) 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     superficie_m2 = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    TIPO_AREA_CHOICES = [
+        ('Modulo', 'modulo'),
+        ('Stand', 'stand'),
+        ('Espacio', 'superficie'),
+        ('Isla', 'isla'),
+        ('Cajon', 'cajon'),
+        ('Area', 'area'),
+        ]
+    
+    tipo_area = models.CharField(max_length=20, choices=TIPO_AREA_CHOICES, default='Modulo')
+    cantidad_areas = models.PositiveIntegerField(default=1, blank=True, null=True)
     cuota = models.DecimalField(max_digits=10, decimal_places=2)
+    deposito = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     giro = models.CharField(max_length=100, blank=True, null=True)
     ubicacion = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)

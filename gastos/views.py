@@ -1,14 +1,20 @@
 
+from decimal import Decimal, InvalidOperation
+from io import BytesIO
+import unicodedata
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from openpyxl import Workbook
+import openpyxl
+from unidecode import unidecode
 from empleados.models import Empleado
 from empresas.models import Empresa
+from facturacion.models import Pago
 from presupuestos.models import Presupuesto
 from proveedores.models import Proveedor
-from .forms import GastoForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
-from .models import Gasto, PagoGasto, SubgrupoGasto, TipoGasto
+from .forms import GastoForm, GastosCargaMasivaForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
+from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
 from datetime import datetime
 from django.utils.timezone import localtime
 from django.db.models.functions import TruncMonth
@@ -16,6 +22,9 @@ from django.db.models import Sum, Q, F, Value
 import calendar
 from django.db.models import Q, Sum
 from django.utils.dateparse import parse_date
+from django.contrib import messages
+
+
 # Create your views here.
 @login_required
 def subgrupo_gasto_crear(request):
@@ -29,13 +38,38 @@ def subgrupo_gasto_crear(request):
     return render(request, 'gastos/subgrupo_crear.html', {'form': form})
 
 @login_required
+def subgrupo_gasto_eliminar(request, pk):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para eliminar subgrupos de gasto.")
+        return redirect('subgrupos_gasto_lista')  # Cambia por el nombre de tu lista
+
+    subgrupo = get_object_or_404(SubgrupoGasto, pk=pk)
+    if request.method == 'POST':
+        subgrupo.delete()
+        messages.success(request, "Subgrupo de gasto eliminado correctamente.")
+        return redirect('subgrupos_gasto_lista')
+    return render(request, 'gastos/subgrupo_gasto_confirmar_eliminar.html', {'subgrupo': subgrupo})
+
+@login_required
 def subgrupos_gasto_lista(request):
-    subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
+    if request.user.is_superuser:
+        subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
+    else:
+        empresa= request.user.perfilusuario.empresa
+        # Filtrar subgrupos por empresa
+        subgrupos= SubgrupoGasto.objects.filter(grupo__empresa=empresa).select_related('grupo').order_by('grupo__nombre', 'nombre')
+    #subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
+        #subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre')
     return render(request, 'gastos/subgrupos_lista.html', {'subgrupos': subgrupos})
 
 @login_required
 def tipos_gasto_lista(request):
-    tipos = TipoGasto.objects.select_related('subgrupo__grupo').all()
+    if request.user.is_superuser:
+        tipos = TipoGasto.objects.select_related('subgrupo__grupo').all().order_by('subgrupo__grupo__nombre')
+    else:
+        empresa = request.user.perfilusuario.empresa
+        # Filtrar tipos de gasto por empresa
+        tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related('subgrupo__grupo').all().order_by('subgrupo__grupo__nombre')
     return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': tipos})
 
 @login_required
@@ -405,4 +439,193 @@ def exportar_pagos_gastos_excel(request):
     filename = f"pagos_gastos_{anio}.xlsx"
     response['Content-Disposition'] = f'attachment; filename={filename}'
     wb.save(response)
+    return response
+
+def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
+    """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas). Reporta conflicto si hay varias."""
+    if not valor:
+        return None
+    val = str(valor).strip().replace(',', '')
+    try:
+        return modelo.objects.get(pk=int(val))
+    except (ValueError, modelo.DoesNotExist):
+        todos = modelo.objects.all()
+        # Lista de coincidencias insensibles a acentos y mayúsculas
+        candidatos = [
+            obj for obj in todos
+            if unidecode(val).lower() in unidecode(str(getattr(obj, campo))).lower()
+        ]
+        if len(candidatos) == 1:
+            return candidatos[0]
+        elif len(candidatos) > 1:
+            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos])
+            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
+        raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
+
+
+def normaliza_texto(texto):
+    if not texto:
+        return ""
+    #texto = texto.upper()
+    texto = texto
+    texto = unicodedata.normalize('NFKD', texto)
+    texto = ''.join([c for c in texto if not unicodedata.combining(c)])
+    return texto
+
+@login_required
+def carga_masiva_gastos(request):
+    if request.method == 'POST':
+        form = GastosCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            exitos = 0
+            COLUMNAS_ESPERADAS = 13  # empresa, proveedor, empleado, rfc_empleado, grupo, subgrupo, tipo_gasto, monto, descripcion, fecha, observaciones, retencion_iva, retencion_isr
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row is None:
+                    continue
+                if len(row) != COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    continue
+                empresa_val, proveedor_val, empleado_val, rfc_empleado, grupo_val, subgrupo_val, tipo_gasto_val, monto, descripcion, fecha, observaciones, retencion_iva, retencion_isr = row
+                try:
+                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
+
+                    proveedor = None
+                    if proveedor_val:
+                        proveedor, _ = Proveedor.objects.get_or_create(
+                            nombre=proveedor_val,
+                            empresa=empresa
+                        )
+
+                    empleado = None
+                    if rfc_empleado:
+                        empleado, _ = Empleado.objects.get_or_create(
+                            rfc=rfc_empleado,
+                            defaults={'nombre': empleado_val, 'empresa': empresa}
+                        )
+                    elif empleado_val:
+                        empleado, _ = Empleado.objects.get_or_create(
+                            nombre=empleado_val,
+                            empresa=empresa
+                        )
+
+                    # GRUPO por empresa
+                    grupo_inst = None
+                    if grupo_val:
+                        grupo_nombre = normaliza_texto(grupo_val)
+                        grupo_inst = GrupoGasto.objects.filter(nombre=grupo_nombre, empresa=empresa).first()
+                        if not grupo_inst:
+                            grupo_inst = GrupoGasto.objects.create(nombre=grupo_nombre, empresa=empresa)
+                    else:
+                        errores.append(f"Fila {i}: El grupo es obligatorio.")
+                        continue
+
+                    # SUBGRUPO por empresa y grupo
+                    subgrupo_inst = None
+                    if subgrupo_val:
+                        subgrupo_nombre = normaliza_texto(subgrupo_val)
+                        subgrupo_inst = SubgrupoGasto.objects.filter(nombre=subgrupo_nombre, grupo=grupo_inst, empresa=empresa).first()
+                        if not subgrupo_inst:
+                            subgrupo_inst = SubgrupoGasto.objects.create(nombre=subgrupo_nombre, grupo=grupo_inst, empresa=empresa)
+                    else:
+                        errores.append(f"Fila {i}: El subgrupo es obligatorio.")
+                        continue
+
+                    # TIPO DE GASTO por empresa y subgrupo
+                    tipo_gasto_inst = None
+                    if tipo_gasto_val:
+                        tipo_gasto_nombre = normaliza_texto(tipo_gasto_val)
+                        tipo_gasto_inst = TipoGasto.objects.filter(nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa).first()
+                        if not tipo_gasto_inst:
+                            tipo_gasto_inst = TipoGasto.objects.create(nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa)
+                    else:
+                        errores.append(f"Fila {i}: El tipo de gasto es obligatorio.")
+                        continue
+
+                    try:
+                        monto_decimal = Decimal(monto)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
+                        continue
+
+                    try:
+                        retencion_iva_decimal = Decimal(retencion_iva) if retencion_iva else 0
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de retención IVA '{retencion_iva}' no es válido.")
+                        continue
+
+                    try:
+                        retencion_isr_decimal = Decimal(retencion_isr) if retencion_isr else 0
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de retención ISR '{retencion_isr}' no es válido.")
+                        continue
+
+                    gasto = Gasto.objects.create(
+                        empresa=empresa,
+                        proveedor=proveedor,
+                        empleado=empleado,
+                        tipo_gasto=tipo_gasto_inst,
+                        monto=monto_decimal,
+                        descripcion=descripcion or "",
+                        fecha=fecha,
+                        observaciones=observaciones or "",
+                        retencion_iva=retencion_iva_decimal,
+                        retencion_isr=retencion_isr_decimal
+                    )
+
+                    # Registrar el pago automáticamente
+                    PagoGasto.objects.create(
+                        gasto=gasto,
+                        fecha_pago=fecha,
+                        monto=monto_decimal,
+                        forma_pago='transferencia',
+                        referencia='Carga masiva',
+                        registrado_por=request.user if request.user.is_authenticated else None
+                    )
+                    gasto.actualizar_estatus()  # Actualiza el estatus del gasto
+
+                    exitos += 1
+                except Exception as e:
+                    import traceback
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+
+            if exitos:
+                messages.success(request, f"¡{exitos} gastos cargados exitosamente!")
+            if errores:
+                messages.error(request, "Algunos gastos no se cargaron:<br>" + "<br>".join(errores))
+            return redirect('carga_masiva_gastos')
+    else:
+        form = GastosCargaMasivaForm()
+    return render(request, 'gastos/carga_masiva_gastos.html', {'form': form})
+
+def descargar_plantilla_gastos(request):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Plantilla Gastos"
+
+    # Ajusta los encabezados según los campos que necesitas en la carga masiva
+    encabezados = [
+        'empresa', 'proveedor', 'empleado','rfc_empleado','grupo','subgrupo',
+        'tipo_gasto','monto','descripcion', 'fecha', 'observaciones,''retencion_iva','retencion_isr'
+    ]
+    ws.append(encabezados)
+
+    # Puedes agregar una fila de ejemplo si lo deseas
+    ws.append(['EMPRESA S.A.','proveedor ejemplo','', '','gastos administracion','papeleria','copias', '1200.50','Compra de hojas', '2025-06-19','carga_inicial', '0.00', '0.00'])
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=plantilla_gastos.xlsx'
     return response

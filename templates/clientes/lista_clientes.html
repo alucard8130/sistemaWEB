@@ -36,6 +36,7 @@
     <table class="table table-bordered">
         <thead class="table-dark">
             <tr>
+                <th>Id</th>
                 <th>Nombre</th>
                 <th>RFC</th>
                 <th>Teléfono</th>
@@ -44,14 +45,13 @@
                     <th>Empresa</th> 
                 {% endif %}
                 <th>Activo</th>
-                <th>Empresa</th>
-                <th>Activo</th>
                 <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
             {% for cliente in clientes %}
             <tr>
+                <td>{{ cliente.id }}</td>
                 <td>{{ cliente.nombre }}</td>
                 <td>{{ cliente.rfc }}</td>
                 <td>{{ cliente.telefono }}</td>

@@ -1,5 +1,5 @@
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse
@@ -23,11 +23,11 @@ def lista_locales(request):
     user = request.user
     if user.is_superuser:
         #locales = LocalComercial.objects.all()
-        locales = LocalComercial.objects.filter(activo=True)
+        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
     else:
         #empresa = getattr(request.user.perfilusuario, 'empresa', None)
         empresa = user.perfilusuario.empresa
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
     return render(request, 'locales/lista_locales.html', {'locales': locales})
 
 @login_required
@@ -175,38 +175,64 @@ def carga_masiva_locales(request):
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
-            COLUMNAS_ESPERADAS = 10  # Cambia según tus columnas
+            exitos = 0
+            COLUMNAS_ESPERADAS = 12  # Ajusta según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                empresa_val, propietario_val, cliente_val, numero, ubicacion, superficie_m2, cuota, giro, status, observaciones = row
+                empresa_val, propietario_val, nombre_cliente, rfc_cliente, email_cliente, numero, cuota, ubicacion, superficie_m2, giro, status, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
-                    propietario = buscar_por_id_o_nombre(Cliente, propietario_val) if propietario_val else None
-                    cliente = buscar_por_id_o_nombre(Cliente, cliente_val) if cliente_val else None
-                    # Puedes ajustar el campo status si manejas valores específicos en tu modelo
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
+                    if not numero:
+                        raise Exception("Número vacío")
+                    # Validar que el número de local no se repita para la empresa
+                    if LocalComercial.objects.filter(empresa=empresa, numero=str(numero)).exists():
+                        errores.append(f"Fila {i}: El número de local '{numero}' ya existe para la empresa '{empresa}'.")
+                        continue
+                    # Validar y convertir cuota
+                    try:
+                        cuota_decimal = Decimal(cuota)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de cuota '{cuota}' no es válido.")
+                        continue
+                    # Crear cliente solo si el RFC no existe
+                    cliente = None
+                    if rfc_cliente:
+                        cliente, creado = Cliente.objects.get_or_create(
+                            rfc=rfc_cliente,
+                            defaults={
+                                'nombre': nombre_cliente,
+                                'empresa': empresa,
+                                'email': email_cliente
+                            }
+                        )
                     LocalComercial.objects.create(
                         empresa=empresa,
-                        propietario=propietario.nombre if propietario else "",
-                        cliente=cliente.nombre if cliente else "",
+                        propietario=propietario_val or "",
+                        cliente=cliente,
                         numero=str(numero),
+                        cuota= cuota_decimal,
                         ubicacion=ubicacion or "",
                         superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
-                        cuota=Decimal(cuota),
                         giro=giro or "",
                         status=status or "ocupado",
                         observaciones=observaciones or ""
                     )
+                    exitos += 1
                 except Exception as e:
-                    errores.append(f"Fila {i}: {e}")
+                    import traceback
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
 
+            if exitos:
+                messages.success(request, f"¡{exitos} locales cargados exitosamente!")
             if errores:
                 messages.error(request, "Algunos locales no se cargaron:<br>" + "<br>".join(errores))
-            else:
-                messages.success(request, "¡Locales cargados exitosamente!")
             return redirect('carga_masiva_locales')
     else:
         form = LocalCargaMasivaForm()
@@ -218,10 +244,10 @@ def plantilla_locales_excel(request):
     ws = wb.active
     ws.title = "Plantilla Locales"
     ws.append([
-        'empresa','propietario', 'cliente', 'numero', 'ubicacion', 'superficie_m2', 'cuota','giro', 'status', 'observaciones'
+        'empresa','propietario', 'cliente', 'rfc','email','numero',  'cuota','ubicacion', 'superficie_m2','giro', 'status', 'observaciones'
     ])
     ws.append([
-        'Torre Reforma','Tiendas Soriana SA de CV', 'Juan Pérez', '101', 'Planta Baja', '120.5', 'venta ropa','3000.00', 'ocupado', 'Local nuevo'
+        'Torre Reforma','Tiendas Soriana SA de CV','Juan Pérez','XXX-XXX-XXX','email@ejemplo.com', '101', '120.3', 'planta baja', '30.5','venta ropa', 'ocupado', 'carga inicial'
     ])
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

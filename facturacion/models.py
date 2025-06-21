@@ -77,6 +77,7 @@ class Pago(models.Model):
     forma_pago = models.CharField(max_length=100, choices=FORMAS_PAGO, default='transferencia')
     comprobante = models.FileField(upload_to='comprobantes/', blank=True, null=True)
     registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"

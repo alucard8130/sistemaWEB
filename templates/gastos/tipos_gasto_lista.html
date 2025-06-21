@@ -37,6 +37,9 @@
     <table class="table table-striped">
         <thead>
             <tr>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Grupo</th>
                 <th>Subgrupo</th>
                 <th>Tipo de Gasto</th>
@@ -47,6 +50,9 @@
         <tbody>
         {% for tipo in tipos %}
             <tr>
+                {% if request.user.is_superuser %}
+                    <td>{{ tipo.subgrupo.grupo.empresa.nombre }}</td>
+                {% endif %}
                 <td>{{ tipo.subgrupo.grupo.nombre }}</td>
                 <td>{{ tipo.subgrupo.nombre }}</td>
                 <td>{{ tipo.nombre }}</td>

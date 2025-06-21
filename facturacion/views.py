@@ -20,7 +20,7 @@ import openpyxl
 from django.http import HttpResponse
 from django.db.models import Q
 from facturacion.models import Pago
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from unidecode import unidecode
 from django.db.models.functions import TruncMonth, TruncYear
 from datetime import datetime
@@ -155,23 +155,23 @@ def lista_facturas(request):
     area_id = request.GET.get('area_id')
 
     if request.user.is_superuser:
-        facturas = Factura.objects.all()
+        facturas = Factura.objects.all().order_by('folio')
         empresas = Empresa.objects.all()
         locales = LocalComercial.objects.filter(activo=True)
         areas = AreaComun.objects.filter(activo=True)
     else:
         empresa = request.user.perfilusuario.empresa
-        facturas = Factura.objects.filter(empresa=empresa)
+        facturas = Factura.objects.filter(empresa=empresa).order_by('folio')
         empresas = None
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
         areas = AreaComun.objects.filter(empresa=empresa, activo=True)
 
     if empresa_id:
-        facturas = facturas.filter(empresa_id=empresa_id)
+        facturas = facturas.filter(empresa_id=empresa_id).order_by('folio')
     if local_id:
-        facturas = facturas.filter(local_id=local_id)
+        facturas = facturas.filter(local_id=local_id).order_by('folio')
     if area_id:
-        facturas = facturas.filter(area_comun_id=area_id)
+        facturas = facturas.filter(area_comun_id=area_id).order_by('folio')
 
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': facturas,
@@ -544,7 +544,7 @@ def cartera_vencida(request):
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
-    )
+    ).order_by('folio')
      # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
@@ -732,19 +732,47 @@ def carga_masiva_facturas(request):
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
-            COLUMNAS_ESPERADAS = 9  # Cambia según tus columnas
+            COLUMNAS_ESPERADAS = 10  # Cambia según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
-                folio, empresa_val, cliente_val, local_val, area_val, monto, fecha_emision, fecha_vencimiento, observaciones = row
+                folio, empresa_val, cliente_val, local_val, area_val, tipo_cuota, monto, fecha_emision, fecha_vencimiento, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
-                    cliente = buscar_por_id_o_nombre(Cliente, cliente_val)
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
+
+                    # Validar folio único por empresa
+                    if Factura.objects.filter(folio=str(folio), empresa=empresa).exists():
+                        errores.append(f"Fila {i}: El folio '{folio}' ya existe para la empresa '{empresa}'.")
+                        continue
+
+                    # Validar local o área
                     local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
                     area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
+                    if local_val and not local:
+                        errores.append(f"Fila {i}: No se encontró el local '{local_val}'")
+                        continue
+                    if area_val and not area:
+                        errores.append(f"Fila {i}: No se encontró el área '{area_val}'")
+                        continue
+
+                    # Buscar o crear cliente
+                    cliente, _ = Cliente.objects.get_or_create(
+                        nombre=cliente_val,
+                        empresa=empresa
+                    )
+
+                    # Validar y convertir monto
+                    try:
+                        cuota_decimal = Decimal(monto)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
+                        continue
 
                     Factura.objects.create(
                         folio=str(folio),
@@ -752,13 +780,15 @@ def carga_masiva_facturas(request):
                         cliente=cliente,
                         local=local,
                         area_comun=area,
-                        monto=Decimal(monto),
+                        tipo_cuota=tipo_cuota,
+                        monto=cuota_decimal,
                         fecha_emision=fecha_emision,
                         fecha_vencimiento=fecha_vencimiento,
                         observaciones=observaciones or "",
                     )
                 except Exception as e:
-                    errores.append(f"Fila {i}: {e}")
+                    import traceback
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
 
             if errores:
                 messages.error(request, "Algunas facturas no se cargaron:<br>" + "<br>".join(errores))
@@ -778,12 +808,12 @@ def plantilla_facturas_excel(request):
 
     # Encabezados (ajusta según tu modelo)
     ws.append([
-        'folio', 'empresa_id', 'cliente_id', 'local_id', 'area_id', 'monto', 
-        'fecha_emision', 'fecha_vencimiento', 'observaciones'
+        'folio', 'empresa_id', 'cliente_id', 'local_id', 'area_id',  'tipo_cuota',
+        'monto','fecha_emision', 'fecha_vencimiento', 'observaciones'
     ])
     # Fila de ejemplo (puedes poner valores ficticios)
     ws.append([
-        'FAC001', 'Torre Reforma', 'Juan Pérez', 'L-101', '', '1500.00', '2025-06-10', '2025-07-10', 'Cuota mensual'
+        'FAC001', 'Torre Reforma', 'Juan Pérez', 'L-101', '', '1500.00','mantenimiento' ,'2025-06-10', '2025-07-10', 'carga inicial'
     ])
 
     response = HttpResponse(
@@ -878,3 +908,91 @@ def exportar_lista_facturas_excel(request):
     response['Content-Disposition'] = 'attachment; filename=lista_facturas.xlsx'
     wb.save(response)
     return response
+
+@staff_member_required
+def carga_masiva_facturas_cobradas(request):
+    if request.method == 'POST':
+        form = FacturaCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            COLUMNAS_ESPERADAS = 10  # Cambia según tus columnas
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row is None:
+                    continue
+                if len(row) != COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    continue
+                folio, empresa_val, cliente_val, local_val, area_val, tipo_cuota, monto, fecha_emision, fecha_vencimiento, observaciones = row
+                try:
+                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
+                    if not empresa:
+                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        continue
+
+                    # Validar folio único por empresa
+                    if Factura.objects.filter(folio=str(folio), empresa=empresa).exists():
+                        errores.append(f"Fila {i}: El folio '{folio}' ya existe para la empresa '{empresa}'.")
+                        continue
+
+                    # Validar local o área
+                    local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
+                    area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
+                    if local_val and not local:
+                        errores.append(f"Fila {i}: No se encontró el local '{local_val}'")
+                        continue
+                    if area_val and not area:
+                        errores.append(f"Fila {i}: No se encontró el área '{area_val}'")
+                        continue
+
+                    # Buscar o crear cliente
+                    cliente, _ = Cliente.objects.get_or_create(
+                        nombre=cliente_val,
+                        empresa=empresa
+                    )
+
+                    # Validar y convertir monto
+                    try:
+                        cuota_decimal = Decimal(monto)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
+                        continue
+
+                    Factura.objects.create(
+                        folio=str(folio),
+                        empresa=empresa,
+                        cliente=cliente,
+                        local=local,
+                        area_comun=area,
+                        tipo_cuota=tipo_cuota,
+                        monto=cuota_decimal,
+                        fecha_emision=fecha_emision,
+                        fecha_vencimiento=fecha_vencimiento,
+                        observaciones=observaciones or "",    
+                    )
+                    # Registrar el pago automáticamente
+                    Pago.objects.create(
+                        factura=folio,
+                        fecha_pago=fecha_vencimiento,
+                        monto=cuota_decimal,
+                        forma_pago='transferencia',
+                        comprobante="",
+                        registrado_por=request.user if request.user.is_authenticated else None,
+                        observaciones=observaciones or ""
+                    )    
+                    Factura.actualizar_estatus()
+
+                except Exception as e:
+                    import traceback
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+
+            if errores:
+                messages.error(request, "Algunas facturas no se cargaron:<br>" + "<br>".join(errores))
+            else:
+                messages.success(request, "¡Facturas cargadas exitosamente!")
+            return redirect('carga_masiva_facturas_cobradas')
+    else:
+        form = FacturaCargaMasivaForm()
+    return render(request, 'facturacion/carga_masiva_facturas_cobradas.html', {'form': form})
