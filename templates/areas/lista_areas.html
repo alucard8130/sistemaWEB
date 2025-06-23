@@ -74,7 +74,7 @@
                     <td>{{ area.ubicacion }}</td>
                     <td>
                         <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-primary">Editar</a>    
-                        <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
+                        <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-danger">Inactivar</a>
                     
                     {% if area.status == 'disponible' %}
                         <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-primary btn-sm">Asignar cliente</a>

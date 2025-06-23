@@ -94,12 +94,14 @@ def eliminar_area(request, pk):
 
     return render(request, 'areas/eliminar_area.html', {'area': area})
 
-@user_passes_test(lambda u: u.is_staff)
+#@user_passes_test(lambda u: u.is_staff)
+@login_required
 def areas_inactivas(request):
     areas = AreaComun.objects.filter(activo=False)
     return render(request, 'areas/areas_inactivas.html', {'areas': areas})
 
-@user_passes_test(lambda u: u.is_staff)
+#@user_passes_test(lambda u: u.is_staff)
+@login_required
 def reactivar_area(request, pk):
     area = get_object_or_404(AreaComun, pk=pk, activo=False)
 

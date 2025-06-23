@@ -104,13 +104,13 @@ def eliminar_local(request, pk):
     return render(request, 'locales/eliminar_local.html', {'local': local})
 
 #@staff_member_required
-@user_passes_test(lambda u: u.is_staff)
+#@user_passes_test(lambda u: u.is_staff)
 def locales_inactivos(request):
     locales = LocalComercial.objects.filter(activo=False)
     return render(request, 'locales/locales_inactivos.html', {'locales': locales})
 
 #@staff_member_required
-@user_passes_test(lambda u: u.is_staff)
+#@user_passes_test(lambda u: u.is_staff)
 def reactivar_local(request, pk):
     local = get_object_or_404(LocalComercial, pk=pk, activo=False)
 
