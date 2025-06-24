@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 20/06/2025
+    Date of modification: 23/06/2025
     Description: General styles for the GAC system   
 */
     
@@ -41,6 +41,18 @@ html, body {
     border-color: #aaa !important;
     color: #000 !important;
 }
+
+.btn-pastel-blue {
+    background-color: #f0f0f0;
+    color: #003366;
+    border: 1px solid #a8c7fa;
+}
+
+.btn-pastel-blue:hover {
+    background-color: #a8c7fa;
+    color: #002a4d;
+}
+
 
 /* 
 .btn-light-custom {
@@ -100,7 +112,7 @@ html, body {
 .custom-form label {
     font-weight: 500;
     color: #2c3e50;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     display: block;
     text-align: left;        /* Ensure that the text is aligned with the input */
     padding-left: 8px;       /* Same as the inputs */
@@ -524,4 +536,10 @@ h2 {
 /* Hover en la fila */
 .table tr:hover td {
     background-color: #d4e4f2 !important;
+}
+
+/*=== carga_masiva_clientes-html ===*/
+.form-delgado {
+    max-width: 600px;
+    margin: auto;
 }
