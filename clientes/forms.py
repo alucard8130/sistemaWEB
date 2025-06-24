@@ -1,11 +1,35 @@
 from django import forms
-from .models import Cliente
+from .models import Cliente 
 
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
         fields = ['empresa','nombre', 'rfc', 'telefono', 'email', 'activo']
-
+        widgets = {
+            'empresa': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre'
+            }),
+            'rfc': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'RFC'
+            }),
+            'telefono': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Teléfono'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Email'
+            }),
+        }
+        labels = {
+            'rfc': 'RFC',
+            'telefono': 'Teléfono',
+        }
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
