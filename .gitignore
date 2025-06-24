@@ -31,3 +31,5 @@ Thumbs.db
 */migrations/*.pyc
 
 db.sqlite3 
+
+templates/base.html
