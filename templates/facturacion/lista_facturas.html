@@ -26,14 +26,19 @@
             </button>
         </div>
     </div>
-    <h2>Facturas Ingresos</h2>
+    <h2>Facturas </h2>
     <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
     {% endif %}
-
+    <div>
+    <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
+    <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>
+    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
+    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Regresar</a>
+    </div>
     <form method="get" class="row g-2 mb-3">
         {% if request.user.is_superuser %}
         <div class="col-auto">
@@ -72,15 +77,11 @@
         </div>
         <div class="col-auto align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Limpiar filtro</a>
+            <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Limpiar</a>
         </div>
+        
     </form>
-    <div>
-    <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
-    <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>
-    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Volver al menú</a>
-    </div>
+    
 
     <table class="table table-bordered">
         <thead class="table-dark">
@@ -96,8 +97,8 @@
                 <th>Fecha Vencimiento</th>
               <!--  <th>Fecha emisión</th>  -->
                 <th>Saldo</th>
-                <th>Status</th>
                 <th>Concepto</th>
+                <th>Status</th>
                 <th>Acciones</th>
                 <th>CFDI</th>
                 <th>Detalle</th>
@@ -125,12 +126,11 @@
                     <td>{{ factura.fecha_vencimiento }}</td>
                   <!--  <td>{{ factura.fecha_emision }}</td>  -->
                     <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
-                    
-                    <td>{{ factura.get_estatus_display }}</td>
                     <td>{{factura.observaciones}}</td>
+                    <td>{{ factura.get_estatus_display }}</td>    
                     <td>
                             {% if factura.saldo_pendiente > 0 %}    
-                            <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-success">Reg Cobro</a>
+                            <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-success">Cobrar</a>
                             <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
                         {% else %}
                             <span class="text-muted"></span>
@@ -142,13 +142,13 @@
                     <td>
                         
                         {% if factura.cfdi and factura.cfdi|archivo_existe %}
-                            <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-light btn-sm"> Ver CFDI</a>
+                            <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-light btn-sm">CFDI</a>
                         {% elif factura.cfdi %}
                             
                         {% endif %}
                     </td>
                         <td>
-                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-info btn-sm">Ver detalle</a>
+                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-info btn-sm">Ver</a>
                         </td>
                 </tr>
             {% empty %}
