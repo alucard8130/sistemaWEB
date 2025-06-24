@@ -58,9 +58,9 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nuevo Local</a></li>
                             <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista</a></li>
-                            {% if request.user.is_superuser %}
+
                                 <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
-                            {% endif %}
+
                             <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
                             {% if request.user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
@@ -72,9 +72,9 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'crear_area' %}">Nueva Área</a></li>
                             <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista</a></li>
-                            {% if request.user.is_superuser %}
+             
                                 <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivos</a></li>
-                            {% endif %}
+   
                             <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
                             {% if request.user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>

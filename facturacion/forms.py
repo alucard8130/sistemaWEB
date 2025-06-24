@@ -86,7 +86,7 @@ class FacturaCargaMasivaForm(forms.Form):
 class FacturaEditForm(forms.ModelForm):
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota', 'estatus', 'observaciones']    
+        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota','cfdi', 'estatus', 'observaciones']    
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
