@@ -104,9 +104,9 @@ def crear_factura(request):
                         from django.utils.timezone import now
                         count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
                         if tipo == 'local':
-                            factura.folio = f"CM-{now().year}{now().month:02d}F{count:04d}"
+                            factura.folio = f"CM-{now().year:02d}{now().month:02d}F{count:04d}"
                         elif tipo == 'area_comun':
-                            factura.folio = f"AC-{now().year}{now().month:02d}F{count:04d}"
+                            factura.folio = f"AC-{now().year:02d}{now().month:02d}F{count:04d}"
                         factura.save()
 
                         # Asignar cliente a local/área si está vacío o si hay conflicto autorizado
@@ -131,13 +131,13 @@ def crear_factura(request):
                                 )
 
                         messages.success(request, "Factura creada correctamente.")
-                        print("[DEBUG] Factura creada con éxito.")
+                        #print("[DEBUG] Factura creada con éxito.")
                         return redirect('lista_facturas')
                 except Exception as e:
                     form.add_error(None, f"Error al guardar la factura: {e}")
-                    print("[DEBUG] Excepción al guardar factura:", e)
+                    #print("[DEBUG] Excepción al guardar factura:", e)
         else:
-            print("[DEBUG] Formulario inválido:", form.errors)
+            ''#print("[DEBUG] Formulario inválido:", form.errors)
     else:
         form = FacturaForm(user=request.user)
 
@@ -210,7 +210,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             ).exists()
             if not existe:
                 count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                folio = f"CM-{año}{mes:02d}{count:04d}"
+                folio = f"CM-{año:02d}{mes:02d}{count:04d}"
                 Factura.objects.create(
                     empresa=local.empresa,
                     cliente=local.cliente,
@@ -223,6 +223,8 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     estatus='pendiente',
                     observaciones='Factura generada automáticamente'
                 )
+                
+        
                 facturas_creadas += 1
 
     if facturar_areas:
@@ -235,7 +237,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             ).exists()
             if not existe:
                 count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                folio = f"AC-{año}{mes:02d}{count:04d}"
+                folio = f"AC-{año:02d}{mes:02d}{count:04d}"
                 Factura.objects.create(
                     empresa=area.empresa,
                     cliente=area.cliente,
@@ -249,6 +251,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     observaciones='Factura generada automáticamente'
                 )
                 facturas_creadas += 1
+
 
     messages.success(request, f"{facturas_creadas} facturas generadas para {hoy.strftime('%B %Y')}")
     return redirect('lista_facturas')
@@ -805,7 +808,7 @@ def carga_masiva_facturas(request):
                     )
                 
                     factura.actualizar_estatus()  # ✅ Correcto
-                    print(f"[DEBUG] Factura creada: {folio} para {cliente.nombre} ({empresa.nombre})")
+                    #print(f"[DEBUG] Factura creada: {folio} para {cliente.nombre} ({empresa.nombre})")
                     ##################################################################3
                 except ValueError as ve:
                     errores.append(f"Fila {i}: Error de valor - {str(ve)}")     

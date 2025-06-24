@@ -102,7 +102,7 @@
                 <td>{{ gasto.get_estatus_display }}</td>
                 <td>
                         {% if gasto.saldo_restante > 0 %}
-                            <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-success btn-sm">Registrar Pago</a>
+                            <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-success btn-sm">Pagar</a>
                             <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-primary btn-sm">Editar</a>
                         {% else %}
                             <span class="text-muted"></span>
@@ -114,13 +114,13 @@
                     </td>
                 <td>
                     {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
-                        <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">Ver CFDI</a>
+                        <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">CFDI</a>
                     {% elif gasto.comprobante %}
                         
                     {% endif %}             
                 </td>
                 <td>
-                        <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-info btn-sm">Ver detalle</a>
+                        <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-info btn-sm">Ver</a>
                                         <!-- ...otros botones como Editar, Registrar Pago... -->
                     </td>
             </tr>   
