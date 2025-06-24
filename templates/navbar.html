@@ -2,7 +2,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 20/06/2025
+        Date of modification: 24/06/2025
         Description: Code nabvar
     -->
 <!-- 🔹 Top Navbar -->
@@ -17,8 +17,8 @@
                         <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
                         <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Usuarios</a></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
-                        <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
+                        <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">Respaldar</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar sistema</a></li>
                     </ul>
                 </li>
                 {% endif %}

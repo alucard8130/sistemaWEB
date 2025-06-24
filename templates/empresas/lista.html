@@ -6,11 +6,11 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 20/06/2025
+        Date of modification: 24/06/2025
         Description: List of registered enterprises 
     -->
     <meta charset="UTF-8">
-    <title>Empresas Registradas</title>
+    <title>Empresas registradas</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -34,9 +34,9 @@
 
     <!-- Main content -->
     <div class="container mt-4">
-        <h2>Empresas Registradas</h2>
+        <h2>Empresas registradas</h2>
         
-        <!-- Messages -->
+        <!-- Block for displaying messages -->
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -94,11 +94,11 @@
         </div>
 
         <!-- Back button -->
-        <div class="mt-4"> 
+        <!-- <div class="mt-4"> 
             <a href="{% url 'bienvenida' %}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left-circle me-1"></i> Volver al menú
+                <i class="bi bi-arrow-left-circle me-1"></i> Regresar
             </a>
-        </div>
+        </div> -->
     </div>
 
     <!-- 🔹 Footer -->
