@@ -7,7 +7,52 @@ class LocalComercialForm(forms.ModelForm):
     class Meta:
         model = LocalComercial
         fields = ['numero', 'propietario','cliente','empresa', 'superficie_m2', 'cuota','giro','ubicacion', 'status', 'observaciones']
-
+        widgets = {
+            'numero': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número'
+            }),
+            'propietario': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Propietario'
+            }),
+            'cliente': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'empresa': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'superficie_m2': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Superficie_m2'
+            }),
+            'cuota': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Cuota'
+            }),
+            'giro': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Giro'
+            }),
+            'ubicacion': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control',
+                'placeholder': 'Ubicación'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control',
+                'placeholder': 'Observaciones'
+            }),
+        }
+        labels = {
+            'numero': 'Número',
+            'ubicacion': 'Ubicación',
+            'status': 'Estatus',
+        }
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # obtenemos el usuario desde la vista
         super().__init__(*args, **kwargs)
