@@ -16,6 +16,6 @@ urlpatterns = [
     path('plantilla-facturas/', views.plantilla_facturas_excel, name='plantilla_facturas_excel'),
     path('factura/<int:factura_id>/editar/', views.editar_factura, name='editar_factura'),
     path('factura/exportar/excel/', views.exportar_lista_facturas_excel, name='exportar_lista_facturas_excel'),
-    path('carga-masiva/', views.carga_masiva_facturas_cobradas, name='carga_masiva_facturas_cobradas'),
+    path('carga-masiva-c/', views.carga_masiva_facturas_cobradas, name='carga_masiva_facturas_cobradas'),
     path('detalle/<int:pk>/', views.facturas_detalle, name='facturas_detalle'),
 ]

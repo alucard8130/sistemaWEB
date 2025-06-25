@@ -165,11 +165,11 @@ def lista_facturas(request):
         areas = AreaComun.objects.filter(empresa=empresa, activo=True)
 
     if empresa_id:
-        facturas = facturas.filter(empresa_id=empresa_id).order_by('folio')
+        facturas = facturas.filter(empresa_id=empresa_id).order_by('-fecha_vencimiento')
     if local_id:
-        facturas = facturas.filter(local_id=local_id).order_by('folio')
+        facturas = facturas.filter(local_id=local_id).order_by('-fecha_vencimiento')
     if area_id:
-        facturas = facturas.filter(area_comun_id=area_id).order_by('folio')
+        facturas = facturas.filter(area_comun_id=area_id).order_by('-fecha_vencimiento')
 
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': facturas,
@@ -221,7 +221,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     monto=local.cuota,
                     tipo_cuota='mantenimiento',
                     estatus='pendiente',
-                    observaciones='Factura generada automáticamente'
+                    observaciones='emision mensual'
                 )
                 
         
@@ -248,7 +248,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     monto=area.cuota,
                     tipo_cuota='renta',
                     estatus='pendiente',
-                    observaciones='Factura generada automáticamente'
+                    observaciones='emision mensual'
                 )
                 facturas_creadas += 1
 
@@ -882,10 +882,20 @@ def carga_masiva_facturas_cobradas(request):
                         continue
 
                     # Buscar o crear cliente
-                    cliente, _ = Cliente.objects.get_or_create(
-                        nombre=cliente_val,
-                        empresa=empresa
-                    )
+                    #cliente, _ = Cliente.objects.get_or_create(
+                     #   nombre=cliente_val,
+                     # 3  empresa=empresa
+                    #)
+
+                    # Buscar o crear cliente (manejo de duplicados)
+                    clientes = Cliente.objects.filter(nombre=cliente_val, empresa=empresa)
+                    #if clientes.count() == 1:
+                    if clientes.exists():    
+                        cliente = clientes.first()
+                    #elif clientes.count() == 0:
+                     #   cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)
+                    else:
+                        cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)
 
                     # Validar y convertir monto
                     try:
@@ -905,6 +915,7 @@ def carga_masiva_facturas_cobradas(request):
                         fecha_emision=fecha_emision,
                         fecha_vencimiento=fecha_vencimiento,
                         observaciones=observaciones or "",
+                        estatus='cobrada',  # Establecer estatus como 'cobrada'
                     )
                     Pago.objects.create(
                         factura=Factura.objects.get(folio=str(folio), empresa=empresa),
@@ -915,7 +926,7 @@ def carga_masiva_facturas_cobradas(request):
                         observaciones=observaciones or "",
                     )
                     
-                    factura.actualizar_estatus()  # ✅ Correcto
+                    #factura.actualizar_estatus()  # ✅ Correcto
 
                     print(f"[DEBUG] Factura creada: {folio} para {cliente.nombre} ({empresa.nombre})")
                 except ValueError as ve:
@@ -972,11 +983,14 @@ def carga_masiva_facturas(request):
                         errores.append(f"Fila {i}: No se encontró el área '{area_val}'")
                         continue
 
-                    # Buscar o crear cliente
-                    cliente, _ = Cliente.objects.get_or_create(
-                        nombre=cliente_val,
-                        empresa=empresa
-                    )
+                    clientes = Cliente.objects.filter(nombre=cliente_val, empresa=empresa)
+                    #if clientes.count() == 1:
+                    if clientes.exists():
+                        cliente = clientes.first()
+                    #elif clientes.count() == 0:
+                     #   cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)
+                    else:
+                        cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)   
 
                     # Validar y convertir monto
                     try:
@@ -996,8 +1010,9 @@ def carga_masiva_facturas(request):
                         fecha_emision=fecha_emision,
                         fecha_vencimiento=fecha_vencimiento,
                         observaciones=observaciones or "",
+                        estatus='pendiente',
                     )
-                    
+                    #factura.actualizar_estatus()  # ✅ Correcto    
                 except ValueError as ve:
                     errores.append(f"Fila {i}: Error de valor - {str(ve)}")     
                 except Exception as e:

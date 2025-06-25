@@ -30,7 +30,7 @@ class Factura(models.Model):
     monto = models.DecimalField(max_digits=20, decimal_places=2)
     STATUS_CHOICES = [
         ('pendiente', 'Pendiente'),
-        ('pagada', 'Pagada'),
+        ('cobrada', 'Cobrada'),
         ('cancelada', 'Cancelada'),
     ]
     estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
@@ -52,24 +52,26 @@ class Factura(models.Model):
     def saldo_pendiente(self):
         if  self.estatus == 'cancelada':
             return 0
-        if self.estatus == 'pagada' or 'pendiente':
+        if self.estatus == 'cobrada' or 'pendiente':
             return self.monto - self.total_pagado
     
+    """def actualizar_estatus(self):
+        if self.saldo_pendiente <= 0:
+            self.estatus = 'cobrada'
+        else:
+            self.estatus = 'pendiente'
+        self.save()"""
+
     def actualizar_estatus(self):
         #cambie el codigo para ver si funciona y pone bien el estado
         total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
+       
         if total_pagado >= self.monto:
             self.estatus = 'cobrada'
-        elif self.saldo_pendiente==0:
-            self.estatus = 'cobrada'
+        elif total_pagado == 0:
+            self.estatus = 'pendiente'
         else:
-            self.estatus = 'pendiente'    
-        #if total_pagado >= self.monto:
-         #   self.estatus = 'Cobrada'
-        #elif total_pagado == 0:
-         #   self.estatus = 'Pendiente'
-        #else:
-         #   self.estatus = 'Pendiente'  # O podrías poner un "parcial" si agregas esa opción
+            self.estatus = 'pendiente'  # O podrías poner un "parcial" si agregas esa opción
         self.save()
 
 class Pago(models.Model):
