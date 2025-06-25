@@ -35,7 +35,7 @@
     {% endif %}
     <div>
     <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
-    <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>
+ <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
     <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Regresar</a>
     </div>

@@ -82,16 +82,16 @@
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Facturacion</a>
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura</a></li>
-                            <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Reporte Facturas</a></li>
+                            <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Factura</a></li>
+                            <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Facturas</a></li>
                             <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
-                            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Ingresos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros</a></li>
+                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Cobros</a></li>
                             {% if request.user.is_superuser %}
-                                <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
-                                <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cobros</a></li>
+                            <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
+                                <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Facturas Cobradas</a></li>
                             {% endif %}
                         </ul>
                     </li>
@@ -100,6 +100,7 @@
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
+                            <li><a class="dropdown-item" href="">Carga Cartera</a></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
                         </ul>
                     </li>
@@ -123,10 +124,10 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Gastos</a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Nueva Solicitud</a></li>
-                            <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Reporte Solicitudes</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Egresos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Egresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Gasto</a></li>
+                            <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Gastos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Pagos</a></li>
                             {% if request.user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
                     
