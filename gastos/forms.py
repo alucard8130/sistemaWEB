@@ -2,7 +2,7 @@ from django import forms
 
 from empleados.models import Empleado
 from proveedores.models import Proveedor
-from .models import Gasto, SubgrupoGasto, TipoGasto
+from .models import Gasto, GrupoGasto, SubgrupoGasto, TipoGasto
 
 class SubgrupoGastoForm(forms.ModelForm):
     class Meta:
@@ -12,7 +12,18 @@ class SubgrupoGastoForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'grupo': forms.Select(attrs={'class': 'form-select'}),
         }
-        
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.fields['grupo'].queryset = GrupoGasto.objects.none()
+        if user:
+            if user.is_superuser:
+                self.fields['grupo'].queryset = GrupoGasto.objects.all()
+            else:
+                empresa = getattr(user.perfilusuario, 'empresa', None)
+                if empresa:
+                    self.fields['grupo'].queryset = GrupoGasto.objects.filter(empresa=empresa)
+                        
 class TipoGastoForm(forms.ModelForm):
     class Meta:
         model = TipoGasto
@@ -20,6 +31,17 @@ class TipoGastoForm(forms.ModelForm):
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows':2}),
         }
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.fields['subgrupo'].queryset = SubgrupoGasto.objects.none()
+        if user:
+            if user.is_superuser:
+                self.fields['subgrupo'].queryset = SubgrupoGasto.objects.all()
+            else:
+                empresa = getattr(user.perfilusuario, 'empresa', None)
+                if empresa:
+                    self.fields['subgrupo'].queryset = SubgrupoGasto.objects.filter(empresa=empresa)    
 
 class GastoForm(forms.ModelForm):
     origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True)
