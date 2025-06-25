@@ -8,13 +8,13 @@ import openpyxl
 from facturacion.models import Pago
 from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
 from .models import Presupuesto, PresupuestoCierre
-from .forms import PresupuestoForm
+from .forms import PresupuestoCargaMasivaForm, PresupuestoForm
 from django.utils.timezone import now
 from django.db.models import Sum,F
 from empresas.models import Empresa
 from calendar import month_name
 from collections import defaultdict
-from decimal import Decimal
+from decimal import Decimal,InvalidOperation
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from django.contrib.auth import authenticate
@@ -889,3 +889,131 @@ def comparativo_presupuesto_vs_gastos(request):
         'anio': anio,
         'anios_disponibles': años,
     })
+
+@login_required
+def descargar_plantilla_matriz_presupuesto(request):
+    # Obtén todos los tipos de gasto ordenados por grupo y subgrupo
+    tipos = TipoGasto.objects.select_related('subgrupo', 'subgrupo__grupo').order_by(
+        'subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre'
+    )
+    meses = list(range(1, 13))
+    meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Carga Presupuesto"
+
+    # Encabezados
+    encabezados = ["Grupo", "Subgrupo", "Tipo de Gasto"] + meses_nombres + ["Año", "Empresa"]
+    ws.append(encabezados)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    # Una fila por cada tipo de gasto, columnas para cada mes (importes vacíos)
+    for tipo in tipos:
+        fila = [
+            str(tipo.subgrupo.grupo),
+            str(tipo.subgrupo),
+            str(tipo),
+        ]
+        # 12 columnas de meses vacías (el usuario debe llenarlas)
+        fila += [""] * 12
+        # Año sugerido (puedes cambiarlo por el año actual si quieres)
+        fila.append("")
+        # Empresa sugerida (el usuario debe llenarla)
+        fila.append("")
+        ws.append(fila)
+
+    # Ajustar ancho de columnas
+    for col in ws.columns:
+        max_length = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+    # Respuesta HTTP para descargar
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=plantilla_matriz_presupuesto.xlsx'
+    wb.save(response)
+    return response
+
+@login_required
+def carga_masiva_presupuestos(request):
+    if request.method == 'POST':
+        form = PresupuestoCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            exitos = 0
+            # Ajusta el orden de columnas según tu plantilla
+            # Ejemplo: Empresa, Grupo, Subgrupo, Tipo, Año, Mes, Monto
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                empresa_val, grupo_val, subgrupo_val, tipo_val, anio, mes, monto = row
+                try:
+                    empresa = Empresa.objects.filter(nombre__iexact=str(empresa_val).strip()).first()
+                    if not empresa:
+                        errores.append(f"Fila {i}: Empresa '{empresa_val}' no encontrada.")
+                        continue
+
+                    grupo = GrupoGasto.objects.filter(nombre__iexact=str(grupo_val).strip(), empresa=empresa).first()
+                    if not grupo:
+                        errores.append(f"Fila {i}: Grupo '{grupo_val}' no encontrado para la empresa.")
+                        continue
+
+                    subgrupo = None
+                    if subgrupo_val:
+                        subgrupo = SubgrupoGasto.objects.filter(nombre__iexact=str(subgrupo_val).strip(), grupo=grupo).first()
+                        if not subgrupo:
+                            errores.append(f"Fila {i}: Subgrupo '{subgrupo_val}' no encontrado en grupo '{grupo_val}'.")
+                            continue
+
+                    tipo_gasto = None
+                    if tipo_val:
+                        tipo_gasto = TipoGasto.objects.filter(nombre__iexact=str(tipo_val).strip(), subgrupo=subgrupo).first()
+                        if not tipo_gasto:
+                            errores.append(f"Fila {i}: Tipo de gasto '{tipo_val}' no encontrado en subgrupo '{subgrupo_val}'.")
+                            continue
+
+                    try:
+                        anio_int = int(anio)
+                    except (TypeError, ValueError):
+                        errores.append(f"Fila {i}: Año '{anio}' no válido.")
+                        continue
+
+                    mes_int = int(mes) if mes else None
+
+                    try:
+                        monto_decimal = Decimal(monto)
+                    except (InvalidOperation, TypeError, ValueError):
+                        errores.append(f"Fila {i}: Monto '{monto}' no válido.")
+                        continue
+
+                    obj, created = Presupuesto.objects.update_or_create(
+                        empresa=empresa,
+                        grupo=grupo,
+                        subgrupo=subgrupo,
+                        tipo_gasto=tipo_gasto,
+                        anio=anio_int,
+                        mes=mes_int,
+                        defaults={'monto': monto_decimal}
+                    )
+                    exitos += 1
+                except Exception as e:
+                    errores.append(f"Fila {i}: {str(e)}")
+            if exitos:
+                messages.success(request, f"{exitos} presupuestos cargados/actualizados exitosamente.")
+            if errores:
+                messages.error(request, "Errores:<br>" + "<br>".join(errores))
+            return redirect('carga_masiva_presupuestos')
+    else:
+        form = PresupuestoCargaMasivaForm()
+    return render(request, 'presupuestos/carga_masiva_presupuestos.html', {'form': form})
