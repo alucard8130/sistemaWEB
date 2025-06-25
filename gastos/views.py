@@ -577,7 +577,8 @@ def carga_masiva_gastos(request):
                         fecha=fecha,
                         observaciones=observaciones or "",
                         retencion_iva=retencion_iva_decimal,
-                        retencion_isr=retencion_isr_decimal
+                        retencion_isr=retencion_isr_decimal,
+                        estatus='pagada',
                     )
 
                     # Registrar el pago automáticamente
@@ -589,7 +590,7 @@ def carga_masiva_gastos(request):
                         referencia='Carga masiva',
                         registrado_por=request.user if request.user.is_authenticated else None
                     )
-                    gasto.actualizar_estatus()  # Actualiza el estatus del gasto
+                    #gasto.actualizar_estatus()  # Actualiza el estatus del gasto
 
                     exitos += 1
                 except Exception as e:
