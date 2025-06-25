@@ -120,7 +120,7 @@ html, body {
 
 /* General styles for inputs */
 .form-control {
-    border-radius: 10px;
+    border-radius: 5px;
     background-color: #f8f9fa; /* Light gray background */
     border: 1px solid #c5ced6; /* Blue-gray border */
     color: #333;
@@ -538,8 +538,39 @@ h2 {
     background-color: #d4e4f2 !important;
 }
 
-/*=== carga_masiva_clientes-html ===*/
+/*=== carga_masiva_clientes.html ===*/
 .form-delgado {
     max-width: 600px;
     margin: auto;
+}
+
+/*=== crear_local.html (light) ===*/
+/* Estilo para la flecha del select */
+.select-wrapper {
+    position: relative;
+}
+
+.select-wrapper select {
+    -webkit-appearance: none; /* Para navegadores Webkit (Chrome, Safari) */
+    -moz-appearance: none; /* Para Firefox */
+    appearance: none; /* Para otros navegadores */
+    padding-right: 30px; /* Espacio para la flecha */
+    width: 100%;
+    border-radius: 5px;
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    font-size: 16px;
+}
+
+/* Flecha personalizada */
+.select-wrapper::after {
+    content: "▾"; /* Carácter de la flecha hacia abajo */
+    position: absolute;
+    right: 12px; /* Distancia desde el borde derecho */
+    top: 75%;
+    transform: translateY(-50%); /* Centrar verticalmente */
+    pointer-events: none; /* Evitar que el clic sobre la flecha interfiera con el select */
+    font-size: 20px;
+    color: #888; /* Color de la flecha */
 }
