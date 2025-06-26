@@ -364,6 +364,8 @@ def exportar_presupuesto_excel(request):
 
 
 @login_required
+#reporte_comparativo.html
+#reporte comparativo presupuesto vs gasto
 def reporte_presupuesto_vs_gasto(request):
     anio = int(request.GET.get('anio', datetime.now().year))
     meses = list(range(1, 13))
@@ -412,7 +414,7 @@ def reporte_presupuesto_vs_gasto(request):
 
     for grupo, subgrupos in grupos_dict.items():
         grupo_row = {
-            'nombre': str(grupo),
+            'nombre': grupo.nombre,
             'subgrupos': [],
             'total': [0]*12,
             'total_gasto': [0]*12,
@@ -425,7 +427,7 @@ def reporte_presupuesto_vs_gasto(request):
 
         for subgrupo, tipos_ in subgrupos.items():
             subgrupo_row = {
-                'nombre': str(subgrupo),
+                'nombre': subgrupo.nombre,
                 'tipos': [],
                 'total': [0]*12,
                 'total_gasto': [0]*12,
@@ -437,7 +439,7 @@ def reporte_presupuesto_vs_gasto(request):
             subgrupo_total_var = 0
 
             for tipo in tipos_:
-                row = {'nombre': str(tipo), 'meses': []}
+                row = {'nombre': tipo.nombre, 'meses': []}
                 anual_presup = 0
                 anual_gasto = 0
                 anual_var = 0
