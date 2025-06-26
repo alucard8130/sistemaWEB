@@ -212,9 +212,9 @@ def matriz_presupuesto(request):
         for subgrupo, tipos_ in subgrupos.items():
             tipos_lista = []
             for tipo in tipos_:
-                tipos_lista.append({'id': tipo.id, 'nombre': str(tipo), 'tipo_obj': tipo})
-            subgrupos_lista.append({'id': subgrupo.id, 'nombre': str(subgrupo), 'tipos': tipos_lista, 'subgrupo_obj': subgrupo})
-        grupos_lista.append({'id': grupo.id, 'nombre': str(grupo), 'subgrupos': subgrupos_lista, 'grupo_obj': grupo})
+                tipos_lista.append({'id': tipo.id, 'nombre': tipo.nombre, 'tipo_obj': tipo})
+            subgrupos_lista.append({'id': subgrupo.id, 'nombre': subgrupo.nombre, 'tipos': tipos_lista, 'subgrupo_obj': subgrupo})
+        grupos_lista.append({'id': grupo.id, 'nombre': grupo.nombre, 'subgrupos': subgrupos_lista, 'grupo_obj': grupo})
 
     presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
     presup_dict = {(p.tipo_gasto_id, p.mes): p for p in presupuestos}
@@ -776,6 +776,7 @@ def comparativo_presupuesto_anio(request):
         'anios_disponibles': anios,
         'totales': totales,
     })
+
 @login_required
 def comparativo_presupuesto_vs_gastos(request):
     # 1. Años disponibles (presupuesto.anio y pago.fecha_pago__year)
