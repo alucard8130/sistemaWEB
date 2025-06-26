@@ -954,10 +954,16 @@ def carga_masiva_presupuestos(request):
             ws = wb.active
             errores = []
             exitos = 0
-            # Ajusta el orden de columnas según tu plantilla
-            # Ejemplo: Empresa, Grupo, Subgrupo, Tipo, Año, Mes, Monto
+            meses = list(range(1, 13))
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                empresa_val, grupo_val, subgrupo_val, tipo_val, anio, mes, monto = row
+                # Espera: Grupo, Subgrupo, Tipo de Gasto, Ene, Feb, ..., Dic, Año, Empresa
+                if len(row) < 17:
+                    errores.append(f"Fila {i}: Número de columnas insuficiente ({len(row)})")
+                    continue
+                grupo_val, subgrupo_val, tipo_val = row[0], row[1], row[2]
+                meses_valores = row[3:15]
+                anio = row[15]
+                empresa_val = row[16]
                 try:
                     empresa = Empresa.objects.filter(nombre__iexact=str(empresa_val).strip()).first()
                     if not empresa:
@@ -968,20 +974,38 @@ def carga_masiva_presupuestos(request):
                     if not grupo:
                         errores.append(f"Fila {i}: Grupo '{grupo_val}' no encontrado para la empresa.")
                         continue
+                      
+                    def extrae_nombre(valor, sep="/"):
+                    #Devuelve la última parte después del separador (quita grupo/subgrupo si viene junto)."""
+                        if not valor:
+                            return ""
+                        partes = str(valor).split(sep)
+                        return partes[-1].strip()
 
+                    def normaliza(texto):
+                        return ''.join(str(texto).strip().lower().split())
+
+                    # Buscar subgrupo de forma robusta
+                    subgrupo_nombre = extrae_nombre(subgrupo_val, "/")
                     subgrupo = None
-                    if subgrupo_val:
-                        subgrupo = SubgrupoGasto.objects.filter(nombre__iexact=str(subgrupo_val).strip(), grupo=grupo).first()
-                        if not subgrupo:
-                            errores.append(f"Fila {i}: Subgrupo '{subgrupo_val}' no encontrado en grupo '{grupo_val}'.")
-                            continue
+                    for sg in SubgrupoGasto.objects.filter(grupo=grupo):
+                        if normaliza(sg.nombre) == normaliza(subgrupo_nombre):
+                            subgrupo = sg
+                            break
+                    if not subgrupo:
+                        errores.append(f"Fila {i}: Subgrupo '{subgrupo_val}' no encontrado en grupo '{grupo_val}'.")
+                        continue
 
+                    # Buscar tipo de gasto de forma robusta
+                    tipo_nombre = extrae_nombre(tipo_val, "-")
                     tipo_gasto = None
-                    if tipo_val:
-                        tipo_gasto = TipoGasto.objects.filter(nombre__iexact=str(tipo_val).strip(), subgrupo=subgrupo).first()
-                        if not tipo_gasto:
-                            errores.append(f"Fila {i}: Tipo de gasto '{tipo_val}' no encontrado en subgrupo '{subgrupo_val}'.")
-                            continue
+                    for tg in TipoGasto.objects.filter(subgrupo=subgrupo):
+                        if normaliza(tg.nombre) == normaliza(tipo_nombre):
+                            tipo_gasto = tg
+                            break
+                    if not tipo_gasto:
+                        errores.append(f"Fila {i}: Tipo de gasto '{tipo_val}' no encontrado en subgrupo '{subgrupo_val}'.")
+                        continue
 
                     try:
                         anio_int = int(anio)
@@ -989,24 +1013,25 @@ def carga_masiva_presupuestos(request):
                         errores.append(f"Fila {i}: Año '{anio}' no válido.")
                         continue
 
-                    mes_int = int(mes) if mes else None
-
-                    try:
-                        monto_decimal = Decimal(monto)
-                    except (InvalidOperation, TypeError, ValueError):
-                        errores.append(f"Fila {i}: Monto '{monto}' no válido.")
-                        continue
-
-                    obj, created = Presupuesto.objects.update_or_create(
-                        empresa=empresa,
-                        grupo=grupo,
-                        subgrupo=subgrupo,
-                        tipo_gasto=tipo_gasto,
-                        anio=anio_int,
-                        mes=mes_int,
-                        defaults={'monto': monto_decimal}
-                    )
-                    exitos += 1
+                    for idx, monto in enumerate(meses_valores):
+                        mes = idx + 1
+                        if monto is None or monto == "":
+                            continue
+                        try:
+                            monto_decimal = Decimal(monto)
+                        except (InvalidOperation, TypeError, ValueError):
+                            errores.append(f"Fila {i}, mes {mes}: Monto '{monto}' no válido.")
+                            continue
+                        obj, created = Presupuesto.objects.update_or_create(
+                            empresa=empresa,
+                            grupo=grupo,
+                            subgrupo=subgrupo,
+                            tipo_gasto=tipo_gasto,
+                            anio=anio_int,
+                            mes=mes,
+                            defaults={'monto': monto_decimal}
+                        )
+                        exitos += 1
                 except Exception as e:
                     errores.append(f"Fila {i}: {str(e)}")
             if exitos:
