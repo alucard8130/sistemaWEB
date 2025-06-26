@@ -776,7 +776,7 @@ def comparativo_presupuesto_anio(request):
         'anios_disponibles': anios,
         'totales': totales,
     })
-
+@login_required
 def comparativo_presupuesto_vs_gastos(request):
     # 1. Años disponibles (presupuesto.anio y pago.fecha_pago__year)
     años_presupuesto = Presupuesto.objects.values_list('anio', flat=True)

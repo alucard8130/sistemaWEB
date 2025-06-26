@@ -89,10 +89,17 @@
               <td></td>
               <td>{{ tipo }}</td>
               {% for m in meses %}
-                <td>{{ vals.presupuesto_por_mes.m|default:"0"|floatformat:2 }} / {{ vals.gasto_por_mes.m|default:"0"|floatformat:2 }}</td>
+                <td>{{ vals.presupuesto_por_mes.m|default:"0"|floatformat:2 }} / {{ vals.gasto_por_mes.m|default:"0"|floatformat:2 }}
+                    {% if vals.gastos_ids and vals.gastos_ids.m %}
+                        <a href="{% url 'detalle_gastos_mes' tipo_id=vals.tipo_id mes=m empresa_id=empresa.id anio=anio %}" title="Ver detalles">
+                        <i class="fa fa-file-invoice"></i>
+                      </a>
+                  {% endif %}
+                  </td>
               {% endfor %}
               <td>{{ pres_total|floatformat:2 }}</td>
               <td>{{ gst_total|floatformat:2 }}</td>
+              
               {% with diff=gst_total|add:-pres_total %}
               <td>{{ diff|floatformat:2 }}</td>
               <td>
