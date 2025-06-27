@@ -53,18 +53,9 @@
             </button>
         </div>
     </div>
-    <div class="header-bar d-flex align-items-center px-4 mb-4">
-        <img src="{% static 'img/logo.png' %}" alt="Logo" class="logo-mini"/>
-        <div>
-            <span style="font-size:1.45rem;font-weight:700;letter-spacing:.03em;">Reporte Corporativo: Presupuesto vs Gasto</span><br>
-            <span style="font-size:.99rem;font-weight:400;opacity:.7;">{{ empresa.nombre|default:"" }}</span>
-        </div>
-        <div class="ms-auto me-3">
-            <span style="font-size:.92rem;opacity:.8;">Ejercicio: <b>{{ anio }}</b></span>
-        </div>
-    </div>
-
+    
     <div class="container-fluid">
+        <h2>Reporte Comparativo Presupuesto Vs Gasto Real</h2>
         <div class="table-wrapper-corp mb-3">
             <form method="get" class="mb-3 d-flex flex-wrap align-items-center gap-2">
                 <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
@@ -97,6 +88,8 @@
             <div class="dt-top-scroll" id="dt-top-scroll"></div>
             <div class="mb-2">
                 <span>Mostrar/ocultar columnas:</span>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="subgrupo">Subgrupo</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="tipo">Tipo</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="presup">Presup.</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="real">Real</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="var">Var.</button>
@@ -107,8 +100,8 @@
                     <thead>
                         <tr>
                             <th rowspan="2">Grupo</th>
-                            <th rowspan="2">Subgrupo</th>
-                            <th rowspan="2">Tipo de Gasto</th>
+                            <th rowspan="2" class="col-subgrupo">Subgrupo</th>
+                            <th rowspan="2" class="col-tipo">Tipo de Gasto</th>
                             {% for mes_nombre in meses_nombres %}
                                 <th class="th-mes th-mes-{{ forloop.counter0 }}" colspan="4">{{ mes_nombre }}</th>
                             {% endfor %}
@@ -131,8 +124,8 @@
 {% for grupo in comparativo %}
     <tr class="table-primary">
         <td>{{ grupo.nombre }}</td>
-        <td><strong></strong></td>
-        <td></td>
+        <td class="col-subgrupo"><strong></strong></td>
+        <td class="col-tipo"></td>
         {% for i in meses_idx %}
             <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
             <td class="col-real th-mes-{{ forloop.counter0 }}">{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
@@ -163,8 +156,8 @@
     {% for subgrupo in grupo.subgrupos %}
         <tr class="table-info">
             <td></td>
-            <td>{{ subgrupo.nombre }}</td>
-            <td><strong></strong></td>
+            <td class="col-subgrupo">{{ subgrupo.nombre }}</td>
+            <td class="col-tipo"><strong></strong></td>
             {% for i in meses_idx %}
                 <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
                 <td class="col-real th-mes-{{ forloop.counter0 }}">{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
@@ -195,8 +188,8 @@
         {% for tipo in subgrupo.tipos %}
             <tr>
                 <td></td>
-                <td></td>
-                <td>{{ tipo.nombre }}</td>
+                <td class="col-subgrupo"></td>
+                <td class="col-tipo">{{ tipo.nombre }}</td>
                 {% for m in tipo.meses|slice:":meses|length" %}
                     <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ m.presupuesto|floatformat:0|intcomma }}</td>
                     <td class="col-real th-mes-{{ forloop.counter0 }}">{{ m.gasto|floatformat:0|intcomma }}</td>
@@ -236,7 +229,7 @@
     {% endfor %}
 {% endfor %}
 <tr class="table-warning">
-    <td colspan="3" class="text-end"><strong>TOTAL GENERAL</strong></td>
+    <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>TOTAL GENERAL</strong></td>
     {% for i in meses_idx %}
         <td class="col-presup th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
         <td class="col-real th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
@@ -289,56 +282,63 @@
     <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
     <script src="{% static 'js/script.js' %}"></script>
     <script>
-    $(document).ready(function() {
-        // Guarda el número de columnas por mes y total anual
-        var mesesCount = {{ meses_nombres|length }};
-        var colTypes = ['presup', 'real', 'var', 'pctvar'];
+$(document).ready(function() {
+    // Guarda el número de columnas por mes y total anual
+    var mesesCount = {{ meses_nombres|length }};
+    var colTypes = ['subgrupo', 'tipo', 'presup', 'real', 'var', 'pctvar'];
 
-        $('.toggle-col').on('click', function() {
-            var col = $(this).data('col');
-            var btn = $(this);
-            var visible = $('.col-' + col + ':visible').length > 0;
-
-            // Toggle todas las celdas de esa columna
-            $('.col-' + col).toggle();
-            btn.toggleClass('active');
-
-            // Ajusta colspan de cada th-mes-X
-            for (var i = 0; i < mesesCount; i++) {
-                var visibleCols = 0;
-                for (var j = 0; j < colTypes.length; j++) {
-                    if ($('.col-' + colTypes[j] + '.th-mes-' + i + ':visible').length > 0) {
-                        visibleCols++;
-                    }
-                }
-                var $th = $('.th-mes-' + i).first();
-                if (visibleCols === 0) {
-                    $th.hide();
-                } else {
-                    $th.show().attr('colspan', visibleCols);
+    function ajustarColspan() {
+        // Ajusta colspan de cada th-mes-X
+        for (var i = 0; i < mesesCount; i++) {
+            var visibleCols = 0;
+            for (var j = 2; j < colTypes.length; j++) { // solo las de datos
+                if ($('.col-' + colTypes[j] + '.th-mes-' + i + ':visible').length > 0) {
+                    visibleCols++;
                 }
             }
-
-            // Ajusta colspan del total anual
-            var visibleTotalCols = 0;
-            for (var j = 0; j < colTypes.length; j++) {
-                if ($('.col-' + colTypes[j] + '.th-total-anual:visible').length > 0) {
-                    visibleTotalCols++;
-                }
-            }
-            var $thTotal = $('.th-total-anual').first();
-            if (visibleTotalCols === 0) {
-                $thTotal.hide();
+            var $th = $('.th-mes-' + i).first();
+            if (visibleCols === 0) {
+                $th.hide();
             } else {
-                $thTotal.show().attr('colspan', visibleTotalCols);
+                $th.show().attr('colspan', visibleCols);
             }
-        });
+        }
+        // Ajusta colspan del total anual
+        var visibleTotalCols = 0;
+        for (var j = 2; j < colTypes.length; j++) {
+            if ($('.col-' + colTypes[j] + '.th-total-anual:visible').length > 0) {
+                visibleTotalCols++;
+            }
+        }
+        var $thTotal = $('.th-total-anual').first();
+        if (visibleTotalCols === 0) {
+            $thTotal.hide();
+        } else {
+            $thTotal.show().attr('colspan', visibleTotalCols);
+        }
 
-        // Inicializa el colspan correctamente al cargar
-        $('.toggle-col').each(function() {
-            $(this).trigger('click').trigger('click');
-        });
+        // Ajusta colspan del label TOTAL GENERAL
+        var visibles = 1; // col-grupo siempre visible
+        if ($('.col-subgrupo:visible').length > 0) visibles++;
+        if ($('.col-tipo:visible').length > 0) visibles++;
+        $('#td-total-general-label').attr('colspan', visibles);
+    }
+
+    // Oculta por default las columnas subgrupo y var
+    $('.col-subgrupo, .col-var').hide();
+    // Marca los botones como activos
+    $('.toggle-col[data-col="subgrupo"], .toggle-col[data-col="var"]').addClass('active');
+
+    $('.toggle-col').on('click', function() {
+        var col = $(this).data('col');
+        var btn = $(this);
+        $('.col-' + col).toggle();
+        btn.toggleClass('active');
+        ajustarColspan();
     });
-    </script>
+
+    ajustarColspan();
+});
+</script>
 </body>
 </html>
