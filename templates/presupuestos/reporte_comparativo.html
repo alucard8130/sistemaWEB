@@ -95,6 +95,13 @@
                 <button type="submit" class="btn btn-primary">Consultar</button>
             </form>
             <div class="dt-top-scroll" id="dt-top-scroll"></div>
+            <div class="mb-2">
+                <span>Mostrar/ocultar columnas:</span>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="presup">Presup.</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="real">Real</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="var">Var.</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="pctvar">% Var.</button>
+            </div>
             <div class="table-responsive" id="table-container-corp">
                 <table id="reporte-comparativo" class="table table-bordered table-sm align-middle" style="width:100%;">
                     <thead>
@@ -103,37 +110,36 @@
                             <th rowspan="2">Subgrupo</th>
                             <th rowspan="2">Tipo de Gasto</th>
                             {% for mes_nombre in meses_nombres %}
-                                <th colspan="4">{{ mes_nombre }}</th>
+                                <th class="th-mes th-mes-{{ forloop.counter0 }}" colspan="4">{{ mes_nombre }}</th>
                             {% endfor %}
-                            <th colspan="4" class="total-anual-cell text-center">TOTAL ANUAL</th>
+                            <th class="th-total-anual" colspan="4">TOTAL ANUAL</th>
                         </tr>
                         <tr>
                             {% for mes in meses_nombres %}
-                                <th>Presup.</th>
-                                <th>Real</th>
-                               <th>Var.</th>
-                                <th>% Var.</th>
+                                <th class="col-presup th-mes-{{ forloop.counter0 }}">Presup.</th>
+                                <th class="col-real th-mes-{{ forloop.counter0 }}">Real</th>
+                                <th class="col-var th-mes-{{ forloop.counter0 }}">Var.</th>
+                                <th class="col-pctvar th-mes-{{ forloop.counter0 }}">% Var.</th>
                             {% endfor %}
-                            <th>Presup.</th>
-                            <th>Real</th>
-                            <th>Var.</th>
-                            <th>% Var.</th>
+                            <th class="col-presup th-total-anual">Presup.</th>
+                            <th class="col-real th-total-anual">Real</th>
+                            <th class="col-var th-total-anual">Var.</th>
+                            <th class="col-pctvar th-total-anual">% Var.</th>
                         </tr>
                     </thead>
 <tbody>
 {% for grupo in comparativo %}
-    <!-- Fila Total Grupo -->
     <tr class="table-primary">
         <td>{{ grupo.nombre }}</td>
         <td><strong></strong></td>
         <td></td>
         {% for i in meses_idx %}
-            <td>{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
-            <td>{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
-            <td class="{% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
+            <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
+            <td class="col-real th-mes-{{ forloop.counter0 }}">{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+            <td class="col-var th-mes-{{ forloop.counter0 }} {% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                 {{ grupo.total_var|index:i|floatformat:0|intcomma }}
             </td>
-            <td>
+            <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
                 {% if grupo.pct_var|index:i != '' %}
                     <span class="dttooltip" title="Variación respecto al total presupuesto">
                         {{ grupo.pct_var|index:i }}%
@@ -141,13 +147,12 @@
                 {% endif %}
             </td>
         {% endfor %}
-        <td class="total-anual-cell">{{ grupo.total_anual_presup|floatformat:0|intcomma }}</td>
-        <td class="total-anual-cell">{{ grupo.total_anual_gasto|floatformat:0|intcomma }}</td>
-        <td class="total-anual-cell 
-            {% if grupo.total_anual_var < 0 %}neg{% elif grupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+        <td class="total-anual-cell col-presup th-total-anual">{{ grupo.total_anual_presup|floatformat:0|intcomma }}</td>
+        <td class="total-anual-cell col-real th-total-anual">{{ grupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+        <td class="total-anual-cell col-var th-total-anual {% if grupo.total_anual_var < 0 %}neg{% elif grupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
             {{ grupo.total_anual_var|floatformat:0|intcomma }}
         </td>
-        <td class="total-anual-cell">
+        <td class="total-anual-cell col-pctvar th-total-anual">
             {% if grupo.total_anual_presup %}
                 <span class="dttooltip" title="Variación anual respecto al presupuesto">
                     {{ grupo.total_anual_pct }}%
@@ -156,18 +161,17 @@
         </td>
     </tr>
     {% for subgrupo in grupo.subgrupos %}
-        <!-- Fila Total Subgrupo -->
         <tr class="table-info">
             <td></td>
             <td>{{ subgrupo.nombre }}</td>
             <td><strong></strong></td>
             {% for i in meses_idx %}
-                <td>{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
-                <td>{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
-                <td class="{% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
+                <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
+                <td class="col-real th-mes-{{ forloop.counter0 }}">{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+                <td class="col-var th-mes-{{ forloop.counter0 }} {% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                     {{ subgrupo.total_var|index:i|floatformat:0|intcomma }}
                 </td>
-                <td>
+                <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
                     {% if subgrupo.pct_var|index:i != '' %}
                         <span class="dttooltip" title="Variación respecto al subtotal presupuesto">
                             {{ subgrupo.pct_var|index:i }}%
@@ -175,13 +179,12 @@
                     {% endif %}
                 </td>
             {% endfor %}
-            <td class="total-anual-cell">{{ subgrupo.total_anual_presup|floatformat:0|intcomma }}</td>
-            <td class="total-anual-cell">{{ subgrupo.total_anual_gasto|floatformat:0|intcomma }}</td>
-            <td class="total-anual-cell 
-                {% if subgrupo.total_anual_var < 0 %}neg{% elif subgrupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+            <td class="total-anual-cell col-presup th-total-anual">{{ subgrupo.total_anual_presup|floatformat:0|intcomma }}</td>
+            <td class="total-anual-cell col-real th-total-anual">{{ subgrupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+            <td class="total-anual-cell col-var th-total-anual {% if subgrupo.total_anual_var < 0 %}neg{% elif subgrupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
                 {{ subgrupo.total_anual_var|floatformat:0|intcomma }}
             </td>
-            <td class="total-anual-cell">
+            <td class="total-anual-cell col-pctvar th-total-anual">
                 {% if subgrupo.total_anual_presup %}
                     <span class="dttooltip" title="Variación anual respecto al presupuesto">
                         {{ subgrupo.total_anual_pct }}%
@@ -195,16 +198,16 @@
                 <td></td>
                 <td>{{ tipo.nombre }}</td>
                 {% for m in tipo.meses|slice:":meses|length" %}
-                    <td>{{ m.presupuesto|floatformat:0|intcomma }}</td>
-                    <td>{{ m.gasto|floatformat:0|intcomma }}</td>
-                    <td class="{% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% else %}neutro{% endif %}">
+                    <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ m.presupuesto|floatformat:0|intcomma }}</td>
+                    <td class="col-real th-mes-{{ forloop.counter0 }}">{{ m.gasto|floatformat:0|intcomma }}</td>
+                    <td class="col-var th-mes-{{ forloop.counter0 }} {% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% else %}neutro{% endif %}">
                         {{ m.variacion|floatformat:0|intcomma }}
                         {% if m.variacion > 0 %}<span class="flecha-mini pos">&#8593;</span>
                         {% elif m.variacion < 0 %}<span class="flecha-mini neg">&#8595;</span>
                         {% else %}<span class="flecha-mini neutro">&#8594;</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
                         {% if m.presupuesto %}
                             <span class="dttooltip" title="Variación respecto al presupuesto">
                                 {{ m.variacion|porcentaje:m.presupuesto }}
@@ -212,17 +215,16 @@
                         {% endif %}
                     </td>
                 {% endfor %}
-                <td class="total-anual-cell">{{ tipo.total_anual_presup|floatformat:0|intcomma }}</td>
-                <td class="total-anual-cell">{{ tipo.total_anual_gasto|floatformat:0|intcomma }}</td>
-                <td class="total-anual-cell 
-                    {% if tipo.total_anual_var < 0 %}neg{% elif tipo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+                <td class="total-anual-cell col-presup th-total-anual">{{ tipo.total_anual_presup|floatformat:0|intcomma }}</td>
+                <td class="total-anual-cell col-real th-total-anual">{{ tipo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                <td class="total-anual-cell col-var th-total-anual {% if tipo.total_anual_var < 0 %}neg{% elif tipo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
                     {{ tipo.total_anual_var|floatformat:0|intcomma }}
                     {% if tipo.total_anual_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
                     {% elif tipo.total_anual_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
                     {% else %}<span class="flecha-mini neutro">&#8594;</span>
                     {% endif %}
                 </td>
-                <td class="total-anual-cell">
+                <td class="total-anual-cell col-pctvar th-total-anual">
                     {% if tipo.total_anual_presup %}
                         <span class="dttooltip" title="Variación anual respecto al presupuesto">
                             {{ tipo.total_anual_pct }}%
@@ -236,9 +238,9 @@
 <tr class="table-warning">
     <td colspan="3" class="text-end"><strong>TOTAL GENERAL</strong></td>
     {% for i in meses_idx %}
-        <td><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
-        <td><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
-        <td>
+        <td class="col-presup th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
+        <td class="col-real th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
+        <td class="col-var th-mes-{{ forloop.counter0 }}">
             <strong class="{% if tot_gen_var|index:i < 0 %}neg{% elif tot_gen_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                 {{ tot_gen_var|index:i|floatformat:0|intcomma }}
                 {% if tot_gen_var|index:i > 0 %}<span class="flecha-mini pos">&#8593;</span>
@@ -247,17 +249,16 @@
                 {% endif %}
             </strong>
         </td>
-        <td>
+        <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
             {% if tot_gen_pct|index:i != None %}
                 <span class="dttooltip" title="Variación respecto al total presupuesto"><strong>{{ tot_gen_pct|index:i }}%</strong></span>
             {% endif %}
         </td>
     {% endfor %}
-    <td class="total-anual-cell"><strong>{{ total_general_presup|floatformat:0|intcomma }}</strong></td>
-    <td class="total-anual-cell"><strong>{{ total_general_real|floatformat:0|intcomma }}</strong></td>
-    <td class="total-anual-cell 
-        {% if total_general_var < 0 %}neg{% elif total_general_var > 0 %}pos{% else %}neutro{% endif %}">
-        <strong>
+    <td class="total-anual-cell col-presup th-total-anual"><strong>{{ total_general_presup|floatformat:0|intcomma }}</strong></td>
+    <td class="total-anual-cell col-real th-total-anual"><strong>{{ total_general_real|floatformat:0|intcomma }}</strong></td>
+    <td class="total-anual-cell col-var th-total-anual">
+        <strong class="{% if total_general_var < 0 %}neg{% elif total_general_var > 0 %}pos{% else %}neutro{% endif %}">
             {{ total_general_var|floatformat:0|intcomma }}
             {% if total_general_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
             {% elif total_general_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
@@ -265,7 +266,7 @@
             {% endif %}
         </strong>
     </td>
-    <td class="total-anual-cell">
+    <td class="total-anual-cell col-pctvar th-total-anual">
         {% if total_general_presup %}
             <span class="dttooltip" title="Variación anual respecto al presupuesto">
                 <strong>{{ total_general_pct }}%</strong>
@@ -287,5 +288,57 @@
     <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
     <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
     <script src="{% static 'js/script.js' %}"></script>
+    <script>
+    $(document).ready(function() {
+        // Guarda el número de columnas por mes y total anual
+        var mesesCount = {{ meses_nombres|length }};
+        var colTypes = ['presup', 'real', 'var', 'pctvar'];
+
+        $('.toggle-col').on('click', function() {
+            var col = $(this).data('col');
+            var btn = $(this);
+            var visible = $('.col-' + col + ':visible').length > 0;
+
+            // Toggle todas las celdas de esa columna
+            $('.col-' + col).toggle();
+            btn.toggleClass('active');
+
+            // Ajusta colspan de cada th-mes-X
+            for (var i = 0; i < mesesCount; i++) {
+                var visibleCols = 0;
+                for (var j = 0; j < colTypes.length; j++) {
+                    if ($('.col-' + colTypes[j] + '.th-mes-' + i + ':visible').length > 0) {
+                        visibleCols++;
+                    }
+                }
+                var $th = $('.th-mes-' + i).first();
+                if (visibleCols === 0) {
+                    $th.hide();
+                } else {
+                    $th.show().attr('colspan', visibleCols);
+                }
+            }
+
+            // Ajusta colspan del total anual
+            var visibleTotalCols = 0;
+            for (var j = 0; j < colTypes.length; j++) {
+                if ($('.col-' + colTypes[j] + '.th-total-anual:visible').length > 0) {
+                    visibleTotalCols++;
+                }
+            }
+            var $thTotal = $('.th-total-anual').first();
+            if (visibleTotalCols === 0) {
+                $thTotal.hide();
+            } else {
+                $thTotal.show().attr('colspan', visibleTotalCols);
+            }
+        });
+
+        // Inicializa el colspan correctamente al cargar
+        $('.toggle-col').each(function() {
+            $(this).trigger('click').trigger('click');
+        });
+    });
+    </script>
 </body>
 </html>
