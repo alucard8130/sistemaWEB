@@ -4,7 +4,6 @@
 {% load presupuesto_tags %}
 {% load get_range %}
 {% load porcentaje_extras %}
-{% load static %}
 
 <!DOCTYPE html>
 <html>
@@ -85,14 +84,24 @@
                 </a>
                 <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
             </form>
+            <form method="get" class="mb-3 d-flex align-items-center gap-2">
+                <select name="medicion" class="form-select" style="width:auto;">
+                    <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes Actual</option>
+                    <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo Actual</option>
+                    <option value="semestre1" {% if medicion == "semestre1" %}selected{% endif %}>Primer semestre</option>
+                    <option value="semestre2" {% if medicion == "semestre2" %}selected{% endif %}>Segundo semestre</option>  
+                    <option value="anual" {% if medicion == "anual" %}selected{% endif %}>Año completo</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Consultar</button>
+            </form>
             <div class="dt-top-scroll" id="dt-top-scroll"></div>
             <div class="table-responsive" id="table-container-corp">
                 <table id="reporte-comparativo" class="table table-bordered table-sm align-middle" style="width:100%;">
                     <thead>
                         <tr>
-                            <th rowspan="3">Grupo</th>
-                            <th rowspan="3">Subgrupo</th>
-                            <th rowspan="3">Tipo de Gasto</th>
+                            <th rowspan="2">Grupo</th>
+                            <th rowspan="2">Subgrupo</th>
+                            <th rowspan="2">Tipo de Gasto</th>
                             {% for mes_nombre in meses_nombres %}
                                 <th colspan="4">{{ mes_nombre }}</th>
                             {% endfor %}
@@ -111,14 +120,14 @@
                             <th>% Var.</th>
                         </tr>
                     </thead>
-                    <tbody>
+<tbody>
 {% for grupo in comparativo %}
     <!-- Fila Total Grupo -->
     <tr class="table-primary">
         <td>{{ grupo.nombre }}</td>
         <td><strong></strong></td>
         <td></td>
-        {% for i in "0"|get_range:12 %}
+        {% for i in meses_idx %}
             <td>{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
             <td>{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
             <td class="{% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
@@ -152,7 +161,7 @@
             <td></td>
             <td>{{ subgrupo.nombre }}</td>
             <td><strong></strong></td>
-            {% for i in "0"|get_range:12 %}
+            {% for i in meses_idx %}
                 <td>{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
                 <td>{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
                 <td class="{% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
@@ -185,7 +194,7 @@
                 <td></td>
                 <td></td>
                 <td>{{ tipo.nombre }}</td>
-                {% for m in tipo.meses %}
+                {% for m in tipo.meses|slice:":meses|length" %}
                     <td>{{ m.presupuesto|floatformat:0|intcomma }}</td>
                     <td>{{ m.gasto|floatformat:0|intcomma }}</td>
                     <td class="{% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% else %}neutro{% endif %}">
@@ -225,10 +234,8 @@
     {% endfor %}
 {% endfor %}
 <tr class="table-warning">
-    <td></td>
-    <td></td>
-    <td class="text-end"><strong>TOTAL GENERAL</strong></td>
-    {% for i in "0"|get_range:12 %}
+    <td colspan="3" class="text-end"><strong>TOTAL GENERAL</strong></td>
+    {% for i in meses_idx %}
         <td><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
         <td><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
         <td>
