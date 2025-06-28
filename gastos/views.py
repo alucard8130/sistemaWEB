@@ -23,7 +23,7 @@ import calendar
 from django.db.models import Q, Sum
 from django.utils.dateparse import parse_date
 from django.contrib import messages
-
+from django.core.paginator import Paginator
 
 # Create your views here.
 @login_required
@@ -126,6 +126,11 @@ def gastos_lista(request):
     if tipo_gasto:
         gastos = gastos.filter(tipo_gasto=tipo_gasto)
 
+    #paginacion
+    paginator = Paginator(gastos, 25)  # 50 gastos por página 
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)    
+
     return render(request, 'gastos/lista.html', {
         'gastos': gastos,                                         
         'proveedores': proveedores,
@@ -134,6 +139,7 @@ def gastos_lista(request):
         'proveedor_id': proveedor_id,
         'empleado_id': empleado_id,
         'tipo_gasto_sel': tipo_gasto,
+        'gastos': page_obj,
         })
 
 @login_required
@@ -223,6 +229,7 @@ def gasto_detalle(request, pk):
 
 
 @login_required
+#reporte_pagos.html
 def reporte_pagos_gastos(request):
     es_super = request.user.is_superuser
     pagos = PagoGasto.objects.select_related('gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado')
@@ -257,6 +264,11 @@ def reporte_pagos_gastos(request):
     proveedores = Proveedor.objects.all()
     empleados = Empleado.objects.all()
     FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
+
+    #paginacion
+    paginator = Paginator(pagos, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
     return render(request, 'gastos/reporte_pagos.html', {
         'pagos': pagos,
@@ -271,6 +283,7 @@ def reporte_pagos_gastos(request):
         'proveedor_id': proveedor_id,
         'empleado_id': empleado_id,
         'formas_pago': FORMAS_PAGO,
+        'pagos': page_obj,
         
         # Si tienes catálogos de proveedores, empleados y formas de pago pásalos aquí
     })
