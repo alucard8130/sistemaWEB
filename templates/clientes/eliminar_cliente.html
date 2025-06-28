@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 24/06/2025
+        Date of modification: 26/06/2025
         Description: Inactivates a registered client
     -->
     <meta charset="UTF-8">
@@ -22,12 +22,12 @@
 </head>
 <body>
     {% include 'navbar.html' %}
-    <div class="container mt-5">
+    <div class="container  d-flex justify-content-center align-items-center" style="height: 100vh; overflow: hidden;">
         <div class="row justify-content-center">
-            <div class="col-md-6 text-center">
+            <div class="col-12 col-md-10 col-lg-8 text-center">
                 
                 <!-- Card with border and light background -->
-                <div class="card shadow-sm border-light">
+                <div class="card border-accent shadow-card w-100">
                     <div class="card-body text-center">
                         <h2 class="text-danger">¿Inactivar cliente?</h2>
             
@@ -43,10 +43,10 @@
                         <!-- Form -->
                         <form method="post" class="mt-4 d-inline-block">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger me-2">
+                            <button type="submit" class="btn btn-sm btn-outline-danger me-2">
                                 <i class="bi bi-slash-circle"></i> Sí
                             </button>
-                            <a href="{% url 'lista_clientes' %}" class="btn btn-secondary">Cancelar</a>
+                            <a href="{% url 'lista_clientes' %}" class="btn btn-sm btn-outline-secondary">Cancelar</a>
                         </form>
                     </div>
                 </div>

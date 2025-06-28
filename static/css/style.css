@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 24/06/2025
+    Date of modification: 25/06/2025
     Description: General styles for the GAC system   
 */
     
@@ -13,6 +13,7 @@ html, body {
     background: linear-gradient(to right, #e0f7fa, #ffffff);
     display: flex;
     flex-direction: column;
+    /* overflow: hidden;  Evita scroll si todo entra en pantalla */
 }
 
 /* Enterprise new button */
@@ -169,6 +170,20 @@ footer {
     background-color: #f8f9fa;
     margin-top: auto;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Sombra gris suave */
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); /* Soft shadow all around */
+  border: 1px solid rgba(0, 0, 0, 0.1); /* Subtle border dark blue */
+}   
+
+.shadow-card:hover {
+    border-color: rgba(0, 123, 255, 0.4); /* Igual que .shadow-navbar */
+    box-shadow: 0 0 25px rgba(0, 123, 255, 0.3); /* Bigger and more intense shadow */
+    background-color: #f8f9fa;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 /* Estílos Generales Dark */
@@ -542,6 +557,10 @@ h2 {
 .form-delgado {
     max-width: 600px;
     margin: auto;
+}
+
+.min-vh-50 {
+    min-height: 70vh;
 }
 
 /*=== crear_local.html (light) ===*/

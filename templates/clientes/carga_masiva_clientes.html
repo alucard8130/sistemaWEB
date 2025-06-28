@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 24/06/2025
+        Date of modification: 26/06/2025
         Description: Performs a bulk upload of clients
     -->
     <meta charset="UTF-8">
@@ -31,8 +31,9 @@
             </button>
         </div>
     </div> -->
-    <!-- Main content -->
-    <div class="container mt-4">
+
+    <!-- Main content --> 
+    <div class="container py-4">
         <h2>Carga masiva de clientes</h2>
 
         <!-- Block for displaying messages -->
@@ -42,34 +43,37 @@
         {% endfor %}
         {% endif %}
 
-        <!-- Form -->
-        <form method="post" class="p-4 custom-form form-delgado" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="mb-4">
-                <label for="archivo" class="form-label fw-semibold">
-                    <i class="bi bi-file-earmark-excel-fill text-success me-2"></i>
-                    Archivo excel (.xlsx):
-                </label>
-                <div class="d-flex align-items-end">
-                    <input type="file" name="archivo" id="archivo" accept=".xlsx" class="form-control border-success" required>
-        
-                    <button type="submit" class="btn btn-crear">
-                        <i class="bi bi-cloud-upload-fill me-1"></i>
-                        Cargar
-                    </button>
-                </div>
-            </div>
-        
-            <div class="d-flex flex-wrap justify-content-between gap-2">
-                <a href="{% url 'plantilla_clientes_excel' %}" class="btn btn-success">
-                    <i class="bi bi-file-earmark-arrow-down me-1"></i>Descargar(.xlsx)
-                </a>
+        <!-- Centered form only -->
+        <div class="d-flex align-items-center justify-content-center min-vh-50">
+            <form method="post" class="p-4 custom-form form-delgado" enctype="multipart/form-data">
+                {% csrf_token %}
 
-                <a href="{% url 'bienvenida' %}" class="btn btn-secondary">
-                    Cancelar
-                </a> 
-            </div>
-        </form> 
+                <!-- Field for file upload -->
+                <div class="mb-4">
+                    <label for="archivo" class="form-label fw-semibold">
+                        <i class="bi bi-file-earmark-excel-fill text-success me-2"></i>
+                        Archivo excel (.xlsx):
+                    </label>
+                    <div class="input-group">
+                        <input type="file" name="archivo" id="archivo" accept=".xlsx" class="form-control border-success" style="max-width: 77%;" required>
+                        <button type="submit" class="btn btn-crear">
+                            <i class="bi bi-cloud-upload-fill me-1"></i>
+                            Cargar
+                        </button>
+                    </div>
+                </div>
+            
+                <!-- Action Buttons -->
+                <div class="text-center"> 
+                    <a href="{% url 'plantilla_clientes_excel' %}" class="btn btn-success">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i>Descargar(.xlsx)
+                    </a>
+                    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">
+                        Cancelar
+                    </a> 
+                </div>
+            </form> 
+        </div>
     </div>
 
     <!-- 🔹 Footer -->
