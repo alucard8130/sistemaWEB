@@ -72,11 +72,13 @@ def presupuesto_eliminar(request, pk):
 
 
 @login_required
+#dashboard.html
 def dashboard_presupuestal(request):
     es_super = request.user.is_superuser
     anio_actual = now().year
     anio = int(request.GET.get("anio", anio_actual))
-    mes = int(request.GET.get("mes", 0))  # 0 = todo el año
+    #mes = int(request.GET.get("mes", 0))  # 0 = todo el año
+    mes=int(request.GET.get("mes",datetime.now().month))  # Si no se especifica, toma el mes actual
 
     # Filtro empresa
     if es_super:
