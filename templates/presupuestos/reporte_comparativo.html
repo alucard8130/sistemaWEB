@@ -4,7 +4,7 @@
 {% load presupuesto_tags %}
 {% load get_range %}
 {% load porcentaje_extras %}
-
+ <!--th, td { white-space: nowrap;}-->
 <!DOCTYPE html>
 <html>
 <head>
@@ -23,7 +23,6 @@
         .logo-mini { height: 48px; margin-right: 14px; vertical-align: middle;}
         .table-wrapper-corp { border-radius: 12px; box-shadow: 0 2px 10px 0 #22334d16; background: #fff; padding: 18px;}
         h4.corp-title { color: #22334d; font-weight: 600; font-size: 1.35rem; letter-spacing: .02em; margin-bottom: 22px;}
-        th, td { white-space: nowrap; }
         td, th { vertical-align: middle !important; text-align: right;}
         th, td:first-child, td:nth-child(2), td:nth-child(3) { text-align: left !important; }
         .table > :not(caption) > * > * { border-bottom-width: 1.5px; }
@@ -55,7 +54,7 @@
     </div>
     
     <div class="container-fluid">
-        <h2>Reporte Comparativo Presupuesto Vs Gasto Real</h2>
+        <h2>Reporte Comparativo Presupuesto Vs Flujo</h2>
         <div class="table-wrapper-corp mb-3">
             <form method="get" class="mb-3 d-flex flex-wrap align-items-center gap-2">
                 <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
@@ -70,7 +69,7 @@
                         {% endfor %}
                     </select>
                 {% endif %}
-                <a class="btn btn-outline-success" href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&excel=1">
+                <a class="btn btn-outline-success" href="?medicion={{ medicion }}&mes={{ meses.0 }}&excel=1">
                     <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
                 </a>
                 <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
@@ -96,7 +95,7 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="pctvar">% Var.</button>
             </div>
             <div class="table-responsive" id="table-container-corp">
-                <table id="reporte-comparativo" class="table table-bordered table-sm align-middle" style="width:100%;">
+                <table id="reporte-comparativo" class="table table-bordered table-sm align-middle" style="table-layout:auto; width:auto; min-width:100%;">
                     <thead>
                         <tr>
                             <th rowspan="2">Grupo</th>
@@ -325,9 +324,9 @@ $(document).ready(function() {
     }
 
     // Oculta por default las columnas subgrupo y var
-    $('.col-subgrupo, .col-var').hide();
+    $('.col-var').hide();
     // Marca los botones como activos
-    $('.toggle-col[data-col="subgrupo"], .toggle-col[data-col="var"]').addClass('active');
+    $('.toggle-col[data-col="var"]').addClass('active');
 
     $('.toggle-col').on('click', function() {
         var col = $(this).data('col');
