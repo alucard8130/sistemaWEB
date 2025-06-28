@@ -28,3 +28,8 @@ class PresupuestoForm(forms.ModelForm):
             
             # Elimina el campo del form si no es superusuario
                 self.fields.pop('empresa')
+
+
+
+class PresupuestoCargaMasivaForm(forms.Form):
+    archivo = forms.FileField(label="Archivo Excel")

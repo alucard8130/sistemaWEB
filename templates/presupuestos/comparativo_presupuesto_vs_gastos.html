@@ -29,7 +29,7 @@
     <thead class="table-light">
       <tr>
         <th>Grupo</th>
-        <th>Subgrupo</th>
+      <th>Subgrupo</th>
         <th>Tipo de gasto</th>
         {% for m in meses %}
           <th>{{ m|date:"F" }}</th>
@@ -89,10 +89,12 @@
               <td></td>
               <td>{{ tipo }}</td>
               {% for m in meses %}
-                <td>{{ vals.presupuesto_por_mes.m|default:"0"|floatformat:2 }} / {{ vals.gasto_por_mes.m|default:"0"|floatformat:2 }}</td>
+                <td>{{ vals.presupuesto_por_mes.m|default:"0"|floatformat:2 }} / {{ vals.gasto_por_mes.m|default:"0"|floatformat:2 }}
+                  </td>
               {% endfor %}
               <td>{{ pres_total|floatformat:2 }}</td>
               <td>{{ gst_total|floatformat:2 }}</td>
+              
               {% with diff=gst_total|add:-pres_total %}
               <td>{{ diff|floatformat:2 }}</td>
               <td>

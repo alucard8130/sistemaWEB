@@ -13,7 +13,7 @@
         Date of modification: 17/06/2025
         Description: Budgets
     -->
-    <title>Presupuestos</title>
+    <title>Matriz.html Presupuestos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -59,34 +59,7 @@
         <h3>Presupuesto {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
     </form>
 
-    {# ---------- Mensajes de bloqueo, cierre y autorización ---------- #}
-    {% if not edicion_habilitada %}
-        <div class="alert alert-warning mt-2">
-            <strong>Presupuesto cerrado.</strong> Solo puede ser abierto por usuarios autorizados.
-            {% if cierre %}
-                <br><span class="small text-secondary">Cerrado por: {{ cierre.cerrado_por }} el {{ cierre.fecha_cierre|date:"d/m/Y H:i" }}</span>
-            {% endif %}
-        </div>
-        {% if pedir_superuser %}
-            <div class="alert alert-warning mb-2">
-                <b>Presupuesto cerrado.</b> Para abrir presupuesto, solo los usuarios autorizados pueden abrirlo.
-                <form method="post" class="row g-2 mb-2">
-                    {% csrf_token %}
-                    <div class="col-auto">
-                        <input type="text" name="superuser_username" class="form-control" placeholder="Usuario superusuario" required>
-                    </div>
-                    <div class="col-auto">
-                        <input type="password" name="superuser_password" class="form-control" placeholder="Contraseña superusuario" required>
-                    </div>
-                    <div class="col-auto">
-                        <button class="btn btn-primary">Autorizar</button>
-                    </div>
-                </form>
-            </div>
-        {% endif %}
-    {% endif %}
-
-    <form method="post">
+<form method="post">
         {% csrf_token %}
         <input type="hidden" name="anio" value="{{ anio }}">
         {% if empresa %}
@@ -94,7 +67,6 @@
         {% endif %}
         <div class="table-responsive">
 
-        {# --------- BOTONES: Guardar y Cerrar Presupuesto, solo si es editable --------- #}
         {% if edicion_habilitada %}
             <div class="mb-3">
                 <button class="btn btn-success">Guardar cambios</button>
@@ -124,11 +96,38 @@
             </thead>
             <tbody>
             {% for grupo in grupos_lista %}
+                <!-- Fila de Total Grupo (antes de los subgrupos) -->
+                <tr class="table-primary">
+                    <td>{{ grupo.nombre }}</td>
+                    <td colspan="2"><strong>Total Grupo</strong></td>
+                    {% for i in "0"|get_range:12 %}
+                        <td>
+                            {{ subtotales_grupo|dict_index:grupo.grupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}
+                        </td>
+                    {% endfor %}
+                    <td class="fw-bold">
+                        {{ subtotales_grupo|dict_index:grupo.grupo_obj.id|sum_list|floatformat:2|intcomma }}
+                    </td>
+                </tr>
                 {% for subgrupo in grupo.subgrupos %}
+                    <!-- Fila de Total Subgrupo (antes de los tipos) -->
+                    <tr class="table-info">
+                        <td></td>
+                        <td>{{ subgrupo.nombre }}</td>
+                        <td><strong>Total Subgrupo</strong></td>
+                        {% for i in "0"|get_range:12 %}
+                            <td>
+                                {{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}
+                            </td>
+                        {% endfor %}
+                        <td class="fw-bold">
+                            {{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|sum_list|floatformat:2|intcomma }}
+                        </td>
+                    </tr>
                     {% for tipo in subgrupo.tipos %}
                         <tr>
-                            <td>{{ grupo.nombre }}</td>
-                            <td>{{ subgrupo.nombre }}</td>
+                            <td></td>
+                            <td></td>
                             <td>{{ tipo.nombre }}</td>
                             {% for i in "0"|get_range:12 %}
                                 <td>
@@ -145,31 +144,7 @@
                             </td>
                         </tr>
                     {% endfor %}
-                    <!-- Subtotal por subgrupo -->
-                    <tr class="table-info">
-                        <td colspan="3" class="text-end">Subtotal {{ subgrupo.nombre }}</td>
-                        {% for i in "0"|get_range:12 %}
-                            <td>
-                                {{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}
-                            </td>
-                        {% endfor %}
-                        <td class="fw-bold">
-                            {{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|sum_list|floatformat:2|intcomma }}
-                        </td>
-                    </tr>
                 {% endfor %}
-                <!-- Subtotal por grupo -->
-                <tr class="table-primary">
-                    <td colspan="3" class="text-end">TOTAL {{ grupo.nombre }}</td>
-                    {% for i in "0"|get_range:12 %}
-                        <td>
-                            {{ subtotales_grupo|dict_index:grupo.grupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}
-                        </td>
-                    {% endfor %}
-                    <td class="fw-bold">
-                        {{ subtotales_grupo|dict_index:grupo.grupo_obj.id|sum_list|floatformat:2|intcomma }}
-                    </td>
-                </tr>
             {% endfor %}
             </tbody>
             <tfoot>
@@ -184,7 +159,6 @@
         </table>
         </div>
 
-        {# --------- BOTONES al pie --------- #}
         {% if edicion_habilitada %}
             <div class="mt-3">
                 <button class="btn btn-success">Guardar cambios</button>
@@ -197,6 +171,7 @@
             </div>
         {% endif %}
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary mt-2">Regresar Menú</a>
+        <a href="{% url 'descargar_plantilla_matriz_presupuesto' %}" class="btn btn-success">Descargar plantilla</a>
     </form>
 </div>
     <!-- 🔹 Footer -->
@@ -206,4 +181,4 @@
     </footer>
     <script src="{% static 'js/script.js' %}"></script>
 </body>
-</html>
+</html>   

@@ -129,6 +129,25 @@
         {% endfor %}
         </tbody>
     </table>
+    <nav aria-label="Paginación">
+  <ul class="pagination">
+    {% if gastos.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ gastos.previous_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_sel %}&tipo_gasto={{ tipo_gasto_sel }}{% endif %}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ gastos.number }} de {{ gastos.paginator.num_pages }}</span></li>
+    {% if gastos.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ gastos.next_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_sel %}&tipo_gasto={{ tipo_gasto_sel }}{% endif %}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
     
 </div>
     <!-- 🔹 Footer -->
