@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 26/06/2025
+        Date of modification: 28/06/2025
         Description: Displays the list of inactive premises
     -->
     <meta charset="UTF-8">
@@ -32,47 +32,59 @@
         </div>
     </div> -->
 
+    <!-- Main content -->
     <div class="container mt-4">
         <h2>Locales inactivos</h2>
-            <!-- Bloque para mostrar mensajes -->
+
+        <!-- Block for displaying messages -->
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
-        <table class="table table-bordered">
-            <thead class="table-dark">
-                <tr>
-                    <th>Numero</th>
-                    <th>Empresa</th>
-                    <th>Ubicación</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for local in locales %}
-                <tr>
-                    <td>{{ local.numero }}</td>
-                    <td>{{ local.empresa.nombre }}</td>
-                    <td>{{ local.ubicacion }}</td>
-                    <td>
-                        <form method="post" action="{% url 'reactivar_local' local.pk %}">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-success">Reactivar</button>
-                        </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4">No hay locales inactivos.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver</a>
+
+        <!-- Inactive premises table -->
+        <div class="table-responsive rounded-3 border"> 
+            <table class="table align-middle mb-0 shadow-sm">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Empresa</th>
+                        <th>Ubicación</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for local in locales %}
+                    <tr>
+                        <td>{{ local.numero }}</td>
+                        <td>{{ local.empresa.nombre }}</td>
+                        <td>{{ local.ubicacion }}</td>
+                        <td>
+                            <form method="post" action="{% url 'reactivar_local' local.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Reactivar">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4">No hay locales inactivos.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -43,7 +43,7 @@
                     <tr>
                         <th>Nombre</th>
                         <th>RFC</th>
-                        <th>Telefono</th>
+                        <th>Teléfono</th>
                         <th>Email</th>
                         <th>Acción</th>
                     </tr>
@@ -57,10 +57,10 @@
                         <td>{{ cliente.email }}</td>
                         <td>
                             <form method="post" action="{% url 'reactivar_cliente' cliente.pk %}">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Reactivar">
-                                        <i class="bi bi-check-circle"></i>
-                                    </button>
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Reactivar">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
                             </form>
                         </td>
                     </tr>
