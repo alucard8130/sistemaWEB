@@ -9,8 +9,67 @@ class AreaComunForm(forms.ModelForm):
         model = AreaComun
         fields = ['numero','cliente','empresa' , 'superficie_m2','tipo_area','cantidad_areas', 'cuota','deposito','giro','ubicacion','fecha_inicial', 'fecha_fin', 'status',  'observaciones']
         widgets = {
-            'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),
-            'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
+            'numero': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Número'
+            }),
+            'cliente': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'empresa': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'superficie_m2': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Superficie_m2'
+            }),
+            'tipo_area': forms.Select(attrs={
+                'class': 'form-control'       
+            }),
+            'cantidad_areas': forms.TextInput(attrs={
+                'class': 'form-control'
+            }),
+            'cuota': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Cuota'
+            }),
+            'deposito': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Depósito'
+            }),
+            'giro': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Giro'
+            }),
+            'ubicacion': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control',
+                'placeholder': 'Ubicación'        
+            }),
+            'fecha_inicial': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'fecha_fin': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control',
+                'placeholder': 'Observaciones'        
+            }),
+        }
+        labels = {
+            'numero': 'Número',
+            'tipo_area': 'Tipo de área',
+            'cantidad_areas': 'Cantidad de áreas',
+            'deposito': 'Depósito',
+            'ubicacion': 'Ubicación',
+            'status': 'Estatus',
         }
     def __init__(self, *args, **kwargs):
         #self.user = kwargs.pop('user', None)

@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 24/06/2025
+        Date of modification: 26/06/2025
         Description: List of registered enterprises 
     -->
     <meta charset="UTF-8">
@@ -71,7 +71,7 @@
                             <td>{{ empresa.rfc }}</td>
                             <td>{{ empresa.telefono }}</td>
                             <td>{{ empresa.email }}</td>
-                            <td class="text-center">
+                            <td>
                                 {% if request.user.is_superuser %}
                                     <a href="{% url 'empresa_editar' empresa.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
                                         <i class="bi bi-pencil-square"></i>
