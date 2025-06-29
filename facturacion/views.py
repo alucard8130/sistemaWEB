@@ -27,6 +27,7 @@ from datetime import datetime
 from django.db.models import Sum
 from django.db import transaction
 from django.contrib.auth import authenticate
+from django.core.paginator import Paginator
 
 
 
@@ -598,10 +599,17 @@ def cartera_vencida(request):
     for f in facturas:
         f.dias_vencidos = (hoy - f.fecha_vencimiento).days
     
+    #paginacion
+    paginator = Paginator(facturas, 25)  # 50 gastos por página 
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)    
+
+
 
     return render(request, 'facturacion/cartera_vencida.html', {
         'facturas': facturas,
         'hoy': hoy,
+        'facturas': page_obj,
         'empresas': Empresa.objects.all(),
         'clientes': Cliente.objects.all(),
         'rango_seleccionado': filtro

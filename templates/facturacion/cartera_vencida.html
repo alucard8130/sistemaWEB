@@ -81,9 +81,13 @@
         <div class="col-md-3 align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="{% url 'cartera_vencida' %}" class="btn btn-secondary">Limpiar</a>
+            <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
+            
+            
         </div>
+        
     </form>
-  <!--  <a href="{% url 'exportar_cartera_excel' %}" class="btn btn-outline-success mb-3">Exportar a Excel</a> -->
+  <a href="{% url 'exportar_cartera_excel' %}?origen={{ request.GET.origen }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.dias %}&dias={{ request.GET.dias }}{% endif %}" class="btn btn-outline-success">Exportar a Excel</a>
     <table class="table table-striped table-bordered">
         <thead class="table-dark">
             <tr>
@@ -122,9 +126,28 @@
             {% endfor %}
         </tbody>
     </table>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
-    <a href="{% url 'exportar_cartera_excel' %}?origen={{ request.GET.origen }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.dias %}&dias={{ request.GET.dias }}{% endif %}" class="btn btn-outline-success">Exportar a Excel</a>
+    
+    <nav aria-label="Paginación">
+ <ul class="pagination">
+    {% if facturas.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.rango %}&rango={{ request.GET.rango }}{% endif %}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
+    {% if facturas.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ facturas.next_page_number }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.rango %}&rango={{ request.GET.rango }}{% endif %}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+</ul>
+</nav>
 </div>
+
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
