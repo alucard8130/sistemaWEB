@@ -8,90 +8,114 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 17/06/2025
+      Date of modification: 28/06/2025
       Description: List of registered common areas
     -->
     <meta charset="UTF-8">
-    <title>+Áreas</title>
+    <title>Áreas</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+    {% include 'navbar.html' %}
+
     <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
         <div class="d-flex align-items-center ms-auto">  
             <button id="toggleDark" class="toggle-switch">
                 <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
             </button>
         </div>
-    </div>
-<div class="container mt-4">
-    <h2>Áreas comunes</h2>
-        <!-- Bloque para mostrar mensajes -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-    <a href="{% url 'crear_area' %}" class="btn btn-success mb-3">+ Nueva área </a>
-    <table class="table table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Numero</th>
-                <th>Cliente</th>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Sup. m²</th>
-                <th>Cuota</th>
-                <th>Deposito</th>
-                <th>Giro</th>
-                <th>Tipo</th>
-                <th>Cantidad</th>
-                <th>Fecha Inicio</th>
-                <th>Fecha Fin</th>
-                <th>Ubicación</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for area in areas %}
-                <tr>
-                    <td>{{ area.numero }}</td>
-                    <td>{{ area.cliente.nombre }}</td>
-                    {% if request.user.is_superuser %}
-                        <td>{{ area.empresa.nombre }}</td>
-                    {% endif %}
-                    <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
-                    <td>${{ area.cuota|floatformat:2|intcomma }}</td>
-                    <td>${{ area.deposito|floatformat:2|intcomma }}</td>
-                    <td>{{ area.giro }}</td>
-                    <td>{{ area.tipo_area }}</td>
-                    <td>{{ area.cantidad_areas }}</td>
-                    <td>{{ area.fecha_inicial }}</td>
-                    <td>{{ area.fecha_fin }}</td>
-                    <td>{{ area.ubicacion }}</td>
-                    <td>
-                        <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-primary">Editar</a>    
-                        <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-danger">Inactivar</a>
-                    
-                    {% if area.status == 'disponible' %}
-                        <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-primary btn-sm">Asignar cliente</a>
-                    {% endif %}
-                    </td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="13">No hay áreas registradas.</td></tr>
+    </div> -->
+
+    <!-- Main content -->
+    <div class="container mt-4">
+        <h2>Áreas comunes</h2>
+
+        <!-- Block for displaying messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
-        </tbody>
-    </table>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
-</div>
+        {% endif %}
+
+        <a href="{% url 'crear_area' %}" class="btn btn-crear mb-3">
+            <i class="bi bi-plus-circle me-1"></i> Nueva área 
+        </a>
+
+        <!-- Area table -->
+        <div class="table-responsive rounded-3 border"> 
+            <table class="table align-middle mb-0 shadow-sm">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Cliente</th>
+                        {% if request.user.is_superuser %}
+                            <th>Empresa</th>
+                        {% endif %}
+                        <th>Sup. m²</th>
+                        <th>Cuota</th>
+                        <th>Depósito</th>
+                        <th>Giro</th>
+                        <th>Tipo</th>
+                        <th>Cantidad</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th>Ubicación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for area in areas %}
+                        <tr>
+                            <td>{{ area.numero }}</td>
+                            <td>{{ area.cliente.nombre }}</td>
+                            {% if request.user.is_superuser %}
+                                <td>{{ area.empresa.nombre }}</td>
+                            {% endif %}
+                            <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
+                            <td>${{ area.cuota|floatformat:2|intcomma }}</td>
+                            <td>${{ area.deposito|floatformat:2|intcomma }}</td>
+                            <td>{{ area.giro }}</td>
+                            <td>{{ area.tipo_area }}</td>
+                            <td>{{ area.cantidad_areas }}</td>
+                            <td>{{ area.fecha_inicial }}</td>
+                            <td>{{ area.fecha_fin }}</td>
+                            <td>{{ area.ubicacion }}</td>
+                            <td style="white-space: nowrap;">
+                                <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>    
+                                <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-outline-danger" title="Inactivar">
+                                    <i class="bi bi-slash-circle"></i>
+                                </a>
+                            {% if area.status == 'disponible' %}
+                                <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-outline-success btn-sm">Asignar cliente</a>
+                            {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="9">No hay áreas registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
