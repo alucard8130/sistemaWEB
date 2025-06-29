@@ -289,6 +289,7 @@ def reporte_pagos_gastos(request):
     })
 
 @login_required
+#dasboard_pagos.html
 def dashboard_pagos_gastos(request):
     es_super = request.user.is_superuser
     anio_actual = datetime.now().year
