@@ -106,6 +106,13 @@
     </div>
     <!-- Gráfico de Saldos -->
     <script>
+    const totalCartera = (
+    {{ saldo_0_30|default:0 }} +
+    {{ saldo_31_60|default:0 }} +
+    {{ saldo_61_90|default:0 }} +
+    {{ saldo_91_180|default:0 }} +
+    {{ saldo_181_mas|default:0 }}
+);
     const ctx = document.getElementById('chartSaldos');
     new Chart(ctx, {
         type: 'doughnut',
@@ -128,10 +135,47 @@
             responsive: true,
             plugins: {
                 legend: { position: 'left' },
-                title: { display: true, text: '' }
+                title: { display: true, text: '' },
+                tooltip: { enabled: true },
+// Plugin para mostrar el total en el centro
+            doughnutlabel: {
+                labels: [
+                    {
+                        text: '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
+                        font: { size: 22, weight: 'bold' }
+                    },
+                    {
+                        text: 'Total cartera',
+                        font: { size: 14 }
+                    }
+                ]
             }
         }
-    });
+    },
+    plugins: [{
+        id: 'centerText',
+        afterDraw: chart => {
+            const {ctx, chartArea: {width, height}} = chart;
+            ctx.save();
+            ctx.font = 'bold 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#222';
+            ctx.fillText(
+                '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
+                chart.getDatasetMeta(0).data[0].x,
+                chart.getDatasetMeta(0).data[0].y
+            );
+            ctx.font = '14px sans-serif';
+            ctx.fillText(
+                'Total cartera',
+                chart.getDatasetMeta(0).data[0].x,
+                chart.getDatasetMeta(0).data[0].y + 22
+            );
+            ctx.restore();
+        }
+    }]
+});
     </script>
 </div>
     <!-- 🔹 Footer -->
