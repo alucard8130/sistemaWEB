@@ -14,6 +14,7 @@ from .models import AreaComun
 from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm
 from unidecode import unidecode
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
 
 
 
@@ -25,7 +26,15 @@ def lista_areas(request):
     else:
         empresa = user.perfilusuario.empresa
         areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
-    return render(request, 'areas/lista_areas.html', {'areas': areas})
+
+# paginacion
+    paginator = Paginator(areas, 20)  # 20 áreas por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+
+    return render(request, 'areas/lista_areas.html', {'areas': areas, 'areas': page_obj  })
+
 
 @login_required
 def crear_area(request):

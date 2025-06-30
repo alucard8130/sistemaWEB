@@ -105,6 +105,25 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <nav aria-label="Paginación">
+  <ul class="pagination">
+    {% if areas.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ areas.previous_page_number }}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ areas.number }} de {{ areas.paginator.num_pages }}</span></li>
+    {% if areas.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ areas.next_page_number }}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
         </div>
     </div>
 
