@@ -14,6 +14,7 @@ from .models import LocalComercial
 from .forms import LocalCargaMasivaForm, LocalComercialForm
 from django.contrib.admin.views.decorators import staff_member_required
 from unidecode import unidecode
+from django.core.paginator import Paginator
 
 
 # Create your views here.
@@ -28,7 +29,13 @@ def lista_locales(request):
         #empresa = getattr(request.user.perfilusuario, 'empresa', None)
         empresa = user.perfilusuario.empresa
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
-    return render(request, 'locales/lista_locales.html', {'locales': locales})
+
+    # Paginación
+    paginator = Paginator(locales, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'locales/lista_locales.html', {'locales': locales, 'locales': page_obj})
 
 @login_required
 def crear_local(request):
