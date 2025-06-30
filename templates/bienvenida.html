@@ -89,6 +89,7 @@
                             <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
                             <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros</a></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Cobros</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Comparativo</a></li>
                             {% if request.user.is_superuser %}
                             <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Facturas Cobradas</a></li>
