@@ -26,7 +26,7 @@
             </button>
         </div>
     </div>
-    <h2>Facturas </h2>
+    <h2> Facturas Ingresos</h2>
     <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
@@ -34,10 +34,7 @@
         {% endfor %}
     {% endif %}
     <div>
-    <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
- <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
-    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Regresar</a>
+    
     </div>
     <form method="get" class="row g-2 mb-3">
         {% if request.user.is_superuser %}
@@ -78,10 +75,16 @@
         <div class="col-auto align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Limpiar</a>
+
         </div>
         
     </form>
-    
+    <div>
+        <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
+ <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
+    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
+    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Regresar</a>
+    </div>
 
     <table class="table table-bordered">
         <thead class="table-dark">
@@ -158,7 +161,25 @@
             {% endfor %}
         </tbody>
     </table>
-    
+    <nav aria-label="Paginación">
+  <ul class="pagination">
+    {% if facturas.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
+    {% if facturas.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ facturas.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
 </a>
 </div>
     <footer>

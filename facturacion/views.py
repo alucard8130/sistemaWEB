@@ -174,6 +174,10 @@ def lista_facturas(request):
         facturas = facturas.filter(local_id=local_id).order_by('-fecha_vencimiento')
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id).order_by('-fecha_vencimiento')
+    # Paginación
+    paginator = Paginator(facturas, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': facturas,
@@ -183,6 +187,7 @@ def lista_facturas(request):
         'areas': areas,
         'local_id': local_id,
         'area_id': area_id,
+        'facturas': page_obj,
     })
 
 @login_required
@@ -364,6 +369,7 @@ def facturas_detalle(request, pk):
 
 
 @login_required
+#pagos_por_origen.html
 def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
@@ -394,6 +400,13 @@ def pagos_por_origen(request):
     pagos_validos = pagos.exclude(forma_pago='nota_credito')
     total_pagos = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
 
+    #paginacion
+    paginator = Paginator(pagos, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+
+
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
         #'tipo': tipo,
@@ -404,6 +417,7 @@ def pagos_por_origen(request):
         'areas': areas,
         'local_id': local_id,
         'area_id': area_id,
+        'pagos': page_obj,
     })
 
 @login_required
