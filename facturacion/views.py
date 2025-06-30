@@ -1,5 +1,6 @@
 
 # Create your views here.
+from django.forms import CharField
 from django.shortcuts import render, redirect,get_object_or_404
 from areas.models import AreaComun
 from clientes.models import Cliente
@@ -14,8 +15,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from datetime import date, timedelta
+from django.db.models import Q, F, Value, Case, When, Sum, OuterRef, Subquery, DecimalField, ExpressionWrapper, CharField
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, ExpressionWrapper
 from django.db.models.functions import Coalesce
+#from django.db.models import Case, When
 import openpyxl
 from django.http import HttpResponse
 from django.db.models import Q
@@ -404,6 +407,7 @@ def pagos_por_origen(request):
     })
 
 @login_required
+#saldos.html
 def dashboard_saldos(request):
     hoy = timezone.now().date()
     cliente_id = request.GET.get('cliente')
@@ -453,6 +457,33 @@ def dashboard_saldos(request):
     saldo_91_180 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
     saldo_181_mas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
 
+     # --- Top 10 adeudos por local/área ---
+    top_adeudos = (
+        facturas
+        .annotate(
+            nombre_local_area=Coalesce(
+                F('local__numero'),
+                F('area_comun__numero'),
+                output_field=CharField()
+            ),
+            tipo_origen=Case(
+                When(local__isnull=False, then=Value('Local')),
+                When(area_comun__isnull=False, then=Value('Área')),
+                default=Value(''),
+                output_field=CharField()
+            )
+        )
+        .values('nombre_local_area', 'tipo_origen')
+        .annotate(total=Sum('saldo_pendiente_dash'))
+        .order_by('-total')[:10]
+    )
+    # Prepara los datos para Chart.js
+    top_labels = [
+        f"{x['tipo_origen']} {x['nombre_local_area']}" if x['nombre_local_area'] else x['tipo_origen']
+        for x in top_adeudos
+    ]
+    top_data = [float(x['total']) for x in top_adeudos]
+    
     clientes = Cliente.objects.filter(empresa__in=empresas)
 
     return render(request, 'dashboard/saldos.html', {
@@ -468,6 +499,8 @@ def dashboard_saldos(request):
         'saldo_181_mas': saldo_181_mas,
         'origen': origen,
         'es_super': es_super,
+        'top_labels': top_labels,
+        'top_data': top_data,
     })
 
 @login_required

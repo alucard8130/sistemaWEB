@@ -9,6 +9,7 @@
         Date of creation: 05/06/2025
         Date of modification: 17/06/2025
         Description: Dashboard of balances by maturity
+        dashboard_saldos
     -->
     <meta charset="UTF-8">
     <title>Dashboard Saldos / Cartera Vencida</title>
@@ -82,7 +83,7 @@
                 <ul class="list-group">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         Menos de 30 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_0_30|floatformat:2|intcomma }}</span>
+                        <span class="badge bg-success rounded-pill ">${{ saldo_0_30|floatformat:2|intcomma }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         31 a 60 días
@@ -101,9 +102,17 @@
                         <span class="badge bg-danger rounded-pill">${{ saldo_181_mas|floatformat:2|intcomma }}</span>
                     </li>
                 </ul>
+                
             </div>
+            <div class="mt-4">
+            <div class="card shadow p-3" >
+    <h6 class="mb-2">Top 10 Adeudos</h6>
+    <canvas id="chartTopAdeudos" height="50", width="60"></canvas>
+    </div>
+        </div>
         </div>
     </div>
+    
     <!-- Gráfico de Saldos -->
     <script>
     const totalCartera = (
@@ -127,7 +136,7 @@
                     {{ saldo_91_180 }},
                     {{ saldo_181_mas }}
                 ],
-                backgroundColor: ['#198754', '#ffc107', '#fd7e14', '#0dcaf0', '#dc3545'],
+                backgroundColor: ['#198754', '#F3F763', '#FEA55C', '#D86302', '#C00000'],
                 borderWidth: 1
             }]
         },
@@ -177,6 +186,48 @@
     }]
 });
     </script>
+    <script>
+    // Gráfico de Top Adeudos 
+const topLabels = {{ top_labels|safe }};
+const topData = {{ top_data|safe }};
+
+const ctxBar = document.getElementById('chartTopAdeudos').getContext('2d');
+new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+        labels: topLabels,
+        datasets: [{
+            label: 'Adeudo ($)',
+            data: topData,
+            backgroundColor: ''
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            title: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return '$' + context.parsed.x.toLocaleString('es-MX', {minimumFractionDigits:2});
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toLocaleString('es-MX');
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
 </div>
     <!-- 🔹 Footer -->
     <footer>
