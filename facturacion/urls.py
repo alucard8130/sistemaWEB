@@ -22,7 +22,8 @@ urlpatterns = [
     path('otros-ingresos/lista/', views.lista_facturas_otros_ingresos, name='lista_facturas_otros_ingresos'),
     path('otros-ingresos/factura/<int:factura_id>/cobro/', views.registrar_cobro_otros_ingresos, name='registrar_cobro_otros_ingresos'),
     path('facturas/otros-ingresos/factura/<int:factura_id>/detalle/', views.detalle_factura_otros_ingresos, name='detalle_factura_otros_ingresos'),
- 
+    path('otros-ingresos/reporte-cobros/', views.reporte_cobros_otros_ingresos, name='reporte_cobros_otros_ingresos'),
+    path('otros-ingresos/reporte-cobros/exportar-excel/', views.exportar_cobros_otros_ingresos_excel, name='exportar_cobros_otros_ingresos_excel'),
 
     
 ]

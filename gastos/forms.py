@@ -7,11 +7,8 @@ from .models import Gasto, GrupoGasto, SubgrupoGasto, TipoGasto
 class SubgrupoGastoForm(forms.ModelForm):
     class Meta:
         model = SubgrupoGasto
-        fields = ['grupo', 'nombre']
-        widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'grupo': forms.Select(attrs={'class': 'form-select'}),
-        }
+        fields = ['empresa','grupo', 'nombre']
+      
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
@@ -27,10 +24,8 @@ class SubgrupoGastoForm(forms.ModelForm):
 class TipoGastoForm(forms.ModelForm):
     class Meta:
         model = TipoGasto
-        fields = ['subgrupo', 'nombre', 'descripcion']
-        widgets = {
-            'descripcion': forms.Textarea(attrs={'rows':2}),
-        }
+        fields = ['empresa','subgrupo', 'nombre', 'descripcion']
+       
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
@@ -42,6 +37,9 @@ class TipoGastoForm(forms.ModelForm):
                 empresa = getattr(user.perfilusuario, 'empresa', None)
                 if empresa:
                     self.fields['subgrupo'].queryset = SubgrupoGasto.objects.filter(empresa=empresa)    
+
+
+                    
 
 class GastoForm(forms.ModelForm):
     origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True)
@@ -106,12 +104,10 @@ from .models import PagoGasto
 class PagoGastoForm(forms.ModelForm):
     class Meta:
         model = PagoGasto
-        fields = ['fecha_pago', 'monto', 'forma_pago', 'referencia']
+        fields = ['fecha_pago', 'monto', 'forma_pago','comprobante', 'referencia']
         widgets = {
-            'fecha_pago': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'monto': forms.NumberInput(attrs={'step': '1.00', 'class': 'form-control'}),
-            'forma_pago': forms.Select(attrs={'class': 'form-select'}),
-            'referencia': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
+            
         }
    
 class GastosCargaMasivaForm(forms.Form):

@@ -24,30 +24,36 @@ from django.db.models import Q, Sum
 from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db.models import ProtectedError
 
 # Create your views here.
 @login_required
 def subgrupo_gasto_crear(request):
     if request.method == 'POST':
-        form = SubgrupoGastoForm(request.POST)
+        form = SubgrupoGastoForm(request.POS, user=request.user)
         if form.is_valid():
             form.save()
             return redirect('subgrupos_gasto_lista')
     else:
-        form = SubgrupoGastoForm()
+        form = SubgrupoGastoForm(user=request.user)
     return render(request, 'gastos/subgrupo_crear.html', {'form': form})
+
 
 @login_required
 def subgrupo_gasto_eliminar(request, pk):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para eliminar subgrupos de gasto.")
-        return redirect('subgrupos_gasto_lista')  # Cambia por el nombre de tu lista
+        return redirect('subgrupos_gasto_lista')
 
     subgrupo = get_object_or_404(SubgrupoGasto, pk=pk)
     if request.method == 'POST':
-        subgrupo.delete()
-        messages.success(request, "Subgrupo de gasto eliminado correctamente.")
-        return redirect('subgrupos_gasto_lista')
+        try:
+            subgrupo.delete()
+            messages.success(request, "Subgrupo de gasto eliminado correctamente.")
+            return redirect('subgrupos_gasto_lista')
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar este subgrupo porque tiene Tipos de Gasto o Presupuestos relacionados. Elimina o reasigna esos registros primero.")
+            return redirect('subgrupos_gasto_lista')
     return render(request, 'gastos/subgrupo_gasto_confirmar_eliminar.html', {'subgrupo': subgrupo})
 
 @login_required
@@ -75,12 +81,12 @@ def tipos_gasto_lista(request):
 @login_required
 def tipo_gasto_crear(request):
     if request.method == 'POST':
-        form = TipoGastoForm(request.POST)
+        form = TipoGastoForm(request.POST, user=request.user) 
         if form.is_valid():
             form.save()
             return redirect('tipos_gasto_lista')
     else:
-        form = TipoGastoForm()
+        form = TipoGastoForm(user=request.user)
     return render(request, 'gastos/tipo_gasto_form.html', {'form': form, 'modo': 'crear'})
 
 @login_required
@@ -96,11 +102,21 @@ def tipo_gasto_editar(request, pk):
     return render(request, 'gastos/tipo_gasto_form.html', {'form': form, 'modo': 'editar', 'tipo': tipo})
 
 @login_required
+@login_required
 def tipo_gasto_eliminar(request, pk):
     tipo = get_object_or_404(TipoGasto, pk=pk)
     if request.method == 'POST':
-        tipo.delete()
-        return redirect('tipos_gasto_lista')
+        try:
+            tipo.delete()
+            messages.success(request, "Tipo de gasto eliminado correctamente.")
+            return redirect('tipos_gasto_lista')
+        except ProtectedError:
+            messages.error(
+                request,
+                "No se puede eliminar este tipo de gasto porque tiene registros relacionados (por ejemplo, presupuestos o movimientos). "
+                "Elimina o reasigna esos registros primero."
+            )
+            return redirect('tipos_gasto_lista')
     return render(request, 'gastos/tipo_gasto_confirmar_eliminar.html', {'tipo': tipo})
 
 @login_required

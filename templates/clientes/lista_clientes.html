@@ -38,15 +38,18 @@
 
         <!-- Block for displaying messages -->
         {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
 
         <a href="{% url 'crear_cliente' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle me-1"></i>Nuevo cliente
         </a>
-
+        <form method="get" class="mb-3 d-flex" role="search">
+    <input type="text" name="q" class="form-control me-2" placeholder="Buscar cliente por nombre o RFC" value="{{ q|default:'' }}">
+    <button type="submit" class="btn btn-outline-primary">Buscar</button>
+</form>
         <!-- Client table -->
         <div class="table-responsive rounded-3 border"> 
             <table class="table align-middle mb-0 shadow-sm">
@@ -96,7 +99,7 @@
   <ul class="pagination">
     {% if clientes.has_previous %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ clientes.previous_page_number }}">Anterior</a>
+        <a class="page-link" href="?q={{ q }}&page={{ clientes.previous_page_number }}">Anterior</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">Anterior</span></li>
@@ -104,7 +107,8 @@
     <li class="page-item disabled"><span class="page-link">Página {{ clientes.number }} de {{ clientes.paginator.num_pages }}</span></li>
     {% if clientes.has_next %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ clientes.next_page_number }}">Siguiente</a>
+        
+        <a class="page-link" href="?q={{ q }}&page={{ clientes.next_page_number }}">Siguiente</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">Siguiente</span></li>

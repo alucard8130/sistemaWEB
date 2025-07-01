@@ -7,7 +7,7 @@ from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
 from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, PagoForm,FacturaCargaMasivaForm, CobroForm
-from .models import Factura, FacturaOtrosIngresos, Pago
+from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from principal.models import AuditoriaCambio, PerfilUsuario
 from django.utils.timezone import now
 from django.utils import timezone
@@ -31,6 +31,7 @@ from django.db.models import Sum
 from django.db import transaction
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
+import io
 
 
 
@@ -1150,3 +1151,106 @@ def detalle_factura_otros_ingresos(request, factura_id):
         'factura': factura,
         'cobros': cobros,
     })
+
+@login_required
+def reporte_cobros_otros_ingresos(request):
+    
+    empresa_id = request.GET.get('empresa')
+    cliente_id = request.GET.get('cliente')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    tipo_ingreso = request.GET.get('tipo_ingreso')
+
+    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente')
+
+    # Filtros
+    if not request.user.is_superuser:
+        cobros = cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
+    if empresa_id:
+        cobros = cobros.filter(factura__empresa_id=empresa_id)
+    if cliente_id:
+        cobros = cobros.filter(factura__cliente_id=cliente_id)
+    if fecha_inicio and fecha_fin:
+        cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin])
+    if tipo_ingreso:
+        cobros = cobros.filter(factura__tipo_ingreso=tipo_ingreso)    
+
+    total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
+
+    # Paginación
+    paginator = Paginator(cobros.order_by('-fecha_cobro'), 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    empresas = Empresa.objects.all() if request.user.is_superuser else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
+    clientes = Cliente.objects.filter(empresa__in=empresas)
+
+    return render(request, 'otros_ingresos/reporte_cobros.html', {
+        'cobros': page_obj,
+        'empresas': empresas,
+        'clientes': clientes,
+        'empresa_id': empresa_id,
+        'cliente_id': cliente_id,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'total_cobrado': total_cobrado,
+        'tipo_ingreso': tipo_ingreso,
+    })
+
+
+@login_required
+def exportar_cobros_otros_ingresos_excel(request):
+    empresa_id = request.GET.get('empresa')
+    cliente_id = request.GET.get('cliente')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente')
+
+    if not request.user.is_superuser:
+        cobros = cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
+    if empresa_id and empresa_id.isdigit():
+        cobros = cobros.filter(factura__empresa_id=empresa_id)
+    if cliente_id and cliente_id.isdigit():
+        cobros = cobros.filter(factura__cliente_id=cliente_id)
+    # Validar fechas antes de filtrar
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            cobros = cobros.filter(fecha_cobro__range=[fecha_i, fecha_f])
+        except ValueError:
+            pass  # Ignora el filtro si las fechas no son válidas
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Cobros Otros Ingresos"
+
+    headers = [
+        "Fecha cobro", "Empresa", "Cliente", "Tipo ingreso", "Monto", "Forma cobro",
+        "Factura", "Comprobante", "Observaciones"
+    ]
+    ws.append(headers)
+
+    for cobro in cobros:
+        ws.append([
+            cobro.fecha_cobro.strftime('%Y-%m-%d'),
+            cobro.factura.empresa.nombre,
+            cobro.factura.cliente.nombre,
+            cobro.factura.get_tipo_ingreso_display(),
+            float(cobro.monto),
+            cobro.get_forma_cobro_display(),
+            cobro.factura.folio,
+            cobro.comprobante.url if cobro.comprobante else '',
+            cobro.observaciones or ''
+        ])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="cobros_otros_ingresos.xlsx"'
+    return response

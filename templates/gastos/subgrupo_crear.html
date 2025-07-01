@@ -28,6 +28,10 @@
     <form method="post">
         {% csrf_token %}
         <div class="mb-3">
+            {{ form.empresa.label_tag }} {{ form.empresa }}
+            {% if form.empresa.errors %}<div class="text-danger">{{ form.empresa.errors }}</div>{% endif %}     
+        </div>
+        <div class="mb-3">
             {{ form.grupo.label_tag }} {{ form.grupo }}
             {% if form.grupo.errors %}<div class="text-danger">{{ form.grupo.errors }}</div>{% endif %}
         </div>
