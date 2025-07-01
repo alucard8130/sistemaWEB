@@ -1,5 +1,5 @@
 from django import forms
-from .models import Factura, Pago
+from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 
 class FacturaForm(forms.ModelForm):
     TIPO_ORIGEN_CHOICES = [
@@ -178,5 +178,28 @@ class FacturaEditForm(forms.ModelForm):
         
         
             
+class FacturaOtrosIngresosForm(forms.ModelForm):
+    class Meta:
+        model = FacturaOtrosIngresos
+        fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'cfdi','observaciones']
+        widgets = {
+            'fecha_emision': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}),
+            'observaciones': forms.Textarea(attrs={'rows': 2}),
+        }            
    
-        
+class CobroForm(forms.ModelForm):
+    class Meta:
+        model = CobroOtrosIngresos
+        fields = ['fecha_cobro', 'monto', 'forma_cobro', 'comprobante', 'observaciones']
+        widgets = {
+            'fecha_cobro': forms.DateInput(attrs={'type': 'date'}), 
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Monto no requerido desde el principio (el clean lo maneja)
+        self.fields['monto'].required = False
+
+
+    

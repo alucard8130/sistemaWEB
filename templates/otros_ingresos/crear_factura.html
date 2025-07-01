@@ -1,0 +1,19 @@
+<!-- filepath: otros_ingresos/templates/otros_ingresos/crear_factura.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Nueva Factura Otros Ingresos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2>Nueva Factura de Otros Ingresos</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Guardar factura</button>
+        <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+</body>
+</html>

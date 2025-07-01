@@ -30,7 +30,7 @@
     <p><strong>Monto original:</strong> ${{ gasto.monto|floatformat:2|intcomma }}</p>
     <p><strong>Pagado:</strong> ${{ gasto.total_pagado|floatformat:2|intcomma }}</p>
     <p><strong>Saldo restante:</strong> ${{ saldo_restante|floatformat:2|intcomma }}</p>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {% for field in form %}
             <div class="mb-3">

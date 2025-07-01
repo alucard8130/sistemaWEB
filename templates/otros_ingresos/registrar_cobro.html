@@ -1,0 +1,47 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registrar Cobros</title>
+        <!-- Bloque para mostrar mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h3>Registrar cobro - Factura {{ factura.folio }}</h3>
+    <p><strong>Monto total:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
+    <p><strong>Cobrado:</strong> ${{ factura.total_cobrado|floatformat:2|intcomma }}</p>
+    <p><strong>Saldo pendiente:</strong> ${{ factura.saldo|floatformat:2|intcomma }}</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Registrar cobro</button>
+        <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+<script>
+function checkFormaPago() {
+    var forma = document.getElementById("id_forma_pago").value;
+    var montoField = document.getElementById("id_monto");
+    if(forma === "nota_credito") {
+        
+        montoField.disabled = true;
+    } else {
+        montoField.disabled = false;
+    }
+}
+window.onload = function(){
+    document.getElementById("id_forma_pago").addEventListener("change", checkFormaPago);
+    checkFormaPago();
+};
+</script>
+
+</body>
+</html>
