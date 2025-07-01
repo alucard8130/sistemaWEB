@@ -144,6 +144,25 @@
         </tbody>
         
     </table>
+    <nav aria-label="Paginación">
+  <ul class="pagination">
+    {% if pagos.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ pagos.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ pagos.number }} de {{ pagos.paginator.num_pages }}</span></li>
+    {% if pagos.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ pagos.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
 </a>
 </div>
     <footer>

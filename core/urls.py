@@ -72,6 +72,7 @@ urlpatterns = [
     path('presupuestos/', include('presupuestos.urls')),
     path('clientes/inactivos/', clientes_inactivos, name='clientes_inactivos'),
     path('clientes/reactivar/<int:pk>/', reactivar_cliente, name='reactivar_cliente'),
+    path('informes/', include('informes_financieros.urls')),
 ]
 
 if settings.DEBUG:

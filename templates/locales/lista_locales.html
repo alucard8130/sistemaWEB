@@ -98,6 +98,25 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <nav aria-label="Paginación">
+  <ul class="pagination">
+    {% if locales.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ locales.previous_page_number }}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ locales.number }} de {{ locales.paginator.num_pages }}</span></li>
+    {% if locales.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ locales.next_page_number }}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
         </div>
     </div>
 

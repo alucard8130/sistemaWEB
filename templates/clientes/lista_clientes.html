@@ -92,6 +92,25 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <nav aria-label="Paginación">
+  <ul class="pagination">
+    {% if clientes.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ clientes.previous_page_number }}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ clientes.number }} de {{ clientes.paginator.num_pages }}</span></li>
+    {% if clientes.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ clientes.next_page_number }}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
         </div>
     </div>
 

@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'empleados',
     'gastos',
     'presupuestos',
+    'informes_financieros',
   
 ]
 

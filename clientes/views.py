@@ -10,6 +10,7 @@ from .forms import ClienteCargaMasivaForm, ClienteForm
 from django.contrib.admin.views.decorators import staff_member_required
 import openpyxl
 from django.contrib import messages
+from django.core.paginator import Paginator
 
 @login_required
 def lista_clientes(request):
@@ -18,7 +19,15 @@ def lista_clientes(request):
     else:
         empresa = request.user.perfilusuario.empresa
         clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by('id')
-    return render(request, 'clientes/lista_clientes.html', {'clientes': clientes})
+
+    # paginacion
+    paginator = Paginator(clientes, 20)  # 20 áreas por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+
+
+    return render(request, 'clientes/lista_clientes.html', {'clientes': clientes, 'clientes': page_obj})
 
 @login_required
 def crear_cliente(request):
