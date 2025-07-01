@@ -102,7 +102,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar Factura</a></li>
                            <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista Facturas</a></li>
-                            <li><a class="dropdown-item" href="">Reporte Cobros</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros</a></li>
                             <li><a class="dropdown-item" href="">Dashboard Cobros</a></li>
                             {% if request.user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url '' %}">Carga Masiva</a></li>
