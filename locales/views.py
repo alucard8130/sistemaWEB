@@ -15,6 +15,7 @@ from .forms import LocalCargaMasivaForm, LocalComercialForm
 from django.contrib.admin.views.decorators import staff_member_required
 from unidecode import unidecode
 from django.core.paginator import Paginator
+from django.db.models import Q
 
 
 # Create your views here.
@@ -22,6 +23,7 @@ from django.core.paginator import Paginator
 @login_required
 def lista_locales(request):
     user = request.user
+    query = request.GET.get("q", "")
     if user.is_superuser:
         #locales = LocalComercial.objects.all()
         locales = LocalComercial.objects.filter(activo=True).order_by('numero')
@@ -30,33 +32,39 @@ def lista_locales(request):
         empresa = user.perfilusuario.empresa
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
+    if query:
+        locales = locales.filter(
+            Q(numero__icontains=query) | Q(cliente__nombre__icontains=query) | Q(cliente__rfc__icontains=query)
+        )
+
+    locales = locales.order_by('numero')
+
     # Paginación
     paginator = Paginator(locales, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'locales/lista_locales.html', {'locales': locales, 'locales': page_obj})
+    return render(request, 'locales/lista_locales.html', {'locales': locales, 'locales': page_obj, 'q': query})
 
+@login_required
 @login_required
 def crear_local(request):
     user = request.user
     perfil = getattr(user, 'perfilusuario', None)
     
     if request.method == 'POST':
-        #form = LocalComercialForm(request.POST, user=user)
-        form = LocalComercialForm(request.POST or None, user=request.user)
-
+        form = LocalComercialForm(request.POST, user=user)
         if form.is_valid():
             local = form.save(commit=False)
             # Si no es superusuario, asignamos su empresa
-            if not user.is_superuser:
-                #if perfil and perfil.empresa:
+            if not user.is_superuser and perfil and perfil.empresa:
                 local.empresa = perfil.empresa
-                local.save()
-                return redirect('lista_locales')
-        
+            local.save()
+            messages.success(request, "Local creado correctamente.")
+            return redirect('lista_locales')
+        else:
+            messages.error(request, "No se pudo crear el local. Revisa los datos ingresados.")
     else:
-        
         form = LocalComercialForm(user=user)
         # Si no es superusuario, asignamos la empresa inicial al form
         if not user.is_superuser and perfil and perfil.empresa:
