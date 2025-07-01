@@ -82,14 +82,14 @@
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos Cuotas</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Factura</a></li>
                             <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Facturas</a></li>
                             <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
                             <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros</a></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Cobros</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Comparativo</a></li>
+                            
                             {% if request.user.is_superuser %}
                             <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Facturas Cobradas</a></li>
@@ -103,17 +103,16 @@
                             <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar Factura</a></li>
                            <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista Facturas</a></li>
                             <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros</a></li>
-                            <li><a class="dropdown-item" href="">Dashboard Cobros</a></li>
-                            {% if request.user.is_superuser %}
-                                <li><a class="dropdown-item" href="{% url '' %}">Carga Masiva</a></li>
-                            {% endif %} 
                         </ul>
                     <!-- MENÚ cartera -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
+                            {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Cartera</a></li>
+                            {% endif %}
+                            
                             <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
                         </ul>
                     </li>
@@ -152,14 +151,23 @@
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Modificar Presupuesto</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Reporte Comparativo</a></li>
-                            <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_anio' %}">Comparativo vs Ppto</a></li>
+                            
+                            <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_anio' %}">Comparativo Ppto vs Ppto</a></li>
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto</a></li>
                             <!-- <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_vs_gastos' %}">Comparativo vs Gasto2</a></li> -->
                             
                             <li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>
                         </ul>
                     </li>
+                    <!-- MENÚ REPORTES -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Reportes</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="">Estado Resultados</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos vs Gastos</a></li>
+                      
+                        </ul>
                 </ul>
                 <div class="d-flex align-items-center gap-3 ms-auto">
                     <!-- Logged in user info -->

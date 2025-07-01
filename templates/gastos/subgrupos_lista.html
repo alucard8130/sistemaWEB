@@ -23,6 +23,12 @@
             </button>
         </div>
     </div>
+     <!-- Block for displaying messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
 <div class="container mt-4">
     <h2>Subgrupos de Gasto</h2>
     <a href="{% url 'subgrupo_gasto_crear' %}" class="btn btn-success mb-3">+ Nuevo Subgrupo</a>
