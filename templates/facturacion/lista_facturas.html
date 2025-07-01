@@ -38,87 +38,8 @@
     <div class="container-fluid mt-4">
         <h2>Facturas ingresos</h2>
 
-<<<<<<< HEAD
-    <table class="table table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Folio</th>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Cliente</th>
-                <th>Local/Área</th>
-                <th>Monto</th>
-                <th>T.Cuota</th>
-                <th>Fecha Vencimiento</th>
-              <!--  <th>Fecha emisión</th>  -->
-                <th>Saldo</th>
-                <th>Concepto</th>
-                <th>Status</th>
-                <th>Acciones</th>
-                <th>CFDI</th>
-                <th>Historial</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for factura in facturas %}
-                <tr>
-                    <td>{{ factura.folio }}</td>
-                    {% if request.user.is_superuser %}
-                        <td>{{ factura.empresa.nombre }}</td>
-                    {% endif %}
-                    <td>{{ factura.cliente.nombre }}</td>
-                    <td>
-                        {% if factura.local %}
-                            {{ factura.local.numero }}
-                        {% elif factura.area_comun %}
-                            {{ factura.area_comun.numero }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                    <td>{{ factura.tipo_cuota}}</td>
-                    <td>{{ factura.fecha_vencimiento }}</td>
-                  <!--  <td>{{ factura.fecha_emision }}</td>  -->
-                    <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
-                    <td>{{factura.observaciones}}</td>
-                    <td>{{ factura.get_estatus_display }}</td>    
-                    <td>
-                            {% if factura.saldo_pendiente > 0 %}    
-                            <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-success">Cobrar</a>
-                            <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
-                        {% else %}
-                            <span class="text-muted"></span>
-                        {% endif %}
-                      
-                        
-                    </td>
-                    
-                    <td>
-                        
-                        {% if factura.cfdi and factura.cfdi|archivo_existe %}
-                            <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-light btn-sm">CFDI</a>
-                        {% elif factura.cfdi %}
-                            
-                        {% endif %}
-                    </td>
-                        <td>
-                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-info btn-sm">Ver</a>
-                        </td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="10">No hay facturas registradas.</td>
-                </tr>
-=======
-        <!-- Block for displaying messages -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
->>>>>>> efb52ca18c2b81f4785cebb98fa7e20400a53208
-            {% endfor %}
-        {% endif %}
+    
+
     
         <a href="{% url 'crear_factura' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle me-1"></i> Nueva factura 
