@@ -48,7 +48,7 @@ class Gasto(models.Model):
     descripcion = models.CharField(max_length=255, blank=True)
     fecha = models.DateField()
     monto = models.DecimalField(max_digits=12, decimal_places=2)
-    comprobante = models.FileField(upload_to='comprobantes_gastos/', blank=True, null=True)
+    comprobante = models.FileField(upload_to='cfdi_gastos/', blank=True, null=True)
     STATUS_CHOICES = [
         ('pendiente', 'Pendiente'),
         ('pagada', 'Pagada'),
@@ -97,6 +97,7 @@ class PagoGasto(models.Model):
         default='transferencia'
     )
     referencia = models.CharField(max_length=100, blank=True, null=True)
+    comprobante = models.FileField(upload_to='comprobante_gastos/', blank=True, null=True)
     registrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     class Meta:

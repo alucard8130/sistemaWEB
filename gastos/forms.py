@@ -106,12 +106,10 @@ from .models import PagoGasto
 class PagoGastoForm(forms.ModelForm):
     class Meta:
         model = PagoGasto
-        fields = ['fecha_pago', 'monto', 'forma_pago', 'referencia']
+        fields = ['fecha_pago', 'monto', 'forma_pago','comprobante', 'referencia']
         widgets = {
-            'fecha_pago': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'monto': forms.NumberInput(attrs={'step': '1.00', 'class': 'form-control'}),
-            'forma_pago': forms.Select(attrs={'class': 'form-select'}),
-            'referencia': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
+            
         }
    
 class GastosCargaMasivaForm(forms.Form):

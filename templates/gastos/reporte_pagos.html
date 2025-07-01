@@ -98,8 +98,9 @@
                 {% endif %}
                 <th>Proveedor/Empleado</th>
                 <th>Forma de Pago</th>
+                <th>Comprobante</th>
+                <th>Comentarios</th>
                 <th>Registrado por</th>
-                <th>Observaciones</th>
             </tr>
         </thead>
         <tbody>
@@ -118,8 +119,14 @@
                     {% endif %}
                 </td>
                 <td>{{ pago.get_forma_pago_display }}</td>
-                <td>{{ pago.registrado_por }}</td>
+                <td>
+                    {% if pago.comprobante %}
+                        <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
+                    {% else %}
+                        No disponible
+                    {% endif %}
                 <td>{{ pago.observaciones }}</td>
+                <td>{{ pago.registrado_por }}</td>
             </tr>
             {% empty %}
             <tr>
