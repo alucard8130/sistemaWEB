@@ -6,48 +6,82 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 17/06/2025
+      Date of modification: 30/06/2025
       Description: Bulk upload of common areas
     -->
     <meta charset="UTF-8">
-    <title>Carga Masiva Áreas</title>
+    <title>Carga masiva áreas</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
   </head>
 <body>
+    {% include 'navbar.html' %}
+
     <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
         <div class="d-flex align-items-center ms-auto">  
             <button id="toggleDark" class="toggle-switch">
                 <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
             </button>
         </div>
-    </div>
-<div class="container mt-4">
-    <h2>Carga Masiva Areas Comunes</h2>
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
-      {% endfor %}
-    {% endif %}
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="archivo" class="form-label">Archivo Excel (.xlsx):</label>
-            <input type="file" name="archivo" id="archivo" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-success">Cargar Areas</button>
-        <a href="{% url 'plantilla_areas_excel' %}" class="btn btn-outline-info">Descargar plantilla(.xlsx)</a>
-    </form>
+    </div> -->
+
+
     <div class="container mt-4">
-      <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Cancelar</a>
-    </div>  
-</div>
+        <h2>Carga masiva de áreas comunes</h2>
+
+        <!-- Block for displaying messages -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Centered form only -->
+        <div class="d-flex align-items-center justify-content-center min-vh-50">
+          <form method="post" class="p-4 custom-form form-delgado" enctype="multipart/form-data">
+              {% csrf_token %}
+
+              <!-- Field for file upload -->
+              <div class="mb-4">
+                  <label for="archivo" class="form-label fw-semibold">
+                    <i class="bi bi-file-earmark-excel-fill text-success me-2"></i> 
+                    Archivo Excel (.xlsx):
+                  </label>
+                  <div class="input-group">
+                    <input type="file" name="archivo" id="archivo" accept=".xlsx" class="form-control border-success" style="max-width: 77%;" required>
+                    <button type="submit" class="btn btn-crear">
+                      <i class="bi bi-cloud-upload-fill me-1"></i>
+                      Cargar
+                    </button>
+                  </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="text-center"> 
+                  <a href="{% url 'plantilla_areas_excel' %}" class="btn btn-sm btn-outline-success">
+                      <i class="bi bi-file-earmark-arrow-down me-1"></i> Descargar(.xlsx)
+                  </a>
+                  <a href="{% url 'bienvenida' %}" class="btn btn-sm btn-secondary">Cancelar</a> 
+              </div>
+          </form> 
+        </div> 
+    </div>
+
+    <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
