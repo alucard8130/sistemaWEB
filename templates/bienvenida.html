@@ -96,6 +96,18 @@
                             {% endif %}
                         </ul>
                     </li>
+                    <!-- MENÚ otros ingresos -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Otros Ingresos</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar Factura</a></li>
+                           <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista Facturas</a></li>
+                            <li><a class="dropdown-item" href="">Reporte Cobros</a></li>
+                            <li><a class="dropdown-item" href="">Dashboard Cobros</a></li>
+                            {% if request.user.is_superuser %}
+                                <li><a class="dropdown-item" href="{% url '' %}">Carga Masiva</a></li>
+                            {% endif %} 
+                        </ul>
                     <!-- MENÚ cartera -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>

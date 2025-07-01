@@ -6,8 +6,8 @@ from areas.models import AreaComun
 from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
-from .forms import FacturaEditForm, FacturaForm, PagoForm,FacturaCargaMasivaForm
-from .models import Factura, Pago
+from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, PagoForm,FacturaCargaMasivaForm, CobroForm
+from .models import Factura, FacturaOtrosIngresos, Pago
 from principal.models import AuditoriaCambio, PerfilUsuario
 from django.utils.timezone import now
 from django.utils import timezone
@@ -1082,3 +1082,71 @@ def carga_masiva_facturas(request):
     else:
         form = FacturaCargaMasivaForm()
     return render(request, 'facturacion/carga_masiva_facturas.html', {'form': form})
+
+@login_required
+def crear_factura_otros_ingresos(request):
+    if request.method == 'POST':
+        form = FacturaOtrosIngresosForm(request.POST,request.FILES)
+        if form.is_valid():
+            factura = form.save(commit=False)
+            # Asignar empresa según el cliente seleccionado
+            factura.empresa = factura.cliente.empresa
+            # Generar folio único
+            count = FacturaOtrosIngresos.objects.filter(fecha_emision__year=now().year).count() + 1
+            factura.folio = f"OI-{now().year:02d}{now().month:02d}F{count:04d}"
+            factura.save()
+            messages.success(request, "Factura de otros ingresos creada correctamente.")
+            return redirect('lista_facturas_otros_ingresos')
+    else:
+        form = FacturaOtrosIngresosForm()
+    return render(request, 'otros_ingresos/crear_factura.html', {'form': form})
+
+@login_required
+def lista_facturas_otros_ingresos(request):
+    facturas = FacturaOtrosIngresos.objects.all().order_by('-fecha_emision')
+    
+    # Filtrar por empresa si no es superusuario
+    if not request.user.is_superuser:
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+
+    # Paginación
+    paginator = Paginator(facturas, 25)  # 25 facturas por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'otros_ingresos/lista_facturas.html', {'facturas': page_obj})
+
+@login_required
+def registrar_cobro_otros_ingresos(request, factura_id):
+    factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+
+    if request.method == 'POST':
+        form = CobroForm (request.POST,request.FILES)
+        if form.is_valid():
+            cobro = form.save(commit=False)
+            cobro.factura = factura
+            cobro.registrado_por = request.user
+            cobro.save()
+            # Actualiza estatus de la factura si ya está pagada
+            total_cobrado = sum([c.monto for c in factura.cobros.all()])
+            if total_cobrado >= factura.monto:
+                factura.estatus = 'cobrada'
+                factura.save()
+            messages.success(request, "Cobro registrado correctamente.")
+            return redirect('lista_facturas_otros_ingresos')
+    else:
+        form = CobroForm()
+
+    return render(request, 'otros_ingresos/registrar_cobro.html', {
+        'form': form,
+        'factura': factura,
+    })
+
+@login_required
+def detalle_factura_otros_ingresos(request, factura_id):
+    factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+    cobros = factura.cobros.all().order_by('fecha_cobro')
+    return render(request, 'otros_ingresos/detalle_factura.html', {
+        'factura': factura,
+        'cobros': cobros,
+    })
