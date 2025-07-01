@@ -47,7 +47,10 @@
         <a href="{% url 'crear_local' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle me-1"></i>Nuevo local
         </a>
-
+        <form method="get" class="mb-3 d-flex" role="search">
+    <input type="text" name="q" class="form-control me-2" placeholder="Buscar local por número, o cliente" value="{{ q|default:'' }}">
+    <button type="submit" class="btn btn-outline-primary">Buscar</button>
+</form>
         <!-- Local table -->
         <div class="table-responsive rounded-3 border">
             <table class="table align-middle mb-0 shadow-sm">
@@ -102,7 +105,7 @@
   <ul class="pagination">
     {% if locales.has_previous %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ locales.previous_page_number }}">Anterior</a>
+        <a class="page-link" href="?q={{ q }}&page={{ locales.previous_page_number }}">Anterior</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">Anterior</span></li>
@@ -110,7 +113,7 @@
     <li class="page-item disabled"><span class="page-link">Página {{ locales.number }} de {{ locales.paginator.num_pages }}</span></li>
     {% if locales.has_next %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ locales.next_page_number }}">Siguiente</a>
+        <a class="page-link" href="?q={{ q }}&page={{ locales.next_page_number }}">Siguiente</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
