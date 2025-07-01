@@ -6,14 +6,41 @@ class FacturaForm(forms.ModelForm):
         ('local', 'Local Comercial'),
         ('area_comun', 'Área Común'),
     ]
-    tipo_origen = forms.ChoiceField(choices=TIPO_ORIGEN_CHOICES, label="Origen de la factura", required=True)
+    tipo_origen = forms.ChoiceField(choices=TIPO_ORIGEN_CHOICES, label="Origen de la factura", required=True, widget=forms.Select(attrs={'class': 'form-select'}))
 
     class Meta:
         model = Factura
         #fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto', 'estatus','observaciones']
         fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto','cfdi', 'observaciones']
         widgets = {
-            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}),
+            'cliente': forms.Select(attrs={
+                'class': 'form-select'
+                }),
+            'local': forms.Select(attrs={
+                'class': 'form-select'
+                }),
+            'area_comun': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+             'tipo_cuota': forms.Select(attrs={
+                'class': 'form-select'                
+                }),
+            'fecha_vencimiento': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+                }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control',                                                                                                                                                                
+                'placeholder': 'Monto'
+                }),
+            'cfdi': forms.FileInput(attrs={
+                'class': 'form-control'
+                }),
+            'observaciones': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control',
+                'placeholder': 'Observaciones'
+                }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -54,7 +81,26 @@ class PagoForm(forms.ModelForm):
         model = Pago
         fields = ['fecha_pago', 'monto', 'forma_pago','comprobante', 'observaciones']
         widgets = {
-            'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_pago': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Monto'
+            }),
+            'forma_pago': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'comprobante': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control',
+                'placeholder': 'Observaciones'
+            }),
+                
         }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -87,6 +133,40 @@ class FacturaEditForm(forms.ModelForm):
     class Meta:
         model = Factura
         fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota','cfdi', 'estatus', 'observaciones']    
+        widgets = {
+            'cliente': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'local': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'area_comun': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'folio': forms.TextInput(attrs={
+                'class': 'form-control'
+            }),
+            'fecha_vencimiento': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'tipo_cuota': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'cfdi': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'estatus': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control'
+            }),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

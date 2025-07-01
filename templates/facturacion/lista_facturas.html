@@ -8,184 +8,203 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 17/06/2025
+      Date of modification: 30/06/2025
       Description: Generated invoices
     -->
     <meta charset="UTF-8">
-    <title>Facturas</title>
+    <title>Facturas ingresos</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+    {% include 'navbar.html' %}
+
     <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
         <div class="d-flex align-items-center ms-auto">  
             <button id="toggleDark" class="toggle-switch">
                 <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
             </button>
         </div>
-    </div>
-    <h2> Facturas Ingresos</h2>
-    <!-- Bloque para mostrar mensajes -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-    <div>
-    
-    </div>
-    <form method="get" class="row g-2 mb-3">
-        {% if request.user.is_superuser %}
-        <div class="col-auto">
-            <label for="empresa">Empresa:</label>
-            <select name="empresa" id="empresa" class="form-select">
-                <option value="">-- Todas --</option>
-                {% for empresa in empresas %}
-                    <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
-                        {{ empresa.nombre }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        {% endif %}
-        <div class="col-auto">
-            <label for="local_id">Local:</label>
-            <select name="local_id" id="local_id" class="form-select">
-                <option value="">Todos los locales</option>
-                {% for local in locales %}
-                    <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
-                        {{ local }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="area_id">Área común:</label>
-            <select name="area_id" id="area_id" class="form-select">
-                <option value="">Todas las áreas</option>
-                {% for area in areas %}
-                    <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
-                        {{ area }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-auto align-self-end">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Limpiar</a>
+    </div> -->
 
-        </div>
-        
-    </form>
-    <div>
-        <a href="{% url 'crear_factura' %}" class="btn btn-success mb-3">+ Nueva factura </a>
- <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
-    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-3">Regresar</a>
-    </div>
+    <!-- Main content -->
+    <div class="container-fluid mt-4">
+        <h2>Facturas ingresos</h2>
 
-    <table class="table table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Folio</th>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Cliente</th>
-                <th>Local/Área</th>
-                <th>Monto</th>
-                <th>T.Cuota</th>
-                <th>Fecha Vencimiento</th>
-              <!--  <th>Fecha emisión</th>  -->
-                <th>Saldo</th>
-                <th>Concepto</th>
-                <th>Status</th>
-                <th>Acciones</th>
-                <th>CFDI</th>
-                <th>Detalle</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for factura in facturas %}
-                <tr>
-                    <td>{{ factura.folio }}</td>
-                    {% if request.user.is_superuser %}
-                        <td>{{ factura.empresa.nombre }}</td>
-                    {% endif %}
-                    <td>{{ factura.cliente.nombre }}</td>
-                    <td>
-                        {% if factura.local %}
-                            {{ factura.local.numero }}
-                        {% elif factura.area_comun %}
-                            {{ factura.area_comun.numero }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                    <td>{{ factura.tipo_cuota}}</td>
-                    <td>{{ factura.fecha_vencimiento }}</td>
-                  <!--  <td>{{ factura.fecha_emision }}</td>  -->
-                    <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
-                    <td>{{factura.observaciones}}</td>
-                    <td>{{ factura.get_estatus_display }}</td>    
-                    <td>
-                            {% if factura.saldo_pendiente > 0 %}    
-                            <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-success">Cobrar</a>
-                            <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-primary">Editar</a>
-                        {% else %}
-                            <span class="text-muted"></span>
-                        {% endif %}
-                      
-                        
-                    </td>
-                    
-                    <td>
-                        
-                        {% if factura.cfdi and factura.cfdi|archivo_existe %}
-                            <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-light btn-sm">CFDI</a>
-                        {% elif factura.cfdi %}
-                            
-                        {% endif %}
-                    </td>
-                        <td>
-                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-info btn-sm">Ver</a>
-                        </td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="10">No hay facturas registradas.</td>
-                </tr>
+        <!-- Block for displaying messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
-        </tbody>
-    </table>
+        {% endif %}
+    
+        <a href="{% url 'crear_factura' %}" class="btn btn-crear mb-3">
+            <i class="bi bi-plus-circle me-1"></i> Nueva factura 
+        </a>
+        <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
+        <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
+       
+        <form method="get" class="row g-2 mb-3">
+            {% if request.user.is_superuser %}
+            <div class="col-auto">
+                <label for="empresa">Empresa:</label>
+                <select name="empresa" id="empresa" class="form-select">
+                    <option value="">-- Todas --</option>
+                    {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
+                            {{ empresa.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-auto">
+                <label for="local_id">Local:</label>
+                <select name="local_id" id="local_id" class="form-select">
+                    <option value="">Todos los locales</option>
+                    {% for local in locales %}
+                        <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
+                            {{ local }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label for="area_id">Área común:</label>
+                <select name="area_id" id="area_id" class="form-select">
+                    <option value="">Todas las áreas</option>
+                    {% for area in areas %}
+                        <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
+                            {{ area }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto align-self-end">
+                <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+                <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">Limpiar</a>
+            </div>
+        </form>
+        
+        <!-- Invoices table -->
+        <div class="table-responsive rounded-3 border">
+            <table class="table align-middle mb-0 shadow-sm">
+                <thead>
+                    <tr>
+                        <th>Folio</th>
+                        {% if request.user.is_superuser %}
+                            <th>Empresa</th>
+                        {% endif %}
+                        <th>Cliente</th>
+                        <th>Local/Área</th>
+                        <th>Monto</th>
+                        <th>T.Cuota</th>
+                        <th>Fecha Vencimiento</th>
+                    <!--  <th>Fecha emisión</th>  -->
+                        <th>Saldo</th>
+                        <th>Concepto</th>
+                        <th>Estatus</th>
+                        <th>Acciones</th>
+                        <th>CFDI</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for factura in facturas %}
+                        <tr>
+                            <td>{{ factura.folio }}</td>
+                            {% if request.user.is_superuser %}
+                                <td>{{ factura.empresa.nombre }}</td>
+                            {% endif %}
+                            <td>{{ factura.cliente.nombre }}</td>
+                            <td>
+                                {% if factura.local %}
+                                    {{ factura.local.numero }}
+                                {% elif factura.area_comun %}
+                                    {{ factura.area_comun.numero }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>${{ factura.monto|floatformat:2|intcomma }}</td>
+                            <td>{{ factura.tipo_cuota}}</td>
+                            <td>{{ factura.fecha_vencimiento }}</td>
+                        <!--  <td>{{ factura.fecha_emision }}</td>  -->
+                            <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
+                            <td>{{factura.observaciones}}</td>
+                            <td>{{ factura.get_estatus_display }}</td>    
+                            <td class="text-nowrap">
+                                    {% if factura.saldo_pendiente > 0 %}    
+                                    <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-outline-success" title="Cobrar">
+                                        <i class="bi bi-cash-coin me-1"></i> 
+                                    </a>
+                                    <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil-square me-1"></i> 
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted"></span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if factura.cfdi and factura.cfdi|archivo_existe %}
+                                    <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> CFDI
+                                    </a>
+                                {% elif factura.cfdi %}
+                                    
+                                {% endif %}
+                            </td>
+                                <td>
+                                    <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver">
+                                        <i class="bi bi-eye me-1"></i> 
+                                    </a>
+                                </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="10">No hay facturas registradas.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <nav aria-label="Paginación">
-  <ul class="pagination">
-    {% if facturas.has_previous %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-    {% endif %}
-    <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
-    {% if facturas.has_next %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ facturas.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-    {% endif %}
-  </ul>
-</nav>
-</a>
-</div>
+        <ul class="pagination">
+        {% if facturas.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
+        {% if facturas.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ facturas.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+        {% endif %}
+        </ul>
+    </nav>
+
+    <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
