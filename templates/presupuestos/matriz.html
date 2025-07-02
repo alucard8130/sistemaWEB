@@ -33,6 +33,20 @@
             </button>
         </div>
     </div>
+     <!-- Block for displaying messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                <!-- Block for displaying messages -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                    </div>
+                {% endif %}
 <div class="container mt-2">
     <form method="get" class="row g-2 mb-3">
         <div class="col-auto">

@@ -80,25 +80,41 @@ def tipos_gasto_lista(request):
 
 @login_required
 def tipo_gasto_crear(request):
+    user = request.user
+    perfil = getattr(user, 'perfilusuario', None)
     if request.method == 'POST':
-        form = TipoGastoForm(request.POST, user=request.user) 
+        post = request.POST.copy()
+        if not user.is_superuser and perfil and perfil.empresa:
+            post['empresa'] = perfil.empresa.pk
+        form = TipoGastoForm(post, user=user)
         if form.is_valid():
-            form.save()
+            tipo_gasto = form.save(commit=False)
+            if not user.is_superuser and perfil and perfil.empresa:
+                tipo_gasto.empresa = perfil.empresa
+            tipo_gasto.save()
             return redirect('tipos_gasto_lista')
     else:
-        form = TipoGastoForm(user=request.user)
+        form = TipoGastoForm(user=user)
     return render(request, 'gastos/tipo_gasto_form.html', {'form': form, 'modo': 'crear'})
 
 @login_required
 def tipo_gasto_editar(request, pk):
     tipo = get_object_or_404(TipoGasto, pk=pk)
+    user = request.user
+    perfil = getattr(user, 'perfilusuario', None)
     if request.method == 'POST':
-        form = TipoGastoForm(request.POST, instance=tipo)
+        post = request.POST.copy()
+        if not user.is_superuser and perfil and perfil.empresa:
+            post['empresa'] = perfil.empresa.pk
+        form = TipoGastoForm(post, instance=tipo, user=user)
         if form.is_valid():
-            form.save()
+            tipo_gasto = form.save(commit=False)
+            if not user.is_superuser and perfil and perfil.empresa:
+                tipo_gasto.empresa = perfil.empresa
+            tipo_gasto.save()
             return redirect('tipos_gasto_lista')
     else:
-        form = TipoGastoForm(instance=tipo)
+        form = TipoGastoForm(instance=tipo, user=user)
     return render(request, 'gastos/tipo_gasto_form.html', {'form': form, 'modo': 'editar', 'tipo': tipo})
 
 @login_required
@@ -211,7 +227,7 @@ def registrar_pago_gasto(request, gasto_id):
     saldo_restante = gasto.monto - sum([p.monto for p in pagos])
 
     if request.method == 'POST':
-        form = PagoGastoForm(request.POST)
+        form = PagoGastoForm(request.POST,request.FILES)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.gasto = gasto

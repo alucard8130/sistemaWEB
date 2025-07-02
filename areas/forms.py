@@ -79,6 +79,7 @@ class AreaComunForm(forms.ModelForm):
         if user and not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
             empresa = user.perfilusuario.empresa
+            self.fields['empresa'].initial = empresa  # <-- Asigna el valor aquí
             self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
         else:
             self.fields['cliente'].queryset = Cliente.objects.all()
@@ -91,31 +92,26 @@ class AreaComunForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        nombre = cleaned_data.get('nombre')
+        numero = cleaned_data.get('numero')  # Cambiado de 'nombre' a 'numero'
         empresa = cleaned_data.get('empresa')
         fecha_inicial = cleaned_data.get('fecha_inicial')
         fecha_fin = cleaned_data.get('fecha_fin')
 
-        if nombre and empresa:
-            qs = AreaComun.objects.filter(nombre__iexact=nombre, empresa=empresa, activo=True)
+        if numero and empresa:
+            qs = AreaComun.objects.filter(numero__iexact=numero, empresa=empresa, activo=True)
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise forms.ValidationError("Ya existe un área común con ese nombre en esta empresa.")
-        
-        #if fecha_inicial or fecha_fin == 'dd/mm/yyyy':
-         #   raise forms.ValidationError("Debe ingresar ambas fechas (inicial y fin).")
-        
+                raise forms.ValidationError("Ya existe un área común con ese número en esta empresa.")
+
         if not fecha_inicial:
             raise forms.ValidationError("Debe ingresar la fecha inicial.")        
         if not fecha_fin:
             raise forms.ValidationError("Debe ingresar la fecha fin.")
 
-        if fecha_inicial > fecha_fin:
+        if fecha_inicial and fecha_fin and fecha_inicial > fecha_fin:
             raise forms.ValidationError("La fecha inicial no puede ser posterior a la fecha fin.")
-        
 
-            
         return cleaned_data
           
 

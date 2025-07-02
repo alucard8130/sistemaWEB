@@ -1,6 +1,7 @@
 <!-- filepath: informes_financieros/templates/informes_financieros/ingresos_vs_gastos.html -->
 {% load humanize %}
-{%load custom_filters %}
+{% load custom_filters %}
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,6 +11,11 @@
 <body>
 <div class="container mt-4">
 <h2>Ingresos  vs Gastos </h2>
+{% if mes_letra %}
+    <div class="alert alert-info mb-2">
+        <strong>Periodo:</strong> {{ mes_letra }}
+    </div>
+{% endif %}
 <form method="get" class="row g-2 mb-3 align-items-end">
     <div class="col-auto">
     {% if request.user.is_superuser %}
@@ -27,75 +33,118 @@
         <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
             {% if periodo == 'periodo_actual' %}disabled{% endif %}>Periodo actual</button>
     </div>
+ 
     <div class="col-auto">
-        <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+        {% comment %} Selector de mes con nombres en español {% endcomment %}
+{% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
+<select name="mes" class="form-select" style="width:auto;">
+    <option value="">Mes</option>
+    {% for m in 1|get_range:12 %}
+        <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
+            {{ meses|index:m|default:"" }}
+        </option>
+    {% endfor %}
+</select>
+{% endwith %}
     </div>
     <div class="col-auto">
-        <input type="date" name="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+        <select name="anio" class="form-select" style="width:auto;">
+            <option value="">Año</option>
+            {% for y in 2022|get_range:2030 %}
+                <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+            {% if mes and anio %}
+    <div class="alert alert-info mb-2">
+        <strong>Periodo:</strong> {{ mes }}/{{ anio }}
+    </div>
+{% endif %}
+        </select>
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-primary">Filtrar periodo</button>
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
     </div>
-    <div>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
-    </div>
+
 </form>
-{% if mes_letra %}
-    <div class="alert alert-info mb-2">
-        <strong>Periodo:</strong> {{ mes_letra }}
-    </div>
-{% endif %}
-<div class="row">
-    <div class="col-md-8">
-        <canvas id="chartIngresosGastos"></canvas>
-    </div>
-    <div class="col-md-4">
-        <ul class="list-group">
-            {% for origen, monto in ingresos_por_origen.items %}
-                <li class="list-group-item">
-                    Ingresos {{ origen|capfirst }}: <strong>${{ monto|floatformat:2|intcomma }}</strong>
-                </li>
-            {% endfor %}
-            <li class="list-group-item">Total Gastos: <strong>${{ total_gastos|floatformat:2|intcomma }}</strong></li>
-        </ul>
+<div class="card shadow position-absolute" style="top: 90px; right: 40px; min-width: 260px; z-index: 10;">
+    <div class="card-body">
+        <h5 class="card-title mb-3">Resumen Financiero</h5>
+        <p class="mb-2"><strong>Total Ingresos:</strong> {{ total_ingresos|floatformat:2|intcomma }}</p>
+        <p class="mb-2"><strong>Total Gastos:</strong> {{ total_gastos|floatformat:2|intcomma }}</p>
+        <p class="mb-0"><strong>Resultado:</strong> {{ saldo|floatformat:2|intcomma }}</p>
     </div>
 </div>
+<div class="row" style="height: 70vh;" >
+    <div class="col-6 d-flex flex-column align-items-center justify-content-center">
+        <h5>Ingresos por origen</h5>
+        <canvas id="chartIngresos" style="width:100% !important; height:60vh !important;"></canvas>
+    </div>
+    <div class="col-6 d-flex flex-column align-items-center justify-content-center">
+        <h5>Gastos por tipo</h5>
+        <canvas id="chartGastos" style="width:100% !important; height:60vh !important;"></canvas>
+    </div>
+</div>
+    
+    
+  
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const labels = [{% for origen in ingresos_por_origen.keys %}'{{ origen|capfirst }}',{% endfor %}'Gastos'];
-const ingresosData = [{% for monto in ingresos_por_origen.values %}{{ monto }},{% endfor %}0];
-const gastosData = [{% for _ in ingresos_por_origen %}0,{% endfor %}{{ total_gastos }}];
+// Ingresos por origen
+const ingresosLabels = [{% for origen in ingresos_por_origen.keys %}'{{ origen|capfirst }}',{% endfor %}];
+const ingresosData = [{% for monto in ingresos_por_origen.values %}{{ monto }},{% endfor %}];
 
-const ctx = document.getElementById('chartIngresosGastos');
-new Chart(ctx, {
+const ctxIngresos = document.getElementById('chartIngresos');
+new Chart(ctxIngresos, {
     type: 'bar',
     data: {
-        labels: labels,
-        datasets: [
-            {
-                label: 'Ingresos',
-                data: ingresosData,
-                backgroundColor: '#198754'
-            },
-            {
-                label: 'Gastos',
-                data: gastosData,
-                backgroundColor: '#dc3545'
-            }
-        ]
+        labels: ingresosLabels,
+        datasets: [{
+            label: 'Ingresos',
+            data: ingresosData,
+            backgroundColor: '#198754'
+        }]
     },
     options: {
+        indexAxis: 'y',
+
         responsive: true,
-        plugins: {
-            legend: { position: 'top' }
-        },
+        plugins: { legend: { display: false } },
         scales: {
-            y: {
+            x: {
                 beginAtZero: true,
                 ticks: {
-                    callback: function(value) {
-                        return '$' + value.toLocaleString('es-MX');
-                    }
+                  display: false,
+                }
+            }
+        }
+    }
+});
+
+// Gastos por tipo
+const gastosLabels = [{% for g in gastos_por_tipo %}'{{ g.tipo|capfirst }}',{% endfor %}];
+const gastosData = [{% for g in gastos_por_tipo %}{{ g.total }},{% endfor %}];
+
+const ctxGastos = document.getElementById('chartGastos');
+new Chart(ctxGastos, {
+    type: 'bar',
+    data: {
+        labels: gastosLabels,
+        datasets: [{
+            label: 'Gastos',
+            data: gastosData,
+            backgroundColor: '#dc3545'
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+     
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: {
+                    display: false,
                 }
             }
         }

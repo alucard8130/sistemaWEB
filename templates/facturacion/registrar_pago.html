@@ -21,27 +21,39 @@
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-<body>
-    {% include 'navbar.html' %}
-
-    <!-- Main content -->
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-4 col-sm-6 mx-auto">
-
-                <!-- Styled title with the same width as the form -->
-                <h2 class="form-title text-center mb-0">Registrar cobro - Factura {{ factura.folio }}</h2>
-       
-                <!-- Block for displaying messages -->
+             <!-- Block for displaying messages -->
                 {% if messages %}
                     {% for message in messages %}
                         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
+                <!-- Block for displaying messages -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                    </div>
+                {% endif %}
+<body>
+    {% include 'navbar.html' %}
+               
+    <!-- Main content -->
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-4 col-sm-6 mx-auto">
+    
+                <!-- Styled title with the same width as the form -->
+                <h2 class="form-title text-center mb-0">Registrar cobro - Factura {{ factura.folio }}</h2>
+       
+                
 
                 <p><strong>Monto total:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
                 <p><strong>Cobrado:</strong> ${{ factura.total_pagado|floatformat:2|intcomma }}</p>
                 <p><strong>Saldo pendiente:</strong> ${{ saldo|floatformat:2|intcomma }}</p>
+
+                
+
 
                 <form method="post" class="p-4 rounded custom-form" enctype="multipart/form-data">
                     {% csrf_token %}

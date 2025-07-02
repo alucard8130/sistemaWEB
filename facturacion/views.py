@@ -109,9 +109,9 @@ def crear_factura(request):
                         from django.utils.timezone import now
                         count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
                         if tipo == 'local':
-                            factura.folio = f"CM-{now().year:02d}{now().month:02d}F{count:04d}"
+                            factura.folio = f"CM-F{count:05d}"
                         elif tipo == 'area_comun':
-                            factura.folio = f"AC-{now().year:02d}{now().month:02d}F{count:04d}"
+                            factura.folio = f"AC-F{count:05d}"
                         factura.save()
 
                         # Asignar cliente a local/área si está vacío o si hay conflicto autorizado
@@ -220,7 +220,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             ).exists()
             if not existe:
                 count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                folio = f"CM-{año:02d}{mes:02d}{count:04d}"
+                folio = f"CM-F{count:05d}"
                 Factura.objects.create(
                     empresa=local.empresa,
                     cliente=local.cliente,
@@ -247,7 +247,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             ).exists()
             if not existe:
                 count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                folio = f"AC-{año:02d}{mes:02d}{count:04d}"
+                folio = f"AC-F{count:05d}"
                 Factura.objects.create(
                     empresa=area.empresa,
                     cliente=area.cliente,
@@ -1094,7 +1094,7 @@ def crear_factura_otros_ingresos(request):
             factura.empresa = factura.cliente.empresa
             # Generar folio único
             count = FacturaOtrosIngresos.objects.filter(fecha_emision__year=now().year).count() + 1
-            factura.folio = f"OI-{now().year:02d}{now().month:02d}F{count:04d}"
+            factura.folio = f"OI-F{count:05d}"
             factura.save()
             messages.success(request, "Factura de otros ingresos creada correctamente.")
             return redirect('lista_facturas_otros_ingresos')

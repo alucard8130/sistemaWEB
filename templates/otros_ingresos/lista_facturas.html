@@ -44,18 +44,19 @@
                   <th>Empresa</th>
                 {% endif %}
                 <th>Cliente</th>
-                <th>Tipo ingreso</th>
+                
                 <th>Monto</th>
                 <th>Saldo</th>
+                <th>Tipo ingreso</th>
               <!--  <th>Fecha emisión</th>-->
-                <th>Fecha vencimiento</th>
-                <th>Descripcion</th>
+                <th>Periodo</th>
+                <th>Concepto</th>
                 <th>Estatus</th>
                 
                 <th>Acciones</th>
-                
+                <th>CFDI</th>    
                 <th>Historial</th>
-                <th>CFDI</th>
+            
             </tr>
         </thead>
         <tbody>
@@ -66,11 +67,12 @@
                       <td>{{ factura.empresa.nombre }}</td>
                     {% endif %}
                     <td>{{ factura.cliente.nombre }}</td>
-                    <td>{{ factura.get_tipo_ingreso_display }}</td>
+                    
                     <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                     <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
+                    <td>{{ factura.get_tipo_ingreso_display }}</td>
                   <!--  <td>{{ factura.fecha_emision }}</td> -->
-                    <td>{{ factura.fecha_vencimiento }}</td>
+                    <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
                     <td>{{factura.observaciones}}</td>
                     <td>{{ factura.get_estatus_display }}</td>
                     
@@ -79,16 +81,17 @@
                         <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-success">Cobrar</a>
                     {% endif %}
                     </td>
-                    <td>
-                     <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-info btn-sm">Ver</a>
-                    </td>
-                    <td>
+                        <td>
                         {% if factura.cfdi|archivo_existe %}
                             <a href="{{ factura.cfdi.url }}" class="btn btn-primary btn-sm" target="_blank">CFDI</a>
                         {% else %}
                             <span class="text-muted"></span>
                         {% endif %}
-                    
+                    </td>
+                    <td>
+                     <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-info btn-sm">Ver</a>
+                    </td>
+                
                 </tr>
 
             {% empty %}

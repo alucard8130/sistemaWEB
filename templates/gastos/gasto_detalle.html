@@ -24,7 +24,7 @@
             </button>
         </div>
     </div>
-<div class="container mt-4">
+<div class="container mt-4" encictype="multipart/form-data">
     <h3>Detalle de Gasto</h3>
     <table class="table table-bordered mb-4">
         <tr><th>Monto</th><td>${{ gasto.monto|floatformat:2|intcomma }}</td></tr>
@@ -51,6 +51,7 @@
                 <th>Forma de Pago</th>
                 <th>Registrado por</th>
                 <th>Comentario</th>
+                <th>Comprobante</th>
             </tr>
         </thead>
         <tbody>
@@ -61,6 +62,12 @@
                 <td>{{ pago.get_forma_pago_display }}</td>
                 <td>{{ pago.registrado_por }}</td>
                 <td>{{ pago.referencia }}</td>
+                <td>
+                    {% if pago.comprobante %}
+                        <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
+                    {% else %}
+                        <span class="text-muted"></span>
+                    {% endif %}
             </tr>
             {% empty %}
             <tr>

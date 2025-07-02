@@ -129,7 +129,7 @@
                     <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                     <td>{{ pago.forma_pago|title }}</td>
                     <td>{{ pago.factura.folio }}</td>
-                    <td>{{ pago.fecha_pago }}</td> 
+                    <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td> 
                     <td>{{ pago.observaciones}}</td> 
                     <td>
                         {% if pago.comprobante and pago.comprobante|archivo_existe %}

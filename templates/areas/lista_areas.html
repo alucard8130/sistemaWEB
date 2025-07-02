@@ -48,7 +48,10 @@
         <a href="{% url 'crear_area' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle me-1"></i> Nueva área 
         </a>
-
+        <form method="get" class="mb-3 d-flex" role="search">
+    <input type="text" name="q" class="form-control me-2" placeholder="Buscar área por número o cliente" value="{{ q|default:'' }}">
+    <button type="submit" class="btn btn-outline-primary">Buscar</button>
+</form>
         <!-- Area table -->
         <div class="table-responsive rounded-3 border"> 
             <table class="table align-middle mb-0 shadow-sm">
@@ -59,13 +62,13 @@
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
                         {% endif %}
-                        <th>Sup. m²</th>
+                        <th>Superficie</th>
                         <th>Cuota</th>
                         <th>Depósito</th>
                         <th>Giro</th>
                         <th>Tipo</th>
                         <th>Cantidad</th>
-                        <th>Fecha Inicio</th>
+                        <th>Fecha Ini</th>
                         <th>Fecha Fin</th>
                         <th>Ubicación</th>
                         <th>Acciones</th>
@@ -85,8 +88,8 @@
                             <td>{{ area.giro }}</td>
                             <td>{{ area.tipo_area }}</td>
                             <td>{{ area.cantidad_areas }}</td>
-                            <td>{{ area.fecha_inicial }}</td>
-                            <td>{{ area.fecha_fin }}</td>
+                            <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
+                            <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
                             <td>{{ area.ubicacion }}</td>
                             <td style="white-space: nowrap;">
                                 <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
@@ -109,7 +112,7 @@
   <ul class="pagination">
     {% if areas.has_previous %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ areas.previous_page_number }}">Anterior</a>
+        <a class="page-link" href="?q={{ q }}&page={{ areas.previous_page_number }}">Anterior</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">Anterior</span></li>
@@ -117,7 +120,7 @@
     <li class="page-item disabled"><span class="page-link">Página {{ areas.number }} de {{ areas.paginator.num_pages }}</span></li>
     {% if areas.has_next %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ areas.next_page_number }}">Siguiente</a>
+        <a class="page-link" href="?q={{ q }}&page={{ areas.next_page_number }}">Siguiente</a>
       </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
