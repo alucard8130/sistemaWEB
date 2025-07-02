@@ -15,26 +15,32 @@ from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm
 from unidecode import unidecode
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
+from django.db.models import Q
+
 
 
 
 @login_required
 def lista_areas(request):
     user = request.user
+    query = request.GET.get("q", "")
     if user.is_superuser:
-        areas = AreaComun.objects.filter(activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(activo=True)
     else:
         empresa = user.perfilusuario.empresa
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
 
-# paginacion
-    paginator = Paginator(areas, 20)  # 20 áreas por página
+    if query:
+        areas = areas.filter(
+            Q(numero__icontains=query) | Q(cliente__nombre__icontains=query)
+        )
+
+    areas = areas.order_by('numero')
+    paginator = Paginator(areas, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-
-    return render(request, 'areas/lista_areas.html', {'areas': areas, 'areas': page_obj  })
-
+    return render(request, 'areas/lista_areas.html', {'areas': page_obj, 'q': query})
 
 @login_required
 def crear_area(request):
@@ -42,14 +48,19 @@ def crear_area(request):
     perfil = getattr(user, 'perfilusuario', None)
 
     if request.method == 'POST':
-        #form = AreaComunForm(request.POST, user=user)
-        form = AreaComunForm(request.POST or None,  user=request.user)
+        post = request.POST.copy()
+        if not user.is_superuser and perfil and perfil.empresa:
+            post['empresa'] = perfil.empresa.pk
+        form = AreaComunForm(post, user=user)
         if form.is_valid():
             area = form.save(commit=False)
-            if not user.is_superuser:
+            if not user.is_superuser and perfil and perfil.empresa:
                 area.empresa = perfil.empresa
             area.save()
+            messages.success(request, "Área común creada correctamente.")
             return redirect('lista_areas')
+        else:
+            messages.error(request, "No se pudo crear el área. Revisa los datos ingresados.")
     else:
         form = AreaComunForm(user=user)
         if not user.is_superuser and perfil and perfil.empresa:
@@ -65,10 +76,17 @@ def editar_area(request, pk):
         return redirect('lista_areas')
 
     if request.method == 'POST':
-        form = AreaComunForm(request.POST, instance=area)
+        post = request.POST.copy()
+        perfil = getattr(user, 'perfilusuario', None)
+        if not user.is_superuser and perfil and perfil.empresa:
+            post['empresa'] = perfil.empresa.pk
+        form = AreaComunForm(post, instance=area, user=user)
         if form.is_valid():
             area_original = AreaComun.objects.get(pk=pk)
             area_modificada = form.save(commit=False)
+            # Asegura la empresa para usuarios normales
+            if not user.is_superuser and perfil and perfil.empresa:
+                area_modificada.empresa = perfil.empresa
 
             for field in form.changed_data:
                 valor_ant = getattr(area_original, field)
@@ -81,8 +99,8 @@ def editar_area(request, pk):
                     valor_nuevo=valor_nuevo,
                     usuario=request.user,
                 )
-            form.save()
-            messages.success(request, "Area Comun actualizada correctamente.")
+            area_modificada.save()
+            messages.success(request, "Área común actualizada correctamente.")
             return redirect('lista_areas')
     else:
         form = AreaComunForm(instance=area, user=user)
