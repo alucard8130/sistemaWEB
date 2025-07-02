@@ -98,15 +98,14 @@
                 {% endif %}
                 <th>Proveedor/Empleado</th>
                 <th>Forma de Pago</th>
-                <th>Comprobante</th>
                 <th>Comentarios</th>
-                <th>Registrado por</th>
+                <th>Comprobante</th>
             </tr>
         </thead>
         <tbody>
             {% for pago in pagos %}
             <tr>
-                <td>{{ pago.fecha_pago }}</td>
+                <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td>
                 <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                 {% if request.user.is_superuser %}
                 <td>{{ pago.gasto.empresa.nombre }}</td>
@@ -119,14 +118,15 @@
                     {% endif %}
                 </td>
                 <td>{{ pago.get_forma_pago_display }}</td>
+                
+                <td>{{ pago.referencia }}</td>
                 <td>
                     {% if pago.comprobante %}
                         <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
                     {% else %}
-                        No disponible
+                        <span class="text-muted"></span>
                     {% endif %}
-                <td>{{ pago.observaciones }}</td>
-                <td>{{ pago.registrado_por }}</td>
+      
             </tr>
             {% empty %}
             <tr>

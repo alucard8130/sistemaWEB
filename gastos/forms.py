@@ -37,7 +37,10 @@ class TipoGastoForm(forms.ModelForm):
                 empresa = getattr(user.perfilusuario, 'empresa', None)
                 if empresa:
                     self.fields['subgrupo'].queryset = SubgrupoGasto.objects.filter(empresa=empresa)    
-
+                    
+        if user and not user.is_superuser:
+            self.fields['empresa'].widget = forms.HiddenInput()
+            self.fields['empresa'].initial = user.perfilusuario.empresa
 
                     
 

@@ -33,7 +33,20 @@
             </button>
         </div>
     </div> -->
-
+    <!-- Block for displaying messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                <!-- Block for displaying messages -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                    </div>
+                {% endif %}
     <!-- Main content -->
     <div class="container-fluid mt-4">
         <h2>Facturas ingresos</h2>
@@ -101,15 +114,15 @@
                         <th>Cliente</th>
                         <th>Local/Área</th>
                         <th>Monto</th>
-                        <th>T.Cuota</th>
-                        <th>Fecha Vencimiento</th>
-                    <!--  <th>Fecha emisión</th>  -->
                         <th>Saldo</th>
+                        <th>Tipo Cuota</th>
+                        <th>Periodo</th>
+                    <!--  <th>Fecha emisión</th>  -->
                         <th>Concepto</th>
                         <th>Estatus</th>
                         <th>Acciones</th>
                         <th>CFDI</th>
-                        <th>Detalle</th>
+                        <th>Historial</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -130,10 +143,11 @@
                                 {% endif %}
                             </td>
                             <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                            <td>{{ factura.tipo_cuota}}</td>
-                            <td>{{ factura.fecha_vencimiento }}</td>
-                        <!--  <td>{{ factura.fecha_emision }}</td>  -->
                             <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
+                            <td>{{ factura.tipo_cuota}}</td>
+                            <td>{{ factura.fecha_vencimiento|date:"b/y"|upper}}</td>
+                        <!--  <td>{{ factura.fecha_emision }}</td>  -->
+                            
                             <td>{{factura.observaciones}}</td>
                             <td>{{ factura.get_estatus_display }}</td>    
                             <td class="text-nowrap">

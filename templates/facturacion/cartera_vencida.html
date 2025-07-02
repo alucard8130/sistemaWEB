@@ -118,7 +118,7 @@
                 </td>
                 <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                 <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
-                <td>{{ factura.fecha_vencimiento }}</td>
+                <td>{{ factura.fecha_vencimiento|date:"d/b/y"|upper }}</td>
                 <td>{{ factura.dias_vencidos }}</td>
             </tr>
             {% empty %}

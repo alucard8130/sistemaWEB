@@ -62,13 +62,13 @@
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
                         {% endif %}
-                        <th>Sup. m²</th>
+                        <th>Superficie</th>
                         <th>Cuota</th>
                         <th>Depósito</th>
                         <th>Giro</th>
                         <th>Tipo</th>
                         <th>Cantidad</th>
-                        <th>Fecha Inicio</th>
+                        <th>Fecha Ini</th>
                         <th>Fecha Fin</th>
                         <th>Ubicación</th>
                         <th>Acciones</th>
@@ -88,8 +88,8 @@
                             <td>{{ area.giro }}</td>
                             <td>{{ area.tipo_area }}</td>
                             <td>{{ area.cantidad_areas }}</td>
-                            <td>{{ area.fecha_inicial }}</td>
-                            <td>{{ area.fecha_fin }}</td>
+                            <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
+                            <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
                             <td>{{ area.ubicacion }}</td>
                             <td style="white-space: nowrap;">
                                 <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">

@@ -59,16 +59,23 @@
                     <th>Forma de Cobro</th>
                     <th>Registrado por</th>
                     <th>Observaciones</th>
+                    <th>Comprobante</th>
                 </tr>
             </thead>
             <tbody>
                 {% for cobro in cobros %}
                 <tr>
-                    <td>{{ cobro.fecha_pago }}</td>
+                    <td>{{ cobro.fecha_pago|date:"d/b/y"|upper }}</td>
                     <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                     <td>{{ cobro.get_forma_pago_display }}</td>
                     <td>{{ cobro.registrado_por }}</td>
                     <td>{{ cobro.observaciones }}</td>
+                    <td>
+                        {% if cobro.comprobante %}
+                        <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-primary btn-sm">Ver Comprobante</a>
+                        {% else %}
+                        <span class="text-muted"></span>
+                        {% endif %}
                 </tr>
                 {% empty %}
                 <tr>

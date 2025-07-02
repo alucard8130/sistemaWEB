@@ -39,18 +39,18 @@
                 <!-- Styled title with the same width as the form -->
                 <h2 class="form-title text-center mb-0">Registrar área comun</h2>
                 <!-- Block for displaying messages -->
-{% if messages %}
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-  {% endfor %}
-{% endif %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
 
-<!-- Block for displaying form non-field errors -->
-{% if form.non_field_errors %}
-  {% for error in form.non_field_errors %}
-    <div class="alert alert-danger">{{ error }}</div>
-  {% endfor %}
-{% endif %}
+                <!-- Block for displaying form non-field errors -->
+                {% if form.non_field_errors %}
+                    {% for error in form.non_field_errors %}
+                        <div class="alert alert-danger">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
                 <!-- Form -->
                 <form method="post" class="p-4 rounded custom-form">
                     {% csrf_token %}

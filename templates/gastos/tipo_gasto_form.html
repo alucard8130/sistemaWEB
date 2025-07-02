@@ -10,7 +10,7 @@
         Description: Register charges
     -->
     <meta charset="UTF-8">
-    <title>Registrar Cobros</title>
+    <title>Nuevo tipo de gasto</title>
         <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
@@ -31,20 +31,33 @@
         </div>
     </div>
 <div class="container mt-4">
-    <h2>{% if modo == 'crear' %}Nuevo{% else %}Editar{% endif %} Tipo de Gasto</h2>
-    <form method="post">
-        {% csrf_token %}
-        {% for field in form %}
+    <h2>{% if modo == 'crear' %}Alta{% else %}Editar{% endif %} Tipo de Gasto</h2>
+<form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+        {% if field.name == "empresa" %}
+            {% if request.user.is_superuser %}
+                <div class="mb-3">
+                    {{ field.label_tag }} {{ field }}
+                    {% if field.errors %}
+                        <div class="text-danger">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+            {% else %}
+                {{ field }} {# Campo oculto, no mostrar label ni errores #}
+            {% endif %}
+        {% else %}
             <div class="mb-3">
                 {{ field.label_tag }} {{ field }}
                 {% if field.errors %}
                     <div class="text-danger">{{ field.errors }}</div>
                 {% endif %}
             </div>
-        {% endfor %}
-        <button type="submit" class="btn btn-primary">{% if modo == 'crear' %}Guardar{% else %}Actualizar{% endif %}</button>
-        <a href="{% url 'tipos_gasto_lista' %}" class="btn btn-secondary">Cancelar</a>
-    </form>
+        {% endif %}
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">{% if modo == 'crear' %}Guardar{% else %}Actualizar{% endif %}</button>
+    <a href="{% url 'tipos_gasto_lista' %}" class="btn btn-secondary">Cancelar</a>
+</form>
     
 </div>
     <!-- 🔹 Footer -->
