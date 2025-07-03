@@ -1,0 +1,135 @@
+<!-- filepath: c:\Users\smart\Documents\GitHub\sistemaWEB\templates\informes_financieros\estado_resultados.html -->
+{% load humanize %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Estado de Resultados</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+<div class="text-center mb-4">
+<!-- Debug -->
+
+    <h3>
+    {% if empresa_id %}
+        {% for emp in empresas %}
+            {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}
+                {{ emp.nombre }}
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        {% if request.user.is_superuser %}
+            Todas las empresas
+        {% else %}
+            {% for emp in empresas %}
+                {% if emp.id|stringformat:"s" == request.user.empresa_id|stringformat:"s" %}
+                    {{ emp.nombre }}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endif %}
+</h3>
+    <h4>Estado de Resultados</h4>
+    <div>
+        <strong>
+            {% if mes and anio %}
+                {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
+                    {{ meses|index:mes|default:"" }} {{ anio }}
+                {% endwith %}
+            {% elif fecha_inicio and fecha_fin %}
+                {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}
+            {% else %}
+                Todo el periodo
+            {% endif %}
+        </strong>
+    </div>
+</div>
+    
+    <form method="get" class="row g-2 mb-3 align-items-end">
+    {% if request.user.is_superuser %}
+    <div class="col-auto">
+        <select name="empresa" class="form-select" style="width:auto;">
+            <option value="">Todas las empresas</option>
+            {% for emp in empresas %}
+                <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    <div class="col-auto">
+        {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
+        <select name="mes" class="form-select" style="width:auto;">
+            <option value="">Mes</option>
+            {% for m in 1|get_range:12 %}
+                <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
+                    {{ meses|index:m|default:"" }}
+                </option>
+            {% endfor %}
+        </select>
+        {% endwith %}
+    </div>
+    <div class="col-auto">
+        <select name="anio" class="form-select" style="width:auto;">
+            <option value="">Año</option>
+            {% for y in 2022|get_range:2030 %}
+                <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+    <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
+        {% if periodo == 'periodo_actual' %}disabled{% endif %}>
+        Periodo actual
+    </button>
+</div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
+    </div>
+</form>
+
+    <div class="card my-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Ingresos</h5>
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for origen, monto in ingresos_por_origen.items %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ origen|capfirst }}
+                    <span>${{ monto|floatformat:2|intcomma }}</span>
+                </li>
+            {% endfor %}
+            <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                <strong>Total Ingresos</strong>
+                <strong>${{ total_ingresos|floatformat:2|intcomma }}</strong>
+            </li>
+        </ul>
+    </div>
+
+    <div class="card my-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Gastos</h5>
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for g in gastos_por_tipo %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ g.tipo|capfirst }}
+                    <span>${{ g.total|floatformat:2|intcomma }}</span>
+                </li>
+            {% endfor %}
+            <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                <strong>Total Gastos</strong>
+                <strong>${{ total_gastos|floatformat:2|intcomma }}</strong>
+            </li>
+        </ul>
+    </div>
+
+    <div class="alert alert-info text-end">
+        <strong>Resultado:</strong>
+        <span class="ms-2">${{ saldo|floatformat:2|intcomma }}</span>
+    </div>
+</div>
+</body>
+</html>

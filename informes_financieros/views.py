@@ -152,4 +152,106 @@ def reporte_ingresos_vs_gastos(request):
         'saldo': saldo,
     })
 
-# Create your views here.
+@login_required
+def estado_resultados(request):
+    empresas = Empresa.objects.all()
+    #empresa_id = request.GET.get('empresa')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    mes = request.GET.get('mes')
+    anio = request.GET.get('anio')
+    periodo = request.GET.get('periodo')
+    hoy = datetime.date.today()
+
+    # Si el usuario no es superusuario, usar su empresa por defecto
+    if not request.user.is_superuser:
+         empresa_id = str(getattr(request.user, 'empresa_id', '') or '')
+    else:
+        empresa_id = request.GET.get('empresa') or ''
+
+
+    pagos = Pago.objects.exclude(forma_pago='nota_credito')
+    cobros_otros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa')
+    gastos = Gasto.objects.all()
+
+    if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
+        periodo = 'periodo_actual'
+
+    if periodo == 'periodo_actual':
+        fecha_inicio = hoy.replace(month=1, day=1)
+        fecha_fin = hoy
+        mes = ''
+        anio = ''
+
+    # Filtro por mes y año
+    if mes and anio:
+        try:
+            mes = int(mes)
+            anio = int(anio)
+            fecha_inicio = datetime.date(anio, mes, 1)
+            if mes == 12:
+                fecha_fin = datetime.date(anio, 12, 31)
+            else:
+                fecha_fin = datetime.date(anio, mes + 1, 1) - datetime.timedelta(days=1)
+        except Exception:
+            fecha_inicio = None
+            fecha_fin = None
+
+    if empresa_id:
+        pagos = pagos.filter(factura__empresa_id=empresa_id)
+        cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
+        gastos = gastos.filter(empresa_id=empresa_id)
+    if fecha_inicio:
+        pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
+        cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
+        gastos = gastos.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        pagos = pagos.filter(fecha_pago__lte=fecha_fin)
+        cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
+        gastos = gastos.filter(fecha__lte=fecha_fin)
+
+    # Ingresos por origen
+    ingresos_qs = pagos.annotate(
+        origen=Case(
+            When(factura__local__isnull=False, then=Value('Locales')),
+            When(factura__area_comun__isnull=False, then=Value('Áreas Comunes')),
+            default=Value('Sin origen'),
+            output_field=CharField()
+        )
+    ).values('origen').annotate(total=Sum('monto')).order_by('origen')
+
+    # Otros ingresos por tipo
+    otros_ingresos_qs = cobros_otros.values('factura__tipo_ingreso').annotate(total=Sum('monto')).order_by('factura__tipo_ingreso')
+
+    ingresos_por_origen = OrderedDict()
+    for x in ingresos_qs:
+        ingresos_por_origen[x['origen']] = float(x['total'])
+    for x in otros_ingresos_qs:
+        tipo = x['factura__tipo_ingreso'] or 'Otros ingresos'
+        ingresos_por_origen[f'Otros ingresos - {tipo}'] = float(x['total'])
+
+    total_ingresos = sum(ingresos_por_origen.values())
+
+    # Gastos por tipo
+    gastos_por_tipo_qs = gastos.values('tipo_gasto__nombre').annotate(total=Sum('monto')).order_by('tipo_gasto__nombre')
+    gastos_por_tipo = []
+    for x in gastos_por_tipo_qs:
+        gastos_por_tipo.append({'tipo': x['tipo_gasto__nombre'] or 'Sin tipo', 'total': float(x['total'])})
+
+    total_gastos = sum(g['total'] for g in gastos_por_tipo)
+    saldo = total_ingresos - total_gastos
+
+    return render(request, 'informes_financieros/estado_resultados.html', {
+        'empresas': empresas,
+        'ingresos_por_origen': ingresos_por_origen,
+        'gastos_por_tipo': gastos_por_tipo,
+        'total_ingresos': total_ingresos,
+        'total_gastos': total_gastos,
+        'saldo': saldo,
+        'empresa_id': str(empresa_id or ''),
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'mes': str(mes or ''),
+        'anio': str(anio or ''),
+        'periodo': periodo,
+    })
