@@ -133,7 +133,7 @@ def reporte_ingresos_vs_gastos(request):
         tipo = x['factura__tipo_ingreso'] or 'Otros ingresos'
         ingresos_por_origen[f' {tipo}'] = float(x['total'])
 
-    saldo = total_ingresos - total_gastos    
+    saldo = (total_ingresos + total_otros_ingresos) - total_gastos    
 
     return render(request, 'informes_financieros/ingresos_vs_gastos.html', {
         'empresas': empresas,
