@@ -183,9 +183,26 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
         model = FacturaOtrosIngresos
         fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'cfdi','observaciones']
         widgets = {
-            'fecha_emision': forms.DateInput(attrs={'type': 'date'}),
-            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}),
-            'observaciones': forms.Textarea(attrs={'rows': 2}),
+            'cliente': forms.Select(attrs={
+                'class': 'form-select'             
+            }),
+            'tipo_ingreso': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'fecha_vencimiento': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'cfdi': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control'
+            }),
         }            
    
 class CobroForm(forms.ModelForm):
