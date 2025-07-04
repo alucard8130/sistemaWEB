@@ -11,8 +11,20 @@
 
   {% if anios_disponibles %}
     <form method="get" class="mb-3">
+    
       <div class="row g-2">
+      {% if is_super %}
         <div class="col-auto">
+          <label for="empresa" class="form-label">Empresa:</label>
+          <select name="empresa" id="empresa" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
+            {% for emp in empresas %}
+              <option value="{{ emp.id }}" {% if empresa.id == emp.id %}selected{% endif %}>{{ emp.nombre }}</option>
+          {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="col-auto">
+        
           <select name="anio1" class="form-select">
             {% for anio in anios_disponibles %}
               <option value="{{ anio }}" {% if anio == anio1 %}selected{% endif %}>{{ anio }}</option>
@@ -26,6 +38,7 @@
             {% endfor %}
           </select>
         </div>
+        
         <div class="col-auto">
           <button type="submit" class="btn btn-primary">Comparar</button>
           <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>

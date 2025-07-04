@@ -21,6 +21,11 @@ def reporte_ingresos_vs_gastos(request):
     anio = request.GET.get("anio")
     periodo = request.GET.get("periodo")
 
+    if not request.user.is_superuser:
+        empresa_id = str(request.user.perfilusuario.empresa.id)
+    else:
+        empresa_id = request.GET.get("empresa") or ""
+
     # Si no hay ningún filtro, mostrar periodo actual por default
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
         periodo = "periodo_actual"
@@ -196,7 +201,7 @@ def estado_resultados(request):
 
     # Si el usuario no es superusuario, usar su empresa por defecto
     if not request.user.is_superuser:
-        empresa_id = str(getattr(request.user, "empresa_id", "") or "")
+        empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
         empresa_id = request.GET.get("empresa") or ""
 

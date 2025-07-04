@@ -243,7 +243,7 @@ def matriz_presupuesto(request):
     edicion_habilitada = not bloqueado or request.user.is_superuser
 
     # --- Resto de la vista igual ---
-    tipos = TipoGasto.objects.select_related("subgrupo", "subgrupo__grupo").order_by(
+    tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
         "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
     )
     grupos_lista = []
@@ -488,7 +488,7 @@ def reporte_presupuesto_vs_gasto(request):
         empresa = request.user.perfilusuario.empresa
         empresas = None
 
-    tipos = TipoGasto.objects.select_related("subgrupo", "subgrupo__grupo").order_by(
+    tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
         "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
     )
 
@@ -767,6 +767,23 @@ def comparativo_presupuesto_anio(request):
         Presupuesto.objects.values_list("anio", flat=True).distinct().order_by("anio")
     )
 
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()    
+        is_super = True
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+        is_super = False
+
+    anios = list(
+    Presupuesto.objects.filter(empresa=empresa)
+    .values_list("anio", flat=True)
+    .distinct()
+    .order_by("anio")
+)
+        
     # Si no hay registros
     if not anios:
         return render(
@@ -793,7 +810,7 @@ def comparativo_presupuesto_anio(request):
 
     # 3. Consulta y agregación
     datos = (
-        Presupuesto.objects.filter(anio__in=[anio1, anio2])
+        Presupuesto.objects.filter(empresa=empresa, anio__in=[anio1, anio2])
         .values("grupo__nombre", "subgrupo__nombre", "tipo_gasto__nombre", "anio")
         .annotate(total=Sum("monto"))
         .order_by("grupo__nombre", "subgrupo__nombre", "tipo_gasto__nombre", "anio")
@@ -869,6 +886,9 @@ def comparativo_presupuesto_anio(request):
             "anio2": anio2,
             "anios_disponibles": anios,
             "totales": totales,
+            "empresa": empresa,
+            "empresas": empresas,
+            "is_super": is_super,
         },
     )
 
