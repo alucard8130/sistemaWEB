@@ -35,6 +35,9 @@
     <table class="table table-bordered table-striped">
         <thead class="table-dark">
             <tr>
+                {% if request.user.is_superuser %}
+                    <th>Empresa</th>
+                {% endif %}
                 <th>Grupo</th>
                 <th>Subgrupo</th>
                 <th>Acciones</th>
@@ -42,9 +45,14 @@
             </tr>
             
         </thead>
+        
         <tbody>
+                
             {% for sub in subgrupos %}
             <tr>
+                {% if request.user.is_superuser %}
+                    <td>{{ sub.empresa.nombre }}</td>
+                {% endif %}
                 <td>{{ sub.grupo.nombre }}</td>
                 <td>{{ sub.nombre }}</td>
                 <td>
