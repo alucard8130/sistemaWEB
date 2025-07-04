@@ -2,6 +2,7 @@
 venv/
 .env
 env/
+.venv/
 
 # Archivos de configuración y secretos
 *.env
@@ -32,4 +33,4 @@ Thumbs.db
 
 db.sqlite3 
 
-templates/base.html
+
