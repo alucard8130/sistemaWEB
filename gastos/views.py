@@ -175,6 +175,7 @@ def gastos_lista(request):
         })
 
 @login_required
+#solicitudes de pago
 def gasto_nuevo(request):
     if request.method == 'POST':
         form = GastoForm(request.POST or None, request.FILES, user=request.user)
