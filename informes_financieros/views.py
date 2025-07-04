@@ -191,7 +191,6 @@ def reporte_ingresos_vs_gastos(request):
 @login_required
 def estado_resultados(request):
     empresas = Empresa.objects.all()
-    # empresa_id = request.GET.get('empresa')
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     mes = request.GET.get("mes")
@@ -278,7 +277,32 @@ def estado_resultados(request):
 
     total_ingresos = sum(ingresos_por_origen.values())
 
-    # Gastos por tipo
+    # Gastos agrupados por grupo, subgrupo y tipo
+    gastos_por_grupo = (
+        gastos.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre"
+        )
+        .annotate(total=Sum("monto"))
+        .order_by("tipo_gasto__subgrupo__grupo__nombre", "tipo_gasto__subgrupo__nombre", "tipo_gasto__nombre")
+    )
+
+    # Estructura anidada: grupo > subgrupo > tipos
+    estructura_gastos = OrderedDict()
+    for g in gastos_por_grupo:
+        grupo = g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo"
+        subgrupo = g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo"
+        tipo = g["tipo_gasto__nombre"] or "Sin tipo"
+        total = float(g["total"])
+
+        if grupo not in estructura_gastos:
+            estructura_gastos[grupo] = OrderedDict()
+        if subgrupo not in estructura_gastos[grupo]:
+            estructura_gastos[grupo][subgrupo] = []
+        estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+
+    # Gastos por tipo (para compatibilidad con tu template actual)
     gastos_por_tipo_qs = (
         gastos.values("tipo_gasto__nombre")
         .annotate(total=Sum("monto"))
@@ -300,6 +324,7 @@ def estado_resultados(request):
             "empresas": empresas,
             "ingresos_por_origen": ingresos_por_origen,
             "gastos_por_tipo": gastos_por_tipo,
+            "estructura_gastos": estructura_gastos,  # <-- Nuevo contexto
             "total_ingresos": total_ingresos,
             "total_gastos": total_gastos,
             "saldo": saldo,
