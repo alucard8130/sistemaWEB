@@ -83,6 +83,9 @@
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+    Exportar a Excel
+</a>
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
     </div>
 </form>
