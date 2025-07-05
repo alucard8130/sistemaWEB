@@ -7,233 +7,228 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 17/06/2025
+        Date of modification: 05/07/2025
         Description: Dashboard of balances by maturity
-        dashboard_saldos
     -->
     <meta charset="UTF-8">
-    <title>Dashboard Saldos / Cartera Vencida</title>
+    <title>Dashboard saldos / cartera vencida</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div>
-<div class="container mt-3">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        
+        <h2>Dashboard de saldos / Cartera vencida</h2>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Dashboard de Saldos / Cartera Vencida</h2>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al Menú Principal</a>
-    </div>
+        <!-- Filtros -->
+        <form method="get" class="row g-2 mb-4">
+            {% if es_super %}
+            <div class="col-md-2">
+                <select name="empresa" class="form-select" onchange="this.form.submit()">
+                    <option value="todas" {% if not empresa_id or empresa_id == "todas" %}selected{% endif %}>Empresas</option>
+                    {% for emp in empresas %}
+                        <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-2">
+                <select name="cliente" class="form-select" onchange="this.form.submit()">
+                    <option value="">Clientes</option>
+                    {% for cli in clientes %}
+                        <option value="{{ cli.id }}" {% if cli.id|stringformat:"s" == cliente_id|stringformat:"s" %}selected{% endif %}>{{ cli.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="origen" class="form-select" onchange="this.form.submit()">
+                    <option value="">Orígenes</option>
+                    <option value="local" {% if origen == "local" %}selected{% endif %}>Solo locales</option>
+                    <option value="area" {% if origen == "area" %}selected{% endif %}>Solo áreas comunes</option>
+                </select>
+            </div>
+            <div class="col-md-2 align-self-end">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </form>
 
-    <!-- Filtros -->
-    <form method="get" class="row g-2 mb-4">
-        {% if es_super %}
-        <div class="col-md-2">
-            <label>Empresa:</label>
-            <select name="empresa" class="form-select" onchange="this.form.submit()">
-                <option value="todas" {% if not empresa_id or empresa_id == "todas" %}selected{% endif %}>Todas</option>
-                {% for emp in empresas %}
-                    <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
-                {% endfor %}
-            </select>
+        <!-- Gráficos y KPIs -->
+        <div class="row mb-4">
+            <div class="col-md-7">
+                <div class="card shadow p-3">
+                    <h5 class="mb-2"><strong>Distribución de saldos por vencimiento</strong></h5>
+                    <canvas id="chartSaldos"></canvas>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card shadow p-3">
+                    <h6 class="mb-2"><strong>Saldos por rango</strong></h6>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Menos de 30 días
+                            <span class="badge bg-success rounded-pill ">${{ saldo_0_30|floatformat:2|intcomma }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            31 a 60 días
+                            <span class="badge bg-warning rounded-pill">${{ saldo_31_60|floatformat:2|intcomma }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            61 a 90 días
+                            <span class="badge bg-warning rounded-pill">${{ saldo_61_90|floatformat:2|intcomma }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            91 a 180 días
+                            <span class="badge bg-warning rounded-pill">${{ saldo_91_180|floatformat:2|intcomma }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Más de 180 días
+                            <span class="badge bg-danger rounded-pill">${{ saldo_181_mas|floatformat:2|intcomma }}</span>
+                        </li>
+                    </ul>
+                    
+                </div>
+                <div class="mt-4">
+                <div class="card shadow p-3" >
+        <h6 class="mb-2"><strong>Top 10 Adeudos</strong></h6>
+        <canvas id="chartTopAdeudos" height="50", width="60"></canvas>
         </div>
-        {% endif %}
-        <div class="col-md-2">
-            <label>Cliente:</label>
-            <select name="cliente" class="form-select" onchange="this.form.submit()">
-                <option value="">Todos</option>
-                {% for cli in clientes %}
-                    <option value="{{ cli.id }}" {% if cli.id|stringformat:"s" == cliente_id|stringformat:"s" %}selected{% endif %}>{{ cli.nombre }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label>Origen:</label>
-            <select name="origen" class="form-select" onchange="this.form.submit()">
-                <option value="">Todos</option>
-                <option value="local" {% if origen == "local" %}selected{% endif %}>Solo locales</option>
-                <option value="area" {% if origen == "area" %}selected{% endif %}>Solo áreas comunes</option>
-            </select>
-        </div>
-        <div class="col-md-2 align-self-end">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-        </div>
-    </form>
-
-    <!-- Gráficos y KPIs -->
-    <div class="row mb-4">
-        <div class="col-md-7">
-            <div class="card shadow p-3">
-                <h5 class="mb-2">Distribución de saldos por vencimiento</h5>
-                <canvas id="chartSaldos"></canvas>
+            </div>
             </div>
         </div>
-        <div class="col-md-5">
-            <div class="card shadow p-3">
-                <h6 class="mb-2">Saldos por rango</h6>
-                <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Menos de 30 días
-                        <span class="badge bg-success rounded-pill ">${{ saldo_0_30|floatformat:2|intcomma }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        31 a 60 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_31_60|floatformat:2|intcomma }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        61 a 90 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_61_90|floatformat:2|intcomma }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        91 a 180 días
-                        <span class="badge bg-warning rounded-pill">${{ saldo_91_180|floatformat:2|intcomma }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Más de 180 días
-                        <span class="badge bg-danger rounded-pill">${{ saldo_181_mas|floatformat:2|intcomma }}</span>
-                    </li>
-                </ul>
-                
-            </div>
-            <div class="mt-4">
-            <div class="card shadow p-3" >
-    <h6 class="mb-2">Top 10 Adeudos</h6>
-    <canvas id="chartTopAdeudos" height="50", width="60"></canvas>
-    </div>
-        </div>
-        </div>
-    </div>
-    
-    <!-- Gráfico de Saldos -->
-    <script>
-    const totalCartera = (
-    {{ saldo_0_30|default:0 }} +
-    {{ saldo_31_60|default:0 }} +
-    {{ saldo_61_90|default:0 }} +
-    {{ saldo_91_180|default:0 }} +
-    {{ saldo_181_mas|default:0 }}
-);
-    const ctx = document.getElementById('chartSaldos');
-    new Chart(ctx, {
-        type: 'doughnut',
+        
+        <!-- Gráfico de Saldos -->
+        <script>
+        const totalCartera = (
+        {{ saldo_0_30|default:0 }} +
+        {{ saldo_31_60|default:0 }} +
+        {{ saldo_61_90|default:0 }} +
+        {{ saldo_91_180|default:0 }} +
+        {{ saldo_181_mas|default:0 }}
+    );
+        const ctx = document.getElementById('chartSaldos');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['0-30 días','31-60 días','61-90 días','91-180 días','181+ días'],
+                datasets: [{
+                    label: 'Saldo pendiente ($)',
+                    data: [
+                        {{ saldo_0_30 }},
+                        {{ saldo_31_60 }},
+                        {{ saldo_61_90 }},
+                        {{ saldo_91_180 }},
+                        {{ saldo_181_mas }}
+                    ],
+                    backgroundColor: ['#198754', '#F3F763', '#FEA55C', '#D86302', '#C00000'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'left' },
+                    title: { display: true, text: '' },
+                    tooltip: { enabled: true },
+    // Plugin para mostrar el total en el centro
+                doughnutlabel: {
+                    labels: [
+                        {
+                            text: '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
+                            font: { size: 22, weight: 'bold' }
+                        },
+                        {
+                            text: 'Total cartera',
+                            font: { size: 14 }
+                        }
+                    ]
+                }
+            }
+        },
+        plugins: [{
+            id: 'centerText',
+            afterDraw: chart => {
+                const {ctx, chartArea: {width, height}} = chart;
+                ctx.save();
+                ctx.font = 'bold 22px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#222';
+                ctx.fillText(
+                    '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
+                    chart.getDatasetMeta(0).data[0].x,
+                    chart.getDatasetMeta(0).data[0].y
+                );
+                ctx.font = '14px sans-serif';
+                ctx.fillText(
+                    'Total cartera',
+                    chart.getDatasetMeta(0).data[0].x,
+                    chart.getDatasetMeta(0).data[0].y + 22
+                );
+                ctx.restore();
+            }
+        }]
+    });
+        </script>
+        <script>
+        // Gráfico de Top Adeudos 
+    const topLabels = {{ top_labels|safe }};
+    const topData = {{ top_data|safe }};
+
+    const ctxBar = document.getElementById('chartTopAdeudos').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
         data: {
-            labels: ['0-30 días','31-60 días','61-90 días','91-180 días','181+ días'],
+            labels: topLabels,
             datasets: [{
-                label: 'Saldo pendiente ($)',
-                data: [
-                    {{ saldo_0_30 }},
-                    {{ saldo_31_60 }},
-                    {{ saldo_61_90 }},
-                    {{ saldo_91_180 }},
-                    {{ saldo_181_mas }}
-                ],
-                backgroundColor: ['#198754', '#F3F763', '#FEA55C', '#D86302', '#C00000'],
-                borderWidth: 1
+                label: 'Adeudo ($)',
+                data: topData,
+                backgroundColor: ''
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
             plugins: {
-                legend: { position: 'left' },
-                title: { display: true, text: '' },
-                tooltip: { enabled: true },
-// Plugin para mostrar el total en el centro
-            doughnutlabel: {
-                labels: [
-                    {
-                        text: '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
-                        font: { size: 22, weight: 'bold' }
-                    },
-                    {
-                        text: 'Total cartera',
-                        font: { size: 14 }
+                legend: { display: false },
+                title: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '$' + context.parsed.x.toLocaleString('es-MX', {minimumFractionDigits:2});
+                        }
                     }
-                ]
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString('es-MX');
+                        }
+                    }
+                }
             }
         }
-    },
-    plugins: [{
-        id: 'centerText',
-        afterDraw: chart => {
-            const {ctx, chartArea: {width, height}} = chart;
-            ctx.save();
-            ctx.font = 'bold 22px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#222';
-            ctx.fillText(
-                '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
-                chart.getDatasetMeta(0).data[0].x,
-                chart.getDatasetMeta(0).data[0].y
-            );
-            ctx.font = '14px sans-serif';
-            ctx.fillText(
-                'Total cartera',
-                chart.getDatasetMeta(0).data[0].x,
-                chart.getDatasetMeta(0).data[0].y + 22
-            );
-            ctx.restore();
-        }
-    }]
-});
+    });
     </script>
-    <script>
-    // Gráfico de Top Adeudos 
-const topLabels = {{ top_labels|safe }};
-const topData = {{ top_data|safe }};
+    </div>
 
-const ctxBar = document.getElementById('chartTopAdeudos').getContext('2d');
-new Chart(ctxBar, {
-    type: 'bar',
-    data: {
-        labels: topLabels,
-        datasets: [{
-            label: 'Adeudo ($)',
-            data: topData,
-            backgroundColor: ''
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: {
-            legend: { display: false },
-            title: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return '$' + context.parsed.x.toLocaleString('es-MX', {minimumFractionDigits:2});
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                ticks: {
-                    callback: function(value) {
-                        return '$' + value.toLocaleString('es-MX');
-                    }
-                }
-            }
-        }
-    }
-});
-</script>
-</div>
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

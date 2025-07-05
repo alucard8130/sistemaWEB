@@ -210,7 +210,23 @@ class CobroForm(forms.ModelForm):
         model = CobroOtrosIngresos
         fields = ['fecha_cobro', 'monto', 'forma_cobro', 'comprobante', 'observaciones']
         widgets = {
-            'fecha_cobro': forms.DateInput(attrs={'type': 'date'}), 
+            'fecha_cobro': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'forma_cobro': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'comprobante': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows': 2,
+                'class': 'form-control'
+            }),
         }
 
     def __init__(self, *args, **kwargs):

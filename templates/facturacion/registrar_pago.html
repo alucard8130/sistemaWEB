@@ -45,17 +45,22 @@
     
                 <!-- Styled title with the same width as the form -->
                 <h2 class="form-title text-center mb-0">Registrar cobro - Factura {{ factura.folio }}</h2>
-       
-                
-
-                <p><strong>Monto total:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
-                <p><strong>Cobrado:</strong> ${{ factura.total_pagado|floatformat:2|intcomma }}</p>
-                <p><strong>Saldo pendiente:</strong> ${{ saldo|floatformat:2|intcomma }}</p>
-
-                
-
 
                 <form method="post" class="p-4 rounded custom-form" enctype="multipart/form-data">
+                    <div class="form-cobro mb-3 border p-3 rounded bg-light shadow-sm">
+                        <div class="mb-2">
+                            <strong>Monto total:</strong> 
+                            <span class="float-end text-dark"> ${{ factura.monto|floatformat:2|intcomma }}</span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Cobrado:</strong> 
+                            <span class="float-end text-dark"> ${{ factura.total_pagado|floatformat:2|intcomma }}</span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Saldo pendiente:</strong> 
+                            <span class="float-end text-dark"> ${{ saldo|floatformat:2|intcomma }}</span>
+                        </div>
+                    </div>
                     {% csrf_token %}
                     {{ form.as_p }}
                     <div class="d-flex justify-content-between mt-3">
