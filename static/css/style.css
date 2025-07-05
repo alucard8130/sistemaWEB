@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 30/06/2025
+    Date of modification: 05/07/2025
     Description: General styles for the GAC system   
 */
     
@@ -138,6 +138,12 @@ html, body {
 .form-control::placeholder {
     color: #adb5bd;  /* Light gray, Bootstrap-like */
     opacity: 1;      /* Ensures visibility */
+}
+
+.form-cobro {
+    background: linear-gradient(to right, #e0f7fa, #ffffff); 
+    padding: 10px; 
+    border-radius: 5px;
 }
 
 .main-content {
