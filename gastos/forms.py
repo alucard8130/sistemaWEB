@@ -3,6 +3,8 @@ from django import forms
 from empleados.models import Empleado
 from proveedores.models import Proveedor
 from .models import Gasto, GrupoGasto, SubgrupoGasto, TipoGasto
+from django import forms
+from .models import PagoGasto
 
 class SubgrupoGastoForm(forms.ModelForm):
     class Meta:
@@ -43,17 +45,17 @@ class TipoGastoForm(forms.ModelForm):
             self.fields['empresa'].initial = user.perfilusuario.empresa
 
                     
-
+#solicitud de gastos
 class GastoForm(forms.ModelForm):
     origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True)
 
  
     class Meta:
         model = Gasto
-        fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'comprobante', 'observaciones','retencion_iva', 'retencion_isr', 'retencion_isr']
+        fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr','comprobante', 'observaciones']
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date'}),
-            'descripcion': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'rows':2}),
             'observaciones': forms.Textarea(attrs={'rows':2}),
         }
 
@@ -73,6 +75,11 @@ class GastoForm(forms.ModelForm):
         # Por defecto vacíos si no hay empresa
         self.fields['proveedor'].queryset = Proveedor.objects.none()
         self.fields['empleado'].queryset = Empleado.objects.none()
+
+        if not user or not user.is_superuser:
+            self.fields['proveedor'].disabled = True
+            self.fields['origen_tipo'].disabled = True
+            self.fields['empleado'].disabled = True
 
         if user:
             if user.is_superuser:
@@ -101,8 +108,7 @@ class GastoForm(forms.ModelForm):
             raise forms.ValidationError('Debes seleccionar un proveedor o un empleado.')
         return cleaned_data
 
-from django import forms
-from .models import PagoGasto
+
 
 class PagoGastoForm(forms.ModelForm):
     class Meta:
