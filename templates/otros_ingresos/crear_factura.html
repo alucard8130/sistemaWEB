@@ -1,19 +1,100 @@
 <!-- filepath: otros_ingresos/templates/otros_ingresos/crear_factura.html -->
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Nueva Factura Otros Ingresos</title>
+    <!-- 
+      Created by: Jaime Estrada
+      Modified by: María Martínez
+      Date of creation: 05/06/2025
+      Date of modification: 04/07/2025
+      Description: Create invoice (other income)
+    -->
+    <title>Nueva factura otros ingresos</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-<div class="container mt-4">
-    <h2>Nueva Factura de Otros Ingresos</h2>
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-success">Guardar factura</button>
-        <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-secondary">Cancelar</a>
-    </form>
-</div>
+    {% include 'navbar.html' %}
+
+    <!-- Main content -->
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-4 col-sm-6 mx-auto">
+
+                <!-- Styled title with the same width as the form -->
+                <h2 class="form-title text-center mb-0">Nueva factura de otros ingresos</h2>
+
+                <!-- Form -->
+                <form method="post" class="p-4 rounded custom-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <!-- {{ form.as_p }} -->
+                    
+                    <!-- Form fields -->
+                    <div class="mb-3">
+                        {{ form.cliente.label_tag }}
+                        {{ form.cliente }}
+                        {% if form.cliente.errors %}
+                            <div class="text-danger">{{ form.cliente.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.tipo_ingreso.label_tag }}
+                        {{ form.tipo_ingreso }}
+                        {% if form.tipo_ingreso.errors %}
+                            <div class="text-danger">{{ form.tipo_ingreso.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.fecha_vencimiento.label_tag }}
+                        {{ form.fecha_vencimiento }}
+                        {% if form.fecha_vencimiento.errors %}
+                            <div class="text-danger">{{ form.fecha_vencimiento.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.monto.label_tag }}
+                        {{ form.monto }}
+                        {% if form.monto.errors %}
+                            <div class="text-danger">{{ form.monto.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.cfdi.label_tag }}
+                        {{ form.cfdi }}
+                        {% if form.cfdi.errors %}
+                            <div class="text-danger">{{ form.cfdi.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.observaciones.label_tag }}
+                        {{ form.observaciones }}
+                        {% if form.observaciones.errors %}
+                            <div class="text-danger">{{ form.observaciones.errors }}</div>
+                        {% endif %}
+                    </div>  
+                    <div class="d-flex justify-content-between mt-3">
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                        <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- 🔹 Footer -->
+    <footer>
+        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+        Creado por Jaime M. Estrada Bernabé
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

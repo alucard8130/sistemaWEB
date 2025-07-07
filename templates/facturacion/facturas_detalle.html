@@ -41,17 +41,18 @@
                 
                 <!-- Invoices table -->    
                 <table class="table table-bordered mb-4">
-                    <tr><th>Monto</th><td>${{ factura.monto|floatformat:2|intcomma }}</td></tr>
-                    <tr><th>Saldo</th><td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td></tr>
-                    <tr><th>Estatus</th><td>{{ factura.get_estatus_display }}</td></tr>
-                    <tr><th>Fecha</th><td>{{ factura.fecha_vencimiento }}</td></tr>
-                    <tr><th>Cliente</th><td>{{ factura.cliente.nombre }} </td></tr>
+                    <tr><th>Monto:</th><td>${{ factura.monto|floatformat:2|intcomma }}</td></tr>
+                    <tr><th>Saldo:</th><td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td></tr>
+                    <tr><th>Estatus:</th><td>{{ factura.get_estatus_display }}</td></tr>
+                    <tr><th>Fecha:</th><td>{{ factura.fecha_vencimiento }}</td></tr>
+                    <tr><th>Cliente:</th><td>{{ factura.cliente.nombre }} </td></tr>
                     <!-- ...otros campos que desees mostrar... -->
                 </table>
             </div>
         </div>
+
         <h2>Cobros registrados</h2>
-        <table class="table table-striped">
+        <table class="table table-bordered">
             <thead>
                 <tr>
                     <th>Fecha de Cobro</th>

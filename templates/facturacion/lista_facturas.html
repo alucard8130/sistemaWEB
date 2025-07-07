@@ -164,8 +164,8 @@
                             </td>
                             <td>
                                 {% if factura.cfdi and factura.cfdi|archivo_existe %}
-                                    <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark">
-                                        <i class="bi bi-file-earmark-pdf me-1"></i> CFDI
+                                    <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver CFDI">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i>
                                     </a>
                                 {% elif factura.cfdi %}
                                     
@@ -185,27 +185,26 @@
                 </tbody>
             </table>
         </div>
+        <nav aria-label="Paginación">
+            <ul class="pagination">
+            {% if facturas.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
+            {% if facturas.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ facturas.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+            {% endif %}
+            </ul>
+        </nav>
     </div>
-
-    <nav aria-label="Paginación">
-        <ul class="pagination">
-        {% if facturas.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
-            </li>
-        {% else %}
-            <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-        {% endif %}
-        <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
-        {% if facturas.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ facturas.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
-            </li>
-        {% else %}
-            <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-        {% endif %}
-        </ul>
-    </nav>
 
     <!-- 🔹 Footer -->
     <footer>
