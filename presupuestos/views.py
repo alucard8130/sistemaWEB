@@ -228,7 +228,7 @@ def matriz_presupuesto(request):
                     + (f"&empresa={empresa.id}" if empresa else "")
                 )
             else:
-                pedir_superuser = True
+                #pedir_superuser = True
                 messages.error(
                     request, "Usuario o contraseña de superusuario incorrectos."
                 )
@@ -238,6 +238,10 @@ def matriz_presupuesto(request):
     # Ahora recalcula bloqueado
     cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
     bloqueado = cierre.cerrado if cierre else False
+
+    # Asegúrate que pedir_superuser solo sea True si sigue bloqueado
+    if not bloqueado:
+        pedir_superuser = False
 
     # Edición habilitada si no está bloqueado o si eres superusuario
     edicion_habilitada = not bloqueado or request.user.is_superuser

@@ -11,7 +11,7 @@ class PresupuestoForm(forms.ModelForm):
         widgets = {
             'anio': forms.NumberInput(attrs={'min':2024}),
             'mes': forms.Select(choices=[('', '---')] + [(i, i) for i in range(1,13)]),
-            'monto': forms.NumberInput(attrs={'step': '0.01'}),
+            'monto': forms.NumberInput(attrs={'step': '0,01'}),
         }
 
     def __init__(self, *args, **kwargs):
