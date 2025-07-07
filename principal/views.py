@@ -43,7 +43,8 @@ def reiniciar_sistema(request):
                 Proveedor.objects.all().delete() 
                 Empleado.objects.all().delete()  
                 Gasto.objects.all().delete()  
-                Presupuesto.objects.all().delete()  
+                Presupuesto.objects.all().delete()
+                
 
             messages.success(request, '¡El sistema fue reiniciado exitosamente!')
         except Exception as e:

@@ -30,7 +30,7 @@ from django.db.models import ProtectedError
 @login_required
 def subgrupo_gasto_crear(request):
     if request.method == 'POST':
-        form = SubgrupoGastoForm(request.POS, user=request.user)
+        form = SubgrupoGastoForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
             return redirect('subgrupos_gasto_lista')
