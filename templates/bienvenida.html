@@ -72,6 +72,8 @@
               <small class="text-muted">{{ evento.descripcion }}</small>
               <div class="mt-2">
         <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
+        <button class="btn btn-sm btn-info btn-enviar-correo">Enviar correo</button>
+
       </div>
             </li>
           {% empty %}
@@ -99,10 +101,7 @@
             <label for="eventoFecha" class="form-label">Fecha</label>
             <input type="date" class="form-control" id="eventoFecha" readonly>
           </div>
-            <div class="mb-3">
-            <label for="eventoCorreo" class="form-label">Correo destinatario</label>
-            <input type="email" class="form-control" id="eventoCorreo" required>
-            </div>
+
           <div class="mb-3">
             <label for="eventoDescripcion" class="form-label">Descripción</label>
             <textarea class="form-control" id="eventoDescripcion" rows="2"></textarea>
@@ -110,6 +109,34 @@
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">Guardar evento</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Modal para enviar correo con adjunto -->
+<div class="modal fade" id="modalCorreo" tabindex="-1" aria-labelledby="modalCorreoLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formEnviarCorreo" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalCorreoLabel">Enviar correo de evento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="correoEventoId" name="evento_id">
+          <div class="mb-3">
+            <label for="correoDestino" class="form-label">Correo destinatario</label>
+            <input type="email" class="form-control" id="correoDestino" name="correo" required>
+          </div>
+          <div class="mb-3">
+            <label for="archivosCorreo" class="form-label">Adjuntar archivos</label>
+            <input type="file" class="form-control" id="archivosCorreo" name="archivos" multiple>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Enviar correo</button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
         </div>
       </form>
@@ -149,6 +176,14 @@
     var inputDescripcion = document.getElementById('eventoDescripcion');
     var fechaSeleccionada = null;
 
+    // Modal y formulario para enviar correo
+    var modalCorreo = new bootstrap.Modal(document.getElementById('modalCorreo'));
+    var formEnviarCorreo = document.getElementById('formEnviarCorreo');
+    var correoDestino = document.getElementById('correoDestino');
+    var archivosCorreo = document.getElementById('archivosCorreo');
+    var correoEventoId = document.getElementById('correoEventoId');
+
+  
     var calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'dayGridMonth',
       locale: 'es',
@@ -211,6 +246,39 @@
         }
       });
     });
+    // Mostrar modal para enviar correo con adjunto
+    document.querySelectorAll('.btn-enviar-correo').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var li = btn.closest('li');
+        var eventoId = li.getAttribute('data-id');
+        correoEventoId.value = eventoId;
+        correoDestino.value = '';
+        archivosCorreo.value = '';
+        modalCorreo.show();
+      });
+    });
+    // Enviar correo con adjuntos
+    formEnviarCorreo.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var eventoId = correoEventoId.value;
+      var formData = new FormData(formEnviarCorreo);
+      fetch(`/evento/enviar_correo/${eventoId}/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: formData
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          alert('Correo enviado correctamente.');
+          modalCorreo.hide();
+        } else {
+          alert('No se pudo enviar el correo.');
+        }
+      });
+    });
 
     formEvento.addEventListener('submit', function(e) {
       e.preventDefault();
@@ -246,6 +314,7 @@
                           <small class="text-muted">${inputDescripcion.value}</small>
                           <div class="mt-2">
                             <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
+                            <button class="btn btn-sm btn-info btn-enviar-correo">Enviar correo</button>
                           </div>`;
           if (lista.querySelector('.text-muted')) {
             lista.innerHTML = '';
@@ -270,6 +339,13 @@
               });
             }
           });
+          // Añade el listener al nuevo botón enviar correo
+          li.querySelector('.btn-enviar-correo').addEventListener('click', function() {
+            correoEventoId.value = data.id;
+            correoDestino.value = '';
+            archivosCorreo.value = '';
+            modalCorreo.show();
+          });
           modalEvento.hide();
           alert('Evento registrado y correo enviado al comité.');
         } else {
@@ -280,6 +356,7 @@
 
     calendar.render();
   });
+  
 </script>
 </body>
 </html>

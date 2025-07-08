@@ -6,6 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import transaction
 import openpyxl
+from core import settings
 from empleados.models import Empleado
 from empresas.models import Empresa
 from clientes.models import Cliente
@@ -22,6 +23,7 @@ from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
 from .models import Evento
 import json
+from django.core.mail import EmailMessage
 # Create your views here.
 
 @login_required
@@ -170,7 +172,6 @@ def reporte_auditoria(request):
 
 @csrf_exempt
 @login_required
-# ...en views.py...
 def crear_evento(request):
     if request.method == "POST":
         empresa = request.user.perfilusuario.empresa  # Ajusta si tu relación es diferente
@@ -182,18 +183,7 @@ def crear_evento(request):
             descripcion=data.get("descripcion"),
             creado_por=request.user,
         )
-        #print(f"Evento creado: {evento.titulo} - Empresa: {evento.empresa}")  # <-- Línea de depuración
-        # Enviar correo al destinatario proporcionado
-        correo_destino = data.get("correo")
-        if correo_destino:
-            send_mail(
-                subject=f"Nuevo evento: {evento.titulo}",
-                message=f"Se ha registrado un nuevo evento para el {evento.fecha}: {evento.titulo}\n\n{evento.descripcion}",
-                from_email="noreply@tuapp.com",
-                recipient_list=[correo_destino],
-                fail_silently=False,
-            )
-        evento.enviado_correo = True
+
         evento.save()
         return JsonResponse({"ok": True, "id": evento.id})
     return JsonResponse({"ok": False}, status=400)
@@ -208,4 +198,32 @@ def eliminar_evento(request, evento_id):
             return JsonResponse({"ok": True})
         except Evento.DoesNotExist:
             return JsonResponse({"ok": False, "error": "No encontrado"}, status=404)
+    return JsonResponse({"ok": False}, status=400)
+
+@csrf_exempt
+@login_required
+def enviar_correo_evento(request, evento_id):
+    if request.method == "POST":
+        correo_destino = request.POST.get("correo")
+        archivos = request.FILES.getlist("archivos")
+        try:
+            evento = Evento.objects.get(id=evento_id, empresa=request.user.perfilusuario.empresa)
+            if correo_destino:
+                email = EmailMessage(
+                    subject=f"Nuevo evento: {evento.titulo}",
+                    body=f"Se ha registrado un nuevo evento para el {evento.fecha}: {evento.titulo}\n\n{evento.descripcion}",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[correo_destino],
+                )
+                # Adjuntar archivos
+                for archivo in archivos:
+                    email.attach(archivo.name, archivo.read(), archivo.content_type)
+                email.send(fail_silently=False)
+                evento.enviado_correo = True
+                evento.save()
+                return JsonResponse({"ok": True})
+            else:
+                return JsonResponse({"ok": False, "error": "Correo no proporcionado"}, status=400)
+        except Evento.DoesNotExist:
+            return JsonResponse({"ok": False, "error": "Evento no encontrado"}, status=404)
     return JsonResponse({"ok": False}, status=400)

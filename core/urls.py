@@ -20,7 +20,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
-from principal.views import crear_evento, eliminar_evento, reporte_auditoria
+from principal.views import crear_evento, eliminar_evento, enviar_correo_evento, reporte_auditoria
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -75,6 +75,8 @@ urlpatterns = [
     path('informes/', include('informes_financieros.urls')),
     path('crear/', crear_evento, name='crear_evento'),
     path('evento/eliminar/<int:evento_id>/', eliminar_evento, name='eliminar_evento'),
+    path('evento/enviar_correo/<int:evento_id>/', enviar_correo_evento, name='enviar_correo_evento'),
+
 ]
 
 if settings.DEBUG:
