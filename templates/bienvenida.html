@@ -3,6 +3,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+
     <!-- 
         Created by: Jaime Estrada
         Modified by: María Martínez
@@ -30,9 +31,9 @@
     {% include 'navbar.html' %}
     
     <!-- 🔹 Caja central -->
-    <main class="main-content container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
+    <main class="main-content container mt-4" position="relative">
+    <div class="row justify-content-center align-items-start">
+        <div class="col-md-4 mb-4">
         <div class="welcome-box text-center">
             <img src="{% static 'img/logo.png' %}" alt="Logo" class="welcome-logo">
             <p class="mb-5 text-muted mt-0">Gestor Administrativo Condominal<br></p>
@@ -46,28 +47,37 @@
             {% endif %}
         </div>
         </div>
-    <div class="col-md-4">
-      <div id="calendar"></div>
+    <!-- Calendario en pizarrón -->
+    <div class="col-md-5 mb-4">
+      <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
+        <div class="card-header bg-dark text-white text-center" style="border-radius: 0.8rem 0.8rem 0 0;">
+          <strong>Calendario de eventos</strong>
+        </div>
+        <div class="card-body">
+          <div id="calendar"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Tarjeta de próximos eventos flotante -->
+    <div class="col-md-3 mb-4">
+      <div class="card shadow-lg position-sticky top-0" style="width: 100%; z-index: 1050;">
+        <div class="card-header bg-primary text-white">
+          <strong>Próximos eventos</strong>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for evento in eventos|dictsort:"fecha"|slice:":3" %}
+            <li class="list-group-item">
+              <strong>{{ evento.fecha|date:"d M Y" }}</strong><br>
+              {{ evento.titulo }}<br>
+              <small class="text-muted">{{ evento.descripcion }}</small>
+            </li>
+          {% empty %}
+            <li class="list-group-item text-muted">Sin eventos</li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
   </div>
-  <div class="col-md-3">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <strong>Próximos eventos</strong>
-            </div>
-            <ul class="list-group list-group-flush">
-                {% for evento in eventos %}
-                    <li class="list-group-item">
-                        <strong>{{ evento.fecha|date:"d M Y" }}</strong><br>
-                        {{ evento.titulo }}<br>
-                        <small class="text-muted">{{ evento.descripcion }}</small>
-                    </li>
-                {% empty %}
-                    <li class="list-group-item text-muted">Sin eventos</li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
   <!-- Modal para nuevo evento -->
 <div class="modal fade" id="modalEvento" tabindex="-1" aria-labelledby="modalEventoLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -177,6 +187,20 @@
           start: inputFecha.value,
           allDay: true
         });
+         // Agrega el evento a la lista de eventos
+        const lista = document.querySelector('.list-group.list-group-flush');
+        // Crea el nuevo elemento
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.innerHTML = `<strong>${inputFecha.value.split('-').reverse().join(' ')}</strong><br>
+                    ${inputTitulo.value}<br>
+                    <small class="text-muted">${inputDescripcion.value}</small>`;
+    // Si la lista solo tenía "Sin eventos", la quitamos
+    if (lista.querySelector('.text-muted')) {
+      lista.innerHTML = '';
+    }
+    // Agregamos el nuevo evento al inicio de la lista
+    lista.prepend(li);
         modalEvento.hide();
         alert('Evento registrado y correo enviado al comité.');
       } else {

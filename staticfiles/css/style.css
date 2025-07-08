@@ -380,3 +380,10 @@ body.dark-mode .welcome-title-logo {
     left: 27px;
     color: #e0e0e0; /* Sun icon */
 }
+
+.card {
+  border-radius: 1rem;
+}
+#welcome-box, #calendar {
+  margin-bottom: 1rem;
+}

@@ -29,9 +29,9 @@ def bienvenida(request):
     empresa = None
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
-        eventos = Evento.objects.filter(empresa=empresa)
+        eventos = Evento.objects.filter(empresa=empresa).order_by('fecha')
     else:
-        eventos = Evento.objects.all()    
+        eventos = Evento.objects.all().order_by('fecha')    
     return render(request, 'bienvenida.html', {
         'empresa': empresa,
         'eventos': eventos,
