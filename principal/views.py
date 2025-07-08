@@ -24,6 +24,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Evento
 import json
 from django.core.mail import EmailMessage
+from django.template.loader import render_to_string
 # Create your views here.
 
 @login_required
@@ -209,13 +210,14 @@ def enviar_correo_evento(request, evento_id):
         try:
             evento = Evento.objects.get(id=evento_id, empresa=request.user.perfilusuario.empresa)
             if correo_destino:
+                cuerpo_html = render_to_string('correo_evento.html', {'evento': evento,'empresa': evento.empresa})
                 email = EmailMessage(
                     subject=f"Nuevo evento: {evento.titulo}",
-                    body=f"Se ha registrado un nuevo evento para el {evento.fecha}: {evento.titulo}\n\n{evento.descripcion}",
+                    body=cuerpo_html,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     to=[correo_destino],
                 )
-                # Adjuntar archivos
+                email.content_subtype = "html"
                 for archivo in archivos:
                     email.attach(archivo.name, archivo.read(), archivo.content_type)
                 email.send(fail_silently=False)
