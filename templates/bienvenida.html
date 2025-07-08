@@ -291,7 +291,6 @@
         body: JSON.stringify({
           titulo: inputTitulo.value,
           fecha: inputFecha.value,
-          correo: inputCorreo.value,
           descripcion: inputDescripcion.value
         })
       })
@@ -347,7 +346,7 @@
             modalCorreo.show();
           });
           modalEvento.hide();
-          alert('Evento registrado y correo enviado al comité.');
+          alert('Evento registrado');
         } else {
           alert('Error al registrar el evento.');
         }
