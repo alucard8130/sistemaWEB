@@ -176,12 +176,13 @@ def crear_evento(request):
         empresa = request.user.perfilusuario.empresa  # Ajusta si tu relación es diferente
         data = json.loads(request.body)
         evento = Evento.objects.create(
+            empresa=empresa,  # <--- ASOCIA LA EMPRESA 
             titulo=data.get("titulo"),
             fecha=data.get("fecha"),
             descripcion=data.get("descripcion"),
             creado_por=request.user,
-            empresa=empresa  # <--- ASOCIA LA EMPRESA 
         )
+        #print(f"Evento creado: {evento.titulo} - Empresa: {evento.empresa}")  # <-- Línea de depuración
         # Enviar correo al destinatario proporcionado
         correo_destino = data.get("correo")
         if correo_destino:
@@ -197,3 +198,14 @@ def crear_evento(request):
         return JsonResponse({"ok": True, "id": evento.id})
     return JsonResponse({"ok": False}, status=400)
 
+@csrf_exempt
+@login_required
+def eliminar_evento(request, evento_id):
+    if request.method == "POST":
+        try:
+            evento = Evento.objects.get(id=evento_id, empresa=request.user.perfilusuario.empresa)
+            evento.delete()
+            return JsonResponse({"ok": True})
+        except Evento.DoesNotExist:
+            return JsonResponse({"ok": False, "error": "No encontrado"}, status=404)
+    return JsonResponse({"ok": False}, status=400)

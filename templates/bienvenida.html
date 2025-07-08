@@ -64,12 +64,15 @@
         <div class="card-header bg-primary text-white">
           <strong>Próximos eventos</strong>
         </div>
-        <ul class="list-group list-group-flush">
-          {% for evento in eventos|dictsort:"fecha"|slice:":3" %}
-            <li class="list-group-item">
+        <ul class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+          {% for evento in eventos|dictsort:"fecha"|slice:":10" %}
+            <li class="list-group-item" data-id="{{ evento.id }}">
               <strong>{{ evento.fecha|date:"d M Y" }}</strong><br>
               {{ evento.titulo }}<br>
               <small class="text-muted">{{ evento.descripcion }}</small>
+              <div class="mt-2">
+        <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
+      </div>
             </li>
           {% empty %}
             <li class="list-group-item text-muted">Sin eventos</li>
@@ -126,91 +129,157 @@
         var eventos = [
             {% for evento in eventos %}
                 {
+                    id: "{{ evento.id }}",  
                     title: "{{ evento.titulo|escapejs }}",
-                    start: "{{ evento.fecha }}",
+                    start: "{{ evento.fecha|date:'Y-m-d' }}",
                     allDay: true,
                     description: "{{ evento.descripcion|default_if_none:''|escapejs }}"
                 }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ];
     </script>
-    <script>
+<script>
   document.addEventListener('DOMContentLoaded', function() {
-  var calendarEl = document.getElementById('calendar');
-  var modalEvento = new bootstrap.Modal(document.getElementById('modalEvento'));
-  var formEvento = document.getElementById('formEvento');
-  var inputTitulo = document.getElementById('eventoTitulo');
-  var inputFecha = document.getElementById('eventoFecha');
-  var inputCorreo = document.getElementById('eventoCorreo');
-  var inputDescripcion = document.getElementById('eventoDescripcion');
-  var fechaSeleccionada = null;
+    var calendarEl = document.getElementById('calendar');
+    var modalEvento = new bootstrap.Modal(document.getElementById('modalEvento'));
+    var formEvento = document.getElementById('formEvento');
+    var inputTitulo = document.getElementById('eventoTitulo');
+    var inputFecha = document.getElementById('eventoFecha');
+    var inputCorreo = document.getElementById('eventoCorreo');
+    var inputDescripcion = document.getElementById('eventoDescripcion');
+    var fechaSeleccionada = null;
 
-  var calendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
-    locale: 'es',
-    selectable: true,
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: 'dayGridMonth,timeGridWeek'
-    },
-    events: eventos,// Carga los eventos desde la variable eventos
-    dateClick: function(info) {
-      fechaSeleccionada = info.dateStr;
-      inputFecha.value = fechaSeleccionada;
-      inputTitulo.value = '';
-      inputDescripcion.value = '';
-      modalEvento.show();
-    }
-  });
-
-  formEvento.addEventListener('submit', function(e) {
-    e.preventDefault();
-    fetch("{% url 'crear_evento' %}", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": "{{ csrf_token }}"
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'es',
+      selectable: true,
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek'
       },
-      body: JSON.stringify({
-        titulo: inputTitulo.value,
-        fecha: inputFecha.value,
-        correo: inputCorreo.value,
-        descripcion: inputDescripcion.value
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.ok) {
-        calendar.addEvent({
-          title: inputTitulo.value,
-          start: inputFecha.value,
-          allDay: true
+      events: eventos,
+      dateClick: function(info) {
+        fechaSeleccionada = info.dateStr;
+        inputFecha.value = fechaSeleccionada;
+        inputTitulo.value = '';
+        inputDescripcion.value = '';
+        modalEvento.show();
+      },
+      eventClick: function(info) {
+        // Quita resaltado anterior
+        document.querySelectorAll('.list-group-item.selected').forEach(function(el) {
+          el.classList.remove('selected');
         });
-         // Agrega el evento a la lista de eventos
-        const lista = document.querySelector('.list-group.list-group-flush');
-        // Crea el nuevo elemento
-        const li = document.createElement('li');
-        li.className = 'list-group-item';
-        li.innerHTML = `<strong>${inputFecha.value.split('-').reverse().join(' ')}</strong><br>
-                    ${inputTitulo.value}<br>
-                    <small class="text-muted">${inputDescripcion.value}</small>`;
-    // Si la lista solo tenía "Sin eventos", la quitamos
-    if (lista.querySelector('.text-muted')) {
-      lista.innerHTML = '';
-    }
-    // Agregamos el nuevo evento al inicio de la lista
-    lista.prepend(li);
-        modalEvento.hide();
-        alert('Evento registrado y correo enviado al comité.');
-      } else {
-        alert('Error al registrar el evento.');
-      }
+        // Busca el evento en la lista y resáltalo
+        var li = document.querySelector('.list-group-item[data-id="' + info.event.id + '"]');
+        if (li) {
+          li.classList.add('selected');
+          li.scrollIntoView({behavior: "smooth", block: "center"});
+        } else {
+          // Si el evento no está en la página actual, podrías mostrar un mensaje o paginar automáticamente
+          alert('El evento seleccionado no está visible en el periodo actual.');
+        }
+      },
+       eventDidMount: function(info) {
+    // Muestra el título completo como tooltip nativo
+    info.el.setAttribute('title', info.event.title);
+  }
     });
-  });
 
-  calendar.render();
-});
+    // Eliminar evento desde la lista
+    document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var li = btn.closest('li');
+        var eventoId = li.getAttribute('data-id');
+        if (confirm('¿Eliminar este evento?')) {
+          fetch(`/evento/eliminar/${eventoId}/`, {
+            method: "POST",
+            headers: {"X-CSRFToken": "{{ csrf_token }}"}
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) {
+              li.remove();
+              // Elimina del calendario visual
+              var eventObj = calendar.getEventById(eventoId);
+              if (eventObj) eventObj.remove();
+            } else {
+              alert('No se pudo eliminar');
+            }
+          });
+        }
+      });
+    });
+
+    formEvento.addEventListener('submit', function(e) {
+      e.preventDefault();
+      fetch("{% url 'crear_evento' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+          titulo: inputTitulo.value,
+          fecha: inputFecha.value,
+          correo: inputCorreo.value,
+          descripcion: inputDescripcion.value
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.ok) {
+          calendar.addEvent({
+            title: inputTitulo.value,
+            start: inputFecha.value,
+            allDay: true,
+            id: data.id
+          });
+          // Agrega el evento a la lista de eventos
+          const lista = document.querySelector('.list-group.list-group-flush');
+          const li = document.createElement('li');
+          li.className = 'list-group-item';
+          li.setAttribute('data-id', data.id);
+          li.innerHTML = `<strong>${inputFecha.value.split('-').reverse().join(' ')}</strong><br>
+                          ${inputTitulo.value}<br>
+                          <small class="text-muted">${inputDescripcion.value}</small>
+                          <div class="mt-2">
+                            <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
+                          </div>`;
+          if (lista.querySelector('.text-muted')) {
+            lista.innerHTML = '';
+          }
+          lista.prepend(li);
+          // Añade el listener al nuevo botón eliminar
+          li.querySelector('.btn-eliminar').addEventListener('click', function() {
+            if (confirm('¿Eliminar este evento?')) {
+              fetch(`/evento/eliminar/${data.id}/`, {
+                method: "POST",
+                headers: {"X-CSRFToken": "{{ csrf_token }}"}
+              })
+              .then(r => r.json())
+              .then(data2 => {
+                if (data2.ok) {
+                  li.remove();
+                  var eventObj = calendar.getEventById(data.id.toString());
+                  if (eventObj) eventObj.remove();
+                } else {
+                  alert('No se pudo eliminar');
+                }
+              });
+            }
+          });
+          modalEvento.hide();
+          alert('Evento registrado y correo enviado al comité.');
+        } else {
+          alert('Error al registrar el evento.');
+        }
+      });
+    });
+
+    calendar.render();
+  });
 </script>
 </body>
 </html>

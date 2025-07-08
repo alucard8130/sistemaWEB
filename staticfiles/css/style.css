@@ -387,3 +387,8 @@ body.dark-mode .welcome-title-logo {
 #welcome-box, #calendar {
   margin-bottom: 1rem;
 }
+
+.list-group-item.selected {
+  background-color: #ffe082 !important;
+  border-left: 4px solid #ff9800;
+}

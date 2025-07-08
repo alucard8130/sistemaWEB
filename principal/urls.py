@@ -1,6 +1,6 @@
 from os import path
 
-from .views import crear_evento, reiniciar_sistema, reporte_auditoria
+from .views import crear_evento, eliminar_evento, reiniciar_sistema, reporte_auditoria
 
 urlpatterns = [
     # otras rutas...
