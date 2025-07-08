@@ -16,6 +16,12 @@ from facturacion.models import Factura, Pago
 from presupuestos.models import Presupuesto
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+from django.contrib.auth.decorators import login_required
+from .models import Evento
+import json
 # Create your views here.
 
 @login_required
@@ -23,8 +29,12 @@ def bienvenida(request):
     empresa = None
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
+        eventos = Evento.objects.filter(empresa=empresa)
+    else:
+        eventos = Evento.objects.all()    
     return render(request, 'bienvenida.html', {
         'empresa': empresa,
+        'eventos': eventos,
     })
 
 @staff_member_required
@@ -157,3 +167,33 @@ def reporte_auditoria(request):
     if modelo in ['local', 'area', 'factura']:
         queryset = queryset.filter(modelo=modelo)
     return render(request, 'auditoria/reporte.html', {'auditorias': queryset, 'modelo': modelo})
+
+@csrf_exempt
+@login_required
+# ...en views.py...
+def crear_evento(request):
+    if request.method == "POST":
+        empresa = request.user.perfilusuario.empresa  # Ajusta si tu relación es diferente
+        data = json.loads(request.body)
+        evento = Evento.objects.create(
+            titulo=data.get("titulo"),
+            fecha=data.get("fecha"),
+            descripcion=data.get("descripcion"),
+            creado_por=request.user,
+            empresa=empresa  # <--- ASOCIA LA EMPRESA 
+        )
+        # Enviar correo al destinatario proporcionado
+        correo_destino = data.get("correo")
+        if correo_destino:
+            send_mail(
+                subject=f"Nuevo evento: {evento.titulo}",
+                message=f"Se ha registrado un nuevo evento para el {evento.fecha}: {evento.titulo}\n\n{evento.descripcion}",
+                from_email="noreply@tuapp.com",
+                recipient_list=[correo_destino],
+                fail_silently=False,
+            )
+        evento.enviado_correo = True
+        evento.save()
+        return JsonResponse({"ok": True, "id": evento.id})
+    return JsonResponse({"ok": False}, status=400)
+

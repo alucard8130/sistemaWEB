@@ -20,7 +20,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
-from principal.views import reporte_auditoria
+from principal.views import crear_evento, reporte_auditoria
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -73,6 +73,7 @@ urlpatterns = [
     path('clientes/inactivos/', clientes_inactivos, name='clientes_inactivos'),
     path('clientes/reactivar/<int:pk>/', reactivar_cliente, name='reactivar_cliente'),
     path('informes/', include('informes_financieros.urls')),
+    path('crear/', crear_evento, name='crear_evento'),
 ]
 
 if settings.DEBUG:
