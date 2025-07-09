@@ -13,3 +13,11 @@ class EmpleadoForm(forms.ModelForm):
             self.fields['empresa'].widget = forms.HiddenInput()
 
         self.fields['empresa'].required = False
+
+        # Aplicar Bootstrap a cada campo
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                widget.attrs['class'] = 'form-check-input'
+            elif isinstance(widget, (forms.TextInput, forms.Select, forms.EmailInput, forms.Textarea)):
+                widget.attrs['class'] = 'form-control'

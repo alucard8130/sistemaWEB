@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 17/06/2025
+        Date of modification: 08/07/2025
         Description: List expenditure types
     -->
     <meta charset="UTF-8">
@@ -17,63 +17,76 @@
             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
     {% endif %}
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
+    {% include 'navbar.html' %}
+
+    <!-- Main content -->
+    <div class="container-fluid mt-4">
+        <h2>Lista tipos de gasto</h2>
+
+        <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-crear mb-3">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo Tipo de Gasto
+        </a>
+
+        <!-- Expenditure table -->
+        <div class="table-responsive rounded-3 border">
+            <table class="table align-middle mb-0 shadow-sm">
+                <thead>
+                    <tr>
+                        {% if request.user.is_superuser %}
+                            <th>Empresa</th>
+                        {% endif %}
+                        <th>Grupo</th>
+                        <th>Subgrupo</th>
+                        <th>Tipo de Gasto</th>
+                        <th>Descripción</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for tipo in tipos %}
+                    <tr>
+                        {% if request.user.is_superuser %}
+                            <td>{{ tipo.subgrupo.grupo.empresa.nombre }}</td>
+                        {% endif %}
+                        <td>{{ tipo.subgrupo.grupo.nombre }}</td>
+                        <td>{{ tipo.subgrupo.nombre }}</td>
+                        <td>{{ tipo.nombre }}</td>
+                        <td>{{ tipo.descripcion }}</td>
+                        <td>
+                            <a href="{% url 'tipo_gasto_editar' tipo.id %}" class="btn btn-outline-primary btn-sm me-1" title="Editar">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <a href="{% url 'tipo_gasto_eliminar' tipo.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                                <i class="bi bi-trash3"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5">No hay tipos de gasto registrados.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
-<div class="container mt-4">
-    <h2>Lista tipos de gasto</h2>
-    <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-success mb-2">+ Nuevo Tipo de Gasto</a>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-2">Volver al menú</a>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Grupo</th>
-                <th>Subgrupo</th>
-                <th>Tipo de Gasto</th>
-                <th>Descripción</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for tipo in tipos %}
-            <tr>
-                {% if request.user.is_superuser %}
-                    <td>{{ tipo.subgrupo.grupo.empresa.nombre }}</td>
-                {% endif %}
-                <td>{{ tipo.subgrupo.grupo.nombre }}</td>
-                <td>{{ tipo.subgrupo.nombre }}</td>
-                <td>{{ tipo.nombre }}</td>
-                <td>{{ tipo.descripcion }}</td>
-                <td>
-                    <a href="{% url 'tipo_gasto_editar' tipo.id %}" class="btn btn-primary btn-sm">Editar</a>
-                    <a href="{% url 'tipo_gasto_eliminar' tipo.id %}" class="btn btn-danger btn-sm">Eliminar</a>
-                </td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="5">No hay tipos de gasto registrados.</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    
-</div>
+
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
