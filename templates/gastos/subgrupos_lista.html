@@ -6,77 +6,86 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 17/06/2025
+        Date of modification: 07/07/2025
         Description: Deploys expenditure subgroups
     -->
-    <title>Subgrupos de Gasto</title>
+    <meta charset="UTF-8">
+    <title>Subgrupos de gasto</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div>
+    {% include 'navbar.html' %}
+
      <!-- Block for displaying messages -->
                 {% if messages %}
                     {% for message in messages %}
                         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
-<div class="container mt-4">
-    <h2>Subgrupos de Gasto</h2>
-    <a href="{% url 'subgrupo_gasto_crear' %}" class="btn btn-success mb-3">+ Nuevo Subgrupo</a>
-    <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-            <tr>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Grupo</th>
-                <th>Subgrupo</th>
-                <th>Acciones</th>
+    <!-- Main content -->
+    <div class="container-fluid mt-4">
+        <h2>Subgrupos de gasto</h2>
 
-            </tr>
-            
-        </thead>
-        
-        <tbody>
-                
-            {% for sub in subgrupos %}
-            <tr>
-                {% if request.user.is_superuser %}
-                    <td>{{ sub.empresa.nombre }}</td>
-                {% endif %}
-                <td>{{ sub.grupo.nombre }}</td>
-                <td>{{ sub.nombre }}</td>
-                <td>
-                    <a href="{% url 'subgrupo_gasto_eliminar' sub.pk %}"class="btn btn-sm btn-danger">
->
-                        <i class="bi bi-trash"></i> Eliminar
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="2">No hay subgrupos registrados.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
+        <a href="{% url 'subgrupo_gasto_crear' %}" class="btn btn-crear mb-3">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo Subgrupo
+        </a>
 
-    </table>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al menú</a>
-</div>
+            <!-- Subgroups table -->
+            <div class="table-responsive rounded-3 border">
+                <table class="table align-middle mb-0 shadow-sm">
+                    <thead>
+                        <tr>
+                            {% if request.user.is_superuser %}
+                                <th>Empresa</th>
+                            {% endif %}
+                            <th>Grupo</th>
+                            <th>Subgrupo</th>
+                            <th>Acciones</th>
+
+                        </tr>
+                        
+                    </thead>
+                    
+                    <tbody>
+                            
+                        {% for sub in subgrupos %}
+                        <tr>
+                            {% if request.user.is_superuser %}
+                                <td>{{ sub.empresa.nombre }}</td>
+                            {% endif %}
+                            <td>{{ sub.grupo.nombre }}</td>
+                            <td>{{ sub.nombre }}</td>
+                            <td>
+                                <a href="{% url 'subgrupo_gasto_eliminar' sub.pk %}"class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                    <i class="bi bi-trash3"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2">No hay subgrupos registrados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+    </div>
+
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
