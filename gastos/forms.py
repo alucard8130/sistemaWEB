@@ -44,6 +44,27 @@ class TipoGastoForm(forms.ModelForm):
             self.fields['empresa'].widget = forms.HiddenInput()
             self.fields['empresa'].initial = user.perfilusuario.empresa
 
+        #  Agregar clases Bootstrap
+        for field_name, field in self.fields.items():
+            if not isinstance(field.widget, forms.HiddenInput):
+                # Detectar si el widget es tipo Select
+                if isinstance(field.widget, forms.Select):
+                    field.widget.attrs['class'] = 'form-select'
+                else:
+                    field.widget.attrs['class'] = 'form-control'
+
+                # Asignar placeholders específicos
+                if field_name == 'empresa':
+                    field.widget.attrs['placeholder'] = 'Selecciona una empresa'
+                elif field_name == 'subgrupo':
+                    field.widget.attrs['placeholder'] = 'Selecciona un subgrupo'
+                elif field_name == 'nombre':
+                    field.widget.attrs['placeholder'] = 'Nombre'
+                elif field_name == 'descripcion':
+                    field.widget.attrs['placeholder'] = 'Descripción'
+        # labels con tilde
+        self.fields['descripcion'].label = 'Descripción'
+
                     
 #solicitud de gastos
 class GastoForm(forms.ModelForm):
