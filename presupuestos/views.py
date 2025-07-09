@@ -1264,7 +1264,7 @@ def presupuesto_ingresos_comparativo(request):
 def matriz_presupuesto_ingresos(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
-    anios = list(range(now_year, 2021, -1))
+    anios = list(range(now_year, 2023, -1))
 
     # Empresa y permisos
     if request.user.is_superuser:
