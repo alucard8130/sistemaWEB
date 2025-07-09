@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 import openpyxl
-from facturacion.models import CobroOtrosIngresos, Pago
+from facturacion.models import CobroOtrosIngresos, FacturaOtrosIngresos, Pago
 from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
 from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
 from .forms import PresupuestoCargaMasivaForm, PresupuestoForm
@@ -23,6 +23,7 @@ from django.db.models.functions import ExtractYear, ExtractMonth
 from io import BytesIO
 from datetime import date, datetime
 from django.db.models.functions import TruncMonth, TruncYear
+
 
 
 @login_required
@@ -1278,6 +1279,9 @@ def matriz_presupuesto_ingresos(request):
     meses_nombres = [month_name[m].capitalize() for m in meses]
     origenes = [('local', 'Locales'), ('area', 'Áreas comunes'), ('otros', 'Otros ingresos')]
 
+     # Catálogo de tipos de otros ingresos
+    tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO  
+
     # ¿Cerrado?
     cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
     bloqueado = cierre.cerrado if cierre else False
@@ -1311,24 +1315,59 @@ def matriz_presupuesto_ingresos(request):
     # --- Estructura de la matriz ---
     presupuestos = PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio)
     presup_dict = defaultdict(dict)
+    otros_dict = defaultdict(lambda: defaultdict(float))  # tipo_otro_id -> mes -> monto
+    #for p in presupuestos:
+     #   presup_dict[p.origen][p.mes] = p.monto_presupuestado
     for p in presupuestos:
-        presup_dict[p.origen][p.mes] = p.monto_presupuestado
+        if p.origen == 'otros' and p.tipo_otro:
+            otros_dict[p.tipo_otro][p.mes] = p.monto_presupuestado
+        else:
+            presup_dict[p.origen][p.mes] = p.monto_presupuestado
 
-    # Totales por mes y por origen
-    totales_mes = []
-    for mes in meses:
-        total_mes = sum(presup_dict[origen[0]].get(mes, 0) for origen in origenes)
-        totales_mes.append(total_mes)
-
+    
     subtotales_origen = {}
+    #for origen, _ in origenes:
+     #   subtotales_origen[origen] = [presup_dict[origen].get(mes, 0) for mes in meses]
     for origen, _ in origenes:
-        subtotales_origen[origen] = [presup_dict[origen].get(mes, 0) for mes in meses]
+        if origen == 'otros':
+            # Suma de todos los tipos de otros ingresos
+            subtotales_origen[origen] = [
+                sum(otros_dict[tipo_val[0]].get(mes, 0) for tipo_val in tipos_otros)
+                for mes in meses
+            ]
+        else:
+            subtotales_origen[origen] = [presup_dict[origen].get(mes, 0) for mes in meses]
+
+    # Calcula totales_mes correctamente
+    totales_mes = []
+    for idx, mes in enumerate(meses):
+        total_mes = sum(subtotales_origen[origen][idx] for origen, _ in origenes)
+        totales_mes.append(total_mes)        
 
     # Guardado de presupuestos (solo si habilitado)
     if request.method == "POST" and edicion_habilitada:
         for origen, _ in origenes:
+            if origen != 'otros':
+                for mes in meses:
+                    key = f"presupuesto_{origen}_{mes}"
+                    monto = request.POST.get(key)
+                    if monto is not None:
+                        monto = float(monto or 0)
+                        obj, created = PresupuestoIngreso.objects.get_or_create(
+                            empresa=empresa,
+                            anio=anio,
+                            mes=mes,
+                            origen=origen,
+                            defaults={"monto_presupuestado": monto},
+                        )
+                        if not created and obj.monto_presupuestado != monto:
+                            obj.monto_presupuestado = monto
+                            obj.save()
+        # Guardar tipos de otros ingresos
+        for tipo in tipos_otros:
+            tipo_val = tipo[0]
             for mes in meses:
-                key = f"presupuesto_{origen}_{mes}"
+                key = f"presupuesto_otros_{tipo_val}_{mes}"
                 monto = request.POST.get(key)
                 if monto is not None:
                     monto = float(monto or 0)
@@ -1336,12 +1375,13 @@ def matriz_presupuesto_ingresos(request):
                         empresa=empresa,
                         anio=anio,
                         mes=mes,
-                        origen=origen,
+                        origen='otros',
+                        tipo_otro=tipo_val,
                         defaults={"monto_presupuestado": monto},
                     )
                     if not created and obj.monto_presupuestado != monto:
                         obj.monto_presupuestado = monto
-                        obj.save()
+                        obj.save()                    
         # Cerrar presupuesto solo si corresponde
         if "cerrar_presupuesto" in request.POST and edicion_habilitada:
             cierre, created = PresupuestoCierre.objects.get_or_create(
@@ -1387,5 +1427,8 @@ def matriz_presupuesto_ingresos(request):
             "pedir_superuser": pedir_superuser,
             "bloqueado": bloqueado,
             "cierre": cierre,
+            "tipos_otros": tipos_otros,
+            "otros_dict": otros_dict,
+            
         },
     )
