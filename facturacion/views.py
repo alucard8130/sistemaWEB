@@ -32,6 +32,7 @@ from django.db import transaction
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
 import io
+from django.utils.dateformat import DateFormat
 
 
 
@@ -519,6 +520,8 @@ def dashboard_saldos(request):
     })
 
 @login_required
+#pagos.html
+@login_required
 def dashboard_pagos(request):
     es_super = request.user.is_superuser
 
@@ -551,31 +554,79 @@ def dashboard_pagos(request):
     elif origen == 'area':
         filtro &= Q(factura__area_comun__isnull=False)
 
-    #pagos = Pago.objects.filter(filtro)
-    #pagos = Pago.objects.exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or 0
     pagos = Pago.objects.exclude(forma_pago='nota_credito').filter(filtro)
 
-    # Filtros de fechas
+    # Cobros de otros ingresos
+    otros_cobros = CobroOtrosIngresos.objects.all()
+    if not request.user.is_superuser:
+        otros_cobros = otros_cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
+    if empresa_id:
+        otros_cobros = otros_cobros.filter(factura__empresa_id=empresa_id)
+    if cliente_id:
+        otros_cobros = otros_cobros.filter(factura__cliente_id=cliente_id)
+    if anio:
+        otros_cobros = otros_cobros.filter(fecha_cobro__year=anio)
+    if mes:
+        otros_cobros = otros_cobros.filter(fecha_cobro__month=mes)
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            otros_cobros = otros_cobros.filter(fecha_cobro__range=[fecha_i, fecha_f])
+        except:
+            pass
+
+    # --- AJUSTE CLAVE ---
+    if origen == 'local' or origen == 'area':
+        otros_cobros = CobroOtrosIngresos.objects.none()
+        otros_por_mes = []
+        otros_por_anio = []
+    else:
+        otros_por_mes = otros_cobros.annotate(mes=TruncMonth('fecha_cobro')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+        otros_por_anio = otros_cobros.annotate(anio=TruncYear('fecha_cobro')).values('anio').annotate(total=Sum('monto')).order_by('anio')    
+
+    # Filtros de fechas para pagos
     if anio:
         pagos = pagos.filter(fecha_pago__year=anio)
     if mes:
         pagos = pagos.filter(fecha_pago__month=mes)
     if fecha_inicio and fecha_fin:
         try:
-            # Valida fechas
             fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
             fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
             pagos = pagos.filter(fecha_pago__range=[fecha_i, fecha_f])
         except:
             pass
 
-    # Pagos por mes para el gráfico
-    #pagos_por_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    # Si el filtro de origen es "otros", solo mostrar otros ingresos
+    if origen == 'otros':
+        pagos = Pago.objects.none()  # No mostrar cuotas
+        pagos_por_mes = []
+        pagos_por_anio = []
+    else:
+        pagos_por_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+        pagos_por_anio = pagos.annotate(anio=TruncYear('fecha_pago')).values('anio').annotate(total=Sum('monto')).order_by('anio')
 
-    pagos_por_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    pagos_por_anio = pagos.annotate(anio=TruncYear('fecha_pago')).values('anio').annotate(total=Sum('monto')).order_by('anio')
+    # Otros ingresos por mes y año para los gráficos
+    otros_por_mes = otros_cobros.annotate(mes=TruncMonth('fecha_cobro')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    otros_por_anio = otros_cobros.annotate(anio=TruncYear('fecha_cobro')).values('anio').annotate(total=Sum('monto')).order_by('anio')
 
     clientes = Cliente.objects.filter(empresa__in=empresas)
+
+    # Suma total de pagos y otros ingresos
+    total_pagos = pagos.aggregate(total=Sum('monto'))['total'] or 0
+    total_otros = otros_cobros.aggregate(total=Sum('monto'))['total'] or 0
+    total_general = total_pagos + total_otros
+
+    # Unifica meses de ambos queryset
+    meses_cuotas = {p['mes']: p['total'] for p in pagos_por_mes}
+    meses_otros = {o['mes']: o['total'] for o in otros_por_mes}
+    todos_los_meses = sorted(set(list(meses_cuotas.keys()) + list(meses_otros.keys())))
+
+    # Prepara datos alineados
+    labels_meses = [DateFormat(m).format('F Y') for m in todos_los_meses]
+    data_cuotas = [meses_cuotas.get(m, 0) for m in todos_los_meses]
+    data_otros = [meses_otros.get(m, 0) for m in todos_los_meses]
 
     return render(request, 'dashboard/pagos.html', {
         'pagos': pagos,
@@ -585,13 +636,22 @@ def dashboard_pagos(request):
         'cliente_id': int(cliente_id) if cliente_id else None,
         'origen': origen,
         'es_super': es_super,
-        #'pagos_por_mes': pagos_por_mes,
         'pagos_por_mes': pagos_por_mes,
         'pagos_por_anio': pagos_por_anio,
+        'otros_por_mes': otros_por_mes,
+        'otros_por_anio': otros_por_anio,
         'anio': anio,
         'mes': mes,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
+        'otros_cobros': otros_cobros,
+        'total_pagos': total_pagos,
+        'total_otros': total_otros,
+        'total_general': total_general,
+        'labels_meses': labels_meses,
+        'data_cuotas': data_cuotas, 
+        'data_otros': data_otros,
+
     })
 
 

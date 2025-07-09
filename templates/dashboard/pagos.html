@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -59,6 +60,7 @@
                 <option value="">Todo</option>
                 <option value="local" {% if origen == "local" %}selected{% endif %}>Solo locales</option>
                 <option value="area" {% if origen == "area" %}selected{% endif %}>Solo áreas comunes</option>
+                <option value="otros" {% if origen == "otros" %}selected{% endif %}>Otros ingresos</option>
             </select>
         </div>
         <div class="col-md-1">
@@ -97,50 +99,94 @@
         </div>
     </div>
 
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card shadow p-3">
+                <h5 class="mb-3">Resumen de Ingresos</h5>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Total Cuotas</span>
+                        <span class="fw-bold text-success">${{ total_pagos|floatformat:2|intcomma }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Total otros Ingresos</span>
+                        <span class="fw-bold text-primary">${{ total_otros|floatformat:2|intcomma }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                        <span>Total general</span>
+                        <span class="fw-bold text-dark">${{ total_general|floatformat:2 |intcomma}}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+
     <script>
     // Pagos por Mes
-    const ctxPagosMes = document.getElementById('graficoPagosMes');
-    new Chart(ctxPagosMes, {
-        type: 'bar',
-        data: {
-            labels: [{% for p in pagos_por_mes %}'{{ p.mes|date:"F Y" }}',{% endfor %}],
-            datasets: [{
-                label: 'Ingresos por mes',
-                data: [{% for p in pagos_por_mes %}{{ p.total }},{% endfor %}],
+const ctxPagosMes = document.getElementById('graficoPagosMes');
+new Chart(ctxPagosMes, {
+    type: 'bar',
+    data: {
+        labels: [{% for l in labels_meses %}'{{ l }}',{% endfor %}],
+        datasets: [
+            {
+                label: 'Cuotas',
+                data: [{% for d in data_cuotas %}{{ d }},{% endfor %}],
                 backgroundColor: '#20c997',
                 borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                title: { display: true, text: '' }
-            }
-        }
-    });
-
-    // Pagos por Año
-    const ctxPagosAnio = document.getElementById('graficoPagosAnio');
-    new Chart(ctxPagosAnio, {
-        type: 'bar',
-        data: {
-            labels: [{% for p in pagos_por_anio %}'{{ p.anio|date:"Y" }}',{% endfor %}],
-            datasets: [{
-                label: 'Ingresos por año',
-                data: [{% for p in pagos_por_anio %}{{ p.total }},{% endfor %}],
+            },
+            {
+                label: 'Otros ingresos',
+                data: [{% for d in data_otros %}{{ d }},{% endfor %}],
                 backgroundColor: '#0d6efd',
                 borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                title: { display: true, text: '' }
             }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true },
+            title: { display: false }
         }
-    });
+    }
+});
+
+// Pagos por Año
+const ctxPagosAnio = document.getElementById('graficoPagosAnio');
+new Chart(ctxPagosAnio, {
+    type: 'bar',
+    data: {
+        labels: [
+            {% if pagos_por_anio %}
+                {% for p in pagos_por_anio %}'{{ p.anio|date:"Y" }}',{% endfor %}
+            {% else %}
+                {% for o in otros_por_anio %}'{{ o.anio|date:"Y" }}',{% endfor %}
+            {% endif %}
+        ],
+        datasets: [
+            {
+                label: 'Cuotas',
+                data: [{% for p in pagos_por_anio %}{{ p.total }},{% endfor %}],
+                backgroundColor: '#20c997',
+                borderWidth: 1
+            },
+            {
+                label: 'Otros ingresos',
+                data: [{% for o in otros_por_anio %}{{ o.total }},{% endfor %}],
+                backgroundColor: '#0d6efd',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true },
+            title: { display: false }
+        }
+    }
+});
     </script>
 </div>
     <footer>
