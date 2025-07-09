@@ -1400,6 +1400,9 @@ def reporte_presupuesto_vs_ingreso(request):
         "real": total_general_real,
         "variacion": total_general_var,
     }
+    # Exportar a Excel
+    if request.GET.get("excel") == "1":
+        return exportar_reporte_presupuesto_vs_ingreso(request)
 
     return render(
         request,
@@ -1417,6 +1420,159 @@ def reporte_presupuesto_vs_ingreso(request):
             "medicion": medicion,
         },
     )
+
+@login_required
+def exportar_reporte_presupuesto_vs_ingreso(request):
+    from collections import defaultdict
+
+    anio = int(request.GET.get("anio", datetime.now().year))
+    medicion = request.GET.get("medicion", "curso")
+    # --- Copia la lógica de selección de meses de tu vista principal ---
+    if medicion == "mes":
+        mes_actual = int(request.GET.get("mes", datetime.now().month))
+        meses = [mes_actual]
+        meses_nombres = [calendar.month_name[mes_actual]]
+    elif medicion == "semestre1":
+        meses = list(range(1, 7))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "semestre2":
+        meses = list(range(7, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "anual":
+        meses = list(range(1, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    else:  # 'curso' o default
+        if anio == datetime.now().year:
+            mes_actual = datetime.now().month
+        else:
+            mes_actual = 12
+        meses = list(range(1, mes_actual + 1))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+
+    # Empresa y permisos
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+
+    origenes = [
+        ('local', 'Locales'),
+        ('area', 'Áreas comunes'),
+        ('otros', 'Otros ingresos'),
+    ]
+    tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO
+
+    # Presupuestos
+    presupuestos = PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = defaultdict(lambda: defaultdict(float))
+    for p in presupuestos:
+        if p.origen == 'otros' and p.tipo_otro:
+            presup_dict[(p.origen, p.tipo_otro)][p.mes] = float(p.monto_presupuestado)
+        else:
+            presup_dict[(p.origen, None)][p.mes] = float(p.monto_presupuestado)
+
+    # Ingresos reales
+    pagos_local = Pago.objects.filter(factura__local__isnull=False, fecha_pago__year=anio)
+    pagos_area = Pago.objects.filter(factura__area_comun__isnull=False, fecha_pago__year=anio)
+    otros = CobroOtrosIngresos.objects.filter(fecha_cobro__year=anio)
+    if empresa:
+        pagos_local = pagos_local.filter(factura__empresa=empresa)
+        pagos_area = pagos_area.filter(factura__empresa=empresa)
+        otros = otros.filter(factura__empresa=empresa)
+
+    reales_dict = defaultdict(lambda: defaultdict(float))
+    for p in pagos_local.annotate(mes=ExtractMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')):
+        reales_dict[('local', None)][p['mes']] = float(p['total'])
+    for p in pagos_area.annotate(mes=ExtractMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')):
+        reales_dict[('area', None)][p['mes']] = float(p['total'])
+    for tipo in tipos_otros:
+        tipo_id = tipo[0]
+        qs = otros.filter(factura__tipo_ingreso=tipo_id)
+        for p in qs.annotate(mes=ExtractMonth('fecha_cobro')).values('mes').annotate(total=Sum('monto')):
+            reales_dict[('otros', tipo_id)][p['mes']] = float(p['total'])
+
+    # --- Crear el archivo Excel ---
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Presupuesto vs Ingresos"
+
+    # Encabezado
+    encabezado = ["Origen", "Tipo"]
+    for mes_nombre in meses_nombres:
+        encabezado += [f"{mes_nombre} Presup.", f"{mes_nombre} Real", f"{mes_nombre} Var."]
+    encabezado += ["Total Presup.", "Total Real", "Total Var."]
+    ws.append(encabezado)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    # Locales y Áreas comunes
+    for origen, nombre in origenes[:2]:
+        fila = [nombre, ""]
+        total_presup = total_real = total_var = 0
+        for mes in meses:
+            presup = presup_dict[(origen, None)].get(mes, 0)
+            real = reales_dict[(origen, None)].get(mes, 0)
+            var = real - presup
+            fila += [presup, real, var]
+            total_presup += presup
+            total_real += real
+            total_var += var
+        fila += [total_presup, total_real, total_var]
+        ws.append(fila)
+
+    # Otros ingresos por tipo
+    for tipo in tipos_otros:
+        tipo_id, tipo_nombre = tipo
+        fila = ["Otros ingresos", tipo_nombre]
+        total_presup = total_real = total_var = 0
+        for mes in meses:
+            presup = presup_dict[('otros', tipo_id)].get(mes, 0)
+            real = reales_dict[('otros', tipo_id)].get(mes, 0)
+            var = real - presup
+            fila += [presup, real, var]
+            total_presup += presup
+            total_real += real
+            total_var += var
+        fila += [total_presup, total_real, total_var]
+        ws.append(fila)
+
+    # Fila total de "Otros ingresos" sumando todos los tipos
+    fila_total_otros = ["Otros ingresos (Total)", ""]
+    total_presup = total_real = total_var = 0
+    for i, mes in enumerate(meses):
+        presup = sum(presup_dict[('otros', tipo[0])].get(mes, 0) for tipo in tipos_otros)
+        real = sum(reales_dict[('otros', tipo[0])].get(mes, 0) for tipo in tipos_otros)
+        var = real - presup
+        fila_total_otros += [presup, real, var]
+        total_presup += presup
+        total_real += real
+        total_var += var
+    fila_total_otros += [total_presup, total_real, total_var]
+    ws.append(fila_total_otros)
+
+    # Ajustar ancho de columnas
+    for col in ws.columns:
+        max_length = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            try:
+                if cell.value is not None and len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except Exception:
+                pass
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+    # Nombre del archivo
+    nombre_archivo = f"Presupuesto_vs_Ingresos_{empresa.nombre}_{anio}.xlsx".replace(" ", "_")
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f"attachment; filename={nombre_archivo}"
+    wb.save(response)
+    return response
+    
 
 @login_required
 def matriz_presupuesto_ingresos(request):
