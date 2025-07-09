@@ -167,3 +167,7 @@ def sum_list(value):
         return sum(value)
     except Exception:
         return 0
+    
+@register.filter
+def lookup(d, key):
+    return d.get(key, {})    

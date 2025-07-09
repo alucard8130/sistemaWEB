@@ -1208,20 +1208,61 @@ def carga_masiva_presupuestos(request):
     )
 
 @login_required
-def presupuesto_ingresos_comparativo(request):
-    empresa = request.user.perfilusuario.empresa if not request.user.is_superuser else None
-    anio = int(request.GET.get('anio', now().year))
+def reporte_presupuesto_vs_ingreso(request):
+    anio = int(request.GET.get("anio", datetime.now().year))
+    meses = list(range(1, 13))
+    meses_nombres = [calendar.month_name[m] for m in meses]
+    medicion = request.GET.get("medicion", "curso")  # 'mes', 'curso', 'semestre1', 'semestre2', 'anual'
 
-    # Presupuesto por mes y origen
-    presupuestos = PresupuestoIngreso.objects.filter(anio=anio)
-    if empresa:
-        presupuestos = presupuestos.filter(empresa=empresa)
+    # Selección de meses según filtro
+    if medicion == "mes":
+        mes_actual = int(request.GET.get("mes", datetime.now().month))
+        meses = [mes_actual]
+        meses_nombres = [calendar.month_name[mes_actual]]
+    elif medicion == "semestre1":
+        meses = list(range(1, 7))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "semestre2":
+        meses = list(range(7, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "anual":
+        meses = list(range(1, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    else:  # 'curso' o default
+        if anio == datetime.now().year:
+            mes_actual = datetime.now().month
+        else:
+            mes_actual = 12
+        meses = list(range(1, mes_actual + 1))
+        meses_nombres = [calendar.month_name[m] for m in meses]
 
-    presupuesto_dict = {}
+    # Empresa y permisos
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    origenes = [
+        ('local', 'Locales'),
+        ('area', 'Áreas comunes'),
+        ('otros', 'Otros ingresos'),
+    ]
+    tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO
+
+    # Presupuestos
+    presupuestos = PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = defaultdict(lambda: defaultdict(float))  # origen/tipo -> mes -> monto
+
     for p in presupuestos:
-        presupuesto_dict.setdefault(p.origen, {})[p.mes] = p.monto_presupuestado
+        if p.origen == 'otros' and p.tipo_otro:
+            presup_dict[(p.origen, p.tipo_otro)][p.mes] = float(p.monto_presupuestado)
+        else:
+            presup_dict[(p.origen, None)][p.mes] = float(p.monto_presupuestado)
 
-    # Ingresos reales por mes y origen
+    # Ingresos reales
     pagos_local = Pago.objects.filter(factura__local__isnull=False, fecha_pago__year=anio)
     pagos_area = Pago.objects.filter(factura__area_comun__isnull=False, fecha_pago__year=anio)
     otros = CobroOtrosIngresos.objects.filter(fecha_cobro__year=anio)
@@ -1231,34 +1272,151 @@ def presupuesto_ingresos_comparativo(request):
         pagos_area = pagos_area.filter(factura__empresa=empresa)
         otros = otros.filter(factura__empresa=empresa)
 
-    reales_local = pagos_local.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    reales_area = pagos_area.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    reales_otros = otros.annotate(mes=TruncMonth('fecha_cobro')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    reales_dict = defaultdict(lambda: defaultdict(float))  # origen/tipo -> mes -> monto
 
-    # Organiza los datos por mes (1-12)
-    def to_mes_dict(queryset):
-        d = {}
-        for x in queryset:
-            mes = x['mes'].month if x['mes'] else None
-            d[mes] = x['total']
-        return d
+    # Locales
+    for p in pagos_local.annotate(mes=ExtractMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')):
+        reales_dict[('local', None)][p['mes']] = float(p['total'])
+    # Áreas comunes
+    for p in pagos_area.annotate(mes=ExtractMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')):
+        reales_dict[('area', None)][p['mes']] = float(p['total'])
+    # Otros ingresos por tipo
+    for tipo in tipos_otros:
+        tipo_id = tipo[0]
+        qs = otros.filter(factura__tipo_ingreso=tipo_id)
+        for p in qs.annotate(mes=ExtractMonth('fecha_cobro')).values('mes').annotate(total=Sum('monto')):
+            reales_dict[('otros', tipo_id)][p['mes']] = float(p['total'])
 
-    reales_dict = {
-        'local': to_mes_dict(reales_local),
-        'area': to_mes_dict(reales_area),
-        'otros': to_mes_dict(reales_otros),
+    # Estructura para el comparativo
+    comparativo = []
+    
+
+    # Locales y Áreas comunes
+    for origen, nombre in origenes[:2]:
+        row = {
+            "nombre": nombre,
+            "tipo": None,
+            "meses": [],
+            "total_presup": 0.0,
+            "total_real": 0.0,
+            "total_var": 0.0,
+        }
+        for mes in meses:
+            presup = presup_dict[(origen, None)].get(mes, 0)
+            real = reales_dict[(origen, None)].get(mes, 0)
+            var = real - presup
+            row["meses"].append({
+                "presupuesto": presup,
+                "real": real,
+                "variacion": var,
+            })
+            row["total_presup"] += presup
+            row["total_real"] += real
+            row["total_var"] += var
+        comparativo.append(row)
+
+    # Otros ingresos (desglose por tipo)
+    otros_rows = []
+    for tipo in tipos_otros:
+        tipo_id, tipo_nombre = tipo
+        row = {
+            "nombre": "Otros ingresos",
+            "tipo": tipo_nombre,
+            "meses": [],
+            "total_presup": 0.0,
+            "total_real": 0.0,
+            "total_var": 0.0,
+        }
+        for mes in meses:
+            presup = presup_dict[('otros', tipo_id)].get(mes, 0)
+            real = reales_dict[('otros', tipo_id)].get(mes, 0)
+            var = real - presup
+            row["meses"].append({
+                "presupuesto": presup,
+                "real": real,
+                "variacion": var,
+            })
+            row["total_presup"] += presup
+            row["total_real"] += real
+            row["total_var"] += var
+        otros_rows.append(row)
+
+    # Fila total de "Otros ingresos" sumando todos los tipos
+    total_otros = {
+        "nombre": "Otros ingresos (Total)",
+        "tipo": None,
+        "meses": [],
+        "total_presup": 0.0,
+        "total_real": 0.0,
+        "total_var": 0.0,
+    }
+    for i, mes in enumerate(meses):
+        presup = sum(row["meses"][i]["presupuesto"] for row in otros_rows)
+        real = sum(row["meses"][i]["real"] for row in otros_rows)
+        var = real - presup
+        total_otros["meses"].append({
+            "presupuesto": presup,
+            "real": real,
+            "variacion": var,
+        })
+        total_otros["total_presup"] += presup
+        total_otros["total_real"] += real
+        total_otros["total_var"] += var
+
+    comparativo.append(total_otros)
+    comparativo.extend(otros_rows)  # Si quieres mostrar el desglose debajo del total
+    
+    def es_numero(x):
+        return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+    total_general_presup = sum(row["total_presup"] for row in comparativo if row["tipo"] is None and es_numero(row["total_presup"]))
+    total_general_real = sum(row["total_real"] for row in comparativo if row["tipo"] is None and es_numero(row["total_real"]))
+    total_general_var = sum(row["total_var"] for row in comparativo if row["tipo"] is None and es_numero(row["total_var"]))
+
+    # Totales generales por mes (solo filas principales)
+    filas_principales = [row for row in comparativo if row["tipo"] is None]
+    tot_gen_presup = []
+    tot_gen_real = []
+    tot_gen_var = []
+    for i in range(len(meses)):
+        presup = sum(row["meses"][i]["presupuesto"] for row in filas_principales if es_numero(row["meses"][i]["presupuesto"]))
+        real = sum(row["meses"][i]["real"] for row in filas_principales if es_numero(row["meses"][i]["real"]))
+        var = real - presup
+        tot_gen_presup.append(presup)
+        tot_gen_real.append(real)
+        tot_gen_var.append(var)
+    
+    # --- NUEVO: Totales como diccionario para el template ---
+    totales_meses = {}
+    for i, mes in enumerate(meses):
+        totales_meses[mes] = {
+            "presupuesto": tot_gen_presup[i],
+            "real": tot_gen_real[i],
+            "variacion": tot_gen_var[i],
+        }
+
+    tot_anual = {
+        "presupuesto": total_general_presup,
+        "real": total_general_real,
+        "variacion": total_general_var,
     }
 
-    meses = range(1, 13)
-    origenes = [('local', 'Locales'), ('area', 'Áreas comunes'), ('otros', 'Otros ingresos')]
-
-    return render(request, 'presupuestos/presupuesto_ingresos_comparativo.html', {
-        'presupuesto_dict': presupuesto_dict,
-        'reales_dict': reales_dict,
-        'meses': meses,
-        'origenes': origenes,
-        'anio': anio,
-    })
+    return render(
+        request,
+        "presupuestos\comparativo_presupuesto_vs_ingresos.html",
+        {
+            "anio": anio,
+            "anios": list(range(datetime.now().year, 2021, -1)),
+            "empresa": empresa,
+            "empresas": empresas,
+            "meses": meses,
+            "meses_nombres": meses_nombres,
+            "comparativo": comparativo,
+            "totales_meses": totales_meses,
+            "tot_anual": tot_anual,
+            "medicion": medicion,
+        },
+    )
 
 @login_required
 def matriz_presupuesto_ingresos(request):

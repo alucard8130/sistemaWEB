@@ -16,3 +16,21 @@ def mul(value, arg):
     except (ValueError, TypeError):
         return ''
     
+@register.filter
+def divide(value, arg):
+    try:
+        return float(value) / float(arg) if arg else None
+    except (ValueError, ZeroDivisionError):
+        return None
+    
+@register.filter    
+def minus(value, arg):
+    return float(value) - float(arg)    
+
+
+@register.filter
+def index(sequence, position):
+    try:
+        return sequence[int(position)]
+    except (IndexError, ValueError, TypeError):
+        return 0
