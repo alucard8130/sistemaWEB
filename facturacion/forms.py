@@ -1,5 +1,7 @@
 from django import forms
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from django.db import models
+from empresas.models import Empresa
 
 class FacturaForm(forms.ModelForm):
     TIPO_ORIGEN_CHOICES = [
@@ -235,4 +237,3 @@ class CobroForm(forms.ModelForm):
         self.fields['monto'].required = False
 
 
-    

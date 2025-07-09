@@ -4,9 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 import openpyxl
-from facturacion.models import Pago
+from facturacion.models import CobroOtrosIngresos, Pago
 from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
-from .models import Presupuesto, PresupuestoCierre
+from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
 from .forms import PresupuestoCargaMasivaForm, PresupuestoForm
 from django.utils.timezone import now
 from django.db.models import Sum, F
@@ -22,6 +22,7 @@ from openpyxl.styles import Font, Alignment
 from django.db.models.functions import ExtractYear, ExtractMonth
 from io import BytesIO
 from datetime import date, datetime
+from django.db.models.functions import TruncMonth, TruncYear
 
 
 @login_required
@@ -379,6 +380,7 @@ def matriz_presupuesto(request):
             "cierre": cierre,
         },
     )
+
 
 
 @login_required
@@ -1202,4 +1204,188 @@ def carga_masiva_presupuestos(request):
         form = PresupuestoCargaMasivaForm()
     return render(
         request, "presupuestos/carga_masiva_presupuestos.html", {"form": form}
+    )
+
+@login_required
+def presupuesto_ingresos_comparativo(request):
+    empresa = request.user.perfilusuario.empresa if not request.user.is_superuser else None
+    anio = int(request.GET.get('anio', now().year))
+
+    # Presupuesto por mes y origen
+    presupuestos = PresupuestoIngreso.objects.filter(anio=anio)
+    if empresa:
+        presupuestos = presupuestos.filter(empresa=empresa)
+
+    presupuesto_dict = {}
+    for p in presupuestos:
+        presupuesto_dict.setdefault(p.origen, {})[p.mes] = p.monto_presupuestado
+
+    # Ingresos reales por mes y origen
+    pagos_local = Pago.objects.filter(factura__local__isnull=False, fecha_pago__year=anio)
+    pagos_area = Pago.objects.filter(factura__area_comun__isnull=False, fecha_pago__year=anio)
+    otros = CobroOtrosIngresos.objects.filter(fecha_cobro__year=anio)
+
+    if empresa:
+        pagos_local = pagos_local.filter(factura__empresa=empresa)
+        pagos_area = pagos_area.filter(factura__empresa=empresa)
+        otros = otros.filter(factura__empresa=empresa)
+
+    reales_local = pagos_local.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    reales_area = pagos_area.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    reales_otros = otros.annotate(mes=TruncMonth('fecha_cobro')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+
+    # Organiza los datos por mes (1-12)
+    def to_mes_dict(queryset):
+        d = {}
+        for x in queryset:
+            mes = x['mes'].month if x['mes'] else None
+            d[mes] = x['total']
+        return d
+
+    reales_dict = {
+        'local': to_mes_dict(reales_local),
+        'area': to_mes_dict(reales_area),
+        'otros': to_mes_dict(reales_otros),
+    }
+
+    meses = range(1, 13)
+    origenes = [('local', 'Locales'), ('area', 'Áreas comunes'), ('otros', 'Otros ingresos')]
+
+    return render(request, 'presupuestos/presupuesto_ingresos_comparativo.html', {
+        'presupuesto_dict': presupuesto_dict,
+        'reales_dict': reales_dict,
+        'meses': meses,
+        'origenes': origenes,
+        'anio': anio,
+    })
+
+@login_required
+def matriz_presupuesto_ingresos(request):
+    anio = int(request.GET.get("anio", now().year))
+    now_year = now().year
+    anios = list(range(now_year, 2021, -1))
+
+    # Empresa y permisos
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    meses = list(range(1, 13))
+    meses_nombres = [month_name[m].capitalize() for m in meses]
+    origenes = [('local', 'Locales'), ('area', 'Áreas comunes'), ('otros', 'Otros ingresos')]
+
+    # ¿Cerrado?
+    cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
+    bloqueado = cierre.cerrado if cierre else False
+    pedir_superuser = False
+
+    # Lógica para abrir presupuesto con superuser
+    if bloqueado and not request.user.is_superuser:
+        if request.method == "POST" and "superuser_username" in request.POST:
+            username = request.POST.get("superuser_username")
+            password = request.POST.get("superuser_password")
+            superuser = authenticate(username=username, password=password)
+            if superuser and superuser.is_superuser:
+                cierre.cerrado = False
+                cierre.fecha_cierre = None
+                cierre.cerrado_por = None
+                cierre.save()
+                messages.success(request, "Presupuesto reabierto correctamente. Ahora puedes editarlo.")
+                return redirect(request.path + f"?anio={anio}" + (f"&empresa={empresa.id}" if empresa else ""))
+            else:
+                messages.error(request, "Usuario o contraseña de superusuario incorrectos.")
+        else:
+            pedir_superuser = True
+
+    cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
+    bloqueado = cierre.cerrado if cierre else False
+    if not bloqueado:
+        pedir_superuser = False
+
+    edicion_habilitada = not bloqueado or request.user.is_superuser
+
+    # --- Estructura de la matriz ---
+    presupuestos = PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = defaultdict(dict)
+    for p in presupuestos:
+        presup_dict[p.origen][p.mes] = p.monto_presupuestado
+
+    # Totales por mes y por origen
+    totales_mes = []
+    for mes in meses:
+        total_mes = sum(presup_dict[origen[0]].get(mes, 0) for origen in origenes)
+        totales_mes.append(total_mes)
+
+    subtotales_origen = {}
+    for origen, _ in origenes:
+        subtotales_origen[origen] = [presup_dict[origen].get(mes, 0) for mes in meses]
+
+    # Guardado de presupuestos (solo si habilitado)
+    if request.method == "POST" and edicion_habilitada:
+        for origen, _ in origenes:
+            for mes in meses:
+                key = f"presupuesto_{origen}_{mes}"
+                monto = request.POST.get(key)
+                if monto is not None:
+                    monto = float(monto or 0)
+                    obj, created = PresupuestoIngreso.objects.get_or_create(
+                        empresa=empresa,
+                        anio=anio,
+                        mes=mes,
+                        origen=origen,
+                        defaults={"monto_presupuestado": monto},
+                    )
+                    if not created and obj.monto_presupuestado != monto:
+                        obj.monto_presupuestado = monto
+                        obj.save()
+        # Cerrar presupuesto solo si corresponde
+        if "cerrar_presupuesto" in request.POST and edicion_habilitada:
+            cierre, created = PresupuestoCierre.objects.get_or_create(
+                empresa=empresa, anio=anio
+            )
+            cierre.cerrado = True
+            cierre.cerrado_por = request.user
+            cierre.fecha_cierre = now()
+            cierre.save()
+            messages.success(
+                request,
+                "¡Presupuesto cerrado! Solo el superusuario puede volver a abrirlo.",
+            )
+            return redirect(
+                request.path
+                + f"?anio={anio}"
+                + (f"&empresa={empresa.id}" if empresa else "")
+            )
+        else:
+            messages.success(request, "Presupuestos de ingresos actualizados")
+        return redirect(
+            request.path
+            + f"?anio={anio}"
+            + (f"&empresa={empresa.id}" if empresa else "")
+        )
+
+    return render(
+        request,
+        "presupuestos/matriz_ingresos.html",
+        {
+            "origenes": origenes,
+            "meses": meses,
+            "meses_nombres": meses_nombres,
+            "presup_dict": presup_dict,
+            "anio": anio,
+            "anios": anios,
+            "empresas": empresas,
+            "empresa": empresa,
+            "totales_mes": totales_mes,
+            "subtotales_origen": subtotales_origen,
+            "is_super": request.user.is_superuser,
+            "edicion_habilitada": edicion_habilitada,
+            "pedir_superuser": pedir_superuser,
+            "bloqueado": bloqueado,
+            "cierre": cierre,
+        },
     )

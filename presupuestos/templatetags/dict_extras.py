@@ -153,3 +153,8 @@ def index(lst, i):
         return lst[i]
     except:
         return ''    
+
+
+@register.filter
+def dict_get(d, key):
+    return d.get(key, 0) if d else 0    

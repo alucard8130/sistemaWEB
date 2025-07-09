@@ -149,4 +149,3 @@ class CobroOtrosIngresos(models.Model):
     def __str__(self):
         return f"Cobro de ${self.monto} para {self.factura.folio} el {self.fecha_cobro}"
     
-   

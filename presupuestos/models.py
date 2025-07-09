@@ -33,3 +33,21 @@ class PresupuestoCierre(models.Model):
 
     def __str__(self):
         return f"{self.empresa} - {self.anio} ({'CERRADO' if self.cerrado else 'ABIERTO'})"
+    
+class PresupuestoIngreso(models.Model):
+    ORIGEN_CHOICES = [
+        ('local', 'Locales'),
+        ('area', 'Áreas comunes'),
+        ('otros', 'Otros ingresos'),
+    ]
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    anio = models.PositiveIntegerField()
+    mes = models.PositiveIntegerField()
+    origen = models.CharField(max_length=10, choices=ORIGEN_CHOICES)
+    monto_presupuestado = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        unique_together = ('empresa', 'anio', 'mes', 'origen')
+
+    def __str__(self):
+        return f"{self.empresa} {self.get_origen_display()} {self.mes}/{self.anio}: {self.monto_presupuestado}"           

@@ -16,5 +16,8 @@ urlpatterns = [
     path('comparativo-vs-gastos/', views.comparativo_presupuesto_vs_gastos, name='comparativo_presupuesto_vs_gastos'),
     path('descargar-plantilla-matriz-presupuesto/', views.descargar_plantilla_matriz_presupuesto, name='descargar_plantilla_matriz_presupuesto'),
     path('carga-masiva/', views.carga_masiva_presupuestos, name='carga_masiva_presupuestos'),
+    path('presupuesto-ingresos/comparativo/', views.presupuesto_ingresos_comparativo, name='presupuesto_ingresos_comparativo'),
+    path('presupuestos/matriz-ingresos/', views.matriz_presupuesto_ingresos, name='matriz_presupuesto_ingresos'),
+
 ]
 

@@ -1314,3 +1314,4 @@ def exportar_cobros_otros_ingresos_excel(request):
     )
     response['Content-Disposition'] = 'attachment; filename="cobros_otros_ingresos.xlsx"'
     return response
+
