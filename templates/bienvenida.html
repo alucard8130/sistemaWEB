@@ -8,7 +8,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 03/07/2025
+        Date of modification: 10/07/2025
         Description: Main page of the application
     -->
     <!-- Agrega esto en el <head> -->
@@ -32,117 +32,329 @@
     
     <!-- 🔹 Caja central -->
     <main class="main-content container mt-4" position="relative">
-    <div class="row justify-content-center align-items-start">
-        <div class="col-md-4 mb-4">
-        <div class="welcome-box text-center">
-            <img src="{% static 'img/logo.png' %}" alt="Logo" class="welcome-logo">
-            <p class="mb-5 text-muted mt-0">Gestor Administrativo Condominal<br></p>
-            <hr class="welcome-divider mb-4">
-            <br>
-            <h1 class="welcome-title mb-1">Bienvenid@ <br> {{ request.user.get_full_name|default:request.user.username }}</h1>
-            {% if empresa %}
-                <p class="text-muted mb-3">Empresa: <strong>{{ empresa.nombre }}</strong></p>
-            {% else %}
-                <p class="text-muted mb-3">Administrador General</p>
-            {% endif %}
-        </div>
-        </div>
-    <!-- Calendario en pizarrón -->
-    <div class="col-md-5 mb-4">
-      <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
-        <div class="card-header bg-dark text-white text-center" style="border-radius: 0.8rem 0.8rem 0 0;">
-          <strong>Calendario de eventos</strong>
-        </div>
-        <div class="card-body">
-          <div id="calendar"></div>
-        </div>
-      </div>
-    </div>
-    <!-- Tarjeta de próximos eventos flotante -->
-    <div class="col-md-3 mb-4">
-      <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
-        <div class="card-header bg-primary text-white">
-          <strong>Próximos eventos</strong>
-        </div>
-        <ul class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
-          {% for evento in eventos|dictsort:"fecha"|slice:":10" %}
-            <li class="list-group-item" data-id="{{ evento.id }}">
-              <strong>{{ evento.fecha|date:"d M Y" }}</strong><br>
-              {{ evento.titulo }}<br>
-              <small class="text-muted">{{ evento.descripcion }}</small>
-              <div class="mt-2">
-        <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
-        <button class="btn btn-sm btn-info btn-enviar-correo">Enviar correo</button>
+      <div class="row justify-content-center align-items-start">
+          <div class="col-md-4 mb-4">
+            <div class="welcome-box text-center">
+                <img src="{% static 'img/logo.png' %}" alt="Logo" class="welcome-logo">
+                <p class="mb-5 text-muted mt-0">Gestor Administrativo Condominal<br></p>
+                <hr class="welcome-divider mb-4">
+                <br>
+                <h1 class="welcome-title mb-1">Bienvenid@ <br> {{ request.user.get_full_name|default:request.user.username }}</h1>
+                {% if empresa %}
+                    <p class="text-muted mb-3">Empresa: <strong>{{ empresa.nombre }}</strong></p>
+                {% else %}
+                    <p class="text-muted mb-3">Administrador General</p>
+                {% endif %}
+            </div>
+          </div>
 
+          <!-- Calendario en pizarrón -->
+          <div class="col-md-5 mb-4">
+            <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
+              <div class="card-header bg-dark text-white text-center" style="border-radius: 0.8rem 0.8rem 0 0;">
+                <strong>Calendario de eventos</strong>
+              </div>
+              <div class="card-body">
+                <div id="calendar"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta de próximos eventos flotante -->
+          <div class="col-md-3 mb-4">
+            <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
+              <div class="card-header bg-primary text-white">
+                <strong>Próximos eventos</strong>
+              </div>
+              <ul class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                {% for evento in eventos|dictsort:"fecha"|slice:":10" %}
+                  <li class="list-group-item" data-id="{{ evento.id }}">
+                    <strong>{{ evento.fecha|date:"d M Y" }}</strong><br>
+                    {{ evento.titulo }}<br>
+                    <small class="text-muted">{{ evento.descripcion }}</small>
+                <div class="mt-2">
+                  <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
+                  <button class="btn btn-sm btn-info btn-enviar-correo">Enviar correo</button>
+                </div>
+                  </li>
+                {% empty %}
+                  <li class="list-group-item text-muted">Sin eventos</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
       </div>
-            </li>
-          {% empty %}
-            <li class="list-group-item text-muted">Sin eventos</li>
+    
+
+      <!-- Modal para nuevo evento -->
+      <div class="modal fade" id="modalEvento" tabindex="-1" aria-labelledby="modalEventoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form id="formEvento">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalEventoLabel">Nuevo Evento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="eventoTitulo" class="form-label">Título</label>
+                  <input type="text" class="form-control" id="eventoTitulo" required>
+                </div>
+                <div class="mb-3">
+                  <label for="eventoFecha" class="form-label">Fecha</label>
+                  <input type="date" class="form-control" id="eventoFecha" readonly>
+                </div>
+
+                <div class="mb-3">
+                  <label for="eventoDescripcion" class="form-label">Descripción</label>
+                  <textarea class="form-control" id="eventoDescripcion" rows="2"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Guardar evento</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    
+
+      <!-- Modal para enviar correo con adjunto -->
+      <div class="modal fade" id="modalCorreo" tabindex="-1" aria-labelledby="modalCorreoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form id="formEnviarCorreo" enctype="multipart/form-data">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalCorreoLabel">Enviar correo de evento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" id="correoEventoId" name="evento_id">
+                <div class="mb-3">
+                  <label for="correoDestino" class="form-label">Correo destinatario</label>
+                  <input type="email" class="form-control" id="correoDestino" name="correo" required>
+                </div>
+                <div class="mb-3">
+                  <label for="archivosCorreo" class="form-label">Adjuntar archivos</label>
+                  <input type="file" class="form-control" id="archivosCorreo" name="archivos" multiple>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Enviar correo</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  <script>
+      var eventos = [
+          {% for evento in eventos %}
+              {
+                  id: "{{ evento.id }}",  
+                  title: "{{ evento.titulo|escapejs }}",
+                  start: "{{ evento.fecha|date:'Y-m-d' }}",
+                  allDay: true,
+                  description: "{{ evento.descripcion|default_if_none:''|escapejs }}"
+              }{% if not forloop.last %},{% endif %}
           {% endfor %}
-        </ul>
-      </div>
-    </div>
-  </div>
-  <!-- Modal para nuevo evento -->
-<div class="modal fade" id="modalEvento" tabindex="-1" aria-labelledby="modalEventoLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="formEvento">
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalEventoLabel">Nuevo Evento</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="eventoTitulo" class="form-label">Título</label>
-            <input type="text" class="form-control" id="eventoTitulo" required>
-          </div>
-          <div class="mb-3">
-            <label for="eventoFecha" class="form-label">Fecha</label>
-            <input type="date" class="form-control" id="eventoFecha" readonly>
-          </div>
+      ];
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var calendarEl = document.getElementById('calendar');
+      var modalEvento = new bootstrap.Modal(document.getElementById('modalEvento'));
+      var formEvento = document.getElementById('formEvento');
+      var inputTitulo = document.getElementById('eventoTitulo');
+      var inputFecha = document.getElementById('eventoFecha');
+      var inputCorreo = document.getElementById('eventoCorreo');
+      var inputDescripcion = document.getElementById('eventoDescripcion');
+      var fechaSeleccionada = null;
 
-          <div class="mb-3">
-            <label for="eventoDescripcion" class="form-label">Descripción</label>
-            <textarea class="form-control" id="eventoDescripcion" rows="2"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Guardar evento</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<!-- Modal para enviar correo con adjunto -->
-<div class="modal fade" id="modalCorreo" tabindex="-1" aria-labelledby="modalCorreoLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="formEnviarCorreo" enctype="multipart/form-data">
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalCorreoLabel">Enviar correo de evento</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="correoEventoId" name="evento_id">
-          <div class="mb-3">
-            <label for="correoDestino" class="form-label">Correo destinatario</label>
-            <input type="email" class="form-control" id="correoDestino" name="correo" required>
-          </div>
-          <div class="mb-3">
-            <label for="archivosCorreo" class="form-label">Adjuntar archivos</label>
-            <input type="file" class="form-control" id="archivosCorreo" name="archivos" multiple>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Enviar correo</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+      // Modal y formulario para enviar correo
+      var modalCorreo = new bootstrap.Modal(document.getElementById('modalCorreo'));
+      var formEnviarCorreo = document.getElementById('formEnviarCorreo');
+      var correoDestino = document.getElementById('correoDestino');
+      var archivosCorreo = document.getElementById('archivosCorreo');
+      var correoEventoId = document.getElementById('correoEventoId');
+
+    
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        selectable: true,
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek'
+        },
+        events: eventos,
+        dateClick: function(info) {
+          fechaSeleccionada = info.dateStr;
+          inputFecha.value = fechaSeleccionada;
+          inputTitulo.value = '';
+          inputDescripcion.value = '';
+          modalEvento.show();
+        },
+        eventClick: function(info) {
+          // Quita resaltado anterior
+          document.querySelectorAll('.list-group-item.selected').forEach(function(el) {
+            el.classList.remove('selected');
+          });
+          // Busca el evento en la lista y resáltalo
+          var li = document.querySelector('.list-group-item[data-id="' + info.event.id + '"]');
+          if (li) {
+            li.classList.add('selected');
+            li.scrollIntoView({behavior: "smooth", block: "center"});
+          } else {
+            // Si el evento no está en la página actual, podrías mostrar un mensaje o paginar automáticamente
+            alert('El evento seleccionado no está visible en el periodo actual.');
+          }
+        },
+        eventDidMount: function(info) {
+      // Muestra el título completo como tooltip nativo
+      info.el.setAttribute('title', info.event.title);
+    }
+      });
+
+      // Eliminar evento desde la lista
+      document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var li = btn.closest('li');
+          var eventoId = li.getAttribute('data-id');
+          if (confirm('¿Eliminar este evento?')) {
+            fetch(`/evento/eliminar/${eventoId}/`, {
+              method: "POST",
+              headers: {"X-CSRFToken": "{{ csrf_token }}"}
+            })
+            .then(r => r.json())
+            .then(data => {
+              if (data.ok) {
+                li.remove();
+                // Elimina del calendario visual
+                var eventObj = calendar.getEventById(eventoId);
+                if (eventObj) eventObj.remove();
+              } else {
+                alert('No se pudo eliminar');
+              }
+            });
+          }
+        });
+      });
+      // Mostrar modal para enviar correo con adjunto
+      document.querySelectorAll('.btn-enviar-correo').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var li = btn.closest('li');
+          var eventoId = li.getAttribute('data-id');
+          correoEventoId.value = eventoId;
+          correoDestino.value = '';
+          archivosCorreo.value = '';
+          modalCorreo.show();
+        });
+      });
+      // Enviar correo con adjuntos
+      formEnviarCorreo.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var eventoId = correoEventoId.value;
+        var formData = new FormData(formEnviarCorreo);
+        fetch(`/evento/enviar_correo/${eventoId}/`, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": "{{ csrf_token }}"
+          },
+          body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            alert('Correo enviado correctamente.');
+            modalCorreo.hide();
+          } else {
+            alert('No se pudo enviar el correo.');
+          }
+        });
+      });
+
+      formEvento.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch("{% url 'crear_evento' %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+          },
+          body: JSON.stringify({
+            titulo: inputTitulo.value,
+            fecha: inputFecha.value,
+            descripcion: inputDescripcion.value
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.ok) {
+            calendar.addEvent({
+              title: inputTitulo.value,
+              start: inputFecha.value,
+              allDay: true,
+              id: data.id
+            });
+            // Agrega el evento a la lista de eventos
+            const lista = document.querySelector('.list-group.list-group-flush');
+            const li = document.createElement('li');
+            li.className = 'list-group-item';
+            li.setAttribute('data-id', data.id);
+            li.innerHTML = `<strong>${inputFecha.value.split('-').reverse().join(' ')}</strong><br>
+                            ${inputTitulo.value}<br>
+                            <small class="text-muted">${inputDescripcion.value}</small>
+                            <div class="mt-2">
+                              <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
+                              <button class="btn btn-sm btn-info btn-enviar-correo">Enviar correo</button>
+                            </div>`;
+            if (lista.querySelector('.text-muted')) {
+              lista.innerHTML = '';
+            }
+            lista.prepend(li);
+            // Añade el listener al nuevo botón eliminar
+            li.querySelector('.btn-eliminar').addEventListener('click', function() {
+              if (confirm('¿Eliminar este evento?')) {
+                fetch(`/evento/eliminar/${data.id}/`, {
+                  method: "POST",
+                  headers: {"X-CSRFToken": "{{ csrf_token }}"}
+                })
+                .then(r => r.json())
+                .then(data2 => {
+                  if (data2.ok) {
+                    li.remove();
+                    var eventObj = calendar.getEventById(data.id.toString());
+                    if (eventObj) eventObj.remove();
+                  } else {
+                    alert('No se pudo eliminar');
+                  }
+                });
+              }
+            });
+            // Añade el listener al nuevo botón enviar correo
+            li.querySelector('.btn-enviar-correo').addEventListener('click', function() {
+              correoEventoId.value = data.id;
+              correoDestino.value = '';
+              archivosCorreo.value = '';
+              modalCorreo.show();
+            });
+            modalEvento.hide();
+            alert('Evento registrado');
+          } else {
+            alert('Error al registrar el evento.');
+          }
+        });
+      });
+
+      calendar.render();
+    });
+  </script>
+
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
@@ -152,210 +364,5 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        var eventos = [
-            {% for evento in eventos %}
-                {
-                    id: "{{ evento.id }}",  
-                    title: "{{ evento.titulo|escapejs }}",
-                    start: "{{ evento.fecha|date:'Y-m-d' }}",
-                    allDay: true,
-                    description: "{{ evento.descripcion|default_if_none:''|escapejs }}"
-                }{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ];
-    </script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var calendarEl = document.getElementById('calendar');
-    var modalEvento = new bootstrap.Modal(document.getElementById('modalEvento'));
-    var formEvento = document.getElementById('formEvento');
-    var inputTitulo = document.getElementById('eventoTitulo');
-    var inputFecha = document.getElementById('eventoFecha');
-    var inputCorreo = document.getElementById('eventoCorreo');
-    var inputDescripcion = document.getElementById('eventoDescripcion');
-    var fechaSeleccionada = null;
-
-    // Modal y formulario para enviar correo
-    var modalCorreo = new bootstrap.Modal(document.getElementById('modalCorreo'));
-    var formEnviarCorreo = document.getElementById('formEnviarCorreo');
-    var correoDestino = document.getElementById('correoDestino');
-    var archivosCorreo = document.getElementById('archivosCorreo');
-    var correoEventoId = document.getElementById('correoEventoId');
-
-  
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
-      locale: 'es',
-      selectable: true,
-      headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek'
-      },
-      events: eventos,
-      dateClick: function(info) {
-        fechaSeleccionada = info.dateStr;
-        inputFecha.value = fechaSeleccionada;
-        inputTitulo.value = '';
-        inputDescripcion.value = '';
-        modalEvento.show();
-      },
-      eventClick: function(info) {
-        // Quita resaltado anterior
-        document.querySelectorAll('.list-group-item.selected').forEach(function(el) {
-          el.classList.remove('selected');
-        });
-        // Busca el evento en la lista y resáltalo
-        var li = document.querySelector('.list-group-item[data-id="' + info.event.id + '"]');
-        if (li) {
-          li.classList.add('selected');
-          li.scrollIntoView({behavior: "smooth", block: "center"});
-        } else {
-          // Si el evento no está en la página actual, podrías mostrar un mensaje o paginar automáticamente
-          alert('El evento seleccionado no está visible en el periodo actual.');
-        }
-      },
-       eventDidMount: function(info) {
-    // Muestra el título completo como tooltip nativo
-    info.el.setAttribute('title', info.event.title);
-  }
-    });
-
-    // Eliminar evento desde la lista
-    document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var li = btn.closest('li');
-        var eventoId = li.getAttribute('data-id');
-        if (confirm('¿Eliminar este evento?')) {
-          fetch(`/evento/eliminar/${eventoId}/`, {
-            method: "POST",
-            headers: {"X-CSRFToken": "{{ csrf_token }}"}
-          })
-          .then(r => r.json())
-          .then(data => {
-            if (data.ok) {
-              li.remove();
-              // Elimina del calendario visual
-              var eventObj = calendar.getEventById(eventoId);
-              if (eventObj) eventObj.remove();
-            } else {
-              alert('No se pudo eliminar');
-            }
-          });
-        }
-      });
-    });
-    // Mostrar modal para enviar correo con adjunto
-    document.querySelectorAll('.btn-enviar-correo').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var li = btn.closest('li');
-        var eventoId = li.getAttribute('data-id');
-        correoEventoId.value = eventoId;
-        correoDestino.value = '';
-        archivosCorreo.value = '';
-        modalCorreo.show();
-      });
-    });
-    // Enviar correo con adjuntos
-    formEnviarCorreo.addEventListener('submit', function(e) {
-      e.preventDefault();
-      var eventoId = correoEventoId.value;
-      var formData = new FormData(formEnviarCorreo);
-      fetch(`/evento/enviar_correo/${eventoId}/`, {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": "{{ csrf_token }}"
-        },
-        body: formData
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) {
-          alert('Correo enviado correctamente.');
-          modalCorreo.hide();
-        } else {
-          alert('No se pudo enviar el correo.');
-        }
-      });
-    });
-
-    formEvento.addEventListener('submit', function(e) {
-      e.preventDefault();
-      fetch("{% url 'crear_evento' %}", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": "{{ csrf_token }}"
-        },
-        body: JSON.stringify({
-          titulo: inputTitulo.value,
-          fecha: inputFecha.value,
-          descripcion: inputDescripcion.value
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.ok) {
-          calendar.addEvent({
-            title: inputTitulo.value,
-            start: inputFecha.value,
-            allDay: true,
-            id: data.id
-          });
-          // Agrega el evento a la lista de eventos
-          const lista = document.querySelector('.list-group.list-group-flush');
-          const li = document.createElement('li');
-          li.className = 'list-group-item';
-          li.setAttribute('data-id', data.id);
-          li.innerHTML = `<strong>${inputFecha.value.split('-').reverse().join(' ')}</strong><br>
-                          ${inputTitulo.value}<br>
-                          <small class="text-muted">${inputDescripcion.value}</small>
-                          <div class="mt-2">
-                            <button class="btn btn-sm btn-danger btn-eliminar">Eliminar</button>
-                            <button class="btn btn-sm btn-info btn-enviar-correo">Enviar correo</button>
-                          </div>`;
-          if (lista.querySelector('.text-muted')) {
-            lista.innerHTML = '';
-          }
-          lista.prepend(li);
-          // Añade el listener al nuevo botón eliminar
-          li.querySelector('.btn-eliminar').addEventListener('click', function() {
-            if (confirm('¿Eliminar este evento?')) {
-              fetch(`/evento/eliminar/${data.id}/`, {
-                method: "POST",
-                headers: {"X-CSRFToken": "{{ csrf_token }}"}
-              })
-              .then(r => r.json())
-              .then(data2 => {
-                if (data2.ok) {
-                  li.remove();
-                  var eventObj = calendar.getEventById(data.id.toString());
-                  if (eventObj) eventObj.remove();
-                } else {
-                  alert('No se pudo eliminar');
-                }
-              });
-            }
-          });
-          // Añade el listener al nuevo botón enviar correo
-          li.querySelector('.btn-enviar-correo').addEventListener('click', function() {
-            correoEventoId.value = data.id;
-            correoDestino.value = '';
-            archivosCorreo.value = '';
-            modalCorreo.show();
-          });
-          modalEvento.hide();
-          alert('Evento registrado');
-        } else {
-          alert('Error al registrar el evento.');
-        }
-      });
-    });
-
-    calendar.render();
-  });
-  
-</script>
 </body>
 </html>

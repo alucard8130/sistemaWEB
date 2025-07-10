@@ -68,16 +68,50 @@ class TipoGastoForm(forms.ModelForm):
                     
 #solicitud de gastos
 class GastoForm(forms.ModelForm):
-    origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True)
+    origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True,
+                widget=forms.Select(attrs={
+                    'class': 'form-select'
+                }))
+
 
  
     class Meta:
         model = Gasto
         fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr','comprobante', 'observaciones']
         widgets = {
-            'fecha': forms.DateInput(attrs={'type': 'date'}),
-            'descripcion': forms.Textarea(attrs={'rows':2}),
-            'observaciones': forms.Textarea(attrs={'rows':2}),
+            'proveedor': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'empresa': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'tipo_gasto': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'fecha': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'retencion_iva': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'retencion_isr': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'comprobante': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'rows':2,
+                'class': 'form-control'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows':2,
+                'class': 'form-control'
+            }),
         }
 
       
