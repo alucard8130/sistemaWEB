@@ -26,14 +26,14 @@
             </button>
         </div>
     </div>
-<div class="container mt-3">
+<div class="container mt-1">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
         <h2>Dashboard Ingresos</h2>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al Menú Principal</a>
+        
     </div>
     <!-- Filtros de Pagos -->
-    <form method="get" class="row g-2 mb-4">
+    <form method="get" class="row g-2 mb-2">
         {% if es_super %}
         <div class="col-md-2">
             <label>Empresa:</label>
@@ -71,35 +71,40 @@
             <label>Mes:</label>
             <input type="number" name="mes" value="{{ mes }}" min="1" max="12" class="form-control">
         </div>
-        <div class="col-md-2">
+        <!--<div class="col-md-2">
             <label>Desde:</label>
             <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control">
         </div>
         <div class="col-md-2">
             <label>Hasta:</label>
             <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
-        </div>
-        <div class="col-md-12 text-end">
-            <button type="submit" class="btn btn-info">Filtrar ingresos</button>
+            
+        </div>-->
+        <div class="col-md-1 d-flex align-items-end">
+    <button type="submit" class="btn btn-info">Filtrar</button>
+</div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="{% url 'dashboard_pagos' %}" class="btn btn-secondary">Limpiar Filtros</a>
         </div>
     </form>
 
     <div class="row g-3">
-        <div class="col-md-6">
-            <div class="card shadow p-3">
-                <h5 class="mb-2">Ingresos por mes</h5>
-                <canvas id="graficoPagosMes"></canvas>
-            </div>
+    <div class="col-12">
+        <div class="card shadow p-3">
+            <h5 class="mb-2">Ingresos</h5>
+            <canvas id="graficoPagosMes" style="min-height:350px; height:50vh; width:100%"></canvas>
         </div>
-        <div class="col-md-6">
+    </div>
+</div>
+        <!--<div class="col-md-6">
             <div class="card shadow p-3">
                 <h5 class="mb-2">Ingresos por año</h5>
                 <canvas id="graficoPagosAnio"></canvas>
             </div>
         </div>
-    </div>
+    </div>-->
 
-    <div class="row mt-4">
+    <!--<div class="row mt-4">
         <div class="col-md-6">
             <div class="card shadow p-3">
                 <h5 class="mb-3">Resumen de Ingresos</h5>
@@ -118,8 +123,8 @@
                     </li>
                 </ul>
             </div>
-        </div>
-        
+        </div>-->
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al Menú Principal</a>
 
     <script>
     // Pagos por Mes
@@ -140,6 +145,28 @@ new Chart(ctxPagosMes, {
                 data: [{% for d in data_otros %}{{ d }},{% endfor %}],
                 backgroundColor: '#0d6efd',
                 borderWidth: 1
+            },
+{
+    label: 'Por Cobrar',
+    type: 'line',
+    data: [{% for d in data_por_cobrar %}{{ d }},{% endfor %}],
+    borderColor: '#ff5733',
+    backgroundColor: 'rgba(255,87,51,0.2)',
+    borderWidth: 3,
+    fill: false,
+    pointRadius: 3,
+    tension: 0.2
+},
+                 {
+                label: 'Presupuesto',
+                type: 'line',
+                data: [{% for d in data_presupuesto %}{{ d }},{% endfor %}],
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255,193,7,0.2)',
+                borderWidth: 3,
+                fill: false,
+                pointRadius: 3,
+                tension: 0.2
             }
         ]
     },
@@ -176,6 +203,28 @@ new Chart(ctxPagosAnio, {
                 data: [{% for o in otros_por_anio %}{{ o.total }},{% endfor %}],
                 backgroundColor: '#0d6efd',
                 borderWidth: 1
+            },
+           {
+    label: 'Facturas por cobrar',
+    type: 'line',
+    data: [{% for d in data_por_cobrar %}{{ d }},{% endfor %}],
+    borderColor: '#ff5733',
+    backgroundColor: 'rgba(255,87,51,0.2)',
+    borderWidth: 3,
+    fill: false,
+    pointRadius: 3,
+    tension: 0.2
+},
+            {
+                label: 'Presupuesto',
+                type: 'line',
+                data: [{% for d in data_presupuesto_anio %}{{ d }},{% endfor %}],
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255,193,7,0.2)',
+                borderWidth: 3,
+                fill: false,
+                pointRadius: 3,
+                tension: 0.2
             }
         ]
     },

@@ -69,9 +69,9 @@
                             <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Factura</a></li>
                             <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Facturas</a></li>
                             <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
-                            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros</a></li>
+                            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Ingresos</a></li>
                             
-                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Cobros</a></li>
+                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
                             
                             {% if request.user.is_superuser %}
                             <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
@@ -85,7 +85,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar Factura</a></li>
                            <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista Facturas</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Otros Ingresos</a></li>
                         </ul>
                     <!-- MENÚ cartera -->
                     <li class="nav-item dropdown">
@@ -135,11 +135,11 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
                             <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_anio' %}">Comparativo Ppto vs Ppto</a></li>
-                            <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto</a></li>
+                            <!--<li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_anio' %}">Comparativo Ppto vs Ppto</a></li>-->
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
                             <!-- <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_vs_gastos' %}">Comparativo vs Gasto2</a></li> -->
                             
-                            <li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>
+                            <!--<li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>-->
                         </ul>
                     </li>
                     <!-- MENÚ REPORTES -->
