@@ -21,5 +21,6 @@ urlpatterns = [
     path('subgrupos/<int:pk>/eliminar/', views.subgrupo_gasto_eliminar, name='subgrupo_gasto_eliminar'),
     path('gastos/carga-masiva/', views.carga_masiva_gastos, name='carga_masiva_gastos'),
     path('gastos/descargar-plantilla/', views.descargar_plantilla_gastos, name='descargar_plantilla_gastos'),
+    path('exportar_gastos_lista_excel/', views.exportar_gastos_lista_excel, name='exportar_gastos_lista_excel'),
 
 ]

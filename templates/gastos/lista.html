@@ -64,6 +64,9 @@
 </form>
     <a href="{% url 'gasto_nuevo' %}" class="btn btn-success mb-2">+ Nueva Solicitud</a>
     <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-2">Volver al menú</a>
+    <a href="{% url 'exportar_gastos_lista_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+    Exportar a Excel
+</a>
     <table class="table table-bordered">
         <thead>
             <tr>

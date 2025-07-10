@@ -46,6 +46,9 @@
         <h2>Facturas de otros ingresos</h2>
         <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle me-1"></i> Nueva factura otros ingresos
+            <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+    Exportar a Excel
+</a>
         </a>
 
         <!-- Invoices table -->     

@@ -44,6 +44,11 @@
     </div>
 </div>
     
+    {% if modo == 'resultados' or not modo %}
+    <div class="alert alert-secondary mb-2">Modo: <strong>Resultados</strong> (incluye todo lo facturado y todos los gastos)</div>
+{% elif modo == 'flujo' %}
+    <div class="alert alert-secondary mb-2">Modo: <strong>Flujo</strong> (solo ingresos cobrados y gastos pagados)</div>
+{% endif %}
 <form method="get" class="row g-2 mb-3 align-items-end">
     {% if request.user.is_superuser %}
     <div class="col-auto">
@@ -81,11 +86,19 @@
             Periodo actual
         </button>
     </div>
-    <div class="col-auto">
+   <div class="col-auto">
+        <button type="submit" name="modo" value="resultados" class="btn btn-primary"
+            {% if modo == 'resultados' or not modo %}disabled{% endif %}>
+            Resultados
+        </button>
+        <button type="submit" name="modo" value="flujo" class="btn btn-outline-primary"
+            {% if modo == 'flujo' %}disabled{% endif %}>
+            Flujo
+        </button>
         <button type="submit" class="btn btn-primary">Filtrar</button>
         <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
-    Exportar a Excel
-</a>
+            Exportar a Excel
+        </a>
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
     </div>
 </form>

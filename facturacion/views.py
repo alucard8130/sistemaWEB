@@ -1480,3 +1480,55 @@ def exportar_cobros_otros_ingresos_excel(request):
     response['Content-Disposition'] = 'attachment; filename="cobros_otros_ingresos.xlsx"'
     return response
 
+@login_required
+def exportar_lista_facturas_otros_ingresos_excel(request):
+    empresa_id = request.GET.get('empresa')
+    cliente_id = request.GET.get('cliente')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    facturas = FacturaOtrosIngresos.objects.select_related('empresa', 'cliente').all()
+
+    if not request.user.is_superuser:
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            facturas = facturas.filter(fecha_emision__range=[fecha_i, fecha_f])
+        except ValueError:
+            pass
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Facturas Otros Ingresos"
+
+    ws.append([
+        'Folio', 'Empresa', 'Cliente', 'Tipo ingreso', 'Monto','Saldo',
+        'Fecha Emisión', 'Fecha Vencimiento', 'Estatus', 'Observaciones'
+    ])
+
+    for factura in facturas:
+        ws.append([
+            factura.folio,
+            factura.empresa.nombre,
+            factura.cliente.nombre,
+            factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else factura.tipo_ingreso,
+            float(factura.monto),
+            float(factura.saldo),
+            factura.fecha_emision.strftime('%Y-%m-%d'),
+            factura.fecha_vencimiento.strftime('%Y-%m-%d') if factura.fecha_vencimiento else '',
+            factura.estatus,
+            factura.observaciones or ''
+        ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=lista_facturas_otros_ingresos.xlsx'
+    wb.save(response)
+    return response
