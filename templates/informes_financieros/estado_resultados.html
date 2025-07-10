@@ -8,100 +8,110 @@
 </head>
 <body>
 <div class="container mt-4">
-<div class="text-center mb-4">
-    <h3>
-    {% if empresa_id %}
-        {% for emp in empresas %}
-            {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}
-                {{ emp.nombre }}
-            {% endif %}
-        {% endfor %}
-    {% else %}
-        {% if request.user.is_superuser %}
-            Todas las empresas
-        {% else %}
+    <div class="text-center mb-4">
+        <h3>
+        {% if empresa_id %}
             {% for emp in empresas %}
-                {% if emp.id|stringformat:"s" == request.user.empresa_id|stringformat:"s" %}
+                {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}
                     {{ emp.nombre }}
                 {% endif %}
             {% endfor %}
-        {% endif %}
-    {% endif %}
-    </h3>
-    <h4>Estado de Resultados</h4>
-    <div>
-        <strong>
-            {% if mes and anio %}
-                {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
-                    {{ meses|index:mes|default:"" }} {{ anio }}
-                {% endwith %}
-            {% elif fecha_inicio and fecha_fin %}
-                {{ fecha_inicio|date:"d/m/Y" }} al {{ fecha_fin|date:"d/m/Y" }}
+        {% else %}
+            {% if request.user.is_superuser %}
+                Todas las empresas
             {% else %}
-                Todo el periodo
+                {% for emp in empresas %}
+                    {% if emp.id|stringformat:"s" == request.user.empresa_id|stringformat:"s" %}
+                        {{ emp.nombre }}
+                    {% endif %}
+                {% endfor %}
             {% endif %}
-        </strong>
+        {% endif %}
+        </h3>
+        <h4>Estado de Resultados</h4>
+        <div>
+            <strong>
+                {% if mes and anio %}
+                    {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
+                        {{ meses|index:mes|default:"" }} {{ anio }}
+                    {% endwith %}
+                {% else %}
+                    Todo el periodo
+                {% endif %}
+            </strong>
+        </div>
     </div>
-</div>
-    
+
+    <!-- Botones de modo arriba y separados -->
+    <div class="d-flex justify-content-center mb-3">
+        <div class="btn-group" role="group" aria-label="Modo de informe">
+            <a href="?modo=flujo{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
+               class="btn btn-outline-primary {% if modo == 'flujo' %}active{% endif %}">
+                Flujo
+            </a>
+            <a href="?modo=resultados{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
+               class="btn btn-outline-primary {% if modo == 'resultados' or not modo %}active{% endif %}">
+                Resultados
+            </a>
+        </div>
+    </div>
+
     {% if modo == 'resultados' or not modo %}
-    <div class="alert alert-secondary mb-2">Modo: <strong>Resultados</strong> (incluye todo lo facturado y todos los gastos)</div>
-{% elif modo == 'flujo' %}
-    <div class="alert alert-secondary mb-2">Modo: <strong>Flujo</strong> (solo ingresos cobrados y gastos pagados)</div>
-{% endif %}
-<form method="get" class="row g-2 mb-3 align-items-end">
-    {% if request.user.is_superuser %}
-    <div class="col-auto">
-        <select name="empresa" class="form-select" style="width:auto;">
-            <option value="">Todas las empresas</option>
-            {% for emp in empresas %}
-                <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
-            {% endfor %}
-        </select>
-    </div>
+        <div class="alert alert-secondary mb-2 text-center">
+            Modo: <strong>Resultados</strong> (incluye todo lo facturado y todos los gastos)
+        </div>
+    {% elif modo == 'flujo' %}
+        <div class="alert alert-secondary mb-2 text-center">
+            Modo: <strong>Flujo</strong> (solo ingresos cobrados y gastos pagados)
+        </div>
     {% endif %}
-    <div class="col-auto">
-        {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
-        <select name="mes" class="form-select" style="width:auto;">
-            <option value="">Mes</option>
-            {% for m in 1|get_range:12 %}
-                <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
-                    {{ meses|index:m|default:"" }}
-                </option>
-            {% endfor %}
-        </select>
-        {% endwith %}
-    </div>
-    <div class="col-auto">
-        <select name="anio" class="form-select" style="width:auto;">
-            <option value="">Año</option>
-            {% for y in 2022|get_range:2030 %}
-                <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
-            {% if periodo == 'periodo_actual' %}disabled{% endif %}>
-            Periodo actual
-        </button>
-    </div>
-   <div class="col-auto">
-        <button type="submit" name="modo" value="resultados" class="btn btn-primary"
-            {% if modo == 'resultados' or not modo %}disabled{% endif %}>
-            Resultados
-        </button>
-        <button type="submit" name="modo" value="flujo" class="btn btn-outline-primary"
-            {% if modo == 'flujo' %}disabled{% endif %}>
-            Flujo
-        </button>
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-        <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
-            Exportar a Excel
-        </a>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
-    </div>
-</form>
+
+    <!-- Filtros -->
+    <form method="get" class="row g-2 mb-3 align-items-end justify-content-center">
+        {% if request.user.is_superuser %}
+        <div class="col-auto">
+            <select name="empresa" class="form-select" style="width:auto;">
+                <option value="">Todas las empresas</option>
+                {% for emp in empresas %}
+                    <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-auto">
+            {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
+            <select name="mes" class="form-select" style="width:auto;">
+                <option value="">Mes</option>
+                {% for m in 1|get_range:12 %}
+                    <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
+                        {{ meses|index:m|default:"" }}
+                    </option>
+                {% endfor %}
+            </select>
+            {% endwith %}
+        </div>
+        <div class="col-auto">
+            <select name="anio" class="form-select" style="width:auto;">
+                <option value="">Año</option>
+                {% for y in 2022|get_range:2030 %}
+                    <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
+                {% if periodo == 'periodo_actual' %}disabled{% endif %}>
+                Periodo actual
+            </button>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+                Exportar a Excel
+            </a>
+            <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
+        </div>
+    </form>
 
     <div class="card my-4">
         <div class="card-header bg-primary text-white">
