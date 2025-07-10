@@ -158,3 +158,16 @@ def index(lst, i):
 @register.filter
 def dict_get(d, key):
     return d.get(key, 0) if d else 0    
+
+@register.filter
+def sum_list(value):
+    if isinstance(value, dict):
+        return sum(value.values())
+    try:
+        return sum(value)
+    except Exception:
+        return 0
+    
+@register.filter
+def lookup(d, key):
+    return d.get(key, {})    

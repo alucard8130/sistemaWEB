@@ -85,7 +85,7 @@
 </div>
     <div class="container mt-2">
         <form method="get" class="row g-2 mb-3">
-            <h3>Presupuesto de Ingresos {{ anio }}{% if empresa %} - {{ empresa.nombre }}{% endif %}</h3>
+            <h3>Presupuesto de Ingresos {{ anio }}</h3>
             <div class="col-auto">
                 <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
                 <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
@@ -142,24 +142,57 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for origen, nombre in origenes %}
-                        <tr>
-                            <td><b>{{ nombre }}</b></td>
-                            {% for mes in meses %}
-                                <td>
-                                    <input type="number" step="0.01" min="0"
-                                        name="presupuesto_{{ origen }}_{{ mes }}"
-                                        class="form-control form-control-sm"
-                                        value="{{ presup_dict|dict_get:origen|dict_get:mes|default:0|floatformat:2 }}"
-                                        {% if not edicion_habilitada %}disabled{% endif %}>
-                                </td>
-                            {% endfor %}
-                            <td class="fw-bold">
-                                {{ subtotales_origen|dict_get:origen|sum_list|floatformat:2|intcomma }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+    {% for origen, nombre in origenes %}
+<tr>
+    <td><b>{{ nombre }}</b></td>
+    {% if origen == 'otros' %}
+        {% for mes in meses %}
+            <td>
+                <span class="fw-bold">
+                    {{ subtotales_origen|dict_get:origen|index:forloop.counter0|floatformat:2|intcomma }}
+                </span>
+            </td>
+        {% endfor %}
+        <td class="fw-bold">
+            {{ subtotales_origen|dict_get:origen|sum_list|floatformat:2|intcomma }}
+        </td>
+    {% else %}
+        {% for mes in meses %}
+            <td>
+                <input type="number" step="0.01" min="0"
+                    name="presupuesto_{{ origen }}_{{ mes }}"
+                    class="form-control form-control-sm"
+                    value="{{ presup_dict|dict_get:origen|dict_get:mes|default:0|floatformat:2 }}"
+                    {% if not edicion_habilitada %}disabled{% endif %}>
+            </td>
+        {% endfor %}
+        <td class="fw-bold">
+            {{ subtotales_origen|dict_get:origen|sum_list|floatformat:2|intcomma }}
+        </td>
+    {% endif %}
+</tr>
+    {% if origen == 'otros' %}
+    {% for tipo in tipos_otros %}
+<tr>
+    <td style="padding-left:2em;">- {{ tipo.1 }}</td>
+    {% for mes in meses %}
+    <td>
+        <input type="number" step="0.01" min="0"
+            name="presupuesto_otros_{{ tipo.0 }}_{{ mes }}"
+            class="form-control form-control-sm"
+            value="{{ otros_dict|dict_get:tipo.0|dict_get:mes|default:0|floatformat:2 }}"
+            {% if not edicion_habilitada %}disabled{% endif %}>
+    </td>
+    {% endfor %}
+    <td class="fw-bold">
+        {{ otros_dict|dict_get:tipo.0|sum_list|floatformat:2|intcomma }}
+    </td>
+</tr>
+{% endfor %}
+{% endif %}
+{% endfor %}
+    
+</tbody>
                     <tfoot>
                         <tr class="table-warning">
                             <td class="text-end"><strong>TOTAL GENERAL</strong></td>

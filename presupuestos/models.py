@@ -1,6 +1,7 @@
 
 from django.db import models
 from empresas.models import Empresa
+from facturacion.models import FacturaOtrosIngresos
 from gastos.models import GrupoGasto, SubgrupoGasto, TipoGasto
 
 class Presupuesto(models.Model):
@@ -46,8 +47,19 @@ class PresupuestoIngreso(models.Model):
     origen = models.CharField(max_length=10, choices=ORIGEN_CHOICES)
     monto_presupuestado = models.DecimalField(max_digits=12, decimal_places=2)
 
+     # Para el desglose de "otros ingresos"
+    tipo_otro = models.CharField(
+        max_length=20,
+        choices=FacturaOtrosIngresos.TIPO_INGRESO,
+        blank=True,
+        null=True,
+        help_text="Solo se usa si origen='otros'"
+    )
+
     class Meta:
-        unique_together = ('empresa', 'anio', 'mes', 'origen')
+        unique_together = ('empresa', 'anio', 'mes', 'origen','tipo_otro')
 
     def __str__(self):
-        return f"{self.empresa} {self.get_origen_display()} {self.mes}/{self.anio}: {self.monto_presupuestado}"           
+        if self.origen == 'otros' and self.tipo_otro:
+            return f"{self.empresa} {self.get_origen_display()} ({self.get_tipo_otro_display()}) {self.mes}/{self.anio}: {self.monto_presupuestado}"
+        return f"{self.empresa} {self.get_origen_display()} {self.mes}/{self.anio}: {self.monto_presupuestado}"

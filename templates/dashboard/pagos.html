@@ -26,14 +26,14 @@
             </button>
         </div>
     </div>
-<div class="container mt-3">
+<div class="container mt-1">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
         <h2>Dashboard Ingresos</h2>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al Menú Principal</a>
+        
     </div>
     <!-- Filtros de Pagos -->
-    <form method="get" class="row g-2 mb-4">
+    <form method="get" class="row g-2 mb-2">
         {% if es_super %}
         <div class="col-md-2">
             <label>Empresa:</label>
@@ -45,7 +45,7 @@
             </select>
         </div>
         {% endif %}
-        <div class="col-md-2">
+        <!--<div class="col-md-2">
             <label>Cliente:</label>
             <select name="cliente" class="form-select">
                 <option value="">Todos</option>
@@ -53,7 +53,7 @@
                     <option value="{{ cli.id }}" {% if cli.id|stringformat:"s" == cliente_id|stringformat:"s" %}selected{% endif %}>{{ cli.nombre }}</option>
                 {% endfor %}
             </select>
-        </div>
+        </div>-->
         <div class="col-md-2">
             <label>Origen:</label>
             <select name="origen" class="form-select">
@@ -67,39 +67,58 @@
             <label>Año:</label>
             <input type="number" name="anio" value="{{ anio }}" class="form-control" min="2000" max="2100">
         </div>
-        <div class="col-md-1">
-            <label>Mes:</label>
-            <input type="number" name="mes" value="{{ mes }}" min="1" max="12" class="form-control">
-        </div>
         <div class="col-md-2">
+        <label>Mes:</label>
+        <select name="mes" class="form-select">
+        <option value="">Todos</option>
+        <option value="1" {% if mes == "1" %}selected{% endif %}>Enero</option>
+        <option value="2" {% if mes == "2" %}selected{% endif %}>Febrero</option>
+        <option value="3" {% if mes == "3" %}selected{% endif %}>Marzo</option>
+        <option value="4" {% if mes == "4" %}selected{% endif %}>Abril</option>
+        <option value="5" {% if mes == "5" %}selected{% endif %}>Mayo</option>
+        <option value="6" {% if mes == "6" %}selected{% endif %}>Junio</option>
+        <option value="7" {% if mes == "7" %}selected{% endif %}>Julio</option>
+        <option value="8" {% if mes == "8" %}selected{% endif %}>Agosto</option>
+        <option value="9" {% if mes == "9" %}selected{% endif %}>Septiembre</option>
+        <option value="10" {% if mes == "10" %}selected{% endif %}>Octubre</option>
+        <option value="11" {% if mes == "11" %}selected{% endif %}>Noviembre</option>
+        <option value="12" {% if mes == "12" %}selected{% endif %}>Diciembre</option>
+        </select>
+        </div>
+        <!--<div class="col-md-2">
             <label>Desde:</label>
             <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control">
         </div>
         <div class="col-md-2">
             <label>Hasta:</label>
             <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
-        </div>
-        <div class="col-md-12 text-end">
-            <button type="submit" class="btn btn-info">Filtrar ingresos</button>
+            
+        </div>-->
+        <div class="col-md-1 d-flex align-items-end">
+    <button type="submit" class="btn btn-info">Filtrar</button>
+</div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="{% url 'dashboard_pagos' %}" class="btn btn-secondary">Limpiar Filtros</a>
         </div>
     </form>
 
     <div class="row g-3">
-        <div class="col-md-6">
-            <div class="card shadow p-3">
-                <h5 class="mb-2">Ingresos por mes</h5>
-                <canvas id="graficoPagosMes"></canvas>
-            </div>
+    <div class="col-12">
+        <div class="card shadow p-3">
+            <h5 class="mb-2">Ingresos</h5>
+            <canvas id="graficoPagosMes" style="min-height:350px; height:50vh; width:100%"></canvas>
         </div>
-        <div class="col-md-6">
+    </div>
+</div>
+        <!--<div class="col-md-6">
             <div class="card shadow p-3">
                 <h5 class="mb-2">Ingresos por año</h5>
                 <canvas id="graficoPagosAnio"></canvas>
             </div>
         </div>
-    </div>
+    </div>-->
 
-    <div class="row mt-4">
+    <!--<div class="row mt-4">
         <div class="col-md-6">
             <div class="card shadow p-3">
                 <h5 class="mb-3">Resumen de Ingresos</h5>
@@ -118,28 +137,62 @@
                     </li>
                 </ul>
             </div>
-        </div>
-        
+        </div>-->
+        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Volver al Menú Principal</a>
 
     <script>
     // Pagos por Mes
 const ctxPagosMes = document.getElementById('graficoPagosMes');
+const otrosTiposTooltip = {{ otros_tipos_tooltip|safe }};
 new Chart(ctxPagosMes, {
-    type: 'bar',
     data: {
+        //labels: {{ meses|safe }},
         labels: [{% for l in labels_meses %}'{{ l }}',{% endfor %}],
         datasets: [
             {
+                type: 'bar',
                 label: 'Cuotas',
                 data: [{% for d in data_cuotas %}{{ d }},{% endfor %}],
                 backgroundColor: '#20c997',
-                borderWidth: 1
+                borderWidth: 1,
+                order:2
+                
             },
             {
+                type: 'bar',
                 label: 'Otros ingresos',
                 data: [{% for d in data_otros %}{{ d }},{% endfor %}],
                 backgroundColor: '#0d6efd',
-                borderWidth: 1
+                borderWidth: 1,
+                order:2
+                
+            },
+            {
+                label: 'Por Cobrar',
+                type: 'line',
+                data: [{% for d in data_por_cobrar %}{{ d }},{% endfor %}],
+                borderColor: '#ff5733',
+                backgroundColor: 'rgba(255,87,51,0.2)',
+                borderWidth: 3,
+                fill: false,
+                pointRadius: 4,
+                tension: 0.2,
+                order: 1
+            
+            },
+            {
+                label: 'Presupuesto',
+                type: 'line',
+                data: [{% for d in data_presupuesto %}{{ d }},{% endfor %}],
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255,193,7,0.2)',
+                borderWidth: 3,
+                borderDash: [5, 5],
+                fill: false,
+                pointRadius: 4,
+                tension: 0.2,
+                pointBackgroundColor: 'rgba(255,193,7,0.2)',
+                order: 1
             }
         ]
     },
@@ -147,46 +200,30 @@ new Chart(ctxPagosMes, {
         responsive: true,
         plugins: {
             legend: { display: true },
-            title: { display: false }
+            title: { display: true },
+             tooltip: {
+            callbacks: {
+                label: function(context) {
+                    let label = context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                    if (context.dataset.label === 'Otros ingresos') {
+                        const idx = context.dataIndex;
+                        const detalles = otrosTiposTooltip[idx];
+                        if (detalles && detalles.length) {
+                            label += '\n' + detalles.join('\n');
+                        }
+                    }
+                    return label;
+                }
+            }
+        }
+        },
+        scales: {
+            x: { stacked: true },
+            y: { stacked: true }
         }
     }
 });
 
-// Pagos por Año
-const ctxPagosAnio = document.getElementById('graficoPagosAnio');
-new Chart(ctxPagosAnio, {
-    type: 'bar',
-    data: {
-        labels: [
-            {% if pagos_por_anio %}
-                {% for p in pagos_por_anio %}'{{ p.anio|date:"Y" }}',{% endfor %}
-            {% else %}
-                {% for o in otros_por_anio %}'{{ o.anio|date:"Y" }}',{% endfor %}
-            {% endif %}
-        ],
-        datasets: [
-            {
-                label: 'Cuotas',
-                data: [{% for p in pagos_por_anio %}{{ p.total }},{% endfor %}],
-                backgroundColor: '#20c997',
-                borderWidth: 1
-            },
-            {
-                label: 'Otros ingresos',
-                data: [{% for o in otros_por_anio %}{{ o.total }},{% endfor %}],
-                backgroundColor: '#0d6efd',
-                borderWidth: 1
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: { display: true },
-            title: { display: false }
-        }
-    }
-});
     </script>
 </div>
     <footer>

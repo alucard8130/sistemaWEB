@@ -15,8 +15,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from datetime import date, timedelta
-from django.db.models import Q, F, Value, Case, When, Sum, OuterRef, Subquery, DecimalField, ExpressionWrapper, CharField
-from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, Value, ExpressionWrapper
+from django.db.models import Q,  Value, Case, When,  CharField,FloatField
+from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 #from django.db.models import Case, When
 import openpyxl
@@ -33,7 +33,9 @@ from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
 import io
 from django.utils.dateformat import DateFormat
-
+from presupuestos.models import PresupuestoIngreso
+from collections import defaultdict
+import json
 
 
 @login_required
@@ -530,8 +532,10 @@ def dashboard_pagos(request):
         empresa_id = request.GET.get('empresa')
         if not empresa_id or empresa_id == "todas":
             filtro_empresa = Q()
+            empresa = None
         else:
             filtro_empresa = Q(factura__empresa_id=empresa_id)
+            empresa = Empresa.objects.get(pk=empresa_id)
     else:
         empresa = request.user.perfilusuario.empresa
         empresas = Empresa.objects.filter(id=empresa.id)
@@ -576,6 +580,8 @@ def dashboard_pagos(request):
         except:
             pass
 
+    
+                
     # --- AJUSTE CLAVE ---
     if origen == 'local' or origen == 'area':
         otros_cobros = CobroOtrosIngresos.objects.none()
@@ -627,6 +633,165 @@ def dashboard_pagos(request):
     labels_meses = [DateFormat(m).format('F Y') for m in todos_los_meses]
     data_cuotas = [meses_cuotas.get(m, 0) for m in todos_los_meses]
     data_otros = [meses_otros.get(m, 0) for m in todos_los_meses]
+    #data_presupuesto = [presup_dict.get(m, 0) for m in todos_los_meses]
+
+    # --- PRESUPUESTO DE INGRESOS POR MES ---
+    # Solo si tienes año y empresa definidos
+    
+    presup_qs = PresupuestoIngreso.objects.all()
+    if anio:
+        presup_qs = presup_qs.filter(anio=anio)
+    if empresa:
+        presup_qs = presup_qs.filter(empresa=empresa)
+    presup_dict = {}
+    for p in presup_qs:
+        key = (p.origen, p.tipo_otro or "")
+        if key not in presup_dict:
+            presup_dict[key] = {}
+        presup_dict[key][p.mes] = float(p.monto_presupuestado)
+
+    # Suma presupuesto mensual de todos los orígenes
+    # Si tienes tipos_otros definidos en tu modelo, usa eso, si no, solo suma los tres orígenes
+    #tipos_otros = getattr(PresupuestoIngreso, 'TIPO_INGRESO', [])
+    data_presupuesto = []
+    for m in todos_los_meses:
+        mes_num = m.month
+        if origen == 'local':
+            total_presup = presup_dict.get(('local', ''), {}).get(mes_num, 0)
+        elif origen == 'area':
+            total_presup = presup_dict.get(('area', ''), {}).get(mes_num, 0)
+        elif origen == 'otros':
+            total_presup = sum(
+                v.get(mes_num, 0)
+                for (origen_key, _), v in presup_dict.items()
+                if origen_key == 'otros'
+            )
+        else:  # Todos los orígenes
+            presup_local = presup_dict.get(('local', ''), {}).get(mes_num, 0)
+            presup_area = presup_dict.get(('area', ''), {}).get(mes_num, 0)
+            presup_otros = sum(
+                v.get(mes_num, 0)
+                for (origen_key, _), v in presup_dict.items()
+                if origen_key == 'otros'
+            )
+            total_presup = presup_local + presup_area + presup_otros
+        data_presupuesto.append(total_presup)
+
+
+        # Obtén todos los años presentes en pagos y presupuesto
+    anios_pagos = [p['anio'].year if hasattr(p['anio'], 'year') else p['anio'] for p in pagos_por_anio]
+    anios_otros = [o['anio'].year if hasattr(o['anio'], 'year') else o['anio'] for o in otros_por_anio]
+    anios_presupuesto = list(PresupuestoIngreso.objects.values_list('anio', flat=True).distinct())
+    todos_los_anios = sorted(set(anios_pagos + anios_otros + anios_presupuesto))
+
+    # Suma ingresos reales por año
+    data_cuotas_anio = { (p['anio'].year if hasattr(p['anio'], 'year') else p['anio']): float(p['total']) for p in pagos_por_anio }
+    data_otros_anio = { (o['anio'].year if hasattr(o['anio'], 'year') else o['anio']): float(o['total']) for o in otros_por_anio }
+
+    # Suma presupuesto anual por año
+    presup_anual_qs = PresupuestoIngreso.objects.all()
+    if empresa:
+        presup_anual_qs = presup_anual_qs.filter(empresa=empresa)
+    presup_anual_dict = {}
+    #tipos_otros = getattr(PresupuestoIngreso, 'TIPO_INGRESO', [])
+    for p in presup_anual_qs:
+        key = (p.anio, p.origen, p.tipo_otro or "")
+        presup_anual_dict.setdefault(p.anio, {}).setdefault((p.origen, p.tipo_otro or ""), 0)
+        presup_anual_dict[p.anio][(p.origen, p.tipo_otro or "")] += float(p.monto_presupuestado)
+
+    data_presupuesto_anio = []
+    for anio_ in todos_los_anios:
+        if origen == 'local':
+            total_presup = presup_anual_dict.get(anio_, {}).get(('local', ''), 0)
+        elif origen == 'area':
+            total_presup = presup_anual_dict.get(anio_, {}).get(('area', ''), 0)
+        elif origen == 'otros':
+            total_presup = sum(
+                v for (o, _), v in presup_anual_dict.get(anio_, {}).items() if o == 'otros'
+            )
+        else:  # Todos los orígenes
+            presup_local = presup_anual_dict.get(anio_, {}).get(('local', ''), 0)
+            presup_area = presup_anual_dict.get(anio_, {}).get(('area', ''), 0)
+            presup_otros = sum(
+                v for (o, _), v in presup_anual_dict.get(anio_, {}).items() if o == 'otros'
+            )
+            total_presup = presup_local + presup_area + presup_otros
+        data_presupuesto_anio.append(total_presup)
+
+    labels_anios = [str(a) for a in todos_los_anios]
+    data_cuotas_anio_list = [data_cuotas_anio.get(a, 0) for a in todos_los_anios]
+    data_otros_anio_list = [data_otros_anio.get(a, 0) for a in todos_los_anios]    
+
+        # --- FACTURAS POR COBRAR POR MES ---
+    facturas_pendientes = Factura.objects.filter(estatus='pendiente', activo=True)
+    if empresa:
+        facturas_pendientes = facturas_pendientes.filter(empresa=empresa)
+    if cliente_id:
+        facturas_pendientes = facturas_pendientes.filter(cliente_id=cliente_id)
+    if anio:
+        facturas_pendientes = facturas_pendientes.filter(fecha_emision__year=anio)
+    if mes:
+        facturas_pendientes = facturas_pendientes.filter(fecha_emision__month=mes)
+    if origen == 'local':
+        facturas_pendientes = facturas_pendientes.filter(local__isnull=False)
+    elif origen == 'area':
+        facturas_pendientes = facturas_pendientes.filter(area_comun__isnull=False)
+        
+        # Anota el total pagado por factura
+    facturas_pendientes = facturas_pendientes.annotate(
+    pagado=Coalesce(Sum('pagos__monto'), 0.0, output_field=DecimalField())
+).annotate(
+    saldo_pendiente_db=ExpressionWrapper(
+        F('monto') - F('pagado'),
+        output_field=DecimalField()
+    )
+)
+        
+        # Obtén todos los meses/años presentes
+    meses_facturas = sorted(set(f.fecha_vencimiento.replace(day=1) for f in facturas_pendientes))
+    anios_facturas = sorted(set(f.fecha_vencimiento.year for f in facturas_pendientes))
+
+
+
+        # Por mes: solo facturas emitidas en ese mes, no vencidas
+    meses_por_cobrar = {}
+    for mes in todos_los_meses:
+        total = sum(
+            float(f.monto) - float(f.pagado)
+            for f in facturas_pendientes
+            if f.fecha_vencimiento.year == mes.year and f.fecha_vencimiento.month == mes.month
+        )
+        meses_por_cobrar[mes] = total
+    data_por_cobrar = [meses_por_cobrar.get(m, 0) for m in todos_los_meses]
+
+    # Por año: solo facturas emitidas en ese año
+    anios_por_cobrar = {}
+    for anio in todos_los_anios:
+        total = sum(
+            float(f.monto) - float(f.pagado)
+            for f in facturas_pendientes
+            if f.fecha_vencimiento.year == anio
+        )
+        anios_por_cobrar[anio] = total
+    data_por_cobrar_anio = [anios_por_cobrar.get(a, 0) for a in todos_los_anios]
+
+    otros_tipos_por_mes = [defaultdict(float) for _ in range(len(todos_los_meses))]
+    for cobro in otros_cobros:
+        for idx, mes in enumerate(todos_los_meses):
+            if cobro.fecha_cobro.year == mes.year and cobro.fecha_cobro.month == mes.month:
+                # Usa el tipo_ingreso de la factura relacionada
+                tipo = getattr(cobro.factura, 'tipo_ingreso', None) or 'Otro'
+                # Si quieres mostrar el display (nombre legible):
+                if hasattr(cobro.factura, 'get_tipo_ingreso_display'):
+                    tipo = cobro.factura.get_tipo_ingreso_display()
+                otros_tipos_por_mes[idx][tipo] += float(cobro.monto)
+                break
+
+    # Convierte a lista de listas de strings para el tooltip
+    otros_tipos_tooltip = [
+        [f"{tipo}: ${monto:,.2f}" for tipo, monto in tipos.items()]
+        for tipos in otros_tipos_por_mes
+]
 
     return render(request, 'dashboard/pagos.html', {
         'pagos': pagos,
@@ -651,6 +816,17 @@ def dashboard_pagos(request):
         'labels_meses': labels_meses,
         'data_cuotas': data_cuotas, 
         'data_otros': data_otros,
+        'data_presupuesto': data_presupuesto,
+        'data_cuotas_anio': data_cuotas_anio_list,
+        'data_otros_anio': data_otros_anio_list,
+        'data_presupuesto_anio': data_presupuesto_anio,
+        'labels_anios': labels_anios,
+        'data_por_cobrar': data_por_cobrar,
+        'data_por_cobrar_anio': data_por_cobrar_anio,
+        'meses_facturas': meses_facturas,
+        'anios_facturas': anios_facturas,
+        'otros_tipos_tooltip': json.dumps(otros_tipos_tooltip),
+      
 
     })
 
