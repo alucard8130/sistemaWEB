@@ -523,6 +523,7 @@ def dashboard_saldos(request):
 
 @login_required
 #pagos.html
+#dashboard ingresos
 @login_required
 def dashboard_pagos(request):
     es_super = request.user.is_superuser
@@ -643,40 +644,28 @@ def dashboard_pagos(request):
         presup_qs = presup_qs.filter(anio=anio)
     if empresa:
         presup_qs = presup_qs.filter(empresa=empresa)
+    
     presup_dict = {}
     for p in presup_qs:
-        key = (p.origen, p.tipo_otro or "")
-        if key not in presup_dict:
-            presup_dict[key] = {}
-        presup_dict[key][p.mes] = float(p.monto_presupuestado)
+        key = (p.anio, p.mes)
+        presup_dict.setdefault(key, 0)
+        if origen == 'local' and p.origen == 'local':
+            presup_dict[key] += float(p.monto_presupuestado)
+        elif origen == 'area' and p.origen == 'area':
+            presup_dict[key] += float(p.monto_presupuestado)
+        elif origen == 'otros' and p.origen == 'otros':
+            presup_dict[key] += float(p.monto_presupuestado)
+        elif origen in (None, '', 'todos', 'Todo', 'Todos'):  # Todos los orígenes
+            presup_dict[key] += float(p.monto_presupuestado)
 
     # Suma presupuesto mensual de todos los orígenes
     # Si tienes tipos_otros definidos en tu modelo, usa eso, si no, solo suma los tres orígenes
     #tipos_otros = getattr(PresupuestoIngreso, 'TIPO_INGRESO', [])
+   # Supón que todos_los_meses es una lista de objetos datetime.date (primer día de cada mes)
     data_presupuesto = []
     for m in todos_los_meses:
-        mes_num = m.month
-        if origen == 'local':
-            total_presup = presup_dict.get(('local', ''), {}).get(mes_num, 0)
-        elif origen == 'area':
-            total_presup = presup_dict.get(('area', ''), {}).get(mes_num, 0)
-        elif origen == 'otros':
-            total_presup = sum(
-                v.get(mes_num, 0)
-                for (origen_key, _), v in presup_dict.items()
-                if origen_key == 'otros'
-            )
-        else:  # Todos los orígenes
-            presup_local = presup_dict.get(('local', ''), {}).get(mes_num, 0)
-            presup_area = presup_dict.get(('area', ''), {}).get(mes_num, 0)
-            presup_otros = sum(
-                v.get(mes_num, 0)
-                for (origen_key, _), v in presup_dict.items()
-                if origen_key == 'otros'
-            )
-            total_presup = presup_local + presup_area + presup_otros
-        data_presupuesto.append(total_presup)
-
+        key = (m.year, m.month)
+        data_presupuesto.append(presup_dict.get(key, 0))
 
         # Obtén todos los años presentes en pagos y presupuesto
     anios_pagos = [p['anio'].year if hasattr(p['anio'], 'year') else p['anio'] for p in pagos_por_anio]
