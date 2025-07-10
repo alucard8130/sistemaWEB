@@ -10,7 +10,7 @@
         Date of modification: 17/06/2025
         Description: Accounts payable dashboard
     -->
-    <title>Dashboard Cuentas por pagar</title>
+    <title>Dashboard Egresos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -39,11 +39,8 @@
             </select>
         </div>
         {% endif %}
-        <div class="col-md-2">
-            <label>Año:</label>
-            <input type="number" name="anio" min="2020" value="{{ anio }}" class="form-control">
-        </div>
-        <div class="col-md-2">
+        
+        <!--<div class="col-md-2">
             <label>Proveedor:</label>
             <select name="proveedor" class="form-select">
                 <option value="">Todos</option>
@@ -60,53 +57,111 @@
                     <option value="{{ e.id }}" {% if e.id|stringformat:"s" == empleado_id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
                 {% endfor %}
             </select>
+        </div>-->
+       
+        <div class="col-md-2">
+    <label>Grupo:</label>
+    <select name="grupo" class="form-select">
+        <option value="">Todos</option>
+        {% for g in grupos %}
+            <option value="{{ g.id }}" {% if g.id|stringformat:"s" == grupo_id|stringformat:"s" %}selected{% endif %}>{{ g.nombre }}</option>
+        {% endfor %}
+    </select>
+</div>
+<div class="col-md-2">
+    <label>Subgrupo:</label>
+    <select name="subgrupo" class="form-select">
+        <option value="">Todos</option>
+        {% for sg in subgrupos %}
+            <option value="{{ sg.id }}" {% if sg.id|stringformat:"s" == subgrupo_id|stringformat:"s" %}selected{% endif %}>{{ sg.nombre }}</option>
+        {% endfor %}
+    </select>
+</div>
+<div class="col-md-2">
+    <label>Tipo de Gasto:</label>
+    <select name="tipo_gasto" class="form-select">
+        <option value="">Todos</option>
+        {% for tg in tipos_gasto %}
+            <option value="{{ tg.id }}" {% if tg.id|stringformat:"s" == tipo_gasto_id|stringformat:"s" %}selected{% endif %}>{{ tg.nombre }}</option>
+        {% endfor %}
+    </select>
+</div>
+ <div class="col-md-2">
+            <label>Año:</label>
+            <input type="number" name="anio" min="2020" value="{{ anio }}" class="form-control">
         </div>
-        
+        <div class="col-md-2">
+        <label>Mes:</label>
+        <select name="mes" class="form-select">
+        <option value="">Todos</option>
+        <option value="1" {% if mes == "1" %}selected{% endif %}>Enero</option>
+        <option value="2" {% if mes == "2" %}selected{% endif %}>Febrero</option>
+        <option value="3" {% if mes == "3" %}selected{% endif %}>Marzo</option>
+        <option value="4" {% if mes == "4" %}selected{% endif %}>Abril</option>
+        <option value="5" {% if mes == "5" %}selected{% endif %}>Mayo</option>
+        <option value="6" {% if mes == "6" %}selected{% endif %}>Junio</option>
+        <option value="7" {% if mes == "7" %}selected{% endif %}>Julio</option>
+        <option value="8" {% if mes == "8" %}selected{% endif %}>Agosto</option>
+        <option value="9" {% if mes == "9" %}selected{% endif %}>Septiembre</option>
+        <option value="10" {% if mes == "10" %}selected{% endif %}>Octubre</option>
+        <option value="11" {% if mes == "11" %}selected{% endif %}>Noviembre</option>
+        <option value="12" {% if mes == "12" %}selected{% endif %}>Diciembre</option>
+        </select>
+        </div>
         <div class="col-md-2 align-self-end">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="{% url 'dashboard_pagos_gastos' %}" class="btn btn-secondary">Limpiar</a>
         </div>
     </form>
     <div class="card mb-4 p-3 shadow-sm">
-    <h5 class="mb-2">
+    <!--<h5 class="mb-2">
         Pagado: <span class="badge bg-primary">${{ total_pagado|floatformat:2|intcomma }}</span> &nbsp;
         Por pagar: <span class="badge bg-warning text-dark">${{ total_pendiente|floatformat:2|intcomma }}</span> &nbsp;
         Presupuesto: <span class="badge bg-success">${{ total_presupuesto|floatformat:2|intcomma }}</span>
-    </h5>
+    </h5>-->
     <canvas id="graficoPagos" style="height: 450px"></canvas>
 </div>
 <a href="{% url 'bienvenida' %}" class=" btn btn-secondary">Regresar Menu </a>
 <script>
 const ctx = document.getElementById('graficoPagos').getContext('2d');
 new Chart(ctx, {
-    type: 'line',
     data: {
         labels: {{ meses|safe }},
         datasets: [
             {
+                type: 'bar',
                 label: 'Pagos realizados',
                 data: {{ pagos_mensuales|safe }},
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13,110,253,0.15)',
-                fill: false,
-                tension: 0.2
+                backgroundColor: '#20c997',
+                order:2
+             
             },
             {
+                type: 'line',
                 label: 'Pagos pendientes',
                 data: {{ saldos_mes|safe }},
-                borderColor: '#ffc107',
-                backgroundColor: 'rgba(255,193,7,0.12)',
+                borderColor: '#ff5733',
+                backgroundColor: 'rgba(255,87,51,0.2)',
+                borderWidth: 3,
                 fill: false,
-                tension: 0.2
+                tension: 0.2,
+                pointRadius: 3,
+                order:1
             },
             {
+                type: 'line',
                 label: 'Presupuesto',
                 data: {{ presupuesto_mes|safe }},
-                borderColor: '#20c997',
-                backgroundColor: 'rgba(32,201,151,0.10)',
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255,193,7,0.2)',
+                borderWidth: 3,
                 fill: false,
                 borderDash: [5, 5],
-                tension: 0.2
+                tension: 0.2,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgba(255,193,7,0.2)',
+                order:1
+
             }
         ]
     },
@@ -116,7 +171,7 @@ new Chart(ctx, {
             legend: { display: true },
             title: {
                 display: true,
-                text: 'Comparativo de presupuesto,pagos y por pagar'
+                text: ''
             }
         }
     }

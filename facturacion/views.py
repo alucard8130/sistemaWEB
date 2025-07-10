@@ -33,7 +33,9 @@ from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
 import io
 from django.utils.dateformat import DateFormat
-
+from presupuestos.models import PresupuestoIngreso
+from collections import defaultdict
+import json
 
 
 @login_required
@@ -578,6 +580,8 @@ def dashboard_pagos(request):
         except:
             pass
 
+    
+                
     # --- AJUSTE CLAVE ---
     if origen == 'local' or origen == 'area':
         otros_cobros = CobroOtrosIngresos.objects.none()
@@ -629,10 +633,11 @@ def dashboard_pagos(request):
     labels_meses = [DateFormat(m).format('F Y') for m in todos_los_meses]
     data_cuotas = [meses_cuotas.get(m, 0) for m in todos_los_meses]
     data_otros = [meses_otros.get(m, 0) for m in todos_los_meses]
+    #data_presupuesto = [presup_dict.get(m, 0) for m in todos_los_meses]
 
     # --- PRESUPUESTO DE INGRESOS POR MES ---
     # Solo si tienes año y empresa definidos
-    from presupuestos.models import PresupuestoIngreso
+    
     presup_qs = PresupuestoIngreso.objects.all()
     if anio:
         presup_qs = presup_qs.filter(anio=anio)
@@ -770,6 +775,24 @@ def dashboard_pagos(request):
         anios_por_cobrar[anio] = total
     data_por_cobrar_anio = [anios_por_cobrar.get(a, 0) for a in todos_los_anios]
 
+    otros_tipos_por_mes = [defaultdict(float) for _ in range(len(todos_los_meses))]
+    for cobro in otros_cobros:
+        for idx, mes in enumerate(todos_los_meses):
+            if cobro.fecha_cobro.year == mes.year and cobro.fecha_cobro.month == mes.month:
+                # Usa el tipo_ingreso de la factura relacionada
+                tipo = getattr(cobro.factura, 'tipo_ingreso', None) or 'Otro'
+                # Si quieres mostrar el display (nombre legible):
+                if hasattr(cobro.factura, 'get_tipo_ingreso_display'):
+                    tipo = cobro.factura.get_tipo_ingreso_display()
+                otros_tipos_por_mes[idx][tipo] += float(cobro.monto)
+                break
+
+    # Convierte a lista de listas de strings para el tooltip
+    otros_tipos_tooltip = [
+        [f"{tipo}: ${monto:,.2f}" for tipo, monto in tipos.items()]
+        for tipos in otros_tipos_por_mes
+]
+
     return render(request, 'dashboard/pagos.html', {
         'pagos': pagos,
         'empresas': empresas,
@@ -802,6 +825,8 @@ def dashboard_pagos(request):
         'data_por_cobrar_anio': data_por_cobrar_anio,
         'meses_facturas': meses_facturas,
         'anios_facturas': anios_facturas,
+        'otros_tipos_tooltip': json.dumps(otros_tipos_tooltip),
+      
 
     })
 

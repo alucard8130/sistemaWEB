@@ -326,7 +326,9 @@ def reporte_pagos_gastos(request):
 def dashboard_pagos_gastos(request):
     es_super = request.user.is_superuser
     anio_actual = datetime.now().year
+    mes_actual = datetime.now().month
     anio = int(request.GET.get('anio', anio_actual))
+    mes= request.GET.get('mes')    
 
     empresas = Empresa.objects.all() if es_super else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
     empresa_id = request.GET.get('empresa')
@@ -335,6 +337,11 @@ def dashboard_pagos_gastos(request):
     forma_pago = request.GET.get('forma_pago')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
+
+      # NUEVOS FILTROS
+    grupo_id = request.GET.get('grupo')
+    subgrupo_id = request.GET.get('subgrupo')
+    tipo_gasto_id = request.GET.get('tipo_gasto')
 
     # --- FILTROS BÁSICOS ---
     base_gastos = Q(fecha__year=anio)
@@ -346,6 +353,14 @@ def dashboard_pagos_gastos(request):
         base_gastos &= Q(proveedor_id=proveedor_id)
     if empleado_id:
         base_gastos &= Q(empleado_id=empleado_id)
+    if grupo_id:
+        base_gastos &= Q(tipo_gasto__subgrupo__grupo_id=grupo_id)
+    if subgrupo_id:
+        base_gastos &= Q(tipo_gasto__subgrupo_id=subgrupo_id)
+    if tipo_gasto_id:
+        base_gastos &= Q(tipo_gasto_id=tipo_gasto_id)
+    if mes:
+        base_gastos &= Q(fecha__month=mes)      
 
     # Gastos registrados ese año y filtro empresa
     gastos = Gasto.objects.filter(base_gastos)
@@ -381,8 +396,35 @@ def dashboard_pagos_gastos(request):
     # PRESUPUESTO POR MES
     presupuesto_mes = []
     for m in range(1, 13):
-        pres = Presupuesto.objects.filter(empresa__in=empresas, anio=anio, mes=m).aggregate(total=Sum('monto'))['total'] or 0
-        presupuesto_mes.append(float(pres))
+        pres = Presupuesto.objects.filter(empresa__in=empresas, anio=anio, mes=m)
+        if grupo_id:
+            pres = pres.filter(tipo_gasto__subgrupo__grupo_id=grupo_id)
+        if subgrupo_id:
+            pres = pres.filter(tipo_gasto__subgrupo_id=subgrupo_id)
+        if tipo_gasto_id:
+            pres = pres.filter(tipo_gasto_id=tipo_gasto_id)
+        pres_total = pres.aggregate(total=Sum('monto'))['total'] or 0
+        presupuesto_mes.append(float(pres_total))
+
+    # --- FILTRAR SOLO MESES TRANSCURRIDOS O EL MES SELECCIONADO ---
+    if mes:
+        # Si hay filtro de mes, solo muestra ese mes
+        mes_int = int(mes)
+        meses = [calendar.month_abbr[mes_int]]
+        pagos_mensuales = [pagos_mensuales[mes_int - 1]]
+        saldos_mes = [saldos_mes[mes_int - 1]]
+        presupuesto_mes = [presupuesto_mes[mes_int - 1]]
+        meses_mostrar = 1
+    else:
+        if anio == anio_actual:
+            meses_mostrar = mes_actual
+        else:
+            meses_mostrar = 12
+
+        meses = [calendar.month_name[m] for m in range(1, meses_mostrar + 1)]
+        pagos_mensuales = pagos_mensuales[:meses_mostrar]
+        saldos_mes = saldos_mes[:meses_mostrar]
+        presupuesto_mes = presupuesto_mes[:meses_mostrar]    
 
     # KPI totales
     total_pagado = sum(pagos_mensuales)
@@ -393,7 +435,10 @@ def dashboard_pagos_gastos(request):
     proveedores = Proveedor.objects.all()
     empleados = Empleado.objects.all()
     FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
-    meses = [calendar.month_abbr[m] for m in range(1, 13)]
+    #meses = [calendar.month_abbr[m] for m in range(1, 13)]
+    grupos = GrupoGasto.objects.all()
+    subgrupos = SubgrupoGasto.objects.all()
+    tipos_gasto = TipoGasto.objects.all()
 
     return render(request, 'gastos/dashboard_pagos.html', {
         'empresas': empresas,
@@ -415,6 +460,19 @@ def dashboard_pagos_gastos(request):
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
         'es_super': es_super,
+        'grupos': grupos,
+        'subgrupos': subgrupos,
+        'tipos_gasto': tipos_gasto,
+        'grupo_id': grupo_id,
+        'subgrupo_id': subgrupo_id,
+        'tipo_gasto_id': tipo_gasto_id,
+        'mes': mes,
+        'anio_actual': anio_actual,
+        'mes_actual': mes_actual,
+        'anio_seleccionado': anio,
+        'mes_seleccionado': mes,
+        'meses_mostrar': meses_mostrar,
+
     })
 
 #exportar pagos de gastos a Excel
