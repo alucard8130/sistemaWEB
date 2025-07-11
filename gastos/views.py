@@ -736,3 +736,51 @@ def descargar_plantilla_gastos(request):
     )
     response['Content-Disposition'] = 'attachment; filename=plantilla_gastos.xlsx'
     return response
+
+@login_required
+def exportar_gastos_lista_excel(request):
+    proveedor_id = request.GET.get('proveedor')
+    empleado_id = request.GET.get('empleado')
+    tipo_gasto = request.GET.get('tipo_gasto')
+
+    if request.user.is_superuser:
+        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto').order_by('-fecha')
+    else:
+        gastos = Gasto.objects.filter(empresa=request.user.perfilusuario.empresa).order_by('-fecha')
+
+    if proveedor_id:
+        gastos = gastos.filter(proveedor_id=proveedor_id)
+    if empleado_id:
+        gastos = gastos.filter(empleado_id=empleado_id)
+    if tipo_gasto:
+        gastos = gastos.filter(tipo_gasto=tipo_gasto)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gastos"
+
+    ws.append([
+        "Fecha", "Empresa", "Proveedor", "Empleado", "Tipo de Gasto",
+        "Monto","Saldo", "Descripción", "Estatus", "Observaciones"
+    ])
+
+    for gasto in gastos:
+        ws.append([
+            gasto.fecha.strftime('%Y-%m-%d') if gasto.fecha else '',
+            gasto.empresa.nombre if gasto.empresa else '',
+            gasto.proveedor.nombre if gasto.proveedor else '',
+            gasto.empleado.nombre if gasto.empleado else '',
+            gasto.tipo_gasto.nombre if gasto.tipo_gasto else '',
+            float(gasto.monto),
+            float(gasto.saldo_restante) if gasto.saldo_restante is not None else 0.0,
+            gasto.descripcion or '',
+            gasto.estatus,
+            gasto.observaciones or ''
+        ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=gastos_lista.xlsx'
+    wb.save(response)
+    return response

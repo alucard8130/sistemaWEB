@@ -523,6 +523,7 @@ def dashboard_saldos(request):
 
 @login_required
 #pagos.html
+#dashboard ingresos
 @login_required
 def dashboard_pagos(request):
     es_super = request.user.is_superuser
@@ -643,40 +644,28 @@ def dashboard_pagos(request):
         presup_qs = presup_qs.filter(anio=anio)
     if empresa:
         presup_qs = presup_qs.filter(empresa=empresa)
+    
     presup_dict = {}
     for p in presup_qs:
-        key = (p.origen, p.tipo_otro or "")
-        if key not in presup_dict:
-            presup_dict[key] = {}
-        presup_dict[key][p.mes] = float(p.monto_presupuestado)
+        key = (p.anio, p.mes)
+        presup_dict.setdefault(key, 0)
+        if origen == 'local' and p.origen == 'local':
+            presup_dict[key] += float(p.monto_presupuestado)
+        elif origen == 'area' and p.origen == 'area':
+            presup_dict[key] += float(p.monto_presupuestado)
+        elif origen == 'otros' and p.origen == 'otros':
+            presup_dict[key] += float(p.monto_presupuestado)
+        elif origen in (None, '', 'todos', 'Todo', 'Todos'):  # Todos los orígenes
+            presup_dict[key] += float(p.monto_presupuestado)
 
     # Suma presupuesto mensual de todos los orígenes
     # Si tienes tipos_otros definidos en tu modelo, usa eso, si no, solo suma los tres orígenes
     #tipos_otros = getattr(PresupuestoIngreso, 'TIPO_INGRESO', [])
+   # Supón que todos_los_meses es una lista de objetos datetime.date (primer día de cada mes)
     data_presupuesto = []
     for m in todos_los_meses:
-        mes_num = m.month
-        if origen == 'local':
-            total_presup = presup_dict.get(('local', ''), {}).get(mes_num, 0)
-        elif origen == 'area':
-            total_presup = presup_dict.get(('area', ''), {}).get(mes_num, 0)
-        elif origen == 'otros':
-            total_presup = sum(
-                v.get(mes_num, 0)
-                for (origen_key, _), v in presup_dict.items()
-                if origen_key == 'otros'
-            )
-        else:  # Todos los orígenes
-            presup_local = presup_dict.get(('local', ''), {}).get(mes_num, 0)
-            presup_area = presup_dict.get(('area', ''), {}).get(mes_num, 0)
-            presup_otros = sum(
-                v.get(mes_num, 0)
-                for (origen_key, _), v in presup_dict.items()
-                if origen_key == 'otros'
-            )
-            total_presup = presup_local + presup_area + presup_otros
-        data_presupuesto.append(total_presup)
-
+        key = (m.year, m.month)
+        data_presupuesto.append(presup_dict.get(key, 0))
 
         # Obtén todos los años presentes en pagos y presupuesto
     anios_pagos = [p['anio'].year if hasattr(p['anio'], 'year') else p['anio'] for p in pagos_por_anio]
@@ -1491,3 +1480,55 @@ def exportar_cobros_otros_ingresos_excel(request):
     response['Content-Disposition'] = 'attachment; filename="cobros_otros_ingresos.xlsx"'
     return response
 
+@login_required
+def exportar_lista_facturas_otros_ingresos_excel(request):
+    empresa_id = request.GET.get('empresa')
+    cliente_id = request.GET.get('cliente')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    facturas = FacturaOtrosIngresos.objects.select_related('empresa', 'cliente').all()
+
+    if not request.user.is_superuser:
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            facturas = facturas.filter(fecha_emision__range=[fecha_i, fecha_f])
+        except ValueError:
+            pass
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Facturas Otros Ingresos"
+
+    ws.append([
+        'Folio', 'Empresa', 'Cliente', 'Tipo ingreso', 'Monto','Saldo',
+        'Fecha Emisión', 'Fecha Vencimiento', 'Estatus', 'Observaciones'
+    ])
+
+    for factura in facturas:
+        ws.append([
+            factura.folio,
+            factura.empresa.nombre,
+            factura.cliente.nombre,
+            factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else factura.tipo_ingreso,
+            float(factura.monto),
+            float(factura.saldo),
+            factura.fecha_emision.strftime('%Y-%m-%d'),
+            factura.fecha_vencimiento.strftime('%Y-%m-%d') if factura.fecha_vencimiento else '',
+            factura.estatus,
+            factura.observaciones or ''
+        ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=lista_facturas_otros_ingresos.xlsx'
+    wb.save(response)
+    return response

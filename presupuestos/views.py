@@ -23,7 +23,9 @@ from django.db.models.functions import ExtractYear, ExtractMonth
 from io import BytesIO
 from datetime import date, datetime
 from django.db.models.functions import TruncMonth, TruncYear
-
+from .forms import PresupuestoCargaMasivaForm
+from openpyxl import load_workbook
+from decimal import Decimal, InvalidOperation
 
 
 @login_required
@@ -1088,6 +1090,7 @@ def descargar_plantilla_matriz_presupuesto(request):
 
 
 @login_required
+#presupuesto gastos
 def carga_masiva_presupuestos(request):
     if request.method == "POST":
         form = PresupuestoCargaMasivaForm(request.POST, request.FILES)
@@ -1746,3 +1749,137 @@ def matriz_presupuesto_ingresos(request):
             
         },
     )
+
+@login_required
+def carga_masiva_presupuesto_ingresos(request):
+ 
+    if request.method == "POST":
+        form = PresupuestoCargaMasivaForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES["archivo"]
+            wb = load_workbook(archivo)
+            ws = wb.active
+            errores = []
+            exitos = 0
+            meses = list(range(1, 13))
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                # Espera: Origen, TipoOtroIngreso, Ene, Feb, ..., Dic, Año, Empresa
+                if len(row) < 16:
+                    errores.append(f"Fila {i}: Número de columnas insuficiente ({len(row)})")
+                    continue
+                origen_val = str(row[0]).strip().lower() if row[0] else ""
+                tipo_otro_val = str(row[1]).strip() if row[1] else None
+                meses_valores = row[2:14]
+                anio = row[14]
+                empresa_val = row[15]
+                try:
+                    empresa = Empresa.objects.filter(nombre__iexact=str(empresa_val).strip()).first()
+                    if not empresa:
+                        errores.append(f"Fila {i}: Empresa '{empresa_val}' no encontrada.")
+                        continue
+
+                    if origen_val not in ["local", "area", "otros"]:
+                        errores.append(f"Fila {i}: Origen '{origen_val}' no válido.")
+                        continue
+
+                    try:
+                        anio_int = int(anio)
+                    except (TypeError, ValueError):
+                        errores.append(f"Fila {i}: Año '{anio}' no válido.")
+                        continue
+
+                    for idx, monto in enumerate(meses_valores):
+                        mes = idx + 1
+                        if monto is None or monto == "":
+                            continue
+                        try:
+                            monto_decimal = Decimal(monto)
+                        except (InvalidOperation, TypeError, ValueError):
+                            errores.append(f"Fila {i}, mes {mes}: Monto '{monto}' no válido.")
+                            continue
+                        if origen_val == "otros":
+                            obj, created = PresupuestoIngreso.objects.update_or_create(
+                                empresa=empresa,
+                                anio=anio_int,
+                                mes=mes,
+                                origen="otros",
+                                tipo_otro=tipo_otro_val,
+                                defaults={"monto_presupuestado": monto_decimal},
+                            )
+                        else:
+                            obj, created = PresupuestoIngreso.objects.update_or_create(
+                                empresa=empresa,
+                                anio=anio_int,
+                                mes=mes,
+                                origen=origen_val,
+                                defaults={"monto_presupuestado": monto_decimal},
+                            )
+                        exitos += 1
+                except Exception as e:
+                    errores.append(f"Fila {i}: {str(e)}")
+            if exitos:
+                messages.success(request, f"{exitos} presupuestos de ingresos cargados/actualizados exitosamente.")
+            if errores:
+                messages.error(request, "Errores:<br>" + "<br>".join(errores))
+            return redirect("carga_masiva_presupuesto_ingresos")
+    else:
+        form = PresupuestoCargaMasivaForm()
+    return render(
+        request,
+        "presupuestos/carga_masiva_presupuesto_ingresos.html",
+        {"form": form},
+    )    
+
+@login_required
+def descargar_plantilla_matriz_presupuesto_ingresos(request):
+    import openpyxl
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+
+    meses_nombres = [
+        "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+    ]
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Carga Presupuesto Ingresos"
+
+    # Encabezados
+    encabezados = ["Origen", "TipoOtroIngreso"] + meses_nombres + ["Año", "Empresa"]
+    ws.append(encabezados)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    # Ejemplo de fila (puedes dejarla vacía si prefieres)
+    ws.append([
+        "local", "", "", "", "", "", "", "", "", "", "", "", "", "", "2025", "MiEmpresa"
+    ])
+    ws.append([
+        "area", "", "", "", "", "", "", "", "", "", "", "", "", "", "2025", "MiEmpresa"
+    ])
+    ws.append([
+        "otros", "Renta de salón", "", "", "", "", "", "", "", "", "", "", "", "", "2025", "MiEmpresa"
+    ])
+
+    # Ajustar ancho de columnas
+    for col in ws.columns:
+        max_length = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            try:
+                if cell.value and len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+    # Respuesta HTTP para descargar
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = (
+        "attachment; filename=plantilla_matriz_presupuesto_ingresos.xlsx"
+    )
+    wb.save(response)
+    return response    
