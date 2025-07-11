@@ -186,8 +186,9 @@ def dashboard_presupuestal(request):
     return render(request, "presupuestos/dashboard.html", contexto)
 
 
-# Matriz de presupuestos por tipo de gasto y mes
+
 @login_required
+#matriz ppto gastos
 def matriz_presupuesto(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
