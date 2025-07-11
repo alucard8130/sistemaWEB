@@ -61,9 +61,10 @@ def subgrupos_gasto_lista(request):
     if request.user.is_superuser:
         subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
     else:
-        empresa= request.user.perfilusuario.empresa
+        #empresa= request.user.perfilusuario.empresa
         # Filtrar subgrupos por empresa
-        subgrupos= SubgrupoGasto.objects.filter(grupo__empresa=empresa).select_related('grupo').order_by('grupo__nombre', 'nombre')
+        #subgrupos= SubgrupoGasto.objects.filter(grupo__empresa=empresa).select_related('grupo').order_by('grupo__nombre', 'nombre')
+        subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
     #subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
         #subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre')
     return render(request, 'gastos/subgrupos_lista.html', {'subgrupos': subgrupos})
@@ -75,7 +76,9 @@ def tipos_gasto_lista(request):
     else:
         empresa = request.user.perfilusuario.empresa
         # Filtrar tipos de gasto por empresa
-        tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related('subgrupo__grupo').all().order_by('subgrupo__grupo__nombre')
+        #tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related('subgrupo__grupo').all().order_by('subgrupo__grupo__nombre')
+        tipos = TipoGasto.objects.filter(empresa=empresa).select_related('subgrupo__grupo').order_by('subgrupo__grupo__nombre')
+
     return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': tipos})
 
 @login_required

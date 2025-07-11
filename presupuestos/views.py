@@ -253,9 +253,12 @@ def matriz_presupuesto(request):
     edicion_habilitada = not bloqueado or request.user.is_superuser
 
     # --- Resto de la vista igual ---
-    tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
-        "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
+    tipos = TipoGasto.objects.filter(empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
+    "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
     )
+    #tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
+     #   "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
+    #)
     grupos_lista = []
     grupos_dict = defaultdict(lambda: defaultdict(list))
     for tipo in tipos:
@@ -499,7 +502,7 @@ def reporte_presupuesto_vs_gasto(request):
         empresa = request.user.perfilusuario.empresa
         empresas = None
 
-    tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
+    tipos = TipoGasto.objects.filter(empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
         "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
     )
 
