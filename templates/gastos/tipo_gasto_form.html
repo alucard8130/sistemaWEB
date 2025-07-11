@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 07/07/2025
+        Date of modification: 10/07/2025
         Description: Register charges
     -->
     <meta charset="UTF-8">
@@ -35,7 +35,7 @@
             
             <!-- Styled title with the same width as the form -->
             <h2 class="form-title text-center mb-0">{% if modo == 'crear' %}Alta{% else %}Editar{% endif %} tipo de gasto</h2>
-            <form method="post">
+            <form method="post" class="p-4 rounded custom-form">
                 {% csrf_token %}
                 {% for field in form %}
                     {% if field.name == "empresa" %}

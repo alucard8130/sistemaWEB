@@ -44,19 +44,74 @@ class TipoGastoForm(forms.ModelForm):
             self.fields['empresa'].widget = forms.HiddenInput()
             self.fields['empresa'].initial = user.perfilusuario.empresa
 
+        #  Agregar clases Bootstrap
+        for field_name, field in self.fields.items():
+            if not isinstance(field.widget, forms.HiddenInput):
+                # Detectar si el widget es tipo Select
+                if isinstance(field.widget, forms.Select):
+                    field.widget.attrs['class'] = 'form-select'
+                else:
+                    field.widget.attrs['class'] = 'form-control'
+
+                # Asignar placeholders específicos
+                if field_name == 'empresa':
+                    field.widget.attrs['placeholder'] = 'Selecciona una empresa'
+                elif field_name == 'subgrupo':
+                    field.widget.attrs['placeholder'] = 'Selecciona un subgrupo'
+                elif field_name == 'nombre':
+                    field.widget.attrs['placeholder'] = 'Nombre'
+                elif field_name == 'descripcion':
+                    field.widget.attrs['placeholder'] = 'Descripción'
+        # labels con tilde
+        self.fields['descripcion'].label = 'Descripción'
+
                     
 #solicitud de gastos
 class GastoForm(forms.ModelForm):
-    origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True)
+    origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True,
+                widget=forms.Select(attrs={
+                    'class': 'form-select'
+                }))
+
 
  
     class Meta:
         model = Gasto
         fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr','comprobante', 'observaciones']
         widgets = {
-            'fecha': forms.DateInput(attrs={'type': 'date'}),
-            'descripcion': forms.Textarea(attrs={'rows':2}),
-            'observaciones': forms.Textarea(attrs={'rows':2}),
+            'proveedor': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'empresa': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'tipo_gasto': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'fecha': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'retencion_iva': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'retencion_isr': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'comprobante': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'rows':2,
+                'class': 'form-control'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'rows':2,
+                'class': 'form-control'
+            }),
         }
 
       
