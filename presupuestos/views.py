@@ -191,7 +191,8 @@ def dashboard_presupuestal(request):
 def matriz_presupuesto(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
-    anios = list(range(now_year, 2021, -1))
+    #anios = list(range(now_year, 2021, -1))
+    anios = Presupuesto.objects.values_list('anio', flat=True).distinct().order_by('anio')
 
     # Empresa y permisos
     if request.user.is_superuser:
@@ -1581,7 +1582,8 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
 def matriz_presupuesto_ingresos(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
-    anios = list(range(now_year, 2023, -1))
+    #anios = list(range(now_year, 2023, -1))
+    anios = PresupuestoIngreso.objects.values_list('anio', flat=True).distinct().order_by('anio')
 
     # Empresa y permisos
     if request.user.is_superuser:
@@ -1883,3 +1885,60 @@ def descargar_plantilla_matriz_presupuesto_ingresos(request):
     )
     wb.save(response)
     return response    
+
+@login_required
+def copiar_presupuesto_gastos_a_nuevo_anio(request):
+    """
+    Copia la matriz de presupuesto de gastos del año actual al siguiente año,
+    solo si no existe presupuesto para el siguiente año.
+    """
+    anio_actual = date.today().year
+    anio_nuevo = anio_actual + 1
+
+    # Verifica si ya existe presupuesto para el siguiente año
+    existe = Presupuesto.objects.filter(anio=anio_nuevo).exists()
+    if existe:
+        messages.warning(request, f"Ya existe presupuesto para el año {anio_nuevo}.")
+        return redirect('matriz_presupuesto')
+
+    # Copia todos los registros del año actual al siguiente año
+    presupuestos_actuales = Presupuesto.objects.filter(anio=anio_actual)
+    nuevos = []
+    for p in presupuestos_actuales:
+        nuevos.append(Presupuesto(
+            grupo=p.grupo,
+            subgrupo=p.subgrupo,
+            tipo_gasto=p.tipo_gasto,
+            mes=p.mes,
+            monto=p.monto,
+            anio=anio_nuevo,
+            empresa=p.empresa
+        ))
+    Presupuesto.objects.bulk_create(nuevos)
+    messages.success(request, f"Presupuesto del año {anio_actual} copiado exitosamente a {anio_nuevo}.")
+    return redirect('matriz_presupuesto')
+
+@login_required
+def copiar_presupuesto_ingresos_a_nuevo_anio(request):
+    anio_actual = date.today().year
+    anio_nuevo = anio_actual + 1
+
+    existe = PresupuestoIngreso.objects.filter(anio=anio_nuevo).exists()
+    if existe:
+        messages.warning(request, f"Ya existe presupuesto de ingresos para el año {anio_nuevo}.")
+        return redirect('matriz_presupuesto_ingresos')
+
+    actuales = PresupuestoIngreso.objects.filter(anio=anio_actual)
+    nuevos = []
+    for p in actuales:
+        nuevos.append(PresupuestoIngreso(
+            empresa=p.empresa,
+            anio=anio_nuevo,
+            mes=p.mes,
+            origen=p.origen,
+            tipo_otro=p.tipo_otro,
+            monto_presupuestado=p.monto_presupuestado
+        ))
+    PresupuestoIngreso.objects.bulk_create(nuevos)
+    messages.success(request, f"Presupuesto de ingresos {anio_actual} copiado a {anio_nuevo}.")
+    return redirect('matriz_presupuesto_ingresos')

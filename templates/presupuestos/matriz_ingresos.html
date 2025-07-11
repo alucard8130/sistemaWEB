@@ -124,13 +124,20 @@
                         onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')">
                         Cerrar Presupuesto
                     </button>
+                    
                     <div class="alert alert-warning mt-2 mb-0 py-1">
                         Al cerrar el presupuesto, solo los usuarios autorizados podrán abrirlo.
                     </div>
                 {% endif %}
             </div>
         {% endif %}
-
+        </form>
+        <form method="post" action="{% url 'copiar_presupuesto_ingresos_a_nuevo_anio' %}" class="mb-3">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-warning">
+        Clonar Presupuesto
+    </button>
+</form>
                 <table class="table table-bordered table-sm align-middle">
                     <thead>
                         <tr>
