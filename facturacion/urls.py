@@ -25,7 +25,7 @@ urlpatterns = [
     path('otros-ingresos/reporte-cobros/', views.reporte_cobros_otros_ingresos, name='reporte_cobros_otros_ingresos'),
     path('otros-ingresos/reporte-cobros/exportar-excel/', views.exportar_cobros_otros_ingresos_excel, name='exportar_cobros_otros_ingresos_excel'),
     path('exportar_lista_facturas_otros_ingresos_excel/', views.exportar_lista_facturas_otros_ingresos_excel, name='exportar_lista_facturas_otros_ingresos_excel'),
-    
-
+    path('crear-tipo-ingreso/', views.crear_tipo_otro_ingreso, name='crear_tipo_otro_ingreso'),
+    path('tipos-otro-ingreso-json/', views.tipos_otro_ingreso_json, name='tipos_otro_ingreso_json'),
     
 ]

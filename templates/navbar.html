@@ -64,28 +64,28 @@
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos Cuotas</a>
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cuotas</a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Factura</a></li>
-                            <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Facturas</a></li>
-                            <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturación Mensual</a></li>
-                            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Ingresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Cuota</a></li>
+                            <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Cuotas</a></li>
+                            <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Carga Mensual Cuotas</a></li>
+                            <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros Cuotas</a></li>
                             
-                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard</a></li>
                             
                             {% if request.user.is_superuser %}
                             <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
-                                <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Facturas Cobradas</a></li>
+                                <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
                             {% endif %}
                         </ul>
                     </li>
                     <!-- MENÚ otros ingresos -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Otros Ingresos</a>
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Otras Cuotas</a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar Factura</a></li>
-                           <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista Facturas</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Otros Ingresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otra Cuota</a></li>
+                           <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista otras Cuotas</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros otras Cuotas</a></li>
                         </ul>
                     <!-- MENÚ cartera -->
                     <li class="nav-item dropdown">
@@ -96,7 +96,7 @@
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Cartera</a></li>
                             {% endif %}
                             
-                            <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Cartera Vencida</a></li>
+                            <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard</a></li>
                         </ul>
                     </li>
                     <!-- MENÚ CATÁLOGOS -->

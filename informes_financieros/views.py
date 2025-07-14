@@ -143,7 +143,8 @@ def reporte_ingresos_vs_gastos(request):
     )
 
     otros_ingresos_qs = (
-        cobros_otros.values("factura__tipo_ingreso")
+        cobros_otros.select_related("factura__tipo_ingreso")
+        .values("factura__tipo_ingreso__nombre")
         .annotate(total=Sum("monto"))
         .order_by("factura__tipo_ingreso")
     )
@@ -165,7 +166,7 @@ def reporte_ingresos_vs_gastos(request):
     for x in ingresos_qs:
         ingresos_por_origen[x["origen"]] = float(x["total"])
     for x in otros_ingresos_qs:
-        tipo = x["factura__tipo_ingreso"] or "Otros ingresos"
+        tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f" {tipo}"] = float(x["total"])
 
     saldo = total_ingresos_cobrados - total_gastos
@@ -268,15 +269,16 @@ def estado_resultados(request):
             .order_by("origen")
         )
         otros_ingresos_qs = (
-            cobros_otros_modo.values("factura__tipo_ingreso")
+            cobros_otros_modo.select_related("factura__tipo_ingreso")
+            .values("factura__tipo_ingreso__nombre")
             .annotate(total=Sum("monto"))
-            .order_by("factura__tipo_ingreso")
+            .order_by("factura__tipo_ingreso__nombre")
         )
         ingresos_por_origen = OrderedDict()
         for x in ingresos_qs:
             ingresos_por_origen[x["origen"]] = float(x["total"])
         for x in otros_ingresos_qs:
-            tipo = x["factura__tipo_ingreso"] or "Otros ingresos"
+            tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
         total_ingresos = float(sum(ingresos_por_origen.values()))
         gastos_por_grupo = (
@@ -314,9 +316,9 @@ def estado_resultados(request):
         ).values("origen").annotate(total=Sum("monto")).order_by("origen")
         for x in origenes:
             ingresos_por_origen[x["origen"]] = float(x["total"])
-        otros = facturas_otros.values("tipo_ingreso").annotate(total=Sum("monto")).order_by("tipo_ingreso")
+        otros = facturas_otros.values("tipo_ingreso__nombre").annotate(total=Sum("monto")).order_by("tipo_ingreso__nombre")
         for x in otros:
-            tipo = x["tipo_ingreso"] or "Otros ingresos"
+            tipo = x["tipo_ingreso__nombre"] or "Otros ingresos"
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
         total_ingresos = float(sum(ingresos_por_origen.values()))
         gastos_por_grupo = (

@@ -26,7 +26,7 @@
     {% include 'navbar.html' %}
 
     <div class="container-fluid mt-4">
-        <h2>Reporte de cobros otros ingresos</h2>
+        <h2>Reporte cobros otras cuotas</h2>
 
         <form method="get" class="row g-2 mb-3">
             <div class="col-auto">
@@ -41,14 +41,11 @@
             </div>
             <div class="col-auto">
                 <select name="tipo_ingreso" class="form-select">
-                    <option value="">Tipos</option>
-                    <option value="estacionamiento" {% if tipo_ingreso == "estacionamiento" %}selected{% endif %}>Estacionamiento</option>
-                    <option value="sanitario" {% if tipo_ingreso == "sanitario" %}selected{% endif %}>Sanitarios</option>
-                    <option value="propineros" {% if tipo_ingreso == "propineros" %}selected{% endif %}>Propineros</option>
-                    <option value="publicidad" {% if tipo_ingreso == "publicidad" %}selected{% endif %}>Publicidad</option>
-                    <option value="servicios" {% if tipo_ingreso == "servicios" %}selected{% endif %}>Servicios</option>
-                    <option value="otros" {% if tipo_ingreso == "otros" %}selected{% endif %}>Otros</option>
-                </select>
+    <option value="">Tipos</option>
+    {% for tipo in tipos_ingreso %}
+        <option value="{{ tipo.id }}" {% if tipo.id|stringformat:"s" == tipo_ingreso %}selected{% endif %}>{{ tipo.nombre }}</option>
+    {% endfor %}
+</select>
             </div>
             <div class="col-auto">
                 <select name="cliente" class="form-select">
@@ -66,13 +63,14 @@
             </div>
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-primary">Filtrar</button>
-            </div>
-        </form>
-        <div class="mb-2"> 
+           
             <a href="{% url 'exportar_cobros_otros_ingresos_excel' %}?empresa={{ empresa_id }}&cliente={{ cliente_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-success">
                 Exportar a Excel
             </a>
-        </div>
+
+            </div>
+        </form>
+        
         <div class="alert alert-info">
             <strong>Total cobrado:</strong>
             ${{ total_cobrado|floatformat:2|intcomma }}
@@ -87,10 +85,10 @@
                         <th>Empresa</th>
                         {% endif %}
                         <th>Cliente</th>
-                        <th>Tipo ingreso</th>
+                        <th>Tipo Cuota</th>
                         <th>Monto</th>
                         <th>Forma cobro</th>
-                        <th>Factura</th>
+                        <th>Folio</th>
                         <th>Comprobante</th>
                         <th>Comentario</th>
                     </tr>
@@ -103,7 +101,7 @@
                         <td>{{ cobro.factura.empresa.nombre }}</td>
                         {% endif %}
                         <td>{{ cobro.factura.cliente.nombre }}</td>
-                        <td>{{ cobro.factura.get_tipo_ingreso_display }}</td>
+                        <td>{{ cobro.factura.tipo_ingreso.nombre }}</td>
                         <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                         <td>{{ cobro.get_forma_cobro_display }}</td>
                         <td>{{ cobro.factura.folio }}</td>

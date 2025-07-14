@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 import openpyxl
-from facturacion.models import CobroOtrosIngresos, FacturaOtrosIngresos, Pago
+from facturacion.models import CobroOtrosIngresos, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
 from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
 from .forms import PresupuestoCargaMasivaForm, PresupuestoForm
@@ -1258,15 +1258,15 @@ def reporte_presupuesto_vs_ingreso(request):
         ('area', 'Áreas comunes'),
         ('otros', 'Otros ingresos'),
     ]
-    tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO
-
+    #tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO
+    tipos_otros = list(TipoOtroIngreso.objects.filter(empresa=empresa).values_list('id', 'nombre'))
     # Presupuestos
     presupuestos = PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio)
     presup_dict = defaultdict(lambda: defaultdict(float))  # origen/tipo -> mes -> monto
 
     for p in presupuestos:
         if p.origen == 'otros' and p.tipo_otro:
-            presup_dict[(p.origen, p.tipo_otro)][p.mes] = float(p.monto_presupuestado)
+            presup_dict[(p.origen, p.tipo_otro.id)][p.mes] = float(p.monto_presupuestado)
         else:
             presup_dict[(p.origen, None)][p.mes] = float(p.monto_presupuestado)
 
@@ -1603,7 +1603,8 @@ def matriz_presupuesto_ingresos(request):
     origenes = [('local', 'Locales'), ('area', 'Áreas comunes'), ('otros', 'Otros ingresos')]
 
      # Catálogo de tipos de otros ingresos
-    tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO  
+    #tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO  
+    tipos_otros = list(TipoOtroIngreso.objects.filter(empresa=empresa).values_list('id', 'nombre'))
 
     # ¿Cerrado?
     cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
@@ -1643,7 +1644,7 @@ def matriz_presupuesto_ingresos(request):
      #   presup_dict[p.origen][p.mes] = p.monto_presupuestado
     for p in presupuestos:
         if p.origen == 'otros' and p.tipo_otro:
-            otros_dict[p.tipo_otro][p.mes] = p.monto_presupuestado
+            otros_dict[p.tipo_otro.id][p.mes] = p.monto_presupuestado
         else:
             presup_dict[p.origen][p.mes] = p.monto_presupuestado
 
@@ -1689,6 +1690,7 @@ def matriz_presupuesto_ingresos(request):
         # Guardar tipos de otros ingresos
         for tipo in tipos_otros:
             tipo_val = tipo[0]
+            tipo_otro_instance = TipoOtroIngreso.objects.get(pk=tipo_val)
             for mes in meses:
                 key = f"presupuesto_otros_{tipo_val}_{mes}"
                 monto = request.POST.get(key)
@@ -1699,7 +1701,7 @@ def matriz_presupuesto_ingresos(request):
                         anio=anio,
                         mes=mes,
                         origen='otros',
-                        tipo_otro=tipo_val,
+                        tipo_otro=tipo_otro_instance,
                         defaults={"monto_presupuestado": monto},
                     )
                     if not created and obj.monto_presupuestado != monto:
@@ -1804,12 +1806,18 @@ def carga_masiva_presupuesto_ingresos(request):
                             errores.append(f"Fila {i}, mes {mes}: Monto '{monto}' no válido.")
                             continue
                         if origen_val == "otros":
+                            tipo_otro_obj = None
+                            if tipo_otro_val:
+                                tipo_otro_obj = TipoOtroIngreso.objects.filter(nombre__iexact=tipo_otro_val, empresa=empresa).first()
+                                if not tipo_otro_obj:
+                                    errores.append(f"Fila {i}: Tipo de otro ingreso '{tipo_otro_val}' no encontrado.")
+                                    continue
                             obj, created = PresupuestoIngreso.objects.update_or_create(
                                 empresa=empresa,
                                 anio=anio_int,
                                 mes=mes,
                                 origen="otros",
-                                tipo_otro=tipo_otro_val,
+                                tipo_otro=tipo_otro_obj,
                                 defaults={"monto_presupuestado": monto_decimal},
                             )
                         else:

@@ -1,7 +1,7 @@
 
 from django.db import models
 from empresas.models import Empresa
-from facturacion.models import FacturaOtrosIngresos
+from facturacion.models import FacturaOtrosIngresos, TipoOtroIngreso
 from gastos.models import GrupoGasto, SubgrupoGasto, TipoGasto
 
 class Presupuesto(models.Model):
@@ -48,9 +48,11 @@ class PresupuestoIngreso(models.Model):
     monto_presupuestado = models.DecimalField(max_digits=12, decimal_places=2)
 
      # Para el desglose de "otros ingresos"
-    tipo_otro = models.CharField(
-        max_length=20,
-        choices=FacturaOtrosIngresos.TIPO_INGRESO,
+    tipo_otro = models.ForeignKey(
+        #max_length=20,
+        #choices=FacturaOtrosIngresos.TIPO_INGRESO,
+        TipoOtroIngreso,
+        on_delete=models.SET_NULL,
         blank=True,
         null=True,
         help_text="Solo se usa si origen='otros'"
@@ -61,5 +63,5 @@ class PresupuestoIngreso(models.Model):
 
     def __str__(self):
         if self.origen == 'otros' and self.tipo_otro:
-            return f"{self.empresa} {self.get_origen_display()} ({self.get_tipo_otro_display()}) {self.mes}/{self.anio}: {self.monto_presupuestado}"
+            return f"{self.empresa} {self.get_origen_display()} ({self.tipo_otro.nombre}) {self.mes}/{self.anio}: {self.monto_presupuestado}"
         return f"{self.empresa} {self.get_origen_display()} {self.mes}/{self.anio}: {self.monto_presupuestado}"

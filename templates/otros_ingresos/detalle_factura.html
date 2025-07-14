@@ -29,15 +29,24 @@
         <div class="row justify-content-center">
             <div class="col-md-4 col-sm-6 mx-auto">
 
-                <h2 class="form-title text-center mb-0">Detalle de factura otros ingresos</h2>
+                <h2 class="form-title text-center mb-0">Detalle otras Cuotas</h2>
                 
                 <!-- Invoices table --> 
                 <table class="table table-bordered mb-4">
-                    <tr><th>Folio:</th><td>${{ factura.folio }}</td></tr>
-                    <tr><th>Cliente:</th><td>${{ factura.cliente.nombre }}</td></tr>
-                    <tr><th>Tipo de ingreso:</th><td>{{ factura.get_tipo_ingreso_display }}</td></tr>
-                    <tr><th>Monto total:</th><td>{{ factura.monto|floatformat:2|intcomma }}</td></tr>
-                    <tr><th>Saldo pendiente:</th><td>{{ factura.saldo|floatformat:2|intcomma }} </td></tr>
+                    <tr><th>Folio:</th><td>{{ factura.folio }}</td></tr>
+                    <tr><th>Cliente:</th><td>{{ factura.cliente.nombre }}</td></tr>
+                    <tr>
+    <th>Tipo de ingreso:</th>
+    <td>
+        {% if factura.tipo_ingreso %}
+            {{ factura.tipo_ingreso.nombre }}
+        {% else %}
+            <span class="text-muted">No asignado</span>
+        {% endif %}
+    </td>
+</tr>
+                    <tr><th>Monto total:</th><td>${{ factura.monto|floatformat:2|intcomma }}</td></tr>
+                    <tr><th>Saldo pendiente:</th><td>${{ factura.saldo|floatformat:2|intcomma }} </td></tr>
                     <tr><th>Estatus:</th><td>{{ factura.get_estatus_display }} </td></tr>
                 </table> 
             </div>

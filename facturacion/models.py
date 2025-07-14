@@ -103,17 +103,9 @@ class Pago(models.Model):
     
  #modulo otros ingresos   
 class FacturaOtrosIngresos(models.Model):
-    TIPO_INGRESO = [
-        ('estacionamiento', 'Estacionamiento'),
-        ('sanitario', 'Sanitarios'),
-        ('propineros', 'Propineros'),
-        ('publicidad', 'Publicidad'),
-        ('servicios', 'Servicios'),
-        ('otros', 'Otros'),
-    ]
     empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT)
-    tipo_ingreso = models.CharField(max_length=20, choices=TIPO_INGRESO)
+    tipo_ingreso = models.ForeignKey('TipoOtroIngreso', on_delete=models.PROTECT)
     folio = models.CharField(max_length=50, unique=True)
     cfdi = models.FileField(upload_to='fact_sat_oi/', max_length=255, blank=True, null=True)
     fecha_emision = models.DateField(auto_now_add=True)
@@ -156,3 +148,9 @@ class CobroOtrosIngresos(models.Model):
     def __str__(self):
         return f"Cobro de ${self.monto} para {self.factura.folio} el {self.fecha_cobro}"
     
+class TipoOtroIngreso(models.Model):
+    nombre = models.CharField(max_length=100)
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.nombre

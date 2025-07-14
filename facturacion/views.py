@@ -6,8 +6,8 @@ from areas.models import AreaComun
 from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
-from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, PagoForm,FacturaCargaMasivaForm, CobroForm
-from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, PagoForm,FacturaCargaMasivaForm, CobroForm, TipoOtroIngresoForm
+from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from principal.models import AuditoriaCambio, PerfilUsuario
 from django.utils.timezone import now
 from django.utils import timezone
@@ -36,7 +36,7 @@ from django.utils.dateformat import DateFormat
 from presupuestos.models import PresupuestoIngreso
 from collections import defaultdict
 import json
-
+from django.http import JsonResponse
 
 @login_required
 def crear_factura(request):
@@ -138,11 +138,11 @@ def crear_factura(request):
                                     valor_nuevo=valor
                                 )
 
-                        messages.success(request, "Factura creada correctamente.")
+                        messages.success(request, "Registro Exitoso.")
                         #print("[DEBUG] Factura creada con éxito.")
                         return redirect('lista_facturas')
                 except Exception as e:
-                    form.add_error(None, f"Error al guardar la factura: {e}")
+                    form.add_error(None, f"Error al guardar: {e}")
                     #print("[DEBUG] Excepción al guardar factura:", e)
         else:
             ''#print("[DEBUG] Formulario inválido:", form.errors)
@@ -374,6 +374,7 @@ def facturas_detalle(request, pk):
 
 @login_required
 #pagos_por_origen.html
+#reporte cobros cuotas
 def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
@@ -1312,20 +1313,23 @@ def carga_masiva_facturas(request):
 @login_required
 def crear_factura_otros_ingresos(request):
     if request.method == 'POST':
-        form = FacturaOtrosIngresosForm(request.POST,request.FILES)
+        form = FacturaOtrosIngresosForm(request.POST,request.FILES,user=request.user)
         if form.is_valid():
             factura = form.save(commit=False)
             # Asignar empresa según el cliente seleccionado
-            factura.empresa = factura.cliente.empresa
+            factura.empresa = request.user.perfilusuario.empresa
             # Generar folio único
             count = FacturaOtrosIngresos.objects.filter(fecha_emision__year=now().year).count() + 1
             factura.folio = f"OI-F{count:05d}"
             factura.save()
-            messages.success(request, "Factura de otros ingresos creada correctamente.")
+            messages.success(request, "Registro Exitoso.")
             return redirect('lista_facturas_otros_ingresos')
     else:
-        form = FacturaOtrosIngresosForm()
-    return render(request, 'otros_ingresos/crear_factura.html', {'form': form})
+        form = FacturaOtrosIngresosForm(user=request.user)
+
+    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa=request.user.perfilusuario.empresa)
+
+    return render(request, 'otros_ingresos/crear_factura.html', {'form': form, 'tipos_ingreso': tipos_ingreso})
 
 @login_required
 def lista_facturas_otros_ingresos(request):
@@ -1352,14 +1356,17 @@ def registrar_cobro_otros_ingresos(request, factura_id):
             cobro = form.save(commit=False)
             cobro.factura = factura
             cobro.registrado_por = request.user
-            cobro.save()
-            # Actualiza estatus de la factura si ya está pagada
-            total_cobrado = sum([c.monto for c in factura.cobros.all()])
-            if total_cobrado >= factura.monto:
-                factura.estatus = 'cobrada'
-                factura.save()
-            messages.success(request, "Cobro registrado correctamente.")
-            return redirect('lista_facturas_otros_ingresos')
+            if cobro.monto > factura.saldo:
+                messages.error(request, "El monto del cobro no puede ser mayor al saldo pendiente de la factura.")
+            else:    
+                cobro.save()
+                # Actualiza estatus de la factura si ya está pagada
+                total_cobrado = sum([c.monto for c in factura.cobros.all()])
+                if total_cobrado >= factura.monto:
+                    factura.estatus = 'cobrada'
+                    factura.save()
+                messages.success(request, "Cobro registrado correctamente.")
+                return redirect('lista_facturas_otros_ingresos')
     else:
         form = CobroForm()
 
@@ -1385,6 +1392,7 @@ def reporte_cobros_otros_ingresos(request):
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
     tipo_ingreso = request.GET.get('tipo_ingreso')
+    tipo_ingreso_id = request.GET.get('tipo_ingreso')    
 
     cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente')
 
@@ -1397,8 +1405,11 @@ def reporte_cobros_otros_ingresos(request):
         cobros = cobros.filter(factura__cliente_id=cliente_id)
     if fecha_inicio and fecha_fin:
         cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin])
-    if tipo_ingreso:
-        cobros = cobros.filter(factura__tipo_ingreso=tipo_ingreso)    
+        
+    
+    #if tipo_ingreso:
+    if tipo_ingreso_id and tipo_ingreso_id.isdigit():
+        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id)    
 
     total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
 
@@ -1409,6 +1420,7 @@ def reporte_cobros_otros_ingresos(request):
 
     empresas = Empresa.objects.all() if request.user.is_superuser else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
     clientes = Cliente.objects.filter(empresa__in=empresas)
+    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa__in=empresas)
 
     return render(request, 'otros_ingresos/reporte_cobros.html', {
         'cobros': page_obj,
@@ -1420,6 +1432,8 @@ def reporte_cobros_otros_ingresos(request):
         'fecha_fin': fecha_fin,
         'total_cobrado': total_cobrado,
         'tipo_ingreso': tipo_ingreso,
+        'tipo_ingreso_id': tipo_ingreso_id,
+        'tipos_ingreso': tipos_ingreso,
     })
 
 
@@ -1532,3 +1546,28 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
     response['Content-Disposition'] = 'attachment; filename=lista_facturas_otros_ingresos.xlsx'
     wb.save(response)
     return response
+
+
+@login_required
+def crear_tipo_otro_ingreso(request):
+    if request.method == 'POST':
+        form = TipoOtroIngresoForm(request.POST)
+        if form.is_valid():
+            tipo_ingreso = form.save(commit=False)
+            tipo_ingreso.empresa = request.user.perfilusuario.empresa
+            tipo_ingreso.save()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'id': tipo_ingreso.id, 'nombre': tipo_ingreso.nombre})
+            messages.success(request, "Tipo de ingreso creado correctamente.")
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': 'Error al crear el tipo de ingreso.'})
+            messages.error(request, "Error al crear el tipo de ingreso.")
+    return redirect(request.META.get('HTTP_REFERER', 'crear_factura_otros_ingresos'))
+
+
+@login_required
+def tipos_otro_ingreso_json(request):
+    tipos = TipoOtroIngreso.objects.filter(empresa=request.user.perfilusuario.empresa)
+    data = [{'id': t.id, 'nombre': t.nombre} for t in tipos]
+    return JsonResponse({'tipos': data})

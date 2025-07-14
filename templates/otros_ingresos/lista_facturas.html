@@ -43,9 +43,9 @@
 
     <!-- Main content -->
     <div class="container-fluid mt-4">
-        <h2>Facturas de otros ingresos</h2>
+        <h2>Otras Cuotas</h2>
         <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
-            <i class="bi bi-plus-circle me-1"></i> Nueva factura otros ingresos
+            <i class="bi bi-plus-circle me-1"></i> Registrar otra cuota
             <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
     Exportar a Excel
 </a>
@@ -64,7 +64,7 @@
                       
                       <th>Monto</th>
                       <th>Saldo</th>
-                      <th>Tipo ingreso</th>
+                      <th>Tipo Cuota</th>
                     <!--  <th>Fecha emisión</th>-->
                       <th>Periodo</th>
                       <th>Concepto</th>
@@ -87,7 +87,8 @@
                           
                           <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                           <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
-                          <td>{{ factura.get_tipo_ingreso_display }}</td>
+                          <td>{{ factura.tipo_ingreso }}</td>
+                          <!--<td>{{ factura.get_tipo_ingreso_display }}</td>-->
                         <!--  <td>{{ factura.fecha_emision }}</td> -->
                           <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
                           <td>{{factura.observaciones}}</td>

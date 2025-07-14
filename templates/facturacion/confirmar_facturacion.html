@@ -25,13 +25,13 @@
         </div>
     </div>
 <div class="container mt-5">
-    <h3>Confirmar facturación automática de {{ mes }}/{{ año }}</h3>
+    <h3>Confirmar carga mensual de cuotas {{ mes }}/{{ año }}</h3>
     
     
     <div class="alert alert-info">
         <ul>
-            <li><strong>{{ total_locales }}</strong> locales comerciales por facturar</li>
-            <li><strong>{{ total_areas }}</strong> áreas comunes por facturar</li>
+            <li><strong>{{ total_locales }}</strong> cuotas locales comerciales por cargar</li>
+            <li><strong>{{ total_areas }}</strong> cuotas áreas comunes por cargar</li>
         </ul>
     </div>
 
@@ -43,13 +43,13 @@
             {% csrf_token %}
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
-                <label class="form-check-label" for="locales">Facturar Locales Comerciales</label>
+                <label class="form-check-label" for="locales">Cargar Locales Comerciales</label>
             </div>
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="areas" id="areas" checked {% if total_areas == 0 %}disabled{% endif %}>
-                <label class="form-check-label" for="areas">Facturar Áreas Comunes</label>
+                <label class="form-check-label" for="areas">Cargar Áreas Comunes</label>
             </div>
-            <button type="submit" class="btn btn-warning mt-3">Generar facturación</button>
+            <button type="submit" class="btn btn-warning mt-3">Generar carga</button>
             <a href="{% url 'lista_facturas' %}" class="btn btn-secondary mt-3">Cancelar</a>
         </form>
     {% endif %}

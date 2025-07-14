@@ -1,5 +1,7 @@
 from django import forms
-from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+
+from clientes.models import Cliente
+from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from django.db import models
 from empresas.models import Empresa
 
@@ -184,6 +186,7 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
     class Meta:
         model = FacturaOtrosIngresos
         fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'cfdi','observaciones']
+        #fields = '__all__'
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-select'             
@@ -205,7 +208,17 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
                 'rows': 2,
                 'class': 'form-control'
             }),
-        }            
+        }  
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user and hasattr(user, 'perfilusuario'):
+            empresa = user.perfilusuario.empresa
+            #self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
+            self.fields['tipo_ingreso'].queryset = TipoOtroIngreso.objects.filter(empresa=empresa)
+        else:
+            self.fields['tipo_ingreso'].queryset = TipoOtroIngreso.objects.all()    
    
 class CobroForm(forms.ModelForm):
     class Meta:
@@ -236,4 +249,8 @@ class CobroForm(forms.ModelForm):
         # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
 
+class TipoOtroIngresoForm(forms.ModelForm):
+    class Meta:
+        model = TipoOtroIngreso
+        fields = ['nombre']
 
