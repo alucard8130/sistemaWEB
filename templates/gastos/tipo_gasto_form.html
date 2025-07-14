@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 10/07/2025
+        Date of modification: 13/07/2025
         Description: Register charges
     -->
     <meta charset="UTF-8">
@@ -58,8 +58,10 @@
                         </div>
                     {% endif %}
                 {% endfor %}
-                <button type="submit" class="btn btn-primary">{% if modo == 'crear' %}Guardar{% else %}Actualizar{% endif %}</button>
-                <a href="{% url 'tipos_gasto_lista' %}" class="btn btn-secondary">Cancelar</a>
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="submit" class="btn btn-primary">{% if modo == 'crear' %}Guardar{% else %}Actualizar{% endif %}</button>
+                    <a href="{% url 'tipos_gasto_lista' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
             </form>
             </div>
         </div>
