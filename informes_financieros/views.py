@@ -252,6 +252,8 @@ def estado_resultados(request):
         pagos_modo = pagos
         cobros_otros_modo = cobros_otros
         gastos_modo = PagoGasto.objects.filter(fecha_pago__range=[fecha_inicio, fecha_fin])
+        if empresa_id:
+            gastos_modo = gastos_modo.filter(gasto__empresa_id=empresa_id)
         ingresos_qs = (
             pagos_modo.annotate(
                 origen=Case(

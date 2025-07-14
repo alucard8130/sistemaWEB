@@ -124,13 +124,32 @@
                         onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')">
                         Cerrar Presupuesto
                     </button>
-                    <div class="alert alert-warning mt-2 mb-0 py-1">
+                    
+                   <!-- <div class="alert alert-warning mt-2 mb-0 py-1">
                         Al cerrar el presupuesto, solo los usuarios autorizados podrán abrirlo.
-                    </div>
+                    </div>-->
                 {% endif %}
             </div>
         {% endif %}
-
+        </form>
+        
+        <form method="post" action="{% url 'copiar_presupuesto_ingresos_a_nuevo_anio' %}" class="row g-2 align-items-end mb-3">
+    {% csrf_token %}
+    <div class="col-auto">
+        <label for="tipo_clon" class="form-label mb-0">Clonar:</label>
+        <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm" onchange="document.getElementById('porcentaje_clon').style.display = this.value == 'con' ? 'inline-block' : 'none';">
+            <option value="sin">Sin incremento</option>
+            <option value="con">Con incremento</option>
+        </select>
+    </div>
+    <div class="col-auto" id="porcentaje_clon" style="display:none;">
+        <label for="porcentaje" class="form-label mb-0">Porcentaje (%)</label>
+        <input type="number" step="0.01" min="0" name="porcentaje" id="porcentaje" class="form-control form-control-sm" value="10">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-warning btn-sm">Clonar presupuesto</button>
+    </div>
+</form>
                 <table class="table table-bordered table-sm align-middle">
                     <thead>
                         <tr>

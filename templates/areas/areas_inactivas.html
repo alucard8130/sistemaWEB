@@ -42,7 +42,9 @@
                 <thead>
                     <tr>
                         <th>Número de área</th>
-                        <th>Empresa</th>
+                        {% if request.user.is_superuser %}
+                            <th>Empresa</th>
+                        {% endif %}
                         <th>Ubicación</th>
                         <th>Giro</th>
                         <th>Acción</th>
@@ -52,7 +54,9 @@
                     {% for area in areas %}
                     <tr>
                         <td>{{ area.numero }}</td>
-                        <td>{{ area.empresa.nombre }}</td>
+                        {% if request.user.is_superuser %}
+                                <td>{{ area.empresa.nombre }}</td>
+                        {% endif %}
                         <td>{{ area.ubicacion }}</td>
                         <td>{{ area.giro }}</td>
                         <td>

@@ -25,7 +25,7 @@ from datetime import date, datetime
 from django.db.models.functions import TruncMonth, TruncYear
 from .forms import PresupuestoCargaMasivaForm
 from openpyxl import load_workbook
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation,ROUND_HALF_UP
 
 
 @login_required
@@ -186,12 +186,14 @@ def dashboard_presupuestal(request):
     return render(request, "presupuestos/dashboard.html", contexto)
 
 
-# Matriz de presupuestos por tipo de gasto y mes
+
 @login_required
+#matriz ppto gastos
 def matriz_presupuesto(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
-    anios = list(range(now_year, 2021, -1))
+    #anios = list(range(now_year, 2021, -1))
+    anios = Presupuesto.objects.values_list('anio', flat=True).distinct().order_by('anio')
 
     # Empresa y permisos
     if request.user.is_superuser:
@@ -251,9 +253,12 @@ def matriz_presupuesto(request):
     edicion_habilitada = not bloqueado or request.user.is_superuser
 
     # --- Resto de la vista igual ---
-    tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
-        "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
+    tipos = TipoGasto.objects.filter(empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
+    "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
     )
+    #tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
+     #   "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
+    #)
     grupos_lista = []
     grupos_dict = defaultdict(lambda: defaultdict(list))
     for tipo in tipos:
@@ -497,7 +502,7 @@ def reporte_presupuesto_vs_gasto(request):
         empresa = request.user.perfilusuario.empresa
         empresas = None
 
-    tipos = TipoGasto.objects.filter(subgrupo__grupo__empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
+    tipos = TipoGasto.objects.filter(empresa=empresa).select_related("subgrupo", "subgrupo__grupo").order_by(
         "subgrupo__grupo__nombre", "subgrupo__nombre", "nombre"
     )
 
@@ -1581,7 +1586,8 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
 def matriz_presupuesto_ingresos(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
-    anios = list(range(now_year, 2023, -1))
+    #anios = list(range(now_year, 2023, -1))
+    anios = PresupuestoIngreso.objects.values_list('anio', flat=True).distinct().order_by('anio')
 
     # Empresa y permisos
     if request.user.is_superuser:
@@ -1883,3 +1889,84 @@ def descargar_plantilla_matriz_presupuesto_ingresos(request):
     )
     wb.save(response)
     return response    
+
+@login_required
+#clonar ppto gastos
+def copiar_presupuesto_gastos_a_nuevo_anio(request):
+    if request.method == "POST":
+        anio_actual = date.today().year
+        anio_nuevo = anio_actual + 1
+
+        existe = Presupuesto.objects.filter(anio=anio_nuevo).exists()
+        if existe:
+            messages.warning(request, f"Ya existe presupuesto para el año {anio_nuevo}.")
+            return redirect('matriz_presupuesto')
+
+        tipo_clon = request.POST.get("tipo_clon", "sin")
+        porcentaje = request.POST.get("porcentaje", "0")
+        try:
+            porcentaje = Decimal(porcentaje)
+        except:
+            porcentaje = Decimal("0")
+
+        presupuestos_actuales = Presupuesto.objects.filter(anio=anio_actual)
+        nuevos = []
+        for p in presupuestos_actuales:
+            monto = p.monto
+            if tipo_clon == "con" and porcentaje > 0:
+                monto = (Decimal(monto) * (Decimal("1") + porcentaje / Decimal("100"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            nuevos.append(Presupuesto(
+                grupo=p.grupo,
+                subgrupo=p.subgrupo,
+                tipo_gasto=p.tipo_gasto,
+                mes=p.mes,
+                monto=monto,
+                anio=anio_nuevo,
+                empresa=p.empresa
+            ))
+        Presupuesto.objects.bulk_create(nuevos)
+        if tipo_clon == "con" and porcentaje > 0:
+            messages.success(request, f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%")
+        else:
+            messages.success(request, f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.")
+    return redirect('matriz_presupuesto')
+
+@login_required
+#clonar ppto ingresos
+def copiar_presupuesto_ingresos_a_nuevo_anio(request):
+    if request.method == "POST":
+        anio_actual = date.today().year
+        anio_nuevo = anio_actual + 1
+
+        existe = PresupuestoIngreso.objects.filter(anio=anio_nuevo).exists()
+        if existe:
+            messages.warning(request, f"Ya existe presupuesto de ingresos para el año {anio_nuevo}.")
+            return redirect('matriz_presupuesto_ingresos')
+
+        tipo_clon = request.POST.get("tipo_clon", "sin")
+        porcentaje = request.POST.get("porcentaje", "0")
+        try:
+            porcentaje = Decimal(porcentaje)
+        except:
+            porcentaje = Decimal("0")
+
+        actuales = PresupuestoIngreso.objects.filter(anio=anio_actual)
+        nuevos = []
+        for p in actuales:
+            monto = p.monto_presupuestado
+            if tipo_clon == "con" and porcentaje > 0:
+                monto = (Decimal(monto) * (Decimal("1") + porcentaje / Decimal("100"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            nuevos.append(PresupuestoIngreso(
+                empresa=p.empresa,
+                anio=anio_nuevo,
+                mes=p.mes,
+                origen=p.origen,
+                tipo_otro=p.tipo_otro,
+                monto_presupuestado=monto
+            ))
+        PresupuestoIngreso.objects.bulk_create(nuevos)
+        if tipo_clon == "con" and porcentaje > 0:
+            messages.success(request, f"Presupuesto de ingresos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%")
+        else:
+            messages.success(request, f"Presupuesto de ingresos {anio_actual} copiado a {anio_nuevo} sin incremento.")
+    return redirect('matriz_presupuesto_ingresos')

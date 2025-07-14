@@ -21,7 +21,8 @@ urlpatterns = [
     path('presupuestos/comparativo-ing/', views.reporte_presupuesto_vs_ingreso, name='reporte_presupuesto_vs_ingreso'),
     path('carga-masiva-ingresos/', views.carga_masiva_presupuesto_ingresos, name='carga_masiva_presupuesto_ingresos'),
     path('descargar-plantilla-matriz-presupuesto-ingresos/', views.descargar_plantilla_matriz_presupuesto_ingresos, name='descargar_plantilla_matriz_presupuesto_ingresos'),
-
+    path('presupuestos/copiar-gastos/', views.copiar_presupuesto_gastos_a_nuevo_anio, name='copiar_presupuesto_gastos_a_nuevo_anio'),
+    path('presupuestos/copiar-ingresos/', views.copiar_presupuesto_ingresos_a_nuevo_anio, name='copiar_presupuesto_ingresos_a_nuevo_anio'),
 
 ]
 
