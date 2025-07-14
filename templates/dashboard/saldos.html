@@ -50,13 +50,14 @@
             </div>
             <div class="col-md-2">
                 <select name="origen" class="form-select" onchange="this.form.submit()">
-                    <option value="">Orígenes</option>
-                    <option value="local" {% if origen == "local" %}selected{% endif %}>Solo locales</option>
-                    <option value="area" {% if origen == "area" %}selected{% endif %}>Solo áreas comunes</option>
+                    <option value="todos">Todos</option>
+                    <option value="local" {% if origen == "local" %}selected{% endif %}>Cuotas Locales</option>
+                    <option value="area" {% if origen == "area" %}selected{% endif %}>Cuotas Areas Comunes</option>
+                    <option value="otros" {% if origen == "otros" %}selected{% endif %}>Otras Cuotas</option>
                 </select>
             </div>
             <div class="col-md-2 align-self-end">
-                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <!--<button type="submit" class="btn btn-primary">Filtrar</button>-->
             </div>
         </form>
 
@@ -64,33 +65,63 @@
         <div class="row mb-4">
             <div class="col-md-7">
                 <div class="card shadow p-3">
-                    <h5 class="mb-2"><strong>Distribución de saldos por vencimiento</strong></h5>
+                    <h5 class="mb-2"><strong>Distribución de saldos por periodo</strong></h5>
                     <canvas id="chartSaldos"></canvas>
                 </div>
             </div>
             <div class="col-md-5">
                 <div class="card shadow p-3">
-                    <h6 class="mb-2"><strong>Saldos por rango</strong></h6>
+                    <h6 class="mb-2"><strong>Saldos por periodo</strong></h6>
                     <ul class="list-group">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Menos de 30 días
-                            <span class="badge bg-success rounded-pill ">${{ saldo_0_30|floatformat:2|intcomma }}</span>
+                            <span class="badge bg-success rounded-pill ">
+                                {% if origen == "otros" %}
+                                    ${{ saldo_0_30_otros|floatformat:2|intcomma }}
+                                {% else %}
+                                    ${{ saldo_0_30|floatformat:2|intcomma }}
+                                {% endif %}
+                            </span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             31 a 60 días
-                            <span class="badge bg-warning rounded-pill">${{ saldo_31_60|floatformat:2|intcomma }}</span>
+                            <span class="badge bg-warning rounded-pill">
+                                {% if origen == "otros" %}
+                                    ${{ saldo_31_60_otros|floatformat:2|intcomma }}
+                                {% else %}
+                                    ${{ saldo_31_60|floatformat:2|intcomma }}
+                                {% endif %}
+                            </span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             61 a 90 días
-                            <span class="badge bg-warning rounded-pill">${{ saldo_61_90|floatformat:2|intcomma }}</span>
+                            <span class="badge bg-warning rounded-pill">
+                                {% if origen == "otros" %}
+                                    ${{ saldo_61_90_otros|floatformat:2|intcomma }}
+                                {% else %}
+                                    ${{ saldo_61_90|floatformat:2|intcomma }}
+                                {% endif %}
+                            </span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             91 a 180 días
-                            <span class="badge bg-warning rounded-pill">${{ saldo_91_180|floatformat:2|intcomma }}</span>
+                            <span class="badge bg-warning rounded-pill">
+                                {% if origen == "otros" %}
+                                ${{ saldo_91_180_otros|floatformat:2|intcomma }}
+                                {% else %}
+                                ${{ saldo_91_180|floatformat:2|intcomma }}
+                                {% endif %}
+                            </span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Más de 180 días
-                            <span class="badge bg-danger rounded-pill">${{ saldo_181_mas|floatformat:2|intcomma }}</span>
+                            <span class="badge bg-danger rounded-pill">
+                                {% if origen == "otros" %}
+                                ${{ saldo_181_mas_otros|floatformat:2|intcomma }}
+                                {% else %}
+                                ${{ saldo_181_mas|floatformat:2|intcomma }}
+                                {% endif %}
+                            </span>
                         </li>
                     </ul>
                     
@@ -107,11 +138,25 @@
         <!-- Gráfico de Saldos -->
         <script>
         const totalCartera = (
-        {{ saldo_0_30|default:0 }} +
-        {{ saldo_31_60|default:0 }} +
-        {{ saldo_61_90|default:0 }} +
-        {{ saldo_91_180|default:0 }} +
-        {{ saldo_181_mas|default:0 }}
+        {% if origen == "otros" %}    
+            {{ saldo_0_30_otros|default:0 }} +
+            {{ saldo_31_60_otros|default:0 }} +
+            {{ saldo_61_90_otros|default:0 }} +
+            {{ saldo_91_180_otros|default:0 }} +
+            {{ saldo_181_mas_otros|default:0 }}
+        {% elif  origen == "todos" %}
+            {{ saldo_0_30|default:0 }} +{{ saldo_0_30_otros|default:0 }} +
+            {{ saldo_31_60|default:0 }} +{{ saldo_31_60_otros|default:0 }} +
+            {{ saldo_61_90|default:0 }} +{{ saldo_61_90_otros|default:0 }} +
+            {{ saldo_91_180|default:0 }} +{{ saldo_91_180_otros|default:0 }} +
+            {{ saldo_181_mas|default:0 }} +{{ saldo_181_mas_otros|default:0 }}
+        {% elif origen == "local" or "area" %}
+            {{ saldo_0_30|default:0 }} +
+            {{ saldo_31_60|default:0 }} +
+            {{ saldo_61_90|default:0 }} +
+            {{ saldo_91_180|default:0 }} +
+            {{ saldo_181_mas|default:0 }}
+        {% endif %}
     );
         const ctx = document.getElementById('chartSaldos');
         new Chart(ctx, {
@@ -121,11 +166,25 @@
                 datasets: [{
                     label: 'Saldo pendiente ($)',
                     data: [
-                        {{ saldo_0_30 }},
-                        {{ saldo_31_60 }},
-                        {{ saldo_61_90 }},
-                        {{ saldo_91_180 }},
-                        {{ saldo_181_mas }}
+                        {% if origen == "otros" %}
+                            {{ saldo_0_30_otros|default:0 }},
+                            {{ saldo_31_60_otros|default:0 }},
+                            {{ saldo_61_90_otros|default:0 }},
+                            {{ saldo_91_180_otros|default:0 }},
+                            {{ saldo_181_mas_otros|default:0 }}
+                        {% elif origen == "todos" %}
+                            {{ saldo_0_30|default:0 }} + {{ saldo_0_30_otros|default:0 }},
+                            {{ saldo_31_60|default:0 }} + {{ saldo_31_60_otros|default:0 }},
+                            {{ saldo_61_90|default:0 }} + {{ saldo_61_90_otros|default:0 }},
+                            {{ saldo_91_180|default:0 }} + {{ saldo_91_180_otros|default:0 }},
+                            {{ saldo_181_mas|default:0 }} + {{ saldo_181_mas_otros|default:0 }}
+                        {% elif origen == "local" or "area" %}
+                            {{ saldo_0_30 }},
+                            {{ saldo_31_60 }},
+                            {{ saldo_61_90 }},
+                            {{ saldo_91_180 }},
+                            {{ saldo_181_mas }}
+                        {% endif %}
                     ],
                     backgroundColor: ['#198754', '#F3F763', '#FEA55C', '#D86302', '#C00000'],
                     borderWidth: 1
@@ -181,6 +240,7 @@
         // Gráfico de Top Adeudos 
     const topLabels = {{ top_labels|safe }};
     const topData = {{ top_data|safe }};
+    const topClientes = {{ top_clientes|safe }};
 
     const ctxBar = document.getElementById('chartTopAdeudos').getContext('2d');
     new Chart(ctxBar, {
@@ -202,7 +262,9 @@
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return '$' + context.parsed.x.toLocaleString('es-MX', {minimumFractionDigits:2});
+                            
+                            const cliente = topClientes[context.dataIndex] || 'Desconocido';
+                            return cliente + ': $' + context.parsed.x.toLocaleString('es-MX', {minimumFractionDigits:2});
                         }
                     }
                 }

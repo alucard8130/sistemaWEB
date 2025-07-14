@@ -46,11 +46,12 @@
             </div>
             {% endif %}
 
-            <div class="col-md-2">
+           <div class="col-md-2">
                 <select name="origen" id="origen" class="form-select">
                     <option value="">Orígenes</option>
                     <option value="local" {% if request.GET.origen == 'local' %}selected{% endif %}>Local Comercial</option>
                     <option value="area" {% if request.GET.origen == 'area' %}selected{% endif %}>Área Común</option>
+                    <option value="otros" {% if request.GET.origen == 'otros' %}selected{% endif %}>Otros Ingresos</option>
                 </select>
             </div>
 
@@ -110,13 +111,29 @@
                         {% if request.user.is_superuser %}
                             <td>{{ factura.empresa.nombre }}</td>
                         {% endif %}
+                     <td>
+                        {% if factura.es_otro %}
+                            {% if factura.tipo_ingreso %}
+                                {{ factura.tipo_ingreso.nombre }}
+                            {% else %}
+                                Otra cuota
+                            {% endif %}
+                        {% elif factura.local %}
+                            {{ factura.local.numero }}
+                        {% elif factura.area_comun %}
+                            {{ factura.area_comun.numero }}
+                        {% else %}
+                            {{ factura.tipo_origen|title }}
+                        {% endif %}
+                    </td>
+                        <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                         <td>
-                            {% if factura.local %} Local {{ factura.local.numero }}
-                            {% elif factura.area_comun %} Área {{ factura.area_comun.numero }}
+                            {% if factura.es_otro %}
+                                ${{ factura.saldo|floatformat:2|intcomma }}
+                            {% else %}
+                                ${{ factura.saldo_pendiente|floatformat:2|intcomma }}
                             {% endif %}
                         </td>
-                        <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                        <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
                         <td>{{ factura.fecha_vencimiento|date:"d/b/y"|upper }}</td>
                         <td>{{ factura.dias_vencidos }}</td>
                     </tr>

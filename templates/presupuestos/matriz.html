@@ -113,32 +113,7 @@
         {% endif %}   
     </form>
 
-<form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="anio" value="{{ anio }}">
-        {% if empresa %}
-            <input type="hidden" name="empresa" value="{{ empresa.id }}">
-        {% endif %}
-        <div class="table-responsive">
 
-        {% if edicion_habilitada %}
-            <div class="mb-3">
-                <button class="btn btn-success">Guardar cambios</button>
-                
-                {% if not bloqueado %}
-                    <button type="submit" name="cerrar_presupuesto" class="btn btn-warning ms-2"
-                        onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')">
-                        Cerrar Presupuesto
-                    </button>
- 
-
-                   <!-- <div class="alert alert-warning mt-2 mb-0 py-1">
-                        Al cerrar el presupuesto, solo los usuarios autorizados podrán abrirlo.
-                    </div>-->
-                {% endif %}
-            </div>
-        {% endif %}
-        </form>
 <form method="post" action="{% url 'copiar_presupuesto_gastos_a_nuevo_anio' %}" class="row g-2 align-items-end mb-3">
     {% csrf_token %}
     <div class="col-auto">
@@ -231,18 +206,33 @@
                 </tr>
             </tfoot>
         </table>
-        </div>
-
-        {% if edicion_habilitada %}
-            <div class="mt-3">
-                <button class="btn btn-success">Guardar cambios</button>
-                
-            </div>
-        {% endif %}
- 
         
     </form>
 </div>
+<div class="container mt-2">
+<form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="anio" value="{{ anio }}">
+        {% if empresa %}
+            <input type="hidden" name="empresa" value="{{ empresa.id }}">
+        {% endif %}
+        <div class="table-responsive">
+
+        {% if edicion_habilitada %}
+            <div class="mb-3">
+                <button class="btn btn-success">Guardar cambios</button>
+                
+                {% if not bloqueado %}
+                    <button type="submit" name="cerrar_presupuesto" class="btn btn-warning ms-2"
+                        onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')">
+                        Cerrar Presupuesto
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </form>
+
+
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>

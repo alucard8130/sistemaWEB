@@ -427,6 +427,7 @@ def pagos_por_origen(request):
 
 @login_required
 #saldos.html
+#dashboard cartera vencida
 def dashboard_saldos(request):
     hoy = timezone.now().date()
     cliente_id = request.GET.get('cliente')
@@ -453,9 +454,10 @@ def dashboard_saldos(request):
         facturas = facturas.filter(cliente_id=cliente_id)
     if origen == 'local':
         facturas = facturas.filter(local__isnull=False)
+        
     elif origen == 'area':
         facturas = facturas.filter(area_comun__isnull=False)
-
+        
     # Subconsulta: total pagado por factura
     pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
         .values('factura') \
@@ -468,42 +470,141 @@ def dashboard_saldos(request):
             output_field=DecimalField()
         )
     )
+    # --- Facturas otros ingresos ---
+    facturas_otros = FacturaOtrosIngresos.objects.filter(estatus='pendiente', activo=True)
+    if not es_super:
+        facturas_otros = facturas_otros.filter(empresa=empresa)
+    if empresa_id:
+        facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
+    if cliente_id:
+        facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
 
-    # Saldos por grupo de vencimiento (puedes cambiar los días según tu lógica)
-    saldo_0_30 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    cobros_subquery = CobroOtrosIngresos.objects.filter(factura=OuterRef('pk')) \
+        .values('factura') \
+        .annotate(total_cobrado_dash=Coalesce(Sum('monto'), Value(0, output_field=DecimalField()))) \
+        .values('total_cobrado_dash')
+    facturas_otros = facturas_otros.annotate(
+        total_cobrado_dash=Coalesce(Subquery(cobros_subquery), Value(0, output_field=DecimalField())),
+        saldo_pendiente_dash=ExpressionWrapper(
+            F('monto') - Coalesce(Subquery(cobros_subquery), Value(0, output_field=DecimalField())),
+            output_field=DecimalField()
+        )   
+    )
+    
+    saldo_0_30 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0 
+    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0 
     saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
     saldo_91_180 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
     saldo_181_mas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-
-     # --- Top 10 adeudos por local/área ---
-    top_adeudos = (
-        facturas
-        .annotate(
-            nombre_local_area=Coalesce(
-                F('local__numero'),
-                F('area_comun__numero'),
-                output_field=CharField()
-            ),
-            tipo_origen=Case(
-                When(local__isnull=False, then=Value('Local')),
-                When(area_comun__isnull=False, then=Value('Área')),
-                default=Value(''),
-                output_field=CharField()
-            )
-        )
-        .values('nombre_local_area', 'tipo_origen')
-        .annotate(total=Sum('saldo_pendiente_dash'))
-        .order_by('-total')[:10]
-    )
-    # Prepara los datos para Chart.js
-    top_labels = [
-        f"{x['tipo_origen']} {x['nombre_local_area']}" if x['nombre_local_area'] else x['tipo_origen']
-        for x in top_adeudos
-    ]
-    top_data = [float(x['total']) for x in top_adeudos]
     
-    clientes = Cliente.objects.filter(empresa__in=empresas)
+    saldo_0_30_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_31_60_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_61_90_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_91_180_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_181_mas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+
+
+        # --- Top 10 adeudos por local/área/otros ingresos ---
+    if origen == "otros":
+        top_adeudos = (
+            facturas_otros
+            .annotate(
+                nombre_otro=Coalesce(
+                    F('tipo_ingreso__nombre'),
+                    Value('Otro ingreso'),
+                    output_field=CharField()
+                ),
+                nombre_cliente=F('cliente__nombre')
+            )
+            .values('nombre_otro', 'nombre_cliente')
+            .annotate(total=Sum('saldo_pendiente_dash'))
+            .order_by('-total')[:10]
+        )
+        top_labels = [x['nombre_otro'] for x in top_adeudos]
+        top_data = [float(x['total']) for x in top_adeudos]
+        top_clientes = [x['nombre_cliente'] for x in top_adeudos]
+    elif origen == "todos":
+        # Top locales/áreas
+        top_local_area = (
+            facturas
+            .annotate(
+                nombre_local_area=Coalesce(
+                    F('local__numero'),
+                    F('area_comun__numero'),
+                    output_field=CharField()
+                ),
+                tipo_origen=Case(
+                    When(local__isnull=False, then=Value('Local')),
+                    When(area_comun__isnull=False, then=Value('Área')),
+                    default=Value(''),
+                    output_field=CharField()
+                ),
+                nombre_cliente=F('cliente__nombre')
+            )
+            .values('nombre_local_area', 'tipo_origen', 'nombre_cliente')
+            .annotate(total=Sum('saldo_pendiente_dash'))
+        )
+        # Top otros ingresos
+        top_otros = (
+            facturas_otros
+            .annotate(
+                nombre_otro=Coalesce(
+                    F('tipo_ingreso__nombre'),
+                    Value('Otro ingreso'),
+                    output_field=CharField()
+                ),
+                nombre_cliente=F('cliente__nombre')
+            )
+            .values('nombre_otro', 'nombre_cliente')
+            .annotate(total=Sum('saldo_pendiente_dash'))
+        )
+        # Unir ambos y ordenar
+        top_combined = [
+            {'label': f"{x['tipo_origen']} {x['nombre_local_area']}".strip(), 'total': float(x['total']), 'cliente': x['nombre_cliente']}
+            for x in top_local_area
+        ] + [
+            {'label': x['nombre_otro'], 'total': float(x['total']), 'cliente': x['nombre_cliente']}
+            for x in top_otros
+        ]
+        top_combined = sorted(top_combined, key=lambda x: x['total'], reverse=True)[:10]
+        top_labels = [x['label'] for x in top_combined]
+        top_data = [x['total'] for x in top_combined]
+        top_clientes = [x['cliente'] for x in top_combined]
+    else:
+        top_adeudos = (
+            facturas
+            .annotate(
+                nombre_local_area=Coalesce(
+                    F('local__numero'),
+                    F('area_comun__numero'),
+                    output_field=CharField()
+                ),
+                tipo_origen=Case(
+                    When(local__isnull=False, then=Value('Local')),
+                    When(area_comun__isnull=False, then=Value('Área')),
+                    default=Value(''),
+                    output_field=CharField()
+                ),
+                nombre_cliente=F('cliente__nombre')
+            )
+            .values('nombre_local_area', 'tipo_origen', 'nombre_cliente')
+            .annotate(total=Sum('saldo_pendiente_dash'))
+            .order_by('-total')[:10]
+        )
+        top_labels = [
+            f"{x['tipo_origen']} {x['nombre_local_area']}" if x['nombre_local_area'] else x['tipo_origen']
+            for x in top_adeudos
+        ]
+        top_data = [float(x['total']) for x in top_adeudos]
+        top_clientes = [x['nombre_cliente'] for x in top_adeudos]
+    
+    #clientes = Cliente.objects.filter(empresa__in=empresas)
+    if origen == "otros":
+        clientes = Cliente.objects.filter(
+            id__in=facturas_otros.values_list('cliente_id', flat=True).distinct()
+        )
+    else:
+        clientes = Cliente.objects.filter(empresa__in=empresas)
 
     return render(request, 'dashboard/saldos.html', {
         'facturas': facturas,
@@ -516,15 +617,22 @@ def dashboard_saldos(request):
         'saldo_61_90': saldo_61_90,
         'saldo_91_180': saldo_91_180,
         'saldo_181_mas': saldo_181_mas,
+        'saldo_0_30_otros': saldo_0_30_otros,
+        'saldo_31_60_otros': saldo_31_60_otros,
+        'saldo_61_90_otros': saldo_61_90_otros,
+        'saldo_91_180_otros': saldo_91_180_otros,
+        'saldo_181_mas_otros': saldo_181_mas_otros,
         'origen': origen,
         'es_super': es_super,
         'top_labels': top_labels,
         'top_data': top_data,
+        'facturas_otros': facturas_otros,
+        'top_clientes': top_clientes,
     })
 
 @login_required
 #pagos.html
-#dashboard ingresos
+#dashboard cuotas
 @login_required
 def dashboard_pagos(request):
     es_super = request.user.is_superuser
@@ -831,28 +939,47 @@ def cartera_vencida(request):
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
-    ).order_by('folio')
-     # Filtrar por empresa
+    )
+
+    facturas_otros = FacturaOtrosIngresos.objects.filter(
+        estatus='pendiente',
+        fecha_vencimiento__lt=hoy,
+        activo=True
+    )
+
+    # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
-        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa).order_by('-fecha_vencimiento')
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+        facturas_otros = facturas_otros.filter(empresa=request.user.perfilusuario.empresa)
     elif request.GET.get('empresa'):
-        facturas = facturas.filter(empresa_id=request.GET['empresa']).order_by('-fecha_vencimiento')
+        facturas = facturas.filter(empresa_id=request.GET['empresa'])
+        facturas_otros = facturas_otros.filter(empresa_id=request.GET['empresa'])
     
     # Filtrar por cliente
     if request.GET.get('cliente'):
-        facturas = facturas.filter(cliente_id=request.GET['cliente']).order_by('-fecha_vencimiento')
+        facturas = facturas.filter(cliente_id=request.GET['cliente'])
+        facturas_otros = facturas_otros.filter(cliente_id=request.GET['cliente'])
 
-    # Filtrar por origen (local o área)
+    # Filtrar por origen
     if origen == 'local':
-        facturas = facturas.filter(local__isnull=False).order_by('-fecha_vencimiento')
+        facturas = facturas.filter(local__isnull=False)
+        facturas_otros = facturas_otros.none()
     elif origen == 'area':
-        facturas = facturas.filter(area_comun__isnull=False).order_by('-fecha_vencimiento')
+        facturas = facturas.filter(area_comun__isnull=False)
+        facturas_otros = facturas_otros.none()
+    elif origen == 'otros':
+        facturas = facturas.none()
 
-    # Aplicar filtros de rango de días vencidos
+    # Filtros de rango de días vencidos
     if filtro == 'menor30':
         facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
+        facturas_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
     elif filtro == '30a60':
         facturas = facturas.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=30),
+            fecha_vencimiento__gt=hoy - timedelta(days=60)
+        )
+        facturas_otros = facturas_otros.filter(
             fecha_vencimiento__lte=hoy - timedelta(days=30),
             fecha_vencimiento__gt=hoy - timedelta(days=60)
         )
@@ -861,29 +988,45 @@ def cartera_vencida(request):
             fecha_vencimiento__lte=hoy - timedelta(days=60),
             fecha_vencimiento__gt=hoy - timedelta(days=90)
         )
+        facturas_otros = facturas_otros.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=60),
+            fecha_vencimiento__gt=hoy - timedelta(days=90)
+        )
     elif filtro == '90a180':
         facturas = facturas.filter(
             fecha_vencimiento__lte=hoy - timedelta(days=90),
             fecha_vencimiento__gt=hoy - timedelta(days=180)
         )
+        facturas_otros = facturas_otros.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=90),
+            fecha_vencimiento__gt=hoy - timedelta(days=180)
+        )
     elif filtro == 'mas180':
         facturas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
+        facturas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
 
-    # Días de atraso
+    # Días de atraso y tipo
     for f in facturas:
         f.dias_vencidos = (hoy - f.fecha_vencimiento).days
-    
-    #paginacion
-    paginator = Paginator(facturas, 25)  # 50 gastos por página 
+        f.tipo_origen = 'local' if getattr(f, 'local_id', None) else 'area' if getattr(f, 'area_comun_id', None) else 'cuota'
+        f.es_otro = False
+    for f in facturas_otros:
+        f.dias_vencidos = (hoy - f.fecha_vencimiento).days
+        f.tipo_origen = 'otros'
+        f.es_otro = True
+
+    # Unir ambos queryset y ordenar
+    facturas_todas = list(facturas) + list(facturas_otros)
+    facturas_todas.sort(key=lambda x: x.fecha_vencimiento, reverse=True)
+
+    # Paginar la lista combinada
+    paginator = Paginator(facturas_todas, 25)
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)    
-
-
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'facturacion/cartera_vencida.html', {
-        'facturas': facturas,
-        'hoy': hoy,
         'facturas': page_obj,
+        'hoy': hoy,
         'empresas': Empresa.objects.all(),
         'clientes': Cliente.objects.all(),
         'rango_seleccionado': filtro
@@ -893,24 +1036,43 @@ def cartera_vencida(request):
 def exportar_cartera_excel(request):
     cliente_id = request.GET.get('cliente')
     hoy = timezone.now().date()
+    origen = request.GET.get('origen')
+
+    # Facturas cuotas
     facturas = Factura.objects.filter(
+        estatus='pendiente',
+        fecha_vencimiento__lt=hoy,
+        activo=True
+    )
+    # Facturas otros ingresos
+    facturas_otros = FacturaOtrosIngresos.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
     )
 
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
-        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
-        
-    origen = request.GET.get('origen')
+        empresa = request.user.perfilusuario.empresa
+        facturas = facturas.filter(empresa=empresa)
+        facturas_otros = facturas_otros.filter(empresa=empresa)
+    elif request.GET.get('empresa'):
+        empresa_id = request.GET.get('empresa')
+        facturas = facturas.filter(empresa_id=empresa_id)
+        facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
+
     if origen == 'local':
         facturas = facturas.filter(local__isnull=False)
+        facturas_otros = facturas_otros.none()
     elif origen == 'area':
         facturas = facturas.filter(area_comun__isnull=False)
+        facturas_otros = facturas_otros.none()
+    elif origen == 'otros':
+        facturas = facturas.none()
+        # facturas_otros ya trae todos los otros ingresos
 
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
-
+        facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
 
     # Crear libro y hoja
     wb = openpyxl.Workbook()
@@ -919,21 +1081,36 @@ def exportar_cartera_excel(request):
 
     # Encabezados
     ws.append([
-        'Folio', 'Cliente', 'Empresa', 'Local/Área', 'Monto',
+        'Folio', 'Cliente', 'Empresa', 'Origen', 'Monto',
         'Saldo Pendiente', 'Fecha Vencimiento', 'Días Vencidos'
     ])
 
-    # Contenido
+    # Contenido: Facturas cuotas
     for factura in facturas:
         dias_vencidos = (hoy - factura.fecha_vencimiento).days
-        origen = f"Local {factura.local.numero}" if factura.local else f"Área {factura.area_comun.numero}" if factura.area_comun else "-"
+        origen_str = f"Local {factura.local.numero}" if factura.local else f"Área {factura.area_comun.numero}" if factura.area_comun else "-"
         ws.append([
             factura.folio,
             factura.cliente.nombre,
             factura.empresa.nombre,
-            origen,
+            origen_str,
             float(factura.monto),
             float(factura.saldo_pendiente),
+            str(factura.fecha_vencimiento),
+            dias_vencidos
+        ])
+
+    # Contenido: Facturas otros ingresos
+    for factura in facturas_otros:
+        dias_vencidos = (hoy - factura.fecha_vencimiento).days
+        tipo_ingreso = factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else (factura.tipo_ingreso.nombre if hasattr(factura.tipo_ingreso, 'nombre') else 'Otro ingreso')
+        ws.append([
+            factura.folio,
+            factura.cliente.nombre,
+            factura.empresa.nombre,
+            tipo_ingreso,
+            float(factura.monto),
+            float(getattr(factura, 'saldo', factura.saldo_pendiente if hasattr(factura, 'saldo_pendiente') else factura.monto)),
             str(factura.fecha_vencimiento),
             dias_vencidos
         ])
