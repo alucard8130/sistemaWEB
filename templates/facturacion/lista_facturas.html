@@ -8,7 +8,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 30/06/2025
+      Date of modification: 13/07/2025
       Description: Generated invoices
     -->
     <meta charset="UTF-8">
@@ -47,25 +47,23 @@
                     {% endfor %}
                     </div>
                 {% endif %}
+                
     <!-- Main content -->
     <div class="container-fluid mt-4">
         <h2>Facturas ingresos</h2>
 
-    
-
-    
         <a href="{% url 'crear_factura' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle me-1"></i> Nueva factura 
         </a>
         <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
-        <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
+        <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">
+            <i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>    
        
         <form method="get" class="row g-2 mb-3">
             {% if request.user.is_superuser %}
             <div class="col-auto">
-                <label for="empresa">Empresa:</label>
                 <select name="empresa" id="empresa" class="form-select">
-                    <option value="">-- Todas --</option>
+                    <option value="">Todas las empresas</option>
                     {% for empresa in empresas %}
                         <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
                             {{ empresa.nombre }}
@@ -75,7 +73,6 @@
             </div>
             {% endif %}
             <div class="col-auto">
-                <label for="local_id">Local:</label>
                 <select name="local_id" id="local_id" class="form-select">
                     <option value="">Todos los locales</option>
                     {% for local in locales %}
@@ -86,7 +83,6 @@
                 </select>
             </div>
             <div class="col-auto">
-                <label for="area_id">Área común:</label>
                 <select name="area_id" id="area_id" class="form-select">
                     <option value="">Todas las áreas</option>
                     {% for area in areas %}
@@ -164,7 +160,7 @@
                             </td>
                             <td>
                                 {% if factura.cfdi and factura.cfdi|archivo_existe %}
-                                    <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver CFDI">
+                                    <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="CFDI">
                                         <i class="bi bi-file-earmark-pdf me-1"></i>
                                     </a>
                                 {% elif factura.cfdi %}

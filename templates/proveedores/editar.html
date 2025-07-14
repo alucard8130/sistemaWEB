@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 07/07/2025
+        Date of modification: 13/07/2025
         Description: Edit supplier
     -->
     <meta charset="UTF-8">
@@ -44,8 +44,10 @@
                             {{ field }}
                         {% endif %}
                     {% endfor %}
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                    <a href="{% url 'proveedor_lista' %}" class="btn btn-secondary">Cancelar</a>
+                    <div class="d-flex justify-content-between mt-3">
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                        <a href="{% url 'proveedor_lista' %}" class="btn btn-secondary">Cancelar</a>
+                    </div>
                 </form>
             </div>
         </div>

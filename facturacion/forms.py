@@ -217,7 +217,8 @@ class CobroForm(forms.ModelForm):
                 'class': 'form-control'
             }),
             'monto': forms.NumberInput(attrs={
-                'class': 'form-control'
+                'class': 'form-control',
+                'placeholder': 'Monto'
             }),
             'forma_cobro': forms.Select(attrs={
                 'class': 'form-select'
@@ -227,7 +228,8 @@ class CobroForm(forms.ModelForm):
             }),
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
-                'class': 'form-control'
+                'class': 'form-control',
+                'placeholder': 'Observaciones'
             }),
         }
 

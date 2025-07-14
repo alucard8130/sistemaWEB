@@ -8,7 +8,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 04/07/2025
+      Date of modification: 13/07/2025
       Description: Invoices (OTHERS INCOMES)
     -->
     <meta charset="UTF-8">
@@ -46,9 +46,9 @@
         <h2>Facturas de otros ingresos</h2>
         <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle me-1"></i> Nueva factura otros ingresos
-            <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
-    Exportar a Excel
-</a>
+        </a>
+        <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success mb-3">
+            <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
         </a>
 
         <!-- Invoices table -->     

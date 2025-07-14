@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 05/07/2025
+    Date of modification: 13/07/2025
     Description: General styles for the GAC system   
 */
     
@@ -147,9 +147,13 @@ html, body {
 }
 
 .main-content {
-    padding-top: 2rem;
+    padding-top: 5rem; /* Antes 2*/
     padding-bottom: 2rem;
     min-height: 60vh; /* opcional: ajusta según tu diseño */
+    display: flex;
+    justify-content: center; /* Centra horizontalmente */
+    align-items: center; /* Centra verticalmente */
+    
 }
 
 .btn.btn-primary {

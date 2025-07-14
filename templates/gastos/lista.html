@@ -8,157 +8,177 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 17/06/2025
+        Date of modification: 13/07/2025
         Description: Displays cost claims
     -->
-    <title>Lista Solicitudes de Gasto</title>
+    <meta charset="UTF-8">
+    <title>Lista solicitudes de gasto</title>
+    <!-- Bootstrap base styles -->  
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div>
-<div class="container mt-4">
-    <h2>Solicitudes Gastos</h2>
-    <!-- Bloque para mostrar mensajes -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-    <form method="get" class="row g-2 mb-3">
-    <div class="col">
-        <select name="proveedor" class="form-select">
-            <option value="">Todos los proveedores</option>
-            {% for proveedor in proveedores %}
-                <option value="{{ proveedor.id }}" {% if proveedor_id == proveedor.id|stringformat:"s" %}selected{% endif %}>{{ proveedor.nombre }}</option>
+    {% include 'navbar.html' %}
+
+    <!-- Main content -->
+    <div class="container-fluid mt-4">
+        <h2>Solicitudes gastos</h2>
+
+        <a href="{% url 'gasto_nuevo' %}" class="btn btn-crear mb-3">
+            <i class="bi bi-plus-circle me-1"></i> Nueva solicitud
+        </a>
+        <a href="{% url 'exportar_gastos_lista_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success mb-3">
+            <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+        </a>
+        <!-- Bloque para mostrar mensajes -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
-        </select>
-    </div>
-    <div class="col">
-        <select name="empleado" class="form-select">
-            <option value="">Todos los empleados</option>
-            {% for empleado in empleados %}
-                <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col">
-        <select name="tipo_gasto" class="form-select">
-            <option value="">Todos los tipos</option>
-            {% for tipo in tipos_gasto %}
-                <option value="{{ tipo.id }}" {% if tipo_gasto_sel == tipo.id %}selected{% endif %}>{{ tipo }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-    </div>
-</form>
-    <a href="{% url 'gasto_nuevo' %}" class="btn btn-success mb-2">+ Nueva Solicitud</a>
-    <a href="{% url 'bienvenida' %}" class="btn btn-secondary mb-2">Volver al menú</a>
-    <a href="{% url 'exportar_gastos_lista_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
-    Exportar a Excel
-</a>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Id </th>
-                <th>Fecha</th>
-                <th>Tipo de Gasto</th>
-                <th>Proveedor/Empleado</th>
-                <th>Descripción</th>
-                <th>Monto</th>
-                <th>Saldo</th>
-                <th>Status</th>
-                <th>Acciones</th>
-                <th>CFDI</th>
-                <th>Historial</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for gasto in gastos %}
-            <tr>
-                {% if request.user.is_superuser %}
-                    <td>{{ gasto.empresa.nombre }}</td>
-                {% endif %}
-                <td>{{ gasto.id }}</td>
-                <td>{{ gasto.fecha|date:"d/b/y"|upper }}</td>
-                <td>{{ gasto.tipo_gasto }}</td>
-                {% if gasto.proveedor %}
-                    <td>{{ gasto.proveedor.nombre }}</td>
-                {% else %}
-                    <td>{{ gasto.empleado.nombre }}</td>
-                {% endif %}
-                <td>{{ gasto.descripcion }}</td>
-                <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
-                <td>${{ gasto.saldo_restante|floatformat:2|intcomma }}</td>
-                <td>{{ gasto.get_estatus_display }}</td>
-                <td>
-                        {% if gasto.saldo_restante > 0 %}
-                            <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-success btn-sm">Pagar</a>
-                            <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-primary btn-sm">Editar</a>
-                        {% else %}
-                            <span class="text-muted"></span>
-                        {% endif %}
-                       
-                        {% if user.is_superuser %}
-                            <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-danger btn-sm">Eliminar</a>
-                        {% endif %}   
-                    </td>
-                <td>
-                    {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
-                        <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-light btn-sm">CFDI</a>
-                    {% elif gasto.comprobante %}
-                        
-                    {% endif %}             
-                </td>
-                <td>
-                        <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-info btn-sm">Ver</a>
-                                        <!-- ...otros botones como Editar, Registrar Pago... -->
-                    </td>
-            </tr>   
-        {% empty %}
-            <tr><td colspan="8">No hay gastos registrados.</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    <nav aria-label="Paginación">
-  <ul class="pagination">
-    {% if gastos.has_previous %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ gastos.previous_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_sel %}&tipo_gasto={{ tipo_gasto_sel }}{% endif %}">Anterior</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-    {% endif %}
-    <li class="page-item disabled"><span class="page-link">Página {{ gastos.number }} de {{ gastos.paginator.num_pages }}</span></li>
-    {% if gastos.has_next %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ gastos.next_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_sel %}&tipo_gasto={{ tipo_gasto_sel }}{% endif %}">Siguiente</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-    {% endif %}
-  </ul>
-</nav>
+        {% endif %}
+        <form method="get" class="row g-2 mb-3">
+            <div class="col-auto">
+                <select name="proveedor" class="form-select">
+                    <option value="">Todos los proveedores</option>
+                    {% for proveedor in proveedores %}
+                        <option value="{{ proveedor.id }}" {% if proveedor_id == proveedor.id|stringformat:"s" %}selected{% endif %}>{{ proveedor.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="empleado" class="form-select">
+                    <option value="">Todos los empleados</option>
+                    {% for empleado in empleados %}
+                        <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="tipo_gasto" class="form-select">
+                    <option value="">Todos los tipos</option>
+                    {% for tipo in tipos_gasto %}
+                        <option value="{{ tipo.id }}" {% if tipo_gasto_sel == tipo.id %}selected{% endif %}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto align-self-end">
+                <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+            </div>
+        </form>
     
-</div>
+        <!-- Expense claims table -->
+        <div class="table-responsive rounded-3 border"> 
+            <table class="table align-middle mb-0 shadow-sm">
+                    <thead>
+                        <tr>
+                            {% if request.user.is_superuser %}
+                                <th>Empresa</th>
+                            {% endif %}
+                            <th>Id </th>
+                            <th>Fecha</th>
+                            <th>Tipo de Gasto</th>
+                            <th>Proveedor/Empleado</th>
+                            <th>Descripción</th>
+                            <th>Monto</th>
+                            <th>Saldo</th>
+                            <th>Status</th>
+                            <th>Acciones</th>
+                            <th>CFDI</th>
+                            <th>Historial</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for gasto in gastos %}
+                        <tr>
+                            {% if request.user.is_superuser %}
+                                <td>{{ gasto.empresa.nombre }}</td>
+                            {% endif %}
+                            <td>{{ gasto.id }}</td>
+                            <td>{{ gasto.fecha|date:"d/b/y"|upper }}</td>
+                            <td>{{ gasto.tipo_gasto }}</td>
+                            {% if gasto.proveedor %}
+                                <td>{{ gasto.proveedor.nombre }}</td>
+                            {% else %}
+                                <td>{{ gasto.empleado.nombre }}</td>
+                            {% endif %}
+                            <td>{{ gasto.descripcion }}</td>
+                            <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
+                            <td>${{ gasto.saldo_restante|floatformat:2|intcomma }}</td>
+                            <td>{{ gasto.get_estatus_display }}</td>
+                            <td class="text-nowrap">
+                                {% if gasto.saldo_restante > 0 %}
+                                    <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Pagar">
+                                        <i class="bi bi-cash-coin me-1"></i>
+                                    </a>
+                                    <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil-square me-1"></i>
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted"></span>
+                                {% endif %}
+                            
+                                {% if user.is_superuser %}
+                                    <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                                        <i class="bi bi-trash3 me-1"></i>
+                                    </a>
+                                {% endif %}   
+                            </td>
+                            <td>
+                                {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
+                                    <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-outline-dark btn-sm" title="CFDI">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> 
+                                    </a>
+                                {% elif gasto.comprobante %}
+                                    
+                                {% endif %}             
+                            </td>
+                            <td>
+                                    <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm" title="Ver">
+                                        <i class="bi bi-eye me-1"></i>
+                                    </a>
+                                                    <!-- ...otros botones como Editar, Registrar Pago... -->
+                                </td>
+                        </tr>   
+                    {% empty %}
+                        <tr><td colspan="8">No hay gastos registrados.</td></tr>
+                    {% endfor %}
+                    </tbody>
+            </table>
+        </div>
+        <nav aria-label="Paginación">
+            <ul class="pagination">
+                {% if gastos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ gastos.previous_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_sel %}&tipo_gasto={{ tipo_gasto_sel }}{% endif %}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Página {{ gastos.number }} de {{ gastos.paginator.num_pages }}</span></li>
+                {% if gastos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ gastos.next_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_sel %}&tipo_gasto={{ tipo_gasto_sel }}{% endif %}">Siguiente</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body> 
 </html>

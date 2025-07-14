@@ -10,6 +10,10 @@ class SubgrupoGastoForm(forms.ModelForm):
     class Meta:
         model = SubgrupoGasto
         fields = ['empresa','grupo', 'nombre']
+
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+        }
       
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -170,8 +174,24 @@ class PagoGastoForm(forms.ModelForm):
         model = PagoGasto
         fields = ['fecha_pago', 'monto', 'forma_pago','comprobante', 'referencia']
         widgets = {
-            'fecha_pago': forms.DateInput(attrs={'type': 'date'}),
-            
+            'fecha_pago': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'monto': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Monto'
+            }),
+            'forma_pago': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'comprobante': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+            'referencia': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Referencia'
+            }),
         }
    
 class GastosCargaMasivaForm(forms.Form):
