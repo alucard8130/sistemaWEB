@@ -13,6 +13,7 @@ from openpyxl import Workbook
 from django.http import HttpResponse
 
 
+
 @login_required
 def reporte_ingresos_vs_gastos(request):
     empresas = Empresa.objects.all()
@@ -85,12 +86,14 @@ def reporte_ingresos_vs_gastos(request):
         fecha_fin_dt = fecha_fin
 
     # Para mostrar el mes y año en letras
-    import locale
 
     try:
         locale.setlocale(locale.LC_TIME, "es_MX.UTF-8")
-    except:
-        locale.setlocale(locale.LC_TIME, "es_ES.UTF-8")
+    except locale.Error:
+        try:
+            locale.setlocale(locale.LC_TIME, "es_ES.UTF-8")
+        except locale.Error:
+            locale.setlocale(locale.LC_TIME, "C")  # Fallback seguro
 
     mes_letra = ""
     if (
