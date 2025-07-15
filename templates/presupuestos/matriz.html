@@ -6,13 +6,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 17/06/2025
-        Description: Budgets
-    -->
     <title>Matriz.html Presupuestos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -33,22 +26,20 @@
             </button>
         </div>
     </div>
-     <!-- Block for displaying messages -->
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-                <!-- Block for displaying messages -->
-                {% if form.non_field_errors %}
-                    <div class="alert alert-danger">
-                    {% for error in form.non_field_errors %}
-                        {{ error }}
-                    {% endfor %}
-                    </div>
-                {% endif %}
-                {% if pedir_superuser and bloqueado%}
-    <!--<div class="alert alert-warning mt-3" id="abrir-presupuesto-alert">-->
+    <!-- Block for displaying messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+            {{ error }}
+        {% endfor %}
+        </div>
+    {% endif %}
+    {% if pedir_superuser and bloqueado %}
     <div class="alert-info mt-1">
        <button type="button" class="btn btn-danger" id="mostrar-form-superuser">
             Abrir presupuesto
@@ -67,10 +58,7 @@
                 <button type="submit" class="btn btn-danger">Confirmar apertura</button>
             </div>
         </form>
-        <div class="mt-2">
-            <!--<small>Solo Usuarios Autorizados.</small>-->
-        </div>
-    <!--</div>-->
+        <div class="mt-2"></div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var btn = document.getElementById('mostrar-form-superuser');
@@ -81,11 +69,12 @@
             });
         });
     </script>
-{% endif %}
+    {% endif %}
 </div>
 <div class="container mt-2">
+    <!-- Formulario de filtros (GET) -->
     <form method="get" class="row g-2 mb-3">
-    <h3>Presupuesto de Gastos {{ anio }}</h3>
+        <h3>Presupuesto de Gastos {{ anio }}</h3>
         <div class="col-auto">
             <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
             <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
@@ -93,13 +82,9 @@
                     <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
                 {% endfor %}
             </select>
-             
             <a href="{% url 'exportar_presupuesto_excel' %}?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}" class="btn btn-outline-success">
                 <i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
-            
-            
             <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar Menú</a>
-            
         </div>
         {% if is_super %}
         <div class="col-auto">
@@ -113,24 +98,32 @@
         {% endif %}   
     </form>
 
+    <!-- Formulario para clonar presupuesto (POST, separado) -->
+    <form method="post" action="{% url 'copiar_presupuesto_gastos_a_nuevo_anio' %}" class="row g-2 align-items-end mb-3">
+        {% csrf_token %}
+        <div class="col-auto">
+            <label for="tipo_clon" class="form-label mb-0">Clonar:</label>
+            <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm" onchange="document.getElementById('porcentaje_clon').style.display = this.value == 'con' ? 'inline-block' : 'none';">
+                <option value="sin">Sin incremento</option>
+                <option value="con">Con incremento</option>
+            </select>
+        </div>
+        <div class="col-auto" id="porcentaje_clon" style="display:none;">
+            <label for="porcentaje" class="form-label mb-0">Porcentaje (%)</label>
+            <input type="number" step="0.01" min="0" name="porcentaje" id="porcentaje" class="form-control form-control-sm" value="10">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-warning btn-sm">Clonar presupuesto</button>
+        </div>
+    </form>
 
-<form method="post" action="{% url 'copiar_presupuesto_gastos_a_nuevo_anio' %}" class="row g-2 align-items-end mb-3">
-    {% csrf_token %}
-    <div class="col-auto">
-        <label for="tipo_clon" class="form-label mb-0">Clonar:</label>
-        <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm" onchange="document.getElementById('porcentaje_clon').style.display = this.value == 'con' ? 'inline-block' : 'none';">
-            <option value="sin">Sin incremento</option>
-            <option value="con">Con incremento</option>
-        </select>
-    </div>
-    <div class="col-auto" id="porcentaje_clon" style="display:none;">
-        <label for="porcentaje" class="form-label mb-0">Porcentaje (%)</label>
-        <input type="number" step="0.01" min="0" name="porcentaje" id="porcentaje" class="form-control form-control-sm" value="10">
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-warning btn-sm">Clonar presupuesto</button>
-    </div>
-</form>
+    <!-- Formulario principal de edición de presupuesto (POST) -->
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="anio" value="{{ anio }}">
+        {% if empresa %}
+            <input type="hidden" name="empresa" value="{{ empresa.id }}">
+        {% endif %}
         <table class="table table-bordered table-sm align-middle">
             <thead>
                 <tr>
@@ -206,22 +199,9 @@
                 </tr>
             </tfoot>
         </table>
-        
-    </form>
-</div>
-<div class="container mt-2">
-<form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="anio" value="{{ anio }}">
-        {% if empresa %}
-            <input type="hidden" name="empresa" value="{{ empresa.id }}">
-        {% endif %}
-        <div class="table-responsive">
-
         {% if edicion_habilitada %}
             <div class="mb-3">
                 <button class="btn btn-success">Guardar cambios</button>
-                
                 {% if not bloqueado %}
                     <button type="submit" name="cerrar_presupuesto" class="btn btn-warning ms-2"
                         onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')">
@@ -231,13 +211,13 @@
             </div>
         {% endif %}
     </form>
+</div>
 
-
-    <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
-    </footer>
-    <script src="{% static 'js/script.js' %}"></script>
+<!-- 🔹 Footer -->
+<footer>
+    © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+     Creado por Jaime M. Estrada Bernabé
+</footer>
+<script src="{% static 'js/script.js' %}"></script>
 </body>
-</html>   
+</html>

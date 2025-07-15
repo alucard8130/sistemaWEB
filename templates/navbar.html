@@ -121,7 +121,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Gasto</a></li>
                             <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Gastos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Gastos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Gastos</a></li>
                             <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard</a></li>
                             {% if request.user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>

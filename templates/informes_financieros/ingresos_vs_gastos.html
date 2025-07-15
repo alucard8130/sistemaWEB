@@ -36,7 +36,7 @@
     </div>
  
     <div class="col-auto">
-        {% comment %} Selector de mes con nombres en español {% endcomment %}
+       
 {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
 <select name="mes" class="form-select" style="width:auto;">
     <option value="">Mes</option>
@@ -71,7 +71,7 @@
     <div class="card-body">
         <h5 class="card-title mb-3">Resumen Financiero</h5>
         <p class="mb-2"><strong>Total Ingresos:</strong> {{ total_ingresos|floatformat:2|intcomma }}</p>
-        <p class="mb-2"><strong>Total Gastos:</strong> {{ total_gastos|floatformat:2|intcomma }}</p>
+        <p class="mb-2"><strong>Total Gastos:</strong> {{ total_gastos_pagados|floatformat:2|intcomma }}</p>
         <p class="mb-0"><strong>Resultado:</strong> {{ saldo|floatformat:2|intcomma }}</p>
     </div>
 </div>

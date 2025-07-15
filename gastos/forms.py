@@ -146,13 +146,14 @@ class GastoForm(forms.ModelForm):
       
 
     def __init__(self, *args, **kwargs):
+        modo = kwargs.pop('modo', None)
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         # Solo superusuario puede elegir empresa, los demás sólo la propia
         if not user or not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
 
-        self.fields['empresa'].required = False
+        #self.fields['empresa'].required = False
         self.fields['descripcion'].required = True
         self.fields['comprobante'].required = True
 
@@ -160,10 +161,14 @@ class GastoForm(forms.ModelForm):
         self.fields['proveedor'].queryset = Proveedor.objects.none()
         self.fields['empleado'].queryset = Empleado.objects.none()
 
-        if not user or not user.is_superuser:
-            self.fields['proveedor'].disabled = True
+        #if not user or not user.is_superuser:
+        #    self.fields['proveedor'].disabled = True
+         #   self.fields['origen_tipo'].disabled = True
+          #  self.fields['empleado'].disabled = True
+          
+        if modo == 'editar':
             self.fields['origen_tipo'].disabled = True
-            self.fields['empleado'].disabled = True
+            self.fields['proveedor'].disabled = True
 
         if user:
             if user.is_superuser:
@@ -175,6 +180,7 @@ class GastoForm(forms.ModelForm):
                 if empresa:
                     self.fields['proveedor'].queryset = Proveedor.objects.filter(empresa=empresa)
                     self.fields['empleado'].queryset = Empleado.objects.filter(empresa=empresa)
+                    self.fields['tipo_gasto'].queryset = TipoGasto.objects.filter(empresa=empresa)
         
     #si se selecciona proveedor, empleado no es requerido y viceversa
     def clean(self):

@@ -103,29 +103,34 @@ def reporte_ingresos_vs_gastos(request):
         mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
     pagos = Pago.objects.exclude(forma_pago="nota_credito")
-    gastos = Gasto.objects.all()
+    #gastos = Gasto.objects.all()
+    pagos_gastos = PagoGasto.objects.all()
     cobros_otros = CobroOtrosIngresos.objects.select_related(
         "factura", "factura__empresa"
     )
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
-        gastos = gastos.filter(empresa_id=empresa_id)
+        #gastos = gastos.filter(empresa_id=empresa_id)
+        pagos_gastos = pagos_gastos.filter(gasto__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
-        gastos = gastos.filter(fecha__gte=fecha_inicio)
+        #gastos = gastos.filter(fecha__gte=fecha_inicio)
+        pagos_gastos = pagos_gastos.filter(gasto__fecha__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
-        gastos = gastos.filter(fecha__lte=fecha_fin)
+        #gastos = gastos.filter(fecha__lte=fecha_fin)
+        pagos_gastos = pagos_gastos.filter(gasto__fecha__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
 
     total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
     total_ingresos_cobrados = total_ingresos + total_otros_ingresos
     #total_gastos = gastos.aggregate(total=Sum("monto"))["total"] or 0
-    total_gastos = gastos.filter(estatus='pagada').aggregate(total=Sum("monto"))["total"] or 0
+    #total_gastos = gastos.filter(estatus='pagada').aggregate(total=Sum("monto"))["total"] or 0
+    total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
 
     # Agrupar por tipo de origen (Local/Área)
     ingresos_qs = (
@@ -151,14 +156,14 @@ def reporte_ingresos_vs_gastos(request):
 
     # Agrupar gastos por tipo
     gastos_por_tipo_qs = (
-        gastos.values("tipo_gasto__nombre")
+        pagos_gastos.values("gasto__tipo_gasto__nombre")
         .annotate(total=Sum("monto"))
-        .order_by("tipo_gasto__nombre")
+        .order_by("gasto__tipo_gasto__nombre")
     )
     gastos_por_tipo = []
     for x in gastos_por_tipo_qs:
         gastos_por_tipo.append(
-            {"tipo": x["tipo_gasto__nombre"] or "Sin tipo", "total": float(x["total"])}
+            {"tipo": x["gasto__tipo_gasto__nombre"] or "Sin tipo", "total": float(x["total"])}
         )
 
     # Crear un diccionario ordenado para los ingresos por origen
@@ -169,7 +174,7 @@ def reporte_ingresos_vs_gastos(request):
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f" {tipo}"] = float(x["total"])
 
-    saldo = total_ingresos_cobrados - total_gastos
+    saldo = total_ingresos_cobrados - total_gastos_pagados
 
     return render(
         request,
@@ -178,7 +183,7 @@ def reporte_ingresos_vs_gastos(request):
             "empresas": empresas,
             "total_ingresos": total_ingresos_cobrados,
             "total_otros_ingresos": total_otros_ingresos,
-            "total_gastos": total_gastos,
+            "total_gastos_pagados": total_gastos_pagados,
             "empresa_id": empresa_id,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
@@ -189,7 +194,6 @@ def reporte_ingresos_vs_gastos(request):
             "anio": anio,
             "gastos_por_tipo": gastos_por_tipo,
             "saldo": saldo,
-
         },
     )
 

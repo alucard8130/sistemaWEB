@@ -197,7 +197,7 @@ def gasto_nuevo(request):
             gasto.save()
             return redirect('gastos_lista')
     else:
-        form = GastoForm(user=request.user)
+        form = GastoForm(user=request.user,)
         if not request.user.is_superuser:
             form.fields['empresa'].initial = request.user.perfilusuario.empresa
     return render(request, 'gastos/form.html', {'form': form, 'modo': 'crear'})
@@ -208,12 +208,12 @@ def gasto_editar(request, pk):
     if not request.user.is_superuser and gasto.empresa != request.user.perfilusuario.empresa:
         return redirect('gastos_lista')
     if request.method == 'POST':
-        form = GastoForm(request.POST or None, request.FILES, instance=gasto, user=request.user)
+        form = GastoForm(request.POST or None, request.FILES, instance=gasto, user=request.user, modo='editar')
         if form.is_valid():
             form.save()
             return redirect('gastos_lista')
     else:
-        form = GastoForm(instance=gasto, user=request.user)
+        form = GastoForm(instance=gasto, user=request.user, modo='editar')
     return render(request, 'gastos/form.html', {'form': form, 'modo': 'editar', 'gasto': gasto})
 
 @login_required

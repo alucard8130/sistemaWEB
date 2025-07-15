@@ -1933,6 +1933,14 @@ def copiar_presupuesto_gastos_a_nuevo_anio(request):
                 empresa=p.empresa
             ))
         Presupuesto.objects.bulk_create(nuevos)
+        # --- Cerrar presupuesto del año anterior ---
+        for empresa in set(p.empresa for p in presupuestos_actuales):
+            cierre, _ = PresupuestoCierre.objects.get_or_create(empresa=empresa, anio=anio_actual)
+            cierre.cerrado = True
+            cierre.cerrado_por = request.user
+            cierre.fecha_cierre = now()
+            cierre.save()
+
         if tipo_clon == "con" and porcentaje > 0:
             messages.success(request, f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%")
         else:
@@ -1973,6 +1981,15 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
                 monto_presupuestado=monto
             ))
         PresupuestoIngreso.objects.bulk_create(nuevos)
+
+        # --- Cerrar presupuesto del año anterior ---
+        for empresa in set(p.empresa for p in actuales):
+            cierre, _ = PresupuestoCierre.objects.get_or_create(empresa=empresa, anio=anio_actual)
+            cierre.cerrado = True
+            cierre.cerrado_por = request.user
+            cierre.fecha_cierre = now()
+            cierre.save()
+
         if tipo_clon == "con" and porcentaje > 0:
             messages.success(request, f"Presupuesto de ingresos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%")
         else:
