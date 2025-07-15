@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 #DEBUG = False
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'adminsoftheron.onrender.com').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'beqjuhhm8le36pnwkoye-postgresql.services.clever-cloud.com').split(',')
 #ALLOWED_HOSTS = ['adminsoftheron.onrender.com']
 #ALLOWED_HOSTS = ['*']  # For development purposes, change this in production
 
