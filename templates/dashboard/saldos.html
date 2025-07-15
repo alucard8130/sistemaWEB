@@ -50,7 +50,7 @@
             </div>
             <div class="col-md-2">
                 <select name="origen" class="form-select" onchange="this.form.submit()">
-                    <option value="todos">Todos</option>
+                    <option value="todos" {% if origen == "todos" %}selected{% endif %}  >Todos</option>
                     <option value="local" {% if origen == "local" %}selected{% endif %}>Cuotas Locales</option>
                     <option value="area" {% if origen == "area" %}selected{% endif %}>Cuotas Areas Comunes</option>
                     <option value="otros" {% if origen == "otros" %}selected{% endif %}>Otras Cuotas</option>
@@ -78,8 +78,10 @@
                             <span class="badge bg-success rounded-pill ">
                                 {% if origen == "otros" %}
                                     ${{ saldo_0_30_otros|floatformat:2|intcomma }}
-                                {% else %}
+                                {% elif origen == "local" or origen == "area" %}
                                     ${{ saldo_0_30|floatformat:2|intcomma }}
+                                {% else %}
+                                    ${{ saldo_0_30_total|floatformat:2|intcomma }}
                                 {% endif %}
                             </span>
                         </li>
@@ -88,8 +90,10 @@
                             <span class="badge bg-warning rounded-pill">
                                 {% if origen == "otros" %}
                                     ${{ saldo_31_60_otros|floatformat:2|intcomma }}
-                                {% else %}
+                                {% elif origen == "local" or origen == "area" %}
                                     ${{ saldo_31_60|floatformat:2|intcomma }}
+                                {% else %}
+                                    ${{ saldo_31_60_total|floatformat:2|intcomma }}
                                 {% endif %}
                             </span>
                         </li>
@@ -98,18 +102,24 @@
                             <span class="badge bg-warning rounded-pill">
                                 {% if origen == "otros" %}
                                     ${{ saldo_61_90_otros|floatformat:2|intcomma }}
-                                {% else %}
+                                {% elif origen == "local" or origen == "area" %}
                                     ${{ saldo_61_90|floatformat:2|intcomma }}
-                                {% endif %}
+                            
+                                {% else %}
+                                    ${{ saldo_61_90_total|floatformat:2|intcomma }}
+                                {% endif %} 
                             </span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             91 a 180 días
                             <span class="badge bg-warning rounded-pill">
                                 {% if origen == "otros" %}
-                                ${{ saldo_91_180_otros|floatformat:2|intcomma }}
+                                    ${{ saldo_91_180_otros|floatformat:2|intcomma }}
+                                {% elif origen == "local" or origen == "area" %}
+                                    ${{ saldo_91_180|floatformat:2|intcomma }}
+                                
                                 {% else %}
-                                ${{ saldo_91_180|floatformat:2|intcomma }}
+                                    ${{ saldo_91_180_total|floatformat:2|intcomma }}
                                 {% endif %}
                             </span>
                         </li>
@@ -117,9 +127,12 @@
                             Más de 180 días
                             <span class="badge bg-danger rounded-pill">
                                 {% if origen == "otros" %}
-                                ${{ saldo_181_mas_otros|floatformat:2|intcomma }}
-                                {% else %}
-                                ${{ saldo_181_mas|floatformat:2|intcomma }}
+                                     ${{ saldo_181_mas_otros|floatformat:2|intcomma }}
+                                {% elif origen == "local" or origen == "area" %}
+                                     ${{ saldo_181_mas|floatformat:2|intcomma }}
+                                
+                                {% else %}  
+                                    ${{ saldo_181_mas_total|floatformat:2|intcomma }}
                                 {% endif %}
                             </span>
                         </li>
@@ -150,12 +163,18 @@
             {{ saldo_61_90|default:0 }} +{{ saldo_61_90_otros|default:0 }} +
             {{ saldo_91_180|default:0 }} +{{ saldo_91_180_otros|default:0 }} +
             {{ saldo_181_mas|default:0 }} +{{ saldo_181_mas_otros|default:0 }}
-        {% elif origen == "local" or "area" %}
+        {% elif origen == "local" or origen == "area" %}
             {{ saldo_0_30|default:0 }} +
             {{ saldo_31_60|default:0 }} +
             {{ saldo_61_90|default:0 }} +
             {{ saldo_91_180|default:0 }} +
             {{ saldo_181_mas|default:0 }}
+        {% else %}
+            {{ saldo_0_30|default:0 }} +{{ saldo_0_30_otros|default:0 }} +
+            {{ saldo_31_60|default:0 }} +{{ saldo_31_60_otros|default:0 }} +
+            {{ saldo_61_90|default:0 }} +{{ saldo_61_90_otros|default:0 }} +
+            {{ saldo_91_180|default:0 }} +{{ saldo_91_180_otros|default:0 }} +
+            {{ saldo_181_mas|default:0 }} +{{ saldo_181_mas_otros|default:0 }}
         {% endif %}
     );
         const ctx = document.getElementById('chartSaldos');
@@ -178,12 +197,18 @@
                             {{ saldo_61_90|default:0 }} + {{ saldo_61_90_otros|default:0 }},
                             {{ saldo_91_180|default:0 }} + {{ saldo_91_180_otros|default:0 }},
                             {{ saldo_181_mas|default:0 }} + {{ saldo_181_mas_otros|default:0 }}
-                        {% elif origen == "local" or "area" %}
-                            {{ saldo_0_30 }},
-                            {{ saldo_31_60 }},
-                            {{ saldo_61_90 }},
-                            {{ saldo_91_180 }},
-                            {{ saldo_181_mas }}
+                        {% elif origen == "local" or origen == "area" %}
+                            {{ saldo_0_30|default:0 }},
+                            {{ saldo_31_60|default:0 }},
+                            {{ saldo_61_90|default:0 }},
+                            {{ saldo_91_180|default:0 }},
+                            {{ saldo_181_mas|default:0 }}
+                        {% else %}
+                            {{ saldo_0_30|default:0 }} + {{ saldo_0_30_otros|default:0 }},
+                            {{ saldo_31_60|default:0 }} + {{ saldo_31_60_otros|default:0 }},
+                            {{ saldo_61_90|default:0 }} + {{ saldo_61_90_otros|default:0 }},
+                            {{ saldo_91_180|default:0 }} + {{ saldo_91_180_otros|default:0 }},
+                            {{ saldo_181_mas|default:0 }} + {{ saldo_181_mas_otros|default:0 }}   
                         {% endif %}
                     ],
                     backgroundColor: ['#198754', '#F3F763', '#FEA55C', '#D86302', '#C00000'],

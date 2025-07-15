@@ -31,15 +31,15 @@
     {% include 'navbar.html' %}
     
     <!-- 🔹 Caja central -->
-    <main class="main-content container-fluid px-4 py-3">
+ <!--   <main class="main-content container-fluid px-4 py-3 wide=100px " >-->
 
       <!-- Bienvenida: entire row -->
-      <div class="row justify-content-center mb-3">
+      <div class="row justify-content-center mb-4 mt-4">
           <div class="col-lg-3">
             <div class="welcome-box d-flex align-items-center py-2 px-2 shadow rounded" style="gap: 1rem;">
             
               <!-- Logo a la izquierda -->
-              <img src="{% static 'img/logo.png' %}" alt="Logo" class="welcome-logo" style="max-width:120px;">
+              <img src="{% static 'img/logo.png' %}" alt="Logo" class="welcome-logo" style="max-width:60px;">
               
               <!-- Texto a la derecha -->
               <div>
@@ -54,7 +54,7 @@
             </div>
           </div>
       </div>
-    
+    </main>
       <!-- Calendar and upcoming events side by side -->
       <!-- blackboard calendar  -->
       <div class="row">
@@ -69,8 +69,9 @@
           </div>
         </div>
       
+      
         <!-- Floating upcoming events card -->
-        <div class="col-md-5 mb-4">
+        <div class="col-md-3 mb-4">
           <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
             <div class="card-header bg-primary text-white">
               <strong>Próximos eventos</strong>
@@ -93,8 +94,8 @@
           </div>
         </div>
       </div>
-    </main>
-
+  <!--  </main>> -->
+ 
       <!-- Modal para nuevo evento -->
       <div class="modal fade" id="modalEvento" tabindex="-1" aria-labelledby="modalEventoLabel" aria-hidden="true">
         <div class="modal-dialog">

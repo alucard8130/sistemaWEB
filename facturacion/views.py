@@ -432,6 +432,9 @@ def dashboard_saldos(request):
     hoy = timezone.now().date()
     cliente_id = request.GET.get('cliente')
     origen = request.GET.get('origen')
+    if not origen:
+        origen = 'todos'
+        
     es_super = request.user.is_superuser
 
     # Empresa según usuario
@@ -503,6 +506,19 @@ def dashboard_saldos(request):
     saldo_91_180_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
     saldo_181_mas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
 
+
+    if origen == "todos":
+        saldo_0_30_total = (saldo_0_30 or 0) + (saldo_0_30_otros or 0)
+        saldo_31_60_total = (saldo_31_60 or 0) + (saldo_31_60_otros or 0)
+        saldo_61_90_total = (saldo_61_90 or 0) + (saldo_61_90_otros or 0)
+        saldo_91_180_total = (saldo_91_180 or 0) + (saldo_91_180_otros or 0)
+        saldo_181_mas_total = (saldo_181_mas or 0) + (saldo_181_mas_otros or 0)
+    else:
+        saldo_0_30_total = saldo_0_30 if origen != "otros" else saldo_0_30_otros
+        saldo_31_60_total = saldo_31_60 if origen != "otros" else saldo_31_60_otros
+        saldo_61_90_total = saldo_61_90 if origen != "otros" else saldo_61_90_otros
+        saldo_91_180_total = saldo_91_180 if origen != "otros" else saldo_91_180_otros
+        saldo_181_mas_total = saldo_181_mas if origen != "otros" else saldo_181_mas_otros
 
         # --- Top 10 adeudos por local/área/otros ingresos ---
     if origen == "otros":
@@ -628,6 +644,11 @@ def dashboard_saldos(request):
         'top_data': top_data,
         'facturas_otros': facturas_otros,
         'top_clientes': top_clientes,
+        'saldo_0_30_total': saldo_0_30_total,
+        'saldo_31_60_total': saldo_31_60_total,
+        'saldo_61_90_total': saldo_61_90_total,
+        'saldo_91_180_total': saldo_91_180_total,
+        'saldo_181_mas_total': saldo_181_mas_total,
     })
 
 @login_required
