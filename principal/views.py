@@ -47,7 +47,7 @@ def reiniciar_sistema(request):
         try:
             with transaction.atomic():
                 # Orden: pagos > facturas > locales/areas > clientes > empresas etc...
-                Pago.objects.all().delete()
+                
                 Factura.objects.all().delete()
                 LocalComercial.objects.all().delete()
                 AreaComun.objects.all().delete()
@@ -57,7 +57,10 @@ def reiniciar_sistema(request):
                 Empleado.objects.all().delete()  
                 Gasto.objects.all().delete()  
                 Presupuesto.objects.all().delete()
-                
+                AuditoriaCambio.objects.all().delete()
+                Evento.objects.all().delete()
+                Pago.objects.all().delete()
+            
 
             messages.success(request, '¡El sistema fue reiniciado exitosamente!')
         except Exception as e:
