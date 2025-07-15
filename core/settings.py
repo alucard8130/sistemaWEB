@@ -16,10 +16,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
-
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'adminsoftheron.onrender.com').split(',')
-
+#DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = False
+#ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'adminsoftheron.onrender.com').split(',')
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -88,18 +88,18 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-#DATABASES = {
- #   'default': {
-  #      'ENGINE': 'django.db.backends.sqlite3',
-   #     'NAME': BASE_DIR / 'db.sqlite3',
- #   }
-#}
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL')
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
+#DATABASES = {
+ #   'default': dj_database_url.config(
+  #      default=os.getenv('DATABASE_URL')
+   # )
+#}
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
