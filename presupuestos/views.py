@@ -1414,7 +1414,7 @@ def reporte_presupuesto_vs_ingreso(request):
 
     return render(
         request,
-        "presupuestos\comparativo_presupuesto_vs_ingresos.html",
+        "presupuestos/comparativo_presupuesto_vs_ingresos.html",
         {
             "anio": anio,
             "anios": list(range(datetime.now().year, 2021, -1)),
