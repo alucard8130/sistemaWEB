@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 
 
+
 class GrupoGasto(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
 
@@ -19,14 +20,9 @@ class SubgrupoGasto(models.Model):
     grupo = models.ForeignKey('GrupoGasto', on_delete=models.CASCADE, related_name='subgrupos')
     nombre = models.CharField(max_length=100)
 
-   # class Meta:
-    #    unique_together = ('grupo', 'nombre')
-     #   verbose_name = "Subgrupo de Gasto"
-      #  verbose_name_plural = "Subgrupos de Gasto"
-
     def __str__(self):
         return f"{self.grupo.nombre}/{self.nombre}"
-        #return f"{self.nombre}"
+ 
     
 class TipoGasto(models.Model):
     empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE,null=True,blank=True)
@@ -36,7 +32,7 @@ class TipoGasto(models.Model):
 
     def __str__(self):
         return f"{self.subgrupo.nombre}/{self.nombre}"
-        #return f"{self.nombre}"
+
 
 class Gasto(models.Model):
     empresa = models.ForeignKey(Empresa,on_delete=models.CASCADE,null=True,blank=True)
@@ -81,9 +77,6 @@ class Gasto(models.Model):
         self.save()
    
         
-
-from django.db import models
-from django.contrib.auth.models import User
 
 class PagoGasto(models.Model):
     gasto = models.ForeignKey('Gasto', on_delete=models.CASCADE, related_name='pagos')

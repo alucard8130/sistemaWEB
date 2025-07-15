@@ -35,43 +35,6 @@ class TipoGastoForm(forms.ModelForm):
         if user and not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
             self.fields['empresa'].initial = user.perfilusuario.empresa
-# class SubgrupoGastoForm(forms.ModelForm):
-#     class Meta:
-#         model = SubgrupoGasto
-#         fields = ['grupo', 'nombre']
-      
-#     def __init__(self, *args, **kwargs):
-#         user = kwargs.pop('user', None)
-#         super().__init__(*args, **kwargs)
-#         self.fields['grupo'].queryset = GrupoGasto.objects.none()
-#         if user:
-#             if user.is_superuser:
-#                 self.fields['grupo'].queryset = GrupoGasto.objects.all()
-#             else:
-#                 empresa = getattr(user.perfilusuario, 'empresa', None)
-#                 if empresa:
-#                     self.fields['grupo'].queryset = GrupoGasto.objects.filter(empresa=empresa)
-                        
-# class TipoGastoForm(forms.ModelForm):
-#     class Meta:
-#         model = TipoGasto
-#         fields = ['empresa','subgrupo', 'nombre', 'descripcion']
-       
-#     def __init__(self, *args, **kwargs):
-#         user = kwargs.pop('user', None)
-#         super().__init__(*args, **kwargs)
-#         self.fields['subgrupo'].queryset = SubgrupoGasto.objects.none()
-#         if user:
-#             if user.is_superuser:
-#                 self.fields['subgrupo'].queryset = SubgrupoGasto.objects.all()
-#             else:
-#                 empresa = getattr(user.perfilusuario, 'empresa', None)
-#                 if empresa:
-#                     self.fields['subgrupo'].queryset = SubgrupoGasto.objects.filter(empresa=empresa)    
-                    
-#         if user and not user.is_superuser:
-#             self.fields['empresa'].widget = forms.HiddenInput()
-#             self.fields['empresa'].initial = user.perfilusuario.empresa
 
         #  Agregar clases Bootstrap
         for field_name, field in self.fields.items():
