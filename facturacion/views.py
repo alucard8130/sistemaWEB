@@ -264,6 +264,28 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     observaciones='emision mensual'
                 )
                 facturas_creadas += 1
+                # --- CREAR FACTURA DE DEPÓSITO EN GARANTÍA POR ÚNICA VEZ ---
+            if area.deposito and area.deposito > 0:
+                existe_deposito = Factura.objects.filter(
+                    cliente=area.cliente,
+                    area_comun=area,
+                    tipo_cuota='deposito',
+                ).exists()
+                if not existe_deposito:
+                    count = Factura.objects.filter(tipo_cuota='deposito').count() + 1
+                    folio_deposito = f"DG-F{count:05d}"
+                    Factura.objects.create(
+                        empresa=area.empresa,
+                        cliente=area.cliente,
+                        area_comun=area,
+                        folio=folio_deposito,
+                        fecha_emision=hoy,
+                        fecha_vencimiento=date(año, mes, 1),
+                        monto=area.deposito,
+                        tipo_cuota='deposito',
+                        estatus='pendiente',
+                        observaciones='Depósito en garantía'
+                    )    
 
 
     messages.success(request, f"{facturas_creadas} facturas generadas para {hoy.strftime('%B %Y')}")

@@ -121,8 +121,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Gasto</a></li>
                             <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Gastos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Egresos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Egresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Gastos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard</a></li>
                             {% if request.user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
                     
@@ -134,10 +134,10 @@
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Cuotas</a></li>
                             <!--<li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_anio' %}">Comparativo Ppto vs Ppto</a></li>-->
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Ingresos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Cuotas</a></li>
                             <!-- <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_vs_gastos' %}">Comparativo vs Gasto2</a></li> -->
                             
                             <!--<li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>-->
@@ -149,8 +149,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{% url 'estado_resultados' %}">Estado Resultados</a></li>
                             <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos vs Gastos</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Cuotas</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Cuotas y Gastos</a></li>
                       
                         </ul>
                 </ul>
