@@ -5,9 +5,14 @@
         Date of modification: 03/07/2025
         Description: Code nabvar
     -->
+        
 <!-- 🔹 Top Navbar -->
 <nav class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
         <div class="container-fluid px-5">
+            <!-- home button-->
+                    <a href="{% url 'bienvenida' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-house-door-fill me-1"></i> Inicio
+                    </a>
             <div class="collapse navbar-collapse d-flex justify-content-between align-items-center" id="navbarOpciones">
                 <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center ms-auto">
                     {% if request.user.is_superuser %}
@@ -22,7 +27,7 @@
                         </ul>
                     </li>
                     {% endif %}
-
+                    
                     <!-- Menús existentes, ajústalos si quieres anidar en catálogos -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Clientes</a>
@@ -164,7 +169,7 @@
                             Usuario
                         {% endif %}
                     </div> -->
-
+                    
                     <!-- Logout button -->
                     <form method="post" action="{% url 'logout' %}" class="mb-0">
                         {% csrf_token %}
