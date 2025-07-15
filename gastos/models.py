@@ -10,14 +10,12 @@ from django.contrib.auth.models import User
 
 
 class GrupoGasto(models.Model):
-    #empresa= models.ForeignKey(Empresa,on_delete=models.CASCADE,null=True,blank=True)
     nombre = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.nombre
 
 class SubgrupoGasto(models.Model):
-    #empresa= models.ForeignKey(Empresa, null=True,blank=True,on_delete=models.CASCADE)
     grupo = models.ForeignKey('GrupoGasto', on_delete=models.CASCADE, related_name='subgrupos')
     nombre = models.CharField(max_length=100)
 
