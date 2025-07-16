@@ -160,16 +160,12 @@
                         </ul>
                 </ul>
                 <div class="d-flex align-items-center gap-3 ms-auto">
-                    <!-- Logged in user info -->
-                    <!-- <div class="text-end fw-semibold d-block">
-                        <i class="bi bi-person-circle me-1"></i>
-                        {% if request.user.is_superuser %}
-                            Administrador
-                        {% else %}
-                            Usuario
-                        {% endif %}
-                    </div> -->
-                    
+                    <!-- Botón de Ayuda -->
+                    <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalAyuda">
+                        <i class="bi bi-question-circle"></i> Ayuda
+                    </button>
+                 
+                
                     <!-- Logout button -->
                     <form method="post" action="{% url 'logout' %}" class="mb-0">
                         {% csrf_token %}
@@ -187,3 +183,116 @@
             </button>
         </div>
     </nav>
+
+    <!-- Modal Ayuda -->
+<div class="modal fade" id="modalAyuda" tabindex="-1" aria-labelledby="modalAyudaLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAyudaLabel">Ayuda</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <h5 class="mb-3">Manual de Operación del Sistema GESAC</h5>
+        <div class="accordion" id="ayudaAccordion">
+          <!-- Inicio de Sesión -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingLogin">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLogin" aria-expanded="true" aria-controls="collapseLogin">
+                Inicio de Sesión
+              </button>
+            </h2>
+            <div id="collapseLogin" class="accordion-collapse collapse show" aria-labelledby="headingLogin" data-bs-parent="#ayudaAccordion">
+              <div class="accordion-body">
+                <ol>
+                  <li>Ingresa tu usuario y contraseña en la pantalla principal.</li>
+                  <li>Haz clic en <b>Iniciar sesión</b>.</li>
+                  <li>Si los datos son correctos, accederás al sistema.</li>
+                  <li>Si olvidaste tu contraseña, contacta al administrador.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          <!-- Menú Principal -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingMenu">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMenu" aria-expanded="false" aria-controls="collapseMenu">
+                Menú Principal
+              </button>
+            </h2>
+            <div id="collapseMenu" class="accordion-collapse collapse" aria-labelledby="headingMenu" data-bs-parent="#ayudaAccordion">
+              <div class="accordion-body">
+                <ul>
+                  <li><b>Clientes:</b> Registra nuevos clientes, consulta la lista y administra su información.</li>
+                  <li><b>Locales:</b> Da de alta nuevos locales, consulta la lista, administra e incrementa las cuotas de mantenimiento por porcentaje de forma automatica.</li>
+                  <li><b>Áreas Comunes:</b> Administra las áreas comunes, crea nuevas y consulta las existentes, administra e incrementa las cuotas de areas por porcentaje de forma automatica.</li>
+                  <li><b>Cuotas:</b> Registra cuotas de mantenimiento y áreas , consulta el historial, registra la cobranza de las cuotas, 
+                    genera la carga mensual automatica de las cuotas, visualiza la cobranza de las cuotas mediante un reporte, e incluye un <strong>DASHBOARD</strong> que grafica las cuentas por cobrar,
+                    el presupuesto y la cobranza de las cuotas </li>
+                  <li><b>Otras Cuotas:</b>Registra ingresos adicionales distintos a las cuotas regulares, puedes crear nuevos tipos de otros ingresos como: Servicios(recuperacion de servicios),
+                        Intereses por inversiones, Por cobro de estacionamiento, ya sea operado o rentado, por cobro de sanitarios etc... cuenta con sus propios reportes de otros ingresos
+                        y reporte de su cobranza. </li>
+                  <li><b>Cartera Vencida:</b> Consulta adeudos pendientes de cuotas de mantenimiento, áreas comunes y otros ingresos por periodos de vencimiento (30, 60, 90 ....dias), cuenta con un reporte detallado de la cobranza,
+                        asi como un <strong>DASHBOARD</strong> que grafica los diferentes parámetros de la cartera vencida.</li>
+                  <li><b>Catálogos:</b> Registra proveedores, empleados y crea nuevos tipos de gasto de acuerdo al usuario y sus necesidades.
+                        Los tipos de gasto se crean en base a un catalogo de Grupo de Gastos y Subgrupos ya definido y precargado en el sistema, usted puede consultar dichos catalogos
+                        en la opcion <strong>Alta tipo de gasto, opcion subgrupos</strong> dentro del menu <strong>Catálogos</strong>, ahi usted podra consultar los diferentes Grupo de gasto
+                        y a partir de ahi el usuario podra crear nuevos tipos de gasto por ejemplo: <strong>Gastos Nomina/Sueldos/Sueldo Gerente Operativo</strong>, donde <strong>"Gastos Nomina/Sueldos"</strong>
+                        ya esta predefinida por el sistema y la parte que el usurio puede crear como tipo de gasto es <strong>Sueldo Gerente Operativo</strong>., a partir de ahi
+                        con el tipo de gasto creado, el usuario podra registrar gastos en base a este nuevo tipo de gasto.</li>
+                  <li><b>Gastos:</b> Registra y consulta solicitudes de gastos, registra el pago de gastos solicitados y consulta los pagos mediante un reporte, 
+                        asi mismo cuenta con un <strong>DASHBOARD</strong> que visualiza los pagos realizados, el presupuesto y los pagos pendientes (cxp).</li>
+                  <li><b>Presupuesto:</b> Administra presupuestos de ingresos y egresos, edita y guarda los cambios, cierre el presupuesto: opcion que hace que el presupuesto
+                    no pueda ser editado, clonar presupuesto: opcion que clona el presupuesto actual y lo traspasa al siguiente periodo anual.
+                    Los presupuesto pueden crearse manualmente o mediante carga masiva.</li>
+                  <li><b>Reportes:</b> Estado de Resultados, con dos opciones de vizualizacion en base a Flujo y en base a Resultados, Reporte comparativo de Gastos vs Presupuesto,
+                    con opciones de vizualizacion por periodos, Reporte comparativo de Ingresos vs Presupuesto, con opciones de vizualizacion por periodos,
+                     y un <strong>DASHBOARD</strong> que grafica los resultados financieros por periodos.</li>
+                     <li><b>Calendario Eventos:</b> Permite visualizar y gestionar eventos importantes relacionados
+                         con el presupuesto y la cobranza de cuotas, facilitando la planificación y el seguimiento de actividades clave, como juntas de comité, juntas de asamblea, etc.
+                         Una vez registrado el evento, el usuario podrá enviar por correo la invitación.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <!-- Ayuda -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingAyuda">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAyuda" aria-expanded="false" aria-controls="collapseAyuda">
+                Ayuda
+              </button>
+            </h2>
+            <div id="collapseAyuda" class="accordion-collapse collapse" aria-labelledby="headingAyuda" data-bs-parent="#ayudaAccordion">
+              <div class="accordion-body">
+                <ul>
+                  <li>Haz clic en el botón <b>Ayuda</b> para consultar este manual en cualquier momento.</li>
+                  <li>Si tienes dudas adicionales, contacta al administrador del sistema.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <!-- Cerrar Sesión -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingLogout">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLogout" aria-expanded="false" aria-controls="collapseLogout">
+                Cerrar Sesión
+              </button>
+            </h2>
+            <div id="collapseLogout" class="accordion-collapse collapse" aria-labelledby="headingLogout" data-bs-parent="#ayudaAccordion">
+              <div class="accordion-body">
+                <ol>
+                  <li>Haz clic en el botón <b>Salir</b> ubicado en la parte superior derecha.</li>
+                  <li>Tu sesión se cerrará de forma segura.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="mt-3">Para soporte adicional, contacta al administrador del sistema.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
