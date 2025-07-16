@@ -5,13 +5,13 @@ def cargar_grupos_subgrupos(apps, schema_editor):
     SubgrupoGasto = apps.get_model('gastos', 'SubgrupoGasto')
 
     grupos = {
-        'Gastos Administracion': ['Papelería', 'Suministros', 'Honorarios', 'Servicios profesionales', 'Oficina','Asambleas', 'Comite', 'Viajes', 'Software', 'Hardware'],
+        'Gastos Administracion': ['Papelería', 'Suministros', 'Honorarios', 'Servicios profesionales', 'Oficina','Asamblea', 'Comite', 'Viajes', 'Software', 'Hardware'],
         'Gastos Extraordinarios': ['Reparaciones mayores', 'Proyectos especiales', 'Imprevistos', 'Legales','Contingencias'],
         'Gastos Financieros': ['Comisiones bancarias', 'Intereses', 'Cobranza', 'Inversión'],
         'Gastos Mantenimientos': [ 'Preventivo', 
             'Correctivo', 'Equipos', 'Instalaciones', 'Software', 'Edificio','Infraestructura','Hardware'],
-        'Gastos Nomina': ['Sueldos', 'Prestaciones', 'Seguridad social', 'Impuestos', 'Bonificaciones', 'Vacaciones', 'Aguinaldo', 'Indemnizaciones','Infonavit'],
-        'Gastos Operacion': ['Transporte', 'Logística', 'Alquiler de equipos','Seguros','Proteccion Civil'],
+        'Gastos Nomina': ['Sueldos y salarios', 'Prestaciones', 'Seguridad social', 'Impuestos', 'Indemnizaciones','Infonavit','Prestamos'],
+        'Gastos Operacion': ['Transporte', 'Logística', 'Alquiler de equipos','Seguros','Proteccion Civil','Insumos','Combustibles'],
         'Gastos Publicidad': ['Digital', 'Impresos', 'Eventos', 'Promociones', 'Marketing','Decoracion'],
         'Gastos Servicios': ['Agua', 'Luz', 'Teléfonia', 'Internet', 'Seguridad','Limpieza','Jardinería'],
     }
