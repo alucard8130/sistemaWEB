@@ -126,72 +126,97 @@
                 
             </div>
     {% endif %}
-
-    <div class="card my-4">
+<div class="card my-4">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0">Ingresos</h5>
         </div>
-        <ul class="list-group list-group-flush">
-            {% for origen, monto in ingresos_por_origen.items %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    {{ origen|capfirst }}
-                    <span>${{ monto|floatformat:2|intcomma }}</span>
-                </li>
-            {% endfor %}
-            
-            <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
-                <strong>Total Ingresos</strong>
-                <strong>${{ total_ingresos|floatformat:2|intcomma }}</strong>
-            </li>
-        </ul>
+        <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+    <tr>
+        <th>Concepto</th>
+        <th>{% if mes and anio %}{{ anio }}{% else %}Actual{% endif %}</th>
+        <th>{% if mes and anio %}{{ anio|add:"-1" }}{% else %}Año anterior{% endif %}</th>
+    </tr>
+</thead>
+            <tbody>
+                {% for origen, monto in ingresos_por_origen.items %}
+                <tr>
+                    <td>{{ origen|capfirst }}</td>
+                    <td>${{ monto|floatformat:2|intcomma }}</td>
+                    <td>
+                        ${{ ingresos_anio_ant|get_item:origen|default:"0.00"|floatformat:2|intcomma }}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr class="table-light">
+                    <td><strong>Total Ingresos</strong></td>
+                    <td><strong>${{ total_ingresos|floatformat:2|intcomma }}</strong></td>
+                    <td><strong>${{ total_ingresos_anio_ant|floatformat:2|intcomma }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
     </div>
 
     <div class="card my-4">
         <div class="card-header bg-danger text-white">
             <h5 class="mb-0">Gastos</h5>
         </div>
-        <ul class="list-group list-group-flush">
-            {% for grupo, subgrupos in estructura_gastos.items %}
-                <li class="list-group-item">
-                    <strong>{{ grupo }}</strong>
-                    <ul class="list-unstyled ms-3">
-                        {% for subgrupo, tipos in subgrupos.items %}
-                            <li>
-                                <span class="fw-semibold">{{ subgrupo }}</span>
-                                <ul class="list-unstyled ms-3">
-                                    {% for tipo in tipos %}
-                                        <li class="d-flex justify-content-between align-items-center">
-                                            <span>{{ tipo.tipo|capfirst }}</span>
-                                            <span>${{ tipo.total|floatformat:2|intcomma }}</span>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </li>
-            {% endfor %}
-            <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
-                <strong>Total Gastos</strong>
-                <strong>${{ total_gastos|floatformat:2|intcomma }}</strong>
-            </li>
-        </ul>
+        <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+    <tr>
+        <th>Concepto</th>
+        <th>{% if mes and anio %}{{ anio }}{% else %}Actual{% endif %}</th>
+        <th>{% if mes and anio %}{{ anio|add:"-1" }}{% else %}Año anterior{% endif %}</th>
+    </tr>
+</thead>
+<tbody>
+{% for grupo, subgrupos in estructura_gastos.items %}
+    <tr>
+        <td><strong>{{ grupo }}</strong></td>
+        <td></td>
+        <td></td>
+    </tr>
+    {% for subgrupo, tipos in subgrupos.items %}
+        <tr>
+            <td class="ps-4 fw-semibold">{{ subgrupo }}</td>
+            <td></td>
+            <td></td>
+        </tr>
+        {% for tipo in tipos %}
+            <tr>
+                <td class="ps-5">{{ tipo.tipo|capfirst }}</td>
+                <td>${{ tipo.total|floatformat:2|intcomma }}</td>
+                <td>
+                    ${{ gastos_anio_ant|get_item:tipo.tipo|default:"0.00"|floatformat:2|intcomma }}
+                </td>
+            </tr>
+        {% endfor %}
+    {% endfor %}
+{% endfor %}
+<tr class="table-light">
+    <td><strong>Total Gastos</strong></td>
+    <td><strong>${{ total_gastos|floatformat:2|intcomma }}</strong></td>
+    <td><strong>${{ total_gastos_anio_ant|floatformat:2|intcomma }}</strong></td>
+</tr>
+            </tbody>
+        </table>
+        </div>
     </div>
 
     <div class="alert alert-danger text-end">
-        <strong>Resultado:</strong>
-        <span class="ms-2">${{ saldo|floatformat:2|intcomma }}</span>
-    </div>
-   {% if modo == 'flujo' %}
-            <div class="alert alert-info text-end">
-                <span><strong>Saldo final bancos:</strong></span>
-                <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
-            </div>
-        {% else %}
-           <div class="alert alert-info text-end">
-        
-           </div>
-        {% endif %}
+    <strong>Resultado:</strong>
+    <span class="ms-2">${{ saldo|floatformat:2|intcomma }}</span>
+    <span class="ms-4"><strong>Año anterior:</strong> ${{ saldo_anio_ant|floatformat:2|intcomma }}</span>
+</div>
+    {% if modo == 'flujo' %}
+        <div class="alert alert-info text-end">
+            <span><strong>Saldo final bancos:</strong></span>
+            <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
+        </div>
+    {% endif %}
 </div>
 </body>
 </html>
