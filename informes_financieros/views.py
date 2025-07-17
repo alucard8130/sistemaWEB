@@ -11,6 +11,7 @@ import locale
 from django.contrib.auth.decorators import login_required
 from openpyxl import Workbook
 from django.http import HttpResponse
+from django.db.models.functions import ExtractMonth, ExtractYear
 
 
 
@@ -202,8 +203,6 @@ def reporte_ingresos_vs_gastos(request):
 
 
 @login_required
-@login_required
-@login_required
 def estado_resultados(request):
     empresas = Empresa.objects.all()
     fecha_inicio = request.GET.get("fecha_inicio")
@@ -219,20 +218,45 @@ def estado_resultados(request):
     else:
         empresa_id = request.GET.get("empresa") or ""
 
-    pagos = Pago.objects.exclude(forma_pago="nota_credito")
-    cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
-    gastos = Gasto.objects.all()
+    # Obtener meses y años existentes en la base de datos
+    if empresa_id:
+        meses_anios = Factura.objects.filter(empresa_id=empresa_id).annotate(
+            mes=ExtractMonth('fecha_vencimiento'),
+            anio=ExtractYear('fecha_vencimiento')
+        ).values('mes', 'anio').distinct()
+        meses_anios_otros = FacturaOtrosIngresos.objects.filter(empresa_id=empresa_id).annotate(
+            mes=ExtractMonth('fecha_vencimiento'),
+            anio=ExtractYear('fecha_vencimiento')
+        ).values('mes', 'anio').distinct()
+    else:
+        meses_anios = Factura.objects.annotate(
+            mes=ExtractMonth('fecha_vencimiento'),
+            anio=ExtractYear('fecha_vencimiento')
+        ).values('mes', 'anio').distinct()
+        meses_anios_otros = FacturaOtrosIngresos.objects.annotate(
+            mes=ExtractMonth('fecha_vencimiento'),
+            anio=ExtractYear('fecha_vencimiento')
+        ).values('mes', 'anio').distinct()
+
+    meses_anios_set = set((x['mes'], x['anio']) for x in list(meses_anios) + list(meses_anios_otros))
+    meses_anios_list = sorted(list(meses_anios_set), key=lambda x: (x[1], x[0]))
+    meses_unicos = sorted(set(m for m, y in meses_anios_list if m))
+    anios_unicos = sorted(set(y for m, y in meses_anios_list if y))
 
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
         periodo = "periodo_actual"
 
-    if periodo == "periodo_actual":
+    if periodo == "mes_actual":
+        fecha_inicio = hoy.replace(day=1)
+        fecha_fin = (hoy.replace(day=1) + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+        mes = hoy.month
+        anio = hoy.year
+    elif periodo == "periodo_actual":
         fecha_inicio = hoy.replace(month=1, day=1)
         fecha_fin = hoy
         mes = ""
         anio = ""
-
-    if mes and anio:
+    elif mes and anio:
         try:
             mes = int(mes)
             anio = int(anio)
@@ -244,6 +268,15 @@ def estado_resultados(request):
         except Exception:
             fecha_inicio = None
             fecha_fin = None
+    elif fecha_inicio and fecha_fin:
+        pass
+    else:
+        fecha_inicio = None
+        fecha_fin = None
+
+    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
+    gastos = Gasto.objects.all()
 
     empresa = None
     saldo_inicial = 0
@@ -260,6 +293,40 @@ def estado_resultados(request):
             saldo_inicial = 0
             saldo_final = 0
 
+    # --- Saldo inicial dinámico en modo flujo por mes ---
+    if modo == 'flujo' and mes and anio and empresa:
+        mes = int(mes)
+        anio = int(anio)
+        if mes == 1:
+            saldo_inicial = float(empresa.saldo_inicial or 0)
+        else:
+            saldo_inicial = float(empresa.saldo_inicial or 0)
+            for m in range(1, mes):
+                fecha_inicio_loop = datetime.date(anio, m, 1)
+                if m == 12:
+                    fecha_fin_loop = datetime.date(anio, 12, 31)
+                else:
+                    fecha_fin_loop = datetime.date(anio, m + 1, 1) - datetime.timedelta(days=1)
+                pagos_loop = Pago.objects.exclude(forma_pago="nota_credito").filter(
+                    factura__empresa_id=empresa_id,
+                    fecha_pago__gte=fecha_inicio_loop,
+                    fecha_pago__lte=fecha_fin_loop
+                )
+                cobros_otros_loop = CobroOtrosIngresos.objects.filter(
+                    factura__empresa_id=empresa_id,
+                    fecha_cobro__gte=fecha_inicio_loop,
+                    fecha_cobro__lte=fecha_fin_loop
+                )
+                gastos_loop = PagoGasto.objects.filter(
+                    gasto__empresa_id=empresa_id,
+                    fecha_pago__gte=fecha_inicio_loop,
+                    fecha_pago__lte=fecha_fin_loop
+                )
+                total_ingresos_loop = float(pagos_loop.aggregate(total=Sum("monto"))["total"] or 0) + \
+                                    float(cobros_otros_loop.aggregate(total=Sum("monto"))["total"] or 0)
+                total_gastos_loop = float(gastos_loop.aggregate(total=Sum("monto"))["total"] or 0)
+                saldo_inicial += total_ingresos_loop - total_gastos_loop
+    # --- Fin de saldo inicial dinámico ---
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
@@ -326,7 +393,6 @@ def estado_resultados(request):
             if fecha_fin == ultimo_dia_mes:
                 empresa.saldo_final = saldo_final_flujo
                 empresa.save()
-                # Pasar saldo_final al saldo_inicial del siguiente mes
                 siguiente_mes = fecha_fin.month + 1 if fecha_fin.month < 12 else 1
                 siguiente_anio = fecha_fin.year if fecha_fin.month < 12 else fecha_fin.year + 1
                 if hoy.month == siguiente_mes and hoy.year == siguiente_anio:
@@ -374,7 +440,6 @@ def estado_resultados(request):
         )
         total_gastos = float(sum(x["total"] for x in gastos_por_tipo_qs))
 
-    # Estructura anidada: grupo > subgrupo > tipos
     estructura_gastos = OrderedDict()
     for g in gastos_por_grupo:
         if modo == 'flujo':
@@ -425,6 +490,8 @@ def estado_resultados(request):
             "saldo_inicial": saldo_inicial,
             "saldo_final": saldo_final,
             "saldo_final_flujo": saldo_final_flujo,
+            "meses_unicos": meses_unicos,
+            "anios_unicos": anios_unicos,
         },
     )
 
