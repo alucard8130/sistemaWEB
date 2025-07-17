@@ -5,5 +5,5 @@ from .models import Empresa
 
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'rfc', 'email', 'telefono')
+    list_display = ('nombre', 'rfc', 'cuenta_bancaria', 'numero_cuenta', 'saldo_inicial', 'saldo_final')
     search_fields = ('nombre', 'rfc')
