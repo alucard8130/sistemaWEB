@@ -7,160 +7,158 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 17/06/2025
+        Date of modification: 17/07/2025
         Description: Expenditure report
     -->
-    <title>Reporte Egresos</title>
+    <meta charset="UTF-8">
+    <title>Reporte egresos</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <h2>Reporte egresos</h2>
+
+        <form method="get" class="row g-2 mb-3">
+            {% if empresas|length > 1 %}
+            <div class="col-auto">
+                <label>Empresa:</label>
+                <select name="empresa" class="form-select">
+                    <option value="">Todas</option>
+                    {% for emp in empresas %}
+                        <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-auto">
+                <select name="proveedor" class="form-select">
+                    <option value="">Proveedores</option>
+                    {% for p in proveedores %}
+                        <option value="{{ p.id }}" {% if p.id|stringformat:"s" == proveedor_id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="empleado" class="form-select">
+                    <option value="">Empleados</option>
+                    {% for e in empleados %}
+                        <option value="{{ e.id }}" {% if e.id|stringformat:"s" == empleado_id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="forma_pago" class="form-select">
+                    <option value="">Formas de pago</option>
+                    {% for val, label in formas_pago %}
+                        <option value="{{ val }}" {% if val == forma_pago_actual %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control">
+            </div>
+            <div class="col-auto">
+                <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
+            </div>
+            <div class="col-auto align-self-end">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-secondary">Limpiar</a>
+                <a href="{% url 'exportar_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-success ">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+                </a>
+            </div>
+        </form>
+        <div class="alert alert-info">
+            <strong>Total pagado:</strong> 
+            ${{ total|floatformat:2|intcomma }}
+        </div>
+
+        <div class="table-responsive rounded-3 border">
+            <table class="table align-middle mb-0 shadow-sm">
+                <thead>
+                    <tr>
+                        <th>Fecha Pago</th>
+                        <th>Monto</th>
+                        {% if request.user.is_superuser %}
+                            <th>Empresa</th>
+                        {% endif %}
+                        <th>Proveedor/Empleado</th>
+                        <th>Forma de Pago</th>
+                        <th>Comentarios</th>
+                        <th>Comprobante</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos %}
+                    <tr>
+                        <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td>
+                        <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                        {% if request.user.is_superuser %}
+                        <td>{{ pago.gasto.empresa.nombre }}</td>
+                        {% endif %}
+                        <td>
+                            {% if pago.gasto.proveedor %}
+                                {{ pago.gasto.proveedor.nombre }}
+                            {% elif pago.gasto.empleado %}
+                                {{ pago.gasto.empleado.nombre }}
+                            {% endif %}
+                        </td>
+                        <td>{{ pago.get_forma_pago_display }}</td>
+                        
+                        <td>{{ pago.referencia }}</td>
+                        <td>
+                            {% if pago.comprobante %}
+                                <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+            
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">No hay pagos registrados con los filtros seleccionados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <nav aria-label="Paginación">
+                <ul class="pagination">
+                    {% if pagos.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagos.previous_page_number }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Anterior</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ pagos.number }} de {{ pagos.paginator.num_pages }}</span></li>
+                    {% if pagos.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagos.next_page_number }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Siguiente</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                    {% endif %}
+                </ul>
+            </nav> 
         </div>
     </div>
-<div class="container mt-4">
-    <h2>Reporte Egresos</h2>
-    <form method="get" class="row g-2 mb-4">
-        {% if empresas|length > 1 %}
-        <div class="col-md-2">
-            <label>Empresa:</label>
-            <select name="empresa" class="form-select">
-                <option value="">Todas</option>
-                {% for emp in empresas %}
-                    <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        {% endif %}
-        <div class="col-md-2">
-    <label>Proveedor:</label>
-    <select name="proveedor" class="form-select">
-        <option value="">Todos</option>
-        {% for p in proveedores %}
-            <option value="{{ p.id }}" {% if p.id|stringformat:"s" == proveedor_id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
-        {% endfor %}
-    </select>
-</div>
-<div class="col-md-2">
-    <label>Empleado:</label>
-    <select name="empleado" class="form-select">
-        <option value="">Todos</option>
-        {% for e in empleados %}
-            <option value="{{ e.id }}" {% if e.id|stringformat:"s" == empleado_id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
-        {% endfor %}
-    </select>
-</div>
-<div class="col-md-2">
-    <label>Forma de pago:</label>
-    <select name="forma_pago" class="form-select">
-        <option value="">Todas</option>
-        {% for val, label in formas_pago %}
-            <option value="{{ val }}" {% if val == forma_pago_actual %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-    </select>
-</div>
-<div class="col-md-2">
-    <label>Fecha inicio:</label>
-    <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control">
-</div>
-<div class="col-md-2">
-    <label>Fecha fin:</label>
-    <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
-</div>
+        <!-- 🔹 Footer -->
+        <footer>
+            © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+            Creado por Jaime M. Estrada Bernabé
+        </footer>
 
-        <div class="col-md-2 align-self-end">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-secondary">Limpiar</a>
-        </div>
-        <div>
-            
-            <a href="{% url 'exportar_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-success ">
-                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
-            </a>
-            <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar Menu</a>
-        </div>
-        
-    </form>
-    <div class="alert alert-info"><strong>Total pagado:</strong> ${{ total|floatformat:2|intcomma }}</div>
-    <table class="table table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Fecha Pago</th>
-                <th>Monto</th>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Proveedor/Empleado</th>
-                <th>Forma de Pago</th>
-                <th>Comentarios</th>
-                <th>Comprobante</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pago in pagos %}
-            <tr>
-                <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td>
-                <td>${{ pago.monto|floatformat:2|intcomma }}</td>
-                {% if request.user.is_superuser %}
-                <td>{{ pago.gasto.empresa.nombre }}</td>
-                {% endif %}
-                <td>
-                    {% if pago.gasto.proveedor %}
-                        {{ pago.gasto.proveedor.nombre }}
-                    {% elif pago.gasto.empleado %}
-                        {{ pago.gasto.empleado.nombre }}
-                    {% endif %}
-                </td>
-                <td>{{ pago.get_forma_pago_display }}</td>
-                
-                <td>{{ pago.referencia }}</td>
-                <td>
-                    {% if pago.comprobante %}
-                        <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
-                    {% else %}
-                        <span class="text-muted"></span>
-                    {% endif %}
-      
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7">No hay pagos registrados con los filtros seleccionados.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <nav aria-label="Paginación">
-  <ul class="pagination">
-    {% if pagos.has_previous %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ pagos.previous_page_number }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Anterior</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-    {% endif %}
-    <li class="page-item disabled"><span class="page-link">Página {{ pagos.number }} de {{ pagos.paginator.num_pages }}</span></li>
-    {% if pagos.has_next %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ pagos.next_page_number }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Siguiente</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-    {% endif %}
-  </ul>
-</nav>
-    
-</div>
-    <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
-    </footer>
-    <script src="{% static 'js/script.js' %}"></script>
+        <!-- Scripts -->
+        <script src="{% static 'js/script.js' %}"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>
