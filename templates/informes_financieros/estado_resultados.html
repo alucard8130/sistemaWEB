@@ -79,10 +79,16 @@
         </div>
         {% endif %}
         <div class="col-auto">
+            <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
+                {% if periodo == 'periodo_actual' %}disabled{% endif %}>
+                Periodo actual
+            </button>
+        </div>
+        <div class="col-auto">
             {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
             <select name="mes" class="form-select" style="width:auto;">
                 <option value="">Mes</option>
-                {% for m in 1|get_range:12 %}
+                {% for m in 1|get_range:13 %}
                     <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
                         {{ meses|index:m|default:"" }}
                     </option>
@@ -93,25 +99,31 @@
         <div class="col-auto">
             <select name="anio" class="form-select" style="width:auto;">
                 <option value="">Año</option>
-                {% for y in 2022|get_range:2030 %}
+                {% for y in 2025|get_range:2027 %}
                     <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="col-auto">
-            <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
-                {% if periodo == 'periodo_actual' %}disabled{% endif %}>
-                Periodo actual
-            </button>
-        </div>
+        
         <div class="col-auto">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
                 Exportar a Excel
             </a>
+            
             <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
         </div>
     </form>
+    {% if modo == 'flujo' %}
+            <div class="alert alert-info text-end">
+         <span><strong>Saldo inicial bancos:</strong></span>
+                <span>${{ saldo_inicial|floatformat:2|intcomma }}</span>
+            </div>
+    {% else %}
+            <div class="alert alert-info text-end">
+                
+            </div>
+    {% endif %}
 
     <div class="card my-4">
         <div class="card-header bg-primary text-white">
@@ -124,6 +136,7 @@
                     <span>${{ monto|floatformat:2|intcomma }}</span>
                 </li>
             {% endfor %}
+            
             <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
                 <strong>Total Ingresos</strong>
                 <strong>${{ total_ingresos|floatformat:2|intcomma }}</strong>
@@ -163,10 +176,20 @@
         </ul>
     </div>
 
-    <div class="alert alert-info text-end">
+    <div class="alert alert-danger text-end">
         <strong>Resultado:</strong>
         <span class="ms-2">${{ saldo|floatformat:2|intcomma }}</span>
     </div>
+   {% if modo == 'flujo' %}
+            <div class="alert alert-info text-end">
+                <span><strong>Saldo final bancos:</strong></span>
+                <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
+            </div>
+        {% else %}
+           <div class="alert alert-info text-end">
+        
+           </div>
+        {% endif %}
 </div>
 </body>
 </html>

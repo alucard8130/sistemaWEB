@@ -202,6 +202,8 @@ def reporte_ingresos_vs_gastos(request):
 
 
 @login_required
+@login_required
+@login_required
 def estado_resultados(request):
     empresas = Empresa.objects.all()
     fecha_inicio = request.GET.get("fecha_inicio")
@@ -243,10 +245,21 @@ def estado_resultados(request):
             fecha_inicio = None
             fecha_fin = None
 
+    empresa = None
+    saldo_inicial = 0
+    saldo_final = 0
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos = gastos.filter(empresa_id=empresa_id)
+        try:
+            empresa = Empresa.objects.get(id=empresa_id)
+            saldo_inicial = float(empresa.saldo_inicial or 0)
+            saldo_final = float(empresa.saldo_final or 0)
+        except Empresa.DoesNotExist:
+            saldo_inicial = 0
+            saldo_final = 0
+
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
@@ -255,6 +268,8 @@ def estado_resultados(request):
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos = gastos.filter(fecha__lte=fecha_fin)
+
+    saldo_final_flujo = None
 
     if modo == 'flujo':
         pagos_modo = pagos
@@ -302,6 +317,21 @@ def estado_resultados(request):
             .annotate(total=Sum("monto"))
             .order_by("gasto__tipo_gasto__nombre")
         )
+        total_gastos = float(sum(x["total"] for x in gastos_por_tipo_qs))
+        saldo_final_flujo = float(saldo_inicial) + float(total_ingresos) - float(total_gastos)
+
+        # Guardar saldo_final y pasarlo como saldo_inicial al siguiente mes si es cierre de mes y superusuario
+        if empresa and fecha_fin and request.user.is_superuser:
+            ultimo_dia_mes = (fecha_fin.replace(day=28) + datetime.timedelta(days=4)).replace(day=1) - datetime.timedelta(days=1)
+            if fecha_fin == ultimo_dia_mes:
+                empresa.saldo_final = saldo_final_flujo
+                empresa.save()
+                # Pasar saldo_final al saldo_inicial del siguiente mes
+                siguiente_mes = fecha_fin.month + 1 if fecha_fin.month < 12 else 1
+                siguiente_anio = fecha_fin.year if fecha_fin.month < 12 else fecha_fin.year + 1
+                if hoy.month == siguiente_mes and hoy.year == siguiente_anio:
+                    empresa.saldo_inicial = saldo_final_flujo
+                    empresa.save()
     else:
         facturas_cuotas = Factura.objects.filter(
             fecha_vencimiento__range=[fecha_inicio, fecha_fin]
@@ -342,6 +372,7 @@ def estado_resultados(request):
             .annotate(total=Sum("monto"))
             .order_by("tipo_gasto__nombre")
         )
+        total_gastos = float(sum(x["total"] for x in gastos_por_tipo_qs))
 
     # Estructura anidada: grupo > subgrupo > tipos
     estructura_gastos = OrderedDict()
@@ -371,7 +402,6 @@ def estado_resultados(request):
             {"tipo": nombre_tipo or "Sin tipo", "total": float(x["total"])}
         )
 
-    total_gastos = float(sum(g["total"] for g in gastos_por_tipo))
     saldo = float(total_ingresos - total_gastos)
 
     return render(
@@ -392,6 +422,9 @@ def estado_resultados(request):
             "anio": str(anio or ""),
             "periodo": periodo,
             "modo": modo,
+            "saldo_inicial": saldo_inicial,
+            "saldo_final": saldo_final,
+            "saldo_final_flujo": saldo_final_flujo,
         },
     )
 

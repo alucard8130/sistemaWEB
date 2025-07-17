@@ -46,44 +46,63 @@
 
                 <!-- Form -->
                 <form method="post" class="p-4 rounded custom-form">
-                    {% csrf_token %}
-                    <!-- {{ form.as_p }} -->
-                    
-                    <!-- Form fields -->
-                    <div class="form-group mb-3">
-                        {{ form.nombre.label_tag }}
-                        {{ form.nombre }}
-                        {{ form.nombre.errors }}
-                    </div>
+    {% csrf_token %}
+    <!-- {{ form.as_p }} -->
+    
+    <div class="form-group mb-3">
+        {{ form.nombre.label_tag }}
+        {{ form.nombre }}
+        {{ form.nombre.errors }}
+    </div>
 
-                    <div class="form-group mb-3">
-                        {{ form.rfc.label_tag }}
-                        {{ form.rfc }}
-                        {{ form.rfc.errors }}
-                    </div>
+    <div class="form-group mb-3">
+        {{ form.rfc.label_tag }}
+        {{ form.rfc }}
+        {{ form.rfc.errors }}
+    </div>
 
-                    <div class="form-group mb-3">
-                        {{ form.direccion.label_tag }}
-                        {{ form.direccion }}
-                        {{ form.direccion.errors }}
-                    </div>
+    <div class="form-group mb-3">
+        {{ form.direccion.label_tag }}
+        {{ form.direccion }}
+        {{ form.direccion.errors }}
+    </div>
 
-                    <div class="form-group mb-3">
-                        {{ form.telefono.label_tag }}
-                        {{ form.telefono }}
-                        {{ form.telefono.errors }}
-                    </div>
+    <div class="form-group mb-3">
+        {{ form.telefono.label_tag }}
+        {{ form.telefono }}
+        {{ form.telefono.errors }}
+    </div>
 
-                    <div class="form-group mb-3">
-                        {{ form.email.label_tag }}
-                        {{ form.email }}
-                        {{ form.email.errors }}
-                    </div>
-                    <div class="d-flex justify-content-between mt-3">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                        <a href="{% url 'empresa_lista' %}" class="btn btn-secondary">Cancelar</a>
-                    </div>
-                </form>
+    <div class="form-group mb-3">
+        {{ form.email.label_tag }}
+        {{ form.email }}
+        {{ form.email.errors }}
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.cuenta_bancaria.label_tag }}
+        {{ form.cuenta_bancaria }}
+        {{ form.cuenta_bancaria.errors }}
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.numero_cuenta.label_tag }}
+        {{ form.numero_cuenta }}
+        {{ form.numero_cuenta.errors }}
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.saldo_inicial.label_tag }}
+        {{ form.saldo_inicial }}
+        {{ form.saldo_inicial.errors }}
+    </div>
+
+
+    <div class="d-flex justify-content-between mt-3">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="{% url 'empresa_lista' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
             </div>
         </div>
     </div>
