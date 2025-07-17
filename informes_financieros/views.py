@@ -319,136 +319,6 @@ def estado_resultados(request):
             saldo_inicial = 0
             saldo_final = 0
 
-    # --- Cálculo de año anterior ---
-    ingresos_anio_ant = OrderedDict()
-    gastos_anio_ant = OrderedDict()
-    total_ingresos_anio_ant = 0
-    total_gastos_anio_ant = 0
-
-    if fecha_inicio and fecha_fin and empresa_id:
-        if isinstance(fecha_inicio, str):
-            fecha_inicio_dt = datetime.datetime.strptime(
-                fecha_inicio, "%Y-%m-%d"
-            ).date()
-        else:
-            fecha_inicio_dt = fecha_inicio
-        if isinstance(fecha_fin, str):
-            fecha_fin_dt = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d").date()
-        else:
-            fecha_fin_dt = fecha_fin
-
-        fecha_inicio_ant = fecha_inicio_dt.replace(year=fecha_inicio_dt.year - 1)
-        fecha_fin_ant = fecha_fin_dt.replace(year=fecha_fin_dt.year - 1)
-
-        if modo == "flujo":
-            pagos_ant = Pago.objects.exclude(forma_pago="nota_credito").filter(
-                factura__empresa_id=empresa_id,
-                fecha_pago__gte=fecha_inicio_ant,
-                fecha_pago__lte=fecha_fin_ant,
-            )
-            cobros_otros_ant = CobroOtrosIngresos.objects.filter(
-                factura__empresa_id=empresa_id,
-                fecha_cobro__gte=fecha_inicio_ant,
-                fecha_cobro__lte=fecha_fin_ant,
-            )
-            ingresos_qs_ant = (
-                pagos_ant.annotate(
-                    origen=Case(
-                        When(factura__local__isnull=False, then=Value("Locales")),
-                        When(
-                            factura__area_comun__isnull=False,
-                            then=Value("Áreas Comunes"),
-                        ),
-                        default=Value("Sin origen"),
-                        output_field=CharField(),
-                    )
-                )
-                .values("origen")
-                .annotate(total=Sum("monto"))
-                .order_by("origen")
-            )
-            otros_ingresos_qs_ant = (
-                cobros_otros_ant.values("factura__tipo_ingreso__nombre")
-                .annotate(total=Sum("monto"))
-                .order_by("factura__tipo_ingreso__nombre")
-            )
-            for x in ingresos_qs_ant:
-                ingresos_anio_ant[x["origen"]] = float(x["total"])
-            for x in otros_ingresos_qs_ant:
-                tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
-                ingresos_anio_ant[f"Otros ingresos - {tipo}"] = float(x["total"])
-            total_ingresos_anio_ant = float(sum(ingresos_anio_ant.values()))
-
-            gastos_ant = PagoGasto.objects.filter(
-                gasto__empresa_id=empresa_id,
-                fecha_pago__gte=fecha_inicio_ant,
-                fecha_pago__lte=fecha_fin_ant,
-            )
-            gastos_por_tipo_ant = (
-                gastos_ant.values("gasto__tipo_gasto__nombre")
-                .annotate(total=Sum("monto"))
-                .order_by("gasto__tipo_gasto__nombre")
-            )
-            for x in gastos_por_tipo_ant:
-                nombre_tipo = (x["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
-                gastos_anio_ant[nombre_tipo] = float(x["total"])
-                #gastos_anio_ant[x["gasto__tipo_gasto__nombre"] or "Sin tipo"] = float(
-                 #   x["total"]
-                #)
-            total_gastos_anio_ant = float(sum(gastos_anio_ant.values()))
-        else:
-            facturas_cuotas_ant = Factura.objects.filter(
-                empresa_id=empresa_id,
-                fecha_vencimiento__range=[fecha_inicio_ant, fecha_fin_ant],
-            )
-            facturas_otros_ant = FacturaOtrosIngresos.objects.filter(
-                empresa_id=empresa_id,
-                fecha_vencimiento__range=[fecha_inicio_ant, fecha_fin_ant],
-            )
-            origenes_ant = (
-                facturas_cuotas_ant.annotate(
-                    origen=Case(
-                        When(local__isnull=False, then=Value("Locales")),
-                        When(area_comun__isnull=False, then=Value("Áreas Comunes")),
-                        default=Value("Sin origen"),
-                        output_field=CharField(),
-                    )
-                )
-                .values("origen")
-                .annotate(total=Sum("monto"))
-                .order_by("origen")
-            )
-            for x in origenes_ant:
-                ingresos_anio_ant[x["origen"]] = float(x["total"])
-            otros_ant = (
-                facturas_otros_ant.values("tipo_ingreso__nombre")
-                .annotate(total=Sum("monto"))
-                .order_by("tipo_ingreso__nombre")
-            )
-            for x in otros_ant:
-                tipo = x["tipo_ingreso__nombre"] or "Otros ingresos"
-                ingresos_anio_ant[f"Otros ingresos - {tipo}"] = float(x["total"])
-            total_ingresos_anio_ant = float(sum(ingresos_anio_ant.values()))
-
-            gastos_ant = Gasto.objects.filter(
-                empresa_id=empresa_id,
-                fecha__gte=fecha_inicio_ant,
-                fecha__lte=fecha_fin_ant,
-            )
-            gastos_por_tipo_ant = (
-                gastos_ant.values("tipo_gasto__nombre")
-                .annotate(total=Sum("monto"))
-                .order_by("tipo_gasto__nombre")
-            )
-            for x in gastos_por_tipo_ant:
-                if modo == "flujo":
-                    nombre_tipo = (x.get("gasto__tipo_gasto__nombre") or "Sin tipo").strip().title()
-                else:
-                    nombre_tipo = (x.get("tipo_gasto__nombre") or "Sin tipo").strip().title()
-                gastos_anio_ant[nombre_tipo] = float(x["total"])
-                
-            total_gastos_anio_ant = float(sum(gastos_anio_ant.values()))
-
     # --- Saldo inicial dinámico en modo flujo por mes ---
     if modo == "flujo" and mes and anio and empresa:
         mes = int(mes)
@@ -488,6 +358,7 @@ def estado_resultados(request):
                 )
                 saldo_inicial += total_ingresos_loop - total_gastos_loop
     # --- Fin de saldo inicial dinámico ---
+
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
@@ -530,9 +401,10 @@ def estado_resultados(request):
         )
         ingresos_por_origen = OrderedDict()
         for x in ingresos_qs:
-            ingresos_por_origen[x["origen"]] = float(x["total"])
+            origen = (x["origen"] or "Sin origen").strip().title()
+            ingresos_por_origen[origen] = float(x["total"])
         for x in otros_ingresos_qs:
-            tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
+            tipo = (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
         total_ingresos = float(sum(ingresos_por_origen.values()))
         gastos_por_grupo = (
@@ -598,14 +470,15 @@ def estado_resultados(request):
             .order_by("origen")
         )
         for x in origenes:
-            ingresos_por_origen[x["origen"]] = float(x["total"])
+            origen = (x["origen"] or "Sin origen").strip().title()
+            ingresos_por_origen[origen] = float(x["total"])
         otros = (
             facturas_otros.values("tipo_ingreso__nombre")
             .annotate(total=Sum("monto"))
             .order_by("tipo_ingreso__nombre")
         )
         for x in otros:
-            tipo = x["tipo_ingreso__nombre"] or "Otros ingresos"
+            tipo = (x["tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
         total_ingresos = float(sum(ingresos_por_origen.values()))
         gastos_por_grupo = (
@@ -648,15 +521,14 @@ def estado_resultados(request):
     gastos_por_tipo = []
     for x in gastos_por_tipo_qs:
         if modo == "flujo":
-            nombre_tipo = x["gasto__tipo_gasto__nombre"]
+            nombre_tipo = (x["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
         else:
-            nombre_tipo = x["tipo_gasto__nombre"]
+            nombre_tipo = (x["tipo_gasto__nombre"] or "Sin tipo").strip().title()
         gastos_por_tipo.append(
-            {"tipo": nombre_tipo or "Sin tipo", "total": float(x["total"])}
+            {"tipo": nombre_tipo, "total": float(x["total"])}
         )
 
     saldo = float(total_ingresos - total_gastos)
-    saldo_anio_ant = total_ingresos_anio_ant - total_gastos_anio_ant
 
     return render(
         request,
@@ -681,11 +553,6 @@ def estado_resultados(request):
             "saldo_final_flujo": saldo_final_flujo,
             "meses_unicos": meses_unicos,
             "anios_unicos": anios_unicos,
-            "ingresos_anio_ant": ingresos_anio_ant,
-            "gastos_anio_ant": gastos_anio_ant,
-            "total_ingresos_anio_ant": total_ingresos_anio_ant,
-            "total_gastos_anio_ant": total_gastos_anio_ant,
-            "saldo_anio_ant": saldo_anio_ant,
         },
     )
 
@@ -763,12 +630,10 @@ def exportar_estado_resultados_excel(request):
         try:
             empresa = Empresa.objects.get(id=empresa_id)
             saldo_inicial = float(empresa.saldo_inicial or 0)
-            # Si tienes un campo fecha_saldo_inicial, úsalo aquí para anio_inicio
             anio_inicio = anio
         except Empresa.DoesNotExist:
             saldo_inicial = 0
             anio_inicio = anio
-        # Suma todos los meses desde enero del año consultado hasta el mes anterior
         for y in range(anio_inicio, anio + 1):
             mes_inicio = 1
             mes_fin = mes - 1 if y == anio else 12
@@ -841,13 +706,14 @@ def exportar_estado_resultados_excel(request):
             .annotate(total=Sum("monto"))
             .order_by("factura__tipo_ingreso__nombre")
         )
-        ingresos_por_origen = []
+        ingresos_por_origen = OrderedDict()
         for x in ingresos_qs:
-            ingresos_por_origen.append((x["origen"], float(x["total"])))
+            origen = (x["origen"] or "Sin origen").strip().title()
+            ingresos_por_origen[origen] = float(x["total"])
         for x in otros_ingresos_qs:
-            tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
-            ingresos_por_origen.append((f"Otros ingresos - {tipo}", float(x["total"])))
-        total_ingresos = float(sum(x[1] for x in ingresos_por_origen))
+            tipo = (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
+        total_ingresos = float(sum(ingresos_por_origen.values()))
         gastos_por_grupo = (
             gastos_modo.values(
                 "gasto__tipo_gasto__subgrupo__grupo__nombre",
@@ -863,9 +729,9 @@ def exportar_estado_resultados_excel(request):
         )
         estructura_gastos = OrderedDict()
         for g in gastos_por_grupo:
-            grupo = g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo"
-            subgrupo = g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo"
-            tipo = g["gasto__tipo_gasto__nombre"] or "Sin tipo"
+            grupo = (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+            subgrupo = (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            tipo = (g["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
             total = float(g["total"])
             if grupo not in estructura_gastos:
                 estructura_gastos[grupo] = OrderedDict()
@@ -886,7 +752,7 @@ def exportar_estado_resultados_excel(request):
         if empresa_id:
             facturas_cuotas = facturas_cuotas.filter(empresa_id=empresa_id)
             facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
-        ingresos_por_origen = []
+        ingresos_por_origen = OrderedDict()
         origenes = (
             facturas_cuotas.annotate(
                 origen=Case(
@@ -901,16 +767,17 @@ def exportar_estado_resultados_excel(request):
             .order_by("origen")
         )
         for x in origenes:
-            ingresos_por_origen.append((x["origen"], float(x["total"])))
+            origen = (x["origen"] or "Sin origen").strip().title()
+            ingresos_por_origen[origen] = float(x["total"])
         otros = (
             facturas_otros.values("tipo_ingreso__nombre")
             .annotate(total=Sum("monto"))
             .order_by("tipo_ingreso__nombre")
         )
         for x in otros:
-            tipo = x["tipo_ingreso__nombre"] or "Otros ingresos"
-            ingresos_por_origen.append((f"Otros ingresos - {tipo}", float(x["total"])))
-        total_ingresos = float(sum(x[1] for x in ingresos_por_origen))
+            tipo = (x["tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
+        total_ingresos = float(sum(ingresos_por_origen.values()))
         gastos_por_grupo = (
             gastos.values(
                 "tipo_gasto__subgrupo__grupo__nombre",
@@ -926,9 +793,9 @@ def exportar_estado_resultados_excel(request):
         )
         estructura_gastos = OrderedDict()
         for g in gastos_por_grupo:
-            grupo = g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo"
-            subgrupo = g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo"
-            tipo = g["tipo_gasto__nombre"] or "Sin tipo"
+            grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+            subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
             total = float(g["total"])
             if grupo not in estructura_gastos:
                 estructura_gastos[grupo] = OrderedDict()
@@ -950,19 +817,22 @@ def exportar_estado_resultados_excel(request):
 
     if modo == "flujo":
         ws.append(["Saldo inicial bancos", saldo_inicial])
-    ws.append(["Ingresos"])
-    for origen, monto in ingresos_por_origen:
+
+    # Ingresos
+    ws.append(["Ingresos", "Importe"])
+    for origen, monto in ingresos_por_origen.items():
         ws.append([origen, monto])
     ws.append(["Total Ingresos", total_ingresos])
     ws.append([])
 
-    ws.append(["Gastos"])
+    # Gastos
+    ws.append(["Gastos", "Importe"])
     for grupo, subgrupos in estructura_gastos.items():
-        ws.append([grupo])
+        ws.append([grupo, ""])
         for subgrupo, tipos in subgrupos.items():
-            ws.append(["", subgrupo])
+            ws.append(["  " + subgrupo, ""])
             for tipo in tipos:
-                ws.append(["", "", tipo["tipo"], tipo["total"]])
+                ws.append(["    " + tipo["tipo"], tipo["total"]])
     ws.append(["Total Gastos", total_gastos])
     ws.append([])
 
