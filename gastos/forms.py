@@ -13,6 +13,7 @@ class SubgrupoGastoForm(forms.ModelForm):
         fields = ['grupo', 'nombre']
 
         widgets = {
+            'grupo': forms.Select(attrs={'class': 'form-select'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
         }
       

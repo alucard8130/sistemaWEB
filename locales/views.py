@@ -121,7 +121,10 @@ def eliminar_local(request, pk):
 #@staff_member_required
 #@user_passes_test(lambda u: u.is_staff)
 def locales_inactivos(request):
-    empresa = request.user.perfilusuario.empresa
+    if empresa := getattr(request.user, 'perfilusuario', None):
+        empresa = request.user.perfilusuario.empresa
+    else:
+        empresa = None
     locales = LocalComercial.objects.filter(empresa=empresa,activo=False)
     return render(request, 'locales/locales_inactivos.html', {'locales': locales})
 

@@ -462,16 +462,23 @@ def dashboard_saldos(request):
     # Empresa según usuario
     if es_super:
         empresas = Empresa.objects.all()
+        if not empresas.exists():
+            #messages.error(request, "No hay empresas registradas en el sistema.")
+            return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})
         empresa_id = request.GET.get('empresa')
         if not empresa_id or empresa_id == "todas":
             filtro_empresa = Q()
         else:
             filtro_empresa = Q(empresa_id=empresa_id)
     else:
-        empresa = request.user.perfilusuario.empresa
-        empresas = Empresa.objects.filter(id=empresa.id)
-        empresa_id = empresa.id
-        filtro_empresa = Q(empresa_id=empresa_id)
+        try:
+            empresa = request.user.perfilusuario.empresa
+            empresas = Empresa.objects.filter(id=empresa.id)
+            empresa_id = empresa.id
+            filtro_empresa = Q(empresa_id=empresa_id)
+        except Exception:
+            messages.error(request, "No tienes una empresa asignada. Contacta al administrador.")
+            return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})   
 
     # Filtrado base de facturas pendientes
     facturas = Factura.objects.filter(estatus='pendiente').filter(filtro_empresa)
@@ -1546,8 +1553,11 @@ def crear_factura_otros_ingresos(request):
             return redirect('lista_facturas_otros_ingresos')
     else:
         form = FacturaOtrosIngresosForm(user=request.user)
-
-    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa=request.user.perfilusuario.empresa)
+    try:
+        tipos_ingreso = TipoOtroIngreso.objects.filter(empresa=request.user.perfilusuario.empresa)
+    except Exception:
+        
+        tipos_ingreso = []
 
     return render(request, 'otros_ingresos/crear_factura.html', {'form': form, 'tipos_ingreso': tipos_ingreso})
 

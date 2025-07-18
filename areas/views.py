@@ -124,7 +124,10 @@ def eliminar_area(request, pk):
 #@user_passes_test(lambda u: u.is_staff)
 @login_required
 def areas_inactivas(request):
-    empresa=request.user.perfilusuario.empresa
+    if empresa := getattr(request.user, 'perfilusuario', None):
+        empresa = request.user.perfilusuario.empresa
+    else:
+        empresa = None
     areas = AreaComun.objects.filter(empresa=empresa,activo=False)
     return render(request, 'areas/areas_inactivas.html', {'areas': areas})
 

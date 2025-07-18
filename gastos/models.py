@@ -25,7 +25,7 @@ class SubgrupoGasto(models.Model):
  
     
 class TipoGasto(models.Model):
-    empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE,null=True,blank=True)
+    empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     subgrupo = models.ForeignKey(SubgrupoGasto, on_delete=models.CASCADE, related_name='tipos')
     nombre = models.CharField(max_length=100)
     descripcion = models.CharField(max_length=255, blank=True)

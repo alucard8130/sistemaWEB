@@ -30,21 +30,17 @@ from django.db.models import ProtectedError
 @login_required
 def subgrupo_gasto_crear(request):
     if request.method == 'POST':
-        form = SubgrupoGastoForm(request.POST, user=request.user)
+        form = SubgrupoGastoForm(request.POST)
         if form.is_valid():
             form.save()
             return redirect('subgrupos_gasto_lista')
     else:
-        form = SubgrupoGastoForm(user=request.user)
+        form = SubgrupoGastoForm()
     return render(request, 'gastos/subgrupo_crear.html', {'form': form})
 
 
 @login_required
 def subgrupo_gasto_eliminar(request, pk):
-    if not request.user.is_superuser:
-        messages.error(request, "No tienes permiso para eliminar subgrupos de gasto.")
-        return redirect('subgrupos_gasto_lista')
-
     subgrupo = get_object_or_404(SubgrupoGasto, pk=pk)
     if request.method == 'POST':
         try:
@@ -61,12 +57,7 @@ def subgrupos_gasto_lista(request):
     if request.user.is_superuser:
         subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
     else:
-        #empresa= request.user.perfilusuario.empresa
-        # Filtrar subgrupos por empresa
-        #subgrupos= SubgrupoGasto.objects.filter(grupo__empresa=empresa).select_related('grupo').order_by('grupo__nombre', 'nombre')
         subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
-    #subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
-        #subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre')
     return render(request, 'gastos/subgrupos_lista.html', {'subgrupos': subgrupos})
 
 @login_required
