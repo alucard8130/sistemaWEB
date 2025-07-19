@@ -10,7 +10,7 @@ env/
 *.key
 
 # Archivos de base de datos local
-*.sqlite3
+#*.sqlite3
 
 # Archivos de Python compilados
 __pycache__/
