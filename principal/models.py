@@ -30,7 +30,7 @@ class AuditoriaCambio(models.Model):
         return f'{self.get_modelo_display()} {self.objeto_id} - {self.campo}'
     
 class Evento(models.Model):
-    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)  # <--- NUEVO
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE) 
     titulo = models.CharField(max_length=200)
     fecha = models.DateField()
     descripcion = models.TextField(blank=True)
