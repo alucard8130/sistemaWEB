@@ -8,11 +8,16 @@
         
 <!-- 🔹 Top Navbar -->
 <nav class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="container-fluid px-5">
+        <div class="container-fluid px-3">
             <!-- home button-->
-                    <a href="{% url 'bienvenida' %}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-house-door-fill me-1"></i> Inicio
-                    </a>
+            <a href="{% url 'bienvenida' %}"
+              class="btn btn-sm text-dark"
+              style="background-color: transparent; border: 1px solid transparent; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: all 0.2s ease;"
+              onmouseover="this.style.borderColor='rgba(0, 123, 255, 0.4)'; this.style.boxShadow='0 0px 25px rgba(0, 123, 255, 0.3)';"
+              onmouseout="this.style.borderColor='transparent'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.2)';">
+              <i class="bi bi-house-fill me-1"></i> Inicio
+            </a>
+
             <div class="collapse navbar-collapse d-flex justify-content-between align-items-center" id="navbarOpciones">
                 <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center ms-auto">
                     {% if request.user.is_superuser %}
