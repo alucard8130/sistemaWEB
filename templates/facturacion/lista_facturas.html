@@ -8,7 +8,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 13/07/2025
+      Date of modification: 18/07/2025
       Description: Generated invoices
     -->
     <meta charset="UTF-8">
@@ -51,7 +51,7 @@
     <!-- Main content -->
     <div class="container-fluid mt-4">
 
-        <h2>Cuotas Condominales</h2> 
+        <h2>Cuotas condominales</h2> 
         <form method="get" class="row g-2 mb-3">
             {% if request.user.is_superuser %}
             <div class="col-auto">
@@ -85,17 +85,22 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-auto align-self-end">
+            <div class="col-auto mb-3">
                 <button type="submit" class="btn btn-outline-primary">Filtrar</button>
                 <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">Limpiar</a>
-                 <a href="{% url 'crear_factura' %}" class="btn btn-crear mb-3">
-            <i class="bi bi-plus-circle me-1"></i> Nueva Cuota
-        </a>
-        <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
-        <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success mb-3">Exportar a Excel</a>    
             </div>
-
-            
+            <div class="row">
+                <div class="col-auto">
+                    <a href="{% url 'crear_factura' %}" class="btn btn-crear">
+                        <i class="bi bi-plus-circle me-1"></i> Nueva Cuota
+                    </a>
+                    <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
+                    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
+                        <i class="bi bi-file-earmark-excel-fill"></i>
+                        Exportar a Excel
+                    </a>
+                </div>    
+            </div>
         </form>
         
         <!-- Invoices table -->
