@@ -61,6 +61,8 @@
                         <th>RFC</th>
                         <th>Teléfono</th>
                         <th>Email</th>
+                        <th>Banco</th>
+                        <th>Número de cuenta</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -71,6 +73,8 @@
                             <td>{{ empresa.rfc }}</td>
                             <td>{{ empresa.telefono }}</td>
                             <td>{{ empresa.email }}</td>
+                            <td>{{ empresa.banco }}</td>
+                            <td>{{ empresa.numero_cuenta }}</td>
                             <td>
                                 {% if request.user.is_superuser %}
                                     <a href="{% url 'empresa_editar' empresa.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">

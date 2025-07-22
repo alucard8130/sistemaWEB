@@ -37,9 +37,8 @@ class EmpresaForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Email'
             }),
-            'cuenta_bancaria': forms.TextInput(attrs={
+            'cuenta_bancaria': forms.Select(attrs={
                 'class': 'form-control',
-                'placeholder': 'Cuenta Bancaria'
             }),
             'numero_cuenta': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -60,7 +59,7 @@ class EmpresaForm(forms.ModelForm):
             'direccion': 'Dirección',
             'telefono': 'Teléfono',
             'email': 'Email',
-            'cuenta_bancaria': 'Cuenta Bancaria',
+            'cuenta_bancaria': 'Banco',
             'numero_cuenta': 'Número de Cuenta',
             'saldo_inicial': 'Saldo Inicial',
             'saldo_final': 'Saldo Final',

@@ -20,6 +20,7 @@ from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
 from .models import Evento, PerfilUsuario
@@ -40,6 +41,9 @@ stripe.api_key = settings.STRIPE_SECRET_KEY_TEST
 def bienvenida(request):
     empresa = None
     es_demo = False
+    perfil = request.user.perfilusuario
+    mostrar_wizard = perfil.mostrar_wizard
+
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
         eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
@@ -54,6 +58,7 @@ def bienvenida(request):
             "eventos": eventos,
             "es_demo": es_demo,
             "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
+            "mostrar_wizard": mostrar_wizard,
         },
     )
 
@@ -458,6 +463,7 @@ def stripe_webhook(request):
                 user = perfil.usuario
                 user.is_active = True
                 perfil.tipo_usuario = 'pago'
+                perfil.mostrar_wizard = True
                 if subscription_id:
                     perfil.stripe_subscription_id = subscription_id
                 perfil.save()
@@ -469,6 +475,7 @@ def stripe_webhook(request):
                         perfil = PerfilUsuario.objects.get(usuario=user)
                         perfil.stripe_customer_id = customer_id
                         perfil.tipo_usuario = 'pago'
+                        perfil.mostrar_wizard = True
                         if subscription_id:
                             perfil.stripe_subscription_id = subscription_id
                         perfil.save()
@@ -526,3 +533,31 @@ def cancelar_suscripcion(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'detail': str(e)}, status=400)
     return JsonResponse({'status': 'no encontrada'}, status=404)
+
+@require_POST
+@login_required
+def guardar_datos_empresa(request):
+    perfil = request.user.perfilusuario
+    empresa = perfil.empresa
+    nuevo_rfc = request.POST.get('rfc_empresa', '').strip()
+
+    if Empresa.objects.filter(rfc=nuevo_rfc).exclude(id=empresa.id).exists():
+        messages.error(request, "El RFC ingresado ya está registrado en otra empresa.")
+        return redirect('bienvenida')
+    
+    empresa.nombre = request.POST.get('nombre_empresa', '')
+    empresa.rfc = nuevo_rfc
+    empresa.direccion = request.POST.get('direccion_empresa', '')
+    empresa.email = request.POST.get('email_empresa', '')
+    empresa.telefono = request.POST.get('telefono_empresa', '')
+    empresa.cuenta_bancaria = request.POST.get('cuenta_bancaria', '')
+    empresa.numero_cuenta = request.POST.get('numero_cuenta', '')
+    try:
+        empresa.saldo_inicial = float(request.POST.get('saldo_inicial', 0.00))
+    except ValueError:
+        empresa.saldo_inicial = 0.00
+    empresa.save()
+    perfil.mostrar_wizard = False
+    perfil.save()
+    messages.success(request, "¡Datos de empresa actualizados correctamente!")
+    return redirect('bienvenida')

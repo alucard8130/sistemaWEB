@@ -16,6 +16,7 @@ class PerfilUsuario(models.Model):
     tipo_usuario = models.CharField(max_length=20, choices=TIPO_USUARIOS, default='demo')
     stripe_customer_id = models.CharField(max_length=100, blank=True, null=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True, null=True)
+    mostrar_wizard = models.BooleanField(default=False)
     
     def __str__(self):
        return f"{self.usuario.username} → {self.empresa.nombre if self.empresa else 'Sin empresa'}"
