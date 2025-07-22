@@ -6,7 +6,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 18/07/2025
+      Date of modification: 22/07/2025
       Description: Bulk upload of invoices
     -->
     <meta charset="UTF-8">
@@ -24,7 +24,7 @@
     {% include 'navbar.html' %}
 
     <div class="container mt-4">
-        <h2>Carga Masiva de Gastos</h2>
+        <h2>Carga masiva de gastos</h2>
         {% if messages %}
           {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
@@ -33,31 +33,33 @@
 
         <!-- Centered form only -->
         <div class="d-flex align-items-center justify-content-center min-vh-50"> 
-        <form method="post" class="p-4 custom-form form-delgado" enctype="multipart/form-data">
-            {% csrf_token %}
+          <form method="post" class="p-4 custom-form form-delgado" enctype="multipart/form-data">
+              {% csrf_token %}
 
-            <!-- Field for file upload -->
-            <div class="mb-4">
-                <label for="archivo" class="form-label fw-semibold">
-                  <i class="bi bi-file-earmark-excel-fill text-success me-2"></i>
-                  Archivo Excel (.xlsx):
-                </label>
-                <div class="input-group">
-                <input type="file" name="archivo" id="archivo" accept=".xlsx" class="form-control border-success" style="max-width: 77%;" required>
-                <button type="submit" class="btn btn-crear">
-                  <i class="bi bi-cloud-upload-fill me-1"></i>
-                  Cargar
-                </button>
-                </div>
-            </div>
+              <!-- Field for file upload -->
+              <div class="mb-4">
+                  <label for="archivo" class="form-label fw-semibold">
+                    <i class="bi bi-file-earmark-excel-fill text-success me-2"></i>
+                    Archivo Excel (.xlsx):
+                  </label>
+                  <div class="input-group">
+                    <input type="file" name="archivo" id="archivo" accept=".xlsx" class="form-control border-success" style="max-width: 77%;" required>
+                    <button type="submit" class="btn btn-crear">
+                      <i class="bi bi-cloud-upload-fill me-1"></i>
+                      Cargar
+                    </button>
+                  </div>
+              </div>
 
-            <!-- Action Buttons -->
-            <div class="text-center">
-              <a href="{% url 'descargar_plantilla_gastos' %}" class="btn btn-sm btn-outline-success">
-                <i class="bi bi-file-earmark-arrow-down me-1"></i> Descargar(.xlsx)
-              </a>
-            </div>
-        </form>
+              <!-- Action Buttons -->
+              <div class="text-center">
+                <a href="{% url 'descargar_plantilla_gastos' %}" class="btn btn-sm btn-outline-success">
+                  <i class="bi bi-file-earmark-arrow-down me-1"></i> 
+                    Descargar (.xlsx)
+                </a>
+                <a href="{% url 'carga_masiva_gastos' %}" class="btn btn-sm btn-outline-secondary">Cancelar</a>
+              </div>
+          </form>
         </div>
     </div>
 

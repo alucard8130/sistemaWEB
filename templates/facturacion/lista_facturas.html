@@ -8,7 +8,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 18/07/2025
+      Date of modification: 22/07/2025
       Description: Generated invoices
     -->
     <meta charset="UTF-8">
@@ -25,14 +25,6 @@
 <body>
     {% include 'navbar.html' %}
 
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
     <!-- Block for displaying messages -->
                 {% if messages %}
                     {% for message in messages %}
@@ -86,8 +78,14 @@
                 </select>
             </div>
             <div class="col-auto mb-3">
-                <button type="submit" class="btn btn-outline-primary">Filtrar</button>
-                <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">Limpiar</a>
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-funnel"></i> 
+                        Filtrar
+                </button>
+                <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> 
+                        Limpiar
+                </a>
             </div>
             <div class="row">
                 <div class="col-auto">
