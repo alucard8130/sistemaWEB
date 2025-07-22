@@ -1,3 +1,5 @@
+from turtle import st
+from uuid import uuid4
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
@@ -20,10 +22,16 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
-from .models import Evento
+from .models import Evento, PerfilUsuario
 import json
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
+from django.contrib.auth.models import User
+from datetime import date
+import stripe
+
+# stripe.api_key = settings.STRIPE_SECRET_KEY
+stripe.api_key = settings.STRIPE_SECRET_KEY_TEST
 
 # Create your views here.
 
@@ -31,9 +39,11 @@ from django.template.loader import render_to_string
 @login_required
 def bienvenida(request):
     empresa = None
+    es_demo = False
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
         eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
+        es_demo = request.user.perfilusuario.tipo_usuario == "demo"
     else:
         eventos = Evento.objects.all().order_by("fecha")
     return render(
@@ -42,6 +52,8 @@ def bienvenida(request):
         {
             "empresa": empresa,
             "eventos": eventos,
+            "es_demo": es_demo,
+            "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
         },
     )
 
@@ -353,3 +365,164 @@ def enviar_correo_evento(request, evento_id):
                 {"ok": False, "error": "Evento no encontrado"}, status=404
             )
     return JsonResponse({"ok": False}, status=400)
+
+
+def registro_usuario(request):
+    mensaje = ""
+    if request.method == "POST":
+        nombre = request.POST["nombre"]
+        username = request.POST["username"]
+        password = request.POST["password"]
+        email = request.POST["email"]
+        # telefono = request.POST['telefono']
+
+        if User.objects.filter(username=username).exists():
+            mensaje = "El nombre de usuario ya está en uso. Por favor elige otro."
+        else:
+            user = User.objects.create_user(
+                username=username, password=password, email=email, first_name=nombre
+            )
+            empresa = Empresa.objects.create(
+                nombre="EMPRESA DEMO AC", rfc=f"DEMO{uuid4().hex[:8].upper()}"
+            )
+            PerfilUsuario.objects.create(
+                usuario=user, empresa=empresa, tipo_usuario="demo"
+            )
+            return redirect("login")
+    return render(request, "registro.html", {"mensaje": mensaje})
+
+
+@staff_member_required
+@login_required
+def usuarios_demo(request):
+    usuarios = User.objects.filter(perfilusuario__tipo_usuario="demo")
+    usuarios_info = []
+    for user in usuarios:
+        dias = (date.today() - user.date_joined.date()).days
+        usuarios_info.append(
+            {
+                "id": user.id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "email": user.email,
+                "is_active": user.is_active,
+                "dias_demo": dias,
+            }
+        )
+    if request.method == "POST":
+        accion = request.POST.get("accion")
+        if accion == "inactivar":
+            ids = request.POST.getlist("inactivar")
+            User.objects.filter(id__in=ids).update(is_active=False)
+        elif accion == "reactivar":
+            ids = request.POST.getlist("reactivar")
+            User.objects.filter(id__in=ids).update(is_active=True)
+        elif accion == "reactivar_todos":
+            User.objects.filter(perfilusuario__tipo_usuario="demo").update(
+                is_active=True
+            )
+        return redirect("usuarios_demo")
+    return render(request, "usuarios_demo.html", {"usuarios": usuarios_info})
+
+
+
+@csrf_exempt
+def stripe_webhook(request):
+    import stripe
+    from django.http import HttpResponse
+    from django.conf import settings
+    from .models import PerfilUsuario
+    from django.contrib.auth.models import User
+
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    endpoint_secret = settings.STRIPE_ENDPOINT_SECRET_TEST
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except Exception as e:
+        print("Error Stripe:", e)
+        return HttpResponse(status=400)
+
+    # Activación inicial de suscripción
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        customer_id = session.get('customer')
+        subscription_id = session.get('subscription')
+        email = session.get('customer_details', {}).get('email')
+        if customer_id:
+            try:
+                perfil = PerfilUsuario.objects.get(stripe_customer_id=customer_id)
+                user = perfil.usuario
+                user.is_active = True
+                perfil.tipo_usuario = 'pago'
+                if subscription_id:
+                    perfil.stripe_subscription_id = subscription_id
+                perfil.save()
+                user.save()
+            except PerfilUsuario.DoesNotExist:
+                if email:
+                    try:
+                        user = User.objects.get(email=email)
+                        perfil = PerfilUsuario.objects.get(usuario=user)
+                        perfil.stripe_customer_id = customer_id
+                        perfil.tipo_usuario = 'pago'
+                        if subscription_id:
+                            perfil.stripe_subscription_id = subscription_id
+                        perfil.save()
+                        user.is_active = True
+                        user.save()
+                    except (User.DoesNotExist, PerfilUsuario.DoesNotExist):
+                        print("No se pudo encontrar el usuario asociado al pago.")
+
+    # Renovación automática de suscripción
+    if event['type'] == 'invoice.payment_succeeded':
+        invoice = event['data']['object']
+        customer_id = invoice.get('customer')
+        if customer_id:
+            try:
+                perfil = PerfilUsuario.objects.get(stripe_customer_id=customer_id)
+                perfil.tipo_usuario = 'pago'
+                perfil.save()
+                print("Renovación automática: acceso renovado.")
+            except PerfilUsuario.DoesNotExist:
+                print("No se encontró perfil para renovar acceso.")
+
+    return HttpResponse(status=200)
+
+
+@login_required
+def crear_sesion_pago(request):
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=[
+            {
+                "price": "price_1RnWRLPYnlfwKZQHVmpXMsty",
+                "quantity": 1,
+            }
+        ],
+        mode="subscription",
+        success_url=request.build_absolute_uri("/bienvenida/"),
+        cancel_url=request.build_absolute_uri("/bienvenida/"),
+        client_reference_id=str(request.user.id),  # Para identificar al usuario
+        customer_email=request.user.email,
+    )
+    return JsonResponse({"id": session.id})
+
+
+@login_required
+def cancelar_suscripcion(request):
+    perfil = request.user.perfilusuario
+    subscription_id = perfil.stripe_subscription_id
+    if subscription_id:
+        stripe.api_key = settings.STRIPE_SECRET_KEY_TEST
+        try:
+            stripe.Subscription.delete(subscription_id)
+            perfil.tipo_usuario = 'demo'  # O el estado que corresponda
+            perfil.save()
+            return JsonResponse({'status': 'cancelada'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'detail': str(e)}, status=400)
+    return JsonResponse({'status': 'no encontrada'}, status=404)

@@ -69,9 +69,13 @@
             </select>
         </div>
         <div class="col-md-1">
-            <label>Año:</label>
-            <input type="number" name="anio" value="{{ anio }}" class="form-control" min="2000" max="2100">
-        </div>
+    <label>Año:</label>
+    <select name="anio" class="form-select">
+        {% for a in labels_anios %}
+            <option value="{{ a }}" {% if a|stringformat:"s" == anio|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+    </select>
+</div>
         <div class="col-md-2">
         <label>Mes:</label>
         <select name="mes" class="form-select">

@@ -685,6 +685,10 @@ def dashboard_saldos(request):
 #dashboard cuotas
 @login_required
 def dashboard_pagos(request):
+    anio_actual = datetime.now().year
+    anio = request.GET.get('anio')
+    if not anio:
+        anio = anio_actual
     es_super = request.user.is_superuser
 
     if es_super:
@@ -708,6 +712,8 @@ def dashboard_pagos(request):
     mes = request.GET.get('mes')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
+
+   
 
     filtro = Q(factura__activo=True) & filtro_empresa
 
@@ -816,11 +822,7 @@ def dashboard_pagos(request):
             presup_dict[key] += float(p.monto_presupuestado)
         elif origen in (None, '', 'todos', 'Todo', 'Todos'):  # Todos los orígenes
             presup_dict[key] += float(p.monto_presupuestado)
-
-    # Suma presupuesto mensual de todos los orígenes
-    # Si tienes tipos_otros definidos en tu modelo, usa eso, si no, solo suma los tres orígenes
-    #tipos_otros = getattr(PresupuestoIngreso, 'TIPO_INGRESO', [])
-   # Supón que todos_los_meses es una lista de objetos datetime.date (primer día de cada mes)
+    # Prepara datos de presupuesto alineados
     data_presupuesto = []
     for m in todos_los_meses:
         key = (m.year, m.month)
@@ -974,8 +976,7 @@ def dashboard_pagos(request):
         'meses_facturas': meses_facturas,
         'anios_facturas': anios_facturas,
         'otros_tipos_tooltip': json.dumps(otros_tipos_tooltip),
-      
-
+        'anio_actual': anio_actual,
     })
 
 

@@ -37,6 +37,72 @@
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %}
 {% endif %}
+{% if es_demo %}
+<div style="
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 20px 30px;
+    max-width: 350px;
+    font-size: 1rem;
+">
+    <strong>¡Bienvenido a tu cuenta demo!</strong><br>
+    Recuerda que tu acceso demo es válido por 30 días.<br>
+    <hr>
+    <button id="stripe-checkout-btn" class="btn btn-success btn-sm w-100">
+      <a href="https://buy.stripe.com/test_4gM4gBfm62lechi1UR2B200" class="text-white text-decoration-none">
+        <i class="bi bi-credit-card"></i> Suscribete ahora !!
+      </a>
+    </button>
+</div>
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.getElementById('stripe-checkout-btn').onclick = function() {
+    fetch("{% url 'crear_sesion_pago' %}")
+      .then(response => response.json())
+      .then(data => {
+        var stripe = Stripe("{{ STRIPE_PUBLIC_KEY_TEST }}"); // Reemplaza con tu clave pública de Stripe
+        stripe.redirectToCheckout({ sessionId: data.id });
+      });
+};
+</script>
+{% endif %}
+
+{% if not es_demo %}
+<div class="container-fluid px-4 py-3 wide=100px">
+<!-- Botón para cancelar suscripción -->
+<button id="cancelar-suscripcion-btn" class="btn btn-danger">
+    Cancelar suscripción
+</button>
+<script>
+document.getElementById('cancelar-suscripcion-btn').onclick = function() {
+    fetch("{% url 'cancelar_suscripcion' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.status === 'cancelada'
+            ? 'Suscripción cancelada correctamente.'
+            : 'No se pudo cancelar la suscripción: ' + (data.detail || data.status));
+        // Opcional: recarga la página o actualiza el estado en el frontend
+        if (data.status === 'cancelada') {
+            location.reload();
+        }
+    });
+};
+</script>
+{% endif %}
+</div>
       <!-- Bienvenida: entire row -->
       <div class="row justify-content-center mb-4 mt-4">
           <div class="col-lg-3">
@@ -192,5 +258,6 @@
     <script src="{% static 'js/calendarios.js' %}"></script>
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
 </body>
 </html>

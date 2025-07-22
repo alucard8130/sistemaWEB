@@ -1,4 +1,6 @@
 from django.urls import path
+
+from principal.views import usuarios_demo
 from . import views
 
 urlpatterns = [
@@ -27,5 +29,7 @@ urlpatterns = [
     path('exportar_lista_facturas_otros_ingresos_excel/', views.exportar_lista_facturas_otros_ingresos_excel, name='exportar_lista_facturas_otros_ingresos_excel'),
     path('crear-tipo-ingreso/', views.crear_tipo_otro_ingreso, name='crear_tipo_otro_ingreso'),
     path('tipos-otro-ingreso-json/', views.tipos_otro_ingreso_json, name='tipos_otro_ingreso_json'),
+    path('usuarios-demo/', usuarios_demo, name='usuarios_demo'),
+
     
 ]

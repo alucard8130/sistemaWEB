@@ -1,17 +1,25 @@
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, AbstractUser
 from django.db import models
 from empresas.models import Empresa
 from django.conf import settings
 
 # Create your models here.
 class PerfilUsuario(models.Model):
+    TIPO_USUARIOS = [
+        ('demo', 'Demo'),
+        ('pago', 'Pago'),
+        ('gratis', 'Gratis'),
+    ]
     usuario = models.OneToOneField(User, on_delete=models.CASCADE)
     empresa = models.ForeignKey(Empresa, on_delete=models.SET_NULL, null=True, blank=True)
-
+    tipo_usuario = models.CharField(max_length=20, choices=TIPO_USUARIOS, default='demo')
+    stripe_customer_id = models.CharField(max_length=100, blank=True, null=True)
+    stripe_subscription_id = models.CharField(max_length=100, blank=True, null=True)
+    
     def __str__(self):
        return f"{self.usuario.username} → {self.empresa.nombre if self.empresa else 'Sin empresa'}"
-    
+
 class AuditoriaCambio(models.Model):
     MODELOS_AUDITABLES = [
         ('local', 'Local Comercial'),

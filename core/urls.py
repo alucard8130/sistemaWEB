@@ -1,26 +1,11 @@
-"""
-URL configuration for core project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
-from principal.views import crear_evento, eliminar_evento, enviar_correo_evento, reporte_auditoria
+from principal.views import cancelar_suscripcion, crear_evento, crear_sesion_pago, eliminar_evento, enviar_correo_evento, registro_usuario, reporte_auditoria, stripe_webhook
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -76,7 +61,10 @@ urlpatterns = [
     path('crear/', crear_evento, name='crear_evento'),
     path('evento/eliminar/<int:evento_id>/', eliminar_evento, name='eliminar_evento'),
     path('evento/enviar_correo/<int:evento_id>/', enviar_correo_evento, name='enviar_correo_evento'),
-
+    path('registro/', registro_usuario, name='registro_usuario'),
+    path('stripe/webhook/', stripe_webhook, name='stripe_webhook'),    
+    path('stripe/crear-sesion/', crear_sesion_pago, name='crear_sesion_pago'),
+    path('stripe/cancelar-suscripcion/', cancelar_suscripcion, name='cancelar_suscripcion'),
 ]
 
 if settings.DEBUG:
