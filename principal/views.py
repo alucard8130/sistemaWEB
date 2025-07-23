@@ -390,9 +390,15 @@ def registro_usuario(request):
             empresa = Empresa.objects.create(
                 nombre="EMPRESA DEMO AC", rfc=f"DEMO{uuid4().hex[:8].upper()}"
             )
-            PerfilUsuario.objects.create(
-                usuario=user, empresa=empresa, tipo_usuario="demo"
-            )
+            # PerfilUsuario.objects.create(
+            #     usuario=user, empresa=empresa, tipo_usuario="demo"
+            # )
+            # Asigna la empresa y tipo_usuario al perfil creado por la señal
+            perfil = user.perfilusuario
+            perfil.empresa = empresa
+            if not user.is_superuser:
+                perfil.tipo_usuario = "demo"
+            perfil.save()
             return redirect("login")
     return render(request, "registro.html", {"mensaje": mensaje})
 
