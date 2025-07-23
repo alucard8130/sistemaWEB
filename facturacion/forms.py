@@ -215,7 +215,7 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user and hasattr(user, 'perfilusuario'):
             empresa = user.perfilusuario.empresa
-            #self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
+            self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
             self.fields['tipo_ingreso'].queryset = TipoOtroIngreso.objects.filter(empresa=empresa)
         else:
             self.fields['tipo_ingreso'].queryset = TipoOtroIngreso.objects.all()    

@@ -70,7 +70,7 @@ class GastoForm(forms.ModelForm):
  
     class Meta:
         model = Gasto
-        fields = ['empresa', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr','comprobante', 'observaciones']
+        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr','comprobante', 'observaciones']
         widgets = {
             'proveedor': forms.Select(attrs={
                 'class': 'form-select'

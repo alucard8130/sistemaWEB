@@ -33,4 +33,5 @@ class Empleado(models.Model):
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.nombre} ({self.empresa.nombre})"
+        #return f"{self.nombre} ({self.empresa.nombre})"
+        return f"{self.nombre}"

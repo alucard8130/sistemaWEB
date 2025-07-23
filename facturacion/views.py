@@ -1328,7 +1328,7 @@ def exportar_lista_facturas_excel(request):
     # Encabezados
     ws.append([
         'Folio', 'Empresa', 'Cliente', 'Local/Área', 'Monto',
-        'Fecha Emisión', 'Fecha Vencimiento', 'saldo','Estatus', 'Observaciones'
+        'Saldo', 'Periodo', 'Estatus', 'Observaciones'
     ])
     # Contenido
     for factura in facturas:
@@ -1339,9 +1339,9 @@ def exportar_lista_facturas_excel(request):
             factura.cliente.nombre,
             local_area,
             float(factura.monto),
-            factura.fecha_emision.strftime('%Y-%m-%d'),
-            factura.fecha_vencimiento.strftime('%Y-%m-%d'),
             float(factura.saldo_pendiente),
+            #factura.fecha_emision.strftime('%Y-%m-%d'),
+            factura.fecha_vencimiento.strftime('%Y-%m-%d'),
             factura.estatus,
             factura.observaciones or ''
         ])
@@ -1754,7 +1754,7 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
 
     ws.append([
         'Folio', 'Empresa', 'Cliente', 'Tipo ingreso', 'Monto','Saldo',
-        'Fecha Emisión', 'Fecha Vencimiento', 'Estatus', 'Observaciones'
+         'Periodo', 'Estatus', 'Observaciones'
     ])
 
     for factura in facturas:
@@ -1762,10 +1762,11 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
             factura.folio,
             factura.empresa.nombre,
             factura.cliente.nombre,
-            factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else factura.tipo_ingreso,
+            str(factura.tipo_ingreso) if factura.tipo_ingreso else '',
+            #factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else factura.tipo_ingreso,
             float(factura.monto),
             float(factura.saldo),
-            factura.fecha_emision.strftime('%Y-%m-%d'),
+            #factura.fecha_emision.strftime('%Y-%m-%d'),
             factura.fecha_vencimiento.strftime('%Y-%m-%d') if factura.fecha_vencimiento else '',
             factura.estatus,
             factura.observaciones or ''
