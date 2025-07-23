@@ -48,18 +48,20 @@
 
            <div class="col-md-2">
                 <select name="origen" id="origen" class="form-select">
-                    <option value="">Orígenes</option>
+                    <option value="">Tipo de Cuota</option>
                     <option value="local" {% if request.GET.origen == 'local' %}selected{% endif %}>Local Comercial</option>
                     <option value="area" {% if request.GET.origen == 'area' %}selected{% endif %}>Área Común</option>
-                    <option value="otros" {% if request.GET.origen == 'otros' %}selected{% endif %}>Otros Ingresos</option>
+                    <option value="otros" {% if request.GET.origen == 'otros' %}selected{% endif %}>Otros ingresos</option>
                 </select>
             </div>
 
             <div class="col-md-2">
                 <select name="cliente" id="cliente" class="form-select">
                     <option value="">Clientes</option>
-                    {% for cli in clientes %}
-                        <option value="{{ cli.id }}" {% if request.GET.cliente == cli.id|stringformat:'s' %}selected{% endif %}>{{ cli.nombre }}</option>
+                    {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
+                            {{ cliente.nombre }}
+                        </option>
                     {% endfor %}
                 </select>
             </div>

@@ -216,7 +216,11 @@ def plantilla_clientes_excel(request):
 
 @login_required
 def clientes_inactivos(request):
-    clientes = Cliente.objects.filter(activo=False)
+    if request.user.is_superuser:
+        clientes = Cliente.objects.filter(activo=False)
+    else:
+        empresa = request.user.perfilusuario.empresa
+        clientes = Cliente.objects.filter(activo=False, empresa=empresa)
     return render(request, "clientes/clientes_inactivos.html", {"clientes": clientes})
 
 

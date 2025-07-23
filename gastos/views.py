@@ -131,19 +131,21 @@ def tipo_gasto_eliminar(request, pk):
 
 @login_required
 def gastos_lista(request):
-    gastos = Gasto.objects.all()
-    proveedores = Proveedor.objects.filter(activo=True)
-    empleados = Empleado.objects.filter(activo=True)
-    tipos_gasto = TipoGasto.objects.all()
+    if request.user.is_superuser:
+        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto').order_by('-fecha')
+        proveedores = Proveedor.objects.filter(activo=True)
+        empleados = Empleado.objects.filter(activo=True)
+        tipos_gasto = TipoGasto.objects.all()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        gastos = Gasto.objects.filter(empresa=empresa).order_by('-fecha')
+        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa)
+        empleados = Empleado.objects.filter(activo=True, empresa=empresa)
+        tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
 
     proveedor_id = request.GET.get('proveedor')
     empleado_id = request.GET.get('empleado')
     tipo_gasto = request.GET.get('tipo_gasto')
-
-    if request.user.is_superuser:
-        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto').order_by('-fecha')
-    else:
-        gastos = Gasto.objects.filter(empresa=request.user.perfilusuario.empresa).order_by('-fecha')
 
     if proveedor_id:
         gastos = gastos.filter(proveedor_id=proveedor_id)
@@ -153,7 +155,7 @@ def gastos_lista(request):
         gastos = gastos.filter(tipo_gasto=tipo_gasto)
 
     #paginacion
-    paginator = Paginator(gastos, 25)  # 50 gastos por página 
+    paginator = Paginator(gastos, 25)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)    
 

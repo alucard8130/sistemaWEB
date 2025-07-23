@@ -687,6 +687,7 @@ def dashboard_saldos(request):
 def dashboard_pagos(request):
     anio_actual = datetime.now().year
     anio = request.GET.get('anio')
+    anio_seleccionado = request.GET.get('anio', anio_actual)
     if not anio:
         anio = anio_actual
     es_super = request.user.is_superuser
@@ -977,6 +978,7 @@ def dashboard_pagos(request):
         'anios_facturas': anios_facturas,
         'otros_tipos_tooltip': json.dumps(otros_tipos_tooltip),
         'anio_actual': anio_actual,
+        'anio_seleccionado': anio_seleccionado,
     })
 
 
@@ -1000,16 +1002,23 @@ def cartera_vencida(request):
 
     # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
-        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
-        facturas_otros = facturas_otros.filter(empresa=request.user.perfilusuario.empresa)
-    elif request.GET.get('empresa'):
-        facturas = facturas.filter(empresa_id=request.GET['empresa'])
-        facturas_otros = facturas_otros.filter(empresa_id=request.GET['empresa'])
+        empresa = request.user.perfilusuario.empresa
+        facturas = facturas.filter(empresa=empresa)
+        facturas_otros = facturas_otros.filter(empresa=empresa)
+        clientes = Cliente.objects.filter(empresa=empresa)
+    else:
+        if request.GET.get('empresa'):
+            facturas = facturas.filter(empresa_id=request.GET['empresa'])
+            facturas_otros = facturas_otros.filter(empresa_id=request.GET['empresa'])
+            clientes = Cliente.objects.filter(empresa_id=request.GET['empresa'])
+        else:
+            clientes = Cliente.objects.all()
     
     # Filtrar por cliente
-    if request.GET.get('cliente'):
-        facturas = facturas.filter(cliente_id=request.GET['cliente'])
-        facturas_otros = facturas_otros.filter(cliente_id=request.GET['cliente'])
+    cliente_id = request.GET.get('cliente')
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+        facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
 
     # Filtrar por origen
     if origen == 'local':
@@ -1079,7 +1088,7 @@ def cartera_vencida(request):
         'facturas': page_obj,
         'hoy': hoy,
         'empresas': Empresa.objects.all(),
-        'clientes': Cliente.objects.all(),
+        'clientes': clientes,
         'rango_seleccionado': filtro
     })
 
