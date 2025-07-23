@@ -14,8 +14,8 @@ from clientes.models import Cliente
 from gastos.models import Gasto
 from locales.models import LocalComercial
 from areas.models import AreaComun
-from facturacion.models import Factura, Pago
-from presupuestos.models import Presupuesto
+from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from presupuestos.models import Presupuesto, PresupuestoIngreso
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
 from django.http import JsonResponse
@@ -93,15 +93,19 @@ def reiniciar_sistema(request):
 
 @staff_member_required
 def respaldo_empresa_excel(request):
-    from django.shortcuts import render
-
     # Si no hay empresa seleccionada, muestra el formulario
     if request.method == "GET" and "empresa_id" not in request.GET:
         empresas = Empresa.objects.all()
         return render(request, "respaldo_empresas.html", {"empresas": empresas})
 
     empresa_id = request.GET.get("empresa_id")
-    empresa = Empresa.objects.get(pk=empresa_id)
+    try:
+        empresa = Empresa.objects.get(pk=empresa_id)
+    except Empresa.DoesNotExist:
+        return render(request, "respaldo_empresas.html", {
+            "empresas": Empresa.objects.all(),
+            "error": "Empresa no encontrada."
+        })
 
     wb = openpyxl.Workbook()
     wb.remove(wb.active)  # Borra hoja por defecto
@@ -114,169 +118,183 @@ def respaldo_empresa_excel(request):
 
     # LOCALES
     ws = wb.create_sheet("Locales")
-    ws.append(
-        [
-            "id",
-            "numero",
-            "cliente",
-            "ubicacion",
-            "superficie_m2",
-            "cuota",
-            "status",
-            "activo",
-            "observaciones",
-        ]
-    )
+    ws.append([
+        "id", "numero", "cliente", "ubicacion", "superficie_m2", "cuota",
+        "status", "activo", "observaciones"
+    ])
     for l in LocalComercial.objects.filter(empresa=empresa):
-        ws.append(
-            [
-                l.id,
-                l.numero,
-                l.cliente.nombre if l.cliente else "",
-                l.ubicacion,
-                l.superficie_m2,
-                l.cuota,
-                l.status,
-                l.activo,
-                l.observaciones,
-            ]
-        )
+        ws.append([
+            l.id,
+            l.numero,
+            l.cliente.nombre if l.cliente else "",
+            l.ubicacion,
+            l.superficie_m2,
+            l.cuota,
+            l.status,
+            l.activo,
+            l.observaciones,
+        ])
 
     # ÁREAS COMUNES
     ws = wb.create_sheet("Áreas Comunes")
-    ws.append(
-        [
-            "cliente",
-            "numero",
-            "cuota",
-            "ubicacion",
-            "superficie_m2",
-            "status",
-            "fecha_inicial",
-            "fecha_fin",
-            "activo",
-            "observaciones",
-        ]
-    )
+    ws.append([
+        "cliente", "numero", "cuota", "ubicacion", "superficie_m2", "status",
+        "fecha_inicial", "fecha_fin", "activo", "observaciones"
+    ])
     for a in AreaComun.objects.filter(empresa=empresa):
-        ws.append(
-            [
-                a.cliente.nombre if a.cliente else "",
-                a.numero,
-                a.cuota,
-                a.ubicacion,
-                a.superficie_m2,
-                a.status,
-                str(a.fecha_inicial) if a.fecha_inicial else "",
-                str(a.fecha_fin) if a.fecha_fin else "",
-                a.activo,
-                a.observaciones,
-            ]
-        )
+        ws.append([
+            a.cliente.nombre if a.cliente else "",
+            a.numero,
+            a.cuota,
+            a.ubicacion,
+            a.superficie_m2,
+            a.status,
+            str(a.fecha_inicial) if a.fecha_inicial else "",
+            str(a.fecha_fin) if a.fecha_fin else "",
+            a.activo,
+            a.observaciones,
+        ])
 
     # FACTURAS
     ws = wb.create_sheet("Facturas")
-    ws.append(
-        [
-            "folio",
-            "cliente",
-            "local",
-            "area_comun",
-            "monto",
-            "fecha_emision",
-            "fecha_vencimiento",
-            "estatus",
-        ]
-    )
+    ws.append([
+        "folio", "cliente", "local", "area_comun", "monto",
+        "fecha_emision", "fecha_vencimiento", "estatus"
+    ])
     for f in Factura.objects.filter(empresa=empresa):
-        ws.append(
-            [
-                f.folio,
-                f.cliente.nombre if f.cliente else "",
-                f.local.numero if f.local else "",
-                f.area_comun.numero if f.area_comun else "",
-                f.monto,
-                str(f.fecha_emision),
-                str(f.fecha_vencimiento),
-                f.estatus,
-            ]
-        )
+        ws.append([
+            f.folio,
+            f.cliente.nombre if f.cliente else "",
+            f.local.numero if f.local else "",
+            f.area_comun.numero if f.area_comun else "",
+            float(f.monto),
+            str(f.fecha_emision),
+            str(f.fecha_vencimiento),
+            f.estatus,
+        ])
 
     # PAGOS
     ws = wb.create_sheet("Pagos")
     ws.append(["id", "factura", "fecha_pago", "monto", "registrado_por"])
     for p in Pago.objects.filter(factura__empresa=empresa):
-        ws.append(
-            [
-                p.id,
-                p.factura.folio if p.factura else "",
-                str(p.fecha_pago),
-                p.monto,
-                p.registrado_por.get_full_name() if p.registrado_por else "",
-            ]
-        )
+        ws.append([
+            p.id,
+            p.factura.folio if p.factura else "",
+            str(p.fecha_pago),
+            float(p.monto),
+            p.registrado_por.get_full_name() if p.registrado_por else "",
+        ])
+
     # GASTOS
     ws = wb.create_sheet("Gastos")
-    ws.append(
-        ["id", "proveedor", "empleado", "descripcion", "monto", "tipo_gasto", "fecha"]
-    )
+    ws.append([
+        "id", "proveedor", "empleado", "descripcion", "monto", "tipo_gasto", "fecha"
+    ])
     for g in Gasto.objects.filter(empresa=empresa):
-        ws.append(
-            [
-                g.id,
-                str(g.proveedor),
-                str(g.empleado),
-                g.descripcion,
-                g.monto,
-                str(g.tipo_gasto),
-                str(g.fecha),
-            ]
-        )
+        ws.append([
+            g.id,
+            str(g.proveedor) if g.proveedor else "",
+            str(g.empleado) if g.empleado else "",
+            g.descripcion,
+            float(g.monto),
+            str(g.tipo_gasto) if g.tipo_gasto else "",
+            str(g.fecha),
+        ])
 
-    # pago gastos
+    # PAGOS GASTOS
     ws = wb.create_sheet("Pagos Gastos")
     ws.append(["id", "referencia", "fecha_pago", "monto", "registrado_por"])
     for g in Gasto.objects.filter(empresa=empresa):
         for pago in g.pagos.all():
-            ws.append(
-                [
-                    pago.id,
-                    pago.referencia,
-                    str(pago.fecha_pago),
-                    pago.monto,
-                    pago.registrado_por.get_full_name() if pago.registrado_por else "",
-                ]
-            )
+            ws.append([
+                pago.id,
+                pago.referencia,
+                str(pago.fecha_pago),
+                float(pago.monto),
+                pago.registrado_por.get_full_name() if pago.registrado_por else "",
+            ])
 
     # PRESUPUESTOS
     ws = wb.create_sheet("Presupuestos")
-    ws.append(
-        ["id", "empresa", "grupo", "subgrupo", "tipo_gasto", "anio", "mes", "monto"]
-    )
+    ws.append([
+        "id", "empresa", "grupo", "subgrupo", "tipo_gasto", "anio", "mes", "monto"
+    ])
     for p in Presupuesto.objects.filter(empresa=empresa):
-        ws.append(
-            [
-                p.id,
-                p.empresa.nombre if p.empresa else "",
-                str(p.grupo),
-                str(p.subgrupo),
-                str(p.tipo_gasto),
-                p.anio,
-                p.mes,
-                p.monto,
-            ]
-        )
+        ws.append([
+            p.id,
+            p.empresa.nombre if p.empresa else "",
+            str(p.grupo) if p.grupo else "",
+            str(p.subgrupo) if p.subgrupo else "",
+            str(p.tipo_gasto) if p.tipo_gasto else "",
+            p.anio,
+            p.mes,
+            float(p.monto),
+        ])
+        # PRESUPUESTOS INGRESOS
+    ws = wb.create_sheet("Presupuestos Ingresos")
+    ws.append([
+        "id", "empresa", "tipo_ingreso", "anio", "mes", "monto"
+    ])
+    for p in PresupuestoIngreso.objects.filter(empresa=empresa):
+        ws.append([
+            p.id,
+            p.empresa.nombre if p.empresa else "",
+            str(p.tipo_ingreso) if hasattr(p, "tipo_ingreso") else "",
+            p.anio,
+            p.mes,
+            float(p.monto),
+        ])
+
     # EMPLEADOS
     ws = wb.create_sheet("Empleados")
     ws.append(["id", "nombre", "email", "telefono", "puesto", "activo"])
     for e in Empleado.objects.filter(empresa=empresa):
         ws.append([e.id, e.nombre, e.email, e.telefono, e.puesto, e.activo])
+
     # PROVEEDORES
     ws = wb.create_sheet("Proveedores")
     ws.append(["id", "nombre", "rfc", "telefono", "email", "activo"])
     for p in Proveedor.objects.filter(empresa=empresa):
-        ws.append([p.id, str(p.nombre), p.rfc, p.telefono, p.email, p.activo])
-    #
+        ws.append([
+            p.id,
+            str(p.nombre),
+            p.rfc,
+            p.telefono,
+            p.email,
+            p.activo
+        ])
+
+    # OTROS INGRESOS
+    ws = wb.create_sheet("Otros Ingresos")
+    ws.append([
+        "id", "folio", "cliente", "tipo_ingreso", "monto", "saldo", "fecha_emision",
+        "fecha_vencimiento", "estatus", "observaciones"
+    ])
+    for f in FacturaOtrosIngresos.objects.filter(empresa=empresa):
+        ws.append([
+            f.id,
+            f.folio,
+            f.cliente.nombre if f.cliente else "",
+            str(f.tipo_ingreso) if hasattr(f, "tipo_ingreso") else "",
+            float(f.monto),
+            float(f.saldo),
+            str(f.fecha_emision),
+            str(f.fecha_vencimiento) if f.fecha_vencimiento else "",
+            f.estatus,
+            f.observaciones or "",
+        ])
+
+    # PAGOS OTROS INGRESOS
+    ws = wb.create_sheet("Pagos Otros Ingresos")
+    ws.append(["id", "factura", "fecha_pago", "monto", "registrado_por"])
+    for p in CobroOtrosIngresos.objects.filter(factura__empresa=empresa):
+        ws.append([
+            p.id,
+            p.factura.folio if p.factura else "",
+            str(p.fecha_pago),
+            float(p.monto),
+            p.registrado_por.get_full_name() if p.registrado_por else "",
+        ])    
 
     # Responde el archivo Excel
     response = HttpResponse(
