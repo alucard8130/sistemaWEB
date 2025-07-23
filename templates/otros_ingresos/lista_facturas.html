@@ -8,7 +8,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 13/07/2025
+      Date of modification: 22/07/2025
       Description: Invoices (OTHERS INCOMES)
     -->
     <meta charset="UTF-8">
@@ -25,15 +25,6 @@
 <body>
     {% include 'navbar.html' %}
 
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
-
     <!-- Block for displaying messages -->
     {% if messages %}
         {% for message in messages %}
@@ -43,13 +34,20 @@
 
     <!-- Main content -->
     <div class="container-fluid mt-4">
-        <h2>Otras Cuotas</h2>
-        <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
-            <i class="bi bi-plus-circle me-1"></i> Registrar otra cuota
-            <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
-    Exportar a Excel
-</a>
-        </a>
+       
+      <h2>Otras cuotas</h2>
+        <div class="row">
+          <div class="col-auto">
+            <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
+              <i class="bi bi-plus-circle me-1"></i> 
+                Registrar otra cuota
+            </a>
+            <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success mb-3">
+                <i class="bi bi-file-earmark-excel-fill"></i> 
+                  Exportar a Excel
+            </a>
+          </div>
+        </div>
 
         <!-- Invoices table -->     
         <div class="table-responsive rounded-3 border"> 
