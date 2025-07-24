@@ -43,7 +43,12 @@ def bienvenida(request):
     es_demo = False
     perfil = request.user.perfilusuario
     mostrar_wizard = perfil.mostrar_wizard
-
+    
+    # mostrar_wizard = (
+    # perfil.tipo_usuario == "demo"
+    # and not perfil.stripe_customer_id
+    # )
+    
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
         eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
@@ -487,7 +492,9 @@ def stripe_webhook(request):
                 user = perfil.usuario
                 user.is_active = True
                 perfil.tipo_usuario = 'pago'
-                perfil.mostrar_wizard = True
+                # Solo mostrar el wizard si nunca ha tenido suscripción
+                if not perfil.stripe_subscription_id:
+                    perfil.mostrar_wizard = True
                 if subscription_id:
                     perfil.stripe_subscription_id = subscription_id
                 perfil.save()
@@ -499,7 +506,9 @@ def stripe_webhook(request):
                         perfil = PerfilUsuario.objects.get(usuario=user)
                         perfil.stripe_customer_id = customer_id
                         perfil.tipo_usuario = 'pago'
-                        perfil.mostrar_wizard = True
+                        # Solo mostrar el wizard si nunca ha tenido suscripción
+                        if not perfil.stripe_subscription_id:
+                            perfil.mostrar_wizard = True
                         if subscription_id:
                             perfil.stripe_subscription_id = subscription_id
                         perfil.save()

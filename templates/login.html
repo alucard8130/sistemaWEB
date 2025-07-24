@@ -20,6 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <!-- Customised CSS --> 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 </head>
 <body style="min-height: 100vh">
     <!-- Dark button -->
@@ -29,6 +30,13 @@
                 <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
             </button>
         </div>
+    </div>
+     <div class="mt-4 text-center">
+    <a href="{% url 'registro_usuario' %}" class="btn btn-success btn-lg px-4 py-2 shadow-sm fw-bold animate__animated animate__pulse animate__infinite" style="font-size: 1.15rem;">
+        <i class="bi bi-person-plus-fill me-2"></i> ¿Nuevo aquí? ¡Regístrate gratis!
+    </a>
+    <div class="small text-muted mt-2">
+        Crea tu cuenta y comienza a gestionar tu condominio en minutos.
     </div>
     <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
         <div class="login-box">
@@ -61,17 +69,13 @@
                     <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión
                 </button>
             </form>
-            <div class="mt-3 text-center">
-                    <a href="{% url 'registro_usuario' %}" class="text-decoration-none">
-                        <i class="bi bi-person-plus-fill me-1"></i>Registrarse
-                    </a>
-                </div>
         </div>
     </div>
+   
     <!-- 🔹 Footer -->
-    <footer>
+    <footer >
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+        Creado por Jaime M. Estrada Bernabé   
     </footer>
     <script src="{% static 'js/script.js' %}"></script>
 </body>
