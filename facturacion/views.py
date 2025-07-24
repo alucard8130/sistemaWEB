@@ -771,9 +771,8 @@ def dashboard_pagos(request):
         except:
             pass
 
-    # Si el filtro de origen es "otros", solo mostrar otros ingresos
     if origen == 'otros':
-        pagos = Pago.objects.none()  # No mostrar cuotas
+        pagos = Pago.objects.none() 
         pagos_por_mes = []
         pagos_por_anio = []
     else:
@@ -800,10 +799,8 @@ def dashboard_pagos(request):
     labels_meses = [DateFormat(m).format('F Y') for m in todos_los_meses]
     data_cuotas = [meses_cuotas.get(m, 0) for m in todos_los_meses]
     data_otros = [meses_otros.get(m, 0) for m in todos_los_meses]
-    #data_presupuesto = [presup_dict.get(m, 0) for m in todos_los_meses]
 
     # --- PRESUPUESTO DE INGRESOS POR MES ---
-    # Solo si tienes año y empresa definidos
     
     presup_qs = PresupuestoIngreso.objects.all()
     if anio:
@@ -844,7 +841,6 @@ def dashboard_pagos(request):
     if empresa:
         presup_anual_qs = presup_anual_qs.filter(empresa=empresa)
     presup_anual_dict = {}
-    #tipos_otros = getattr(PresupuestoIngreso, 'TIPO_INGRESO', [])
     for p in presup_anual_qs:
         key = (p.anio, p.origen, p.tipo_otro or "")
         presup_anual_dict.setdefault(p.anio, {}).setdefault((p.origen, p.tipo_otro or ""), 0)
@@ -860,7 +856,7 @@ def dashboard_pagos(request):
             total_presup = sum(
                 v for (o, _), v in presup_anual_dict.get(anio_, {}).items() if o == 'otros'
             )
-        else:  # Todos los orígenes
+        else:  
             presup_local = presup_anual_dict.get(anio_, {}).get(('local', ''), 0)
             presup_area = presup_anual_dict.get(anio_, {}).get(('area', ''), 0)
             presup_otros = sum(
@@ -930,9 +926,9 @@ def dashboard_pagos(request):
     for cobro in otros_cobros:
         for idx, mes in enumerate(todos_los_meses):
             if cobro.fecha_cobro.year == mes.year and cobro.fecha_cobro.month == mes.month:
-                # Usa el tipo_ingreso de la factura relacionada
+
                 tipo = getattr(cobro.factura, 'tipo_ingreso', None) or 'Otro'
-                # Si quieres mostrar el display (nombre legible):
+              
                 if hasattr(cobro.factura, 'get_tipo_ingreso_display'):
                     tipo = cobro.factura.get_tipo_ingreso_display()
                 otros_tipos_por_mes[idx][tipo] += float(cobro.monto)
