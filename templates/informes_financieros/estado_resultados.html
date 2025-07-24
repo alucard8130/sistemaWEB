@@ -1,193 +1,228 @@
 {% load humanize %}
 {% load custom_filters %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Estado de Resultados</title>
+    <!-- 
+        Created by: Jaime Estrada
+        Modified by: María Martínez
+        Date of creation: 24/07/2025
+        Date of modification: 24/07/2025
+        Description: State of results
+    -->
+    <meta charset="UTF-8">
+    <title>Estado de resultados</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS --> 
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-<div class="container mt-4">
-    <div class="text-center mb-4">
-        <h3>
-        {% if empresa_id %}
-            {% for emp in empresas %}
-                {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}
-                    {{ emp.nombre }}
-                {% endif %}
-            {% endfor %}
-        {% else %}
-            {% if request.user.is_superuser %}
-                Todas las empresas
-            {% else %}
+    {% include 'navbar.html' %}
+
+    <!-- Main content -->
+    <div class="container-fluid mt-4">
+        <div class="text-center mb-4 p-3 border rounded shadow-sm" style="background-color: #f8fbff;">
+            <h2 class="mb-1">
+            {% if empresa_id %}
                 {% for emp in empresas %}
-                    {% if emp.id|stringformat:"s" == request.user.empresa_id|stringformat:"s" %}
-                        {{ emp.nombre }}
+                    {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}
+                        <i class="bi bi-building"></i> {{ emp.nombre }}
                     {% endif %}
                 {% endfor %}
-            {% endif %}
-        {% endif %}
-        </h3>
-        <h4>Estado de Resultados</h4>
-        <div>
-            <strong>
-                {% if mes and anio %}
-                    {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
-                        {{ meses|index:mes|default:"" }} {{ anio }}
-                    {% endwith %}
+            {% else %}
+                {% if request.user.is_superuser %}
+                    <i class="bi bi-buildings"></i> Todas las empresas
                 {% else %}
-                    Todo el periodo
+                    {% for emp in empresas %}
+                        {% if emp.id|stringformat:"s" == request.user.empresa_id|stringformat:"s" %}
+                            <i class="bi bi-building"></i> {{ emp.nombre }}
+                        {% endif %}
+                    {% endfor %}
                 {% endif %}
-            </strong>
-        </div>
-    </div>
+            {% endif %}
+            </h2>
 
-    <div class="d-flex justify-content-center mb-3">
-        <div class="btn-group" role="group" aria-label="Modo de informe">
-            <a href="?modo=flujo{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
-               class="btn btn-outline-primary {% if modo == 'flujo' %}active{% endif %}">
-                Flujo
-            </a>
-            <a href="?modo=resultados{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
-               class="btn btn-outline-primary {% if modo == 'resultados' or not modo %}active{% endif %}">
-                Resultados
-            </a>
-        </div>
-    </div>
-
-    {% if modo == 'resultados' or not modo %}
-        <div class="alert alert-secondary mb-2 text-center">
-            Modo: <strong>Resultados</strong> (incluye todo lo facturado y todos los gastos)
-        </div>
-    {% elif modo == 'flujo' %}
-        <div class="alert alert-secondary mb-2 text-center">
-            Modo: <strong>Flujo</strong> (solo ingresos cobrados y gastos pagados)
-        </div>
-    {% endif %}
-
-    <!-- Filtros -->
-    <form method="get" class="row g-2 mb-3 align-items-end justify-content-center">
-    {% if request.user.is_superuser %}
-    <div class="col-auto">
-        <select name="empresa" class="form-select" style="width:auto;">
-            <option value="">Todas las empresas</option>
-            {% for emp in empresas %}
-                <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    {% endif %}
-    <div class="col-auto">
-        <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
-            {% if periodo == 'periodo_actual' %}disabled{% endif %}>
-            Periodo actual
-        </button>
-    </div>
-    <div class="col-auto">
-        <button type="submit" name="periodo" value="mes_actual" class="btn btn-outline-primary"
-            {% if periodo == 'mes_actual' %}disabled{% endif %}>
-            Mes actual
-        </button>
-    </div>
-    <div class="col-auto">
-        <select name="mes" class="form-select" style="width:auto;">
-            <option value="">Mes</option>
-            {% for m in meses_unicos %}
-                <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
-                    {{ m }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <select name="anio" class="form-select" style="width:auto;">
-            <option value="">Año</option>
-            {% for y in anios_unicos %}
-                <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-        <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
-            Exportar a Excel
-        </a>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
-    </div>
-</form>
-    {% if modo == 'flujo' %}
-            <div class="alert alert-info text-end">
-         <span><strong>Saldo inicial bancos:</strong></span>
-                <span>${{ saldo_inicial|floatformat:2|intcomma }}</span>
+            <h4 class="text-primary fw-semibold mb-2">
+                <i class="bi bi-bar-chart-line"></i> Estado de resultados
+            </h4>
+            
+            <div class="text-muted fs-5">
+                <strong>
+                    {% if mes and anio %}
+                        {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
+                            {{ meses|index:mes|default:"" }} {{ anio }}
+                        {% endwith %}
+                    {% else %}
+                        Todo el periodo
+                    {% endif %}
+                </strong>
             </div>
-    {% endif %}
-            <div class="card my-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Ingresos</h5>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-            
-            <tbody>
-                {% for origen, monto in ingresos_por_origen.items %}
-                <tr>
-                    <td class="text-start">{{ origen|capfirst }}</td>
-                    <td class="text-end">${{ monto|floatformat:2|intcomma }}</td>
-                </tr>
-                {% endfor %}
-                <tr class="table-light">
-                    <td class="text-start"><strong>Total Ingresos</strong></td>
-                    <td class="text-end"><strong>${{ total_ingresos|floatformat:2|intcomma }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+        </div>
 
-<div class="card my-4">
-    <div class="card-header bg-danger text-white">
-        <h5 class="mb-0">Gastos</h5>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-            
-            <tbody>
-                {% for grupo, subgrupos in estructura_gastos.items %}
+        <div class="d-flex justify-content-center mb-3">
+            <div class="btn-group" role="group" aria-label="Modo de informe">
+                <a href="?modo=flujo{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
+                class="btn btn-outline-soft-blue {% if modo == 'flujo' %}active{% endif %}">
+                <i class="bi bi-arrow-repeat"></i>
+                    Flujo
+                </a>
+                <a href="?modo=resultados{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
+                class="btn btn-outline-soft-blue {% if modo == 'resultados' or not modo %}active{% endif %}">
+                <i class="bi bi-bar-chart-line"></i>    
+                    Resultados
+                </a>
+            </div>
+        </div>
+
+        {% if modo == 'resultados' or not modo %}
+            <div class="alert alert-blue-soft mb-2 text-center">
+                Modo: <strong>Resultados</strong> (incluye todo lo facturado y todos los gastos)
+            </div>
+        {% elif modo == 'flujo' %}
+            <div class="alert alert-blue-soft mb-2 text-center">
+                Modo: <strong>Flujo</strong> (solo ingresos cobrados y gastos pagados)
+            </div>
+        {% endif %}
+
+        <!-- Filtros -->
+        <form method="get" class="row g-2 mb-3 align-items-end justify-content-center">
+        {% if request.user.is_superuser %}
+        <div class="col-auto">
+            <select name="empresa" class="form-select" style="width:auto;">
+                <option value="">Todas las empresas</option>
+                {% for emp in empresas %}
+                    <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-auto">
+            <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
+                {% if periodo == 'periodo_actual' %}disabled{% endif %}>
+                Periodo actual
+            </button>
+        </div>
+        <div class="col-auto">
+            <button type="submit" name="periodo" value="mes_actual" class="btn btn-outline-primary"
+                {% if periodo == 'mes_actual' %}disabled{% endif %}>
+                Mes actual
+            </button>
+        </div>
+        <div class="col-auto">
+            <select name="mes" class="form-select" style="width:auto;">
+                <option value="">Mes</option>
+                {% for m in meses_unicos %}
+                    <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
+                        {{ m }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <select name="anio" class="form-select" style="width:auto;">
+                <option value="">Año</option>
+                {% for y in anios_unicos %}
+                    <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-funnel me-1"></i>Filtrar</button>
+            <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-excel me-1"></i> Exportar a Excel
+            </a>
+        </div>
+    </form>
+        {% if modo == 'flujo' %}
+                <div class="alert alert-info text-end">
+            <span><strong>Saldo inicial bancos:</strong></span>
+                    <span>${{ saldo_inicial|floatformat:2|intcomma }}</span>
+                </div>
+        {% endif %}
+                <div class="card my-4">
+        <div class="card-header pastel-green">
+            <h5 class="mb-0">Ingresos</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                
+                <tbody>
+                    {% for origen, monto in ingresos_por_origen.items %}
                     <tr>
-                        <td class="fw-bold text-start">{{ grupo }}</td>
-                        <td></td>
+                        <td class="text-start">{{ origen|capfirst }}</td>
+                        <td class="text-end">${{ monto|floatformat:2|intcomma }}</td>
                     </tr>
-                    {% for subgrupo, tipos in subgrupos.items %}
+                    {% endfor %}
+                    <tr class="table-light">
+                        <td class="text-start"><strong>Total ingresos</strong></td>
+                        <td class="text-end"><strong>${{ total_ingresos|floatformat:2|intcomma }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card my-4">
+        <div class="card-header pastel-red">
+            <h5 class="mb-0">Gastos</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                
+                <tbody>
+                    {% for grupo, subgrupos in estructura_gastos.items %}
                         <tr>
-                            <td class="ps-4 fw-semibold text-start">{{ subgrupo }}</td>
+                            <td class="fw-bold text-start">{{ grupo }}</td>
                             <td></td>
                         </tr>
-                        {% for tipo in tipos %}
+                        {% for subgrupo, tipos in subgrupos.items %}
                             <tr>
-                                <td class="ps-5 text-start">{{ tipo.tipo|capfirst }}</td>
-                                <td class="text-end">${{ tipo.total|floatformat:2|intcomma }}</td>
+                                <td class="ps-4 fw-semibold text-start">{{ subgrupo }}</td>
+                                <td></td>
                             </tr>
+                            {% for tipo in tipos %}
+                                <tr>
+                                    <td class="ps-5 text-start">{{ tipo.tipo|capfirst }}</td>
+                                    <td class="text-end">${{ tipo.total|floatformat:2|intcomma }}</td>
+                                </tr>
+                            {% endfor %}
                         {% endfor %}
                     {% endfor %}
-                {% endfor %}
-                <tr class="table-light">
-                    <td class="text-start"><strong>Total Gastos</strong></td>
-                    <td class="text-end"><strong>${{ total_gastos|floatformat:2|intcomma }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-    <div class="alert alert-danger text-end">
-    <strong>Resultado:</strong>
-    <span class="ms-2">${{ saldo|floatformat:2|intcomma }}</span>
-</div>
-    {% if modo == 'flujo' %}
-        <div class="alert alert-info text-end">
-            <span><strong>Saldo final bancos:</strong></span>
-            <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
+                    <tr class="table-light">
+                        <td class="text-start"><strong>Total gastos</strong></td>
+                        <td class="text-end"><strong>${{ total_gastos|floatformat:2|intcomma }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-    {% endif %}
-</div>
+    </div>
+    <div class="alert pastel-gray text-end">
+        <strong>Resultado:</strong>
+        <span class="ms-2">${{ saldo|floatformat:2|intcomma }}</span>
+    </div>
+        {% if modo == 'flujo' %}
+            <div class="alert alert-info text-end">
+                <span><strong>Saldo final bancos:</strong></span>
+                <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- 🔹 Footer -->
+    <footer>
+        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+        Creado por Jaime M. Estrada Bernabé
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
