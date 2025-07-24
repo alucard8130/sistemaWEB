@@ -76,10 +76,10 @@ document.getElementById('stripe-checkout-btn').onclick = function() {
 
 {% if not es_demo %}
 <div class="container-fluid px-4 py-3 wide=100px">
-<!-- Botón para cancelar suscripción -->
+<!-- Botón para cancelar suscripción 
 <button id="cancelar-suscripcion-btn" class="btn btn-danger">
     Cancelar suscripción
-</button>
+</button>-->
 <script>
 document.getElementById('cancelar-suscripcion-btn').onclick = function() {
     fetch("{% url 'cancelar_suscripcion' %}", {
