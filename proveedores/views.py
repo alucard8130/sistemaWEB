@@ -5,19 +5,24 @@ from django.shortcuts import render, redirect,get_object_or_404
 from empresas.models import Empresa
 from .forms import ProveedorForm
 from .models import Proveedor
+from django import forms
 
 @login_required
 def proveedor_crear(request):
     if request.method == 'POST':
-        form = ProveedorForm(request.POST, user=request.user)
+        post = request.POST.copy()
+        if not request.user.is_superuser:
+            post['empresa'] = request.user.perfilusuario.empresa.id  
+        form = ProveedorForm(post, user=request.user)
         if form.is_valid():
             proveedor = form.save(commit=False)
-            if not request.user.is_superuser:
-                proveedor.empresa = request.user.perfilusuario.empresa
+            proveedor.empresa = request.user.perfilusuario.empresa
             proveedor.save()
             return redirect('proveedor_lista')
     else:
         form = ProveedorForm(user=request.user)
+        if not request.user.is_superuser and 'empresa' in form.fields:
+            form.fields['empresa'].initial = request.user.perfilusuario.empresa
     return render(request, 'proveedores/crear_proveedor.html', {'form': form})
 
 @login_required

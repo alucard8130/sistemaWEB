@@ -2115,11 +2115,18 @@ def copiar_presupuesto_gastos_a_nuevo_anio(request):
     if request.method == "POST":
         anio_actual = date.today().year
         anio_nuevo = anio_actual + 1
-
         existe = Presupuesto.objects.filter(anio=anio_nuevo).exists()
         if existe:
             messages.warning(
                 request, f"Ya existe presupuesto para el año {anio_nuevo}."
+            )
+            return redirect("matriz_presupuesto")
+        
+         # Verifica que haya datos capturados en el año actual
+        presupuestos_actuales = Presupuesto.objects.filter(anio=anio_actual)
+        if not presupuestos_actuales.exists():
+            messages.warning(
+                request, f"No hay datos capturados para el año {anio_actual}. No se puede clonar el presupuesto."
             )
             return redirect("matriz_presupuesto")
 
@@ -2187,6 +2194,15 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
                 request, f"Ya existe presupuesto de ingresos para el año {anio_nuevo}."
             )
             return redirect("matriz_presupuesto_ingresos")
+        
+         # Verifica que haya datos capturados en el año actual
+        presupuestos_actuales = PresupuestoIngreso.objects.filter(anio=anio_actual)
+        if not presupuestos_actuales.exists():
+            messages.warning(
+                request, f"No hay datos capturados para el año {anio_actual}. No se puede clonar el presupuesto."
+            )
+            return redirect("matriz_presupuesto_ingresos")
+
 
         tipo_clon = request.POST.get("tipo_clon", "sin")
         porcentaje = request.POST.get("porcentaje", "0")

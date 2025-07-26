@@ -274,8 +274,16 @@ def reporte_pagos_gastos(request):
 
     if not es_super:
         pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
-    elif empresa_id:
-        pagos = pagos.filter(gasto__empresa_id=empresa_id)
+        proveedores = Proveedor.objects.filter(empresa=request.user.perfilusuario.empresa)
+        empleados = Empleado.objects.filter(empresa=request.user.perfilusuario.empresa)
+    else:
+        if empresa_id:
+            pagos = pagos.filter(gasto__empresa_id=empresa_id)
+            proveedores = Proveedor.objects.filter(empresa_id=empresa_id)
+            empleados = Empleado.objects.filter(empresa_id=empresa_id)
+        else:
+            proveedores = Proveedor.objects.all()
+            empleados = Empleado.objects.all()
 
     if proveedor_id:
         pagos = pagos.filter(gasto__proveedor_id=proveedor_id)
@@ -290,8 +298,8 @@ def reporte_pagos_gastos(request):
 
     total = pagos.aggregate(total=Sum('monto'))['total'] or 0
 
-    proveedores = Proveedor.objects.all()
-    empleados = Empleado.objects.all()
+    #proveedores = Proveedor.objects.all()
+    #empleados = Empleado.objects.all()
     FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
 
     #paginacion
@@ -313,8 +321,6 @@ def reporte_pagos_gastos(request):
         'empleado_id': empleado_id,
         'formas_pago': FORMAS_PAGO,
         'pagos': page_obj,
-        
-        # Si tienes catálogos de proveedores, empleados y formas de pago pásalos aquí
     })
 
 @login_required
@@ -338,6 +344,12 @@ def dashboard_pagos_gastos(request):
     grupo_id = request.GET.get('grupo')
     subgrupo_id = request.GET.get('subgrupo')
     tipo_gasto_id = request.GET.get('tipo_gasto')
+    
+    if es_super:
+        tipos_gasto = TipoGasto.objects.all()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
 
     # --- FILTROS BÁSICOS ---
     base_gastos = Q(fecha__year=anio)
@@ -431,10 +443,9 @@ def dashboard_pagos_gastos(request):
     proveedores = Proveedor.objects.all()
     empleados = Empleado.objects.all()
     FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
-    #meses = [calendar.month_abbr[m] for m in range(1, 13)]
     grupos = GrupoGasto.objects.all()
     subgrupos = SubgrupoGasto.objects.all()
-    tipos_gasto = TipoGasto.objects.all()
+    #tipos_gasto = TipoGasto.objects.all()
 
     return render(request, 'gastos/dashboard_pagos.html', {
         'empresas': empresas,
@@ -542,6 +553,7 @@ def exportar_pagos_gastos_excel(request):
     response['Content-Disposition'] = f'attachment; filename={filename}'
     wb.save(response)
     return response
+
 
 def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
     """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas). Reporta conflicto si hay varias."""

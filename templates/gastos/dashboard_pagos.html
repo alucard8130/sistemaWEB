@@ -24,6 +24,11 @@
 </head>
 <body>
     {% include 'navbar.html' %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 <div class="container-fluid mt-4">
     <h2>Dashboard gastos</h2>
     <form method="get" class="row g-2 mb-4">
@@ -38,26 +43,7 @@
         </div>
         {% endif %}
         
-        <!--<div class="col-md-2">
-            <label>Proveedor:</label>
-            <select name="proveedor" class="form-select">
-                <option value="">Todos</option>
-                {% for p in proveedores %}
-                    <option value="{{ p.id }}" {% if p.id|stringformat:"s" == proveedor_id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label>Empleado:</label>
-            <select name="empleado" class="form-select">
-                <option value="">Todos</option>
-                {% for e in empleados %}
-                    <option value="{{ e.id }}" {% if e.id|stringformat:"s" == empleado_id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
-                {% endfor %}
-            </select>
-        </div>-->
-       
-        <div class="col-md-2">
+        <div class="col-md-2 align-self-end">
             <select name="grupo" class="form-select">
                 <option value="">Grupos</option>
                 {% for g in grupos %}
@@ -65,7 +51,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 align-self-end">
             <select name="subgrupo" class="form-select">
                 <option value="">Subgrupos</option>
                 {% for sg in subgrupos %}
@@ -73,7 +59,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 align-self-end">
             <select name="tipo_gasto" class="form-select">
                 <option value="">Tipo de Gastos</option>
                 {% for tg in tipos_gasto %}

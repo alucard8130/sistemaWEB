@@ -827,10 +827,11 @@ def dashboard_pagos(request):
         data_presupuesto.append(presup_dict.get(key, 0))
 
         # Obtén todos los años presentes en pagos y presupuesto
-    anios_pagos = [p['anio'].year if hasattr(p['anio'], 'year') else p['anio'] for p in pagos_por_anio]
-    anios_otros = [o['anio'].year if hasattr(o['anio'], 'year') else o['anio'] for o in otros_por_anio]
-    anios_presupuesto = list(PresupuestoIngreso.objects.values_list('anio', flat=True).distinct())
-    todos_los_anios = sorted(set(anios_pagos + anios_otros + anios_presupuesto))
+    anios_pagos = pagos.values_list('fecha_pago__year', flat=True).distinct()
+    anios_otros = otros_cobros.values_list('fecha_cobro__year', flat=True).distinct()
+    anios_presupuesto = PresupuestoIngreso.objects.values_list('anio', flat=True).distinct()
+    todos_los_anios = sorted(set(list(anios_pagos) + list(anios_otros) + list(anios_presupuesto)))
+    #todos_los_anios = sorted(set(anios_pagos + anios_otros + anios_presupuesto))
 
     # Suma ingresos reales por año
     data_cuotas_anio = { (p['anio'].year if hasattr(p['anio'], 'year') else p['anio']): float(p['total']) for p in pagos_por_anio }
