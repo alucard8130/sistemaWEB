@@ -7,7 +7,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 17/07/2025
+        Date of modification: 25/07/2025
         Description: Expenditure report
     -->
     <meta charset="UTF-8">
@@ -69,10 +69,13 @@
                 <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
             </div>
             <div class="col-auto align-self-end">
-                <button type="submit" class="btn btn-primary">Filtrar</button>
-                <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-secondary">Limpiar</a>
-                <a href="{% url 'exportar_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-success ">
-                    <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-funnel-fill"></i> Filtrar
+                </button>
+                <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> Limpiar</a>
+                <a href="{% url 'exportar_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
                 </a>
             </div>
         </form>
