@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 13/07/2025
+    Date of modification: 24/07/2025
     Description: General styles for the GAC system   
 */
     
@@ -53,6 +53,39 @@ html, body {
     color: #002a4d;
 }
 
+.btn-outline-soft-blue {
+  color: #5c9ded;
+  border: 1px solid #b3d4fc;
+  background-color: transparent;
+}
+
+.btn-outline-soft-blue:hover,
+.btn-outline-soft-blue.active {
+  background-color: #b3d4fc;
+  color: #003366;
+}
+
+.alert-blue-soft {
+  background-color: #e7f1fc;
+  color: #0a58ca;
+  border: 1px solid #b6d4fe;
+}
+
+.card-header.pastel-green {
+        background-color: #d4edda; 
+        color: #155724; 
+}
+
+.card-header.pastel-red {
+        background-color: #f8d7da; 
+        color: #721c24; 
+}
+
+.alert.pastel-gray {
+        background-color: #f1f1f1;
+        color: #4a4a4a;
+        border: 1px solid #d6d6d6;
+    }
 
 /* 
 .btn-light-custom {
