@@ -7,7 +7,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 05/07/2025
+        Date of modification: 25/07/2025
         Description: Overdue invoices
     -->
     <meta charset="UTF-8">
@@ -79,13 +79,17 @@
             </div>
 
             <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Filtrar</button>
-                <a href="{% url 'cartera_vencida' %}" class="btn btn-secondary">Limpiar</a>
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-funnel-fill"></i> Filtrar
+                </button>
+                <a href="{% url 'cartera_vencida' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                </a>
             </div>
         </form>
         <div class="mb-2"> 
-            <a href="{% url 'exportar_cartera_excel' %}?origen={{ request.GET.origen }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.dias %}&dias={{ request.GET.dias }}{% endif %}" class="btn btn-success">
-                Exportar a Excel
+            <a href="{% url 'exportar_cartera_excel' %}?origen={{ request.GET.origen }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.dias %}&dias={{ request.GET.dias }}{% endif %}" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
             </a>
         </div>
 

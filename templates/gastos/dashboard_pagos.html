@@ -7,7 +7,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 17/07/2025
+        Date of modification: 25/07/2025
         Description: Accounts payable dashboard
     -->
     <meta charset="UTF-8">
@@ -104,8 +104,12 @@
             </select>
         </div>
         <div class="col-md-2 align-self-end">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'dashboard_pagos_gastos' %}" class="btn btn-secondary">Limpiar</a>
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-funnel-fill"></i> Filtrar
+            </button>
+            <a href="{% url 'dashboard_pagos_gastos' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-clockwise"></i> Limpiar
+            </a>
         </div>
     </form>
     <div class="card mb-4 p-3 shadow-sm">
