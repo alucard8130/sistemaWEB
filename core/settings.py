@@ -16,10 +16,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = os.getenv("DEBUG", "False") == "True"
-DEBUG = True
-#ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com").split(",")
-ALLOWED_HOSTS = ['*']  # For development purposes, change this in production
+DEBUG = os.getenv("DEBUG", "False") == "True"
+#DEBUG = True
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com").split(",")
+#ALLOWED_HOSTS = ['*']  # For development purposes, change this in production
 
 # Application definition
 
@@ -87,14 +87,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
-#DATABASES = {"default": dj_database_url.config(default=os.getenv("DATABASE_URL"))}
+DATABASES = {"default": dj_database_url.config(default=os.getenv("DATABASE_URL"))}
 
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -143,8 +143,8 @@ STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+#STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
