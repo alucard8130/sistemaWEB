@@ -66,6 +66,10 @@ urlpatterns = [
     path('stripe/crear-sesion/', crear_sesion_pago, name='crear_sesion_pago'),
     path('stripe/cancelar-suscripcion/', cancelar_suscripcion, name='cancelar_suscripcion'),
     path('guardar-datos-empresa/', guardar_datos_empresa, name='guardar_datos_empresa'),
+    path('password_reset/', auth_views.PasswordResetView.as_view(template_name='registration/password_reset_form.html'), name='password_reset'),
+    path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='registration/password_reset_confirm.html'), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'), name='password_reset_complete'),
 ]
 
 if settings.DEBUG:
