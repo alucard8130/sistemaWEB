@@ -189,27 +189,13 @@ if os.getenv("USE_S3", "False") == "True":
     AWS_QUERYSTRING_AUTH = False
 
 import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
+SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")  
 
 sentry_sdk.init(
-    dsn="https://df115c946897463061752fef6a8bafb6@o4509759647907840.ingest.us.sentry.io/4509759650922496",
-    # Set environment to the current Django environment
-    environment=os.getenv("DJANGO_ENV", "development"),
-    
-    # Add data like request headers and IP for users,
-
-    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-    send_default_pii=True,
-
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for tracing.
-    traces_sample_rate=1.0,
-
-    # Set profile_session_sample_rate to 1.0 to profile 100%
-    # of profile sessions.
-    profile_session_sample_rate=1.0,
-
-    # Set profile_lifecycle to "trace" to automatically
-    # run the profiler on when there is an active transaction
-    profile_lifecycle="trace",
-
-)    
+    dsn=SENTRY_DSN,
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=1.0,  # Puedes bajarlo a 0.1 si no quieres rastreo de performance
+    send_default_pii=True,   # Para capturar datos de usuario autenticado
+)
