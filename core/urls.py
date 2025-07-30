@@ -66,8 +66,9 @@ urlpatterns = [
     path('stripe/crear-sesion/', crear_sesion_pago, name='crear_sesion_pago'),
     path('stripe/cancelar-suscripcion/', cancelar_suscripcion, name='cancelar_suscripcion'),
     path('guardar-datos-empresa/', guardar_datos_empresa, name='guardar_datos_empresa'),
+    
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    #urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    #urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 
