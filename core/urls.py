@@ -66,7 +66,7 @@ urlpatterns = [
     path('stripe/crear-sesion/', crear_sesion_pago, name='crear_sesion_pago'),
     path('stripe/cancelar-suscripcion/', cancelar_suscripcion, name='cancelar_suscripcion'),
     path('guardar-datos-empresa/', guardar_datos_empresa, name='guardar_datos_empresa'),
-    path('prueba-error/', prueba_error, name='prueba_error'),
+    #path('prueba-error/', prueba_error, name='prueba_error'),
     
 ]
 
