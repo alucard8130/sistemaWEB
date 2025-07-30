@@ -37,6 +37,11 @@
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %}
 {% endif %}
+{% if mensaje_pago %}
+  <div class="alert alert-success">
+    {{ mensaje_pago }}
+  </div>
+{% endif %}
 {% if es_demo %}
 <div style="
     position: fixed;

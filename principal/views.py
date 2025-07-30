@@ -44,11 +44,10 @@ def bienvenida(request):
     perfil = request.user.perfilusuario
     mostrar_wizard = perfil.mostrar_wizard
     
-    # mostrar_wizard = (
-    # perfil.tipo_usuario == "demo"
-    # and not perfil.stripe_customer_id
-    # )
-    
+    mensaje_pago = None
+    if request.GET.get("pago") == "ok":
+        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
+
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
         eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
@@ -64,6 +63,7 @@ def bienvenida(request):
             "es_demo": es_demo,
             "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
             "mostrar_wizard": mostrar_wizard,
+            "mensaje_pago": mensaje_pago,
         },
     )
 
@@ -544,7 +544,7 @@ def crear_sesion_pago(request):
             }
         ],
         mode="subscription",
-        success_url=request.build_absolute_uri("/bienvenida/"),
+        success_url=request.build_absolute_uri("/bienvenida/?pago=ok"),
         cancel_url=request.build_absolute_uri("/bienvenida/"),
         client_reference_id=str(request.user.id),  # Para identificar al usuario
         customer_email=request.user.email,
