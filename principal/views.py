@@ -539,8 +539,8 @@ def crear_sesion_pago(request):
         payment_method_types=["card"],
         line_items=[
             {
-                "price": "price_1RqexnPYnlfwKZQHILP9tgW5","price_1RqexnPYnlfwKZQHw6WvIeFj"
-                "quantity": 2,
+                "price": "price_1RqfYPPYnlfwKZQHy6RbYeKA",
+                "quantity": 1,
             }
         ],
         mode="subscription",
