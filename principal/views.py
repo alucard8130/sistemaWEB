@@ -32,7 +32,7 @@ from datetime import date
 import stripe
 
 # stripe.api_key = settings.STRIPE_SECRET_KEY
-stripe.api_key = settings.STRIPE_SECRET_KEY_TEST
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # Create your views here.
 
