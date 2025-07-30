@@ -595,6 +595,7 @@ def guardar_datos_empresa(request):
     messages.success(request, "¡Datos de empresa actualizados correctamente!")
     return redirect('bienvenida')
 
+# @login_required
 # def prueba_error(request):
 #     # Esto lanzará un error que Sentry debe capturar
 #     raise Exception("¡Este es un error de prueba para Sentry!")

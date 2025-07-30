@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
-from principal.views import cancelar_suscripcion, crear_evento, crear_sesion_pago, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, prueba_error, registro_usuario, reporte_auditoria, stripe_webhook
+from principal.views import cancelar_suscripcion, crear_evento, crear_sesion_pago, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -66,8 +66,6 @@ urlpatterns = [
     path('stripe/crear-sesion/', crear_sesion_pago, name='crear_sesion_pago'),
     path('stripe/cancelar-suscripcion/', cancelar_suscripcion, name='cancelar_suscripcion'),
     path('guardar-datos-empresa/', guardar_datos_empresa, name='guardar_datos_empresa'),
-    #path('prueba-error/', prueba_error, name='prueba_error'),
-    
 ]
 
 if settings.DEBUG:
