@@ -12,7 +12,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 25/07/2025
-      Date of modification: 25/07/2025
+      Date of modification: 29/07/2025
       Description:  Budget vs expenditure comparison report
     -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -58,16 +58,17 @@
             </form>
             <form method="get" class="mb-3 d-flex align-items-center gap-2">
                 <select name="medicion" class="form-select" style="width:auto;">
-                    <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes Actual</option>
-                    <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo Actual</option>
+                    <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes actual</option>
+                    <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo actual</option>
                     <option value="semestre1" {% if medicion == "semestre1" %}selected{% endif %}>Primer semestre</option>
                     <option value="semestre2" {% if medicion == "semestre2" %}selected{% endif %}>Segundo semestre</option>  
                     <option value="anual" {% if medicion == "anual" %}selected{% endif %}>Año completo</option>
                 </select>
                 <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-search me-1"></i> Consultar</button>
+                    <i class="bi bi-search me-1"></i> Consultar
+                </button>
             </form>
-            <div class="dt-top-scroll" id="dt-top-scroll"></div>
+            
             <div class="mb-3">
                 <label class="form-label fw-semibold">Mostrar/ocultar columnas:</label>
                 <div class="d-flex flex-wrap gap-2">
@@ -93,16 +94,15 @@
             </div>
             <div class="table-responsive rounded-3 border" id="table-container-corp">
                 <table id="reporte-comparativo" class="table align-middle mb-0 shadow-sm">
-                     <!-- style="table-layout:auto; width:auto; min-width:100%;" -->
-                    <thead>
+                    <thead class="encabezado-claro">
                         <tr>
                             <th rowspan="2">Grupo</th>
                             <th rowspan="2" class="col-subgrupo">Subgrupo</th>
-                            <th rowspan="2" class="col-tipo">Tipo de Gasto</th>
+                            <th rowspan="2" class="col-tipo">Tipo de gasto</th>
                             {% for mes_nombre in meses_nombres %}
-                                <th class="th-mes th-mes-{{ forloop.counter0 }}" colspan="4">{{ mes_nombre }}</th>
+                                <th class="th-mes th-mes-{{ forloop.counter0 }}" colspan="4">{{ mes_nombre|capfirst }}</th>
                             {% endfor %}
-                            <th class="th-total-anual" colspan="4">TOTAL ANUAL</th>
+                            <th class="th-total-anual" colspan="4">Total anual</th>
                         </tr>
                         <tr>
                             {% for mes in meses_nombres %}
@@ -226,7 +226,7 @@
                         {% endfor %}
                     {% endfor %}
                     <tr class="table-warning">
-                        <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>TOTAL GENERAL</strong></td>
+                        <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total general</strong></td>
                         {% for i in meses_idx %}
                             <td class="col-presup th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
                             <td class="col-real th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
@@ -284,7 +284,7 @@
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Pasas la variable de Django a JS
+        // Pass Django variable to JS
         window.mesesCount = {{ meses_nombres|length }};
     </script>
     <script src="{% static 'js/column-toggle.js' %}"></script>
