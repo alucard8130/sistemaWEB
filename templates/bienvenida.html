@@ -56,7 +56,7 @@
     Recuerda que tu acceso demo es válido por 30 días.<br>
     <hr>
     <button id="stripe-checkout-btn" class="btn btn-success btn-sm w-100">
-      <a href="https://buy.stripe.com/test_4gM4gBfm62lechi1UR2B200" class="text-white text-decoration-none">
+      <a href="https://buy.stripe.com/fZueVfgqa8JCftu5732B202" class="text-white text-decoration-none">
         <i class="bi bi-credit-card"></i> Suscribete ahora !!
       </a>
     </button>
@@ -67,7 +67,7 @@ document.getElementById('stripe-checkout-btn').onclick = function() {
     fetch("{% url 'crear_sesion_pago' %}")
       .then(response => response.json())
       .then(data => {
-        var stripe = Stripe("{{ STRIPE_PUBLIC_KEY_TEST }}"); // Reemplaza con tu clave pública de Stripe
+        var stripe = Stripe("{{ STRIPE_PUBLIC_KEY }}"); // Reemplaza con tu clave pública de Stripe
         stripe.redirectToCheckout({ sessionId: data.id });
       });
 };

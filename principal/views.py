@@ -470,7 +470,7 @@ def stripe_webhook(request):
 
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    endpoint_secret = settings.STRIPE_ENDPOINT_SECRET_TEST
+    endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
 
     try:
         event = stripe.Webhook.construct_event(
@@ -539,8 +539,8 @@ def crear_sesion_pago(request):
         payment_method_types=["card"],
         line_items=[
             {
-                "price": "price_1RnWRLPYnlfwKZQHVmpXMsty",
-                "quantity": 1,
+                "price": "price_1RqexnPYnlfwKZQHILP9tgW5","price_1RqexnPYnlfwKZQHw6WvIeFj"
+                "quantity": 2,
             }
         ],
         mode="subscription",
@@ -557,7 +557,7 @@ def cancelar_suscripcion(request):
     perfil = request.user.perfilusuario
     subscription_id = perfil.stripe_subscription_id
     if subscription_id:
-        stripe.api_key = settings.STRIPE_SECRET_KEY_TEST
+        stripe.api_key = settings.STRIPE_SECRET_KEY
         try:
             stripe.Subscription.delete(subscription_id)
             perfil.tipo_usuario = 'demo'  # O el estado que corresponda
