@@ -185,7 +185,7 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
             raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
 
-@staff_member_required
+@login_required
 def carga_masiva_locales(request):
     if request.method == 'POST':
         form = LocalCargaMasivaForm(request.POST, request.FILES)
@@ -257,16 +257,16 @@ def carga_masiva_locales(request):
         form = LocalCargaMasivaForm()
     return render(request, 'locales/carga_masiva_locales.html', {'form': form})
 
-@staff_member_required
+@login_required
 def plantilla_locales_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Plantilla Locales"
     ws.append([
-        'empresa','propietario', 'cliente', 'rfc','email','numero',  'cuota','ubicacion', 'superficie_m2','giro', 'status', 'observaciones'
+        'condominio','propietario', 'cliente', 'rfc','email','numero',  'cuota','ubicacion', 'superficie_m2','giro', 'status', 'observaciones'
     ])
     ws.append([
-        'Torre Reforma','Tiendas Soriana SA de CV','Juan Pérez','XXX-XXX-XXX','email@ejemplo.com', '101', '120.3', 'planta baja', '30.5','venta ropa', 'ocupado', 'carga inicial'
+        'plaza en condominio AC','Tiendas Soriana SA de CV','Juan Pérez','XXX-XXX-XXX','email@ejemplo.com', '101', '120.3', 'planta baja', '30.5','venta ropa', 'ocupado', 'carga inicial'
     ])
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

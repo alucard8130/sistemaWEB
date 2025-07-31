@@ -1258,12 +1258,12 @@ def plantilla_facturas_excel(request):
 
     # Encabezados (ajusta según tu modelo)
     ws.append([
-        'folio', 'empresa_id', 'cliente_id', 'local_id', 'area_id',  'tipo_cuota',
-        'monto','fecha_emision', 'fecha_vencimiento', 'observaciones'
+        'folio', 'condominio', 'cliente', 'Num.local', 'Num.area',  'tipo cuota',
+        'monto','fecha emision', 'fecha vencimiento', 'observaciones'
     ])
     # Fila de ejemplo (puedes poner valores ficticios)
     ws.append([
-        'FAC001', 'Torre Reforma', 'Juan Pérez', 'L-101', '','mantenimiento', '1500.00', '2025-06-10', '2025-07-10', 'carga inicial'
+        'FAC001', 'Condominio Torre Reforma AC', 'Juan Pérez', 'L-101', '','mantenimiento', '1500.00', '2025-06-10', '2025-07-10', 'carga inicial'
     ])
 
     response = HttpResponse(
@@ -1460,7 +1460,7 @@ def carga_masiva_facturas_cobradas(request):
         form = FacturaCargaMasivaForm()
     return render(request, 'facturacion/carga_masiva_facturas_cobradas.html', {'form': form})
 
-@staff_member_required
+@login_required
 #carga masiva cuentas x cobrar (cartera vencida)
 def carga_masiva_facturas(request):
     if request.method == 'POST':

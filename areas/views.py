@@ -204,7 +204,7 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
             raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
 
-@staff_member_required
+@login_required
 def carga_masiva_areas(request):
     if request.method == 'POST':
         form = AreaComunCargaMasivaForm(request.POST, request.FILES)
@@ -274,17 +274,17 @@ def carga_masiva_areas(request):
         form = AreaComunCargaMasivaForm()
     return render(request, 'areas/carga_masiva_areas.html', {'form': form}) 
 
-@staff_member_required
+@login_required
 def plantilla_areas_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Plantilla Áreas"
     ws.append([
-        'empresa', 'cliente','rfc_cliente', 'email_cliente','numero', 'cuota','deposito', 'ubicacion', 'superficie_m2','tipo_area','cantidad_areas','giro' ,
+        'condominio', 'cliente','rfc_cliente', 'email_cliente','numero', 'cuota','deposito', 'ubicacion', 'superficie_m2','tipo_area','cantidad_areas','giro' ,
         'status', 'fecha_inicial', 'fecha_fin', 'observaciones'
     ])
     ws.append([
-        'Torre Reforma', 'Juan Pérez','XXX-XXX-XXX','email@ejemplo.com', 'A101', '1500.00','1500', 'Roof Garden', '200.0','Modulo','1','Restaurante',
+        'condominio Torre Reforma AC', 'Juan Pérez','XXX-XXX-XXX','email@ejemplo.com', 'A101', '1500.00','1500', 'Roof Garden', '200.0','Modulo','1','Restaurante',
         'ocupado', '2024-07-01', '2024-12-31', 'Área exclusiva'
     ])
     response = HttpResponse(
