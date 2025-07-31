@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 24/07/2025
+    Date of modification: 30/07/2025
     Description: General styles for the GAC system   
 */
     
@@ -595,6 +595,12 @@ h2 {
 .table tr:hover td {
     background-color: #d4e4f2 !important;
 }
+
+.encabezado-claro th {
+    color: #0c4a6e !important;
+    border-bottom: 2px solid #0c4a6e;
+}
+
 
 /*=== carga_masiva_clientes.html ===*/
 .form-delgado {
