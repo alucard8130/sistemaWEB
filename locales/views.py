@@ -46,7 +46,7 @@ def lista_locales(request):
 
     return render(request, 'locales/lista_locales.html', {'locales': locales, 'locales': page_obj, 'q': query})
 
-@login_required
+
 @login_required
 def crear_local(request):
     user = request.user

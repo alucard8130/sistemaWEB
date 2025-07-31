@@ -1250,7 +1250,7 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
 
 
-@staff_member_required
+@login_required
 def plantilla_facturas_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active

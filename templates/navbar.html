@@ -55,9 +55,9 @@
                             <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
 
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
-                        {% if request.user.is_superuser %}
+                        
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
-                        {% endif %}
+                        
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -69,9 +69,9 @@
                             <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivos</a></li>
 
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
-                        {% if request.user.is_superuser %}
+                        
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
-                        {% endif %}
+                        
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -103,9 +103,9 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
-                        {% if request.user.is_superuser %}
+             
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Cartera</a></li>
-                        {% endif %}
+             
                         
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard</a></li>
                     </ul>
@@ -146,12 +146,8 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Cuotas</a></li>
-                        <!--<li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_anio' %}">Comparativo Ppto vs Ppto</a></li>-->
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Cuotas</a></li>
-                        <!-- <li><a class="dropdown-item" href="{% url 'comparativo_presupuesto_vs_gastos' %}">Comparativo vs Gasto2</a></li> -->
-                        
-                        <!--<li><a class="dropdown-item" href="{% url 'dashboard_presupuestal'%}">Dashboard PPTO</a></li>-->
                     </ul>
                 </li>
                 <!-- MENÚ REPORTES -->
