@@ -24,19 +24,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <!-- Customised CSS --> 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    
+
 <!--Sentry-->
   <script src="https://js.sentry-cdn.com/37c184247998e374a152288e9bf3b578.min.js" crossorigin="anonymous"></script>
 <script>
 window.sentryOnLoad = function() {
   Sentry.init({
     // Puedes agregar más configuración aquí
+
   });
 
   Sentry.lazyLoadIntegration("feedbackIntegration")
     .then((feedbackIntegration) => {
       Sentry.addIntegration(feedbackIntegration({
         // Opciones de configuración de User Feedback
+        title: "Enviar reporte",
+        subtitle: "¿Tienes algún comentario o encontraste un error?",
+
       }));
     })
     .catch(() => {
@@ -92,7 +96,7 @@ document.getElementById('stripe-checkout-btn').onclick = function() {
     fetch("{% url 'crear_sesion_pago' %}")
       .then(response => response.json())
       .then(data => {
-        var stripe = Stripe("{{ STRIPE_PUBLIC_KEY }}"); // Reemplaza con tu clave pública de Stripe
+        var stripe = Stripe("{{ STRIPE_PUBLIC_KEY }}"); 
         stripe.redirectToCheckout({ sessionId: data.id });
       });
 };
