@@ -370,11 +370,20 @@ def dashboard_pagos_gastos(request):
     if mes:
         base_gastos &= Q(fecha__month=mes)      
 
+    # OPTIMIZACIÓN: select_related para evitar N+1 en relaciones ForeignKey
+    gastos = Gasto.objects.filter(base_gastos).select_related(
+        'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
+    )
     # Gastos registrados ese año y filtro empresa
-    gastos = Gasto.objects.filter(base_gastos)
+    #gastos = Gasto.objects.filter(base_gastos)
 
     # PAGOS
-    pagos = PagoGasto.objects.filter(gasto__in=gastos)
+    pagos = PagoGasto.objects.filter(gasto__in=gastos).select_related(
+        'gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado', 'gasto__tipo_gasto'
+    )
+    # PAGOS
+    #pagos = PagoGasto.objects.filter(gasto__in=gastos)
+    
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
     if fecha_inicio:
