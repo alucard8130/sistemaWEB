@@ -119,16 +119,13 @@ class GastoForm(forms.ModelForm):
 
         #self.fields['empresa'].required = False
         self.fields['descripcion'].required = True
-        self.fields['comprobante'].required = True
+        #self.fields['comprobante'].required = True
 
         # Por defecto vacíos si no hay empresa
         self.fields['proveedor'].queryset = Proveedor.objects.none()
         self.fields['empleado'].queryset = Empleado.objects.none()
 
-        #if not user or not user.is_superuser:
-        #    self.fields['proveedor'].disabled = True
-         #   self.fields['origen_tipo'].disabled = True
-          #  self.fields['empleado'].disabled = True
+     
           
         if modo == 'editar':
             self.fields['origen_tipo'].disabled = True
