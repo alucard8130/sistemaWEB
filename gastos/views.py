@@ -423,7 +423,7 @@ def dashboard_pagos_gastos(request):
     #     ).aggregate(total=Sum('monto'))['total'] or 0
     #     saldo = float(monto_gastos_mes) - float(pagos_gastos_mes or 0)
     #     saldos_mes.append(saldo)
-    
+
     # OPTIMIZACIÓN: calcular saldos pendientes por mes directamente
     # SALDOS PENDIENTES (por mes) - solo 2 queries
     saldos_mes = []
@@ -434,17 +434,33 @@ def dashboard_pagos_gastos(request):
         saldos_mes.append(saldo)
 
     # PRESUPUESTO POR MES
-    presupuesto_mes = []
-    for m in range(1, 13):
-        pres = Presupuesto.objects.filter(empresa__in=empresas, anio=anio, mes=m)
-        if grupo_id:
-            pres = pres.filter(tipo_gasto__subgrupo__grupo_id=grupo_id)
-        if subgrupo_id:
-            pres = pres.filter(tipo_gasto__subgrupo_id=subgrupo_id)
-        if tipo_gasto_id:
-            pres = pres.filter(tipo_gasto_id=tipo_gasto_id)
-        pres_total = pres.aggregate(total=Sum('monto'))['total'] or 0
-        presupuesto_mes.append(float(pres_total))
+    # presupuesto_mes = []
+    # for m in range(1, 13):
+    #     pres = Presupuesto.objects.filter(empresa__in=empresas, anio=anio, mes=m)
+    #     if grupo_id:
+    #         pres = pres.filter(tipo_gasto__subgrupo__grupo_id=grupo_id)
+    #     if subgrupo_id:
+    #         pres = pres.filter(tipo_gasto__subgrupo_id=subgrupo_id)
+    #     if tipo_gasto_id:
+    #         pres = pres.filter(tipo_gasto_id=tipo_gasto_id)
+    #     pres_total = pres.aggregate(total=Sum('monto'))['total'] or 0
+    #     presupuesto_mes.append(float(pres_total))
+
+     # PRESUPUESTO POR MES (optimizado, solo 1 query)
+    presupuestos_qs = Presupuesto.objects.filter(
+        empresa__in=empresas,
+        anio=anio
+    )
+    if grupo_id:
+        presupuestos_qs = presupuestos_qs.filter(tipo_gasto__subgrupo__grupo_id=grupo_id)
+    if subgrupo_id:
+        presupuestos_qs = presupuestos_qs.filter(tipo_gasto__subgrupo_id=subgrupo_id)
+    if tipo_gasto_id:
+        presupuestos_qs = presupuestos_qs.filter(tipo_gasto_id=tipo_gasto_id)
+
+    presupuestos_por_mes = presupuestos_qs.values('mes').annotate(total=Sum('monto')).order_by('mes')
+    presupuesto_mes_dict = {p['mes']: float(p['total']) for p in presupuestos_por_mes}
+    presupuesto_mes = [presupuesto_mes_dict.get(m, 0.0) for m in range(1, 13)]
 
     # --- FILTRAR SOLO MESES TRANSCURRIDOS O EL MES SELECCIONADO ---
     if mes:
