@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 30/07/2025
+    Date of modification: 31/07/2025
     Description: General styles for the GAC system   
 */
     
@@ -86,6 +86,57 @@ html, body {
         color: #4a4a4a;
         border: 1px solid #d6d6d6;
     }
+
+  /* ———  Blue/green pastel palette ——— */
+  :root{
+    --azulPastel: #e5f1ff;
+    --azulPastelOscuro: #d0e6ff;
+    --verdePastel: #e6fff4;
+  }
+
+  /* ——  Summary card ——— */
+  .summary-card{
+      background: var(--azulPastel);
+      border: none;
+      border-radius: 1rem;
+      box-shadow: 0 0.5rem 1rem rgba(0,0,0,.05);
+      min-width: 280px;
+  }
+  .summary-card .card-header{
+      background: linear-gradient(135deg,
+                  var(--azulPastelOscuro) 0%,
+                  var(--azulPastel) 100%);
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 1rem;
+      border: 0;
+  }
+  .summary-card .card-title{
+      font-weight: 600;
+      font-size: 1.05rem;
+  }
+  .summary-metric{
+      font-size: .95rem;
+      padding: .35rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+  }
+  .summary-metric strong{
+      font-weight: 600;
+  }
+  /* ——  Fixed position but responsive ——— */
+  @media (min-width: 768px){
+      .summary-pos{
+          position: absolute;
+          top: 80px;
+          right: 40px;
+      }
+  }
+  @media (max-width: 767.98px){
+      .summary-pos{
+          margin-top: 1rem;
+      }
+  }
 
 /* 
 .btn-light-custom {
