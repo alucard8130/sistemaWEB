@@ -25,6 +25,7 @@ from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
+from django.db.models.functions import ExtractMonth
 
 # Create your views here.
 @login_required
@@ -392,22 +393,44 @@ def dashboard_pagos_gastos(request):
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
 
     # PAGOS POR MES
-    pagos_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    # pagos_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    # pagos_mensuales = [0] * 12
+    # for p in pagos_mes:
+    #     mes_idx = p['mes'].month - 1
+    #     pagos_mensuales[mes_idx] = float(p['total'])
+    pagos_mes = pagos.annotate(mes=ExtractMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
     pagos_mensuales = [0] * 12
     for p in pagos_mes:
-        mes_idx = p['mes'].month - 1
+        mes_idx = p['mes'] - 1
         pagos_mensuales[mes_idx] = float(p['total'])
 
+    # GASTOS POR MES (optimizado)
+    gastos_por_mes = gastos.annotate(mes=ExtractMonth('fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    gastos_mensuales_dict = {g['mes']: float(g['total']) for g in gastos_por_mes}
+
+    # PAGOS POR MES (optimizado)
+    pagos_gastos_por_mes = pagos.annotate(mes=ExtractMonth('gasto__fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    pagos_gastos_mensuales_dict = {p['mes']: float(p['total']) for p in pagos_gastos_por_mes}    
+
     # SALDOS PENDIENTES (por mes)
+    # saldos_mes = []
+    # for m in range(1, 13):
+    #     # Gastos registrados ese mes
+    #     gastos_mes = gastos.filter(fecha__month=m)
+    #     monto_gastos_mes = gastos_mes.aggregate(total=Sum('monto'))['total'] or 0
+    #     pagos_gastos_mes = PagoGasto.objects.filter(
+    #         gasto__in=gastos_mes,
+    #     ).aggregate(total=Sum('monto'))['total'] or 0
+    #     saldo = float(monto_gastos_mes) - float(pagos_gastos_mes or 0)
+    #     saldos_mes.append(saldo)
+    
+    # OPTIMIZACIÓN: calcular saldos pendientes por mes directamente
+    # SALDOS PENDIENTES (por mes) - solo 2 queries
     saldos_mes = []
     for m in range(1, 13):
-        # Gastos registrados ese mes
-        gastos_mes = gastos.filter(fecha__month=m)
-        monto_gastos_mes = gastos_mes.aggregate(total=Sum('monto'))['total'] or 0
-        pagos_gastos_mes = PagoGasto.objects.filter(
-            gasto__in=gastos_mes,
-        ).aggregate(total=Sum('monto'))['total'] or 0
-        saldo = float(monto_gastos_mes) - float(pagos_gastos_mes or 0)
+        monto_gastos_mes = gastos_mensuales_dict.get(m, 0)
+        pagos_gastos_mes = pagos_gastos_mensuales_dict.get(m, 0)
+        saldo = monto_gastos_mes - pagos_gastos_mes
         saldos_mes.append(saldo)
 
     # PRESUPUESTO POR MES
