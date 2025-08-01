@@ -36,237 +36,235 @@
     <div class="container-fluid mt-4">
         <h2>Reporte comparativo presupuesto Vs gasto</h2>
 
-        <!-- <div class="table-responsive rounded-3 border"> -->
-            <form method="get" class="row g-2 mb-3">
-                <div class="col-auto">
-                    <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
-                        {% for a in anios %}
-                            <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
-                        {% endfor %}
-                    </select>
-                    {% if empresas %}
-                    <select name="empresa" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:260px;">
-                        {% for emp in empresas %}
-                            <option value="{{ emp.id }}" {% if emp.id == empresa.id %}selected{% endif %}>{{ emp.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                    {% endif %}
-                    <a class="btn btn-outline-success" href="?medicion={{ medicion }}&mes={{ meses.0 }}&excel=1">
-                        <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
-                    </a>
-                </div>
-            </form>
-            <form method="get" class="mb-3 d-flex align-items-center gap-2">
-                <select name="medicion" class="form-select" style="width:auto;">
-                    <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes actual</option>
-                    <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo actual</option>
-                    <option value="semestre1" {% if medicion == "semestre1" %}selected{% endif %}>Primer semestre</option>
-                    <option value="semestre2" {% if medicion == "semestre2" %}selected{% endif %}>Segundo semestre</option>  
-                    <option value="anual" {% if medicion == "anual" %}selected{% endif %}>Año completo</option>
+        <form method="get" class="row g-2 mb-3">
+            <div class="col-auto">
+                <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
+                    {% for a in anios %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-search me-1"></i> Consultar
-                </button>
-            </form>
-            
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Mostrar/ocultar columnas:</label>
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="subgrupo">
-                        <i class="bi bi-eye-slash me-1"></i> Subgrupo
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="tipo">
-                        <i class="bi bi-eye-slash me-1"></i> Tipo
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="presup">
-                        <i class="bi bi-eye-slash me-1"></i> Presup.
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="real">
-                        <i class="bi bi-eye-slash me-1"></i> Real
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="var">
-                        <i class="bi bi-eye-slash me-1"></i> Var.
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="pctvar">
-                        <i class="bi bi-eye-slash me-1"></i> % Var.
-                    </button>
-                </div>
+                {% if empresas %}
+                <select name="empresa" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:260px;">
+                    {% for emp in empresas %}
+                        <option value="{{ emp.id }}" {% if emp.id == empresa.id %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                <a class="btn btn-outline-success" href="?medicion={{ medicion }}&mes={{ meses.0 }}&excel=1">
+                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+                </a>
             </div>
-            <div class="table-responsive rounded-3 border" id="table-container-corp">
-                <table id="reporte-comparativo" class="table align-middle mb-0 shadow-sm">
-                    <thead class="encabezado-claro">
-                        <tr>
-                            <th rowspan="2">Grupo</th>
-                            <th rowspan="2" class="col-subgrupo">Subgrupo</th>
-                            <th rowspan="2" class="col-tipo">Tipo de gasto</th>
-                            {% for mes_nombre in meses_nombres %}
-                                <th class="th-mes th-mes-{{ forloop.counter0 }}" colspan="4">{{ mes_nombre|capfirst }}</th>
-                            {% endfor %}
-                            <th class="th-total-anual" colspan="4">Total anual</th>
-                        </tr>
-                        <tr>
-                            {% for mes in meses_nombres %}
-                                <th class="col-presup th-mes-{{ forloop.counter0 }}">Presup.</th>
-                                <th class="col-real th-mes-{{ forloop.counter0 }}">Real</th>
-                                <th class="col-var th-mes-{{ forloop.counter0 }}">Var.</th>
-                                <th class="col-pctvar th-mes-{{ forloop.counter0 }}">% Var.</th>
-                            {% endfor %}
-                            <th class="col-presup th-total-anual">Presup.</th>
-                            <th class="col-real th-total-anual">Real</th>
-                            <th class="col-var th-total-anual">Var.</th>
-                            <th class="col-pctvar th-total-anual">% Var.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for grupo in comparativo %}
-                        <tr class="table-primary">
-                            <td>{{ grupo.nombre }}</td>
-                            <td class="col-subgrupo"><strong></strong></td>
-                            <td class="col-tipo"></td>
-                            {% for i in meses_idx %}
-                                <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
-                                <td class="col-real th-mes-{{ forloop.counter0 }}">{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
-                                <td class="col-var th-mes-{{ forloop.counter0 }} {% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
-                                    {{ grupo.total_var|index:i|floatformat:0|intcomma }}
-                                </td>
-                                <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
-                                    {% if grupo.pct_var|index:i != '' %}
-                                        <span class="dttooltip" title="Variación respecto al total presupuesto">
-                                            {{ grupo.pct_var|index:i }}%
-                                        </span>
-                                    {% endif %}
-                                </td>
-                            {% endfor %}
-                            <td class="total-anual-cell col-presup th-total-anual">{{ grupo.total_anual_presup|floatformat:0|intcomma }}</td>
-                            <td class="total-anual-cell col-real th-total-anual">{{ grupo.total_anual_gasto|floatformat:0|intcomma }}</td>
-                            <td class="total-anual-cell col-var th-total-anual {% if grupo.total_anual_var < 0 %}neg{% elif grupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
-                                {{ grupo.total_anual_var|floatformat:0|intcomma }}
+        </form>
+        <form method="get" class="mb-3 d-flex align-items-center gap-2">
+            <select name="medicion" class="form-select" style="width:auto;">
+                <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes actual</option>
+                <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo actual</option>
+                <option value="semestre1" {% if medicion == "semestre1" %}selected{% endif %}>Primer semestre</option>
+                <option value="semestre2" {% if medicion == "semestre2" %}selected{% endif %}>Segundo semestre</option>  
+                <option value="anual" {% if medicion == "anual" %}selected{% endif %}>Año completo</option>
+            </select>
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-search me-1"></i> Consultar
+            </button>
+        </form>
+            
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Mostrar/ocultar columnas:</label>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="subgrupo">
+                    <i class="bi bi-eye-slash me-1"></i> Subgrupo
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="tipo">
+                    <i class="bi bi-eye-slash me-1"></i> Tipo
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="presup">
+                    <i class="bi bi-eye-slash me-1"></i> Presup.
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="real">
+                    <i class="bi bi-eye-slash me-1"></i> Real
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="var">
+                    <i class="bi bi-eye-slash me-1"></i> Var.
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="pctvar">
+                    <i class="bi bi-eye-slash me-1"></i> % Var.
+                </button>
+            </div>
+        </div>
+        <div class="table-responsive rounded-3 border" id="table-container-corp">
+            <table id="reporte-comparativo" class="table align-middle mb-0 shadow-sm">
+                <thead class="encabezado-claro">
+                    <tr>
+                        <th rowspan="2">Grupo</th>
+                        <th rowspan="2" class="col-subgrupo">Subgrupo</th>
+                        <th rowspan="2" class="col-tipo">Tipo de gasto</th>
+                        {% for mes_nombre in meses_nombres %}
+                            <th class="th-mes th-mes-{{ forloop.counter0 }}" colspan="4">{{ mes_nombre|capfirst }}</th>
+                        {% endfor %}
+                        <th class="th-total-anual" colspan="4">Total anual</th>
+                    </tr>
+                    <tr>
+                        {% for mes in meses_nombres %}
+                            <th class="col-presup th-mes-{{ forloop.counter0 }}">Presup.</th>
+                            <th class="col-real th-mes-{{ forloop.counter0 }}">Real</th>
+                            <th class="col-var th-mes-{{ forloop.counter0 }}">Var.</th>
+                            <th class="col-pctvar th-mes-{{ forloop.counter0 }}">% Var.</th>
+                        {% endfor %}
+                        <th class="col-presup th-total-anual">Presup.</th>
+                        <th class="col-real th-total-anual">Real</th>
+                        <th class="col-var th-total-anual">Var.</th>
+                        <th class="col-pctvar th-total-anual">% Var.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for grupo in comparativo %}
+                    <tr class="table-primary">
+                        <td>{{ grupo.nombre }}</td>
+                        <td class="col-subgrupo"><strong></strong></td>
+                        <td class="col-tipo"></td>
+                        {% for i in meses_idx %}
+                            <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
+                            <td class="col-real th-mes-{{ forloop.counter0 }}">{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+                            <td class="col-var th-mes-{{ forloop.counter0 }} {% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
+                                {{ grupo.total_var|index:i|floatformat:0|intcomma }}
                             </td>
-                            <td class="total-anual-cell col-pctvar th-total-anual">
-                                {% if grupo.total_anual_presup %}
-                                    <span class="dttooltip" title="Variación anual respecto al presupuesto">
-                                        {{ grupo.total_anual_pct }}%
+                            <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
+                                {% if grupo.pct_var|index:i != '' %}
+                                    <span class="dttooltip" title="Variación respecto al total presupuesto">
+                                        {{ grupo.pct_var|index:i }}%
                                     </span>
                                 {% endif %}
                             </td>
-                        </tr>
-                        {% for subgrupo in grupo.subgrupos %}
-                            <tr class="table-info">
-                                <td></td>
-                                <td class="col-subgrupo">{{ subgrupo.nombre }}</td>
-                                <td class="col-tipo"><strong></strong></td>
-                                {% for i in meses_idx %}
-                                    <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
-                                    <td class="col-real th-mes-{{ forloop.counter0 }}">{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
-                                    <td class="col-var th-mes-{{ forloop.counter0 }} {% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
-                                        {{ subgrupo.total_var|index:i|floatformat:0|intcomma }}
-                                    </td>
-                                    <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
-                                        {% if subgrupo.pct_var|index:i != '' %}
-                                            <span class="dttooltip" title="Variación respecto al subtotal presupuesto">
-                                                {{ subgrupo.pct_var|index:i }}%
-                                            </span>
-                                        {% endif %}
-                                    </td>
-                                {% endfor %}
-                                <td class="total-anual-cell col-presup th-total-anual">{{ subgrupo.total_anual_presup|floatformat:0|intcomma }}</td>
-                                <td class="total-anual-cell col-real th-total-anual">{{ subgrupo.total_anual_gasto|floatformat:0|intcomma }}</td>
-                                <td class="total-anual-cell col-var th-total-anual {% if subgrupo.total_anual_var < 0 %}neg{% elif subgrupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
-                                    {{ subgrupo.total_anual_var|floatformat:0|intcomma }}
-                                </td>
-                                <td class="total-anual-cell col-pctvar th-total-anual">
-                                    {% if subgrupo.total_anual_presup %}
-                                        <span class="dttooltip" title="Variación anual respecto al presupuesto">
-                                            {{ subgrupo.total_anual_pct }}%
-                                        </span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% for tipo in subgrupo.tipos %}
-                                <tr>
-                                    <td></td>
-                                    <td class="col-subgrupo"></td>
-                                    <td class="col-tipo">{{ tipo.nombre }}</td>
-                                    {% for m in tipo.meses|slice:":meses|length" %}
-                                        <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ m.presupuesto|floatformat:0|intcomma }}</td>
-                                        <td class="col-real th-mes-{{ forloop.counter0 }}">{{ m.gasto|floatformat:0|intcomma }}</td>
-                                        <td class="col-var th-mes-{{ forloop.counter0 }} {% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% else %}neutro{% endif %}">
-                                            {{ m.variacion|floatformat:0|intcomma }}
-                                            {% if m.variacion > 0 %}<span class="flecha-mini pos">&#8593;</span>
-                                            {% elif m.variacion < 0 %}<span class="flecha-mini neg">&#8595;</span>
-                                            {% else %}<span class="flecha-mini neutro">&#8594;</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
-                                            {% if m.presupuesto %}
-                                                <span class="dttooltip" title="Variación respecto al presupuesto">
-                                                    {{ m.variacion|porcentaje:m.presupuesto }}
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                    {% endfor %}
-                                    <td class="total-anual-cell col-presup th-total-anual">{{ tipo.total_anual_presup|floatformat:0|intcomma }}</td>
-                                    <td class="total-anual-cell col-real th-total-anual">{{ tipo.total_anual_gasto|floatformat:0|intcomma }}</td>
-                                    <td class="total-anual-cell col-var th-total-anual {% if tipo.total_anual_var < 0 %}neg{% elif tipo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
-                                        {{ tipo.total_anual_var|floatformat:0|intcomma }}
-                                        {% if tipo.total_anual_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
-                                        {% elif tipo.total_anual_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
-                                        {% else %}<span class="flecha-mini neutro">&#8594;</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="total-anual-cell col-pctvar th-total-anual">
-                                        {% if tipo.total_anual_presup %}
-                                            <span class="dttooltip" title="Variación anual respecto al presupuesto">
-                                                {{ tipo.total_anual_pct }}%
-                                            </span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
                         {% endfor %}
-                    {% endfor %}
-                    <tr class="table-warning">
-                        <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total general</strong></td>
-                        {% for i in meses_idx %}
-                            <td class="col-presup th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
-                            <td class="col-real th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
-                            <td class="col-var th-mes-{{ forloop.counter0 }}">
-                                <strong class="{% if tot_gen_var|index:i < 0 %}neg{% elif tot_gen_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
-                                    {{ tot_gen_var|index:i|floatformat:0|intcomma }}
-                                    {% if tot_gen_var|index:i > 0 %}<span class="flecha-mini pos">&#8593;</span>
-                                    {% elif tot_gen_var|index:i < 0 %}<span class="flecha-mini neg">&#8595;</span>
-                                    {% else %}<span class="flecha-mini neutro">&#8594;</span>
-                                    {% endif %}
-                                </strong>
-                            </td>
-                            <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
-                                {% if tot_gen_pct|index:i != None %}
-                                    <span class="dttooltip" title="Variación respecto al total presupuesto"><strong>{{ tot_gen_pct|index:i }}%</strong></span>
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                        <td class="total-anual-cell col-presup th-total-anual"><strong>{{ total_general_presup|floatformat:0|intcomma }}</strong></td>
-                        <td class="total-anual-cell col-real th-total-anual"><strong>{{ total_general_real|floatformat:0|intcomma }}</strong></td>
-                        <td class="total-anual-cell col-var th-total-anual">
-                            <strong class="{% if total_general_var < 0 %}neg{% elif total_general_var > 0 %}pos{% else %}neutro{% endif %}">
-                                {{ total_general_var|floatformat:0|intcomma }}
-                                {% if total_general_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
-                                {% elif total_general_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
-                                {% else %}<span class="flecha-mini neutro">&#8594;</span>
-                                {% endif %}
-                            </strong>
+                        <td class="total-anual-cell col-presup th-total-anual">{{ grupo.total_anual_presup|floatformat:0|intcomma }}</td>
+                        <td class="total-anual-cell col-real th-total-anual">{{ grupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                        <td class="total-anual-cell col-var th-total-anual {% if grupo.total_anual_var < 0 %}neg{% elif grupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+                            {{ grupo.total_anual_var|floatformat:0|intcomma }}
                         </td>
                         <td class="total-anual-cell col-pctvar th-total-anual">
-                            {% if total_general_presup %}
+                            {% if grupo.total_anual_presup %}
                                 <span class="dttooltip" title="Variación anual respecto al presupuesto">
-                                    <strong>{{ total_general_pct }}%</strong>
+                                    {{ grupo.total_anual_pct }}%
                                 </span>
                             {% endif %}
                         </td>
                     </tr>
-                    </tbody>
-                </table>
-            </div>
+                    {% for subgrupo in grupo.subgrupos %}
+                        <tr class="table-info">
+                            <td></td>
+                            <td class="col-subgrupo">{{ subgrupo.nombre }}</td>
+                            <td class="col-tipo"><strong></strong></td>
+                            {% for i in meses_idx %}
+                                <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
+                                <td class="col-real th-mes-{{ forloop.counter0 }}">{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+                                <td class="col-var th-mes-{{ forloop.counter0 }} {% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
+                                    {{ subgrupo.total_var|index:i|floatformat:0|intcomma }}
+                                </td>
+                                <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
+                                    {% if subgrupo.pct_var|index:i != '' %}
+                                        <span class="dttooltip" title="Variación respecto al subtotal presupuesto">
+                                            {{ subgrupo.pct_var|index:i }}%
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                            <td class="total-anual-cell col-presup th-total-anual">{{ subgrupo.total_anual_presup|floatformat:0|intcomma }}</td>
+                            <td class="total-anual-cell col-real th-total-anual">{{ subgrupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                            <td class="total-anual-cell col-var th-total-anual {% if subgrupo.total_anual_var < 0 %}neg{% elif subgrupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+                                {{ subgrupo.total_anual_var|floatformat:0|intcomma }}
+                            </td>
+                            <td class="total-anual-cell col-pctvar th-total-anual">
+                                {% if subgrupo.total_anual_presup %}
+                                    <span class="dttooltip" title="Variación anual respecto al presupuesto">
+                                        {{ subgrupo.total_anual_pct }}%
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% for tipo in subgrupo.tipos %}
+                            <tr>
+                                <td></td>
+                                <td class="col-subgrupo"></td>
+                                <td class="col-tipo">{{ tipo.nombre }}</td>
+                                {% for m in tipo.meses|slice:":meses|length" %}
+                                    <td class="col-presup th-mes-{{ forloop.counter0 }}">{{ m.presupuesto|floatformat:0|intcomma }}</td>
+                                    <td class="col-real th-mes-{{ forloop.counter0 }}">{{ m.gasto|floatformat:0|intcomma }}</td>
+                                    <td class="col-var th-mes-{{ forloop.counter0 }} {% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% else %}neutro{% endif %}">
+                                        {{ m.variacion|floatformat:0|intcomma }}
+                                        {% if m.variacion > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                        {% elif m.variacion < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                        {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
+                                        {% if m.presupuesto %}
+                                            <span class="dttooltip" title="Variación respecto al presupuesto">
+                                                {{ m.variacion|porcentaje:m.presupuesto }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td class="total-anual-cell col-presup th-total-anual">{{ tipo.total_anual_presup|floatformat:0|intcomma }}</td>
+                                <td class="total-anual-cell col-real th-total-anual">{{ tipo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                                <td class="total-anual-cell col-var th-total-anual {% if tipo.total_anual_var < 0 %}neg{% elif tipo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
+                                    {{ tipo.total_anual_var|floatformat:0|intcomma }}
+                                    {% if tipo.total_anual_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                    {% elif tipo.total_anual_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                    {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                    {% endif %}
+                                </td>
+                                <td class="total-anual-cell col-pctvar th-total-anual">
+                                    {% if tipo.total_anual_presup %}
+                                        <span class="dttooltip" title="Variación anual respecto al presupuesto">
+                                            {{ tipo.total_anual_pct }}%
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+                <tr class="table-warning">
+                    <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total general</strong></td>
+                    {% for i in meses_idx %}
+                        <td class="col-presup th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
+                        <td class="col-real th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
+                        <td class="col-var th-mes-{{ forloop.counter0 }}">
+                            <strong class="{% if tot_gen_var|index:i < 0 %}neg{% elif tot_gen_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
+                                {{ tot_gen_var|index:i|floatformat:0|intcomma }}
+                                {% if tot_gen_var|index:i > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                                {% elif tot_gen_var|index:i < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                                {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td class="col-pctvar th-mes-{{ forloop.counter0 }}">
+                            {% if tot_gen_pct|index:i != None %}
+                                <span class="dttooltip" title="Variación respecto al total presupuesto"><strong>{{ tot_gen_pct|index:i }}%</strong></span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="total-anual-cell col-presup th-total-anual"><strong>{{ total_general_presup|floatformat:0|intcomma }}</strong></td>
+                    <td class="total-anual-cell col-real th-total-anual"><strong>{{ total_general_real|floatformat:0|intcomma }}</strong></td>
+                    <td class="total-anual-cell col-var th-total-anual">
+                        <strong class="{% if total_general_var < 0 %}neg{% elif total_general_var > 0 %}pos{% else %}neutro{% endif %}">
+                            {{ total_general_var|floatformat:0|intcomma }}
+                            {% if total_general_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
+                            {% elif total_general_var < 0 %}<span class="flecha-mini neg">&#8595;</span>
+                            {% else %}<span class="flecha-mini neutro">&#8594;</span>
+                            {% endif %}
+                        </strong>
+                    </td>
+                    <td class="total-anual-cell col-pctvar th-total-anual">
+                        {% if total_general_presup %}
+                            <span class="dttooltip" title="Variación anual respecto al presupuesto">
+                                <strong>{{ total_general_pct }}%</strong>
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
