@@ -373,7 +373,7 @@ def dashboard_pagos_gastos(request):
     # OPTIMIZACIÓN: select_related para evitar N+1 en relaciones ForeignKey
     gastos = Gasto.objects.filter(base_gastos).select_related(
         'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
-    )
+    ).prefetch_related('pagos')
     # Gastos registrados ese año y filtro empresa
     #gastos = Gasto.objects.filter(base_gastos)
 
