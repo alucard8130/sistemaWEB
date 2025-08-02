@@ -84,10 +84,10 @@
                         
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard</a></li>
                         
-        
+                        {% if request.user.is_superuser %}
                         <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
-        
+                        {% endif %}
                     </ul>
                 </li>
                 <!-- MENÚ otros ingresos -->
