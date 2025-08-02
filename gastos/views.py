@@ -677,35 +677,48 @@ def carga_masiva_gastos(request):
                             empresa=empresa
                         )
 
-                    # GRUPO por empresa
+                    # Validar que al menos uno esté presente
+                    if not proveedor and not empleado:
+                        errores.append(f"Fila {i}: Debe especificar proveedor o empleado.")
+                        continue
+
+                    # Validar que el grupo existe
                     grupo_inst = None
                     if grupo_val:
                         grupo_nombre = normaliza_texto(grupo_val)
-                        grupo_inst = GrupoGasto.objects.filter(nombre=grupo_nombre, empresa=empresa).first()
-                        if not grupo_inst:
-                            grupo_inst = GrupoGasto.objects.create(nombre=grupo_nombre, empresa=empresa)
+                        try:
+                            grupo_inst = GrupoGasto.objects.get(nombre=grupo_nombre)
+                        except GrupoGasto.DoesNotExist:
+                            errores.append(f"Fila {i}: El grupo '{grupo_nombre}' no existe en el catálogo.")
+                            continue
                     else:
                         errores.append(f"Fila {i}: El grupo es obligatorio.")
                         continue
 
-                    # SUBGRUPO por empresa y grupo
+                    # Validar que el subgrupo existe para ese grupo
                     subgrupo_inst = None
                     if subgrupo_val:
                         subgrupo_nombre = normaliza_texto(subgrupo_val)
-                        subgrupo_inst = SubgrupoGasto.objects.filter(nombre=subgrupo_nombre, grupo=grupo_inst, empresa=empresa).first()
-                        if not subgrupo_inst:
-                            subgrupo_inst = SubgrupoGasto.objects.create(nombre=subgrupo_nombre, grupo=grupo_inst, empresa=empresa)
+                        try:
+                            subgrupo_inst = SubgrupoGasto.objects.get(nombre=subgrupo_nombre, grupo=grupo_inst)
+                        except SubgrupoGasto.DoesNotExist:
+                            errores.append(f"Fila {i}: El subgrupo '{subgrupo_nombre}' no existe en el grupo '{grupo_nombre}'.")
+                            continue
                     else:
                         errores.append(f"Fila {i}: El subgrupo es obligatorio.")
                         continue
 
-                    # TIPO DE GASTO por empresa y subgrupo
+                    # TIPO DE GASTO por empresa y subgrupo (se puede crear si no existe)
                     tipo_gasto_inst = None
                     if tipo_gasto_val:
                         tipo_gasto_nombre = normaliza_texto(tipo_gasto_val)
-                        tipo_gasto_inst = TipoGasto.objects.filter(nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa).first()
+                        tipo_gasto_inst = TipoGasto.objects.filter(
+                            nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa
+                        ).first()
                         if not tipo_gasto_inst:
-                            tipo_gasto_inst = TipoGasto.objects.create(nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa)
+                            tipo_gasto_inst = TipoGasto.objects.create(
+                                nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa
+                            )
                     else:
                         errores.append(f"Fila {i}: El tipo de gasto es obligatorio.")
                         continue
@@ -727,6 +740,15 @@ def carga_masiva_gastos(request):
                     except (InvalidOperation, TypeError, ValueError):
                         errores.append(f"Fila {i}: El valor de retención ISR '{retencion_isr}' no es válido.")
                         continue
+
+                    # Conversión de fecha si es string
+                    from datetime import datetime
+                    if isinstance(fecha, str):
+                        try:
+                            fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
+                        except Exception:
+                            errores.append(f"Fila {i}: El formato de fecha '{fecha}' no es válido (debe ser YYYY-MM-DD).")
+                            continue
 
                     gasto = Gasto.objects.create(
                         empresa=empresa,
@@ -751,7 +773,6 @@ def carga_masiva_gastos(request):
                         referencia='Carga masiva',
                         registrado_por=request.user if request.user.is_authenticated else None
                     )
-                    #gasto.actualizar_estatus()  # Actualiza el estatus del gasto
 
                     exitos += 1
                 except Exception as e:
@@ -772,15 +793,18 @@ def descargar_plantilla_gastos(request):
     ws = wb.active
     ws.title = "Plantilla Gastos"
 
-    # Ajusta los encabezados según los campos que necesitas en la carga masiva
+    # Encabezados según el formato de carga masiva
     encabezados = [
-        'empresa', 'proveedor', 'empleado','rfc_empleado','grupo','subgrupo',
-        'tipo_gasto','monto','descripcion', 'fecha', 'observaciones,''retencion_iva','retencion_isr'
+        'empresa', 'proveedor', 'empleado', 'rfc_empleado', 'grupo', 'subgrupo',
+        'tipo_gasto', 'monto', 'descripcion', 'fecha', 'observaciones', 'retencion_iva', 'retencion_isr'
     ]
     ws.append(encabezados)
 
-    # Puedes agregar una fila de ejemplo si lo deseas
-    ws.append(['EMPRESA S.A.','proveedor ejemplo','', '','gastos administracion','papeleria','copias', '1200.50','Compra de hojas', '2025-06-19','carga_inicial', '0.00', '0.00'])
+    # Fila de ejemplo
+    ws.append([
+        'EMPRESA A.C.', 'Proveedor Ejemplo', '', '', 'Gastos Administracion', 'Papelería',
+        'Copias', '1200.50', 'Compra de hojas', '2025-06-19', 'Carga inicial', '0.00', '0.00'
+    ])
 
     output = BytesIO()
     wb.save(output)
