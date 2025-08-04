@@ -231,8 +231,16 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 fecha_emision__month=mes
             ).exists()
             if not existe:
-                count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                folio = f"CM-F{count:05d}"
+                # Folio único por empresa y tipo
+                prefijo = "CM-F"
+                num = 1
+                while True:
+                    folio = f"{prefijo}{num:05d}"
+                    if not Factura.objects.filter(folio=folio, empresa=local.empresa).exists():
+                        break
+                    num += 1
+                # count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
+                # folio = f"CM-F{count:05d}"
                 Factura.objects.create(
                     empresa=local.empresa,
                     cliente=local.cliente,
@@ -258,8 +266,16 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 fecha_emision__month=mes
             ).exists()
             if not existe:
-                count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                folio = f"AC-F{count:05d}"
+                # Folio único por empresa y tipo
+                prefijo = "AC-F"
+                num = 1
+                while True:
+                    folio = f"{prefijo}{num:05d}"
+                    if not Factura.objects.filter(folio=folio, empresa=area.empresa).exists():
+                        break
+                    num += 1
+                # count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
+                # folio = f"AC-F{count:05d}"
                 Factura.objects.create(
                     empresa=area.empresa,
                     cliente=area.cliente,
@@ -281,8 +297,16 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     tipo_cuota='deposito',
                 ).exists()
                 if not existe_deposito:
-                    count = Factura.objects.filter(tipo_cuota='deposito').count() + 1
-                    folio_deposito = f"DG-F{count:05d}"
+                    # Folio único por empresa y tipo
+                    prefijo = "DG-F"
+                    num = 1
+                    while True:
+                        folio_deposito = f"{prefijo}{num:05d}"
+                        if not Factura.objects.filter(folio=folio_deposito, empresa=area.empresa).exists():
+                            break
+                        num += 1
+                    # count = Factura.objects.filter(tipo_cuota='deposito').count() + 1
+                    # folio_deposito = f"DG-F{count:05d}"
                     Factura.objects.create(
                         empresa=area.empresa,
                         cliente=area.cliente,
@@ -297,7 +321,8 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                     )    
 
 
-    messages.success(request, f"{facturas_creadas} facturas generadas para {hoy.strftime('%B %Y')}")
+    #messages.success(request, f"{facturas_creadas} facturas generadas para {hoy.strftime('%B %Y')}")
+    messages.success(request, f"{facturas_creadas} facturas generadas para {date(año, mes, 1).strftime('%B %Y')}")
     return redirect('lista_facturas')
 
 @login_required
