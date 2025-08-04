@@ -1,63 +1,85 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
-<head>
+  <head>
     <!-- 
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 17/06/2025
+      Date of modification: 04/08/2025
       Description: Confirm automatic billing
     -->
-    <meta charset="UTF-8">
-    <title>Confirmar Facturacion</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-</head>
-<body>
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div>
-<div class="container mt-5">
-    <h3>Confirmar carga mensual de cuotas {{ mes }}/{{ año }}</h3>
-    
-    
-    <div class="alert alert-info">
-        <ul>
-            <li><strong>{{ total_locales }}</strong> cuotas locales comerciales por cargar</li>
-            <li><strong>{{ total_areas }}</strong> cuotas áreas comunes por cargar</li>
+    <meta charset="UTF-8" />
+    <title>Confirmar facturación</title>
+    <!-- Bootstrap base styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet"/>
+    <!-- Customised CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  </head>
+  <body>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4" style="background-color: #fdf6f0;">
+      <h3 class="mb-4 text-center" style="color: #6b4c4c;">
+        Confirmar carga mensual de cuotas {{ mes }}/{{ año }}
+      </h3>
+
+      <div class="alert" style="background-color: #e8f0fe; color: #2c3e50; border-left: 5px solid #aecbfa;">
+        <ul class="mb-0">
+          <li>
+            <strong>{{ total_locales }}</strong> cuotas locales comerciales por
+            cargar
+          </li>
+          <li>
+            <strong>{{ total_areas }}</strong> cuotas áreas comunes por cargar
+          </li>
         </ul>
+      </div>
+
+      {% if total_locales == 0 and total_areas == 0 %}
+      <div class="alert" style="background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba;">
+        Ya se han facturado todos los locales y áreas este mes.
+      </div>
+
+      {% else %}
+      <form method="post" class="p-3 mt-3 rounded" style="background-color: #ffffff; border: 1px solid #f0e6e6;">
+        {% csrf_token %}
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="locales"
+          id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
+          <label class="form-check-label" for="locales" style="color: #4d4d4d;">
+            Cargar locales comerciales
+          </label>
+        </div>
+        <div class="form-check mb-4">
+          <input class="form-check-input" type="checkbox" name="areas"
+          id="areas" checked {% if total_areas == 0 %}disabled{% endif %}>
+          <label class="form-check-label" for="areas" style="color: #4d4d4d;">
+            Cargar áreas comunes
+          </label>
+        </div>
+        <button type="submit" class="btn" style="background-color: #f7c59f; color: #fff;">
+          Generar carga
+        </button>
+        <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary ms-2">
+            Cancelar
+        </a>
+      </form>
+      {% endif %}
     </div>
 
-    {% if total_locales == 0 and total_areas == 0 %}
-        <div class="alert alert-warning">Ya se han facturado todos los locales y áreas este mes.</div>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
-    {% else %}
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
-                <label class="form-check-label" for="locales">Cargar Locales Comerciales</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="areas" id="areas" checked {% if total_areas == 0 %}disabled{% endif %}>
-                <label class="form-check-label" for="areas">Cargar Áreas Comunes</label>
-            </div>
-            <button type="submit" class="btn btn-warning mt-3">Generar carga</button>
-            <a href="{% url 'lista_facturas' %}" class="btn btn-secondary mt-3">Cancelar</a>
-        </form>
-    {% endif %}
-</div>
+    <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+      © {% now "Y" %} GAC. Todos los derechos reservados. <br />
+      Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
 </html>
