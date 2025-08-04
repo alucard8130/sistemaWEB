@@ -24,7 +24,7 @@ class Factura(models.Model):
     tipo_cuota= models.CharField(max_length=100, choices=TIPO_CUOTA_CHOICES)
     folio = models.CharField(max_length=100)
     cfdi = models.FileField(upload_to='fact_sat/', max_length=255, blank=True, null=True)
-    fecha_emision = models.DateField(auto_now_add=True)
+    fecha_emision = models.DateField()
     fecha_vencimiento = models.DateField(blank=True, null=True)
     monto = models.DecimalField(max_digits=20, decimal_places=2)
     STATUS_CHOICES = [

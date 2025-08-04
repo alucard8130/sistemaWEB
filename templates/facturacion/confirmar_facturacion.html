@@ -39,6 +39,7 @@
         <div class="alert alert-warning">Ya se han facturado todos los locales y áreas este mes.</div>
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
     {% else %}
+    {% if request.user.is_superuser %}
         <form method="post">
             {% csrf_token %}
             <div class="row mb-3">
@@ -49,21 +50,22 @@
                 <div class="col-md-3">
                     <label for="mes" class="form-label">Mes:</label>
                     <select class="form-select" name="mes" id="mes">
-    <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
-    <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
-    <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
-    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
-    <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
-    <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
-    <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
-    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
-    <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
-    <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
-    <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
-    <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
-</select>
+                        <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
+                        <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
+                        <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
+                        <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                        <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
+                        <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
+                        <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
+                        <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                        <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
+                        <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
+                        <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
+                        <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
+                    </select>
                 </div>
             </div>
+    {% endif %}
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
                 <label class="form-check-label" for="locales">Cargar Locales Comerciales</label>
