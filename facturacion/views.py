@@ -1665,8 +1665,8 @@ def crear_factura_otros_ingresos(request):
 
 @login_required
 def lista_facturas_otros_ingresos(request):
-    facturas = FacturaOtrosIngresos.objects.all().order_by('-fecha_emision')
-    
+    #facturas = FacturaOtrosIngresos.objects.all().order_by('-fecha_emision')
+    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_emision')
     # Filtrar por empresa si no es superusuario
     if not request.user.is_superuser:
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
