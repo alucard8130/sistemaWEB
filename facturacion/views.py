@@ -809,7 +809,9 @@ def dashboard_pagos(request):
     pagos = Pago.objects.exclude(forma_pago='nota_credito').filter(filtro)
 
     # Cobros de otros ingresos
-    otros_cobros = CobroOtrosIngresos.objects.all()
+    otros_cobros = CobroOtrosIngresos.objects.select_related(
+    'factura', 'factura__empresa', 'factura__cliente', 'factura__tipo_ingreso').all()
+    #otros_cobros = CobroOtrosIngresos.objects.all()
     if not request.user.is_superuser:
         otros_cobros = otros_cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
     if empresa_id:
