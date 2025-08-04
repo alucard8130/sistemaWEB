@@ -197,12 +197,12 @@ def lista_facturas(request):
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     # Permitir seleccionar año y mes por GET o POST
-    if request.method == 'POST':
-        año = int(request.POST.get('anio', datetime.now().year))
-        mes = int(request.POST.get('mes', datetime.now().month))
-    else:
-        año = int(request.GET.get('anio', datetime.now().year))
-        mes = int(request.GET.get('mes', datetime.now().month))
+    # if request.method == 'POST':
+    #     año = int(request.POST.get('anio', datetime.now().year))
+    #     mes = int(request.POST.get('mes', datetime.now().month))
+    # else:
+    #     año = int(request.GET.get('anio', datetime.now().year))
+    #     mes = int(request.GET.get('mes', datetime.now().month))
 
 
     hoy = date.today()
