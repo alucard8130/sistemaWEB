@@ -41,6 +41,20 @@
     {% else %}
         <form method="post">
             {% csrf_token %}
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="anio" class="form-label">Año:</label>
+                    <input type="number" class="form-control" name="anio" id="anio" min="2020" max="2100" value="{{ año }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="mes" class="form-label">Mes:</label>
+                    <select class="form-select" name="mes" id="mes">
+                        {% for m in 1|add:0|make_list %}
+                            <option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
                 <label class="form-check-label" for="locales">Cargar Locales Comerciales</label>
