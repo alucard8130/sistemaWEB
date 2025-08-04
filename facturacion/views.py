@@ -1068,17 +1068,29 @@ def cartera_vencida(request):
     filtro = request.GET.get('rango')
     origen = request.GET.get('origen')
 
+    # Optimiza con select_related para evitar N+1 queries
     facturas = Factura.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
-    )
+    ).select_related('cliente', 'empresa', 'local', 'area_comun')
 
     facturas_otros = FacturaOtrosIngresos.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
-    )
+    ).select_related('cliente', 'empresa', 'tipo_ingreso')
+    # facturas = Factura.objects.filter(
+    #     estatus='pendiente',
+    #     fecha_vencimiento__lt=hoy,
+    #     activo=True
+    # )
+
+    # facturas_otros = FacturaOtrosIngresos.objects.filter(
+    #     estatus='pendiente',
+    #     fecha_vencimiento__lt=hoy,
+    #     activo=True
+    # )
 
     # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
