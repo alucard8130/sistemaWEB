@@ -39,7 +39,7 @@
         <div class="alert alert-warning">Ya se han facturado todos los locales y áreas este mes.</div>
         <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
     {% else %}
-    {% if request.user.is_superuser %}
+
         <form method="post">
             {% csrf_token %}
             <div class="row mb-3">
@@ -65,7 +65,7 @@
                     </select>
                 </div>
             </div>
-    {% endif %}
+
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
                 <label class="form-check-label" for="locales">Cargar Locales Comerciales</label>
