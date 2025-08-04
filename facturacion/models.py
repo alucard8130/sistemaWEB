@@ -22,7 +22,7 @@ class Factura(models.Model):
         ('intereses', 'Intereses'),
     ]   
     tipo_cuota= models.CharField(max_length=100, choices=TIPO_CUOTA_CHOICES)
-    folio = models.CharField(max_length=100, unique=True)
+    folio = models.CharField(max_length=100)
     cfdi = models.FileField(upload_to='fact_sat/', max_length=255, blank=True, null=True)
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField(blank=True, null=True)
@@ -41,6 +41,7 @@ class Factura(models.Model):
     
     class Meta:
         ordering = ['-fecha_emision']
+        unique_together = ('folio', 'empresa')  # Folio único por empresa
     
   
     @property
