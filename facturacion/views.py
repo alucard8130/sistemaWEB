@@ -178,6 +178,8 @@ def lista_facturas(request):
         facturas = facturas.filter(local_id=local_id).order_by('-fecha_vencimiento')
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id).order_by('-fecha_vencimiento')
+
+    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos')    
     # Paginación
     paginator = Paginator(facturas, 25)
     page_number = request.GET.get('page')
