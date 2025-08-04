@@ -194,6 +194,8 @@ def lista_facturas(request):
         'facturas': page_obj,
     })
 
+from django.db.models import Max
+
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     # Permitir seleccionar año y mes por GET o POST (solo superusuario puede facturar meses anteriores)
@@ -205,7 +207,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
         mes = int(request.GET.get('mes', datetime.now().month))
     hoy = date.today()
 
-    # # Solo superusuario puede facturar meses distintos al actual
+    # Solo superusuario puede facturar meses distintos al actual
     # if (año != hoy.year or mes != hoy.month) and not request.user.is_superuser:
     #     messages.error(request, "Solo el superusuario puede generar facturas de meses anteriores.")
     #     return redirect('confirmar_facturacion')
@@ -223,7 +225,28 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
 
     fecha_factura = date(año, mes, 1)
 
+    # Pre-carga los folios existentes por empresa y tipo para evitar consultas repetidas
+    folios_locales = set(
+        Factura.objects.filter(
+            empresa__in=[l.empresa for l in locales],
+            folio__startswith="CM-F"
+        ).values_list('empresa_id', 'folio')
+    )
+    folios_areas = set(
+        Factura.objects.filter(
+            empresa__in=[a.empresa for a in areas],
+            folio__startswith="AC-F"
+        ).values_list('empresa_id', 'folio')
+    )
+    folios_deposito = set(
+        Factura.objects.filter(
+            empresa__in=[a.empresa for a in areas],
+            folio__startswith="DG-F"
+        ).values_list('empresa_id', 'folio')
+    )
+
     # Locales
+    max_folio_local = {}
     for local in locales:
         existe = Factura.objects.filter(
             cliente=local.cliente,
@@ -232,15 +255,22 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             fecha_emision__month=mes
         ).exists()
         if not existe:
-            # Folio único por empresa y tipo
-            prefijo = "CM-F"
-            num = 1
-            while True:
-                folio = f"{prefijo}{num:05d}"
-                if not Factura.objects.filter(folio=folio, empresa=local.empresa).exists() and \
-                   not any(f.folio == folio and f.empresa == local.empresa for f in facturas_a_crear):
-                    break
-                num += 1
+            empresa_id = local.empresa_id
+            if empresa_id not in max_folio_local:
+                max_folio = Factura.objects.filter(
+                    empresa_id=empresa_id,
+                    folio__startswith="CM-F"
+                ).aggregate(max_f=Max('folio'))['max_f']
+                if max_folio:
+                    try:
+                        last_num = int(max_folio.replace("CM-F", ""))
+                    except Exception:
+                        last_num = 0
+                else:
+                    last_num = 0
+                max_folio_local[empresa_id] = last_num
+            max_folio_local[empresa_id] += 1
+            folio = f"CM-F{max_folio_local[empresa_id]:05d}"
             facturas_a_crear.append(Factura(
                 empresa=local.empresa,
                 cliente=local.cliente,
@@ -256,6 +286,8 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             facturas_creadas += 1
 
     # Áreas
+    max_folio_area = {}
+    max_folio_deposito = {}
     for area in areas:
         existe = Factura.objects.filter(
             cliente=area.cliente,
@@ -264,14 +296,22 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             fecha_emision__month=mes
         ).exists()
         if not existe:
-            prefijo = "AC-F"
-            num = 1
-            while True:
-                folio = f"{prefijo}{num:05d}"
-                if not Factura.objects.filter(folio=folio, empresa=area.empresa).exists() and \
-                   not any(f.folio == folio and f.empresa == area.empresa for f in facturas_a_crear):
-                    break
-                num += 1
+            empresa_id = area.empresa_id
+            if empresa_id not in max_folio_area:
+                max_folio = Factura.objects.filter(
+                    empresa_id=empresa_id,
+                    folio__startswith="AC-F"
+                ).aggregate(max_f=Max('folio'))['max_f']
+                if max_folio:
+                    try:
+                        last_num = int(max_folio.replace("AC-F", ""))
+                    except Exception:
+                        last_num = 0
+                else:
+                    last_num = 0
+                max_folio_area[empresa_id] = last_num
+            max_folio_area[empresa_id] += 1
+            folio = f"AC-F{max_folio_area[empresa_id]:05d}"
             facturas_a_crear.append(Factura(
                 empresa=area.empresa,
                 cliente=area.cliente,
@@ -294,14 +334,22 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 tipo_cuota='deposito',
             ).exists()
             if not existe_deposito:
-                prefijo = "DG-F"
-                num = 1
-                while True:
-                    folio_deposito = f"{prefijo}{num:05d}"
-                    if not Factura.objects.filter(folio=folio_deposito, empresa=area.empresa).exists() and \
-                       not any(f.folio == folio_deposito and f.empresa == area.empresa for f in facturas_a_crear):
-                        break
-                    num += 1
+                empresa_id = area.empresa_id
+                if empresa_id not in max_folio_deposito:
+                    max_folio = Factura.objects.filter(
+                        empresa_id=empresa_id,
+                        folio__startswith="DG-F"
+                    ).aggregate(max_f=Max('folio'))['max_f']
+                    if max_folio:
+                        try:
+                            last_num = int(max_folio.replace("DG-F", ""))
+                        except Exception:
+                            last_num = 0
+                    else:
+                        last_num = 0
+                    max_folio_deposito[empresa_id] = last_num
+                max_folio_deposito[empresa_id] += 1
+                folio_deposito = f"DG-F{max_folio_deposito[empresa_id]:05d}"
                 facturas_a_crear.append(Factura(
                     empresa=area.empresa,
                     cliente=area.cliente,
@@ -317,7 +365,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
 
     # Bulk create
     if facturas_a_crear:
-        Factura.objects.bulk_create(facturas_a_crear, batch_size=20)
+        Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
 
     messages.success(request, f"{facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}")
     return redirect('lista_facturas')
