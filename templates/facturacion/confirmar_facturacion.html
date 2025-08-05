@@ -6,83 +6,97 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 17/06/2025
+      Date of modification: 05/08/2025
       Description: Confirm automatic billing
     -->
     <meta charset="UTF-8">
-    <title>Confirmar Facturacion</title>
+    <title>Confirmar facturación</title>
+    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet"/>
+    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4" style="background-color: #fdf6f0;">
+        <h3 class="mb-4 text-center" style="color: #6b4c4c;">
+            Confirmar carga mensual de cuotas
+        </h3>
+        
+        <div class="alert" style="background-color: #e8f0fe; color: #2c3e50; border-left: 5px solid #aecbfa;">
+            <ul class="mb-0">
+                <li><strong>{{ total_locales }}</strong> cuotas locales comerciales por cargar</li>
+                <li><strong>{{ total_areas }}</strong> cuotas áreas comunes por cargar</li>
+            </ul>
         </div>
-    </div>
-<div class="container mt-5">
-    <h3>Confirmar carga mensual de cuotas</h3>
-    
-    
-    <div class="alert alert-info">
-        <ul>
-            <li><strong>{{ total_locales }}</strong> cuotas locales comerciales por cargar</li>
-            <li><strong>{{ total_areas }}</strong> cuotas áreas comunes por cargar</li>
-        </ul>
-    </div>
 
-    {% if total_locales == 0 and total_areas == 0 %}
-        <div class="alert alert-warning">Ya se han facturado todos los locales y áreas este mes.</div>
-        <a href="{% url 'bienvenida' %}" class="btn btn-secondary">Regresar</a>
-    {% else %}
-
-        <form method="post">
-            {% csrf_token %}
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <label for="anio" class="form-label">Año:</label>
-                    <input type="number" class="form-control" name="anio" id="anio" min="2020" max="2100" value="{{ año }}">
+        {% if total_locales == 0 and total_areas == 0 %}
+            <div class="alert" style="background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba;">
+                Ya se han facturado todos los locales y áreas este mes.
+            </div>
+        {% else %}  
+      
+            <form method="post" class="p-3 mt-3 rounded" style="background-color: #ffffff; border: 1px solid #f0e6e6;">
+                {% csrf_token %}
+                <div class="form-check mb-2">
+                    <div class="col-md-3">
+                        <label for="anio" class="form-label">Año:</label>
+                        <input type="number" class="form-control" name="anio" id="anio" min="2020" max="2100" value="{{ año }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="mes" class="form-label">Mes:</label>
+                        <select class="form-select" name="mes" id="mes">
+                            <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
+                            <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
+                            <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
+                            <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                            <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
+                            <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
+                            <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
+                            <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                            <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
+                            <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
+                            <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
+                            <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <label for="mes" class="form-label">Mes:</label>
-                    <select class="form-select" name="mes" id="mes">
-                        <option value="1" {% if mes == 1 %}selected{% endif %}>Enero</option>
-                        <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero</option>
-                        <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo</option>
-                        <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
-                        <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo</option>
-                        <option value="6" {% if mes == 6 %}selected{% endif %}>Junio</option>
-                        <option value="7" {% if mes == 7 %}selected{% endif %}>Julio</option>
-                        <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
-                        <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre</option>
-                        <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre</option>
-                        <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre</option>
-                        <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre</option>
-                    </select>
-                </div>
-            </div>
 
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
-                <label class="form-check-label" for="locales">Cargar Locales Comerciales</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="areas" id="areas" checked {% if total_areas == 0 %}disabled{% endif %}>
-                <label class="form-check-label" for="areas">Cargar Áreas Comunes</label>
-            </div>
-            <button type="submit" class="btn btn-warning mt-3">Generar carga</button>
-            <a href="{% url 'lista_facturas' %}" class="btn btn-secondary mt-3">Cancelar</a>
-        </form>
-    {% endif %}
-</div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
+                    <label class="form-check-label" for="locales" style="color: #4d4d4d;">
+                        Cargar Locales Comerciales
+                    </label>
+                </div>
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" name="areas" id="areas" checked {% if total_areas == 0 %}disabled{% endif %}>
+                    <label class="form-check-label" for="areas" style="color: #4d4d4d;">
+                        Cargar Áreas Comunes
+                    </label>
+                </div>
+                <button type="submit" class="btn" style="background-color: #f7c59f; color: #fff;">
+                    Generar carga
+                </button>
+                <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary ms-2">
+                    Cancelar
+                </a>
+            </form>
+        {% endif %}
+    </div>
+
+    <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+        © {% now "Y" %} GAC. Todos los derechos reservados. <br />
         Creado por Jaime M. Estrada Bernabé
     </footer>
+
+    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
