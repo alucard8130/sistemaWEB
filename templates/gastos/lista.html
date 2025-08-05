@@ -109,24 +109,20 @@
                             {% endif %}
                             <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
 <td>
-  {% with saldo=gasto.monto|default:0|add:"-%s"|add:gasto.total_pagado|default:0 %}
-    ${{ saldo|floatformat:2|intcomma }}
-  {% endwith %}
+  ${{ gasto.saldo_restante|floatformat:2|intcomma }}
 </td>
 <td>{{ gasto.get_estatus_display }}</td>
 <td class="text-nowrap">
-  {% with saldo=gasto.monto|default:0|add:"-%s"|add:gasto.total_pagado|default:0 %}
-    {% if saldo > 0 %}
-      <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Pagar">
-        <i class="bi bi-cash-coin me-1"></i>
-      </a>
-      <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
-        <i class="bi bi-pencil-square me-1"></i>
-      </a>
-    {% else %}
-      <span class="text-muted"></span>
-    {% endif %}
-  {% endwith %}
+  {% if gasto.saldo_restante > 0 %}
+    <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Pagar">
+      <i class="bi bi-cash-coin me-1"></i>
+    </a>
+    <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+      <i class="bi bi-pencil-square me-1"></i>
+    </a>
+  {% else %}
+    <span class="text-muted"></span>
+  {% endif %}
   {% if user.is_superuser %}
     <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
       <i class="bi bi-trash3 me-1"></i>
