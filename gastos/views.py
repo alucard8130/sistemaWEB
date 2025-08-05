@@ -168,6 +168,9 @@ def gastos_lista(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # Calcular el total pagado de los gastos filtrados
+    total_pagado = gastos.aggregate(total=Sum('pagos__monto'))['total'] or 0
+
     return render(request, 'gastos/lista.html', {
         'gastos': page_obj,
         'proveedores': proveedores,
@@ -176,6 +179,7 @@ def gastos_lista(request):
         'proveedor_id': proveedor_id,
         'empleado_id': empleado_id,
         'tipo_gasto_sel': tipo_gasto,
+        'total_pagado': total_pagado,
     })
 
 @login_required
