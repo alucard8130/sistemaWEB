@@ -12,7 +12,7 @@ def cargar_grupos_subgrupos(apps, schema_editor):
         
         'Gastos Mantenimientos': ['Equipos', 'Instalaciones', 'Software', 'Edificio','Infraestructura','Hardware', 'Vehículos', 'Maquinaria', 'Herramientas','Sistemas de seguridad','Otros'],
         
-        'Gastos Servicios': ['Agua', 'Luz', 'Teléfonia', 'Internet', 'Seguridad','Limpieza','Jardinería','Recoleccion de basura','Fumigación','Contables','Legales','Administrativos',
+        'Gastos Servicios': ['Agua', 'Luz', 'Telefonia', 'Internet', 'Seguridad','Limpieza','Jardinería','Recoleccion de basura','Fumigacion','Contables','Legales','Administrativos',
                              'Consultoria','Notariales', 'Auditoría','Otros'],
         
         'Gastos Operacion': ['Transporte', 'Logística','Decoracion', 'Alquiler de equipos','Seguros','Proteccion Civil','Insumos','Combustibles', 'Herramientas','Permisos','Licencias',
