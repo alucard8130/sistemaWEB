@@ -135,9 +135,7 @@ def gastos_lista(request):
     if request.user.is_superuser:
         gastos = Gasto.objects.all().select_related(
             'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
-        ).prefetch_related('pagos').annotate(
-            total_pagado=Sum('pagos__monto')
-        ).order_by('-fecha')
+        ).prefetch_related('pagos').order_by('-fecha')  # <-- add .prefetch_related('pagos')
         proveedores = Proveedor.objects.filter(activo=True)
         empleados = Empleado.objects.filter(activo=True)
         tipos_gasto = TipoGasto.objects.all()
@@ -145,9 +143,7 @@ def gastos_lista(request):
         empresa = request.user.perfilusuario.empresa
         gastos = Gasto.objects.filter(empresa=empresa).select_related(
             'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
-        ).prefetch_related('pagos').annotate(
-            total_pagado=Sum('pagos__monto')
-        ).order_by('-fecha')
+        ).prefetch_related('pagos').order_by('-fecha')  # <-- add .prefetch_related('pagos')
         proveedores = Proveedor.objects.filter(activo=True, empresa=empresa)
         empleados = Empleado.objects.filter(activo=True, empresa=empresa)
         tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
@@ -163,13 +159,13 @@ def gastos_lista(request):
     if tipo_gasto:
         gastos = gastos.filter(tipo_gasto=tipo_gasto)
 
-    # paginacion
-    paginator = Paginator(gastos, 25)
+    #paginacion
+    paginator = Paginator(gastos, 25)  
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginator.get_page(page_number)    
 
     return render(request, 'gastos/lista.html', {
-        'gastos': page_obj,
+        'gastos': page_obj,                                         
         'proveedores': proveedores,
         'empleados': empleados,
         'tipos_gasto': tipos_gasto,
