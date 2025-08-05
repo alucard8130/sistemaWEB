@@ -3,7 +3,7 @@ from django.db import models
 # Create your models here.
 class Proveedor(models.Model):
     nombre = models.CharField(max_length=100,)
-    rfc = models.CharField(max_length=13, unique=True)
+    rfc = models.CharField(max_length=13)
     email = models.EmailField(blank=True, null=True)
     direccion = models.CharField(max_length=255, blank=True, null=True)
     telefono = models.CharField(max_length=20, blank=True, null=True)

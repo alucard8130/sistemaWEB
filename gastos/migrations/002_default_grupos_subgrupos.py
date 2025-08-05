@@ -6,12 +6,22 @@ def cargar_grupos_subgrupos(apps, schema_editor):
 
     grupos = {
         'Gastos Administracion': ['Papelería', 'Suministros', 'Mobiliario oficina','Asamblea', 'Comite', 'Viajes', 'Software', 'Hardware', 'Equipo de oficina', 'Otros'],
-        'Gastos Nomina': ['Sueldos y salarios', 'Prestaciones', 'Seguridad social', 'Impuestos', 'Indemnizaciones','Infonavit','Prestamos','Aguinaldo', 'Vacaciones', 'Prima vacacional','Vales de despensa','Uniformes','Despensas', 'Capacitacion', 'Reclutamiento', 'Otros'],
+
+        'Gastos Nomina': ['Sueldos y salarios', 'Prestaciones', 'Seguridad social', 'Impuestos', 'Indemnizaciones','Infonavit','Prestamos','Aguinaldo', 'Vacaciones',
+                           'Prima vacacional','Vales de despensa','Uniformes','Despensas', 'Capacitacion', 'Reclutamiento', 'Otros'],
+        
         'Gastos Mantenimientos': ['Equipos', 'Instalaciones', 'Software', 'Edificio','Infraestructura','Hardware', 'Vehículos', 'Maquinaria', 'Herramientas','Sistemas de seguridad','Otros'],
-        'Gastos Servicios': ['Agua', 'Luz', 'Teléfonia', 'Internet', 'Seguridad','Limpieza','Jardinería','Recoleccion de basura','Fumigación','Contables','Legales','Administrativos','Consultoria','Notariales', 'Auditoría','Otros'],
-        'Gastos Operacion': ['Transporte', 'Logística','Decoracion', 'Alquiler de equipos','Seguros','Proteccion Civil','Insumos','Combustibles', 'Herramientas','Permisos','Licencias','Estacionamiento','Sistemas de seguridad','Otros'],
+        
+        'Gastos Servicios': ['Agua', 'Luz', 'Teléfonia', 'Internet', 'Seguridad','Limpieza','Jardinería','Recoleccion de basura','Fumigación','Contables','Legales','Administrativos',
+                             'Consultoria','Notariales', 'Auditoría','Otros'],
+        
+        'Gastos Operacion': ['Transporte', 'Logística','Decoracion', 'Alquiler de equipos','Seguros','Proteccion Civil','Insumos','Combustibles', 'Herramientas','Permisos','Licencias',
+                             'Estacionamiento','Sistemas de seguridad','Otros'],
+        
         'Gastos Financieros': ['Comisiones', 'Intereses', 'Cobranza', 'Inversión', 'Otros'],
+        
         'Gastos Publicidad': ['Digital', 'Impresos', 'Eventos', 'Promociones', 'Marketing','Television','Radio','Patrocinios', 'Otros'],
+        
         'Gastos Extraordinarios': ['Reparaciones mayores', 'Proyectos especiales', 'Imprevistos', 'Legales','Contingencias', 'Otros'],
     }
 
