@@ -72,7 +72,7 @@
             </div>
         </form>
     
-        <!-- Expense claims table -->
+        
         <div class="table-responsive rounded-3 border"> 
             <table class="table align-middle mb-0 shadow-sm">
                     <thead>
@@ -109,25 +109,30 @@
                             {% endif %}
                             <td>{{ gasto.descripcion }}</td>
                             <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
-                            <td>${{ gasto.saldo_restante|floatformat:2|intcomma }}</td>
-                            <td>{{ gasto.get_estatus_display }}</td>
-                            <td class="text-nowrap">
-                                {% if gasto.saldo_restante > 0 %}
+                            <td>
+                                {% with saldo=gasto.monto|add:"-%s"|format:gasto.total_pagado|default:0 %}
+                                    ${{ saldo|floatformat:2|intcomma }}
+                                {% endwith %}
+                                </td>
+                                <td>{{ gasto.get_estatus_display }}</td>
+                                <td class="text-nowrap">
+                                {% with saldo=gasto.monto|add:"-%s"|format:gasto.total_pagado|default:0 %}
+                                    {% if saldo > 0 %}
                                     <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Pagar">
                                         <i class="bi bi-cash-coin me-1"></i>
                                     </a>
                                     <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
                                         <i class="bi bi-pencil-square me-1"></i>
                                     </a>
-                                {% else %}
+                                    {% else %}
                                     <span class="text-muted"></span>
-                                {% endif %}
-                            
+                                    {% endif %}
+                                {% endwith %}
                                 {% if user.is_superuser %}
                                     <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
-                                        <i class="bi bi-trash3 me-1"></i>
+                                    <i class="bi bi-trash3 me-1"></i>
                                     </a>
-                                {% endif %}   
+                                {% endif %}
                             </td>
                             <td>
                                 {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
