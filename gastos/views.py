@@ -136,7 +136,7 @@ def gastos_lista(request):
         gastos = Gasto.objects.all().select_related(
             'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
         ).prefetch_related('pagos').annotate(
-            total_pagado=Sum('pagos__monto')
+            total_pagado_sum=Sum('pagos__monto')
         ).order_by('-fecha')
         proveedores = Proveedor.objects.filter(activo=True)
         empleados = Empleado.objects.filter(activo=True)
@@ -146,7 +146,7 @@ def gastos_lista(request):
         gastos = Gasto.objects.filter(empresa=empresa).select_related(
             'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
         ).prefetch_related('pagos').annotate(
-            total_pagado=Sum('pagos__monto')
+            total_pagado_sum=Sum('pagos__monto')
         ).order_by('-fecha')
         proveedores = Proveedor.objects.filter(activo=True, empresa=empresa)
         empleados = Empleado.objects.filter(activo=True, empresa=empresa)
@@ -171,7 +171,7 @@ def gastos_lista(request):
     for gasto in page_obj:
         # Calcula el saldo restante usando la anotación total_pagado (ya viene en el queryset)
         monto = gasto.monto or 0
-        total_pagado = gasto.total_pagado or 0
+        total_pagado = gasto.total_pagado_sum or 0
         gasto.saldo_restante = monto - total_pagado
 
 
