@@ -135,7 +135,7 @@ def gastos_lista(request):
     if request.user.is_superuser:
         gastos = Gasto.objects.all().select_related(
             'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
-        ).order_by('-fecha')
+        ).prefetch_related('pagos').order_by('-fecha')  # <-- add .prefetch_related('pagos')
         proveedores = Proveedor.objects.filter(activo=True)
         empleados = Empleado.objects.filter(activo=True)
         tipos_gasto = TipoGasto.objects.all()
@@ -143,7 +143,7 @@ def gastos_lista(request):
         empresa = request.user.perfilusuario.empresa
         gastos = Gasto.objects.filter(empresa=empresa).select_related(
             'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
-        ).order_by('-fecha')
+        ).prefetch_related('pagos').order_by('-fecha')  # <-- add .prefetch_related('pagos')
         proveedores = Proveedor.objects.filter(activo=True, empresa=empresa)
         empleados = Empleado.objects.filter(activo=True, empresa=empresa)
         tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
