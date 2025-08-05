@@ -1531,7 +1531,7 @@ def carga_masiva_facturas_cobradas(request):
                     Pago.objects.create(
                         factura=Factura.objects.get(folio=str(folio), empresa=empresa),
                         monto=cuota_decimal,
-                        forma_pago='carga_masiva',
+                        forma_pago='transferencia', 
                         fecha_pago=fecha_emision,
                         registrado_por=request.user,
                         observaciones=observaciones or "",
