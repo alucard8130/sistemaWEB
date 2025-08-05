@@ -6,7 +6,7 @@ from empresas.models import Empresa
 class Empleado(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100)
-    rfc= models.CharField(max_length=13, unique=True)
+    rfc= models.CharField(max_length=13)
     PUESTOS_CHOICES = [
         ('GERENTE', 'Gerente'),
         ('SUPERVISOR', 'Supervisor'),

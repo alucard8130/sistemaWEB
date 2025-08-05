@@ -133,13 +133,17 @@ def tipo_gasto_eliminar(request, pk):
 @login_required
 def gastos_lista(request):
     if request.user.is_superuser:
-        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto').order_by('-fecha')
+        gastos = Gasto.objects.all().select_related(
+            'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
+        ).prefetch_related('pagos').order_by('-fecha')  # <-- add .prefetch_related('pagos')
         proveedores = Proveedor.objects.filter(activo=True)
         empleados = Empleado.objects.filter(activo=True)
         tipos_gasto = TipoGasto.objects.all()
     else:
         empresa = request.user.perfilusuario.empresa
-        gastos = Gasto.objects.filter(empresa=empresa).order_by('-fecha')
+        gastos = Gasto.objects.filter(empresa=empresa).select_related(
+            'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
+        ).prefetch_related('pagos').order_by('-fecha')  # <-- add .prefetch_related('pagos')
         proveedores = Proveedor.objects.filter(activo=True, empresa=empresa)
         empleados = Empleado.objects.filter(activo=True, empresa=empresa)
         tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
@@ -161,15 +165,14 @@ def gastos_lista(request):
     page_obj = paginator.get_page(page_number)    
 
     return render(request, 'gastos/lista.html', {
-        'gastos': gastos,                                         
+        'gastos': page_obj,                                         
         'proveedores': proveedores,
         'empleados': empleados,
         'tipos_gasto': tipos_gasto,
         'proveedor_id': proveedor_id,
         'empleado_id': empleado_id,
         'tipo_gasto_sel': tipo_gasto,
-        'gastos': page_obj,
-        })
+    })
 
 @login_required
 #solicitudes de pago
