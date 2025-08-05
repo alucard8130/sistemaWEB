@@ -107,27 +107,33 @@
                             {% else %}
                                 <td>{{ gasto.empleado.nombre }}</td>
                             {% endif %}
-                            <td>{{ gasto.descripcion }}</td>
                             <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
-                            <td>${{ gasto.saldo_restante|floatformat:2|intcomma }}</td>
-                            <td>{{ gasto.get_estatus_display }}</td>
-                            <td class="text-nowrap">
-                                {% if gasto.saldo_restante > 0 %}
-                                    <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Pagar">
+                            <td>
+                                {% with total_pagado=gasto.total_pagado|default:0 %}
+                                    ${{ gasto.monto|floatformat:2|add:"-%s"|add:total_pagado|floatformat:2|intcomma }}
+                                {% endwith %}
+                                </td>
+                                <td>{{ gasto.get_estatus_display }}</td>
+                                <td class="text-nowrap">
+                                {% with total_pagado=gasto.total_pagado|default:0 %}
+                                    {% with saldo=gasto.monto|floatformat:2|add:"-%s"|add:total_pagado %}
+                                    {% if saldo > 0 %}
+                                        <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Pagar">
                                         <i class="bi bi-cash-coin me-1"></i>
-                                    </a>
-                                    <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                        </a>
+                                        <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
                                         <i class="bi bi-pencil-square me-1"></i>
-                                    </a>
-                                {% else %}
-                                    <span class="text-muted"></span>
-                                {% endif %}
-                            
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted"></span>
+                                    {% endif %}
+                                    {% endwith %}
+                                {% endwith %}
                                 {% if user.is_superuser %}
                                     <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
-                                        <i class="bi bi-trash3 me-1"></i>
+                                    <i class="bi bi-trash3 me-1"></i>
                                     </a>
-                                {% endif %}   
+                                {% endif %}
                             </td>
                             <td>
                                 {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
