@@ -106,10 +106,13 @@ def crear_factura(request):
                             factura.empresa = request.user.perfilusuario.empresa
                         
                         factura.estatus = 'pendiente'
+                        # Asignar fecha_emision si no viene del formulario
+                        if not factura.fecha_emision:
+                            #factura.fecha_emision = now()
+                            factura.fecha_emision = timezone.now().date()
                         factura.save()
 
                         # Folio único
-                        from django.utils.timezone import now
                         count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
                         if tipo == 'local':
                             factura.folio = f"CM-F{count:05d}"
@@ -139,13 +142,13 @@ def crear_factura(request):
                                 )
 
                         messages.success(request, "Registro Exitoso.")
-                        #print("[DEBUG] Factura creada con éxito.")
+                       
                         return redirect('lista_facturas')
                 except Exception as e:
                     form.add_error(None, f"Error al guardar: {e}")
-                    #print("[DEBUG] Excepción al guardar factura:", e)
+                    
         else:
-            ''#print("[DEBUG] Formulario inválido:", form.errors)
+            ''
     else:
         form = FacturaForm(user=request.user)
 
