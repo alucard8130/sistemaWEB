@@ -18,7 +18,6 @@ from datetime import date, timedelta
 from django.db.models import Q,  Value, Case, When,  CharField,FloatField
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
-#from django.db.models import Case, When
 import openpyxl
 from django.http import HttpResponse
 from django.db.models import Q
@@ -40,8 +39,6 @@ from django.http import JsonResponse
 
 @login_required
 def crear_factura(request):
-    from django.db import transaction
-   
     conflicto = False
     conflicto_tipo = ""
     superuser_auth_ok = False
