@@ -501,9 +501,7 @@ def estado_resultados(request):
             {"tipo": tipo, "total": total}
             for tipo, total in gastos_por_tipo_dict.items()
         ]
-
-        # Puedes mantener la lógica de estructura_gastos y total_gastos como estaba
-        # Unificar gastos modo, caja chica y vales por grupo, subgrupo y tipo en modo flujo
+        
         estructura_gastos = OrderedDict()
         # Gastos modo flujo
         for g in gastos_modo.values(
