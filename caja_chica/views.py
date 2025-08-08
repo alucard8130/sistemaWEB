@@ -31,7 +31,7 @@ def fondeo_caja_chica(request):
     if request.method == "POST":
         form = FondeoCajaChicaForm(request.POST)
         if empresa:
-            form.fields["empleado"].queryset = form.fields["empleado"].queryset.filter(empresa=empresa)
+            form.fields["empleado_asignado"].queryset = form.fields["empleado_asignado"].queryset.filter(empresa=empresa)
         if form.is_valid():
             fondeo = form.save(commit=False)
             fondeo.saldo = fondeo.importe_cheque
@@ -42,7 +42,7 @@ def fondeo_caja_chica(request):
     else:
         form = FondeoCajaChicaForm()
         if empresa:
-            form.fields["empleado"].queryset = form.fields["empleado"].queryset.filter(empresa=empresa)
+            form.fields["empleado_asignado"].queryset = form.fields["empleado_asignado"].queryset.filter(empresa=empresa)
     return render(request, "caja_chica/fondeo_caja_chica.html", {"form": form})
 
 @login_required
