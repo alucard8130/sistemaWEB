@@ -1,8 +1,10 @@
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from .forms import FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
+
 
 def imprimir_vale_caja(request, vale_id):
     vale = get_object_or_404(ValeCaja, id=vale_id)
@@ -19,7 +21,7 @@ def detalle_fondeo(request, fondeo_id):
         {"fondeo": fondeo, "gastos": gastos, "vales": vales},
     )
 
-
+@login_required
 def fondeo_caja_chica(request):
     empresa = None
     if request.user.is_authenticated:
@@ -28,6 +30,8 @@ def fondeo_caja_chica(request):
             empresa = getattr(perfil, "empresa", None)
     if request.method == "POST":
         form = FondeoCajaChicaForm(request.POST)
+        if empresa:
+            form.fields["empleado"].queryset = form.fields["empleado"].queryset.filter(empresa=empresa)
         if form.is_valid():
             fondeo = form.save(commit=False)
             fondeo.saldo = fondeo.importe_cheque
@@ -37,9 +41,11 @@ def fondeo_caja_chica(request):
             return redirect("lista_fondeos")
     else:
         form = FondeoCajaChicaForm()
+        if empresa:
+            form.fields["empleado"].queryset = form.fields["empleado"].queryset.filter(empresa=empresa)
     return render(request, "caja_chica/fondeo_caja_chica.html", {"form": form})
 
-
+@login_required
 def registrar_gasto_caja_chica(request):
     empresa = None
     perfil = getattr(request.user, "perfilusuario", None)
@@ -77,7 +83,7 @@ def registrar_gasto_caja_chica(request):
             form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(id=fondeo_instance.id)
     return render(request, "caja_chica/registrar_gasto_caja_chica.html", {"form": form})
 
-
+@login_required
 def generar_vale_caja(request):
     from gastos.models import TipoGasto
 
