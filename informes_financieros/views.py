@@ -503,21 +503,14 @@ def estado_resultados(request):
         ]
 
         # Puedes mantener la lógica de estructura_gastos y total_gastos como estaba
-        gastos_por_grupo = (
-            gastos_modo.values(
-                "gasto__tipo_gasto__subgrupo__grupo__nombre",
-                "gasto__tipo_gasto__subgrupo__nombre",
-                "gasto__tipo_gasto__nombre",
-            )
-            .annotate(total=Sum("monto"))
-            .order_by(
-                "gasto__tipo_gasto__subgrupo__grupo__nombre",
-                "gasto__tipo_gasto__subgrupo__nombre",
-                "gasto__tipo_gasto__nombre",
-            )
-        )
+        # Unificar gastos modo, caja chica y vales por grupo, subgrupo y tipo en modo flujo
         estructura_gastos = OrderedDict()
-        for g in gastos_por_grupo:
+        # Gastos modo flujo
+        for g in gastos_modo.values(
+            "gasto__tipo_gasto__subgrupo__grupo__nombre",
+            "gasto__tipo_gasto__subgrupo__nombre",
+            "gasto__tipo_gasto__nombre",
+        ).annotate(total=Sum("monto")):
             grupo = (
                 (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
                 .strip()
@@ -533,8 +526,66 @@ def estado_resultados(request):
             if grupo not in estructura_gastos:
                 estructura_gastos[grupo] = OrderedDict()
             if subgrupo not in estructura_gastos[grupo]:
-                estructura_gastos[grupo][subgrupo] = []
-            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Caja chica modo flujo
+        for g in gastos_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Vales de caja chica modo flujo
+        for g in vales_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Convertir los dicts de tipos a listas para compatibilidad con el template
+        for grupo in estructura_gastos:
+            for subgrupo in estructura_gastos[grupo]:
+                tipos_dict = estructura_gastos[grupo][subgrupo]
+                estructura_gastos[grupo][subgrupo] = [
+                    {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
+                ]
         total_gastos = sum([g["total"] for g in gastos_por_tipo])
         saldo_final_flujo = (
             float(saldo_inicial) + float(total_ingresos) - float(total_gastos)
@@ -626,21 +677,14 @@ def estado_resultados(request):
         for tipo, total in gastos_por_tipo_dict.items():
             gastos_por_tipo.append({"tipo": tipo, "total": total})
 
-        gastos_por_grupo = (
-            gastos.values(
-                "tipo_gasto__subgrupo__grupo__nombre",
-                "tipo_gasto__subgrupo__nombre",
-                "tipo_gasto__nombre",
-            )
-            .annotate(total=Sum("monto"))
-            .order_by(
-                "tipo_gasto__subgrupo__grupo__nombre",
-                "tipo_gasto__subgrupo__nombre",
-                "tipo_gasto__nombre",
-            )
-        )
+        # Unificar gastos normales, caja chica y vales por grupo, subgrupo y tipo
         estructura_gastos = OrderedDict()
-        for g in gastos_por_grupo:
+        # Gastos normales
+        for g in gastos.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("monto")):
             grupo = (
                 (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
                 .strip()
@@ -654,8 +698,66 @@ def estado_resultados(request):
             if grupo not in estructura_gastos:
                 estructura_gastos[grupo] = OrderedDict()
             if subgrupo not in estructura_gastos[grupo]:
-                estructura_gastos[grupo][subgrupo] = []
-            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Caja chica
+        for g in gastos_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Vales de caja chica
+        for g in vales_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Convertir los dicts de tipos a listas para compatibilidad con el template
+        for grupo in estructura_gastos:
+            for subgrupo in estructura_gastos[grupo]:
+                tipos_dict = estructura_gastos[grupo][subgrupo]
+                estructura_gastos[grupo][subgrupo] = [
+                    {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
+                ]
         total_gastos = sum([g["total"] for g in gastos_por_tipo])
         saldo_final_flujo = None
 

@@ -9,9 +9,6 @@ def imprimir_vale_caja(request, vale_id):
     return render(request, "caja_chica/imprimir_vale_caja.html", {"vale": vale})
 
 
-from django.shortcuts import get_object_or_404
-
-
 def detalle_fondeo(request, fondeo_id):
     fondeo = get_object_or_404(FondeoCajaChica, id=fondeo_id)
     gastos = fondeo.gastocajachica_set.all()

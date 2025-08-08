@@ -177,11 +177,23 @@
         <div class="table-responsive">
             <table class="table table-bordered align-middle mb-0">
                 <tbody>
-                    {% for gasto in gastos_por_tipo %}
+                    {% for grupo, subgrupos in estructura_gastos.items %}
                         <tr>
-                            <td class="text-start">{{ gasto.tipo|capfirst }}</td>
-                            <td class="text-end">${{ gasto.total|floatformat:2|intcomma }}</td>
+                            <td class="fw-bold text-start">{{ grupo }}</td>
+                            <td></td>
                         </tr>
+                        {% for subgrupo, tipos in subgrupos.items %}
+                            <tr>
+                                <td class="ps-4 fw-semibold text-start">{{ subgrupo }}</td>
+                                <td></td>
+                            </tr>
+                            {% for tipo in tipos %}
+                                <tr>
+                                    <td class="ps-5 text-start">{{ tipo.tipo|capfirst }}</td>
+                                    <td class="text-end">${{ tipo.total|floatformat:2|intcomma }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
                     {% endfor %}
                     <tr class="table-light">
                         <td class="text-start"><strong>Total gastos</strong></td>
