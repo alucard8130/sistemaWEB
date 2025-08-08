@@ -99,60 +99,8 @@
         </div>
     </form>
     <div class="card mb-4 p-3 shadow-sm">
-
-    <!--<h5 class="mb-2">
-        Pagado: <span class="badge bg-primary">${{ total_pagado|floatformat:2|intcomma }}</span> &nbsp;
-        Por pagar: <span class="badge bg-warning text-dark">${{ total_pendiente|floatformat:2|intcomma }}</span> &nbsp;
-        Presupuesto: <span class="badge bg-success">${{ total_presupuesto|floatformat:2|intcomma }}</span>
-    </h5>-->
         <canvas id="graficoPagos" style="height: 450px"></canvas>
     </div>
-
-    <!-- Tabla de gastos de caja chica y vales -->
-    <div class="card mb-4 p-3 shadow-sm">
-        <h5 class="mb-3">Gastos de Caja Chica y Vales</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Fecha</th>
-                        <th>Descripción</th>
-                        <th>Importe</th>
-                        <th>Proveedor/Recibido por</th>
-                        <th>Tipo de Gasto</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for gasto in gastos_caja_chica %}
-                    <tr>
-                        <td>Caja Chica</td>
-                        <td>{{ gasto.fecha|date:'d/m/Y' }}</td>
-                        <td>{{ gasto.descripcion }}</td>
-                        <td>${{ gasto.importe|floatformat:2|intcomma }}</td>
-                        <td>{% if gasto.proveedor %}{{ gasto.proveedor.nombre }}{% else %}-{% endif %}</td>
-                        <td>{% if gasto.tipo_gasto %}{{ gasto.tipo_gasto.nombre }}{% else %}-{% endif %}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center">No hay gastos de caja chica.</td></tr>
-                    {% endfor %}
-                    {% for vale in vales_caja_chica %}
-                    <tr>
-                        <td>Vale</td>
-                        <td>{{ vale.fecha|date:'d/m/Y' }}</td>
-                        <td>{{ vale.descripcion }}</td>
-                        <td>${{ vale.importe|floatformat:2|intcomma }}</td>
-                        <td>{{ vale.recibido_por }}</td>
-                        <td>{% if vale.tipo_gasto %}{{ vale.tipo_gasto.nombre }}{% else %}-{% endif %}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center">No hay vales de caja chica.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
 
     <script>
     const ctx = document.getElementById('graficoPagos').getContext('2d');
