@@ -24,7 +24,7 @@
 <body>
     {% include 'navbar.html' %}
     <div class="container-fluid mt-4">
-        <h2>Reporte egresos</h2>
+        <h2>Reporte pagos Gastos</h2>
 
         <form method="get" class="row g-2 mb-3">
             {% if empresas|length > 1 %}
@@ -80,8 +80,10 @@
             </div>
         </form>
         <div class="alert alert-info">
-            <strong>Total pagado:</strong> 
-            ${{ total|floatformat:2|intcomma }}
+            <strong>Total pagado regular:</strong> ${{ total|floatformat:2|intcomma }}<br>
+            <strong>Total caja chica:</strong> ${{ total_caja_chica|floatformat:2|intcomma }}<br>
+            <strong>Total vales caja chica:</strong> ${{ total_vales_caja_chica|floatformat:2|intcomma }}<br>
+            <strong>Total general:</strong> ${{ total_general|floatformat:2|intcomma }}
         </div>
 
         <div class="table-responsive rounded-3 border">
@@ -115,7 +117,6 @@
                             {% endif %}
                         </td>
                         <td>{{ pago.get_forma_pago_display }}</td>
-                        
                         <td>{{ pago.referencia }}</td>
                         <td>
                             {% if pago.comprobante %}
@@ -123,13 +124,55 @@
                             {% else %}
                                 <span class="text-muted"></span>
                             {% endif %}
-            
                     </tr>
-                    {% empty %}
+                    {% endfor %}
+                    <!-- Caja Chica -->
+                    {% for gasto in pagos_caja_chica %}
+                    <tr class="table-warning">
+                        <td>{{ gasto.fecha|date:"d/b/y"|upper }}</td>
+                        <td>${{ gasto.importe|floatformat:2|intcomma }}</td>
+                        {% if request.user.is_superuser %}
+                        <td>{{ gasto.fondeo.empresa.nombre }}</td>
+                        {% endif %}
+                        <td>
+                            {% if gasto.proveedor %}
+                                {{ gasto.proveedor.nombre }}
+                            {% elif gasto.empleado %}
+                                {{ gasto.empleado.nombre }}
+                            {% else %}
+                                Caja Chica
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-warning text-dark">Caja Chica</span></td>
+                        <td>{{ gasto.descripcion }}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                    <!-- Vales Caja Chica -->
+                    {% for vale in vales_caja_chica %}
+                    <tr class="table-info">
+                        <td>{{ vale.fecha|date:"d/b/y"|upper }}</td>
+                        <td>${{ vale.importe|floatformat:2|intcomma }}</td>
+                        {% if request.user.is_superuser %}
+                        <td>{{ vale.fondeo.empresa.nombre }}</td>
+                        {% endif %}
+                        <td>
+                            {% if vale.recibido_por %}
+                                {{ vale.recibido_por }}
+                            {% else %}
+                                Vale Caja Chica
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-info text-dark">Vale Caja Chica</span></td>
+                        <td>{{ vale.descripcion }}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                    {% if not pagos and not pagos_caja_chica and not vales_caja_chica %}
                     <tr>
                         <td colspan="7">No hay pagos registrados con los filtros seleccionados.</td>
                     </tr>
-                    {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
             <nav aria-label="Paginación">

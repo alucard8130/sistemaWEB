@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.db.models import Sum
+from caja_chica.models import GastoCajaChica, ValeCaja
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from gastos.models import Gasto, PagoGasto
 from empresas.models import Empresa
@@ -106,40 +107,51 @@ def reporte_ingresos_vs_gastos(request):
         mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
     pagos = Pago.objects.exclude(forma_pago="nota_credito")
-    # gastos = Gasto.objects.all()
     pagos_gastos = PagoGasto.objects.all()
     cobros_otros = CobroOtrosIngresos.objects.select_related(
         "factura", "factura__empresa"
     )
+    gastos_caja_chica = GastoCajaChica.objects.all()
+    vales_caja_chica = ValeCaja.objects.all()
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
-        # gastos = gastos.filter(empresa_id=empresa_id)
         pagos_gastos = pagos_gastos.filter(gasto__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
+        gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
+        vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
-        # gastos = gastos.filter(fecha__gte=fecha_inicio)
         pagos_gastos = pagos_gastos.filter(gasto__fecha__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
-        # gastos = gastos.filter(fecha__lte=fecha_fin)
         pagos_gastos = pagos_gastos.filter(gasto__fecha__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
     total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
     total_ingresos_cobrados = total_ingresos + total_otros_ingresos
-    # total_gastos = gastos.aggregate(total=Sum("monto"))["total"] or 0
-    # total_gastos = gastos.filter(estatus='pagada').aggregate(total=Sum("monto"))["total"] or 0
     total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
+    total_gastos_caja_chica = (
+        gastos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
+    )
+    total_vales_caja_chica = (
+        vales_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
+    )
+    total_egresos = (
+        total_gastos_pagados + total_gastos_caja_chica + total_vales_caja_chica
+    )
 
     # Agrupar por tipo de origen (Local/Área)
     ingresos_qs = (
         pagos.annotate(
             origen=Case(
-                When(factura__local__isnull=False, then=Value("Locales")),
+                When(factura__local__isnull=False, then=Value("Propiedades")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
                 default=Value("Sin origen"),
                 output_field=CharField(),
@@ -157,20 +169,36 @@ def reporte_ingresos_vs_gastos(request):
         .order_by("factura__tipo_ingreso")
     )
 
-    # Agrupar gastos por tipo
-    gastos_por_tipo_qs = (
-        pagos_gastos.values("gasto__tipo_gasto__nombre")
-        .annotate(total=Sum("monto"))
-        .order_by("gasto__tipo_gasto__nombre")
-    )
-    gastos_por_tipo = []
-    for x in gastos_por_tipo_qs:
-        gastos_por_tipo.append(
-            {
-                "tipo": x["gasto__tipo_gasto__nombre"] or "Sin tipo",
-                "total": float(x["total"]),
-            }
+    # Agrupar y sumar todos los gastos por tipo (gastos normales, caja chica y vales)
+    gastos_por_tipo_dict = {}
+    # Gastos normales
+    for g in pagos_gastos.values("gasto__tipo_gasto__nombre").annotate(
+        total=Sum("monto")
+    ):
+        tipo = g["gasto__tipo_gasto__nombre"] or "Sin tipo"
+        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
+            g["total"]
         )
+    # Caja chica
+    for g in gastos_caja_chica.values("tipo_gasto__nombre").annotate(
+        total=Sum("importe")
+    ):
+        tipo = g["tipo_gasto__nombre"] or "Sin tipo"
+        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
+            g["total"]
+        )
+    # Vales de caja chica agrupados por tipo real
+    for g in vales_caja_chica.values("tipo_gasto__nombre").annotate(
+        total=Sum("importe")
+    ):
+        tipo = g["tipo_gasto__nombre"] or "Sin tipo"
+        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
+            g["total"]
+        )
+
+    gastos_por_tipo = [
+        {"tipo": tipo, "total": total} for tipo, total in gastos_por_tipo_dict.items()
+    ]
 
     # Crear un diccionario ordenado para los ingresos por origen
     ingresos_por_origen = OrderedDict()
@@ -180,7 +208,7 @@ def reporte_ingresos_vs_gastos(request):
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f" {tipo}"] = float(x["total"])
 
-    saldo = total_ingresos_cobrados - total_gastos_pagados
+    saldo = total_ingresos_cobrados - total_egresos
 
     return render(
         request,
@@ -190,6 +218,9 @@ def reporte_ingresos_vs_gastos(request):
             "total_ingresos": total_ingresos_cobrados,
             "total_otros_ingresos": total_otros_ingresos,
             "total_gastos_pagados": total_gastos_pagados,
+            "total_gastos_caja_chica": total_gastos_caja_chica,
+            "total_vales_caja_chica": total_vales_caja_chica,
+            "total_egresos": total_egresos,
             "empresa_id": empresa_id,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
@@ -303,6 +334,8 @@ def estado_resultados(request):
         "factura", "factura__empresa"
     )
     gastos = Gasto.objects.all()
+    gastos_caja_chica = GastoCajaChica.objects.all()
+    vales_caja_chica = ValeCaja.objects.all()
 
     empresa = None
     saldo_inicial = 0
@@ -311,13 +344,15 @@ def estado_resultados(request):
         pagos = pagos.filter(factura__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos = gastos.filter(empresa_id=empresa_id)
-        try:
-            empresa = Empresa.objects.get(id=empresa_id)
-            saldo_inicial = float(empresa.saldo_inicial or 0)
-            saldo_final = float(empresa.saldo_final or 0)
-        except Empresa.DoesNotExist:
-            saldo_inicial = 0
-            saldo_final = 0
+        gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
+        vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
+    try:
+        empresa = Empresa.objects.get(id=empresa_id)
+        saldo_inicial = float(empresa.saldo_inicial or 0)
+        saldo_final = float(empresa.saldo_final or 0)
+    except Empresa.DoesNotExist:
+        saldo_inicial = 0
+        saldo_final = 0
 
     # --- Saldo inicial dinámico en modo flujo por mes ---
     if modo == "flujo" and mes and anio and empresa:
@@ -369,6 +404,8 @@ def estado_resultados(request):
         gastos = gastos.filter(fecha__lte=fecha_fin)
 
     saldo_final_flujo = None
+    total_gastos = 0.0
+    gastos_por_grupo = []
 
     if modo == "flujo":
         pagos_modo = pagos
@@ -381,7 +418,7 @@ def estado_resultados(request):
         ingresos_qs = (
             pagos_modo.annotate(
                 origen=Case(
-                    When(factura__local__isnull=False, then=Value("Locales")),
+                    When(factura__local__isnull=False, then=Value("Propiedades")),
                     When(
                         factura__area_comun__isnull=False, then=Value("Áreas Comunes")
                     ),
@@ -404,9 +441,68 @@ def estado_resultados(request):
             origen = (x["origen"] or "Sin origen").strip().title()
             ingresos_por_origen[origen] = float(x["total"])
         for x in otros_ingresos_qs:
-            tipo = (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            tipo = (
+                (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            )
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
         total_ingresos = float(sum(ingresos_por_origen.values()))
+
+        # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
+        gastos_por_tipo_dict = {}
+        tipos_gasto = set()
+        tipos_gasto.update(
+            [
+                g["gasto__tipo_gasto__nombre"]
+                for g in gastos_modo.values("gasto__tipo_gasto__nombre")
+                if g["gasto__tipo_gasto__nombre"]
+            ]
+        )
+        tipos_gasto.update(
+            [
+                g["tipo_gasto__nombre"]
+                for g in gastos_caja_chica.values("tipo_gasto__nombre")
+                if g["tipo_gasto__nombre"]
+            ]
+        )
+        tipos_gasto.update(
+            [
+                g["tipo_gasto__nombre"]
+                for g in vales_caja_chica.values("tipo_gasto__nombre")
+                if g["tipo_gasto__nombre"]
+            ]
+        )
+        for tipo in tipos_gasto:
+            nombre_tipo = (tipo or "Sin tipo").strip().title()
+            total_gastos_modo = (
+                gastos_modo.filter(gasto__tipo_gasto__nombre=tipo).aggregate(
+                    suma=Sum("monto")
+                )["suma"]
+                or 0
+            )
+            total_gastos_caja = (
+                gastos_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
+                    suma=Sum("importe")
+                )["suma"]
+                or 0
+            )
+            total_vales = (
+                vales_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
+                    suma=Sum("importe")
+                )["suma"]
+                or 0
+            )
+            total = (
+                float(total_gastos_modo) + float(total_gastos_caja) + float(total_vales)
+            )
+            if total > 0:
+                gastos_por_tipo_dict[nombre_tipo] = total
+
+        gastos_por_tipo = [
+            {"tipo": tipo, "total": total}
+            for tipo, total in gastos_por_tipo_dict.items()
+        ]
+
+        # Puedes mantener la lógica de estructura_gastos y total_gastos como estaba
         gastos_por_grupo = (
             gastos_modo.values(
                 "gasto__tipo_gasto__subgrupo__grupo__nombre",
@@ -420,31 +516,29 @@ def estado_resultados(request):
                 "gasto__tipo_gasto__nombre",
             )
         )
-        gastos_por_tipo_qs = (
-            gastos_modo.values("gasto__tipo_gasto__nombre")
-            .annotate(total=Sum("monto"))
-            .order_by("gasto__tipo_gasto__nombre")
-        )
-        total_gastos = float(sum(x["total"] for x in gastos_por_tipo_qs))
+        estructura_gastos = OrderedDict()
+        for g in gastos_por_grupo:
+            grupo = (
+                (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo")
+                .strip()
+                .title()
+            )
+            tipo = (g["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = []
+            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+        total_gastos = sum([g["total"] for g in gastos_por_tipo])
         saldo_final_flujo = (
             float(saldo_inicial) + float(total_ingresos) - float(total_gastos)
         )
-
-        # Guardar saldo_final y pasarlo como saldo_inicial al siguiente mes si es cierre de mes y superusuario
-        if empresa and fecha_fin and request.user.is_superuser:
-            ultimo_dia_mes = (
-                fecha_fin.replace(day=28) + datetime.timedelta(days=4)
-            ).replace(day=1) - datetime.timedelta(days=1)
-            if fecha_fin == ultimo_dia_mes:
-                empresa.saldo_final = saldo_final_flujo
-                empresa.save()
-                siguiente_mes = fecha_fin.month + 1 if fecha_fin.month < 12 else 1
-                siguiente_anio = (
-                    fecha_fin.year if fecha_fin.month < 12 else fecha_fin.year + 1
-                )
-                if hoy.month == siguiente_mes and hoy.year == siguiente_anio:
-                    empresa.saldo_inicial = saldo_final_flujo
-                    empresa.save()
     else:
         facturas_cuotas = Factura.objects.filter(
             fecha_vencimiento__range=[fecha_inicio, fecha_fin]
@@ -481,6 +575,57 @@ def estado_resultados(request):
             tipo = (x["tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
         total_ingresos = float(sum(ingresos_por_origen.values()))
+
+        # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
+        gastos_por_tipo_dict = {}
+        tipos_gasto = set()
+        tipos_gasto.update(
+            [g["tipo_gasto__nombre"] for g in gastos.values("tipo_gasto__nombre")]
+        )
+        tipos_gasto.update(
+            [
+                g["tipo_gasto__nombre"]
+                for g in gastos_caja_chica.values("tipo_gasto__nombre")
+            ]
+        )
+        tipos_gasto.update(
+            [
+                g["tipo_gasto__nombre"]
+                for g in vales_caja_chica.values("tipo_gasto__nombre")
+            ]
+        )
+        for tipo in tipos_gasto:
+            if tipo and tipo not in ["Gastos de caja chica", "Vales de caja chica"]:
+                nombre_tipo = (tipo or "Sin tipo").strip().title()
+                total = 0.0
+                total_gastos = (
+                    gastos.filter(tipo_gasto__nombre=tipo).aggregate(suma=Sum("monto"))[
+                        "suma"
+                    ]
+                    or 0
+                )
+                total_gastos_caja = (
+                    gastos_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
+                        suma=Sum("importe")
+                    )["suma"]
+                    or 0
+                )
+                total_vales = (
+                    vales_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
+                        suma=Sum("importe")
+                    )["suma"]
+                    or 0
+                )
+                total = (
+                    float(total_gastos) + float(total_gastos_caja) + float(total_vales)
+                )
+                if total > 0:
+                    gastos_por_tipo_dict[nombre_tipo] = total
+
+        gastos_por_tipo = []
+        for tipo, total in gastos_por_tipo_dict.items():
+            gastos_por_tipo.append({"tipo": tipo, "total": total})
+
         gastos_por_grupo = (
             gastos.values(
                 "tipo_gasto__subgrupo__grupo__nombre",
@@ -494,41 +639,27 @@ def estado_resultados(request):
                 "tipo_gasto__nombre",
             )
         )
-        gastos_por_tipo_qs = (
-            gastos.values("tipo_gasto__nombre")
-            .annotate(total=Sum("monto"))
-            .order_by("tipo_gasto__nombre")
-        )
-        total_gastos = float(sum(x["total"] for x in gastos_por_tipo_qs))
+        estructura_gastos = OrderedDict()
+        for g in gastos_por_grupo:
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = []
+            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+        total_gastos = sum([g["total"] for g in gastos_por_tipo])
+        saldo_final_flujo = None
 
-    estructura_gastos = OrderedDict()
-    for g in gastos_por_grupo:
-        if modo == "flujo":
-            grupo = g.get("gasto__tipo_gasto__subgrupo__grupo__nombre") or "Sin grupo"
-            subgrupo = g.get("gasto__tipo_gasto__subgrupo__nombre") or "Sin subgrupo"
-            tipo = (g.get("gasto__tipo_gasto__nombre") or "Sin tipo").strip().title()
-        else:
-            grupo = g.get("tipo_gasto__subgrupo__grupo__nombre") or "Sin grupo"
-            subgrupo = g.get("tipo_gasto__subgrupo__nombre") or "Sin subgrupo"
-            tipo = (g.get("tipo_gasto__nombre") or "Sin tipo").strip().title()
-        total = float(g["total"])
-        if grupo not in estructura_gastos:
-            estructura_gastos[grupo] = OrderedDict()
-        if subgrupo not in estructura_gastos[grupo]:
-            estructura_gastos[grupo][subgrupo] = []
-        estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
-
-    gastos_por_tipo = []
-    for x in gastos_por_tipo_qs:
-        if modo == "flujo":
-            nombre_tipo = (x["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
-        else:
-            nombre_tipo = (x["tipo_gasto__nombre"] or "Sin tipo").strip().title()
-        gastos_por_tipo.append(
-            {"tipo": nombre_tipo, "total": float(x["total"])}
-        )
-
-    saldo = float(total_ingresos - total_gastos)
+    saldo = float(total_ingresos) - float(total_gastos)
 
     return render(
         request,
@@ -711,7 +842,9 @@ def exportar_estado_resultados_excel(request):
             origen = (x["origen"] or "Sin origen").strip().title()
             ingresos_por_origen[origen] = float(x["total"])
         for x in otros_ingresos_qs:
-            tipo = (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            tipo = (
+                (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            )
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
         total_ingresos = float(sum(ingresos_por_origen.values()))
         gastos_por_grupo = (
@@ -729,8 +862,16 @@ def exportar_estado_resultados_excel(request):
         )
         estructura_gastos = OrderedDict()
         for g in gastos_por_grupo:
-            grupo = (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
-            subgrupo = (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            grupo = (
+                (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo")
+                .strip()
+                .title()
+            )
             tipo = (g["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
             total = float(g["total"])
             if grupo not in estructura_gastos:
@@ -793,8 +934,14 @@ def exportar_estado_resultados_excel(request):
         )
         estructura_gastos = OrderedDict()
         for g in gastos_por_grupo:
-            grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
-            subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
             tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
             total = float(g["total"])
             if grupo not in estructura_gastos:

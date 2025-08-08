@@ -23,18 +23,11 @@
 <body>
     {% include 'navbar.html' %}
 
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
+
 
     <!-- Main content -->
     <div class="container-fluid mt-4">
-        <h2>Locales inactivos</h2>
+        <h2>Propiedades inactivas</h2>
 
         <!-- Block for displaying messages -->
         {% if messages %}
@@ -74,7 +67,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4">No hay locales inactivos.</td></tr>
+                    <tr><td colspan="4">No hay propiedades inactivas.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

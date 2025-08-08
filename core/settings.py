@@ -4,6 +4,8 @@ load_dotenv()
 from pathlib import Path
 import os
 import dj_database_url
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -43,6 +45,7 @@ INSTALLED_APPS = [
     "presupuestos",
     "informes_financieros",
     "storages",  # For AWS S3 storage
+    "caja_chica",
 ]
 
 
@@ -156,15 +159,7 @@ LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/login/"
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-#SESSION_COOKIE_AGE = 1800  # 30 min
 
-# # Stripe settings
-# STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-# STRIPE_SECRET_KEY_TEST = os.getenv("STRIPE_SECRET_KEY_TEST")
-# STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
-# STRIPE_PUBLIC_KEY_TEST = os.getenv("STRIPE_PUBLIC_KEY_TEST")    
-# STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
-# STRIPE_ENDPOINT_SECRET_TEST = os.getenv("STRIPE_ENDPOINT_SECRET_TEST")
 
 if os.getenv("DEBUG", "False") == "True":
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
@@ -187,9 +182,6 @@ if os.getenv("USE_S3", "False") == "True":
     AWS_LOCATION = "media"
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
-
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
 
 SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")  
 
