@@ -151,7 +151,7 @@
                             <td>{{ factura.get_estatus_display }}</td>    
                             <td class="text-nowrap">
                                     {% if factura.saldo_pendiente > 0 %}    
-                                    <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-outline-success" title="Cobrar">
+                                    <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
                                         <i class="bi bi-cash-coin me-1"></i> 
                                     </a>
                                     <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
@@ -163,7 +163,7 @@
                             </td>
                             <td>
                                 {% if factura.cfdi and factura.cfdi|archivo_existe %}
-                                    <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="CFDI">
+                                    <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="ver CFDI">
                                         <i class="bi bi-file-earmark-pdf me-1"></i>
                                     </a>
                                 {% elif factura.cfdi %}
@@ -171,7 +171,7 @@
                                 {% endif %}
                             </td>
                                 <td>
-                                    <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver">
+                                    <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
                                         <i class="bi bi-eye me-1"></i> 
                                     </a>
                                 </td>

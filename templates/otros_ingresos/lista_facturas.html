@@ -94,7 +94,7 @@
                           
                           <td>
                           {% if factura.estatus != 'cobrada' %}
-                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Cobrar">
+                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
                           {% endif %}
@@ -109,7 +109,7 @@
                               {% endif %}
                             </td>
                           <td>
-                            <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver">
+                            <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
                                 <i class="bi bi-eye me-1"></i>
                             </a>
                           </td>

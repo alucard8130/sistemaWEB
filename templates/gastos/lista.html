@@ -113,7 +113,7 @@
                             <td>{{ gasto.get_estatus_display }}</td>
                             <td class="text-nowrap">
                                 {% if gasto.saldo_restante > 0 %}
-                                    <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Pagar">
+                                    <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Registrar Pago">
                                         <i class="bi bi-cash-coin me-1"></i>
                                     </a>
                                     <a href="{% url 'gasto_editar' gasto.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
@@ -131,7 +131,7 @@
                             </td>
                             <td>
                                 {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
-                                    <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-outline-dark btn-sm" title="CFDI">
+                                    <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-outline-dark btn-sm" title="ver CFDI">
                                         <i class="bi bi-file-earmark-pdf me-1"></i> 
                                     </a>
                                 {% elif gasto.comprobante %}
@@ -139,7 +139,7 @@
                                 {% endif %}             
                             </td>
                             <td>
-                                    <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm" title="Ver">
+                                    <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
                                         <i class="bi bi-eye me-1"></i>
                                     </a>
                                                   

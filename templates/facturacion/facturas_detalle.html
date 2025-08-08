@@ -73,7 +73,7 @@
                     <td>{{ cobro.observaciones }}</td>
                     <td>
                         {% if cobro.comprobante %}
-                        <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-primary btn-sm">Ver Comprobante</a>
+                        <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-primary btn-sm" title="Ver Comprobante"></a>
                         {% else %}
                         <span class="text-muted"></span>
                         {% endif %}
