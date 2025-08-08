@@ -1,4 +1,4 @@
-{% load static %}
+% load static %}
 {% load humanize %}
 {% load dict_extras %}
 {% load presupuesto_tags %}
@@ -105,7 +105,7 @@
                     </tr>
                     <tr>
                         {% for mes in meses_nombres %}
-                            <th class="col-presup th-mes-{{ forloop.counter0 }}">Presup.</th>
+                            <th class="col-presup  th-mes-{{ forloop.counter0 }}">Presup.</th>
                             <th class="col-real th-mes-{{ forloop.counter0 }}">Real</th>
                             <th class="col-var th-mes-{{ forloop.counter0 }}">Var.</th>
                             <th class="col-pctvar th-mes-{{ forloop.counter0 }}">% Var.</th>
@@ -123,8 +123,8 @@
                         <td class="col-subgrupo"><strong></strong></td>
                         <td class="col-tipo"></td>
                         {% for i in meses_idx %}
-                            <td class="col-presup th-mes-{{ forloop.counter0 }} text-secondary">{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
-                            <td class="col-real th-mes-{{ forloop.counter0 }} fw-bold">{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+                            <td class="col-presup text-secondary th-mes-{{ forloop.counter0 }}">{{ grupo.total|index:i|floatformat:0|intcomma }}</td>
+                            <td class="col-real fw-bold th-mes-{{ forloop.counter0 }}">{{ grupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
                             <td class="col-var th-mes-{{ forloop.counter0 }} {% if grupo.total_var|index:i < 0 %}neg{% elif grupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                                 {{ grupo.total_var|index:i|floatformat:0|intcomma }}
                             </td>
@@ -136,8 +136,8 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        <td class="total-anual-cell col-presup th-total-anual text-secondary">{{ grupo.total_anual_presup|floatformat:0|intcomma }}</td>
-                        <td class="total-anual-cell col-real th-total-anual fw-bold">{{ grupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                        <td class="total-anual-cell text-secondary col-presup th-total-anual">{{ grupo.total_anual_presup|floatformat:0|intcomma }}</td>
+                        <td class="total-anual-cell col-real fw-bold th-total-anual">{{ grupo.total_anual_gasto|floatformat:0|intcomma }}</td>
                         <td class="total-anual-cell col-var th-total-anual {% if grupo.total_anual_var < 0 %}neg{% elif grupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
                             {{ grupo.total_anual_var|floatformat:0|intcomma }}
                         </td>
@@ -155,8 +155,8 @@
                             <td class="col-subgrupo">{{ subgrupo.nombre }}</td>
                             <td class="col-tipo"><strong></strong></td>
                             {% for i in meses_idx %}
-                                <td class="col-presup th-mes-{{ forloop.counter0 }} text-secondary">{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
-                                <td class="col-real th-mes-{{ forloop.counter0 }} fw-bold">{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
+                                <td class="col-presup text-secondary th-mes-{{ forloop.counter0 }}">{{ subgrupo.total|index:i|floatformat:0|intcomma }}</td>
+                                <td class="col-real fw-bold th-mes-{{ forloop.counter0 }}">{{ subgrupo.total_gasto|index:i|floatformat:0|intcomma }}</td>
                                 <td class="col-var th-mes-{{ forloop.counter0 }} {% if subgrupo.total_var|index:i < 0 %}neg{% elif subgrupo.total_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                                     {{ subgrupo.total_var|index:i|floatformat:0|intcomma }}
                                 </td>
@@ -168,8 +168,8 @@
                                     {% endif %}
                                 </td>
                             {% endfor %}
-                            <td class="total-anual-cell col-presup th-total-anual text-secondary">{{ subgrupo.total_anual_presup|floatformat:0|intcomma }}</td>
-                            <td class="total-anual-cell col-real th-total-anual fw-bold">{{ subgrupo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                            <td class="total-anual-cell text-secondary col-presup th-total-anual">{{ subgrupo.total_anual_presup|floatformat:0|intcomma }}</td>
+                            <td class="total-anual-cell fw-bold col-real th-total-anual">{{ subgrupo.total_anual_gasto|floatformat:0|intcomma }}</td>
                             <td class="total-anual-cell col-var th-total-anual {% if subgrupo.total_anual_var < 0 %}neg{% elif subgrupo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
                                 {{ subgrupo.total_anual_var|floatformat:0|intcomma }}
                             </td>
@@ -187,8 +187,8 @@
                                 <td class="col-subgrupo"></td>
                                 <td class="col-tipo">{{ tipo.nombre }}</td>
                                 {% for m in tipo.meses|slice:":meses|length" %}
-                                    <td class="col-presup th-mes-{{ forloop.counter0 }} text-secondary">{{ m.presupuesto|floatformat:0|intcomma }}</td>
-                                    <td class="col-real th-mes-{{ forloop.counter0 }} fw-bold">{{ m.gasto|floatformat:0|intcomma }}</td>
+                                    <td class="col-presup text-secondary th-mes-{{ forloop.counter0 }}">{{ m.presupuesto|floatformat:0|intcomma }}</td>
+                                    <td class="col-real fw-bold th-mes-{{ forloop.counter0 }}">{{ m.gasto|floatformat:0|intcomma }}</td>
                                     <td class="col-var th-mes-{{ forloop.counter0 }} {% if m.variacion < 0 %}neg{% elif m.variacion > 0 %}pos{% else %}neutro{% endif %}">
                                         {{ m.variacion|floatformat:0|intcomma }}
                                         {% if m.variacion > 0 %}<span class="flecha-mini pos">&#8593;</span>
@@ -204,8 +204,8 @@
                                         {% endif %}
                                     </td>
                                 {% endfor %}
-                                <td class="total-anual-cell col-presup th-total-anual text-secondary">{{ tipo.total_anual_presup|floatformat:0|intcomma }}</td>
-                                <td class="total-anual-cell col-real th-total-anual fw-bold">{{ tipo.total_anual_gasto|floatformat:0|intcomma }}</td>
+                                <td class="total-anual-cell text-secondary col-presup th-total-anual">{{ tipo.total_anual_presup|floatformat:0|intcomma }}</td>
+                                <td class="total-anual-cell fw-bold col-real th-total-anual">{{ tipo.total_anual_gasto|floatformat:0|intcomma }}</td>
                                 <td class="total-anual-cell col-var th-total-anual {% if tipo.total_anual_var < 0 %}neg{% elif tipo.total_anual_var > 0 %}pos{% else %}neutro{% endif %}">
                                     {{ tipo.total_anual_var|floatformat:0|intcomma }}
                                     {% if tipo.total_anual_var > 0 %}<span class="flecha-mini pos">&#8593;</span>
@@ -227,8 +227,8 @@
                 <tr class="table-warning">
                     <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total general</strong></td>
                     {% for i in meses_idx %}
-                        <td class="col-presup th-mes-{{ forloop.counter0 }} text-secondary"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
-                        <td class="col-real th-mes-{{ forloop.counter0 }} fw-bold"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
+                        <td class="col-presup text-secondary th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
+                        <td class="col-real fw-bold th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
                         <td class="col-var th-mes-{{ forloop.counter0 }}">
                             <strong class="{% if tot_gen_var|index:i < 0 %}neg{% elif tot_gen_var|index:i > 0 %}pos{% else %}neutro{% endif %}">
                                 {{ tot_gen_var|index:i|floatformat:0|intcomma }}
@@ -244,8 +244,8 @@
                             {% endif %}
                         </td>
                     {% endfor %}
-                    <td class="total-anual-cell col-presup th-total-anual text-secondary"><strong>{{ total_general_presup|floatformat:0|intcomma }}</strong></td>
-                    <td class="total-anual-cell col-real th-total-anual fw-bold"><strong>{{ total_general_real|floatformat:0|intcomma }}</strong></td>
+                    <td class="total-anual-cell text-secondary col-presup th-total-anual"><strong>{{ total_general_presup|floatformat:0|intcomma }}</strong></td>
+                    <td class="total-anual-cell fw-bold col-real th-total-anual"><strong>{{ total_general_real|floatformat:0|intcomma }}</strong></td>
                     <td class="total-anual-cell col-var th-total-anual">
                         <strong class="{% if total_general_var < 0 %}neg{% elif total_general_var > 0 %}pos{% else %}neutro{% endif %}">
                             {{ total_general_var|floatformat:0|intcomma }}
