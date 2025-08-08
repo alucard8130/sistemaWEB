@@ -41,7 +41,10 @@ def fondeo_caja_chica(request):
 
 
 def registrar_gasto_caja_chica(request):
-    empresa = getattr(request.user, "empresa", None)
+    empresa = None
+    perfil = getattr(request.user, "perfilusuario", None)
+    if perfil:
+        empresa = getattr(perfil, "empresa", None)
     fondeo_id = request.GET.get("fondeo_id")
     fondeo_instance = None
     if fondeo_id:
@@ -51,6 +54,9 @@ def registrar_gasto_caja_chica(request):
             fondeo_instance = None
     if request.method == "POST":
         form = GastoCajaChicaForm(request.POST)
+        if empresa:
+            form.fields["proveedor"].queryset = form.fields["proveedor"].queryset.filter(empresa=empresa)
+            form.fields["tipo_gasto"].queryset = form.fields["tipo_gasto"].queryset.filter(empresa=empresa)
         if form.is_valid():
             gasto = form.save(commit=False)
             fondeo = gasto.fondeo
@@ -65,16 +71,10 @@ def registrar_gasto_caja_chica(request):
             initial["fondeo"] = fondeo_instance
         form = GastoCajaChicaForm(initial=initial)
         if empresa:
-            form.fields["proveedor"].queryset = form.fields[
-                "proveedor"
-            ].queryset.filter(empresa=empresa)
-            form.fields["tipo_gasto"].queryset = form.fields[
-                "tipo_gasto"
-            ].queryset.filter(empresa=empresa)
+            form.fields["proveedor"].queryset = form.fields["proveedor"].queryset.filter(empresa=empresa)
+            form.fields["tipo_gasto"].queryset = form.fields["tipo_gasto"].queryset.filter(empresa=empresa)
         if fondeo_instance:
-            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(
-                id=fondeo_instance.id
-            )
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(id=fondeo_instance.id)
     return render(request, "caja_chica/registrar_gasto_caja_chica.html", {"form": form})
 
 
