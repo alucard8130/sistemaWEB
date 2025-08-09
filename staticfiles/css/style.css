@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 05/07/2025
+    Date of modification: 31/07/2025
     Description: General styles for the GAC system   
 */
     
@@ -53,6 +53,90 @@ html, body {
     color: #002a4d;
 }
 
+.btn-outline-soft-blue {
+  color: #5c9ded;
+  border: 1px solid #b3d4fc;
+  background-color: transparent;
+}
+
+.btn-outline-soft-blue:hover,
+.btn-outline-soft-blue.active {
+  background-color: #b3d4fc;
+  color: #003366;
+}
+
+.alert-blue-soft {
+  background-color: #e7f1fc;
+  color: #0a58ca;
+  border: 1px solid #b6d4fe;
+}
+
+.card-header.pastel-green {
+        background-color: #d4edda; 
+        color: #155724; 
+}
+
+.card-header.pastel-red {
+        background-color: #f8d7da; 
+        color: #721c24; 
+}
+
+.alert.pastel-gray {
+        background-color: #f1f1f1;
+        color: #4a4a4a;
+        border: 1px solid #d6d6d6;
+    }
+
+  /* ———  Blue/green pastel palette ——— */
+  :root{
+    --azulPastel: #e5f1ff;
+    --azulPastelOscuro: #d0e6ff;
+    --verdePastel: #e6fff4;
+  }
+
+  /* ——  Summary card ——— */
+  .summary-card{
+      background: var(--azulPastel);
+      border: none;
+      border-radius: 1rem;
+      box-shadow: 0 0.5rem 1rem rgba(0,0,0,.05);
+      min-width: 280px;
+  }
+  .summary-card .card-header{
+      background: linear-gradient(135deg,
+                  var(--azulPastelOscuro) 0%,
+                  var(--azulPastel) 100%);
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 1rem;
+      border: 0;
+  }
+  .summary-card .card-title{
+      font-weight: 600;
+      font-size: 1.05rem;
+  }
+  .summary-metric{
+      font-size: .95rem;
+      padding: .35rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+  }
+  .summary-metric strong{
+      font-weight: 600;
+  }
+  /* ——  Fixed position but responsive ——— */
+  @media (min-width: 768px){
+      .summary-pos{
+          position: absolute;
+          top: 80px;
+          right: 40px;
+      }
+  }
+  @media (max-width: 767.98px){
+      .summary-pos{
+          margin-top: 1rem;
+      }
+  }
 
 /* 
 .btn-light-custom {
@@ -147,9 +231,13 @@ html, body {
 }
 
 .main-content {
-    padding-top: 2rem;
+    padding-top: 5rem; /* Antes 2*/
     padding-bottom: 2rem;
     min-height: 60vh; /* opcional: ajusta según tu diseño */
+    display: flex;
+    justify-content: center; /* Centra horizontalmente */
+    align-items: center; /* Centra verticalmente */
+    
 }
 
 .btn.btn-primary {
@@ -558,6 +646,12 @@ h2 {
 .table tr:hover td {
     background-color: #d4e4f2 !important;
 }
+
+.encabezado-claro th {
+    color: #0c4a6e !important;
+    border-bottom: 2px solid #0c4a6e;
+}
+
 
 /*=== carga_masiva_clientes.html ===*/
 .form-delgado {
