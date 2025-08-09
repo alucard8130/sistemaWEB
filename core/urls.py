@@ -73,7 +73,7 @@ urlpatterns = [
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'), name='password_reset_complete'),
     path("fondeo/", fondeo_caja_chica, name="fondeo_caja_chica"),
     path("registrar_gasto/", registrar_gasto_caja_chica, name="registrar_gasto_caja_chica"),
-    path('generar_vale/<int:fondeo_id>/', views.generar_vale_caja, name='generar_vale_caja'),
+    path("generar_vale/", generar_vale_caja, name="generar_vale_caja"),
     path("lista_fondeos/", lista_fondeos, name="lista_fondeos"),
     path("lista_gastos/", lista_gastos_caja_chica, name="lista_gastos_caja_chica"),
     path("lista_vales/", lista_vales_caja_chica, name="lista_vales_caja_chica"),
