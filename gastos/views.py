@@ -728,7 +728,7 @@ def exportar_pagos_gastos_excel(request):
             gasto.empleado.nombre if gasto.empleado else ''
         )
         ws.append([
-            pago.fecha_pago.strftime('%d/%m/%Y') if pago.fecha_pago else '',
+            pago.fecha_pago if pago.fecha_pago else '',
             gasto.empresa.nombre if gasto.empresa else '',
             origen,
             gasto.descripcion,
@@ -990,7 +990,7 @@ def exportar_gastos_lista_excel(request):
 
     for gasto in gastos:
         ws.append([
-            gasto.fecha.strftime('%Y-%m-%d') if gasto.fecha else '',
+            gasto.fecha if gasto.fecha else '',
             gasto.empresa.nombre if gasto.empresa else '',
             gasto.proveedor.nombre if gasto.proveedor else '',
             gasto.empleado.nombre if gasto.empleado else '',

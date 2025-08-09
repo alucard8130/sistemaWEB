@@ -36,6 +36,7 @@ from presupuestos.models import PresupuestoIngreso
 from collections import defaultdict
 import json
 from django.http import JsonResponse
+from django.db.models import Max
 
 @login_required
 def crear_factura(request):
@@ -195,8 +196,6 @@ def lista_facturas(request):
         'area_id': area_id,
         'facturas': page_obj,
     })
-
-from django.db.models import Max
 
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
@@ -1312,7 +1311,7 @@ def exportar_pagos_excel(request):
             pago.forma_pago,
             factura.folio,
             factura.empresa.nombre,
-            pago.fecha_pago.strftime('%Y-%m-%d') 
+            pago.fecha_pago,
         ])
 
     # Respuesta
@@ -1441,8 +1440,7 @@ def exportar_lista_facturas_excel(request):
             local_area,
             float(factura.monto),
             float(factura.saldo_pendiente),
-            #factura.fecha_emision.strftime('%Y-%m-%d'),
-            factura.fecha_vencimiento.strftime('%Y-%m-%d'),
+            factura.fecha_vencimiento,
             factura.estatus,
             factura.observaciones or ''
         ])
@@ -1805,7 +1803,7 @@ def exportar_cobros_otros_ingresos_excel(request):
 
     for cobro in cobros:
         ws.append([
-            cobro.fecha_cobro.strftime('%Y-%m-%d'),
+            cobro.fecha_cobro,
             cobro.factura.empresa.nombre,
             cobro.factura.cliente.nombre,
             cobro.factura.get_tipo_ingreso_display(),
@@ -1864,11 +1862,9 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
             factura.empresa.nombre,
             factura.cliente.nombre,
             str(factura.tipo_ingreso) if factura.tipo_ingreso else '',
-            #factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else factura.tipo_ingreso,
             float(factura.monto),
             float(factura.saldo),
-            #factura.fecha_emision.strftime('%Y-%m-%d'),
-            factura.fecha_vencimiento.strftime('%Y-%m-%d') if factura.fecha_vencimiento else '',
+            factura.fecha_vencimiento if factura.fecha_vencimiento else '',
             factura.estatus,
             factura.observaciones or ''
         ])
