@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "gastos",
     "presupuestos",
     "informes_financieros",
-    "storages",  # For AWS S3 storage
+    "storages", 
     "caja_chica",
 ]
 
@@ -176,7 +176,7 @@ if os.getenv("USE_S3", "False") == "True":
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")  # Cambia si usas otra región
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-2") 
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
     AWS_LOCATION = "media"
