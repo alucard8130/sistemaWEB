@@ -114,9 +114,13 @@ def generar_vale_caja(request):
             )
     return render(request, "caja_chica/generar_vale_caja.html", {"form": form})
 
-
+@login_required
 def lista_fondeos(request):
-    empresa = getattr(request.user, "empresa", None)
+    empresa = None
+    if request.user.is_authenticated:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil:
+            empresa = getattr(perfil, "empresa", None)
     if empresa:
         fondeos = FondeoCajaChica.objects.filter(empresa=empresa)
     else:
@@ -124,13 +128,35 @@ def lista_fondeos(request):
     return render(request, "caja_chica/lista_fondeos.html", {"fondeos": fondeos})
 
 
+@login_required
 def lista_gastos_caja_chica(request):
-    gastos = GastoCajaChica.objects.select_related("fondeo").all()
+    empresa = None
+    if request.user.is_authenticated:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil:
+            empresa = getattr(perfil, "empresa", None)
+    if empresa:
+        gastos = GastoCajaChica.objects.select_related("fondeo").filter(
+            fondeo__empresa=empresa
+        )
+    else:
+        gastos = GastoCajaChica.objects.select_related("fondeo").all()
     return render(
         request, "caja_chica/lista_gastos_caja_chica.html", {"gastos": gastos}
     )
 
 
+@login_required
 def lista_vales_caja_chica(request):
-    vales = ValeCaja.objects.select_related("fondeo").all()
+    empresa = None
+    if request.user.is_authenticated:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil:
+            empresa = getattr(perfil, "empresa", None)
+    if empresa:
+        vales = ValeCaja.objects.select_related("fondeo").filter(
+            fondeo__empresa=empresa
+        )
+    else:
+        vales = ValeCaja.objects.select_related("fondeo").all()
     return render(request, "caja_chica/lista_vales_caja_chica.html", {"vales": vales})
