@@ -392,7 +392,6 @@ def estado_resultados(request):
                     gastos_loop.aggregate(total=Sum("monto"))["total"] or 0
                 )
                 saldo_inicial += total_ingresos_loop - total_gastos_loop
-    # --- Fin de saldo inicial dinámico ---
 
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
