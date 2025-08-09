@@ -481,20 +481,18 @@ def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
-    #tipo = request.GET.get('tipo')  # 'local' o 'area'
-    #pagos = Pago.objects.select_related('factura', 'factura__cliente', 'factura__empresa')
-
+    
     if request.user.is_superuser:
         pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all().order_by('-fecha_pago')
         empresas = Empresa.objects.all()
-        locales = LocalComercial.objects.filter(activo=True)
-        areas = AreaComun.objects.filter(activo=True)
+        locales = LocalComercial.objects.filter(activo=True).order_by('nombre')
+        areas = AreaComun.objects.filter(activo=True).order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
         pagos = Pago.objects.select_related('factura').filter(factura__empresa=empresa).order_by('-fecha_pago')
         empresas = None
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('nombre')
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('nombre')
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id).order_by('fecha_pago')
@@ -516,7 +514,6 @@ def pagos_por_origen(request):
 
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
-        #'tipo': tipo,
         'total_pagos': total_pagos,
         'empresas': empresas,
         'empresa_seleccionada': int(empresa_id) if empresa_id else None,
