@@ -164,14 +164,14 @@ def lista_facturas(request):
     if request.user.is_superuser:
         facturas = Factura.objects.all().order_by('-fecha_vencimiento')
         empresas = Empresa.objects.all()
-        locales = LocalComercial.objects.filter(activo=True)
-        areas = AreaComun.objects.filter(activo=True)
+        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(activo=True).order_by('numero')
     else:
         empresa = request.user.perfilusuario.empresa
         facturas = Factura.objects.filter(empresa=empresa).order_by('-fecha_vencimiento')
         empresas = None
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
     if empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id).order_by('-fecha_vencimiento')
@@ -1076,31 +1076,20 @@ def cartera_vencida(request):
         fecha_vencimiento__lt=hoy,
         activo=True
     ).select_related('cliente', 'empresa', 'tipo_ingreso')
-    # facturas = Factura.objects.filter(
-    #     estatus='pendiente',
-    #     fecha_vencimiento__lt=hoy,
-    #     activo=True
-    # )
-
-    # facturas_otros = FacturaOtrosIngresos.objects.filter(
-    #     estatus='pendiente',
-    #     fecha_vencimiento__lt=hoy,
-    #     activo=True
-    # )
-
+   
     # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
         facturas_otros = facturas_otros.filter(empresa=empresa)
-        clientes = Cliente.objects.filter(empresa=empresa)
+        clientes = Cliente.objects.filter(empresa=empresa).order_by('nombre')
     else:
         if request.GET.get('empresa'):
             facturas = facturas.filter(empresa_id=request.GET['empresa'])
             facturas_otros = facturas_otros.filter(empresa_id=request.GET['empresa'])
-            clientes = Cliente.objects.filter(empresa_id=request.GET['empresa'])
+            clientes = Cliente.objects.filter(empresa_id=request.GET['empresa']).order_by('nombre')
         else:
-            clientes = Cliente.objects.all()
+            clientes = Cliente.objects.all().order_by('nombre')
     
     # Filtrar por cliente
     cliente_id = request.GET.get('cliente')

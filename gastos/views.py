@@ -26,6 +26,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
 from django.db.models.functions import ExtractMonth
+from caja_chica.models import GastoCajaChica, ValeCaja
 
 # Create your views here.
 @login_required
@@ -146,9 +147,9 @@ def gastos_lista(request):
             .prefetch_related("pagos")
             .order_by("-fecha")
         )  # <-- add .prefetch_related('pagos')
-        proveedores = Proveedor.objects.filter(activo=True)
-        empleados = Empleado.objects.filter(activo=True)
-        tipos_gasto = TipoGasto.objects.all()
+        proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
+        empleados = Empleado.objects.filter(activo=True).order_by('nombre')
+        tipos_gasto = TipoGasto.objects.all().order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
         gastos = (
@@ -164,9 +165,9 @@ def gastos_lista(request):
             .prefetch_related("pagos")
             .order_by("-fecha")
         )  # <-- add .prefetch_related('pagos')
-        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa)
-        empleados = Empleado.objects.filter(activo=True, empresa=empresa)
-        tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
+        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa).order_by('nombre')
+        empleados = Empleado.objects.filter(activo=True, empresa=empresa).order_by('nombre')
+        tipos_gasto = TipoGasto.objects.filter(empresa=empresa).order_by('nombre')
 
     proveedor_id = request.GET.get("proveedor")
     empleado_id = request.GET.get("empleado")
@@ -310,16 +311,16 @@ def reporte_pagos_gastos(request):
         pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
         proveedores = Proveedor.objects.filter(
             empresa=request.user.perfilusuario.empresa
-        )
-        empleados = Empleado.objects.filter(empresa=request.user.perfilusuario.empresa)
+        ).order_by('nombre')
+        empleados = Empleado.objects.filter(empresa=request.user.perfilusuario.empresa).order_by('nombre')
     else:
         if empresa_id:
             pagos = pagos.filter(gasto__empresa_id=empresa_id)
-            proveedores = Proveedor.objects.filter(empresa_id=empresa_id)
-            empleados = Empleado.objects.filter(empresa_id=empresa_id)
+            proveedores = Proveedor.objects.filter(empresa_id=empresa_id).order_by('nombre')
+            empleados = Empleado.objects.filter(empresa_id=empresa_id).order_by('nombre')
         else:
-            proveedores = Proveedor.objects.all()
-            empleados = Empleado.objects.all()
+            proveedores = Proveedor.objects.all().order_by('nombre')
+            empleados = Empleado.objects.all().order_by('nombre')
 
     if proveedor_id:
         pagos = pagos.filter(gasto__proveedor_id=proveedor_id)
@@ -332,8 +333,6 @@ def reporte_pagos_gastos(request):
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
 
-    # Caja chica y vales
-    from caja_chica.models import GastoCajaChica, ValeCaja
 
     pagos_caja_chica = GastoCajaChica.objects.all()
     vales_caja_chica = ValeCaja.objects.all()
