@@ -171,18 +171,18 @@ else:
     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
 
 
-if os.getenv("USE_S3", "False") == "True":
-    AWS_ACCESS_KEY_ID = os.getenv('DO_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('DO_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.getenv('DO_SPACE_NAME')
-    AWS_S3_REGION_NAME = os.getenv('DO_REGION') 
-    AWS_S3_ENDPOINT_URL = f'https://{AWS_S3_REGION_NAME}.digitaloceanspaces.com'
-    AWS_S3_ADDRESSING_STYLE = "virtual"
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = False 
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.{AWS_S3_REGION_NAME}.digitaloceanspaces.com/'
+
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+AWS_ACCESS_KEY_ID = os.getenv('DO_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('DO_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('DO_SPACE_NAME')
+AWS_S3_REGION_NAME = os.getenv('DO_REGION') 
+AWS_S3_ENDPOINT_URL = f'https://{AWS_S3_REGION_NAME}.digitaloceanspaces.com'
+AWS_S3_ADDRESSING_STYLE = "virtual"
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.{AWS_S3_REGION_NAME}.digitaloceanspaces.com/'
 
 SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")  
 
