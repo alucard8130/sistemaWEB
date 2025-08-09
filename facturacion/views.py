@@ -485,14 +485,14 @@ def pagos_por_origen(request):
     if request.user.is_superuser:
         pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all().order_by('-fecha_pago')
         empresas = Empresa.objects.all()
-        locales = LocalComercial.objects.filter(activo=True).order_by('nombre')
-        areas = AreaComun.objects.filter(activo=True).order_by('nombre')
+        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(activo=True).order_by('numero')
     else:
         empresa = request.user.perfilusuario.empresa
         pagos = Pago.objects.select_related('factura').filter(factura__empresa=empresa).order_by('-fecha_pago')
         empresas = None
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('nombre')
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('nombre')
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id).order_by('fecha_pago')
