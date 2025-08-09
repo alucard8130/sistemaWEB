@@ -147,7 +147,7 @@ USE_TZ = True
 
 #STATICFILES_DIRS = [BASE_DIR / "static"]
 
-#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 #STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
@@ -183,11 +183,11 @@ AWS_S3_ENDPOINT_URL = f'https://{AWS_S3_REGION_NAME}.digitaloceanspaces.com'
 AWS_DEFAULT_ACL = 'public-read'
 #AWS_QUERYSTRING_AUTH = False
 
-STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/static/'
-STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+#STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/static/'
+#STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
-#MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.{AWS_S3_REGION_NAME}.digitaloceanspaces.com/'
-MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
+MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.{AWS_S3_REGION_NAME}.digitaloceanspaces.com/'
+#MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
 SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")
