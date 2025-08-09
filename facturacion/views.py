@@ -1649,7 +1649,7 @@ def crear_factura_otros_ingresos(request):
 
 @login_required
 def lista_facturas_otros_ingresos(request):
-    #facturas = FacturaOtrosIngresos.objects.all().order_by('-fecha_emision')
+    
     facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_emision')
     # Filtrar por empresa si no es superusuario
     if not request.user.is_superuser:
@@ -1716,16 +1716,16 @@ def reporte_cobros_otros_ingresos(request):
     if not request.user.is_superuser:
         cobros = cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
     if empresa_id:
-        cobros = cobros.filter(factura__empresa_id=empresa_id)
+        cobros = cobros.filter(factura__empresa_id=empresa_id).order_by('-fecha_cobro')
     if cliente_id:
-        cobros = cobros.filter(factura__cliente_id=cliente_id)
+        cobros = cobros.filter(factura__cliente_id=cliente_id).order_by('-fecha_cobro')
     if fecha_inicio and fecha_fin:
-        cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin])
+        cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin]).order_by('-fecha_cobro')
         
     
     #if tipo_ingreso:
     if tipo_ingreso_id and tipo_ingreso_id.isdigit():
-        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id)    
+        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id).order_by('-fecha_cobro')
 
     total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
 
@@ -1735,8 +1735,8 @@ def reporte_cobros_otros_ingresos(request):
     page_obj = paginator.get_page(page_number)
 
     empresas = Empresa.objects.all() if request.user.is_superuser else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
-    clientes = Cliente.objects.filter(empresa__in=empresas)
-    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa__in=empresas)
+    clientes = Cliente.objects.filter(empresa__in=empresas).order_by('nombre')
+    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa__in=empresas).order_by('nombre')
 
     return render(request, 'otros_ingresos/reporte_cobros.html', {
         'cobros': page_obj,

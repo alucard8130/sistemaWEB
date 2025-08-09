@@ -37,9 +37,9 @@ def empleado_editar(request, pk):
 @login_required
 def empleado_lista(request):
     if request.user.is_superuser:
-        empleados = Empleado.objects.filter(activo=True)
+        empleados = Empleado.objects.filter(activo=True).order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
-        empleados = Empleado.objects.filter(empresa=empresa, activo=True)
+        empleados = Empleado.objects.filter(empresa=empresa, activo=True).order_by('nombre')
     return render(request, 'empleados/lista.html', {'empleados': empleados})
 

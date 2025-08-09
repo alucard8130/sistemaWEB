@@ -28,7 +28,7 @@ def lista_areas(request):
         areas = AreaComun.objects.filter(activo=True)
     else:
         empresa = user.perfilusuario.empresa
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
     if query:
         areas = areas.filter(
