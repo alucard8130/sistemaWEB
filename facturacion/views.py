@@ -477,7 +477,7 @@ def registrar_pago(request, factura_id):
         form = PagoForm(request.POST, request.FILES)
         if form.is_valid():
             pago = form.save(commit=False)
-            pago.factura = factura  # SIEMPRE antes de save()
+            pago.factura = factura  
             pago.registrado_por = request.user
 
             if pago.forma_pago == "nota_credito":
@@ -518,7 +518,7 @@ def registrar_pago(request, factura_id):
                 else:
                     factura.estatus = "pendiente"
                 factura.save()
-                factura.actualizar_estatus()  # Actualiza el estatus de la factura
+                factura.actualizar_estatus()  
                 messages.success(
                     request,
                     f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}",
