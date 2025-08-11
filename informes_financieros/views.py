@@ -333,9 +333,15 @@ def estado_resultados(request):
     cobros_otros = CobroOtrosIngresos.objects.select_related(
         "factura", "factura__empresa"
     )
-    gastos = Gasto.objects.all()
-    gastos_caja_chica = GastoCajaChica.objects.all()
-    vales_caja_chica = ValeCaja.objects.all()
+    gastos = Gasto.objects.select_related(
+        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    ).all()
+    gastos_caja_chica = GastoCajaChica.objects.select_related(
+        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    ).all()
+    vales_caja_chica = ValeCaja.objects.select_related(
+        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    ).all()
 
     empresa = None
     saldo_inicial = 0
@@ -392,6 +398,7 @@ def estado_resultados(request):
                     gastos_loop.aggregate(total=Sum("monto"))["total"] or 0
                 )
                 saldo_inicial += total_ingresos_loop - total_gastos_loop
+    # --- Fin de saldo inicial dinámico ---
 
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
@@ -456,43 +463,50 @@ def estado_resultados(request):
                 if g["gasto__tipo_gasto__nombre"]
             ]
         )
+        # Agrupa y suma en una sola consulta para cada fuente
+        gastos_modo_agrupados = gastos_modo.values(
+            "gasto__tipo_gasto__nombre"
+        ).annotate(suma=Sum("monto"))
+        gastos_caja_agrupados = gastos_caja_chica.values("tipo_gasto__nombre").annotate(
+            suma=Sum("importe")
+        )
+        gastos_vales_agrupados = vales_caja_chica.values("tipo_gasto__nombre").annotate(
+            suma=Sum("importe")
+        )
+
+        # Unifica todos los tipos
+        tipos_gasto = set()
         tipos_gasto.update(
-            [
-                g["tipo_gasto__nombre"]
-                for g in gastos_caja_chica.values("tipo_gasto__nombre")
-                if g["tipo_gasto__nombre"]
-            ]
+            g["gasto__tipo_gasto__nombre"]
+            for g in gastos_modo_agrupados
+            if g["gasto__tipo_gasto__nombre"]
         )
         tipos_gasto.update(
-            [
-                g["tipo_gasto__nombre"]
-                for g in vales_caja_chica.values("tipo_gasto__nombre")
-                if g["tipo_gasto__nombre"]
-            ]
+            g["tipo_gasto__nombre"]
+            for g in gastos_caja_agrupados
+            if g["tipo_gasto__nombre"]
         )
+        tipos_gasto.update(
+            g["tipo_gasto__nombre"]
+            for g in gastos_vales_agrupados
+            if g["tipo_gasto__nombre"]
+        )
+
+        # Crea diccionarios para acceso rápido
+        dict_modo = {
+            g["gasto__tipo_gasto__nombre"]: g["suma"] for g in gastos_modo_agrupados
+        }
+        dict_caja = {g["tipo_gasto__nombre"]: g["suma"] for g in gastos_caja_agrupados}
+        dict_vales = {
+            g["tipo_gasto__nombre"]: g["suma"] for g in gastos_vales_agrupados
+        }
+
         for tipo in tipos_gasto:
             nombre_tipo = (tipo or "Sin tipo").strip().title()
-            total_gastos_modo = (
-                gastos_modo.filter(gasto__tipo_gasto__nombre=tipo).aggregate(
-                    suma=Sum("monto")
-                )["suma"]
-                or 0
-            )
-            total_gastos_caja = (
-                gastos_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
-                    suma=Sum("importe")
-                )["suma"]
-                or 0
-            )
-            total_vales = (
-                vales_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
-                    suma=Sum("importe")
-                )["suma"]
-                or 0
-            )
-            total = (
-                float(total_gastos_modo) + float(total_gastos_caja) + float(total_vales)
-            )
+            total_gastos_modo = float(dict_modo.get(tipo, 0) or 0)
+            total_gastos_caja = float(dict_caja.get(tipo, 0) or 0)
+            total_vales = float(dict_vales.get(tipo, 0) or 0)
+            total = total_gastos_modo + total_gastos_caja + total_vales
             if total > 0:
                 gastos_por_tipo_dict[nombre_tipo] = total
 
@@ -500,7 +514,7 @@ def estado_resultados(request):
             {"tipo": tipo, "total": total}
             for tipo, total in gastos_por_tipo_dict.items()
         ]
-        
+
         estructura_gastos = OrderedDict()
         # Gastos modo flujo
         for g in gastos_modo.values(
@@ -601,7 +615,7 @@ def estado_resultados(request):
         origenes = (
             facturas_cuotas.annotate(
                 origen=Case(
-                    When(local__isnull=False, then=Value("Locales")),
+                    When(local__isnull=False, then=Value("Propiedades")),
                     When(area_comun__isnull=False, then=Value("Áreas Comunes")),
                     default=Value("Sin origen"),
                     output_field=CharField(),
