@@ -292,9 +292,16 @@ def estado_resultados(request):
     meses_anios_set = set(
         (x["mes"], x["anio"]) for x in list(meses_anios) + list(meses_anios_otros)
     )
-    meses_anios_list = sorted(list(meses_anios_set), key=lambda x: (x[1], x[0]))
+    # Filtra tuplas donde mes o año sean None
+    meses_anios_list = sorted(
+        [t for t in meses_anios_set if t[0] is not None and t[1] is not None],
+        key=lambda x: (x[1], x[0])
+    )
+    # meses_anios_list = sorted(list(meses_anios_set), key=lambda x: (x[1], x[0]))
     meses_unicos = sorted(set(m for m, y in meses_anios_list if m))
     anios_unicos = sorted(set(y for m, y in meses_anios_list if y))
+
+  
 
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
         periodo = "periodo_actual"
