@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 31/07/2025
+    Date of modification: 14/08/2025
     Description: General styles for the GAC system   
 */
     
@@ -13,6 +13,27 @@ html, body {
     background: linear-gradient(to right, #e0f7fa, #ffffff);
     display: flex;
     flex-direction: column;
+}
+
+/* Light mode */
+.btn-verde-fuerte {
+    background-color: #5c9ded;
+    border-color: #5c9ded;
+    color: white; /* Asegura que el texto sea visible */
+}
+
+/* Modo light button */
+.btn-light-shadow {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: black;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.btn-light-shadow:hover {
+    border-color: rgba(0, 123, 255, 0.4);
+    box-shadow: 0 0 25px rgba(0, 123, 255, 0.3);
 }
 
 /* Enterprise new button */
@@ -280,8 +301,25 @@ footer {
 
 /* Estílos Generales Dark */
 body.dark-mode {
-    background: linear-gradient(to right, #1f1f1f, #02255b, #680963, #4c0383);
+    background: linear-gradient(to right, #1f1f1f, #02255b);
     color: #f0f0f0;
+}
+
+/* Dark mode */
+body.dark-mode .btn-verde-fuerte {
+    background-color: #0f845d;
+    border-color: #0f845d;
+}
+
+/* Mode dark button */
+body.dark-mode .btn-light-shadow {
+    color: white;
+    box-shadow: 0 2px 6px rgba(255,255,255,0.1);
+}
+
+body.dark-mode .btn-light-shadow:hover {
+    border-color: rgba(0, 123, 255, 0.6);
+    box-shadow: 0 0 25px rgba(0, 123, 255, 0.3);
 }
 
 body.dark-mode .btn-primary {
@@ -594,7 +632,7 @@ body.dark-mode .welcome-title-logo {
 }
 
 .toggle-switch.active {
-    background: #4c0383; 
+    background: #02255b; 
 }
 
 .toggle-ball {
