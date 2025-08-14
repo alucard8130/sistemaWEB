@@ -18,10 +18,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "False") == "True"
-#DEBUG = True
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com").split(",")
+# DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = True
+# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com").split(",")
 #ALLOWED_HOSTS = ['*']  # For development purposes, change this in production
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
 
 # Application definition
 
@@ -98,7 +100,12 @@ WSGI_APPLICATION = "core.wsgi.application"
 #     }
 # }
 
-DATABASES = {"default": dj_database_url.config(default=os.getenv("DATABASE_URL"))}
+DATABASES = {
+    "default": dj_database_url.config(
+        default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
+    )
+}
+
 
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
