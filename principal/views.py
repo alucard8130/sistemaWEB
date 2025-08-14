@@ -545,7 +545,7 @@ def crear_sesion_pago(request):
         ],
         mode="subscription",
         success_url=request.build_absolute_uri("/bienvenida/?pago=ok"),
-        cancel_url=request.build_absolute_uri("/bienvenida/"),
+        cancel_url=request.build_absolute_uri("/"),
         client_reference_id=str(request.user.id),  # Para identificar al usuario
         customer_email=request.user.email,
     )
