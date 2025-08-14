@@ -52,10 +52,10 @@
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Locales</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Propiedades</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nuevo Local</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nueva Propiedades</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista Propiedades</a></li>
 
                             <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
 
@@ -145,6 +145,52 @@
                         {% endif %}
                     </ul>
                 </li>
+                <!-- MENÚ CAJA CHICA -->
+        <li class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle"
+            href="#"
+            role="button"
+            data-bs-toggle="dropdown"
+            >Caja Chica</a
+          >
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="{% url 'lista_fondeos' %}"
+                >Lista Fondeos</a
+              >
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="{% url 'lista_gastos_caja_chica' %}"
+                >Lista Gastos</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="{% url 'lista_vales_caja_chica' %}"
+                >Lista Vales</a
+              >
+            </li>
+            {% comment %} <li>
+              <a class="dropdown-item" href="{% url 'fondeo_caja_chica' %}"
+                >Fondear Caja Chica</a
+              >
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="{% url 'registrar_gasto_caja_chica' %}"
+                >Registro de Gasto</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="{% url 'generar_vale_caja' %}"
+                >Registro de Vales</a
+              >
+            </li>  {% endcomment %}
+          </ul>
+        </li>
                 <!-- MENÚ PPTOS -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
@@ -299,7 +345,7 @@
             </div>
           </div>
         </div>
-        <a href="https://paginaweb-ro9v.onrender.com" target="_blank"><p class="mt-3">Link para contactar al administrador del sistema.</p></a>
+        <a href="https://paginaweb-ro9v.onrender.com/gestor_condominal" target="_blank"><p class="mt-3 ">Link VIDEO Tutorial.</p></a>
       </div>
       <div class="modal-footer">
         {% if not es_demo %}

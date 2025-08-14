@@ -29,7 +29,7 @@
                 <!-- Card with border and light background -->
                 <div class="card border-accent shadow-card w-100">
                     <div class="card-body text-center">
-                        <h2 class="text-danger">¿Inactivar local?</h2>
+                        <h2 class="text-danger">¿Inactivar Propiedad?</h2>
                         
                         <!-- Block for displaying messages -->
                         {% if messages %}
@@ -38,7 +38,7 @@
                             {% endfor %}
                         {% endif %}
 
-                        <p>¿Estás seguro de que deseas inactivar el local:  <strong>{{ local.numero }}</strong>?</p>
+                        <p>¿Estás seguro de que deseas inactivar la propiedad:  <strong>{{ local.numero }}</strong>?</p>
                         
                         <!-- Form -->
                         <form method="post" class="mt-4 d-inline-block">

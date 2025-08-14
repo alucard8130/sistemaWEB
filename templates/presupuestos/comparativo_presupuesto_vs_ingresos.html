@@ -22,42 +22,16 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"/>
     <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <!-- <style>
-        body { background: #f7f9fb; }
-        .header-bar { background: #22334d; color: #fff; padding: 18px 0; border-radius: 0 0 18px 18px; margin-bottom: 25px; box-shadow: 0 4px 18px 0 #00122b18;}
-        .logo-mini { height: 48px; margin-right: 14px; vertical-align: middle;}
-        .table-wrapper-corp { border-radius: 12px; box-shadow: 0 2px 10px 0 #22334d16; background: #fff; padding: 18px;}
-        h4.corp-title { color: #22334d; font-weight: 600; font-size: 1.35rem; letter-spacing: .02em; margin-bottom: 22px;}
-        td, th { vertical-align: middle !important; text-align: right;}
-        th, td:first-child, td:nth-child(2), td:nth-child(3) { text-align: left !important; }
-        .table > :not(caption) > * > * { border-bottom-width: 1.5px; }
-        .table-info, .table-primary, .table-warning { font-weight: bold; }
-        .table-info { background: #eaf3fa !important; }
-        .table-primary { background: #dde7fa !important; }
-        .table-warning { background: #fff8e1 !important; }
-        .neg { color: #b02a37; font-weight: 600; }
-        .pos { color: #198754; font-weight: 600; }
-        .neutro { color: #999; font-weight: 600; }
-        .flecha-mini { font-size: 1.1em; vertical-align: middle; margin-left: 2px; margin-right:2px;}
-        tr.data-row:hover { background: #f4f7fb !important; }
-        .dataTables_scrollBody { overflow-x: auto !important; }
-        .dataTables_wrapper { width: 100%; }
-        .dataTables_scroll { margin-bottom: 0 !important; }
-        .dt-top-scroll { overflow-x: auto;overflow-y: hidden; margin-bottom: 0;height: 18px;width: 100%;background: transparent; }
-        .dt-top-scroll-inner {height: 1px;}
-        .dttooltip { border-bottom: 1px dashed #555; cursor: help;}
-        .total-anual-cell { background: #f4f8fa; font-weight: 700; border-left: 2px solid #dee2e6;}
-    </style> -->
 </head>
 <body>
     {% include 'navbar.html' %}
 
     <div class="container-fluid mt-4">
-        <h2>Reporte comparativo presupuesto Vs cuotas</h2>
-
-        <!-- <div class="table-wrapper-corp mb-3"> -->
+        <h2>Comparativo Presupuesto Vs Ingresos</h2>
         <form method="get" class="row mb-3 g-2">
             <div class="col-auto">
                 <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
@@ -125,10 +99,10 @@
                         </td>
                         {% for mes in row.meses %}
                         <td class="text-end text-secondary" style="font-size:0.95em;">
-                            {{ mes.presupuesto|floatformat:2|intcomma }}
+                            {{ mes.presupuesto|floatformat:0|intcomma }}
                         </td>
                         <td class="text-end fw-bold">
-                            {{ mes.real|floatformat:2|intcomma }}
+                            {{ mes.real|floatformat:0|intcomma }}
                         </td>
                         <td class="text-end">
                             {% if mes.presupuesto %}
@@ -141,13 +115,13 @@
                         </td>
                         {% endfor %}
                         <td class="total-anual-cell text-end text-secondary" style="font-size:0.95em;">
-                            {{ row.total_presup|floatformat:2|intcomma }}
+                            {{ row.total_presup|floatformat:0|intcomma }}
                         </td>
                         <td class="total-anual-cell text-end fw-bold">
-                            {{ row.total_real|floatformat:2|intcomma }}
+                            {{ row.total_real|floatformat:0|intcomma }}
                         </td>
                         <td class="total-anual-cell text-end">
-                            {{ row.total_var|floatformat:2|intcomma }}
+                            {{ row.total_var|floatformat:0|intcomma }}
                         </td>
                         <td class="total-anual-cell text-end">
                             {% if row.total_presup %}
@@ -167,10 +141,10 @@
                         {% for m in meses %}
                         {% with mes_total=totales_meses|lookup:m %}
                             <td class="text-end text-secondary" style="font-size:0.95em;">
-                                {{ mes_total.presupuesto|floatformat:2|intcomma }}
+                                {{ mes_total.presupuesto|floatformat:0|intcomma }}
                             </td>
                             <td class="text-end fw-bold">
-                                {{ mes_total.real|floatformat:2|intcomma }}
+                                {{ mes_total.real|floatformat:0|intcomma }}
                             </td>
                             <td class="text-end">
                                 {% if mes_total.presupuesto %}
@@ -184,13 +158,13 @@
                         {% endwith %}
                         {% endfor %}
                             <td class="total-anual-cell text-end text-secondary" style="font-size:0.95em;">
-                                {{ tot_anual.presupuesto|floatformat:2|intcomma }}
+                                {{ tot_anual.presupuesto|floatformat:0|intcomma }}
                             </td>
                             <td class="total-anual-cell text-end fw-bold">
-                                {{ tot_anual.real|floatformat:2|intcomma }}
+                                {{ tot_anual.real|floatformat:0|intcomma }}
                             </td>
                             <td class="total-anual-cell text-end">
-                                {{ tot_anual.variacion|floatformat:2|intcomma }}
+                                {{ tot_anual.variacion|floatformat:0|intcomma }}
                             </td>
                             <td class="total-anual-cell text-end">
                                 {% if tot_anual.presupuesto %}

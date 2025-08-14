@@ -14,7 +14,6 @@ class FacturaForm(forms.ModelForm):
 
     class Meta:
         model = Factura
-        #fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto', 'estatus','observaciones']
         fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto','cfdi', 'observaciones']
         widgets = {
             'cliente': forms.Select(attrs={

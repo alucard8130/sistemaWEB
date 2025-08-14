@@ -1,0 +1,84 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <!-- 
+      Created by: Jaime Estrada
+      Modified by: María Martínez
+      Date of creation: 05/06/2025
+      Date of modification: 30/06/2025
+      Description: Register a new common area
+    -->
+    <meta charset="UTF-8" />
+    <title>Fondeo de Caja Chica</title>
+    <!-- Bootstrap base styles -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Bootstrap icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <!-- Google Font Rubik -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Customised CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  </head>
+  <body>
+    {% include 'navbar.html' %}
+    <div class="container mt-5">
+      <div class="row justify-content-center">
+        <div class="col-md-4 col-sm-6 mx-auto">
+          <h2>Fondeo Caja Chica</h2>
+          <form method="post">
+            {% csrf_token %}
+            <div class="row mb-3">
+              
+                <label for="id_numero_cheque" class="form-label"
+                  >Num. cheque o transfer</label
+                >
+              {{ form.numero_cheque }}
+            </div>
+            <div class="row mb-3">
+              
+                <label for="id_importe_cheque" class="form-label"
+                  >Importe</label
+                >
+              {{ form.importe_cheque }}
+            </div>
+            <div class="row mb-3">
+             
+                <label for="id_empleado_asignado" class="form-label"
+                  >Responsable</label
+                >
+              {{ form.empleado_asignado }}
+            </div>
+            <div class="row mb-3">
+              
+                <label for="id_fecha" class="form-label">Fecha</label>
+              
+              {{ form.fecha }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+              Registrar Fondeo
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- 🔹 Footer -->
+    <footer>
+      © {% now "Y" %} GAC. Todos los derechos reservados. <br />
+      Creado por Jaime M. Estrada Bernabé
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

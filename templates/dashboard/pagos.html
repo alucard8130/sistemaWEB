@@ -81,15 +81,7 @@
         <option value="12" {% if mes == "12" %}selected{% endif %}>Diciembre</option>
         </select>
         </div>
-        <!--<div class="col-md-2">
-            <label>Desde:</label>
-            <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control">
-        </div>
-        <div class="col-md-2">
-            <label>Hasta:</label>
-            <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
-            
-        </div>-->
+        
         <div class="col-md-1 d-flex align-items-end">
     <button type="submit" class="btn btn-info">Filtrar</button>
 </div>
@@ -185,7 +177,7 @@ new Chart(ctxPagosMes, {
         },
         scales: {
             x: { stacked: true },
-            y: { stacked: false }
+            y: { stacked: true }
         }
     }
 });

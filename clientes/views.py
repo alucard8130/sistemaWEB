@@ -17,17 +17,17 @@ from django.db.models import Q
 def lista_clientes(request):
     query = request.GET.get("q", "")
     if request.user.is_superuser:
-        clientes = Cliente.objects.filter(activo=True).order_by("id")
+        clientes = Cliente.objects.filter(activo=True).order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
-        clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by("id")
+        clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by('nombre')
 
     if query:
         clientes = clientes.filter(
             Q(nombre__icontains=query) | Q(rfc__icontains=query)
         )
 
-    clientes = clientes.order_by("id")    
+    clientes = clientes.order_by('nombre')
 
     # paginacion
     paginator = Paginator(clientes, 20)  # 20 áreas por página

@@ -99,15 +99,9 @@
         </div>
     </form>
     <div class="card mb-4 p-3 shadow-sm">
-    <!--<h5 class="mb-2">
-        Pagado: <span class="badge bg-primary">${{ total_pagado|floatformat:2|intcomma }}</span> &nbsp;
-        Por pagar: <span class="badge bg-warning text-dark">${{ total_pendiente|floatformat:2|intcomma }}</span> &nbsp;
-        Presupuesto: <span class="badge bg-success">${{ total_presupuesto|floatformat:2|intcomma }}</span>
-    </h5>-->
+
         <canvas id="graficoPagos" style="height: 450px"></canvas>
     </div>
-</div>
-
     <script>
     const ctx = document.getElementById('graficoPagos').getContext('2d');
     new Chart(ctx, {

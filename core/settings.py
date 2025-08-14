@@ -4,6 +4,8 @@ load_dotenv()
 from pathlib import Path
 import os
 import dj_database_url
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,7 +46,8 @@ INSTALLED_APPS = [
     "gastos",
     "presupuestos",
     "informes_financieros",
-    "storages",  # For AWS S3 storage
+    "storages", 
+    "caja_chica",
 ]
 
 
@@ -83,8 +86,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+#MEDIA_URL = "/media/"
+#MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
 # Database
@@ -163,15 +166,7 @@ LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/login/"
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-#SESSION_COOKIE_AGE = 1800  # 30 min
 
-# # Stripe settings
-# STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-# STRIPE_SECRET_KEY_TEST = os.getenv("STRIPE_SECRET_KEY_TEST")
-# STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
-# STRIPE_PUBLIC_KEY_TEST = os.getenv("STRIPE_PUBLIC_KEY_TEST")    
-# STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
-# STRIPE_ENDPOINT_SECRET_TEST = os.getenv("STRIPE_ENDPOINT_SECRET_TEST")
 
 if os.getenv("DEBUG", "False") == "True":
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
@@ -183,22 +178,28 @@ else:
     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
 
 
-if os.getenv("USE_S3", "False") == "True":
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")  # Cambia si usas otra región
-    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
-    AWS_LOCATION = "media"
-    AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = False
 
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
 
-SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")  
+AWS_ACCESS_KEY_ID = os.getenv('DO_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('DO_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('DO_SPACE_NAME')
+AWS_S3_REGION_NAME = os.getenv('DO_REGION') 
+AWS_S3_ENDPOINT_URL = os.getenv('DO_ENDPOINT_URL')
+AWS_S3_ADDRESSING_STYLE = "virtual"
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = 'public-read'
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.nyc3.digitaloceanspaces.com'
+
+#STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/static/'
+#STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+
+MEDIA_URL = f'https://gesacbucket.nyc3.digitaloceanspaces.com/media/'
+#MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")
 
 sentry_sdk.init(
     dsn=SENTRY_DSN,

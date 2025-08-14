@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
+from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, registrar_gasto_caja_chica
 from principal.views import cancelar_suscripcion, crear_evento, crear_sesion_pago, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
@@ -70,8 +71,22 @@ urlpatterns = [
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='registration/password_reset_confirm.html'), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'), name='password_reset_complete'),
+    path("fondeo/", fondeo_caja_chica, name="fondeo_caja_chica"),
+    path("registrar_gasto/", registrar_gasto_caja_chica, name="registrar_gasto_caja_chica"),
+    path("generar_vale/", generar_vale_caja, name="generar_vale_caja"),
+    path("lista_fondeos/", lista_fondeos, name="lista_fondeos"),
+    path("lista_gastos/", lista_gastos_caja_chica, name="lista_gastos_caja_chica"),
+    path("lista_vales/", lista_vales_caja_chica, name="lista_vales_caja_chica"),
+    path("detalle_fondeo/<int:fondeo_id>/", detalle_fondeo, name="detalle_fondeo"),
+    path("imprimir_vale/<int:vale_id>/", imprimir_vale_caja, name="imprimir_vale_caja"),
 ]
 
+<<<<<<< HEAD
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 
+=======
+# if settings.DEBUG:
+#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    #urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 
+>>>>>>> origin/main

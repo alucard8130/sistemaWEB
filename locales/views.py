@@ -25,10 +25,10 @@ def lista_locales(request):
     user = request.user
     query = request.GET.get("q", "")
     if user.is_superuser:
-        #locales = LocalComercial.objects.all()
+ 
         locales = LocalComercial.objects.filter(activo=True).order_by('numero')
     else:
-        #empresa = getattr(request.user.perfilusuario, 'empresa', None)
+        
         empresa = user.perfilusuario.empresa
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
 

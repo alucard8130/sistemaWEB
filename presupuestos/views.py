@@ -31,7 +31,8 @@ from django.db.models.functions import TruncMonth, TruncYear
 from .forms import PresupuestoCargaMasivaForm
 from openpyxl import load_workbook
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-
+from caja_chica.models import GastoCajaChica
+from caja_chica.models import ValeCaja
 
 @login_required
 def presupuesto_nuevo(request):
@@ -539,6 +540,27 @@ def reporte_presupuesto_vs_gasto(request):
         .annotate(total=Sum("monto"))
     )
     gastos_dict = {(g["tipo_id"], g["mes_pago"]): float(g["total"]) for g in gastos}
+
+    # Sumar importes de caja chica por tipo de gasto y mes
+    gastos_caja_chica = (
+        GastoCajaChica.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
+        .values("tipo_gasto_id", "fecha__month")
+        .annotate(total=Sum("importe"))
+    )
+    for g in gastos_caja_chica:
+        key = (g["tipo_gasto_id"], g["fecha__month"])
+        gastos_dict[key] = gastos_dict.get(key, 0) + float(g["total"])
+
+    # Sumar importes de vales de caja por tipo de gasto y mes
+
+    vales_caja = (
+        ValeCaja.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
+        .values("tipo_gasto_id", "fecha__month")
+        .annotate(total=Sum("importe"))
+    )
+    for v in vales_caja:
+        key = (v["tipo_gasto_id"], v["fecha__month"])
+        gastos_dict[key] = gastos_dict.get(key, 0) + float(v["total"])
 
     # Estructura: grupos > subgrupos > tipos > meses
     grupos_dict = defaultdict(lambda: defaultdict(list))

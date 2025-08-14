@@ -18,7 +18,6 @@ from datetime import date, timedelta
 from django.db.models import Q,  Value, Case, When,  CharField,FloatField
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
-#from django.db.models import Case, When
 import openpyxl
 from django.http import HttpResponse
 from django.db.models import Q
@@ -37,11 +36,10 @@ from presupuestos.models import PresupuestoIngreso
 from collections import defaultdict
 import json
 from django.http import JsonResponse
+from django.db.models import Max
 
 @login_required
 def crear_factura(request):
-    from django.db import transaction
-   
     conflicto = False
     conflicto_tipo = ""
     superuser_auth_ok = False
@@ -106,10 +104,13 @@ def crear_factura(request):
                             factura.empresa = request.user.perfilusuario.empresa
                         
                         factura.estatus = 'pendiente'
+                        # Asignar fecha_emision si no viene del formulario
+                        if not factura.fecha_emision:
+                            #factura.fecha_emision = now()
+                            factura.fecha_emision = timezone.now().date()
                         factura.save()
 
                         # Folio único
-                        from django.utils.timezone import now
                         count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
                         if tipo == 'local':
                             factura.folio = f"CM-F{count:05d}"
@@ -139,13 +140,13 @@ def crear_factura(request):
                                 )
 
                         messages.success(request, "Registro Exitoso.")
-                        #print("[DEBUG] Factura creada con éxito.")
+                       
                         return redirect('lista_facturas')
                 except Exception as e:
                     form.add_error(None, f"Error al guardar: {e}")
-                    #print("[DEBUG] Excepción al guardar factura:", e)
+                    
         else:
-            ''#print("[DEBUG] Formulario inválido:", form.errors)
+            ''
     else:
         form = FacturaForm(user=request.user)
 
@@ -163,14 +164,14 @@ def lista_facturas(request):
     if request.user.is_superuser:
         facturas = Factura.objects.all().order_by('-fecha_vencimiento')
         empresas = Empresa.objects.all()
-        locales = LocalComercial.objects.filter(activo=True)
-        areas = AreaComun.objects.filter(activo=True)
+        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(activo=True).order_by('numero')
     else:
         empresa = request.user.perfilusuario.empresa
         facturas = Factura.objects.filter(empresa=empresa).order_by('-fecha_vencimiento')
         empresas = None
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
     if empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id).order_by('-fecha_vencimiento')
@@ -178,6 +179,8 @@ def lista_facturas(request):
         facturas = facturas.filter(local_id=local_id).order_by('-fecha_vencimiento')
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id).order_by('-fecha_vencimiento')
+
+    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos')    
     # Paginación
     paginator = Paginator(facturas, 25)
     page_number = request.GET.get('page')
@@ -196,133 +199,176 @@ def lista_facturas(request):
 
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
-    # Permitir seleccionar año y mes por GET o POST
+    # Permitir seleccionar año y mes por GET o POST (solo superusuario puede facturar meses anteriores)
     if request.method == 'POST':
         año = int(request.POST.get('anio', datetime.now().year))
         mes = int(request.POST.get('mes', datetime.now().month))
     else:
         año = int(request.GET.get('anio', datetime.now().year))
         mes = int(request.GET.get('mes', datetime.now().month))
-
-
     hoy = date.today()
-    año, mes = hoy.year, hoy.month
+
+    # Solo superusuario puede facturar meses distintos al actual
+    # if (año != hoy.year or mes != hoy.month) and not request.user.is_superuser:
+    #     messages.error(request, "Solo el superusuario puede generar facturas de meses anteriores.")
+    #     return redirect('confirmar_facturacion')
 
     facturas_creadas = 0
+    facturas_a_crear = []
 
     if request.user.is_superuser:
-        if facturar_locales:
-            locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False)
-        if facturar_areas:
-            areas = AreaComun.objects.filter(activo=True, cliente__isnull=False)
+        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False) if facturar_locales else []
+        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False) if facturar_areas else []
     else:
         empresa = request.user.perfilusuario.empresa
-        if facturar_locales:
-            locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
-        if facturar_areas:
-            areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False) if facturar_locales else []
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False) if facturar_areas else []
 
-    if facturar_locales:
-        for local in locales:
-            existe = Factura.objects.filter(
+    fecha_factura = date(año, mes, 1)
+
+    # Pre-carga los folios existentes por empresa y tipo para evitar consultas repetidas
+    folios_locales = set(
+        Factura.objects.filter(
+            empresa__in=[l.empresa for l in locales],
+            folio__startswith="CM-F"
+        ).values_list('empresa_id', 'folio')
+    )
+    folios_areas = set(
+        Factura.objects.filter(
+            empresa__in=[a.empresa for a in areas],
+            folio__startswith="AC-F"
+        ).values_list('empresa_id', 'folio')
+    )
+    folios_deposito = set(
+        Factura.objects.filter(
+            empresa__in=[a.empresa for a in areas],
+            folio__startswith="DG-F"
+        ).values_list('empresa_id', 'folio')
+    )
+
+    # Locales
+    max_folio_local = {}
+    for local in locales:
+        existe = Factura.objects.filter(
+            cliente=local.cliente,
+            local=local,
+            fecha_emision__year=año,
+            fecha_emision__month=mes
+        ).exists()
+        if not existe:
+            empresa_id = local.empresa_id
+            if empresa_id not in max_folio_local:
+                max_folio = Factura.objects.filter(
+                    empresa_id=empresa_id,
+                    folio__startswith="CM-F"
+                ).aggregate(max_f=Max('folio'))['max_f']
+                if max_folio:
+                    try:
+                        last_num = int(max_folio.replace("CM-F", ""))
+                    except Exception:
+                        last_num = 0
+                else:
+                    last_num = 0
+                max_folio_local[empresa_id] = last_num
+            max_folio_local[empresa_id] += 1
+            folio = f"CM-F{max_folio_local[empresa_id]:05d}"
+            facturas_a_crear.append(Factura(
+                empresa=local.empresa,
                 cliente=local.cliente,
                 local=local,
-                fecha_emision__year=año,
-                fecha_emision__month=mes
-            ).exists()
-            if not existe:
-                # Folio único por empresa y tipo
-                prefijo = "CM-F"
-                num = 1
-                while True:
-                    folio = f"{prefijo}{num:05d}"
-                    if not Factura.objects.filter(folio=folio, empresa=local.empresa).exists():
-                        break
-                    num += 1
-                # count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                # folio = f"CM-F{count:05d}"
-                Factura.objects.create(
-                    empresa=local.empresa,
-                    cliente=local.cliente,
-                    local=local,
-                    folio=folio,
-                    fecha_emision=hoy,
-                    fecha_vencimiento=date(año, mes, 1),
-                    monto=local.cuota,
-                    tipo_cuota='mantenimiento',
-                    estatus='pendiente',
-                    observaciones='emision mensual'
-                )
-                
-        
-                facturas_creadas += 1
+                folio=folio,
+                fecha_emision=fecha_factura,
+                fecha_vencimiento=fecha_factura,
+                monto=local.cuota,
+                tipo_cuota='mantenimiento',
+                estatus='pendiente',
+                observaciones='emision mensual'
+            ))
+            facturas_creadas += 1
 
-    if facturar_areas:
-        for area in areas:
-            existe = Factura.objects.filter(
+    # Áreas
+    max_folio_area = {}
+    max_folio_deposito = {}
+    for area in areas:
+        existe = Factura.objects.filter(
+            cliente=area.cliente,
+            area_comun=area,
+            fecha_emision__year=año,
+            fecha_emision__month=mes
+        ).exists()
+        if not existe:
+            empresa_id = area.empresa_id
+            if empresa_id not in max_folio_area:
+                max_folio = Factura.objects.filter(
+                    empresa_id=empresa_id,
+                    folio__startswith="AC-F"
+                ).aggregate(max_f=Max('folio'))['max_f']
+                if max_folio:
+                    try:
+                        last_num = int(max_folio.replace("AC-F", ""))
+                    except Exception:
+                        last_num = 0
+                else:
+                    last_num = 0
+                max_folio_area[empresa_id] = last_num
+            max_folio_area[empresa_id] += 1
+            folio = f"AC-F{max_folio_area[empresa_id]:05d}"
+            facturas_a_crear.append(Factura(
+                empresa=area.empresa,
                 cliente=area.cliente,
                 area_comun=area,
-                fecha_emision__year=año,
-                fecha_emision__month=mes
+                folio=folio,
+                fecha_emision=fecha_factura,
+                fecha_vencimiento=fecha_factura,
+                monto=area.cuota,
+                tipo_cuota='renta',
+                estatus='pendiente',
+                observaciones='emision mensual'
+            ))
+            facturas_creadas += 1
+
+        # Depósito en garantía por única vez
+        if area.deposito and area.deposito > 0:
+            existe_deposito = Factura.objects.filter(
+                cliente=area.cliente,
+                area_comun=area,
+                tipo_cuota='deposito',
             ).exists()
-            if not existe:
-                # Folio único por empresa y tipo
-                prefijo = "AC-F"
-                num = 1
-                while True:
-                    folio = f"{prefijo}{num:05d}"
-                    if not Factura.objects.filter(folio=folio, empresa=area.empresa).exists():
-                        break
-                    num += 1
-                # count = Factura.objects.filter(fecha_emision__year=año, fecha_emision__month=mes).count() + 1
-                # folio = f"AC-F{count:05d}"
-                Factura.objects.create(
+            if not existe_deposito:
+                empresa_id = area.empresa_id
+                if empresa_id not in max_folio_deposito:
+                    max_folio = Factura.objects.filter(
+                        empresa_id=empresa_id,
+                        folio__startswith="DG-F"
+                    ).aggregate(max_f=Max('folio'))['max_f']
+                    if max_folio:
+                        try:
+                            last_num = int(max_folio.replace("DG-F", ""))
+                        except Exception:
+                            last_num = 0
+                    else:
+                        last_num = 0
+                    max_folio_deposito[empresa_id] = last_num
+                max_folio_deposito[empresa_id] += 1
+                folio_deposito = f"DG-F{max_folio_deposito[empresa_id]:05d}"
+                facturas_a_crear.append(Factura(
                     empresa=area.empresa,
                     cliente=area.cliente,
                     area_comun=area,
-                    folio=folio,
-                    fecha_emision=hoy,
-                    fecha_vencimiento=date(año, mes, 1),
-                    monto=area.cuota,
-                    tipo_cuota='renta',
-                    estatus='pendiente',
-                    observaciones='emision mensual'
-                )
-                facturas_creadas += 1
-                # --- CREAR FACTURA DE DEPÓSITO EN GARANTÍA POR ÚNICA VEZ ---
-            if area.deposito and area.deposito > 0:
-                existe_deposito = Factura.objects.filter(
-                    cliente=area.cliente,
-                    area_comun=area,
+                    folio=folio_deposito,
+                    fecha_emision=fecha_factura,
+                    fecha_vencimiento=fecha_factura,
+                    monto=area.deposito,
                     tipo_cuota='deposito',
-                ).exists()
-                if not existe_deposito:
-                    # Folio único por empresa y tipo
-                    prefijo = "DG-F"
-                    num = 1
-                    while True:
-                        folio_deposito = f"{prefijo}{num:05d}"
-                        if not Factura.objects.filter(folio=folio_deposito, empresa=area.empresa).exists():
-                            break
-                        num += 1
-                    # count = Factura.objects.filter(tipo_cuota='deposito').count() + 1
-                    # folio_deposito = f"DG-F{count:05d}"
-                    Factura.objects.create(
-                        empresa=area.empresa,
-                        cliente=area.cliente,
-                        area_comun=area,
-                        folio=folio_deposito,
-                        fecha_emision=hoy,
-                        fecha_vencimiento=date(año, mes, 1),
-                        monto=area.deposito,
-                        tipo_cuota='deposito',
-                        estatus='pendiente',
-                        observaciones='Depósito en garantía'
-                    )    
+                    estatus='pendiente',
+                    observaciones='Depósito en garantía'
+                ))
 
+    # Bulk create
+    if facturas_a_crear:
+        Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
 
-    #messages.success(request, f"{facturas_creadas} facturas generadas para {hoy.strftime('%B %Y')}")
-    messages.success(request, f"{facturas_creadas} facturas generadas para {date(año, mes, 1).strftime('%B %Y')}")
+    messages.success(request, f"{facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}")
     return redirect('lista_facturas')
 
 @login_required
@@ -369,53 +415,127 @@ def confirmar_facturacion(request):
 
 @login_required
 @transaction.atomic
+# def registrar_pago(request, factura_id):
+#     factura = get_object_or_404(Factura, pk=factura_id)
+
+#     if factura.estatus == 'pagada' or factura.saldo_pendiente <= 0:
+#         messages.warning(request, "La factura ya está completamente pagada. No se pueden registrar más pagos.")
+#         return redirect('lista_facturas')
+
+#     if request.method == 'POST':
+#         form = PagoForm(request.POST,request.FILES)
+#         if form.is_valid():
+#             pago = form.save(commit=False)
+#             pago.factura = factura           # SIEMPRE antes de save()
+#             pago.registrado_por = request.user
+
+#             if pago.forma_pago == 'nota_credito':
+#                 #if factura.total_pagado > 0:
+#                     #form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
+#                 #else:    
+#                 pago.save()
+#                 factura.estatus = 'cancelada'
+#                 factura.monto = 0  # Saldo pendiente a 0
+#                 factura.save()
+#                 messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
+#                 return redirect('lista_facturas')
+
+#             if pago.monto > factura.saldo_pendiente:
+#                 form.add_error('monto', f"El monto excede el saldo pendiente (${factura.saldo_pendiente:.2f}).")
+#             else:
+#                 pago.save()
+#                 pagos_validos = factura.pagos.exclude(forma_pago='nota_credito')
+#                 total_pagado = sum([p.monto for p in pagos_validos])
+#                 if total_pagado >= factura.monto:
+#                     factura.estatus = 'pagada'
+#                 else:
+#                     factura.estatus = 'pendiente'
+#                 factura.save()
+#                 factura.actualizar_estatus()  # Actualiza el estatus de la factura
+#                 messages.success(request, f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}")
+#                 return redirect('lista_facturas')
+#     else:
+#         form = PagoForm()
+
+#     return render(request, 'facturacion/registrar_pago.html', {
+#         'form': form,
+#         'factura': factura,
+#         'saldo': factura.saldo_pendiente,
+#     })
+
 def registrar_pago(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
 
-    if factura.estatus == 'pagada' or factura.saldo_pendiente <= 0:
-        messages.warning(request, "La factura ya está completamente pagada. No se pueden registrar más pagos.")
-        return redirect('lista_facturas')
+    if factura.estatus == "pagada" or factura.saldo_pendiente <= 0:
+        messages.warning(
+            request,
+            "La factura ya está completamente pagada. No se pueden registrar más pagos.",
+        )
+        return redirect("lista_facturas")
 
-    if request.method == 'POST':
-        form = PagoForm(request.POST,request.FILES)
+    if request.method == "POST":
+        form = PagoForm(request.POST, request.FILES)
         if form.is_valid():
             pago = form.save(commit=False)
-            pago.factura = factura           # SIEMPRE antes de save()
+            pago.factura = factura  
             pago.registrado_por = request.user
 
-            if pago.forma_pago == 'nota_credito':
-                #if factura.total_pagado > 0:
-                    #form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
-                #else:    
+            if pago.forma_pago == "nota_credito":
+                # if factura.total_pagado > 0:
+                # form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
+                # else:
                 pago.save()
-                factura.estatus = 'cancelada'
+                factura.estatus = "cancelada"
                 factura.monto = 0  # Saldo pendiente a 0
                 factura.save()
-                messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
-                return redirect('lista_facturas')
+                messages.success(
+                    request,
+                    "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",
+                )
+                return redirect("lista_facturas")
 
-            if pago.monto > factura.saldo_pendiente:
-                form.add_error('monto', f"El monto excede el saldo pendiente (${factura.saldo_pendiente:.2f}).")
+            # Permitir pagar hasta el saldo pendiente, considerando decimales
+            from decimal import Decimal, ROUND_HALF_UP
+
+            monto_pago = Decimal(str(pago.monto)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            saldo_pendiente = Decimal(str(factura.saldo_pendiente)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            if monto_pago > saldo_pendiente:
+                form.add_error(
+                    "monto",
+                    f"El monto excede el saldo pendiente (${saldo_pendiente:.2f}).",
+                )
             else:
+                pago.monto = monto_pago
                 pago.save()
-                pagos_validos = factura.pagos.exclude(forma_pago='nota_credito')
+                pagos_validos = factura.pagos.exclude(forma_pago="nota_credito")
                 total_pagado = sum([p.monto for p in pagos_validos])
-                if total_pagado >= factura.monto:
-                    factura.estatus = 'pagada'
+                if total_pagado >= float(factura.monto):
+                    factura.estatus = "pagada"
                 else:
-                    factura.estatus = 'pendiente'
+                    factura.estatus = "pendiente"
                 factura.save()
-                factura.actualizar_estatus()  # Actualiza el estatus de la factura
-                messages.success(request, f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}")
-                return redirect('lista_facturas')
+                factura.actualizar_estatus()  
+                messages.success(
+                    request,
+                    f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}",
+                )
+                return redirect("lista_facturas")
     else:
         form = PagoForm()
 
-    return render(request, 'facturacion/registrar_pago.html', {
-        'form': form,
-        'factura': factura,
-        'saldo': factura.saldo_pendiente,
-    })
+    return render(
+        request,
+        "facturacion/registrar_pago.html",
+        {
+            "form": form,
+            "factura": factura,
+            "saldo": factura.saldo_pendiente,
+        },
+    )
 
 @login_required
 def facturas_detalle(request, pk):
@@ -435,20 +555,18 @@ def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
-    #tipo = request.GET.get('tipo')  # 'local' o 'area'
-    #pagos = Pago.objects.select_related('factura', 'factura__cliente', 'factura__empresa')
-
+    
     if request.user.is_superuser:
         pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all().order_by('-fecha_pago')
         empresas = Empresa.objects.all()
-        locales = LocalComercial.objects.filter(activo=True)
-        areas = AreaComun.objects.filter(activo=True)
+        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(activo=True).order_by('numero')
     else:
         empresa = request.user.perfilusuario.empresa
         pagos = Pago.objects.select_related('factura').filter(factura__empresa=empresa).order_by('-fecha_pago')
         empresas = None
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True)
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id).order_by('fecha_pago')
@@ -470,7 +588,6 @@ def pagos_por_origen(request):
 
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
-        #'tipo': tipo,
         'total_pagos': total_pagos,
         'empresas': empresas,
         'empresa_seleccionada': int(empresa_id) if empresa_id else None,
@@ -762,7 +879,9 @@ def dashboard_pagos(request):
     pagos = Pago.objects.exclude(forma_pago='nota_credito').filter(filtro)
 
     # Cobros de otros ingresos
-    otros_cobros = CobroOtrosIngresos.objects.all()
+    otros_cobros = CobroOtrosIngresos.objects.select_related(
+    'factura', 'factura__empresa', 'factura__cliente', 'factura__tipo_ingreso').all()
+    #otros_cobros = CobroOtrosIngresos.objects.all()
     if not request.user.is_superuser:
         otros_cobros = otros_cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
     if empresa_id:
@@ -1019,31 +1138,32 @@ def cartera_vencida(request):
     filtro = request.GET.get('rango')
     origen = request.GET.get('origen')
 
+    # Optimiza con select_related para evitar N+1 queries
     facturas = Factura.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
-    )
+    ).select_related('cliente', 'empresa', 'local', 'area_comun')
 
     facturas_otros = FacturaOtrosIngresos.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
-    )
-
+    ).select_related('cliente', 'empresa', 'tipo_ingreso')
+   
     # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
         facturas_otros = facturas_otros.filter(empresa=empresa)
-        clientes = Cliente.objects.filter(empresa=empresa)
+        clientes = Cliente.objects.filter(empresa=empresa).order_by('nombre')
     else:
         if request.GET.get('empresa'):
             facturas = facturas.filter(empresa_id=request.GET['empresa'])
             facturas_otros = facturas_otros.filter(empresa_id=request.GET['empresa'])
-            clientes = Cliente.objects.filter(empresa_id=request.GET['empresa'])
+            clientes = Cliente.objects.filter(empresa_id=request.GET['empresa']).order_by('nombre')
         else:
-            clientes = Cliente.objects.all()
+            clientes = Cliente.objects.all().order_by('nombre')
     
     # Filtrar por cliente
     cliente_id = request.GET.get('cliente')
@@ -1251,7 +1371,7 @@ def exportar_pagos_excel(request):
             pago.forma_pago,
             factura.folio,
             factura.empresa.nombre,
-            pago.fecha_pago.strftime('%Y-%m-%d') 
+            pago.fecha_pago,
         ])
 
     # Respuesta
@@ -1380,8 +1500,7 @@ def exportar_lista_facturas_excel(request):
             local_area,
             float(factura.monto),
             float(factura.saldo_pendiente),
-            #factura.fecha_emision.strftime('%Y-%m-%d'),
-            factura.fecha_vencimiento.strftime('%Y-%m-%d'),
+            factura.fecha_vencimiento,
             factura.estatus,
             factura.observaciones or ''
         ])
@@ -1470,7 +1589,7 @@ def carga_masiva_facturas_cobradas(request):
                     Pago.objects.create(
                         factura=Factura.objects.get(folio=str(folio), empresa=empresa),
                         monto=cuota_decimal,
-                        forma_pago='carga_masiva',
+                        forma_pago='transferencia', 
                         fecha_pago=fecha_emision,
                         registrado_por=request.user,
                         observaciones=observaciones or "",
@@ -1604,8 +1723,8 @@ def crear_factura_otros_ingresos(request):
 
 @login_required
 def lista_facturas_otros_ingresos(request):
-    facturas = FacturaOtrosIngresos.objects.all().order_by('-fecha_emision')
     
+    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_emision')
     # Filtrar por empresa si no es superusuario
     if not request.user.is_superuser:
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
@@ -1618,33 +1737,78 @@ def lista_facturas_otros_ingresos(request):
     return render(request, 'otros_ingresos/lista_facturas.html', {'facturas': page_obj})
 
 @login_required
+# def registrar_cobro_otros_ingresos(request, factura_id):
+#     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+
+#     if request.method == 'POST':
+#         form = CobroForm (request.POST,request.FILES)
+#         if form.is_valid():
+#             cobro = form.save(commit=False)
+#             cobro.factura = factura
+#             cobro.registrado_por = request.user
+#             if cobro.monto > factura.saldo:
+#                 messages.error(request, "El monto del cobro no puede ser mayor al saldo pendiente de la factura.")
+#             else:    
+#                 cobro.save()
+#                 # Actualiza estatus de la factura si ya está pagada
+#                 total_cobrado = sum([c.monto for c in factura.cobros.all()])
+#                 if total_cobrado >= factura.monto:
+#                     factura.estatus = 'cobrada'
+#                     factura.save()
+#                 messages.success(request, "Cobro registrado correctamente.")
+#                 return redirect('lista_facturas_otros_ingresos')
+#     else:
+#         form = CobroForm()
+
+#     return render(request, 'otros_ingresos/registrar_cobro.html', {
+#         'form': form,
+#         'factura': factura,
+#     })
+
 def registrar_cobro_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
 
-    if request.method == 'POST':
-        form = CobroForm (request.POST,request.FILES)
+    if request.method == "POST":
+        form = CobroForm(request.POST, request.FILES)
         if form.is_valid():
             cobro = form.save(commit=False)
             cobro.factura = factura
             cobro.registrado_por = request.user
-            if cobro.monto > factura.saldo:
-                messages.error(request, "El monto del cobro no puede ser mayor al saldo pendiente de la factura.")
-            else:    
+            # Permitir cobrar hasta el saldo pendiente, considerando decimales
+            from decimal import Decimal, ROUND_HALF_UP
+
+            monto_cobro = Decimal(str(cobro.monto)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            saldo_pendiente = Decimal(str(factura.saldo)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            if monto_cobro > saldo_pendiente:
+                messages.error(
+                    request,
+                    f"El monto del cobro no puede ser mayor al saldo pendiente de la factura (${saldo_pendiente:.2f}).",
+                )
+            else:
+                cobro.monto = monto_cobro
                 cobro.save()
                 # Actualiza estatus de la factura si ya está pagada
                 total_cobrado = sum([c.monto for c in factura.cobros.all()])
-                if total_cobrado >= factura.monto:
-                    factura.estatus = 'cobrada'
+                if total_cobrado >= float(factura.monto):
+                    factura.estatus = "cobrada"
                     factura.save()
                 messages.success(request, "Cobro registrado correctamente.")
-                return redirect('lista_facturas_otros_ingresos')
+                return redirect("lista_facturas_otros_ingresos")
     else:
         form = CobroForm()
 
-    return render(request, 'otros_ingresos/registrar_cobro.html', {
-        'form': form,
-        'factura': factura,
-    })
+    return render(
+        request,
+        "otros_ingresos/registrar_cobro.html",
+        {
+            "form": form,
+            "factura": factura,
+        },
+    )
 
 @login_required
 def detalle_factura_otros_ingresos(request, factura_id):
@@ -1671,16 +1835,16 @@ def reporte_cobros_otros_ingresos(request):
     if not request.user.is_superuser:
         cobros = cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
     if empresa_id:
-        cobros = cobros.filter(factura__empresa_id=empresa_id)
+        cobros = cobros.filter(factura__empresa_id=empresa_id).order_by('-fecha_cobro')
     if cliente_id:
-        cobros = cobros.filter(factura__cliente_id=cliente_id)
+        cobros = cobros.filter(factura__cliente_id=cliente_id).order_by('-fecha_cobro')
     if fecha_inicio and fecha_fin:
-        cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin])
+        cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin]).order_by('-fecha_cobro')
         
     
     #if tipo_ingreso:
     if tipo_ingreso_id and tipo_ingreso_id.isdigit():
-        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id)    
+        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id).order_by('-fecha_cobro')
 
     total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
 
@@ -1690,8 +1854,8 @@ def reporte_cobros_otros_ingresos(request):
     page_obj = paginator.get_page(page_number)
 
     empresas = Empresa.objects.all() if request.user.is_superuser else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
-    clientes = Cliente.objects.filter(empresa__in=empresas)
-    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa__in=empresas)
+    clientes = Cliente.objects.filter(empresa__in=empresas).order_by('nombre')
+    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa__in=empresas).order_by('nombre')
 
     return render(request, 'otros_ingresos/reporte_cobros.html', {
         'cobros': page_obj,
@@ -1744,7 +1908,7 @@ def exportar_cobros_otros_ingresos_excel(request):
 
     for cobro in cobros:
         ws.append([
-            cobro.fecha_cobro.strftime('%Y-%m-%d'),
+            cobro.fecha_cobro,
             cobro.factura.empresa.nombre,
             cobro.factura.cliente.nombre,
             cobro.factura.get_tipo_ingreso_display(),
@@ -1803,11 +1967,9 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
             factura.empresa.nombre,
             factura.cliente.nombre,
             str(factura.tipo_ingreso) if factura.tipo_ingreso else '',
-            #factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else factura.tipo_ingreso,
             float(factura.monto),
             float(factura.saldo),
-            #factura.fecha_emision.strftime('%Y-%m-%d'),
-            factura.fecha_vencimiento.strftime('%Y-%m-%d') if factura.fecha_vencimiento else '',
+            factura.fecha_vencimiento if factura.fecha_vencimiento else '',
             factura.estatus,
             factura.observaciones or ''
         ])

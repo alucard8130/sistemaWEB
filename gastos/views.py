@@ -26,6 +26,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
 from django.db.models.functions import ExtractMonth
+from caja_chica.models import GastoCajaChica, ValeCaja
 
 # Create your views here.
 @login_required
@@ -133,20 +134,44 @@ def tipo_gasto_eliminar(request, pk):
 @login_required
 def gastos_lista(request):
     if request.user.is_superuser:
-        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto').order_by('-fecha')
-        proveedores = Proveedor.objects.filter(activo=True)
-        empleados = Empleado.objects.filter(activo=True)
-        tipos_gasto = TipoGasto.objects.all()
+        gastos = (
+            Gasto.objects.all()
+            .select_related(
+                "empresa",
+                "proveedor",
+                "empleado",
+                "tipo_gasto",
+                "tipo_gasto__subgrupo",
+                "tipo_gasto__subgrupo__grupo",
+            )
+            .prefetch_related("pagos")
+            .order_by("-fecha")
+        )  # <-- add .prefetch_related('pagos')
+        proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
+        empleados = Empleado.objects.filter(activo=True).order_by('nombre')
+        tipos_gasto = TipoGasto.objects.all().order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
-        gastos = Gasto.objects.filter(empresa=empresa).order_by('-fecha')
-        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa)
-        empleados = Empleado.objects.filter(activo=True, empresa=empresa)
-        tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
+        gastos = (
+            Gasto.objects.filter(empresa=empresa)
+            .select_related(
+                "empresa",
+                "proveedor",
+                "empleado",
+                "tipo_gasto",
+                "tipo_gasto__subgrupo",
+                "tipo_gasto__subgrupo__grupo",
+            )
+            .prefetch_related("pagos")
+            .order_by("-fecha")
+        )  # <-- add .prefetch_related('pagos')
+        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa).order_by('nombre')
+        empleados = Empleado.objects.filter(activo=True, empresa=empresa).order_by('nombre')
+        tipos_gasto = TipoGasto.objects.filter(empresa=empresa).order_by('nombre')
 
-    proveedor_id = request.GET.get('proveedor')
-    empleado_id = request.GET.get('empleado')
-    tipo_gasto = request.GET.get('tipo_gasto')
+    proveedor_id = request.GET.get("proveedor")
+    empleado_id = request.GET.get("empleado")
+    tipo_gasto = request.GET.get("tipo_gasto")
 
     if proveedor_id:
         gastos = gastos.filter(proveedor_id=proveedor_id)
@@ -155,21 +180,24 @@ def gastos_lista(request):
     if tipo_gasto:
         gastos = gastos.filter(tipo_gasto=tipo_gasto)
 
-    #paginacion
-    paginator = Paginator(gastos, 25)  
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)    
+    # paginacion
+    paginator = Paginator(gastos, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
-    return render(request, 'gastos/lista.html', {
-        'gastos': gastos,                                         
-        'proveedores': proveedores,
-        'empleados': empleados,
-        'tipos_gasto': tipos_gasto,
-        'proveedor_id': proveedor_id,
-        'empleado_id': empleado_id,
-        'tipo_gasto_sel': tipo_gasto,
-        'gastos': page_obj,
-        })
+    return render(
+        request,
+        "gastos/lista.html",
+        {
+            "gastos": page_obj,
+            "proveedores": proveedores,
+            "empleados": empleados,
+            "tipos_gasto": tipos_gasto,
+            "proveedor_id": proveedor_id,
+            "empleado_id": empleado_id,
+            "tipo_gasto_sel": tipo_gasto,
+        },
+    )
 
 @login_required
 #solicitudes de pago
@@ -213,10 +241,10 @@ def gasto_editar(request, pk):
 @login_required
 def gasto_eliminar(request, pk):
     gasto = get_object_or_404(Gasto, pk=pk)
-    if request.method == 'POST':
+    if request.method == "POST":
         gasto.delete()
-        return redirect('gastos_lista')
-    return render(request, 'gastos/confirmar_eliminar.html', {'gasto': gasto})
+        return redirect("gastos_lista")
+    return render(request, "gastos/confirmar_eliminar.html", {"gasto": gasto})
 
 @login_required
 def registrar_pago_gasto(request, gasto_id):
@@ -262,29 +290,37 @@ def gasto_detalle(request, pk):
 #reporte_pagos.html
 def reporte_pagos_gastos(request):
     es_super = request.user.is_superuser
-    pagos = PagoGasto.objects.select_related('gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado')
+    pagos = PagoGasto.objects.select_related(
+        "gasto", "gasto__empresa", "gasto__proveedor", "gasto__empleado"
+    )
 
     # Filtros
-    empresas = Empresa.objects.all() if es_super else Empresa.objects.filter(pk=request.user.perfilusuario.empresa.id)
-    empresa_id = request.GET.get('empresa')
-    proveedor_id = request.GET.get('proveedor')
-    empleado_id = request.GET.get('empleado')
-    forma_pago = request.GET.get('forma_pago')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
+    empresas = (
+        Empresa.objects.all()
+        if es_super
+        else Empresa.objects.filter(pk=request.user.perfilusuario.empresa.id)
+    )
+    empresa_id = request.GET.get("empresa")
+    proveedor_id = request.GET.get("proveedor")
+    empleado_id = request.GET.get("empleado")
+    forma_pago = request.GET.get("forma_pago")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
 
     if not es_super:
         pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
-        proveedores = Proveedor.objects.filter(empresa=request.user.perfilusuario.empresa)
-        empleados = Empleado.objects.filter(empresa=request.user.perfilusuario.empresa)
+        proveedores = Proveedor.objects.filter(
+            empresa=request.user.perfilusuario.empresa
+        ).order_by('nombre')
+        empleados = Empleado.objects.filter(empresa=request.user.perfilusuario.empresa).order_by('nombre')
     else:
         if empresa_id:
             pagos = pagos.filter(gasto__empresa_id=empresa_id)
-            proveedores = Proveedor.objects.filter(empresa_id=empresa_id)
-            empleados = Empleado.objects.filter(empresa_id=empresa_id)
+            proveedores = Proveedor.objects.filter(empresa_id=empresa_id).order_by('nombre')
+            empleados = Empleado.objects.filter(empresa_id=empresa_id).order_by('nombre')
         else:
-            proveedores = Proveedor.objects.all()
-            empleados = Empleado.objects.all()
+            proveedores = Proveedor.objects.all().order_by('nombre')
+            empleados = Empleado.objects.all().order_by('nombre')
 
     if proveedor_id:
         pagos = pagos.filter(gasto__proveedor_id=proveedor_id)
@@ -297,32 +333,76 @@ def reporte_pagos_gastos(request):
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
 
-    total = pagos.aggregate(total=Sum('monto'))['total'] or 0
 
-    #proveedores = Proveedor.objects.all()
-    #empleados = Empleado.objects.all()
-    FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
+    pagos_caja_chica = GastoCajaChica.objects.all()
+    vales_caja_chica = ValeCaja.objects.all()
+    if not es_super:
+        pagos_caja_chica = pagos_caja_chica.filter(
+            fondeo__empresa=request.user.perfilusuario.empresa
+        )
+        vales_caja_chica = vales_caja_chica.filter(
+            fondeo__empresa=request.user.perfilusuario.empresa
+        )
+    else:
+        if empresa_id:
+            pagos_caja_chica = pagos_caja_chica.filter(fondeo__empresa_id=empresa_id)
+            vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
+    if proveedor_id:
+        pagos_caja_chica = pagos_caja_chica.filter(proveedor_id=proveedor_id)
+    # Filtrar vales por empleado si corresponde
+    if empleado_id:
+        # Si tienes una relación con Empleado, ajusta aquí. Si no, filtra por nombre:
+        vales_caja_chica = (
+            vales_caja_chica.filter(
+                recibido_por=Empleado.objects.filter(pk=empleado_id).first().nombre
+            )
+            if Empleado.objects.filter(pk=empleado_id).exists()
+            else vales_caja_chica
+        )
+    if fecha_inicio:
+        pagos_caja_chica = pagos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        pagos_caja_chica = pagos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
-    #paginacion
+    total_regular = pagos.aggregate(total=Sum("monto"))["total"] or 0
+    total_caja_chica = pagos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
+    total_vales_caja_chica = (
+        vales_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
+    )
+    total_general = total_regular + total_caja_chica + total_vales_caja_chica
+
+    FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
+
     paginator = Paginator(pagos, 25)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
-    
-    return render(request, 'gastos/reporte_pagos.html', {
-        'pagos': pagos,
-        'empresas': empresas,
-        'empresa_id': empresa_id,
-        'proveedores': proveedores,
-        'empleados': empleados,
-        'forma_pago_actual': forma_pago,
-        'total': total,
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
-        'proveedor_id': proveedor_id,
-        'empleado_id': empleado_id,
-        'formas_pago': FORMAS_PAGO,
-        'pagos': page_obj,
-    })
+
+    return render(
+        request,
+        "gastos/reporte_pagos.html",
+        {
+            "pagos": pagos,
+            "pagos_caja_chica": pagos_caja_chica,
+            "vales_caja_chica": vales_caja_chica,
+            "empresas": empresas,
+            "empresa_id": empresa_id,
+            "proveedores": proveedores,
+            "empleados": empleados,
+            "forma_pago_actual": forma_pago,
+            "total": total_regular,
+            "total_caja_chica": total_caja_chica,
+            "total_vales_caja_chica": total_vales_caja_chica,
+            "total_general": total_general,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "proveedor_id": proveedor_id,
+            "empleado_id": empleado_id,
+            "formas_pago": FORMAS_PAGO,
+            "pagos": page_obj,
+        },
+    )
 
 @login_required
 #dasboard_pagos.html
@@ -330,22 +410,26 @@ def dashboard_pagos_gastos(request):
     es_super = request.user.is_superuser
     anio_actual = datetime.now().year
     mes_actual = datetime.now().month
-    anio = int(request.GET.get('anio', anio_actual))
-    mes= request.GET.get('mes')    
+    anio = int(request.GET.get("anio", anio_actual))
+    mes = request.GET.get("mes")
 
-    empresas = Empresa.objects.all() if es_super else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
-    empresa_id = request.GET.get('empresa')
-    proveedor_id = request.GET.get('proveedor')
-    empleado_id = request.GET.get('empleado')
-    forma_pago = request.GET.get('forma_pago')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
+    empresas = (
+        Empresa.objects.all()
+        if es_super
+        else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
+    )
+    empresa_id = request.GET.get("empresa")
+    proveedor_id = request.GET.get("proveedor")
+    empleado_id = request.GET.get("empleado")
+    forma_pago = request.GET.get("forma_pago")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
 
-      # NUEVOS FILTROS
-    grupo_id = request.GET.get('grupo')
-    subgrupo_id = request.GET.get('subgrupo')
-    tipo_gasto_id = request.GET.get('tipo_gasto')
-    
+    # NUEVOS FILTROS
+    grupo_id = request.GET.get("grupo")
+    subgrupo_id = request.GET.get("subgrupo")
+    tipo_gasto_id = request.GET.get("tipo_gasto")
+
     if es_super:
         tipos_gasto = TipoGasto.objects.all()
     else:
@@ -369,22 +453,31 @@ def dashboard_pagos_gastos(request):
     if tipo_gasto_id:
         base_gastos &= Q(tipo_gasto_id=tipo_gasto_id)
     if mes:
-        base_gastos &= Q(fecha__month=mes)      
+        base_gastos &= Q(fecha__month=mes)
 
     # OPTIMIZACIÓN: select_related para evitar N+1 en relaciones ForeignKey
-    gastos = Gasto.objects.filter(base_gastos).select_related(
-        'empresa', 'proveedor', 'empleado', 'tipo_gasto', 'tipo_gasto__subgrupo', 'tipo_gasto__subgrupo__grupo'
-    ).prefetch_related('pagos')
-    # Gastos registrados ese año y filtro empresa
-    #gastos = Gasto.objects.filter(base_gastos)
+    gastos = (
+        Gasto.objects.filter(base_gastos)
+        .select_related(
+            "empresa",
+            "proveedor",
+            "empleado",
+            "tipo_gasto",
+            "tipo_gasto__subgrupo",
+            "tipo_gasto__subgrupo__grupo",
+        )
+        .prefetch_related("pagos")
+    )
 
     # PAGOS
     pagos = PagoGasto.objects.filter(gasto__in=gastos).select_related(
-        'gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado', 'gasto__tipo_gasto'
+        "gasto",
+        "gasto__empresa",
+        "gasto__proveedor",
+        "gasto__empleado",
+        "gasto__tipo_gasto",
     )
-    # PAGOS
-    #pagos = PagoGasto.objects.filter(gasto__in=gastos)
-    
+
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
     if fecha_inicio:
@@ -392,37 +485,97 @@ def dashboard_pagos_gastos(request):
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
 
-    # PAGOS POR MES
-    # pagos_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    # pagos_mensuales = [0] * 12
-    # for p in pagos_mes:
-    #     mes_idx = p['mes'].month - 1
-    #     pagos_mensuales[mes_idx] = float(p['total'])
-    pagos_mes = pagos.annotate(mes=ExtractMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    # Caja chica y vales filtrados por tipo de gasto
+    from caja_chica.models import GastoCajaChica, ValeCaja
+
+    pagos_caja_chica = GastoCajaChica.objects.all()
+    vales_caja_chica = ValeCaja.objects.all()
+    if not es_super:
+        pagos_caja_chica = pagos_caja_chica.filter(
+            fondeo__empresa=request.user.perfilusuario.empresa
+        )
+        vales_caja_chica = vales_caja_chica.filter(
+            fondeo__empresa=request.user.perfilusuario.empresa
+        )
+    elif es_super and empresa_id:
+        pagos_caja_chica = pagos_caja_chica.filter(fondeo__empresa_id=empresa_id)
+        vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
+    if proveedor_id:
+        pagos_caja_chica = pagos_caja_chica.filter(proveedor_id=proveedor_id)
+    if tipo_gasto_id:
+        pagos_caja_chica = pagos_caja_chica.filter(tipo_gasto_id=tipo_gasto_id)
+        vales_caja_chica = vales_caja_chica.filter(tipo_gasto_id=tipo_gasto_id)
+    if empleado_id:
+        vales_caja_chica = (
+            vales_caja_chica.filter(
+                recibido_por=Empleado.objects.filter(pk=empleado_id).first().nombre
+            )
+            if Empleado.objects.filter(pk=empleado_id).exists()
+            else vales_caja_chica
+        )
+    if mes:
+        pagos_caja_chica = pagos_caja_chica.filter(fecha__month=mes)
+        vales_caja_chica = vales_caja_chica.filter(fecha__month=mes)
+    if fecha_inicio:
+        pagos_caja_chica = pagos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        pagos_caja_chica = pagos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
+
+    # Sumar pagos normales, caja chica y vales por mes
+    pagos_mes = (
+        pagos.annotate(mes=ExtractMonth("fecha_pago"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
     pagos_mensuales = [0] * 12
     for p in pagos_mes:
-        mes_idx = p['mes'] - 1
-        pagos_mensuales[mes_idx] = float(p['total'])
+        mes_idx = p["mes"] - 1
+        pagos_mensuales[mes_idx] = float(p["total"])
+
+    # Sumar gastos de caja chica por mes
+    caja_chica_mes = (
+        pagos_caja_chica.annotate(mes=ExtractMonth("fecha"))
+        .values("mes")
+        .annotate(total=Sum("importe"))
+        .order_by("mes")
+    )
+    for c in caja_chica_mes:
+        mes_idx = c["mes"] - 1
+        pagos_mensuales[mes_idx] += float(c["total"])
+
+    # Sumar vales por mes
+    vales_mes = (
+        vales_caja_chica.annotate(mes=ExtractMonth("fecha"))
+        .values("mes")
+        .annotate(total=Sum("importe"))
+        .order_by("mes")
+    )
+    for v in vales_mes:
+        mes_idx = v["mes"] - 1
+        pagos_mensuales[mes_idx] += float(v["total"])
 
     # GASTOS POR MES (optimizado)
-    gastos_por_mes = gastos.annotate(mes=ExtractMonth('fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    gastos_mensuales_dict = {g['mes']: float(g['total']) for g in gastos_por_mes}
+    gastos_por_mes = (
+        gastos.annotate(mes=ExtractMonth("fecha"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
+    gastos_mensuales_dict = {g["mes"]: float(g["total"]) for g in gastos_por_mes}
 
     # PAGOS POR MES (optimizado)
-    pagos_gastos_por_mes = pagos.annotate(mes=ExtractMonth('gasto__fecha')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    pagos_gastos_mensuales_dict = {p['mes']: float(p['total']) for p in pagos_gastos_por_mes}    
-
-    # SALDOS PENDIENTES (por mes)
-    # saldos_mes = []
-    # for m in range(1, 13):
-    #     # Gastos registrados ese mes
-    #     gastos_mes = gastos.filter(fecha__month=m)
-    #     monto_gastos_mes = gastos_mes.aggregate(total=Sum('monto'))['total'] or 0
-    #     pagos_gastos_mes = PagoGasto.objects.filter(
-    #         gasto__in=gastos_mes,
-    #     ).aggregate(total=Sum('monto'))['total'] or 0
-    #     saldo = float(monto_gastos_mes) - float(pagos_gastos_mes or 0)
-    #     saldos_mes.append(saldo)
+    pagos_gastos_por_mes = (
+        pagos.annotate(mes=ExtractMonth("gasto__fecha"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
+    pagos_gastos_mensuales_dict = {
+        p["mes"]: float(p["total"]) for p in pagos_gastos_por_mes
+    }
 
     # OPTIMIZACIÓN: calcular saldos pendientes por mes directamente
     # SALDOS PENDIENTES (por mes) - solo 2 queries
@@ -433,33 +586,21 @@ def dashboard_pagos_gastos(request):
         saldo = monto_gastos_mes - pagos_gastos_mes
         saldos_mes.append(saldo)
 
-    # PRESUPUESTO POR MES
-    # presupuesto_mes = []
-    # for m in range(1, 13):
-    #     pres = Presupuesto.objects.filter(empresa__in=empresas, anio=anio, mes=m)
-    #     if grupo_id:
-    #         pres = pres.filter(tipo_gasto__subgrupo__grupo_id=grupo_id)
-    #     if subgrupo_id:
-    #         pres = pres.filter(tipo_gasto__subgrupo_id=subgrupo_id)
-    #     if tipo_gasto_id:
-    #         pres = pres.filter(tipo_gasto_id=tipo_gasto_id)
-    #     pres_total = pres.aggregate(total=Sum('monto'))['total'] or 0
-    #     presupuesto_mes.append(float(pres_total))
-
-     # PRESUPUESTO POR MES (optimizado, solo 1 query)
-    presupuestos_qs = Presupuesto.objects.filter(
-        empresa__in=empresas,
-        anio=anio
-    )
+    # PRESUPUESTO POR MES (optimizado, solo 1 query)
+    presupuestos_qs = Presupuesto.objects.filter(empresa__in=empresas, anio=anio)
     if grupo_id:
-        presupuestos_qs = presupuestos_qs.filter(tipo_gasto__subgrupo__grupo_id=grupo_id)
+        presupuestos_qs = presupuestos_qs.filter(
+            tipo_gasto__subgrupo__grupo_id=grupo_id
+        )
     if subgrupo_id:
         presupuestos_qs = presupuestos_qs.filter(tipo_gasto__subgrupo_id=subgrupo_id)
     if tipo_gasto_id:
         presupuestos_qs = presupuestos_qs.filter(tipo_gasto_id=tipo_gasto_id)
 
-    presupuestos_por_mes = presupuestos_qs.values('mes').annotate(total=Sum('monto')).order_by('mes')
-    presupuesto_mes_dict = {p['mes']: float(p['total']) for p in presupuestos_por_mes}
+    presupuestos_por_mes = (
+        presupuestos_qs.values("mes").annotate(total=Sum("monto")).order_by("mes")
+    )
+    presupuesto_mes_dict = {p["mes"]: float(p["total"]) for p in presupuestos_por_mes}
     presupuesto_mes = [presupuesto_mes_dict.get(m, 0.0) for m in range(1, 13)]
 
     # --- FILTRAR SOLO MESES TRANSCURRIDOS O EL MES SELECCIONADO ---
@@ -480,7 +621,7 @@ def dashboard_pagos_gastos(request):
         meses = [calendar.month_name[m] for m in range(1, meses_mostrar + 1)]
         pagos_mensuales = pagos_mensuales[:meses_mostrar]
         saldos_mes = saldos_mes[:meses_mostrar]
-        presupuesto_mes = presupuesto_mes[:meses_mostrar]    
+        presupuesto_mes = presupuesto_mes[:meses_mostrar]
 
     # KPI totales
     total_pagado = sum(pagos_mensuales)
@@ -490,45 +631,47 @@ def dashboard_pagos_gastos(request):
     # Catálogos
     proveedores = Proveedor.objects.all()
     empleados = Empleado.objects.all()
-    FORMAS_PAGO = PagoGasto._meta.get_field('forma_pago').choices
+    FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
     grupos = GrupoGasto.objects.all()
     subgrupos = SubgrupoGasto.objects.all()
-    #tipos_gasto = TipoGasto.objects.all()
 
-    return render(request, 'gastos/dashboard_pagos.html', {
-        'empresas': empresas,
-        'empresa_id': empresa_id,
-        'anio': anio,
-        'total_pagado': total_pagado,
-        'total_pendiente': total_pendiente,
-        'total_presupuesto': total_presupuesto,
-        'meses': meses,
-        'pagos_mensuales': pagos_mensuales,
-        'saldos_mes': saldos_mes,
-        'presupuesto_mes': presupuesto_mes,
-        'proveedores': proveedores,
-        'empleados': empleados,
-        'proveedor_id': proveedor_id,
-        'empleado_id': empleado_id,
-        'formas_pago': FORMAS_PAGO,
-        'forma_pago_actual': forma_pago,
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
-        'es_super': es_super,
-        'grupos': grupos,
-        'subgrupos': subgrupos,
-        'tipos_gasto': tipos_gasto,
-        'grupo_id': grupo_id,
-        'subgrupo_id': subgrupo_id,
-        'tipo_gasto_id': tipo_gasto_id,
-        'mes': mes,
-        'anio_actual': anio_actual,
-        'mes_actual': mes_actual,
-        'anio_seleccionado': anio,
-        'mes_seleccionado': mes,
-        'meses_mostrar': meses_mostrar,
-
-    })
+    return render(
+        request,
+        "gastos/dashboard_pagos.html",
+        {
+            "empresas": empresas,
+            "empresa_id": empresa_id,
+            "anio": anio,
+            "total_pagado": total_pagado,
+            "total_pendiente": total_pendiente,
+            "total_presupuesto": total_presupuesto,
+            "meses": meses,
+            "pagos_mensuales": pagos_mensuales,
+            "saldos_mes": saldos_mes,
+            "presupuesto_mes": presupuesto_mes,
+            "proveedores": proveedores,
+            "empleados": empleados,
+            "proveedor_id": proveedor_id,
+            "empleado_id": empleado_id,
+            "formas_pago": FORMAS_PAGO,
+            "forma_pago_actual": forma_pago,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "es_super": es_super,
+            "grupos": grupos,
+            "subgrupos": subgrupos,
+            "tipos_gasto": tipos_gasto,
+            "grupo_id": grupo_id,
+            "subgrupo_id": subgrupo_id,
+            "tipo_gasto_id": tipo_gasto_id,
+            "mes": mes,
+            "anio_actual": anio_actual,
+            "mes_actual": mes_actual,
+            "anio_seleccionado": anio,
+            "mes_seleccionado": mes,
+            "meses_mostrar": meses_mostrar,
+        },
+    )
 
 #exportar pagos de gastos a Excel
 @login_required
@@ -584,7 +727,7 @@ def exportar_pagos_gastos_excel(request):
             gasto.empleado.nombre if gasto.empleado else ''
         )
         ws.append([
-            pago.fecha_pago.strftime('%d/%m/%Y') if pago.fecha_pago else '',
+            pago.fecha_pago if pago.fecha_pago else '',
             gasto.empresa.nombre if gasto.empresa else '',
             origen,
             gasto.descripcion,
@@ -846,7 +989,7 @@ def exportar_gastos_lista_excel(request):
 
     for gasto in gastos:
         ws.append([
-            gasto.fecha.strftime('%Y-%m-%d') if gasto.fecha else '',
+            gasto.fecha if gasto.fecha else '',
             gasto.empresa.nombre if gasto.empresa else '',
             gasto.proveedor.nombre if gasto.proveedor else '',
             gasto.empleado.nombre if gasto.empleado else '',
