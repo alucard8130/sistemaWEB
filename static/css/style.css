@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 14/08/2025
+    Date of modification: 18/08/2025
     Description: General styles for the GAC system   
 */
     
@@ -34,6 +34,12 @@ html, body {
 .btn-light-shadow:hover {
     border-color: rgba(0, 123, 255, 0.4);
     box-shadow: 0 0 25px rgba(0, 123, 255, 0.3);
+}
+
+.dashboard-panel {
+    background-color: #f8f9fa; /* gris muy claro */
+    border-radius: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* sombra suave */
 }
 
 /* Enterprise new button */
@@ -100,6 +106,16 @@ html, body {
 .card-header.pastel-red {
         background-color: #f8d7da; 
         color: #721c24; 
+}
+
+/* Azul pastel para light */
+.card-header-pastel {
+    background-color: #afdff5; /* azul pastel suave */
+}
+
+/* Texto azul marino en modo normal */
+body:not(.dark-mode) .card-header-pastel {
+    color: #02255b; /* azul marino */
 }
 
 .alert.pastel-gray {
@@ -311,6 +327,21 @@ body.dark-mode .btn-verde-fuerte {
     border-color: #0f845d;
 }
 
+/* Dark mode */
+body.dark-mode .dashboard-panel {
+    background-color: #1a1a1a; /* fondo oscuro */
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.05);
+}
+/* Header text */
+body.dark-mode .card-header-pastel {
+    background-color: #003366; /*1b2a41 Azul marino elegante */
+}
+
+/* Texto blanco en dark mode */
+body.dark-mode .card-header-pastel {
+    color: #ffffff;
+}
+
 /* Mode dark button */
 body.dark-mode .btn-light-shadow {
     color: white;
@@ -469,6 +500,7 @@ body.dark-mode .input-group-text {
     width: 100%;
     background-color: #fff; 
     border-radius: 20px;
+    box-shadow: 0 0 25px rgba(0, 123, 255, 0.3); /* sombra azul sutil */
     /* margin-top: -40px;
     padding: 30px;
     
@@ -594,8 +626,8 @@ body.dark-mode .welcome-box {
 }
 
 body.dark-mode .welcome-box:hover {
-    box-shadow: 0 0 25px rgba(100, 180, 255, 0.4);
-    border-color: rgba(100, 180, 255, 0.6);
+    box-shadow: 0 0 30px rgba(100, 180, 255, 0.4); /* más clara y sutil */
+    border-color: rgba(100, 180, 255, 0.5);        /* borde ligeramente visible */
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
