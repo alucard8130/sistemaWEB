@@ -160,6 +160,7 @@ def lista_facturas(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
+    query=request.GET.get('q', '')
 
     if request.user.is_superuser:
         facturas = Factura.objects.all().order_by('-fecha_vencimiento')
@@ -180,6 +181,11 @@ def lista_facturas(request):
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id).order_by('-fecha_vencimiento')
 
+    if query:
+        facturas = facturas.filter(
+            Q(folio__icontains=query) | Q(cliente__nombre__icontains=query)
+        ).order_by('-fecha_vencimiento')
+
     facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos')    
     # Paginación
     paginator = Paginator(facturas, 25)
@@ -195,6 +201,7 @@ def lista_facturas(request):
         'local_id': local_id,
         'area_id': area_id,
         'facturas': page_obj,
+        'q': query,
     })
 
 @login_required
@@ -415,54 +422,6 @@ def confirmar_facturacion(request):
 
 @login_required
 @transaction.atomic
-# def registrar_pago(request, factura_id):
-#     factura = get_object_or_404(Factura, pk=factura_id)
-
-#     if factura.estatus == 'pagada' or factura.saldo_pendiente <= 0:
-#         messages.warning(request, "La factura ya está completamente pagada. No se pueden registrar más pagos.")
-#         return redirect('lista_facturas')
-
-#     if request.method == 'POST':
-#         form = PagoForm(request.POST,request.FILES)
-#         if form.is_valid():
-#             pago = form.save(commit=False)
-#             pago.factura = factura           # SIEMPRE antes de save()
-#             pago.registrado_por = request.user
-
-#             if pago.forma_pago == 'nota_credito':
-#                 #if factura.total_pagado > 0:
-#                     #form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
-#                 #else:    
-#                 pago.save()
-#                 factura.estatus = 'cancelada'
-#                 factura.monto = 0  # Saldo pendiente a 0
-#                 factura.save()
-#                 messages.success(request, "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00")
-#                 return redirect('lista_facturas')
-
-#             if pago.monto > factura.saldo_pendiente:
-#                 form.add_error('monto', f"El monto excede el saldo pendiente (${factura.saldo_pendiente:.2f}).")
-#             else:
-#                 pago.save()
-#                 pagos_validos = factura.pagos.exclude(forma_pago='nota_credito')
-#                 total_pagado = sum([p.monto for p in pagos_validos])
-#                 if total_pagado >= factura.monto:
-#                     factura.estatus = 'pagada'
-#                 else:
-#                     factura.estatus = 'pendiente'
-#                 factura.save()
-#                 factura.actualizar_estatus()  # Actualiza el estatus de la factura
-#                 messages.success(request, f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}")
-#                 return redirect('lista_facturas')
-#     else:
-#         form = PagoForm()
-
-#     return render(request, 'facturacion/registrar_pago.html', {
-#         'form': form,
-#         'factura': factura,
-#         'saldo': factura.saldo_pendiente,
-#     })
-
 def registrar_pago(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
 
@@ -831,7 +790,7 @@ def dashboard_saldos(request):
         'saldo_181_mas_total': saldo_181_mas_total,
     })
 
-@login_required
+
 #pagos.html
 #dashboard cuotas
 @login_required
@@ -1737,34 +1696,6 @@ def lista_facturas_otros_ingresos(request):
     return render(request, 'otros_ingresos/lista_facturas.html', {'facturas': page_obj})
 
 @login_required
-# def registrar_cobro_otros_ingresos(request, factura_id):
-#     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
-
-#     if request.method == 'POST':
-#         form = CobroForm (request.POST,request.FILES)
-#         if form.is_valid():
-#             cobro = form.save(commit=False)
-#             cobro.factura = factura
-#             cobro.registrado_por = request.user
-#             if cobro.monto > factura.saldo:
-#                 messages.error(request, "El monto del cobro no puede ser mayor al saldo pendiente de la factura.")
-#             else:    
-#                 cobro.save()
-#                 # Actualiza estatus de la factura si ya está pagada
-#                 total_cobrado = sum([c.monto for c in factura.cobros.all()])
-#                 if total_cobrado >= factura.monto:
-#                     factura.estatus = 'cobrada'
-#                     factura.save()
-#                 messages.success(request, "Cobro registrado correctamente.")
-#                 return redirect('lista_facturas_otros_ingresos')
-#     else:
-#         form = CobroForm()
-
-#     return render(request, 'otros_ingresos/registrar_cobro.html', {
-#         'form': form,
-#         'factura': factura,
-#     })
-
 def registrar_cobro_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
 
