@@ -53,6 +53,7 @@ class FacturaForm(forms.ModelForm):
         # campos no requeridos
         self.fields['local'].required = False
         self.fields['area_comun'].required = False
+        self.fields['cfdi'].disabled = True
 
         if self.user and not self.user.is_superuser:
             empresa = self.user.perfilusuario.empresa
@@ -107,8 +108,8 @@ class PagoForm(forms.ModelForm):
         }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
+        self.fields['comprobante'].disabled = True
 
     def clean(self):
         cleaned_data = super().clean()
@@ -212,6 +213,7 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        self.fields['cfdi'].disabled = True 
         if user and hasattr(user, 'perfilusuario'):
             empresa = user.perfilusuario.empresa
             self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
@@ -249,6 +251,7 @@ class CobroForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
+        self.fields['comprobante'].disabled = True
 
 class TipoOtroIngresoForm(forms.ModelForm):
     class Meta:
