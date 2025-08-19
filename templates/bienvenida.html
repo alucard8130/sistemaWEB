@@ -8,7 +8,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 10/07/2025
+        Date of modification: 18/08/2025
         Description: Main page of the application
     -->
     <!-- Agrega esto en el <head> -->
@@ -133,7 +133,7 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
       <!-- Bienvenida: entire row -->
       <div class="row justify-content-center mb-4 mt-4">
           <div class="col-lg-3">
-            <div class="welcome-box d-flex align-items-center py-2 px-2 shadow rounded" style="gap: 1rem;">
+            <div class="welcome-box d-flex align-items-center py-2 px-2" style="gap: 1rem;">
             
               <!-- Logo a la izquierda -->
               <img src="{% static 'img/logo.png' %}" alt="Logo" class="welcome-logo" style="max-width:60px;">
@@ -154,10 +154,11 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
     </main>
       <!-- Calendar and upcoming events side by side -->
       <!-- blackboard calendar  -->
+    <div class="dashboard-panel p-4 mb-4">   
       <div class="row">
         <div class="col-md-7 mb-4">
           <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
-            <div class="card-header bg-dark text-white text-center" style="border-radius: 0.8rem 0.8rem 0 0;">
+            <div class="card-header card-header-pastel text-center" style="border-radius: 0.8rem 0.8rem 0 0;">
               <strong>Calendario de eventos</strong>
             </div>
             <div class="card-body">
@@ -166,11 +167,10 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
           </div>
         </div>
       
-      
         <!-- Floating upcoming events card -->
         <div class="col-md-3 mb-4">
           <div class="card shadow-lg p-3" style="background: #fff; border-radius: 1rem;">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header card-header-pastel text-center">
               <strong>Próximos eventos</strong>
             </div>
             <ul class="list-group list-group-flush" style="max-height: 280px; overflow-y: auto;">
@@ -191,6 +191,7 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
           </div>
         </div>
       </div>
+    </div>
   <!--  </main>> -->
  
       <!-- Modal para nuevo evento -->
