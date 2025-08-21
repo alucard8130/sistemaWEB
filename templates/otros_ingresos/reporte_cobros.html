@@ -89,7 +89,7 @@
                         <th>Monto</th>
                         <th>Forma cobro</th>
                         <th>Folio</th>
-                        <th>Comprobante</th>
+                        {% comment %} <th>Comprobante</th> {% endcomment %}
                         <th>Comentario</th>
                     </tr>
                 </thead>
@@ -105,7 +105,7 @@
                         <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                         <td>{{ cobro.get_forma_cobro_display }}</td>
                         <td>{{ cobro.factura.folio }}</td>
-                        <td>
+                        {% comment %} <td>
                             {% if cobro.comprobante %}
                                 <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Comprobante">
                                     <i class="bi-file-earmark-pdf me-1"></i>
@@ -113,7 +113,7 @@
                             {% else %}
                                 -
                             {% endif %}
-                        </td>
+                        </td> {% endcomment %}
                         <td>{{ cobro.observaciones }}</td>
                     </tr>
                     {% empty %}
