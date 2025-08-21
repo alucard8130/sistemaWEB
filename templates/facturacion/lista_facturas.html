@@ -123,7 +123,7 @@
                         <th>Concepto</th>
                         <th>Estatus</th>
                         <th>Acciones</th>
-                        <th>CFDI</th>
+                        {% comment %} <th>CFDI</th> {% endcomment %}
                         <th>Historial</th>
                     </tr>
                 </thead>
@@ -164,7 +164,7 @@
                                     <span class="text-muted"></span>
                                 {% endif %}
                             </td>
-                            <td>
+                            {% comment %} <td>
                                 {% if factura.cfdi and factura.cfdi|archivo_existe %}
                                     <a href="{{ factura.cfdi.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="ver CFDI">
                                         <i class="bi bi-file-earmark-pdf me-1"></i>
@@ -172,7 +172,7 @@
                                 {% elif factura.cfdi %}
                                     
                                 {% endif %}
-                            </td>
+                            </td> {% endcomment %}
                                 <td>
                                     <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
                                         <i class="bi bi-eye me-1"></i> 
