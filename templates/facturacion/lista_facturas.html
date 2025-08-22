@@ -159,15 +159,13 @@
                                     </a>
                                     <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
                                         <i class="bi bi-pencil-square me-1"></i> 
-                                    </a>
-                  
-                                <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
-                                        </a>
-                  
+                                    </a>  
                                 {% else %}
                                     <span class="text-muted"></span>
                                 {% endif %}
+                                  <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
+                                        </a>
                             </td>
                             {% comment %} <td>
                                 {% if factura.cfdi and factura.cfdi|archivo_existe %}
