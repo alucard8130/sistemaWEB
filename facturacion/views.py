@@ -1936,3 +1936,36 @@ def tipos_otro_ingreso_json(request):
     tipos = TipoOtroIngreso.objects.filter(empresa=request.user.perfilusuario.empresa)
     data = [{'id': t.id, 'nombre': t.nombre} for t in tipos]
     return JsonResponse({'tipos': data})
+
+
+@login_required
+def recibo_factura(request, factura_id):
+    factura = get_object_or_404(Factura, pk=factura_id)
+    cliente = factura.cliente
+    empresa = factura.empresa
+    return render(
+        request,
+        "facturacion/recibo_factura.html",
+        {
+            "factura": factura,
+            "cliente": cliente,
+            "empresa": empresa,
+        },
+    )
+
+@login_required
+def recibo_pago(request, pago_id):
+    pago = get_object_or_404(Pago, pk=pago_id)
+    factura = pago.factura
+    cliente = factura.cliente
+    empresa = factura.empresa
+    return render(
+        request,
+        "facturacion/recibo_pago.html",
+        {
+            "pago": pago,
+            "factura": factura,
+            "cliente": cliente,
+            "empresa": empresa,
+        },
+    )    

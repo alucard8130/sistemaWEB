@@ -6,6 +6,7 @@ from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
 from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, registrar_gasto_caja_chica
+from facturacion.views import recibo_factura, recibo_pago
 from principal.views import cancelar_suscripcion, crear_evento, crear_sesion_pago, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
@@ -79,6 +80,8 @@ urlpatterns = [
     path("lista_vales/", lista_vales_caja_chica, name="lista_vales_caja_chica"),
     path("detalle_fondeo/<int:fondeo_id>/", detalle_fondeo, name="detalle_fondeo"),
     path("imprimir_vale/<int:vale_id>/", imprimir_vale_caja, name="imprimir_vale_caja"),
+    path('factura/<int:factura_id>/recibo/', recibo_factura, name='recibo_factura'),
+    path('recibo_pago/<int:pago_id>/', recibo_pago, name='recibo_pago'),
 ]
 
 if settings.DEBUG:

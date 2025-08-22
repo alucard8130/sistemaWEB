@@ -102,7 +102,7 @@
                         <th>Folio</th>
                         <th>Fecha Cobro</th>
                         <th>Comentarios</th>
-                        {% comment %} <th>Comprobante</th> {% endcomment %}
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -125,7 +125,12 @@
                             <td>{{ pago.forma_pago|title }}</td>
                             <td>{{ pago.factura.folio }}</td>
                             <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td> 
-                            <td>{{ pago.observaciones}}</td> 
+                            <td>{{ pago.observaciones}}</td>
+                            <td>
+                            <a href="{% url 'recibo_pago' pago.id %}" class="btn btn-sm btn-outline-dark" title="Imprimir Documento" target="_blank">
+                                <i class="bi bi-printer"></i>
+                            </a>
+                        </td> 
                             {% comment %} <td>
                                 {% if pago.comprobante and pago.comprobante|archivo_existe %}
                                     <a href="{{ pago.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Comprobante">

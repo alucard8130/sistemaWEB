@@ -1,0 +1,175 @@
+{%load humanize%}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Recibo de Cobro de Cuota</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .recibo-container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 32px 40px 24px 40px;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo img {
+            max-width: 180px;
+            max-height: 80px;
+        }
+        .empresa-info {
+            text-align: center;
+            margin-bottom: 18px;
+        }
+        .empresa-info h2 {
+            margin: 0;
+            font-size: 1.4em;
+            color: #2c3e50;
+        }
+        .empresa-info p {
+            margin: 2px 0;
+            color: #555;
+            font-size: 0.98em;
+        }
+        .recibo-title {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 18px 0 12px 0;
+            color: #007bff;
+        }
+        .datos-section {
+            margin-bottom: 18px;
+        }
+        .datos-section h4 {
+            margin-bottom: 6px;
+            color: #444;
+            font-size: 1.08em;
+        }
+        .datos-section table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .datos-section td {
+            padding: 4px 0;
+            font-size: 0.98em;
+        }
+        .factura-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+        .factura-table th, .factura-table td {
+            border-bottom: 1px solid #eaeaea;
+            padding: 8px 4px;
+            text-align: left;
+            font-size: 0.98em;
+        }
+        .factura-table th {
+            background: #f1f1f1;
+            color: #333;
+        }
+        .total {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #007bff;
+            text-align: right;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 28px;
+            color: #888;
+            font-size: 0.95em;
+        }
+        @media print {
+            body { background: #fff; }
+            .recibo-container { box-shadow: none; }
+            .footer { color: #444; }
+            button { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="recibo-container">
+        {% comment %} <div class="logo">
+            {% if empresa.logo %}
+                <img src="{{ empresa.logo.url }}" alt="Logo {{ empresa.nombre }}">
+            {% else %}
+                <span style="font-size:2em;color:#007bff;font-weight:bold;">{{ empresa.nombre }}</span>
+            {% endif %}
+        </div> {% endcomment %}
+        <div class="empresa-info">
+            <h2>{{ empresa.nombre }}</h2>
+            {% if empresa.direccion %}<p>{{ empresa.direccion }}</p>{% endif %}
+            {% if empresa.rfc %}<p>RFC: {{ empresa.rfc }}</p>{% endif %}
+            {% if empresa.telefono %}<p>Tel: {{ empresa.telefono }}</p>{% endif %}
+            {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
+        </div>
+        <div class="recibo-title">RECIBO DE COBRO DE CUOTA</div>
+        <div style="text-align:right;margin-bottom:10px;">
+            <img src="https://barcode.tec-it.com/barcode.ashx?data={{ pago.id }}&code=Code128&dpi=96" alt="Código de barras" style="height:40px;">
+        </div>
+        <div class="datos-section">
+            <h4>Datos del Cliente</h4>
+            <table>
+                <tr><td><strong>Nombre:</strong></td><td>{{ cliente.nombre }}</td></tr>
+                {% if cliente.rfc %}<tr><td><strong>RFC:</strong></td><td>{{ cliente.rfc }}</td></tr>{% endif %}
+                {% if cliente.telefono %}<tr><td><strong>Teléfono:</strong></td><td>{{ cliente.telefono }}</td></tr>{% endif %}
+                {% if cliente.email %}<tr><td><strong>Email:</strong></td><td>{{ cliente.email }}</td></tr>{% endif %}
+            </table>
+        </div>
+        <div class="datos-section">
+            <h4>Datos del Local / Área Común</h4>
+            <table>
+                {% if factura.local %}
+                    <tr><td><strong>Local:</strong></td><td>{{ factura.local.numero }}</td></tr>
+                    <tr><td><strong>Referencia:</strong></td><td>{{ factura.local.referencia }}</td></tr>
+                {% endif %}
+                {% if factura.area_comun %}
+                    <tr><td><strong>Área Común:</strong></td><td>{{ factura.area_comun.nombre }}</td></tr>
+                    <tr><td><strong>Referencia:</strong></td><td>{{ factura.area_comun.referencia }}</td></tr>
+                {% endif %}
+            </table>
+        </div>
+        <div class="datos-section">
+            <h4>Factura</h4>
+            <p><strong>Número de Factura:</strong> {{ factura.folio }}</p>
+            <p><strong>Importe de la Factura:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="datos-section">
+            <h4>Datos del Pago</h4>
+            <table class="factura-table">
+                <tr>
+                    <th>Monto Pagado</th>
+                    <th>Fecha de Pago</th>
+                    <th>Método de Pago</th>
+                    <th>Observaciones</th>
+                </tr>
+                <tr>
+                    <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                    <td>{{ pago.fecha_pago|date:'d/m/Y' }}</td>
+                    <td>{{ pago.forma_pago|title }}</td>
+                    <td>{{ pago.observaciones }}</td>
+                </tr>
+            </table>
+        </div>
+        <div class="footer">
+            <p>Gracias por su pago.</p>
+            <p>Para cualquier duda o aclaración, comuníquese a {{ empresa.telefono }} o {{ empresa.email }}.</p>
+            <p>Este recibo es generado electrónicamente y no requiere firma.</p>
+        </div>
+        <button onclick="window.print()" class="btn btn-primary">Imprimir recibo</button>
+    </div>
+</body>
+</html>
+    </html>
