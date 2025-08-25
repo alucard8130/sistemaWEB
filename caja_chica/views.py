@@ -9,7 +9,8 @@ from .forms import FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
 
 def imprimir_vale_caja(request, vale_id):
     vale = get_object_or_404(ValeCaja, id=vale_id)
-    monto_letra = num2words(vale.importe, lang='es', to='currency', currency='MXN').capitalize()
+    texto = num2words(vale.importe, lang='es', to='currency').capitalize()
+    monto_letra = texto.replace(" euros", " pesos").replace("centimos", "centavos")
     empresa = request.user.perfilusuario.empresa
     return render(request, "caja_chica/imprimir_vale_caja.html", {"vale": vale, "monto_letra": monto_letra, "empresa": empresa})
 
