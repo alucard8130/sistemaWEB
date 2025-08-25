@@ -127,7 +127,7 @@
                             <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td> 
                             <td>{{ pago.observaciones}}</td>
                             <td>
-                            <a href="{% url 'recibo_pago' pago.id %}" class="btn btn-sm btn-outline-dark" title="Imprimir Documento" target="_blank">
+                            <a href="{% url 'recibo_pago' pago.id %}" class="btn btn-outline-primary btn-sm" title="Imprimir Documento" target="_blank">
                                 <i class="bi bi-printer"></i>
                             </a>
                         </td> 

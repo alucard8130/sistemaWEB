@@ -89,6 +89,7 @@
                         <th>Monto</th>
                         <th>Forma cobro</th>
                         <th>Folio</th>
+                        <th>Acciones</th>
                         {% comment %} <th>Comprobante</th> {% endcomment %}
                         <th>Comentario</th>
                     </tr>
@@ -105,6 +106,10 @@
                         <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                         <td>{{ cobro.get_forma_cobro_display }}</td>
                         <td>{{ cobro.factura.folio }}</td>
+                        <td> <a href="{% url 'recibo_pago_otras_cuotas' cobro.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
+                                        </a>
+                                    </td>
                         {% comment %} <td>
                             {% if cobro.comprobante %}
                                 <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Comprobante">

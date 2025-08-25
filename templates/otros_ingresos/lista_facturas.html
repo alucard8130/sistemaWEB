@@ -97,7 +97,11 @@
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
                           {% endif %}
+                          <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
+                                        </a>
                           </td>
+                          
                               {% comment %} <td>
                               {% if factura.cfdi|archivo_existe %}
                                   <a href="{{ factura.cfdi.url }}" class="btn btn-sm btn-outline-dark" target="_blank" title="Ver CFDI">

@@ -3,7 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Recibo de Cobro de Cuota</title>
+    <title>Recibo de Cobro otras Cuotas</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -115,7 +115,7 @@
             {% if empresa.telefono %}<p>Tel: {{ empresa.telefono }}</p>{% endif %}
             {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
         </div>
-        <div class="recibo-title">RECIBO DE COBRO DE CUOTA</div>
+        <div class="recibo-title">RECIBO DE COBRO DE OTRAS CUOTAS</div>
         <div style="text-align:right;margin-bottom:10px;">
             <img src="https://barcode.tec-it.com/barcode.ashx?data={{ pago.id }}&code=Code128&dpi=96" alt="Código de barras" style="height:40px;">
         </div>
@@ -129,20 +129,6 @@
             </table>
         </div>
         <div class="datos-section">
-            <h4>Datos Ubicación</h4>
-            <table>
-                {% if factura.local %}
-                    <tr><td><strong>Local:</strong></td><td>{{ factura.local.numero }}</td></tr>
-                    
-                {% else %}
-                
-                    <tr><td><strong>Área Común:</strong></td><td>{{ factura.area_comun.numero }}</td></tr>
-                    
-                {% endif %}
-                {% comment %} <tr><td><strong>Referencia:</strong></td><td>{{ factura.area_comun.referencia }}</td></tr> {% endcomment %}
-            </table>
-        </div>
-        <div class="datos-section">
             <h4>Factura</h4>
             <p><strong>Número de Factura:</strong> {{ factura.folio }}</p>
             <p><strong>Importe de la Factura:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
@@ -150,18 +136,22 @@
         <div class="datos-section">
             <h4>Datos del Pago</h4>
             <table class="factura-table">
+                <thead>
                 <tr>
-                    <th>Monto Pagado</th>
-                    <th>Fecha de Pago</th>
-                    <th>Método de Pago</th>
+                    <th>Monto Cobrado</th>
+                    <th>Fecha de Cobro</th>
+                    <th>Método de Cobro</th>
                     <th>Observaciones</th>
                 </tr>
+                </thead>
+                <tbody>
                 <tr>
                     <td>${{ pago.monto|floatformat:2|intcomma }}</td>
-                    <td>{{ pago.fecha_pago|date:'d/m/Y' }}</td>
-                    <td>{{ pago.forma_pago|title }}</td>
+                    <td>{{ pago.fecha_cobro|date:"d/m/Y" }}</td>
+                    <td>{{ pago.get_forma_cobro_display }}</td>
                     <td>{{ pago.observaciones }}</td>
                 </tr>
+                </tbody>
             </table>
         </div>
         <div class="footer">

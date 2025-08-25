@@ -1968,4 +1968,36 @@ def recibo_pago(request, pago_id):
             "cliente": cliente,
             "empresa": empresa,
         },
-    )    
+    )
+
+@login_required
+def recibo_factura_otras_cuotas(request, factura_id):
+    factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+    cliente = factura.cliente
+    empresa = factura.empresa
+    return render(
+        request,
+        "otros_ingresos/recibo_factura_otras_cuotas.html",
+        {
+            "factura": factura,
+            "cliente": cliente,
+            "empresa": empresa,
+        },
+    )
+
+@login_required
+def recibo_pago_otras_cuotas(request, pago_id):
+    pago = get_object_or_404(CobroOtrosIngresos, pk=pago_id)
+    factura = pago.factura
+    cliente = factura.cliente
+    empresa = factura.empresa
+    return render(
+        request,
+        "otros_ingresos/recibo_pago_otras_cuotas.html",
+        {
+            "pago": pago,
+            "factura": factura,
+            "cliente": cliente,
+            "empresa": empresa,
+        },
+    )

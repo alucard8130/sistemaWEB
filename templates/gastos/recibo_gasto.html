@@ -3,7 +3,7 @@
     <html lang="es">
       <head>
         <meta charset="UTF-8" />
-        <title>Factura Cuotas</title>
+        <title>Solicitud Gastos</title>
         <style>
           body {
             font-family: "Segoe UI", Arial, sans-serif;
@@ -118,113 +118,125 @@
             {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
         </div>
               <div class="recibo-title" style="color: #d35400">
-          {% if factura.local %}      
-          FACTURA  CUOTA DE MANTENIMIENTO
-          {% else %}
-          FACTURA  CUOTA DE AREA COMUN
-          {% endif %}
+                Solicitud de Pago #{{ gasto.id }}
               </div>
               <div style="text-align: right; margin-bottom: 10px">
                 <img
-                  src="https://barcode.tec-it.com/barcode.ashx?data={{ factura.folio }}&code=Code128&dpi=96"
+                  src="https://barcode.tec-it.com/barcode.ashx?data={{ gasto.id }}&code=Code128&dpi=96"
                   alt="Código de barras"
                   style="height: 40px"
                 />
               </div>
               <div class="datos-section">
-                <h4>Datos del Cliente</h4>
+                <h4>Beneficiario:</h4>
                 <table>
+                {% if proveedor.nombre %}
                   <tr>
                     <td><strong>Nombre:</strong></td>
-                    <td>{{ cliente.nombre }}</td>
+                    <td>{{ proveedor.nombre }}</td>
                   </tr>
-                  {% if cliente.rfc %}
+                 
                   <tr>
                     <td><strong>RFC:</strong></td>
-                    <td>{{ cliente.rfc }}</td>
+                    <td>{{ proveedor.rfc }}</td>
                   </tr>
-                  {% endif %} {% if cliente.telefono %}
+                 
                   <tr>
                     <td><strong>Teléfono:</strong></td>
-                    <td>{{ cliente.telefono }}</td>
+                    <td>{{ proveedor.telefono }}</td>
                   </tr>
-                  {% endif %} {% if cliente.email %}
+                 
                   <tr>
                     <td><strong>Email:</strong></td>
-                    <td>{{ cliente.email }}</td>
+                    <td>{{ proveedor.email }}</td>
                   </tr>
-                  {% endif %}
+                {% elif empleado.nombre %}
+                  <tr>
+                    <td><strong>Nombre:</strong></td>
+                    <td>{{ empleado.nombre }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>RFC:</strong></td>
+                    <td>{{ empleado.rfc }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Teléfono:</strong></td>
+                    <td>{{ empleado.telefono }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Email:</strong></td>
+                    <td>{{ empleado.email }}</td>
+                  </tr>
+                {% endif %}
                 </table>
               </div>
               <div class="datos-section">
-                <h4>Datos Ubicacion</h4>
+                <h4>Datos:</h4>
                 <table>
-                  {% if factura.local %}
                   <tr>
-                    <td><strong>Local:</strong></td>
-                    <td>{{ factura.local.numero }}</td>
+                    <td><strong>Descripción del Gasto:</strong></td>
+                    <td>{{ gasto.descripcion }}</td>
                   </tr>
                   <tr>
-                    <td><strong>Referencia:</strong></td>
-                    <td>{{ factura.local.referencia }}</td>
-                  </tr>
-                  {% endif %} {% if factura.area_comun %}
-                  <tr>
-                    <td><strong>Área Común:</strong></td>
-                    <td>{{ factura.area_comun.numero }}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Referencia:</strong></td>
-                    <td>{{ factura.area_comun.referencia }}</td>
-                  </tr>
-                  {% endif %}
-                  <tr>
-                    <td><strong>Tipo Cuota:</strong></td>
-                    <td>{{ factura.tipo_cuota }}</td>
+                    <td><strong>Tipo Gasto:</strong></td>
+                    <td>{{ gasto.tipo_gasto }}</td>
                 </table>
               </div>
               <div class="datos-section">
-                <h4>Datos de la Factura</h4>
+                <h4>Factura de la Solicitud de pago</h4>
                 <table class="factura-table">
                   <tr>
-                    <th>Folio</th>
+                    <th>N.Factura</th>
                     <th>Monto</th>
-                    <th>Saldo</th>
+                    {% comment %} <th>Saldo</th> {% endcomment %}
                     {% comment %} <th>Fecha de Emisión</th> {% endcomment %}
-                    <th>Fecha de Vencimiento</th>
-                    <th>Concepto</th>
+                    <th>Fecha</th>
+                    {% comment %} <th>Concepto</th> {% endcomment %}
                     <th>Estado</th>
                   </tr>
                   <tr>
-                    <td>{{ factura.folio }}</td>
-                    <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                    <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
-                    {% comment %} <td>{{ factura.fecha_emision|date:'d/m/Y' }}</td> {% endcomment %}
-                    <td>{{ factura.fecha_vencimiento|date:'d/m/Y' }}</td>
-                    <td>{{ factura.observaciones|title }}</td>
-                    <td>{{ factura.estatus|title }}</td>
+                    <td>{{ gasto.id }}</td>
+                    <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
+                    {% comment %} <td>${{ gasto.saldo_restante|floatformat:2|intcomma }}</td> {% endcomment %}
+                    {% comment %} <td>{{ gasto.fecha_emision|date:'d/m/Y' }}</td> {% endcomment %}
+                    <td>{{ gasto.fecha|date:'d/m/Y' }}</td>
+                    {% comment %} <td>{{ gasto.descripcion|title }}</td> {% endcomment %}
+                    <td>{{ gasto.get_estatus_display }}</td>
                   </tr>
                 </table>
                 <div class="total">
-                  Total: ${{ factura.monto|floatformat:2|intcomma }}
+                  Total: ${{ gasto.monto|floatformat:2|intcomma }}
                 </div>
-                {% if factura.observaciones %}
+                <div style="font-size:1em; color:#444; margin-top:8px;">
+                 <strong>Importe en letra:</strong> {{ monto_letra }}
+                </div>
+                {% comment %} {% if gasto.descripcion %}
                 <div style="margin-top: 8px; color: #888; font-size: 0.98em">
-                  <strong>Observaciones:</strong> {{ factura.observaciones }}
+                  <strong>Descripción:</strong> {{ gasto.descripcion }}
                 </div>
                 {% endif %}
-              </div>
+              </div> {% endcomment %}
               <div class="footer">
-                <p>Gracias por su preferencia.</p>
-                <p>
-                  Para cualquier duda o aclaración, comuníquese a {{ empresa.telefono }} o {{ empresa.email }}.
-                </p>
-                <p>
-                  Este documento no tiene validez fiscal ni representa el pago de ningun adeudo.
-                </p>
-              </div>
+     </div>
+<!-- Sección de firmas -->
+<div class="datos-section" style="margin-top: 40px;">
+  <table style="width:100%;">
+    <tr>
+      <td style="width:50%; text-align:center;">
+        <strong>Solicita</strong>
+        <div style="height:60px; border-bottom:1px solid #888; margin:12px 0;"></div>
+        <span style="color:#888; font-size:0.95em;">Nombre y firma</span>
+      </td>
+      <td style="width:50%; text-align:center;">
+        <strong>Autorizo</strong>
+        <div style="height:60px; border-bottom:1px solid #888; margin:12px 0;"></div>
+        <span style="color:#888; font-size:0.95em;">Nombre y firma</span>
+      </td>
+    </tr>
+  </table>
+</div>
               <button onclick="window.print()" class="btn btn-primary">
-                Imprimir factura
+                Imprimir Solicitud
               </button>
             </div>
           </div>
@@ -233,6 +245,3 @@
     </html>
   </body>
 </html>
-	
-
-

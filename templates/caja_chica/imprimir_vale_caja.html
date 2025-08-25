@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -21,10 +22,19 @@
     <div class="container mt-4">
       <div class="card shadow">
         <div class="card-body">
+          <div style="text-align: right; margin-bottom: 10px">
+                <img
+                  src="https://barcode.tec-it.com/barcode.ashx?data={{ vale.id }}&code=Code128&dpi=96"
+                  alt="Código de barras"
+                  style="height: 40px"
+                />
+              </div>
+          <h2 class="text-center">{{ empresa.nombre }}</h2>
           <h2 class="text-center mb-4">Vale de Caja Chica</h2>
           <p><strong>Fondo:</strong> {{ vale.fondeo.numero_cheque }}</p>
           <p><strong>Descripción:</strong> {{ vale.descripcion }}</p>
-          <p><strong>Importe:</strong> ${{ vale.importe }}</p>
+          <p><strong>Importe:</strong> ${{ vale.importe|floatformat:2|intcomma }}</p>
+          <p><strong>Importe en letras:</strong> {{ monto_letra }}</p>
           <p><strong>Fecha:</strong> {{ vale.fecha }}</p>
           <div class="row mt-5 mb-4">
             <div class="col-6 text-center">

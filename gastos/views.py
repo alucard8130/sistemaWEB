@@ -27,6 +27,7 @@ from django.core.paginator import Paginator
 from django.db.models import ProtectedError
 from django.db.models.functions import ExtractMonth
 from caja_chica.models import GastoCajaChica, ValeCaja
+from num2words import num2words
 
 # Create your views here.
 @login_required
@@ -1007,3 +1008,22 @@ def exportar_gastos_lista_excel(request):
     response['Content-Disposition'] = 'attachment; filename=gastos_lista.xlsx'
     wb.save(response)
     return response
+
+@login_required
+def recibo_gasto(request, gasto_id):
+    gasto = get_object_or_404(Gasto, pk=gasto_id)
+    monto_letra = num2words(gasto.monto, lang='es', to='currency', currency='MXN').capitalize()
+    proveedor = gasto.proveedor
+    empleado = gasto.empleado
+    empresa = gasto.empresa
+    return render(
+        request,
+        "gastos/recibo_gasto.html",
+        {
+            "gasto": gasto,
+            "proveedor": proveedor,
+            "empleado": empleado,
+            "empresa": empresa,
+            "monto_letra": monto_letra,
+        },
+    )

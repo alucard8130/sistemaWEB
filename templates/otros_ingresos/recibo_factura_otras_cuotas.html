@@ -3,7 +3,7 @@
     <html lang="es">
       <head>
         <meta charset="UTF-8" />
-        <title>Factura Cuotas</title>
+        <title>Factura otras Cuotas</title>
         <style>
           body {
             font-family: "Segoe UI", Arial, sans-serif;
@@ -118,11 +118,12 @@
             {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
         </div>
               <div class="recibo-title" style="color: #d35400">
-          {% if factura.local %}      
+          {% comment %} {% if factura.local %}      
           FACTURA  CUOTA DE MANTENIMIENTO
           {% else %}
           FACTURA  CUOTA DE AREA COMUN
-          {% endif %}
+          {% endif %} {% endcomment %}
+           FACTURA OTRAS CUOTAS
               </div>
               <div style="text-align: right; margin-bottom: 10px">
                 <img
@@ -157,9 +158,8 @@
                 </table>
               </div>
               <div class="datos-section">
-                <h4>Datos Ubicacion</h4>
-                <table>
-                  {% if factura.local %}
+                <h4>Datos</h4>
+                  {% comment %} {% if factura.local %}
                   <tr>
                     <td><strong>Local:</strong></td>
                     <td>{{ factura.local.numero }}</td>
@@ -177,11 +177,11 @@
                     <td><strong>Referencia:</strong></td>
                     <td>{{ factura.area_comun.referencia }}</td>
                   </tr>
-                  {% endif %}
+                  {% endif %} {% endcomment %}
                   <tr>
                     <td><strong>Tipo Cuota:</strong></td>
-                    <td>{{ factura.tipo_cuota }}</td>
-                </table>
+                    <td>{{ factura.tipo_ingreso }}</td>
+                    </tr>
               </div>
               <div class="datos-section">
                 <h4>Datos de la Factura</h4>
@@ -191,14 +191,14 @@
                     <th>Monto</th>
                     <th>Saldo</th>
                     {% comment %} <th>Fecha de Emisión</th> {% endcomment %}
-                    <th>Fecha de Vencimiento</th>
+                    <th>Perido Facturacion</th>
                     <th>Concepto</th>
                     <th>Estado</th>
                   </tr>
                   <tr>
                     <td>{{ factura.folio }}</td>
                     <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                    <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
+                    <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
                     {% comment %} <td>{{ factura.fecha_emision|date:'d/m/Y' }}</td> {% endcomment %}
                     <td>{{ factura.fecha_vencimiento|date:'d/m/Y' }}</td>
                     <td>{{ factura.observaciones|title }}</td>
