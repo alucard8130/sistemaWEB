@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 18/08/2025
+    Date of modification: 19/08/2025
     Description: General styles for the GAC system   
 */
     
@@ -337,15 +337,68 @@ body.dark-mode .card-header-pastel {
     background-color: #003366; /*1b2a41 Azul marino elegante */
 }
 
-/* Texto blanco en dark mode */
+/* Dark mode for modal */
+body.dark-mode .modal-content {
+  background-color: #2b2b2b; /* gris oscuro elegante */
+  color: #ffffff;           /* texto claro */
+}
+
+/* Modal title */
+body.dark-mode .modal-title {
+  color: #ffffff;
+}
+
+/* Inputs label*/
+body.dark-mode .form-label {
+  color: #e0e0e0; /* gris claro */
+}
+
+/* Inputs and textarea */
+body.dark-mode .form-control {
+  background-color: #3a3a3a;
+  color: #ffffff;
+  border: 1px solid #555;
+}
+
+/* Placeholders of inputs */
+body.dark-mode .form-control::placeholder {
+  color: #bbbbbb;
+}
+
+/* Secundaries buttons in dark */
+body.dark-mode .btn-secondary {
+  background-color: #555;
+  border-color: #666;
+  color: #fff;
+}
+
+
+/* White text in dark mode */
 body.dark-mode .card-header-pastel {
     color: #ffffff;
 }
 
-/* Mode dark button */
+/* Dark mode button */
 body.dark-mode .btn-light-shadow {
     color: white;
     box-shadow: 0 2px 6px rgba(255,255,255,0.1);
+}
+
+/* Headers dark mode */
+body.dark-mode h2 {
+  color: #ffffffc9 !important; 
+}
+
+/* Crear button in dark mode */
+body.dark-mode .btn-crear {
+  background-color: #165f34;
+  color: #fff;     
+  border-color: #1d7c45;     
+}
+
+body.dark-mode .btn-crear:hover {
+  background-color: #0c361e; 
+  color: #fff;
 }
 
 body.dark-mode .btn-light-shadow:hover {
@@ -354,7 +407,7 @@ body.dark-mode .btn-light-shadow:hover {
 }
 
 body.dark-mode .btn-primary {
-    background-color: #1b2a41; /* Azul marino elegante #1f1f1f, #02255b */
+    background-color: #1b2a41; /* Dark blue elegant #1f1f1f, #02255b */
     border:none;
     color: #fff;
     border-radius: 10px;
@@ -696,11 +749,13 @@ body.dark-mode .welcome-title-logo {
 h2 {
     font-size: 1.8rem;
     font-weight: 650;
-    color: #2c3e50;
+    color: #2c3e50 !important;
     border-bottom: 2px solid #ccc;
     padding-bottom: 8px;
     margin-bottom: 16px;
 }
+
+
 /* Table styles */
 .table thead th {
     color: #2c3e50;
