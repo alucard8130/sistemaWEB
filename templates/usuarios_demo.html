@@ -6,11 +6,11 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 08/8/2025
+        Date of modification: 26/08/2025
         Description: Display employees
     -->
     <meta charset="UTF-8">
-    <title>Usuarios Lista</title>
+    <title>Usuarios lista</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -22,7 +22,7 @@
 </head>
 <body>
     {% include 'navbar.html' %}
-<h2>Usuarios Demo</h2>
+<h2>Usuarios demo</h2>
 <form method="post">
     {% csrf_token %}
     <table class="table">
@@ -63,7 +63,7 @@
     </table>
     <button type="submit" name="accion" value="inactivar" class="btn btn-danger">Inactivar seleccionados</button>
     <button type="submit" name="accion" value="reactivar" class="btn btn-success">Reactivar seleccionados</button>
-    <button type="submit" name="accion" value="reactivar_todos" class="btn btn-primary">Reactivar TODOS</button>
+    <button type="submit" name="accion" value="reactivar_todos" class="btn btn-primary">Reactivar todos</button>
 </form>
  <!-- 🔹 Footer -->
     <footer>

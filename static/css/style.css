@@ -2,11 +2,11 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 19/08/2025
+    Date of modification: 26/08/2025
     Description: General styles for the GAC system   
 */
     
-/* === Estílos Generales ===*/
+/* === General Styles ===*/
 html, body {
     height: 100%;
     margin: 0;
@@ -19,10 +19,10 @@ html, body {
 .btn-verde-fuerte {
     background-color: #5c9ded;
     border-color: #5c9ded;
-    color: white; /* Asegura que el texto sea visible */
+    color: white; 
 }
 
-/* Modo light button */
+/* Light button mode */
 .btn-light-shadow {
     background-color: transparent;
     border: 1px solid transparent;
@@ -210,8 +210,9 @@ body:not(.dark-mode) .card-header-pastel {
     font-size: 0.9rem;
 }
 
+/* Title of the form (light mode) */
 .form-title {
-    background-color: #a8c7fa; /* Soft blue/grey background */
+    background-color: #a8c7fa; /* Soft blue background */
     padding: 10px 20px;
     border-radius: 8px;
     display: block;
@@ -229,6 +230,20 @@ body:not(.dark-mode) .card-header-pastel {
     background-color: #f8f9fa; 
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
 } */
+
+/* Title of the form (dark mode) */
+.dark-mode .form-title {
+    background-color: #2c4b77; /* Soft blue background */
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: block;
+    border-bottom: 4px solid rgba(0, 0, 0, 0.2); /* Blue dark line */
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 1.5rem;
+    text-align: center;
+    width: 100%;        /* Occupies the full width of its container */
+}
 
 .custom-form label {
     font-weight: 500;
@@ -265,6 +280,103 @@ body:not(.dark-mode) .card-header-pastel {
     background: linear-gradient(to right, #e0f7fa, #ffffff); 
     padding: 10px; 
     border-radius: 5px;
+}
+
+/* Danger button (light mode) */
+.btn-danger {
+    background-color: #f8d7da;  
+    color: #721c24;             
+    border-color: #f5c6cb;      
+}
+
+.btn-danger:hover {
+    background-color: #f5c6cb;  
+    color: #721c24;
+    border-color: #f5c6cb;
+}
+
+/* Danger button (dark mode) */
+.dark-mode .btn-danger {
+    background-color: #faabb2;  /* rojo pastel */
+    color: #721c24;             /* rojo oscuro para el texto */
+    border-color: #f5c6cb;      /* borde similar, para que se vea definido */
+}
+
+.dark-mode .btn-danger:hover {
+    background-color: #f88792;  /* ligeramente más intenso al hacer hover */
+    border-color: #f5c6cb;
+}
+
+/* Success button (light mode) */
+.btn-success {
+    background-color: #d4edda;  
+    color: #155724;             
+    border-color: #c3e6cb;      
+}
+
+.btn-success:hover {
+    background-color: #c3e6cb;  /* un verde ligeramente más intenso al hover */
+    color: #155724;
+    border-color: #b1dfbb;
+}
+
+/* Success button (dark mode) */
+.dark-mode .btn-success {
+    background-color: #318b46;  
+    color: #fff;             
+    border-color: #318b46;      
+}
+
+.dark-mode .btn-success:hover {
+    background-color: #176629;  /* un verde ligeramente más intenso al hover */
+    color: #fff;
+    border-color: #176629;
+}
+
+/* Dark mode */
+.dark-mode .custom-form {
+    background-color: #283e69; /* azul marino elegante */
+    color: #f5f6fa;            /* texto claro */
+    border-radius: 8px;
+}
+
+.dark-mode .custom-form .form-label {
+    color: #f5f6fa; 
+}
+
+.dark-mode .custom-form .form-select {
+    background-color: #182747;
+    color: #f5f6fa;            
+    border-color: #3a4f7a;     
+}
+
+.dark-mode .custom-form .form-select:focus {
+    background-color: #243b6b;
+    color: #f5f6fa;
+    border-color: #1b2a49;
+    box-shadow: 0 0 0 0.2rem rgba(27, 42, 73, 0.25);
+}
+
+/* Buttons */
+.dark-mode .custom-form .btn-outline-success {
+    color: #d4edda;
+    border-color: #d4edda;
+}
+
+.dark-mode .custom-form .btn-outline-success:hover {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.dark-mode .custom-form .btn-secondary {
+    background-color: #6c757d;
+    color: #f5f6fa;
+    border-color: #6c757d;
+}
+
+.dark-mode .custom-form .btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #5a6268;
 }
 
 .main-content {
@@ -466,7 +578,7 @@ body.dark-mode footer {
     margin-bottom: 8px; /* reduce el espacio entre cada campo */
 }
 
-/* Estílo para login.html Dark*/
+/* login.html (dark mode) */
 body.dark-mode .login-title {
     color: #a4afba; 
     position: relative;
@@ -759,7 +871,8 @@ h2 {
 /* Table styles */
 .table thead th {
     color: #2c3e50;
-    background-color: #a8c7fa; 
+    background-color: #a8c7fa;
+    background: linear-gradient(135deg, #a8c7fa, #a8c7fa);
 } 
 
 .table td {
@@ -777,6 +890,16 @@ h2 {
     border-bottom: 2px solid #0c4a6e;
 }
 
+/*=== Styles for Empresas/lista.html (dark) ===*/
+.dark-mode .table thead th {
+    color: #f5f6fa;              /* Texto claro */
+    background: linear-gradient(135deg, #1b2a49, #243b6b);
+}
+
+/* Hover en la fila */
+.dark-mode .table tr:hover td {
+    background-color: #44485c !important;
+}
 
 /*=== carga_masiva_clientes.html ===*/
 .form-delgado {
