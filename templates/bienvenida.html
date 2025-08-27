@@ -190,10 +190,29 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
             </ul>
           </div>
         </div>
+    <!-- Menú lateral de tickets de mantenimiento pegado a la derecha -->
+    <div class="col-md-2 mb-4 d-flex flex-column align-items-end">
+      <div class="card" style="width: 220px; position: sticky; top: 90px;">
+        <div class="card-header bg-info text-white">
+          <h6 class="mb-0">Tickets de Mantenimiento</h6>
+        </div>
+        <div class="list-group list-group-flush">
+          <a href="{% url 'crear_ticket' %}" target="_blank" class="list-group-item list-group-item-action">
+            Registrar Ticket
+          </a>
+          <a href="{% url 'lista_tickets' %}" target="_blank" class="list-group-item list-group-item-action">
+            Lista tickets
+          </a>
+          <a href="{% url 'tickets_asignados' %}" target="_blank" class="list-group-item list-group-item-action">
+            Tickets asignados
+          </a>
+        </div>
       </div>
     </div>
+  </div>
+</div>
   <!--  </main>> -->
- 
+
       <!-- Modal para nuevo evento -->
       <div class="modal fade" id="modalEvento" tabindex="-1" aria-labelledby="modalEventoLabel" aria-hidden="true">
         <div class="modal-dialog">

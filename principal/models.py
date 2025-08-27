@@ -3,6 +3,7 @@ from django.contrib.auth.models import User, AbstractUser
 from django.db import models
 from empresas.models import Empresa
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 # Create your models here.
 class PerfilUsuario(models.Model):
@@ -48,3 +49,34 @@ class Evento(models.Model):
 
     def __str__(self):
         return f"{self.titulo} ({self.fecha})"    
+    
+
+# Modulo de tickets de mantenimiento
+
+#User = get_user_model()
+
+class TicketMantenimiento(models.Model):
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('en_proceso', 'En proceso'),
+        ('resuelto', 'Resuelto'),
+    ]
+    titulo = models.CharField(max_length=200)
+    descripcion = models.TextField()
+    empleado_asignado = models.ForeignKey('empleados.Empleado', on_delete=models.SET_NULL, null=True, related_name='tickets_asignados')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
+    solucion = models.TextField(blank=True, null=True)
+    fecha_solucion = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.titulo} ({self.get_estado_display()})"    
+
+class SeguimientoTicket(models.Model):
+    ticket = models.ForeignKey('TicketMantenimiento', on_delete=models.CASCADE, related_name='seguimientos')
+    fecha = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    comentario = models.TextField()
+
+    def __str__(self):
+        return f"Seguimiento {self.fecha} - {self.usuario}"    

@@ -8,7 +8,7 @@ from areas import views
 from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from facturacion.views import recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
-from principal.views import cancelar_suscripcion, crear_evento, crear_sesion_pago, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook
+from principal.views import actualizar_ticket, agregar_seguimiento, lista_tickets, crear_ticket,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -87,6 +87,13 @@ urlpatterns = [
     path('pago_otras_cuotas/<int:pago_id>/recibo/', recibo_pago_otras_cuotas, name='recibo_pago_otras_cuotas'),
     path('recibo_gasto/<int:gasto_id>/', recibo_gasto, name='recibo_gasto'),
     path("recibo_fondeo/<int:fondeo_id>/", recibo_fondeo_caja, name="recibo_fondeo"),
+    path("tickets/", lista_tickets, name="lista_tickets"),
+    path("tickets/crear/", crear_ticket, name="crear_ticket"),
+    path("tickets/asignados/", tickets_asignados, name="tickets_asignados"),
+    path("tickets/<int:ticket_id>/", detalle_ticket, name="detalle_ticket"),
+    path("tickets/<int:ticket_id>/agregar_seguimiento/", agregar_seguimiento, name="agregar_seguimiento"),
+    path("tickets/<int:ticket_id>/actualizar/", actualizar_ticket, name="actualizar_ticket"),
+
 ]
 
 if settings.DEBUG:

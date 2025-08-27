@@ -3,7 +3,7 @@ from uuid import uuid4
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.db import transaction
 import openpyxl
@@ -30,6 +30,10 @@ from django.template.loader import render_to_string
 from django.contrib.auth.models import User
 from datetime import date
 import stripe
+from .models import TicketMantenimiento
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from .models import TicketMantenimiento, SeguimientoTicket
 
 # stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -595,8 +599,88 @@ def guardar_datos_empresa(request):
     messages.success(request, "¡Datos de empresa actualizados correctamente!")
     return redirect('bienvenida')
 
-# @login_required
-# def prueba_error(request):
-#     # Esto lanzará un error que Sentry debe capturar
-#     raise Exception("¡Este es un error de prueba para Sentry!")
-#     return HttpResponse("No deberías ver esto.")
+
+#MODULO DE TICKETS DE MANTENIMIENTO-->   
+@login_required
+def crear_ticket(request):
+    #User = get_user_model()
+    empresa = request.user.perfilusuario.empresa
+    empleados = Empleado.objects.filter(empresa=empresa, activo=True)
+    if request.method == 'POST':
+        titulo = request.POST['titulo']
+        descripcion = request.POST['descripcion']
+        empleado_id = request.POST['empleado_asignado']
+        empleado = Empleado.objects.get(id=empleado_id)
+        ticket = TicketMantenimiento.objects.create(
+            titulo=titulo,
+            descripcion=descripcion,
+            empleado_asignado=empleado
+        )
+        # Enviar correo si el empleado tiene email
+        if empleado.email:
+            send_mail(
+                'Nuevo ticket de mantenimiento asignado',
+                f'Se te ha asignado el ticket: {titulo}\nDescripción: {descripcion}',
+                'soporte@tuempresa.com',
+                [empleado.email],
+                fail_silently=True,
+            )
+        # Aquí puedes integrar WhatsApp con una API externa
+        return redirect('lista_tickets')
+    return render(request, 'mantenimiento/crear_ticket.html', {'empleados': empleados})
+
+
+@login_required
+def actualizar_ticket(request, ticket_id):
+    ticket = TicketMantenimiento.objects.get(id=ticket_id)
+    if request.method == 'POST':
+        ticket.estado = request.POST['estado']
+        ticket.solucion = request.POST.get('solucion', '')
+        if ticket.estado == 'resuelto':
+            ticket.fecha_solucion = timezone.now()
+        ticket.save()
+        return redirect('detalle_ticket', ticket_id=ticket.id)
+    return render(request, 'mantenimiento/actualizar_ticket.html', {'ticket': ticket})
+
+
+@login_required
+def agregar_seguimiento(request, ticket_id):
+    ticket = get_object_or_404(TicketMantenimiento, id=ticket_id)
+    if request.method == 'POST':
+        comentario = request.POST['comentario']
+        SeguimientoTicket.objects.create(
+            ticket=ticket,
+            usuario=request.user,
+            comentario=comentario
+        )
+    return redirect('detalle_ticket', ticket_id=ticket.id)
+    
+@login_required
+def detalle_ticket(request, ticket_id):
+    ticket = TicketMantenimiento.objects.get(id=ticket_id)
+    seguimientos = ticket.seguimientos.order_by('-fecha')
+    return render(request, 'mantenimiento/detalle_ticket.html', {
+        'ticket': ticket,
+        'seguimientos': seguimientos
+    })
+
+@login_required
+def tickets_asignados(request):
+    empresa = request.user.perfilusuario.empresa
+    empleados = Empleado.objects.filter(empresa=empresa, activo=True)
+    empleado_id = request.GET.get('empleado_id')
+    tickets = []
+    empleado_seleccionado = None
+    if empleado_id:
+        empleado_seleccionado = Empleado.objects.filter(id=empleado_id, empresa=empresa).first()
+        tickets = TicketMantenimiento.objects.filter(empleado_asignado=empleado_seleccionado)
+    return render(request, 'mantenimiento/tickets_asignados.html', {
+        'empleados': empleados,
+        'tickets': tickets,
+        'empleado_seleccionado': empleado_seleccionado,
+    })
+
+@login_required
+def lista_tickets(request):
+    tickets = TicketMantenimiento.objects.all().order_by('-fecha_creacion')
+    return render(request, 'mantenimiento/lista_tickets.html', {'tickets': tickets})
