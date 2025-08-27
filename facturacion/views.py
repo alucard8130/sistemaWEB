@@ -1842,7 +1842,7 @@ def exportar_cobros_otros_ingresos_excel(request):
             cobro.fecha_cobro,
             cobro.factura.empresa.nombre,
             cobro.factura.cliente.nombre,
-            cobro.factura.get_tipo_ingreso_display(),
+            cobro.factura.tipo_ingreso.nombre if cobro.factura.tipo_ingreso else '',
             float(cobro.monto),
             cobro.get_forma_cobro_display(),
             cobro.factura.folio,

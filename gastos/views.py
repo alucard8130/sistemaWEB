@@ -29,7 +29,6 @@ from django.db.models.functions import ExtractMonth
 from caja_chica.models import GastoCajaChica, ValeCaja
 from num2words import num2words
 
-# Create your views here.
 @login_required
 def subgrupo_gasto_crear(request):
     if request.method == 'POST':
@@ -690,24 +689,39 @@ def exportar_pagos_gastos_excel(request):
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-    
     # Filtro de empresa
     if es_super and empresa_id:
         gastos = Gasto.objects.filter(empresa_id=empresa_id, fecha__year=anio)
+        gastos_caja_chica = GastoCajaChica.objects.filter(fondeo__empresa_id=empresa_id, fecha__year=anio)
+        vales_caja_chica = ValeCaja.objects.filter(fondeo__empresa_id=empresa_id, fecha__year=anio)
     else:
-        gastos = Gasto.objects.filter(empresa=request.user.perfilusuario.empresa, fecha__year=anio)
+        empresa = request.user.perfilusuario.empresa
+        gastos = Gasto.objects.filter(empresa=empresa, fecha__year=anio)
+        gastos_caja_chica = GastoCajaChica.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
+        vales_caja_chica = ValeCaja.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
 
     # Otros filtros
     if proveedor_id:
         gastos = gastos.filter(proveedor_id=proveedor_id)
+        gastos_caja_chica = gastos_caja_chica.filter(proveedor_id=proveedor_id)
     if empleado_id:
         gastos = gastos.filter(empleado_id=empleado_id)
+        # Vales: filtra por recibido_por si tienes relación con Empleado
+        vales_caja_chica = (
+            vales_caja_chica.filter(recibido_por=Empleado.objects.filter(pk=empleado_id).first().nombre)
+            if Empleado.objects.filter(pk=empleado_id).exists()
+            else vales_caja_chica
+        )
     if fecha_inicio:
         gastos = gastos.filter(fecha__gte=fecha_inicio)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         gastos = gastos.filter(fecha__lte=fecha_fin)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
-    # Solo los pagos
+    # Solo los pagos normales
     pagos = PagoGasto.objects.filter(gasto__in=gastos)
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
@@ -721,9 +735,9 @@ def exportar_pagos_gastos_excel(request):
         "Forma de pago", "Monto", "Estatus"
     ])
 
+    # Pagos normales
     for pago in pagos.select_related('gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado'):
         gasto = pago.gasto
-        # Mostrar proveedor o empleado
         origen = gasto.proveedor.nombre if gasto.proveedor else (
             gasto.empleado.nombre if gasto.empleado else ''
         )
@@ -737,7 +751,30 @@ def exportar_pagos_gastos_excel(request):
             gasto.estatus
         ])
 
-    # --- Respuesta HTTP ---
+    # Gastos de caja chica
+    for gasto in gastos_caja_chica.select_related('fondeo', 'fondeo__empresa', 'proveedor'):
+        ws.append([
+            gasto.fecha if gasto.fecha else '',
+            gasto.fondeo.empresa.nombre if gasto.fondeo and gasto.fondeo.empresa else '',
+            gasto.proveedor.nombre if gasto.proveedor else '',
+            gasto.descripcion if hasattr(gasto, 'descripcion') else '',
+            'Caja Chica',
+            float(gasto.importe),
+            'Pagada'
+        ])
+
+    # Vales de caja chica
+    for vale in vales_caja_chica.select_related('fondeo', 'fondeo__empresa'):
+        ws.append([
+            vale.fecha if vale.fecha else '',
+            vale.fondeo.empresa.nombre if vale.fondeo and vale.fondeo.empresa else '',
+            vale.recibido_por if hasattr(vale, 'recibido_por') else '',
+            vale.descripcion if hasattr(vale, 'descripcion') else '',
+            'Vale Caja Chica',
+            float(vale.importe),
+            'Pagada'
+        ])
+
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

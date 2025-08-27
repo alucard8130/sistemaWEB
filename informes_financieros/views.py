@@ -353,6 +353,7 @@ def estado_resultados(request):
     empresa = None
     saldo_inicial = 0
     saldo_final = 0
+
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
@@ -366,23 +367,31 @@ def estado_resultados(request):
     except Empresa.DoesNotExist:
         saldo_inicial = 0
         saldo_final = 0
+    # --- FILTRO POR FECHA ---
+    if fecha_inicio:
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
+    # --- FIN FILTRO POR FECHA ---
 
     # --- Saldo inicial dinámico en modo flujo por mes ---
     if modo == "flujo" and mes and anio and empresa:
         mes = int(mes)
         anio = int(anio)
-        if mes == 1:
-            saldo_inicial = float(empresa.saldo_inicial or 0)
-        else:
-            saldo_inicial = float(empresa.saldo_inicial or 0)
-            for m in range(1, mes):
-                fecha_inicio_loop = datetime.date(anio, m, 1)
+        saldo_inicial = float(empresa.saldo_inicial or 0)
+        # Determina el año de inicio (puedes ajustar si tienes fecha de inicio real)
+        anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') else anio
+        for y in range(anio_inicio, anio + 1):
+            mes_inicio = 1
+            mes_fin = mes - 1 if y == anio else 12
+            for m in range(mes_inicio, mes_fin + 1):
+                fecha_inicio_loop = datetime.date(y, m, 1)
                 if m == 12:
-                    fecha_fin_loop = datetime.date(anio, 12, 31)
+                    fecha_fin_loop = datetime.date(y, 12, 31)
                 else:
-                    fecha_fin_loop = datetime.date(anio, m + 1, 1) - datetime.timedelta(
-                        days=1
-                    )
+                    fecha_fin_loop = datetime.date(y, m + 1, 1) - datetime.timedelta(days=1)
                 pagos_loop = Pago.objects.exclude(forma_pago="nota_credito").filter(
                     factura__empresa_id=empresa_id,
                     fecha_pago__gte=fecha_inicio_loop,
@@ -405,7 +414,7 @@ def estado_resultados(request):
                     gastos_loop.aggregate(total=Sum("monto"))["total"] or 0
                 )
                 saldo_inicial += total_ingresos_loop - total_gastos_loop
-    # --- Fin de saldo inicial dinámico ---
+        # --- Fin de saldo inicial dinámico ---
 
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
@@ -828,6 +837,8 @@ def exportar_estado_resultados_excel(request):
         "factura", "factura__empresa"
     )
     gastos = Gasto.objects.all()
+    gastos_caja_chica = GastoCajaChica.objects.all()
+    vales_caja_chica = ValeCaja.objects.all()
 
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
         periodo = "periodo_actual"
@@ -866,6 +877,8 @@ def exportar_estado_resultados_excel(request):
         pagos = pagos.filter(factura__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos = gastos.filter(empresa_id=empresa_id)
+        gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
+        vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
         try:
             empresa = Empresa.objects.get(id=empresa_id)
             saldo_inicial = float(empresa.saldo_inicial or 0)
@@ -881,7 +894,7 @@ def exportar_estado_resultados_excel(request):
         try:
             empresa = Empresa.objects.get(id=empresa_id)
             saldo_inicial = float(empresa.saldo_inicial or 0)
-            anio_inicio = anio
+            anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') else anio
         except Empresa.DoesNotExist:
             saldo_inicial = 0
             anio_inicio = anio
@@ -924,10 +937,14 @@ def exportar_estado_resultados_excel(request):
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos = gastos.filter(fecha__gte=fecha_inicio)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos = gastos.filter(fecha__lte=fecha_fin)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
     if modo == "flujo":
         pagos_modo = pagos
@@ -999,7 +1016,40 @@ def exportar_estado_resultados_excel(request):
             if subgrupo not in estructura_gastos[grupo]:
                 estructura_gastos[grupo][subgrupo] = []
             estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
-        total_gastos = float(sum(g["total"] for g in gastos_por_grupo))
+        # --- AGREGA GASTOS DE CAJA CHICA Y VALES EN FLUJO ---
+        for g in gastos_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+            subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = []
+            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+        for g in vales_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+            subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = []
+            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+        total_gastos = sum(
+            sum(tipo["total"] for tipo in tipos)
+            for subgrupos in estructura_gastos.values()
+            for tipos in subgrupos.values()
+        )
         saldo_final_flujo = (
             float(saldo_inicial) + float(total_ingresos) - float(total_gastos)
         )
@@ -1069,7 +1119,40 @@ def exportar_estado_resultados_excel(request):
             if subgrupo not in estructura_gastos[grupo]:
                 estructura_gastos[grupo][subgrupo] = []
             estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
-        total_gastos = float(sum(g["total"] for g in gastos_por_grupo))
+        # --- AGREGA GASTOS DE CAJA CHICA Y VALES EN RESULTADOS ---
+        for g in gastos_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+            subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = []
+            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+        for g in vales_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+            subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = []
+            estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
+        total_gastos = sum(
+            sum(tipo["total"] for tipo in tipos)
+            for subgrupos in estructura_gastos.values()
+            for tipos in subgrupos.values()
+        )
         saldo_final_flujo = None
 
     saldo = float(total_ingresos) - float(total_gastos)
