@@ -1,10 +1,13 @@
-GESTOR ADMINISTRATIVO CONDOMINAL
+SOFTWARE PARA ADMINISTRACION INMOBILIARIA
 
 Este proyecto fue concebido y diseñado para cubrir los procesos administrativos que una empresa necesita para realizar las tarea y actividades propias del negocio inmobiliario.
 
-El gestor esta desarrollado para administrar y controlar dos TIPOS DE CARTERA o de cuentas por cobrar:
+DIRIGIDO: Administradores de propiedades, en regimen condominal, en arrendamiento, centros comerciales, plazas, hoteles, unidades habitacionales etc.
 
-LOCALES COMERCIALES: propiedades o locales construidos, forman parte del condominio. AREAS COMUNES: espacios o areas dentro del condominio.
+El gestor esta desarrollado para administrar y controlar TODO TIPO DE CARTERA o de cuentas por cobrar, ejemplo:
+
+LOCALES COMERCIALES: propiedades o locales construidos, forman parte del condominio o de la propiedad. AREAS COMUNES: espacios o areas dentro del condominio o de la propiedad.
+CASAS, APARTAMENTOS, BODEGAS etc
 
 El gestor tiene los siguientes modulos:
 
