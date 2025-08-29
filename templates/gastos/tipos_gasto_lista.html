@@ -6,7 +6,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 08/07/2025
+        Date of modification: 28/08/2025
         Description: List expenditure types
     -->
     <meta charset="UTF-8">
@@ -72,7 +72,9 @@
                         </td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="5">No hay tipos de gasto registrados.</td></tr>
+                    <tr class="no-data-row">
+                        <td colspan="5">No hay tipos de gasto registrados.</td>
+                    </tr>
                 {% endfor %}
                 </tbody>
             </table>

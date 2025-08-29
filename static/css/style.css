@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 26/08/2025
+    Date of modification: 28/08/2025
     Description: General styles for the GAC system   
 */
     
@@ -377,6 +377,67 @@ body:not(.dark-mode) .card-header-pastel {
 .dark-mode .custom-form .btn-secondary:hover {
     background-color: #5a6268;
     border-color: #5a6268;
+}
+
+/* 🔹 Primera alerta en modo dark (azul marino elegante) */
+.dark-mode .alert.cuotas-pendientes {
+    background-color: #1b2a49 !important;   /* fondo oscuro */
+    color: #f5f6fa !important;              /* texto claro */
+    border-left: 5px solid #243b6b !important; /* borde azul más claro */
+}
+
+.dark-mode .alert.cuotas-todas {
+    background-color: #3d3d0e !important;   
+    color: #fff8dc !important;              
+    border-left: 5px solid #b3a400 !important; 
+}
+
+/* 🔹 SOLO esta tabla en modo dark */
+.dark-mode .tabla-subgrupos {
+    background-color: #1b2a49;
+    border-color: #243b6b;
+}
+
+.dark-mode .tabla-subgrupos .table {
+    color: #f5f6fa;
+    background-color: #1b2a49;
+}
+
+.dark-mode .tabla-subgrupos thead th {
+    background-color: #243b6b;
+    color: #f5f6fa;
+    border-bottom: 2px solid #3a4f7a;
+}
+
+.dark-mode .tabla-subgrupos tbody tr {
+    background-color: #1b2a49;
+}
+
+.dark-mode .tabla-subgrupos tbody tr:nth-child(even) {
+    background-color: #212f56;
+}
+
+.dark-mode .tabla-subgrupos tbody tr td[colspan] {
+    background-color: #1b2a49;
+    color: #f5f6fa;
+    text-align: center;
+    font-style: italic;
+}
+
+.dark-mode .tabla-subgrupos .btn-outline-danger {
+    color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.dark-mode .tabla-subgrupos .btn-outline-danger:hover {
+    background-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* ✅ Texto claro solo en esta tabla en dark mode */
+.dark-mode .tabla-subgrupos .table td,
+.dark-mode .tabla-subgrupos .table th {
+    color: #f5f6fa !important;
 }
 
 .main-content {
@@ -899,6 +960,11 @@ h2 {
 /* Hover en la fila */
 .dark-mode .table tr:hover td {
     background-color: #44485c !important;
+}
+
+.dark-mode .no-data-row td {
+    background-color: #1b2a49; 
+    color: #f5f6fa;                  
 }
 
 /*=== carga_masiva_clientes.html ===*/
