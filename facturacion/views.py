@@ -74,23 +74,23 @@ def crear_factura(request):
 
             # ---- Lógica de autorización ----
             if conflicto:
-                # Si ya eres superusuario, pasa
+         
                 if request.user.is_superuser:
                     superuser_auth_ok = True
-                    print("[DEBUG] Usuario actual es superuser, pasa conflicto.")
-                # Si se dio password de superusuario
+                    #print("[DEBUG] Usuario actual es superuser, pasa conflicto.")
+
                 elif superuser_username and superuser_password:
                     from django.contrib.auth import authenticate
                     superuser = authenticate(username=superuser_username, password=superuser_password)
                     if superuser and superuser.is_superuser:
                         superuser_auth_ok = True
-                        print("[DEBUG] Autenticación por superuser exitosa.")
+                       # print("[DEBUG] Autenticación por superuser exitosa.")
                     else:
-                        form.add_error(None, "La autenticación de superusuario es incorrecta. No se creó la factura.")
-                        print("[DEBUG] Autenticación superuser fallida.")
+                        form.add_error(None, "usuario sin permisos. No se creó la factura.")
+                        #print("[DEBUG] Autenticación superuser fallida.")
                 else:
-                    form.add_error(None, f"El cliente del {conflicto_tipo} seleccionado no coincide. Contacta al superusuario para autorizar el cambio.")
-                    print("[DEBUG] Conflicto detectado sin autorización.")
+                    form.add_error(None, f"El cliente del {conflicto_tipo} seleccionado no coincide. Contacta al administrador del sistema para autorizar el cambio.")
+                    #print("[DEBUG] Conflicto detectado sin autorización.")
             else:
                 superuser_auth_ok = True  # Si no hay conflicto, siempre debe pasar
 
@@ -104,9 +104,9 @@ def crear_factura(request):
                             factura.empresa = request.user.perfilusuario.empresa
                         
                         factura.estatus = 'pendiente'
-                        # Asignar fecha_emision si no viene del formulario
+                        
                         if not factura.fecha_emision:
-                            #factura.fecha_emision = now()
+               
                             factura.fecha_emision = timezone.now().date()
                         factura.save()
 
@@ -127,17 +127,17 @@ def crear_factura(request):
                             factura.area_comun.save()
 
                         # Auditoría
-                        for field in form.fields:
-                            if hasattr(factura, field):
-                                valor = getattr(factura, field)
-                                AuditoriaCambio.objects.create(
-                                    modelo='factura',
-                                    objeto_id=factura.pk,
-                                    usuario=request.user,
-                                    campo=field,
-                                    valor_anterior='--CREADA--',
-                                    valor_nuevo=valor
-                                )
+                        # for field in form.fields:
+                        #     if hasattr(factura, field):
+                        #         valor = getattr(factura, field)
+                        #         AuditoriaCambio.objects.create(
+                        #             modelo='factura',
+                        #             objeto_id=factura.pk,
+                        #             usuario=request.user,
+                        #             campo=field,
+                        #             valor_anterior='--CREADA--',
+                        #             valor_nuevo=valor
+                        #         )
 
                         messages.success(request, "Registro Exitoso.")
                        

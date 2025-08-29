@@ -125,10 +125,10 @@
                     </div>
                     {% if pedir_superuser %}
                     <div class="alert alert-warning">
-                        Para autorizar este cambio, un superusuario debe ingresar su usuario y contraseña:
+                        Para autorizar este cambio, el administrador del sistema debe ingresar su usuario y contraseña:
                         <div class="mb-2">
-                            <input type="text" name="superuser_username" class="form-control mb-1" placeholder="Usuario superusuario" required>
-                            <input type="password" name="superuser_password" class="form-control" placeholder="Contraseña superusuario" required>
+                            <input type="text" name="superuser_username" class="form-control mb-1" placeholder="Usuario con permisos" required>
+                            <input type="password" name="superuser_password" class="form-control" placeholder="Contraseña con permisos" required>
                         </div>
                     </div>
                     {% endif %}
