@@ -8,7 +8,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 31/07/2025
+      Date of modification: 28/08/2025
       Description: Report of collections (other income)
     -->
     <meta charset="UTF-8">
@@ -117,7 +117,7 @@
                         <td>{{ cobro.observaciones }}</td>
                     </tr>
                     {% empty %}
-                    <tr>
+                    <tr class="no-data-row">
                         <td colspan="9">No hay cobros registrados.</td>
                     </tr>
                     {% endfor %}

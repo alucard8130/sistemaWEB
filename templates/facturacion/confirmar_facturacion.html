@@ -6,7 +6,7 @@
       Created by: Jaime Estrada
       Modified by: María Martínez
       Date of creation: 05/06/2025
-      Date of modification: 05/08/2025
+      Date of modification: 28/08/2025
       Description: Confirm automatic billing
     -->
     <meta charset="UTF-8">
@@ -28,7 +28,7 @@
             Confirmar carga mensual de cuotas
         </h3>
         
-        <div class="alert" style="background-color: #e8f0fe; color: #2c3e50; border-left: 5px solid #aecbfa;">
+        <div class="alert cuotas-pendientes" style="background-color: #e8f0fe; color: #2c3e50; border-left: 5px solid #aecbfa;">
             <ul class="mb-0">
                 <li><strong>{{ total_locales }}</strong> cuotas locales comerciales por cargar</li>
                 <li><strong>{{ total_areas }}</strong> cuotas áreas comunes por cargar</li>
@@ -36,7 +36,7 @@
         </div>
 
         {% if total_locales == 0 and total_areas == 0 %}
-            <div class="alert" style="background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba;">
+            <div class="alert cuotas-todas" style="background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba;">
                 Ya se han facturado todos los locales y áreas este mes.
             </div>
         {% else %}  
