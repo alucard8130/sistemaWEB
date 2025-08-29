@@ -28,24 +28,30 @@ El gestor tiene los siguientes modulos:
 
 -registro de gastos mensuales -reporte de gastos -registro de proveedores -registro de empleados
 
-6.- OTROS INGRESOS
+6.- CAJA CHICA
+-control de caja chica, vales caja chica, gastos caja chica
+
+7.- OTROS INGRESOS
 
 -reporte de ingresos (incluye cuotas y otros ingresos) -registro otros ingresos ( ingresos diferentes a cuotas)
 
-7.- CARTERA COBRANZA
+8.- CARTERA COBRANZA
 
 -LOCALES COMERCIALES, informacion grafica de total de adeudos -AREAS COMUNES, informacion grafica de total de adeudos
 
-8.- ESTADISTICAS Y GRAFICOS
+9.-PRESUPUESTOS
+-construye y registra tus presupuestos de ingresos y gastos en una matriz 
 
--dashboard adeudos locales comerciales -dashboard adeudos areas comunes -dashboard ingresos -dashboard gastos
+10.- ESTADISTICAS Y GRAFICOS
 
-9.- CONFIGURACION
+-dashboard adeudos locales comerciales -dashboard adeudos areas comunes -dashboard ingresos -dashboard gastos, estado de resultados, ingresos vs gastos, comparativa presupuestos vs real
+
+10.- CONFIGURACION
 
 -carga base datos clientes(admin) -carga base datos locales comerciales(admin) -carga base datos areas comunes(admin) -carga base datos contratos(admin) -carga base datos saldos iniciales(admin)
 
 -alta cuentas bancarias
 
-10.- AYUDA
+11.- AYUDA
 
 -manuales -link redes sociales
