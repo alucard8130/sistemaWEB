@@ -1,14 +1,17 @@
-GESTOR ADMINISTRATIVO CONDOMINAL
+SOFTWARE PARA ADMINISTRACION INMOBILIARIA
 
 Este proyecto fue concebido y diseñado para cubrir los procesos administrativos que una empresa necesita para realizar las tarea y actividades propias del negocio inmobiliario.
 
-El gestor esta desarrollado para administrar y controlar dos TIPOS DE CARTERA o de cuentas por cobrar:
+DIRIGIDO: Administradores de propiedades, en regimen condominal, en arrendamiento, centros comerciales, plazas, hoteles, unidades habitacionales etc.
 
-LOCALES COMERCIALES: propiedades o locales construidos, forman parte del condominio. AREAS COMUNES: espacios o areas dentro del condominio.
+El gestor esta desarrollado para administrar y controlar TODO TIPO DE CARTERA o de cuentas por cobrar, ejemplo:
+
+LOCALES COMERCIALES: propiedades o locales construidos, forman parte del condominio o de la propiedad. AREAS COMUNES: espacios o areas dentro del condominio o de la propiedad.
+CASAS, APARTAMENTOS, BODEGAS etc
 
 El gestor tiene los siguientes modulos:
 
-1.- LOCALES COMERCIALES
+1.- PROPIEDADES
 
 -modulo gestor LOCALES: registro de cobranza, registro de facturacion, registro notas credito, buscar y bajar informacion -alta local comercial(solo admin): registro de locales manualmente
 
@@ -28,24 +31,32 @@ El gestor tiene los siguientes modulos:
 
 -registro de gastos mensuales -reporte de gastos -registro de proveedores -registro de empleados
 
-6.- OTROS INGRESOS
+6.- CAJA CHICA
+
+-control de caja chica, vales caja chica, gastos caja chica
+
+7.- OTROS INGRESOS
 
 -reporte de ingresos (incluye cuotas y otros ingresos) -registro otros ingresos ( ingresos diferentes a cuotas)
 
-7.- CARTERA COBRANZA
+8.- CARTERA COBRANZA
 
 -LOCALES COMERCIALES, informacion grafica de total de adeudos -AREAS COMUNES, informacion grafica de total de adeudos
 
-8.- ESTADISTICAS Y GRAFICOS
+9.-PRESUPUESTOS
 
--dashboard adeudos locales comerciales -dashboard adeudos areas comunes -dashboard ingresos -dashboard gastos
+-construye y registra tus presupuestos de ingresos y gastos en una matriz 
 
-9.- CONFIGURACION
+10.- ESTADISTICAS Y GRAFICOS
+
+-dashboard adeudos locales comerciales -dashboard adeudos areas comunes -dashboard ingresos -dashboard gastos, estado de resultados, ingresos vs gastos, comparativa presupuestos vs real
+
+11.- CONFIGURACION
 
 -carga base datos clientes(admin) -carga base datos locales comerciales(admin) -carga base datos areas comunes(admin) -carga base datos contratos(admin) -carga base datos saldos iniciales(admin)
 
 -alta cuentas bancarias
 
-10.- AYUDA
+12.- AYUDA
 
 -manuales -link redes sociales
