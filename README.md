@@ -8,7 +8,7 @@ LOCALES COMERCIALES: propiedades o locales construidos, forman parte del condomi
 
 El gestor tiene los siguientes modulos:
 
-1.- LOCALES COMERCIALES
+1.- PROPIEDADES
 
 -modulo gestor LOCALES: registro de cobranza, registro de facturacion, registro notas credito, buscar y bajar informacion -alta local comercial(solo admin): registro de locales manualmente
 
@@ -29,6 +29,7 @@ El gestor tiene los siguientes modulos:
 -registro de gastos mensuales -reporte de gastos -registro de proveedores -registro de empleados
 
 6.- CAJA CHICA
+
 -control de caja chica, vales caja chica, gastos caja chica
 
 7.- OTROS INGRESOS
@@ -40,18 +41,19 @@ El gestor tiene los siguientes modulos:
 -LOCALES COMERCIALES, informacion grafica de total de adeudos -AREAS COMUNES, informacion grafica de total de adeudos
 
 9.-PRESUPUESTOS
+
 -construye y registra tus presupuestos de ingresos y gastos en una matriz 
 
 10.- ESTADISTICAS Y GRAFICOS
 
 -dashboard adeudos locales comerciales -dashboard adeudos areas comunes -dashboard ingresos -dashboard gastos, estado de resultados, ingresos vs gastos, comparativa presupuestos vs real
 
-10.- CONFIGURACION
+11.- CONFIGURACION
 
 -carga base datos clientes(admin) -carga base datos locales comerciales(admin) -carga base datos areas comunes(admin) -carga base datos contratos(admin) -carga base datos saldos iniciales(admin)
 
 -alta cuentas bancarias
 
-11.- AYUDA
+12.- AYUDA
 
 -manuales -link redes sociales
