@@ -67,7 +67,9 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4">No hay propiedades inactivas.</td></tr>
+                    <tr class="no-data-row">
+                        <td colspan="4">No hay propiedades inactivas.</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>

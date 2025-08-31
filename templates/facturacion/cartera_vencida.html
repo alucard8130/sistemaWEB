@@ -7,7 +7,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 25/07/2025
+        Date of modification: 28/08/2025
         Description: Overdue invoices
     -->
     <meta charset="UTF-8">
@@ -144,7 +144,9 @@
                         <td>{{ factura.dias_vencidos }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8">No hay facturas vencidas.</td></tr>
+                    <tr class="no-data-row">
+                        <td colspan="8">No hay facturas vencidas.</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
