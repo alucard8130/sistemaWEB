@@ -106,10 +106,9 @@ def crear_factura(request):
                         factura.estatus = 'pendiente'
                         
                         if not factura.fecha_emision:
-               
                             factura.fecha_emision = timezone.now().date()
                         factura.save()
-
+                        
                         # Folio único
                         count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
                         if tipo == 'local':
@@ -213,12 +212,9 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     else:
         año = int(request.GET.get('anio', datetime.now().year))
         mes = int(request.GET.get('mes', datetime.now().month))
+    
     hoy = date.today()
 
-    # Solo superusuario puede facturar meses distintos al actual
-    # if (año != hoy.year or mes != hoy.month) and not request.user.is_superuser:
-    #     messages.error(request, "Solo el superusuario puede generar facturas de meses anteriores.")
-    #     return redirect('confirmar_facturacion')
 
     facturas_creadas = 0
     facturas_a_crear = []

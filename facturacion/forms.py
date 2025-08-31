@@ -77,7 +77,7 @@ class FacturaForm(forms.ModelForm):
     def clean_fecha_vencimiento(self):
         fecha_vencimiento = self.cleaned_data.get('fecha_vencimiento')
         if not fecha_vencimiento:
-            raise forms.ValidationError("La fecha de vencimiento es obligatoria.")
+            raise forms.ValidationError("La fecha de la factura es obligatoria.")
         return fecha_vencimiento        
       
 class PagoForm(forms.ModelForm):
