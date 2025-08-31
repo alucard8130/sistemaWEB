@@ -51,9 +51,7 @@ window.sentryOnLoad = function() {
 <body>
     <!-- 🔹 Navbar superior -->
     {% include 'navbar.html' %}
-    
-    <!-- 🔹 Caja central -->
- <!--   <main class="main-content container-fluid px-4 py-3 wide=100px " >-->
+
 {% if messages %}
   {% for message in messages %}
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -80,7 +78,7 @@ window.sentryOnLoad = function() {
     font-size: 1rem;
 ">
     <strong>¡Bienvenido a tu cuenta demo!</strong><br>
-    Recuerda que tu acceso demo es válido por 30 días.<br>
+    Acceso demo es válido por 30 días.<br>
     <hr>
     <button id="stripe-checkout-btn" class="btn btn-success btn-sm w-100">
       <a href="https://buy.stripe.com/bJe6oJ5Lw1ha9562YV2B203" class="text-white text-decoration-none">
@@ -103,10 +101,6 @@ document.getElementById('stripe-checkout-btn').onclick = function() {
 
 {% if not es_demo %}
 <div class="container-fluid px-4 py-3 wide=100px">
-<!-- Botón para cancelar suscripción 
-<button id="cancelar-suscripcion-btn" class="btn btn-danger">
-    Cancelar suscripción
-</button>-->
 <script>
 document.getElementById('cancelar-suscripcion-btn').onclick = function() {
     fetch("{% url 'cancelar_suscripcion' %}", {
@@ -140,7 +134,7 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
               
               <!-- Texto a la derecha -->
               <div>
-                <p class="mb-2 text-muted">Gestor Administrativo Condominal</p>
+                <p class="mb-2 text-muted">Gestor Administrativo Inmobiliario</p>
                 <h1 class="welcome-title mb-2 fs-4">Bienvenid@ <br> {{ request.user.get_full_name|default:request.user.username }}</h1>
                 {% if empresa %}
                     <p class="text-muted">Empresa: <strong>{{ empresa.nombre }}</strong></p>
