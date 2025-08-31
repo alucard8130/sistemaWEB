@@ -1008,9 +1008,19 @@ def dashboard_pagos(request):
 )
         
         # Obtén todos los meses/años presentes
-    meses_facturas = sorted(set(f.fecha_vencimiento.replace(day=1) for f in facturas_pendientes))
-    anios_facturas = sorted(set(f.fecha_vencimiento.year for f in facturas_pendientes))
-
+    # meses_facturas = sorted(set(f.fecha_vencimiento.replace(day=1) for f in facturas_pendientes))
+    # anios_facturas = sorted(set(f.fecha_vencimiento.year for f in facturas_pendientes))
+    
+    meses_facturas = sorted(set(
+    f.fecha_vencimiento.replace(day=1)
+    for f in facturas_pendientes
+    if f.fecha_vencimiento is not None
+    ))
+    anios_facturas = sorted(set(
+        f.fecha_vencimiento.year
+        for f in facturas_pendientes
+        if f.fecha_vencimiento is not None
+    ))
 
 
         # Por mes: solo facturas emitidas en ese mes, no vencidas
