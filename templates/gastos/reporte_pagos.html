@@ -7,7 +7,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 19/08/2025
+        Date of modification: 02/09/2025
         Description: Expenditure report
     -->
     <meta charset="UTF-8">
@@ -169,7 +169,7 @@
                     </tr>
                     {% endfor %}
                     {% if not pagos and not pagos_caja_chica and not vales_caja_chica %}
-                    <tr>
+                    <tr class="no-data-row">
                         <td colspan="7">No hay pagos registrados con los filtros seleccionados.</td>
                     </tr>
                     {% endif %}

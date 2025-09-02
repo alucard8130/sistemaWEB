@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 28/08/2025
+    Date of modification: 02/09/2025
     Description: General styles for the GAC system   
 */
     
@@ -439,6 +439,28 @@ body:not(.dark-mode) .card-header-pastel {
 .dark-mode .tabla-subgrupos .table th {
     color: #f5f6fa !important;
 }
+
+/* 🔹 Estilo dark solo para el bloque de flujo financiero */
+.dark-mode .flujo-financiero {
+    background-color: #1b2a49 !important; /* azul marino elegante */
+    color: #f5f6fa !important;            /* texto claro */
+}
+
+/* Título */
+.dark-mode .flujo-financiero h5 {
+    color: #f5f6fa !important;
+}
+
+/* Texto secundario */
+.dark-mode .flujo-financiero small {
+    color: #cfd8dc !important; /* gris claro */
+}
+
+/* Icono */
+.dark-mode .flujo-financiero i {
+    color: #aecbfa !important; /* azul pastel para contraste */
+}
+
 
 .main-content {
     padding-top: 5rem; /* Antes 2*/
