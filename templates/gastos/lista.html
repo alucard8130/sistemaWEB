@@ -8,7 +8,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 25/07/2025
+        Date of modification: 02/09/2025
         Description: Displays cost claims
     -->
     <meta charset="UTF-8">
@@ -146,7 +146,9 @@
                                 </td>
                         </tr>   
                     {% empty %}
-                        <tr><td colspan="8">No hay gastos registrados.</td></tr>
+                        <tr class="no-data-row">
+                            <td colspan="8">No hay gastos registrados.</td>
+                        </tr>
                     {% endfor %}
                     </tbody>
             </table>
