@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 02/09/2025
+    Date of modification: 04/09/2025
     Description: General styles for the GAC system   
 */
     
@@ -392,7 +392,7 @@ body:not(.dark-mode) .card-header-pastel {
     border-left: 5px solid #b3a400 !important; 
 }
 
-/* 🔹 SOLO esta tabla en modo dark */
+/* 🔹 Just this table in dark mode */
 .dark-mode .tabla-subgrupos {
     background-color: #1b2a49;
     border-color: #243b6b;
@@ -963,9 +963,19 @@ h2 {
     transition: background-color 0.2s ease;
 } 
 
-/* Hover en la fila */
+/* Hover over the row */
 .table tr:hover td {
     background-color: #d4e4f2 !important;
+}
+
+/* Text in table rows */
+.table tbody td {
+    color: #495057; 
+}
+
+/* In dark mode, light text */
+.dark-mode .table tbody td {
+    color: #f5f6fa; 
 }
 
 .encabezado-claro th {
@@ -1028,4 +1038,108 @@ h2 {
     pointer-events: none; /* Evitar que el clic sobre la flecha interfiera con el select */
     font-size: 20px;
     color: #888; /* Color de la flecha */
+}
+
+/* --- Help button --- */
+.btn-ayuda {
+  font-weight: 500;
+  border-radius: 50px; /* estilo pill */
+  transition: all 0.3s ease;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Light mode */
+.btn-ayuda {
+  background-color: #f0f4ff;   /* azul muy claro */
+  color: #1a3c8b;              /* azul fuerte */
+  border: 1px solid #d0daff;
+}
+.btn-ayuda:hover {
+  background-color: #d9e3ff;
+  border-color: #a6bfff;
+  color: #0d2c6c;
+}
+
+/* Dark mode */
+.dark-mode .btn-ayuda {
+  background-color: #253451;   
+  color: #aecbfa;              
+  border: 1px solid #3a4f78;
+}
+.dark-mode .btn-ayuda:hover {
+  background-color: #34507c;
+  border-color: #5c7bbf;
+  color: #e2ebff;
+}
+
+/* 🎨 Alert just in dark mode */
+.dark-mode .alert.border-danger {
+    background-color: #2b2b2b;       
+    border-color: #2b2b2b !important;           
+    color: #f8f9fa;                  
+}
+
+.dark-mode .alert.border-danger h4 {
+    color: #ff6b6b;                 
+}
+
+/* Secondary text inside the alert */
+.dark-mode .alert.border-danger .text-muted {
+    color: #adb5bd !important;       
+}
+
+/* Buttons inside the alert */
+.dark-mode .alert.border-danger .btn-outline-danger {
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+}
+
+.dark-mode .alert.border-danger .btn-outline-danger:hover {
+    background-color: #ff6b6b;
+    color: #fff;
+}
+
+.dark-mode .alert.border-danger .btn-outline-secondary {
+    border-color: #ced4da;
+    color: #f8f9fa;
+}
+
+.dark-mode .alert.border-danger .btn-outline-secondary:hover {
+    background-color: #495057;
+    color: #fff;
+}
+
+/* 🎨 Outline-primary button in dark mode */
+.dark-mode .btn-outline-primary {
+    border-color: #4a90e2;  
+    color: #4a90e2;
+    background-color: transparent;
+}
+
+.dark-mode .btn-outline-primary:hover,
+.dark-mode .btn-outline-primary:focus {
+    background-color: #4a90e2;
+    color: #fff;
+}
+
+/* 🎨 Alert-info in dark mode */
+.dark-mode .alert.alert-info {
+    background-color: #0d253f;   
+    border-color: #4a90e2;       
+    color: #f5f6fa;              
+}
+
+/* Highlighted text within the alert */
+.dark-mode .alert.alert-info strong {
+    color: #74b9ff;              
+}
+
+/* dark-mode form-select*/
+.dark-mode .form-select {
+    background-color: #212529; /* bg-dark de Bootstrap */
+    color: #f8f9fa; /* text-light */
+    border: 1px solid #6c757d;
 }
