@@ -58,6 +58,10 @@ def crear_factura(request):
                 factura.local = None
             cliente = factura.cliente
             
+            #validar observaciones
+            if factura.observaciones is None:
+                factura.observaciones = ""
+            
             # ---- Validación local ----
             if factura.local:
                 local_cliente = factura.local.cliente
@@ -1673,6 +1677,10 @@ def crear_factura_otros_ingresos(request):
             # Generar folio único
             count = FacturaOtrosIngresos.objects.filter(fecha_emision__year=now().year).count() + 1
             factura.folio = f"OI-F{count:05d}"
+            #validar observaciones
+            if factura.observaciones is None:
+                factura.observaciones = ""
+
             factura.save()
             messages.success(request, "Registro Exitoso.")
             return redirect('lista_facturas_otros_ingresos')
