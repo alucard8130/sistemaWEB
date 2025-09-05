@@ -153,7 +153,7 @@ class FacturaEditForm(forms.ModelForm):
             'fecha_vencimiento': forms.DateInput(attrs={
                 'type': 'date',
                 'class': 'form-control'
-            }),
+            }, format='%Y-%m-%d'),
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control'
             }),
@@ -175,13 +175,20 @@ class FacturaEditForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Deshabilita el campo cliente para evitar edición
-        self.fields['cliente'].disabled = True
+        #self.fields['cliente'].disabled = True
         self.fields['estatus'].disabled = True
         self.fields['area_comun'].disabled = True
         self.fields['local'].disabled = True
-        
-        
-            
+
+    def clean_fecha_vencimiento(self):
+        fecha = self.cleaned_data.get('fecha_vencimiento')
+        print("Valor recibido en fecha_vencimiento:", fecha)
+        # Si el campo viene vacío o como cadena vacía, conserva la original
+        if not fecha or str(fecha).strip() == "":
+            return self.instance.fecha_vencimiento
+        return fecha
+
+
 class FacturaOtrosIngresosForm(forms.ModelForm):
     class Meta:
         model = FacturaOtrosIngresos

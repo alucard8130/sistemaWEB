@@ -1410,7 +1410,9 @@ def editar_factura(request, factura_id):
         if form.is_valid():
             factura_original = Factura.objects.get(pk=factura_id)
             factura_modificada = form.save(commit=False)
-
+            # Si la fecha viene vacía, conserva la original
+            if not factura_modificada.fecha_vencimiento or str(factura_modificada.fecha_vencimiento).strip() == "":
+                factura_modificada.fecha_vencimiento = factura.fecha_vencimiento
             # Comparar y guardar auditoría
             for field in form.changed_data:
                 valor_anterior = getattr(factura_original, field)
