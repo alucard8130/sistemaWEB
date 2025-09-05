@@ -88,7 +88,12 @@
                           <!--<td>{{ factura.get_tipo_ingreso_display }}</td>-->
                         <!--  <td>{{ factura.fecha_emision }}</td> -->
                           <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
-                          <td>{{factura.observaciones}}</td>
+                          {% if factura.observaciones == None or factura.observaciones == '' %}
+                              <td></td>
+                          {% else %}
+                              <td>{{ factura.observaciones }}</td>
+                          {% endif %}
+                          
                           <td>{{ factura.get_estatus_display }}</td>
                           
                           <td>
