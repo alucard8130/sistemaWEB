@@ -117,7 +117,11 @@
                             {% endif %}
                         </td>
                         <td>{{ pago.get_forma_pago_display }}</td>
+                        {% if pago.referencia == None or pago.referencia == "" %}
+                        <td></td>
+                        {% else %}  
                         <td>{{ pago.referencia }}</td>
+                        {% endif %}
                         {% comment %} <td>
                             {% if pago.comprobante %}
                                 <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
