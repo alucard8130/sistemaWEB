@@ -7,7 +7,7 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 05/07/2025
+        Date of modification: 08/09/2025
         Description: Dashboard of balances by maturity
     -->
     <meta charset="UTF-8">
@@ -32,10 +32,10 @@
 <div class="container-fluid mt-4">
         <h2>Dashboard Cuotas</h2>
     <!-- Filtros de Pagos -->
-    <form method="get" class="row g-2 mb-2">
+    <form method="get" class="row g-2 mb-2 align-items-end">
         {% if es_super %}
         <div class="col-md-2">
-            <label>Empresa:</label>
+            <label class="form-label mb-1">Empresa:</label>
             <select name="empresa" class="form-select">
                 <option value="todas" {% if not empresa_id or empresa_id == "todas" %}selected{% endif %}>Todas</option>
                 {% for emp in empresas %}
@@ -54,7 +54,7 @@
             </select>
         </div>
         <div class="col-md-1">
-            <label>Año:</label>
+            <label class="form-label mb-1">Año:</label>
                 <select name="anio" class="form-select">  
                         {% for a in labels_anios %}
                             <option value="{{ a }}" {% if a|stringformat:"s" == anio_seleccionado|stringformat:"s" %}selected{% endif %}>
@@ -63,30 +63,39 @@
                         {% endfor %}
                 </select>
         </div>
+
         <div class="col-md-2">
-        <label>Mes:</label>
-        <select name="mes" class="form-select">
-        <option value="">Todos</option>
-        <option value="1" {% if mes == "1" %}selected{% endif %}>Enero</option>
-        <option value="2" {% if mes == "2" %}selected{% endif %}>Febrero</option>
-        <option value="3" {% if mes == "3" %}selected{% endif %}>Marzo</option>
-        <option value="4" {% if mes == "4" %}selected{% endif %}>Abril</option>
-        <option value="5" {% if mes == "5" %}selected{% endif %}>Mayo</option>
-        <option value="6" {% if mes == "6" %}selected{% endif %}>Junio</option>
-        <option value="7" {% if mes == "7" %}selected{% endif %}>Julio</option>
-        <option value="8" {% if mes == "8" %}selected{% endif %}>Agosto</option>
-        <option value="9" {% if mes == "9" %}selected{% endif %}>Septiembre</option>
-        <option value="10" {% if mes == "10" %}selected{% endif %}>Octubre</option>
-        <option value="11" {% if mes == "11" %}selected{% endif %}>Noviembre</option>
-        <option value="12" {% if mes == "12" %}selected{% endif %}>Diciembre</option>
-        </select>
+            <label class="form-label mb-1">Mes:</label>
+            <select name="mes" class="form-select">
+                <option value="">Todos</option>
+                <option value="1" {% if mes == "1" %}selected{% endif %}>Enero</option>
+                <option value="2" {% if mes == "2" %}selected{% endif %}>Febrero</option>
+                <option value="3" {% if mes == "3" %}selected{% endif %}>Marzo</option>
+                <option value="4" {% if mes == "4" %}selected{% endif %}>Abril</option>
+                <option value="5" {% if mes == "5" %}selected{% endif %}>Mayo</option>
+                <option value="6" {% if mes == "6" %}selected{% endif %}>Junio</option>
+                <option value="7" {% if mes == "7" %}selected{% endif %}>Julio</option>
+                <option value="8" {% if mes == "8" %}selected{% endif %}>Agosto</option>
+                <option value="9" {% if mes == "9" %}selected{% endif %}>Septiembre</option>
+                <option value="10" {% if mes == "10" %}selected{% endif %}>Octubre</option>
+                <option value="11" {% if mes == "11" %}selected{% endif %}>Noviembre</option>
+                <option value="12" {% if mes == "12" %}selected{% endif %}>Diciembre</option>
+            </select>
         </div>
         
-        <div class="col-md-1 d-flex align-items-end">
-    <button type="submit" class="btn btn-info">Filtrar</button>
-</div>
-        <div class="col-md-2 d-flex align-items-end">
-            <a href="{% url 'dashboard_pagos' %}" class="btn btn-secondary">Limpiar Filtros</a>
+        <!-- Columna de botones: fila horizontal, alineada abajo -->
+        <div class="col-md-2 align-self-end">
+            <div class="d-flex gap-2">
+                <!-- Botón Filtrar -->
+                <button type="submit" class="btn btn-outline-primary d-inline-flex align-items-center">
+                    <i class="bi bi-funnel me-1"></i> Filtrar
+                </button>
+
+                <!-- Botón Limpiar -->
+                <a href="{% url 'dashboard_pagos' %}" class="btn btn-outline-secondary d-inline-flex align-items-center">
+                    <i class="bi bi-arrow-clockwise"></i> Limpiar
+                </a>
+            </div>
         </div>
     </form>
 

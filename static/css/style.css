@@ -2,13 +2,13 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 04/09/2025
+    Date of modification: 08/09/2025
     Description: General styles for the GAC system   
 */
     
 /* === General Styles ===*/
 html, body {
-    height: 100%;
+    min-height: 100vh;
     margin: 0;
     background: linear-gradient(to right, #e0f7fa, #ffffff);
     display: flex;
