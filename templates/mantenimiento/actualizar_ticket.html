@@ -1,0 +1,62 @@
+<!-- filepath: c:\Users\smart\Documents\GitHub\sistemaWEB\templates\mantenimiento\actualizar_ticket.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Actualizar Ticket de Mantenimiento</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    {% comment %} {% include 'navbar.html' %} {% endcomment %}
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card shadow-lg">
+                    <div class="card-header bg-info text-white text-center">
+                        <h4 class="mb-0">Actualizar Ticket de Mantenimiento</h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">Título</label>
+                                <input type="text" class="form-control" value="{{ ticket.titulo }}" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Descripción</label>
+                                <textarea class="form-control" rows="3" disabled>{{ ticket.descripcion }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Empleado asignado</label>
+                                <input type="text" class="form-control" value="{{ ticket.empleado_asignado.nombre }}" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="estado" class="form-label">Estado</label>
+                                <select name="estado" id="estado" class="form-select" required>
+                                    <option value="pendiente" {% if ticket.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                                    <option value="en_proceso" {% if ticket.estado == 'en_proceso' %}selected{% endif %}>En proceso</option>
+                                    <option value="resuelto" {% if ticket.estado == 'resuelto' %}selected{% endif %}>Resuelto</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="solucion" class="form-label">Solución (si aplica)</label>
+                                <textarea name="solucion" id="solucion" class="form-control" rows="3">{{ ticket.solucion }}</textarea>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-info">Guardar cambios</button>
+                                <a href="{% url 'detalle_ticket' ticket.id %}" class="btn btn-secondary">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="text-center mt-4 mb-2 text-muted">
+        © {% now "Y" %} GESAC. Todos los derechos reservados.
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

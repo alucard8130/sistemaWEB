@@ -50,7 +50,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Propiedades</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nueva Propiedades</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nueva Propiedad</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista Propiedades</a></li>
 
                             <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
@@ -64,7 +64,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Áreas Comunes</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_area' %}">Nueva Área</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_area' %}">Nueva Área común</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista</a></li>
           
                             <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivos</a></li>
@@ -76,13 +76,13 @@
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cuotas</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos cuotas</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Cuota</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Cuotas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Carga Mensual Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturacion Mensual Cuotas</a></li>
                         <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros Cuotas</a></li>
-                        
+
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard</a></li>
                         
                         {% if request.user.is_superuser %}
@@ -93,11 +93,11 @@
                 </li>
                 <!-- MENÚ otros ingresos -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Otras Cuotas</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Otros Ingresos</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otra Cuota</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista otras Cuotas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros otras Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otro ingreso</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista  otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros  otros Ingresos</a></li>
                     </ul>
                 <!-- MENÚ cartera -->
                 <li class="nav-item dropdown">
@@ -168,23 +168,6 @@
                 >Lista Vales</a
               >
             </li>
-            {% comment %} <li>
-              <a class="dropdown-item" href="{% url 'fondeo_caja_chica' %}"
-                >Fondear Caja Chica</a
-              >
-            </li>
-            <li>
-              <a
-                class="dropdown-item"
-                href="{% url 'registrar_gasto_caja_chica' %}"
-                >Registro de Gasto</a
-              >
-            </li>
-            <li>
-              <a class="dropdown-item" href="{% url 'generar_vale_caja' %}"
-                >Registro de Vales</a
-              >
-            </li>  {% endcomment %}
           </ul>
         </li>
                 <!-- MENÚ PPTOS -->
@@ -192,9 +175,9 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Ingresos</a></li>
                     </ul>
                 </li>
                 <!-- MENÚ REPORTES -->
@@ -203,12 +186,11 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'estado_resultados' %}">Estado Resultados</a></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Cuotas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Cuotas y Gastos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos y Gastos</a></li>
                     </ul>
                 </li>
             </ul>
-  
         </div>
         <div class="d-flex align-items-center gap-3">
             <!-- Help Button -->
@@ -342,7 +324,7 @@
             </div>
           </div>
         </div>
-        <a href="https://paginaweb-ro9v.onrender.com/gestor_condominal" target="_blank"><p class="mt-3 ">Link VIDEO Tutorial.</p></a>
+        <a href="https://www.youtube.com/@Gesac.GestorAdministrativoCond" target="_blank"><p class="mt-3 ">VIDEOS Tutoriales.</p></a>
       </div>
       <div class="modal-footer">
         {% if not es_demo %}

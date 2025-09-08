@@ -51,9 +51,7 @@ window.sentryOnLoad = function() {
 <body>
     <!-- 🔹 Navbar superior -->
     {% include 'navbar.html' %}
-    
-    <!-- 🔹 Caja central -->
- <!--   <main class="main-content container-fluid px-4 py-3 wide=100px " >-->
+
 {% if messages %}
   {% for message in messages %}
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -80,10 +78,10 @@ window.sentryOnLoad = function() {
     font-size: 1rem;
 ">
     <strong>¡Bienvenido a tu cuenta demo!</strong><br>
-    Recuerda que tu acceso demo es válido por 30 días.<br>
+    Acceso demo es válido por 30 días.<br>
     <hr>
     <button id="stripe-checkout-btn" class="btn btn-success btn-sm w-100">
-      <a href="https://buy.stripe.com/fZueVfgqa8JCftu5732B202" class="text-white text-decoration-none">
+      <a href="https://buy.stripe.com/bJe6oJ5Lw1ha9562YV2B203" class="text-white text-decoration-none">
         <i class="bi bi-credit-card"></i> Suscribete ahora !!
       </a>
     </button>
@@ -103,10 +101,6 @@ document.getElementById('stripe-checkout-btn').onclick = function() {
 
 {% if not es_demo %}
 <div class="container-fluid px-4 py-3 wide=100px">
-<!-- Botón para cancelar suscripción 
-<button id="cancelar-suscripcion-btn" class="btn btn-danger">
-    Cancelar suscripción
-</button>-->
 <script>
 document.getElementById('cancelar-suscripcion-btn').onclick = function() {
     fetch("{% url 'cancelar_suscripcion' %}", {
@@ -140,7 +134,7 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
               
               <!-- Texto a la derecha -->
               <div>
-                <p class="mb-2 text-muted">Gestor Administrativo Condominal</p>
+                <p class="mb-2 text-muted">Gestor Administrativo Inmobiliario</p>
                 <h1 class="welcome-title mb-2 fs-4">Bienvenid@ <br> {{ request.user.get_full_name|default:request.user.username }}</h1>
                 {% if empresa %}
                     <p class="text-muted">Empresa: <strong>{{ empresa.nombre }}</strong></p>
@@ -190,10 +184,29 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
             </ul>
           </div>
         </div>
+    <!-- Menú lateral de tickets de mantenimiento pegado a la derecha -->
+    <div class="col-md-2 mb-4 d-flex flex-column align-items-end">
+      <div class="card" style="width: 220px; position: sticky; top: 90px;">
+        <div class="card-header bg-info text-white">
+          <h6 class="mb-0">Tickets de Mantenimiento</h6>
+        </div>
+        <div class="list-group list-group-flush">
+          <a href="{% url 'crear_ticket' %}" target="_blank" class="list-group-item list-group-item-action">
+            Registrar Ticket
+          </a>
+          <a href="{% url 'lista_tickets' %}" target="_blank" class="list-group-item list-group-item-action">
+            Lista tickets
+          </a>
+          <a href="{% url 'tickets_asignados' %}" target="_blank" class="list-group-item list-group-item-action">
+            Tickets asignados
+          </a>
+        </div>
       </div>
     </div>
+  </div>
+</div>
   <!--  </main>> -->
- 
+
       <!-- Modal para nuevo evento -->
       <div class="modal fade" id="modalEvento" tabindex="-1" aria-labelledby="modalEventoLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -348,8 +361,8 @@ function nextStep(step) {
 
     <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por J M. Estrada Bernabé
+        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
+        Creado por JMEB
     </footer>
 
     <!-- Scripts -->

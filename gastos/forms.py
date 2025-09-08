@@ -113,7 +113,9 @@ class GastoForm(forms.ModelForm):
         modo = kwargs.pop('modo', None)
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        # Solo superusuario puede elegir empresa, los demás sólo la propia
+
+        self.fields['comprobante'].disabled = True  
+
         if not user or not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
 
@@ -185,6 +187,10 @@ class PagoGastoForm(forms.ModelForm):
                 'placeholder': 'Referencia'
             }),
         }
-   
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+        self.fields['comprobante'].disabled = True
+
 class GastosCargaMasivaForm(forms.Form):
         archivo = forms.FileField(label='Archivo Excel (.xlsx)')     

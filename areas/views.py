@@ -88,6 +88,12 @@ def editar_area(request, pk):
             if not user.is_superuser and perfil and perfil.empresa:
                 area_modificada.empresa = perfil.empresa
 
+            # CONSERVA FECHAS ORIGINALES SI EL USUARIO NO MODIFICA
+            if not area_modificada.fecha_inicial:
+                area_modificada.fecha_inicial = area.fecha_inicial
+            if not area_modificada.fecha_fin:
+                area_modificada.fecha_fin = area.fecha_fin
+
             for field in form.changed_data:
                 valor_ant = getattr(area_original, field)
                 valor_nuevo = getattr(area_modificada, field)

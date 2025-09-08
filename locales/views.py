@@ -5,7 +5,6 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 import openpyxl
-#import unidecode
 from clientes.models import Cliente
 from empresas.models import Empresa
 import locales
@@ -18,19 +17,20 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 
 
-# Create your views here.
-
 @login_required
 def lista_locales(request):
     user = request.user
     query = request.GET.get("q", "")
     if user.is_superuser:
  
-        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
+        #locales = LocalComercial.objects.filter(activo=True).order_by('numero')
+        locales = LocalComercial.objects.filter(activo=True).select_related('cliente', 'empresa').order_by('numero')
+        
     else:
         
         empresa = user.perfilusuario.empresa
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        #locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'empresa').order_by('numero')
 
     if query:
         locales = locales.filter(

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+{% load static %}
+{% load humanize %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Recibo de Fondeo de Caja Chica</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', Arial, sans-serif; background: #fff; color: #222; }
+        .recibo-container { max-width: 700px; margin: 40px auto; padding: 32px; border: 1px solid #bbb; border-radius: 12px; background: #fafafa; }
+        h2 { text-align: center; margin-bottom: 24px; }
+        .datos { margin-bottom: 28px; }
+        .datos strong { width: 160px; display: inline-block; }
+        .firmas-table { width: 100%; margin-top: 60px; }
+        .firmas-table td { text-align: center; vertical-align: bottom; padding: 0 24px; }
+        .firma-linea { height: 60px; border-bottom: 1px solid #888; margin-bottom: 8px; }
+        .firma-label { color: #888; font-size: 0.95em; }
+        @media print {
+            .btn-imprimir { display: none; }
+            body { background: #fff; }
+        }
+    </style>
+</head>
+<body>
+    <div class="recibo-container">
+        <h2>{{ empresa.nombre }}</h2>
+        <h2>Recibo de Fondeo de Caja Chica</h2>
+        <div style="text-align: right; margin-bottom: 10px">
+                <img
+                  src="https://barcode.tec-it.com/barcode.ashx?data={{ fondeo.id }}&code=Code128&dpi=96"
+                  alt="Código de barras"
+                  style="height: 40px"
+                />
+              </div>
+        <div class="datos">
+            <p><strong>No.Cheque/Transfer:</strong> {{ fondeo.numero_cheque }}</p>
+            <p><strong>Fecha:</strong> {{ fondeo.fecha|date:"d/m/Y" }}</p>
+            <p><strong>Monto:</strong> ${{ fondeo.importe_cheque|floatformat:2|intcomma }}</p>
+            <p><strong>Importe en letra:</strong> {{ monto_letra }}</p>
+            <p><strong>Responsable:</strong> {{ fondeo.empleado_asignado }}</p>
+            {% comment %} <p><strong>Observaciones:</strong> {{ fondeo.observaciones|default:"-" }}</p> {% endcomment %}
+        </div>
+        <table class="firmas-table">
+            <tr>
+                <td>
+                    <div class="firma-linea"></div>
+                    <div class="firma-label">Firma Responsable</div>
+                </td>
+                <td>
+                    <div class="firma-linea"></div>
+                    <div class="firma-label">Firma Autorizacion</div>
+                </td>
+            </tr>
+        </table>
+        <div style="text-align:center; margin-top:40px;">
+            <button onclick="window.print()" class="btn btn-primary btn-imprimir">
+                <i class="bi bi-printer"></i> Imprimir recibo
+            </button>
+        </div>
+    </div>
+</body>
+</html>

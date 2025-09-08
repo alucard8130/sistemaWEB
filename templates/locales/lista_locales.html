@@ -74,7 +74,11 @@
                             {% endif %}
                             <td>{{ local.superficie_m2|floatformat:2|intcomma }}</td>
                             <td>${{ local.cuota|floatformat:2|intcomma }}</td>
-                            <td>{{ local.giro }}</td>
+                            {% if local.giro == None or local.giro == '' %}
+                                <td></td>
+                            {% else %}
+                                <td>{{ local.giro }}</td>
+                            {% endif %}
                             <td> {{ local.get_status_display }}</td>    
                         <!-- <td>{{ local.ubicacion }}</td>-->
                             <td style="white-space: nowrap;">
@@ -117,8 +121,8 @@
 
     <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
+        Creado por JMEB
     </footer>
 
     <!-- Scripts -->

@@ -49,11 +49,11 @@ class AreaComunForm(forms.ModelForm):
             'fecha_inicial': forms.DateInput(attrs={
                 'type': 'date',
                 'class': 'form-control'
-            }),
+            }, format='%Y-%m-%d'),
             'fecha_fin': forms.DateInput(attrs={
                 'type': 'date',
                 'class': 'form-control'
-            }),
+            }, format='%Y-%m-%d'),
             'status': forms.Select(attrs={
                 'class': 'form-control'
             }),
