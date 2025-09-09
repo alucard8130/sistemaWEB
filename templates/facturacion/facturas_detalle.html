@@ -51,7 +51,7 @@
             </div>
         </div>
 
-        <h2>Cobros registrados</h2>
+        <h2>Historial de Cobros</h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -70,7 +70,11 @@
                     <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                     <td>{{ cobro.get_forma_pago_display }}</td>
                     <td>{{ cobro.registrado_por }}</td>
+                    {% if cobro.observaciones == None or cobro.observaciones == "" %}
+                    <td></td>
+                    {% else %}
                     <td>{{ cobro.observaciones }}</td>
+                    {% endif %}
                     <td>
                         {% if cobro.comprobante %}
                         <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-primary btn-sm" title="Ver Comprobante"></a>
@@ -91,7 +95,7 @@
     <!-- 🔹 Footer -->
     <footer>
         © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+        Creado por JMEB
     </footer>
 
     <!-- Scripts -->

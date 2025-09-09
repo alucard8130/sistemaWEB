@@ -28,7 +28,7 @@
     <div class="container-fluid mt-5" encictype="multipart/form-data">
         <div class="row justify-content-center">
             <div class="col-md-4 col-sm-6 mx-auto">
-                <h2 class="form-title text-center mb-0">Detalle de gasto</h2>
+                <h2 class="form-title text-center mb-0">Historial de Pagos</h2>
 
                 <!-- Detail of expenses table -->
                 <table class="table table-bordered mb-4">
@@ -69,6 +69,11 @@
                     <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                     <td>{{ pago.get_forma_pago_display }}</td>
                     <td>{{ pago.registrado_por }}</td>
+                    {% if pago.comentario == None or pago.comentario == "" %}
+                    <td></td>
+                    {% else %}
+                    <td>{{ pago.comentario }}</td>
+                    {% endif %}
                     <td>{{ pago.referencia }}</td>
                     <td>
                         {% if pago.comprobante %}

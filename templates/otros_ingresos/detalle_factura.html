@@ -80,7 +80,11 @@
                         {% endif %}
                     </td>
                     <td>{{ cobro.registrado_por }}</td>
+                    {% if cobro.observaciones == None or cobro.observaciones == "" %}
+                    <td></td>
+                    {% else %}
                     <td>{{ cobro.observaciones }}</td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
