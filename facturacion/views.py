@@ -37,6 +37,7 @@ from collections import defaultdict
 import json
 from django.http import JsonResponse
 from django.db.models import Max
+from decimal import Decimal, ROUND_HALF_UP
 
 @login_required
 def crear_factura(request):
@@ -440,9 +441,6 @@ def registrar_pago(request, factura_id):
             pago.registrado_por = request.user
 
             if pago.forma_pago == "nota_credito":
-                # if factura.total_pagado > 0:
-                # form.add_error('monto', "No se puede registrar una nota de crédito si la factura tiene cobros asignados.")
-                # else:
                 pago.save()
                 factura.estatus = "cancelada"
                 factura.monto = 0  # Saldo pendiente a 0
@@ -454,8 +452,6 @@ def registrar_pago(request, factura_id):
                 return redirect("lista_facturas")
 
             # Permitir pagar hasta el saldo pendiente, considerando decimales
-            from decimal import Decimal, ROUND_HALF_UP
-
             monto_pago = Decimal(str(pago.monto)).quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
             )
@@ -1721,30 +1717,38 @@ def registrar_cobro_otros_ingresos(request, factura_id):
             cobro = form.save(commit=False)
             cobro.factura = factura
             cobro.registrado_por = request.user
-            # Permitir cobrar hasta el saldo pendiente, considerando decimales
-            from decimal import Decimal, ROUND_HALF_UP
 
-            monto_cobro = Decimal(str(cobro.monto)).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-            saldo_pendiente = Decimal(str(factura.saldo)).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-            if monto_cobro > saldo_pendiente:
-                messages.error(
-                    request,
-                    f"El monto del cobro no puede ser mayor al saldo pendiente de la factura (${saldo_pendiente:.2f}).",
-                )
-            else:
-                cobro.monto = monto_cobro
-                cobro.save()
-                # Actualiza estatus de la factura si ya está pagada
-                total_cobrado = sum([c.monto for c in factura.cobros.all()])
-                if total_cobrado >= float(factura.monto):
-                    factura.estatus = "cobrada"
+            if cobro.forma_cobro == "nota_credito":
+                    cobro.save()
+                    factura.estatus = "cancelada"
+                    factura.monto = 0
                     factura.save()
-                messages.success(request, "Cobro registrado correctamente.")
-                return redirect("lista_facturas_otros_ingresos")
+                    messages.success(
+                        request,
+                        "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",
+                    )
+                    return redirect("lista_facturas_otros_ingresos")
+            
+            monto_cobro = Decimal(str(cobro.monto)).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            saldo_pendiente = Decimal(str(factura.saldo)).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            if monto_cobro > saldo_pendiente:
+                    messages.error(
+                        request,
+                        f"El monto del cobro no puede ser mayor al saldo pendiente de la factura (${saldo_pendiente:.2f}).",
+                    )
+            else:
+                    cobro.monto = monto_cobro
+                    cobro.save()
+                    total_cobrado = sum([c.monto for c in factura.cobros.all()])
+                    if total_cobrado >= float(factura.monto):
+                        factura.estatus = "cobrada"
+                        factura.save()
+                    messages.success(request, "Cobro registrado correctamente.")
+                    return redirect("lista_facturas_otros_ingresos")
     else:
         form = CobroForm()
 

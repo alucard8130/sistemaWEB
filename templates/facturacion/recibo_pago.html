@@ -160,7 +160,11 @@
                     <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                     <td>{{ pago.fecha_pago|date:'d/m/Y' }}</td>
                     <td>{{ pago.forma_pago|title }}</td>
+                    {% if pago.observaciones == None or pago.observaciones == "" %}
+                    <td></td>
+                    {% else%}
                     <td>{{ pago.observaciones }}</td>
+                    {% endif %}
                 </tr>
             </table>
         </div>

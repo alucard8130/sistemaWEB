@@ -58,7 +58,6 @@ class Factura(models.Model):
   
 
     def actualizar_estatus(self):
-        #cambie el codigo para ver si funciona y pone bien el estado
         total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
        
         if total_pagado >= self.monto:
@@ -107,14 +106,34 @@ class FacturaOtrosIngresos(models.Model):
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"
     
+    # @property
+    # def saldo(self):
+    #     total_cobrado = sum(c.monto for c in self.cobros.all())
+    #     return float(self.monto) - float(total_cobrado)     
+    
     @property
     def saldo(self):
-        total_cobrado = sum(c.monto for c in self.cobros.all())
-        return float(self.monto) - float(total_cobrado)     
+        if self.estatus == 'cancelada':
+            return 0
+        if self.estatus in ('cobrada', 'pendiente'):
+            #total_cobrado = sum(c.monto for c in self.cobros.all())
+            return float(self.monto) - float(self.total_cobrado)
+        return 0
 
     @property
     def total_cobrado(self):
         return sum(c.monto for c in self.cobros.all())
+    
+    def actualizar_estatus(self):
+        total_cobrado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
+
+        if total_cobrado >= self.monto:
+            self.estatus = 'cobrada'
+        elif total_cobrado == 0:
+            self.estatus = 'pendiente'
+        else:
+            self.estatus = 'pendiente'  # O podrías poner un "parcial" si agregas esa opción
+        self.save()
 
 class CobroOtrosIngresos(models.Model):
     FORMAS_PAGO = [

@@ -119,7 +119,11 @@
                                 -
                             {% endif %}
                         </td> {% endcomment %}
+                        {% if cobro.observaciones == None or cobro.observaciones == "" %}
+                        <td></td>
+                    {% else %}
                         <td>{{ cobro.observaciones }}</td>
+                    {% endif %}
                     </tr>
                     {% empty %}
                     <tr class="no-data-row">

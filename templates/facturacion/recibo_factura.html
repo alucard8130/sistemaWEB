@@ -192,7 +192,7 @@
                     <th>Saldo</th>
                     {% comment %} <th>Fecha de Emisión</th> {% endcomment %}
                     <th>Fecha de Vencimiento</th>
-                    <th>Concepto</th>
+                    <th>Observaciones</th>
                     <th>Estado</th>
                   </tr>
                   <tr>
@@ -201,7 +201,11 @@
                     <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
                     {% comment %} <td>{{ factura.fecha_emision|date:'d/m/Y' }}</td> {% endcomment %}
                     <td>{{ factura.fecha_vencimiento|date:'d/m/Y' }}</td>
+                    {% if factura.observaciones == None or factura.observaciones == "" %}
+                    <td></td>
+                    {% else %}
                     <td>{{ factura.observaciones|title }}</td>
+                    {% endif %}
                     <td>{{ factura.estatus|title }}</td>
                   </tr>
                 </table>

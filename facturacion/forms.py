@@ -174,8 +174,6 @@ class FacturaEditForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Deshabilita el campo cliente para evitar edición
-        #self.fields['cliente'].disabled = True
         self.fields['estatus'].disabled = True
         self.fields['area_comun'].disabled = True
         self.fields['local'].disabled = True
@@ -259,6 +257,18 @@ class CobroForm(forms.ModelForm):
         # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
         self.fields['comprobante'].disabled = True
+
+    def clean(self):
+        cleaned_data = super().clean()
+        forma_cobro = cleaned_data.get('forma_cobro')
+        monto = cleaned_data.get('monto')
+
+        if forma_cobro != 'nota_credito' and (monto is None or monto == 0):
+            self.add_error('monto', 'El monto es obligatorio excepto para Nota de Crédito.')
+
+        if forma_cobro == 'nota_credito':
+            cleaned_data['monto'] = 0  # Si es nota de crédito, pone monto a cero
+        return cleaned_data    
 
 class TipoOtroIngresoForm(forms.ModelForm):
     class Meta:

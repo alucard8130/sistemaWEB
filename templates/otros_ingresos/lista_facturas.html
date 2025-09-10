@@ -60,7 +60,7 @@
                       {% endif %}
                       <th>Cliente</th>
                       
-                      <th>Monto</th>
+                      <th>Importe</th>
                       <th>Saldo</th>
                       <th>Tipo Cuota</th>
                     <!--  <th>Fecha emisión</th>-->
@@ -95,11 +95,14 @@
                           <td>{% if factura.estatus == 'cobrada' %} 
                               <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
                           {% elif factura.estatus == 'pendiente' %} 
-                              <span class="badge bg-warning">{{ factura.get_estatus_display }}</span> 
+                              <span class="badge bg-warning">{{ factura.get_estatus_display }}</span>
+                          {% elif factura.estatus == 'cancelada' %} 
+                              <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
                           {% endif %}</td>
+        
+                            <td class="text-nowrap">
 
-                          <td>
-                          {% if factura.estatus != 'cobrada' %}
+                          {% if factura.saldo > 0%}
                               <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>

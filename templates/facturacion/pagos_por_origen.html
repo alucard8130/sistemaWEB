@@ -125,7 +125,11 @@
                             <td>{{ pago.forma_pago|title }}</td>
                             <td>{{ pago.factura.folio }}</td>
                             <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td> 
-                            <td>{{ pago.observaciones}}</td>
+                            {% if pago.observaciones == None or pago.observaciones == "" %}
+                            <td></td>
+                            {% else %}
+                            <td>{{ pago.observaciones }}</td>
+                            {% endif %}
                             <td>
                             <a href="{% url 'recibo_pago' pago.id %}" class="btn btn-outline-primary btn-sm" title="Imprimir Documento" target="_blank">
                                 <i class="bi bi-printer"></i>
