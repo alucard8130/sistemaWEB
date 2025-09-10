@@ -35,12 +35,12 @@
     <!-- Main content -->
     <div class="container-fluid mt-4">
        
-      <h2>Lista otras cuotas</h2>
+      <h2>Lista otros ingresos</h2>
         <div class="row">
           <div class="col-auto">
             <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
               <i class="bi bi-plus-circle me-1"></i> 
-                Registrar otra cuota
+                Registrar otro ingreso
             </a>
             <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success mb-3">
                 <i class="bi bi-file-earmark-excel-fill"></i> 
@@ -62,7 +62,7 @@
                       
                       <th>Importe</th>
                       <th>Saldo</th>
-                      <th>Tipo Cuota</th>
+                      <th>Tipo Ingreso</th>
                     <!--  <th>Fecha emisión</th>-->
                       <th>Periodo</th>
                       <th>Descripción</th>
