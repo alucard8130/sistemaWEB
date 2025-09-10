@@ -154,7 +154,11 @@
                             {% else %}
                                 <td>{{ factura.observaciones }}</td>
                             {% endif %}
-                            <td>{{ factura.get_estatus_display }}</td>    
+                            <td>{% if factura.estatus == 'cobrada' %} 
+                                    <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
+                                {% elif factura.estatus == 'pendiente' %} 
+                                    <span class="badge bg-warning">{{ factura.get_estatus_display }}</span> 
+                                {% endif %}</td>
                             <td class="text-nowrap">
                                     {% if factura.saldo_pendiente > 0 %}    
                                     <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">

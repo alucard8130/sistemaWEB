@@ -85,17 +85,19 @@
                           <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                           <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
                           <td>{{ factura.tipo_ingreso }}</td>
-                          <!--<td>{{ factura.get_tipo_ingreso_display }}</td>-->
-                        <!--  <td>{{ factura.fecha_emision }}</td> -->
                           <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
                           {% if factura.observaciones == None or factura.observaciones == '' %}
                               <td></td>
                           {% else %}
                               <td>{{ factura.observaciones }}</td>
                           {% endif %}
-                          
-                          <td>{{ factura.get_estatus_display }}</td>
-                          
+
+                          <td>{% if factura.estatus == 'cobrada' %} 
+                              <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
+                          {% elif factura.estatus == 'pendiente' %} 
+                              <span class="badge bg-warning">{{ factura.get_estatus_display }}</span> 
+                          {% endif %}</td>
+
                           <td>
                           {% if factura.estatus != 'cobrada' %}
                               <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
