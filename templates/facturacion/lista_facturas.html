@@ -157,7 +157,9 @@
                             <td>{% if factura.estatus == 'cobrada' %} 
                                     <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
                                 {% elif factura.estatus == 'pendiente' %} 
-                                    <span class="badge bg-warning">{{ factura.get_estatus_display }}</span> 
+                                    <span class="badge bg-warning">{{ factura.get_estatus_display }}</span>
+                                {% elif factura.estatus == 'cancelada' %} 
+                                    <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
                                 {% endif %}</td>
                             <td class="text-nowrap">
                                     {% if factura.saldo_pendiente > 0 %}    
