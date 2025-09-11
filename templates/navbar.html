@@ -21,7 +21,8 @@
 
         <div class="collapse navbar-collapse" id="navbarOpciones">
             <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center ms-auto">
-                {% if request.user.is_superuser %}
+                
+                {% if request.user.is_staff %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Configuración</a>
                     <ul class="dropdown-menu">
@@ -31,6 +32,14 @@
                         <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
                         <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
                         <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
+                        <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
+                        </ul>
+                </li>
+                {% elif request.user.is_superuser %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Configuración</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
                     </ul>
                 </li>
                 {% endif %}

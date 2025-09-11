@@ -28,7 +28,11 @@ def proveedor_crear(request):
 @login_required
 def proveedor_lista(request):
     if request.user.is_superuser:
-        proveedores = Proveedor.objects.filter(activo=True)
+        empresa_id = request.session.get("empresa_id")
+        if empresa_id:
+            proveedores = Proveedor.objects.filter(empresa_id=empresa_id, activo=True)
+        else:
+            proveedores = Proveedor.objects.filter(activo=True)
     else:
         empresa = request.user.perfilusuario.empresa
         proveedores = Proveedor.objects.filter(empresa=empresa, activo=True)

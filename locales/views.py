@@ -22,14 +22,13 @@ def lista_locales(request):
     user = request.user
     query = request.GET.get("q", "")
     if user.is_superuser:
- 
-        #locales = LocalComercial.objects.filter(activo=True).order_by('numero')
-        locales = LocalComercial.objects.filter(activo=True).select_related('cliente', 'empresa').order_by('numero')
-        
+        empresa_id = request.session.get("empresa_id")
+        if empresa_id:
+            locales = LocalComercial.objects.filter(activo=True, empresa_id=empresa_id).select_related('cliente', 'empresa').order_by('numero')
+        else:
+            locales = LocalComercial.objects.filter(activo=True).select_related('cliente', 'empresa').order_by('numero')
     else:
-        
         empresa = user.perfilusuario.empresa
-        #locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'empresa').order_by('numero')
 
     if query:
@@ -44,7 +43,7 @@ def lista_locales(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'locales/lista_locales.html', {'locales': locales, 'locales': page_obj, 'q': query})
+    return render(request, 'locales/lista_locales.html', {'locales': page_obj, 'q': query})
 
 
 @login_required
@@ -118,18 +117,22 @@ def eliminar_local(request, pk):
 
     return render(request, 'locales/eliminar_local.html', {'local': local})
 
-#@staff_member_required
-#@user_passes_test(lambda u: u.is_staff)
+
+@login_required
 def locales_inactivos(request):
-    if empresa := getattr(request.user, 'perfilusuario', None):
-        empresa = request.user.perfilusuario.empresa
+    user = request.user
+    if user.is_superuser:
+        empresa_id = request.session.get("empresa_id")
+        if empresa_id:
+            locales = LocalComercial.objects.filter(empresa_id=empresa_id, activo=False)
+        else:
+            locales = LocalComercial.objects.filter(activo=False)
     else:
-        empresa = None
-    locales = LocalComercial.objects.filter(empresa=empresa,activo=False)
+        empresa = user.perfilusuario.empresa
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=False)
     return render(request, 'locales/locales_inactivos.html', {'locales': locales})
 
-#@staff_member_required
-#@user_passes_test(lambda u: u.is_staff)
+
 def reactivar_local(request, pk):
     local = get_object_or_404(LocalComercial, pk=pk, activo=False)
 

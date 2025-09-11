@@ -134,7 +134,7 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
               
               <!-- Texto a la derecha -->
               <div>
-                <p class="mb-2 text-muted">Gestor Administrativo Inmobiliario</p>
+                <p class="mb-2 text-muted">Sistema Web Administrativo Condominal</p>
                 <h1 class="welcome-title mb-2 fs-4">Bienvenid@ <br> {{ request.user.get_full_name|default:request.user.username }}</h1>
                 {% if empresa %}
                     <p class="text-muted">Empresa: <strong>{{ empresa.nombre }}</strong></p>

@@ -1694,14 +1694,17 @@ def crear_factura_otros_ingresos(request):
 
 @login_required
 def lista_facturas_otros_ingresos(request):
-    
+    empresa_id = request.session.get("empresa_id")
     facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_emision')
+    
     # Filtrar por empresa si no es superusuario
-    if not request.user.is_superuser:
+    if request.user.is_superuser and empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+    elif not request.user.is_superuser:
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
 
     # Paginación
-    paginator = Paginator(facturas, 25)  # 25 facturas por página
+    paginator = Paginator(facturas, 25)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

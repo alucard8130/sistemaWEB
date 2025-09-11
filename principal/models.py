@@ -53,8 +53,6 @@ class Evento(models.Model):
 
 # Modulo de tickets de mantenimiento
 
-#User = get_user_model()
-
 class TicketMantenimiento(models.Model):
     ESTADO_CHOICES = [
         ('pendiente', 'Pendiente'),

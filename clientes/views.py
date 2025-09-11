@@ -16,7 +16,10 @@ from django.db.models import Q
 @login_required
 def lista_clientes(request):
     query = request.GET.get("q", "")
-    if request.user.is_superuser:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
+        clientes = Cliente.objects.filter(empresa_id=empresa_id, activo=True).order_by('nombre')
+    elif request.user.is_superuser:
         clientes = Cliente.objects.filter(activo=True).order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
@@ -30,14 +33,14 @@ def lista_clientes(request):
     clientes = clientes.order_by('nombre')
 
     # paginacion
-    paginator = Paginator(clientes, 20)  # 20 áreas por página
+    paginator = Paginator(clientes, 20)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     return render(
         request,
         "clientes/lista_clientes.html",
-        {"clientes": clientes, "clientes": page_obj, "q": query},
+        {"clientes": page_obj, "q": query},
     )
 
 
@@ -216,7 +219,10 @@ def plantilla_clientes_excel(request):
 
 @login_required
 def clientes_inactivos(request):
-    if request.user.is_superuser:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
+        clientes = Cliente.objects.filter(activo=False, empresa_id=empresa_id)
+    elif request.user.is_superuser:
         clientes = Cliente.objects.filter(activo=False)
     else:
         empresa = request.user.perfilusuario.empresa

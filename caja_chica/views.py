@@ -119,31 +119,37 @@ def generar_vale_caja(request):
 
 @login_required
 def lista_fondeos(request):
-    empresa = None
-    if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if perfil:
-            empresa = getattr(perfil, "empresa", None)
-    if empresa:
-        fondeos = FondeoCajaChica.objects.filter(empresa=empresa)
-    else:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
+        fondeos = FondeoCajaChica.objects.filter(empresa_id=empresa_id)
+    elif request.user.is_superuser:
         fondeos = FondeoCajaChica.objects.all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            fondeos = FondeoCajaChica.objects.filter(empresa=perfil.empresa)
+        else:
+            fondeos = FondeoCajaChica.objects.none()
     return render(request, "caja_chica/lista_fondeos.html", {"fondeos": fondeos})
 
 
 @login_required
 def lista_gastos_caja_chica(request):
-    empresa = None
-    if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if perfil:
-            empresa = getattr(perfil, "empresa", None)
-    if empresa:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
         gastos = GastoCajaChica.objects.select_related("fondeo").filter(
-            fondeo__empresa=empresa
+            fondeo__empresa_id=empresa_id
         )
-    else:
+    elif request.user.is_superuser:
         gastos = GastoCajaChica.objects.select_related("fondeo").all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            gastos = GastoCajaChica.objects.select_related("fondeo").filter(
+                fondeo__empresa=perfil.empresa
+            )
+        else:
+            gastos = GastoCajaChica.objects.select_related("fondeo").none()
     return render(
         request, "caja_chica/lista_gastos_caja_chica.html", {"gastos": gastos}
     )
@@ -151,17 +157,21 @@ def lista_gastos_caja_chica(request):
 
 @login_required
 def lista_vales_caja_chica(request):
-    empresa = None
-    if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if perfil:
-            empresa = getattr(perfil, "empresa", None)
-    if empresa:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
         vales = ValeCaja.objects.select_related("fondeo").filter(
-            fondeo__empresa=empresa
+            fondeo__empresa_id=empresa_id
         )
-    else:
+    elif request.user.is_superuser:
         vales = ValeCaja.objects.select_related("fondeo").all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            vales = ValeCaja.objects.select_related("fondeo").filter(
+                fondeo__empresa=perfil.empresa
+            )
+        else:
+            vales = ValeCaja.objects.select_related("fondeo").none()
     return render(request, "caja_chica/lista_vales_caja_chica.html", {"vales": vales})
 
 @login_required

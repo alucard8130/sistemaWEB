@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Q
 import openpyxl
 from core import settings
 from empleados.models import Empleado
@@ -47,7 +48,7 @@ def bienvenida(request):
     es_demo = False
     perfil = request.user.perfilusuario
     mostrar_wizard = perfil.mostrar_wizard
-    
+        
     mensaje_pago = None
     if request.GET.get("pago") == "ok":
         mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
@@ -57,7 +58,16 @@ def bienvenida(request):
         eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
         es_demo = request.user.perfilusuario.tipo_usuario == "demo"
     else:
-        eventos = Evento.objects.all().order_by("fecha")
+        empresa_id = request.session.get("empresa_id")
+        if empresa_id:
+            try:
+                empresa = Empresa.objects.get(id=empresa_id)
+                eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
+            except Empresa.DoesNotExist:
+                empresa = None
+                eventos = Evento.objects.all().order_by("fecha")
+        else:
+            eventos = Evento.objects.all().order_by("fecha")
     return render(
         request,
         "bienvenida.html",
@@ -682,5 +692,26 @@ def tickets_asignados(request):
 
 @login_required
 def lista_tickets(request):
-    tickets = TicketMantenimiento.objects.all().order_by('-fecha_creacion')
+    if request.user.is_superuser:
+        empresa_id = request.session.get("empresa_id")
+        if empresa_id:
+            tickets = TicketMantenimiento.objects.filter(empleado_asignado__empresa_id=empresa_id).order_by('-fecha_creacion')
+        else:
+            tickets = TicketMantenimiento.objects.all().order_by('-fecha_creacion')
+    else:
+        empresa = request.user.perfilusuario.empresa
+        tickets = TicketMantenimiento.objects.filter(empleado_asignado__empresa=empresa).order_by('-fecha_creacion')
     return render(request, 'mantenimiento/lista_tickets.html', {'tickets': tickets})
+
+@login_required
+def seleccionar_empresa(request):
+    if not request.user.is_superuser:
+        return redirect('bienvenida')  # O la vista normal
+
+    if request.method == 'POST':
+        empresa_id = request.POST.get('empresa')
+        if empresa_id:
+            request.session['empresa_id'] = empresa_id
+            return redirect('bienvenida')  # O la vista principal
+    empresas = Empresa.objects.all()
+    return render(request, 'seleccionar_empresa.html', {'empresas': empresas})

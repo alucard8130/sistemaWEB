@@ -249,7 +249,9 @@ def estado_resultados(request):
     if not request.user.is_superuser:
         empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
-        empresa_id = request.GET.get("empresa") or ""
+        empresa_id = request.GET.get("empresa") or request.session.get("empresa_id")
+        if not empresa_id or not str(empresa_id).isdigit():
+            empresa_id = None
 
     # Obtener meses y años existentes en la base de datos
     if empresa_id:

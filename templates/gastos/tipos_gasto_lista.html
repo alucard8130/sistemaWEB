@@ -42,9 +42,9 @@
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
-                        {% if request.user.is_superuser %}
+                        {% comment %} {% if request.user.is_superuser %}
                             <th>Empresa</th>
-                        {% endif %}
+                        {% endif %} {% endcomment %}
                         <th>Grupo</th>
                         <th>Subgrupo</th>
                         <th>Tipo de Gasto</th>
@@ -55,9 +55,9 @@
                 <tbody>
                 {% for tipo in tipos %}
                     <tr>
-                        {% if request.user.is_superuser %}
+                        {% comment %} {% if request.user.is_superuser %}
                             <td>{{ tipo.subgrupo.grupo.empresa.nombre }}</td>
-                        {% endif %}
+                        {% endif %} {% endcomment %}
                         <td>{{ tipo.subgrupo.grupo.nombre }}</td>
                         <td>{{ tipo.subgrupo.nombre }}</td>
                         <td>{{ tipo.nombre }}</td>
