@@ -28,7 +28,7 @@
     <div class="container-fluid mt-5" encictype="multipart/form-data">
         <div class="row justify-content-center">
             <div class="col-md-4 col-sm-6 mx-auto">
-                <h2 class="form-title text-center mb-0">Detalle de gasto</h2>
+                <h2 class="form-title text-center mb-0">Detalle Gastos</h2>
 
                 <!-- Detail of expenses table -->
                 <table class="table table-bordered mb-4">
@@ -50,7 +50,7 @@
             </div>
         </div>
 
-        <h2>Pagos registrados</h2>
+        <h2>Historial pagos</h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -69,7 +69,11 @@
                     <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                     <td>{{ pago.get_forma_pago_display }}</td>
                     <td>{{ pago.registrado_por }}</td>
+                    {% if pago.referencia == None or pago.referencia == "" %}
+                    <td></td>
+                    {% else %}
                     <td>{{ pago.referencia }}</td>
+                    {% endif %}
                     <td>
                         {% if pago.comprobante %}
                             <a href="{{ pago.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Comprobante">

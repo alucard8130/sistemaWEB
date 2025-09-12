@@ -18,6 +18,7 @@ class AreaComun(models.Model):
         ('Isla', 'isla'),
         ('Cajon', 'cajon'),
         ('Area', 'area'),
+        ('Otro', 'otro'),
         ]
     
     tipo_area = models.CharField(max_length=20, choices=TIPO_AREA_CHOICES, default='Modulo')

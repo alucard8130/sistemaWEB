@@ -35,12 +35,12 @@
     <!-- Main content -->
     <div class="container-fluid mt-4">
        
-      <h2>Otras cuotas</h2>
+      <h2>Lista otros ingresos</h2>
         <div class="row">
           <div class="col-auto">
             <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
               <i class="bi bi-plus-circle me-1"></i> 
-                Registrar otra cuota
+                Registrar otro ingreso
             </a>
             <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success mb-3">
                 <i class="bi bi-file-earmark-excel-fill"></i> 
@@ -60,16 +60,15 @@
                       {% endif %}
                       <th>Cliente</th>
                       
-                      <th>Monto</th>
+                      <th>Importe</th>
                       <th>Saldo</th>
-                      <th>Tipo Cuota</th>
+                      <th>Tipo Ingreso</th>
                     <!--  <th>Fecha emisión</th>-->
                       <th>Periodo</th>
-                      <th>Concepto</th>
+                      <th>Descripción</th>
                       <th>Estatus</th>
-                      
                       <th>Acciones</th>
-                      <th>CFDI</th>    
+                      {% comment %} <th>CFDI</th>     {% endcomment %}
                       <th>Historial</th>
                   
                   </tr>
@@ -86,20 +85,34 @@
                           <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                           <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
                           <td>{{ factura.tipo_ingreso }}</td>
-                          <!--<td>{{ factura.get_tipo_ingreso_display }}</td>-->
-                        <!--  <td>{{ factura.fecha_emision }}</td> -->
                           <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
-                          <td>{{factura.observaciones}}</td>
-                          <td>{{ factura.get_estatus_display }}</td>
-                          
-                          <td>
-                          {% if factura.estatus != 'cobrada' %}
+                          {% if factura.observaciones == None or factura.observaciones == '' %}
+                              <td></td>
+                          {% else %}
+                              <td>{{ factura.observaciones }}</td>
+                          {% endif %}
+
+                          <td>{% if factura.estatus == 'cobrada' %} 
+                              <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
+                          {% elif factura.estatus == 'pendiente' %} 
+                              <span class="badge bg-warning">{{ factura.get_estatus_display }}</span>
+                          {% elif factura.estatus == 'cancelada' %} 
+                              <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
+                          {% endif %}</td>
+        
+                            <td class="text-nowrap">
+
+                          {% if factura.saldo > 0%}
                               <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
                           {% endif %}
+                          <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
+                                        </a>
                           </td>
-                              <td>
+                          
+                              {% comment %} <td>
                               {% if factura.cfdi|archivo_existe %}
                                   <a href="{{ factura.cfdi.url }}" class="btn btn-sm btn-outline-dark" target="_blank" title="Ver CFDI">
                                       <i class="bi bi-file-earmark-pdf me-1"></i> 
@@ -107,7 +120,7 @@
                               {% else %}
                                   <span class="text-muted"></span>
                               {% endif %}
-                            </td>
+                            </td> {% endcomment %}
                           <td>
                             <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
                                 <i class="bi bi-eye me-1"></i>
@@ -148,8 +161,8 @@
 
     <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
+        Creado por JMEB
     </footer>
 
     <!-- Scripts -->

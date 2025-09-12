@@ -1,0 +1,247 @@
+{% load humanize %}
+<!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Solicitud Gastos</title>
+        <style>
+          body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 0;
+          }
+          .recibo-container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 32px 40px 24px 40px;
+          }
+          .logo {
+            text-align: center;
+            margin-bottom: 20px;
+          }
+          .logo img {
+            max-width: 180px;
+            max-height: 80px;
+          }
+          .empresa-info {
+            text-align: center;
+            margin-bottom: 18px;
+          }
+          .empresa-info h2 {
+            margin: 0;
+            font-size: 1.4em;
+            color: #2c3e50;
+          }
+          .empresa-info p {
+            margin: 2px 0;
+            color: #555;
+            font-size: 0.98em;
+          }
+          .recibo-title {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 18px 0 12px 0;
+            color: #007bff;
+          }
+          .datos-section {
+            margin-bottom: 18px;
+          }
+          .datos-section h4 {
+            margin-bottom: 6px;
+            color: #444;
+            font-size: 1.08em;
+          }
+          .datos-section table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .datos-section td {
+            padding: 4px 0;
+            font-size: 0.98em;
+          }
+          .factura-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+          }
+          .factura-table th,
+          .factura-table td {
+            border-bottom: 1px solid #eaeaea;
+            padding: 8px 4px;
+            text-align: left;
+            font-size: 0.98em;
+          }
+          .factura-table th {
+            background: #f1f1f1;
+            color: #333;
+          }
+          .total {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #007bff;
+            text-align: right;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 28px;
+            color: #888;
+            font-size: 0.95em;
+          }
+          @media print {
+            body {
+              background: #fff;
+            }
+            .recibo-container {
+              box-shadow: none;
+            }
+            .footer {
+              color: #444;
+            }
+            button {
+              display: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="recibo-container">
+            <div class="empresa-info">
+            <h2>{{ empresa.nombre }}</h2>
+            {% if empresa.direccion %}<p>{{ empresa.direccion }}</p>{% endif %}
+            {% if empresa.rfc %}<p>RFC: {{ empresa.rfc }}</p>{% endif %}
+            {% if empresa.telefono %}<p>Tel: {{ empresa.telefono }}</p>{% endif %}
+            {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
+        </div>
+              <div class="recibo-title" style="color: #d35400">
+                Solicitud de Pago #{{ gasto.id }}
+              </div>
+              <div style="text-align: right; margin-bottom: 10px">
+                <img
+                  src="https://barcode.tec-it.com/barcode.ashx?data={{ gasto.id }}&code=Code128&dpi=96"
+                  alt="Código de barras"
+                  style="height: 40px"
+                />
+              </div>
+              <div class="datos-section">
+                <h4>Beneficiario:</h4>
+                <table>
+                {% if proveedor.nombre %}
+                  <tr>
+                    <td><strong>Nombre:</strong></td>
+                    <td>{{ proveedor.nombre }}</td>
+                  </tr>
+                 
+                  <tr>
+                    <td><strong>RFC:</strong></td>
+                    <td>{{ proveedor.rfc }}</td>
+                  </tr>
+                 
+                  <tr>
+                    <td><strong>Teléfono:</strong></td>
+                    <td>{{ proveedor.telefono }}</td>
+                  </tr>
+                 
+                  <tr>
+                    <td><strong>Email:</strong></td>
+                    <td>{{ proveedor.email }}</td>
+                  </tr>
+                {% elif empleado.nombre %}
+                  <tr>
+                    <td><strong>Nombre:</strong></td>
+                    <td>{{ empleado.nombre }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>RFC:</strong></td>
+                    <td>{{ empleado.rfc }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Teléfono:</strong></td>
+                    <td>{{ empleado.telefono }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Email:</strong></td>
+                    <td>{{ empleado.email }}</td>
+                  </tr>
+                {% endif %}
+                </table>
+              </div>
+              <div class="datos-section">
+                <h4>Datos:</h4>
+                <table>
+                  <tr>
+                    <td><strong>Descripción del Gasto:</strong></td>
+                    <td>{{ gasto.descripcion }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tipo Gasto:</strong></td>
+                    <td>{{ gasto.tipo_gasto }}</td>
+                </table>
+              </div>
+              <div class="datos-section">
+                <h4>Factura de la Solicitud de pago</h4>
+                <table class="factura-table">
+                  <tr>
+                    <th>N.Factura</th>
+                    <th>Monto</th>
+                    {% comment %} <th>Saldo</th> {% endcomment %}
+                    {% comment %} <th>Fecha de Emisión</th> {% endcomment %}
+                    <th>Fecha</th>
+                    {% comment %} <th>Concepto</th> {% endcomment %}
+                    <th>Estado</th>
+                  </tr>
+                  <tr>
+                    <td>{{ gasto.id }}</td>
+                    <td>${{ gasto.monto|floatformat:2|intcomma }}</td>
+                    {% comment %} <td>${{ gasto.saldo_restante|floatformat:2|intcomma }}</td> {% endcomment %}
+                    {% comment %} <td>{{ gasto.fecha_emision|date:'d/m/Y' }}</td> {% endcomment %}
+                    <td>{{ gasto.fecha|date:'d/m/Y' }}</td>
+                    {% comment %} <td>{{ gasto.descripcion|title }}</td> {% endcomment %}
+                    <td>{{ gasto.get_estatus_display }}</td>
+                  </tr>
+                </table>
+                <div class="total">
+                  Total: ${{ gasto.monto|floatformat:2|intcomma }}
+                </div>
+                <div style="font-size:1em; color:#444; margin-top:8px;">
+                 <strong>Importe en letra:</strong> {{ monto_letra }}
+                </div>
+                {% comment %} {% if gasto.descripcion %}
+                <div style="margin-top: 8px; color: #888; font-size: 0.98em">
+                  <strong>Descripción:</strong> {{ gasto.descripcion }}
+                </div>
+                {% endif %}
+              </div> {% endcomment %}
+              <div class="footer">
+     </div>
+<!-- Sección de firmas -->
+<div class="datos-section" style="margin-top: 40px;">
+  <table style="width:100%;">
+    <tr>
+      <td style="width:50%; text-align:center;">
+        <strong>Solicita</strong>
+        <div style="height:60px; border-bottom:1px solid #888; margin:12px 0;"></div>
+        <span style="color:#888; font-size:0.95em;">Nombre y firma</span>
+      </td>
+      <td style="width:50%; text-align:center;">
+        <strong>Autorizo</strong>
+        <div style="height:60px; border-bottom:1px solid #888; margin:12px 0;"></div>
+        <span style="color:#888; font-size:0.95em;">Nombre y firma</span>
+      </td>
+    </tr>
+  </table>
+</div>
+              <button onclick="window.print()" class="btn btn-primary">
+                Imprimir Solicitud
+              </button>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  </body>
+</html>

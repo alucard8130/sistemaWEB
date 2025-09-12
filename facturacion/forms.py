@@ -53,6 +53,7 @@ class FacturaForm(forms.ModelForm):
         # campos no requeridos
         self.fields['local'].required = False
         self.fields['area_comun'].required = False
+        self.fields['cfdi'].disabled = True
 
         if self.user and not self.user.is_superuser:
             empresa = self.user.perfilusuario.empresa
@@ -76,7 +77,7 @@ class FacturaForm(forms.ModelForm):
     def clean_fecha_vencimiento(self):
         fecha_vencimiento = self.cleaned_data.get('fecha_vencimiento')
         if not fecha_vencimiento:
-            raise forms.ValidationError("La fecha de vencimiento es obligatoria.")
+            raise forms.ValidationError("La fecha de la factura es obligatoria.")
         return fecha_vencimiento        
       
 class PagoForm(forms.ModelForm):
@@ -107,8 +108,8 @@ class PagoForm(forms.ModelForm):
         }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
+        self.fields['comprobante'].disabled = True
 
     def clean(self):
         cleaned_data = super().clean()
@@ -152,7 +153,7 @@ class FacturaEditForm(forms.ModelForm):
             'fecha_vencimiento': forms.DateInput(attrs={
                 'type': 'date',
                 'class': 'form-control'
-            }),
+            }, format='%Y-%m-%d'),
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control'
             }),
@@ -173,14 +174,19 @@ class FacturaEditForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Deshabilita el campo cliente para evitar edición
-        self.fields['cliente'].disabled = True
         self.fields['estatus'].disabled = True
         self.fields['area_comun'].disabled = True
         self.fields['local'].disabled = True
-        
-        
-            
+
+    def clean_fecha_vencimiento(self):
+        fecha = self.cleaned_data.get('fecha_vencimiento')
+        print("Valor recibido en fecha_vencimiento:", fecha)
+        # Si el campo viene vacío o como cadena vacía, conserva la original
+        if not fecha or str(fecha).strip() == "":
+            return self.instance.fecha_vencimiento
+        return fecha
+
+
 class FacturaOtrosIngresosForm(forms.ModelForm):
     class Meta:
         model = FacturaOtrosIngresos
@@ -212,6 +218,7 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        self.fields['cfdi'].disabled = True 
         if user and hasattr(user, 'perfilusuario'):
             empresa = user.perfilusuario.empresa
             self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
@@ -249,6 +256,19 @@ class CobroForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
+        self.fields['comprobante'].disabled = True
+
+    def clean(self):
+        cleaned_data = super().clean()
+        forma_cobro = cleaned_data.get('forma_cobro')
+        monto = cleaned_data.get('monto')
+
+        if forma_cobro != 'nota_credito' and (monto is None or monto == 0):
+            self.add_error('monto', 'El monto es obligatorio excepto para Nota de Crédito.')
+
+        if forma_cobro == 'nota_credito':
+            cleaned_data['monto'] = 0  # Si es nota de crédito, pone monto a cero
+        return cleaned_data    
 
 class TipoOtroIngresoForm(forms.ModelForm):
     class Meta:

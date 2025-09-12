@@ -19,22 +19,6 @@ def empresa_crear(request):
         form = EmpresaForm()
     return render(request, 'empresas/crear.html', {'form': form})
 
-#@login_required
-#def empresa_lista(request):
- #   empresas = Empresa.objects.all()
-  #  return render(request, 'empresas/lista.html', {'empresas': empresas})
-
-#@login_required
-#def empresa_lista(request):
- #   if request.user.is_superuser:
-  #      empresas = Empresa.objects.all()
-   # else:
-    #    try:
-     #       perfil = request.user.perfilusuario
-      #      empresas = Empresa.objects.filter(pk=perfil.empresa.pk)
-       # except:
-        #    empresas = Empresa.objects.none()
-   # return render(request, 'empresas/lista.html', {'empresas': empresas})
 
 @login_required
 def empresa_lista(request):

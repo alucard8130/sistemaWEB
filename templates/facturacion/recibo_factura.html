@@ -1,0 +1,242 @@
+{% load humanize %}
+<!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Factura Cuotas</title>
+        <style>
+          body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 0;
+          }
+          .recibo-container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 32px 40px 24px 40px;
+          }
+          .logo {
+            text-align: center;
+            margin-bottom: 20px;
+          }
+          .logo img {
+            max-width: 180px;
+            max-height: 80px;
+          }
+          .empresa-info {
+            text-align: center;
+            margin-bottom: 18px;
+          }
+          .empresa-info h2 {
+            margin: 0;
+            font-size: 1.4em;
+            color: #2c3e50;
+          }
+          .empresa-info p {
+            margin: 2px 0;
+            color: #555;
+            font-size: 0.98em;
+          }
+          .recibo-title {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 18px 0 12px 0;
+            color: #007bff;
+          }
+          .datos-section {
+            margin-bottom: 18px;
+          }
+          .datos-section h4 {
+            margin-bottom: 6px;
+            color: #444;
+            font-size: 1.08em;
+          }
+          .datos-section table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .datos-section td {
+            padding: 4px 0;
+            font-size: 0.98em;
+          }
+          .factura-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+          }
+          .factura-table th,
+          .factura-table td {
+            border-bottom: 1px solid #eaeaea;
+            padding: 8px 4px;
+            text-align: left;
+            font-size: 0.98em;
+          }
+          .factura-table th {
+            background: #f1f1f1;
+            color: #333;
+          }
+          .total {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #007bff;
+            text-align: right;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 28px;
+            color: #888;
+            font-size: 0.95em;
+          }
+          @media print {
+            body {
+              background: #fff;
+            }
+            .recibo-container {
+              box-shadow: none;
+            }
+            .footer {
+              color: #444;
+            }
+            button {
+              display: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="recibo-container">
+            <div class="empresa-info">
+            <h2>{{ empresa.nombre }}</h2>
+            {% if empresa.direccion %}<p>{{ empresa.direccion }}</p>{% endif %}
+            {% if empresa.rfc %}<p>RFC: {{ empresa.rfc }}</p>{% endif %}
+            {% if empresa.telefono %}<p>Tel: {{ empresa.telefono }}</p>{% endif %}
+            {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
+        </div>
+              <div class="recibo-title" style="color: #d35400">
+          {% if factura.local %}      
+          FACTURA  CUOTA DE MANTENIMIENTO
+          {% else %}
+          FACTURA  CUOTA DE AREA COMUN
+          {% endif %}
+              </div>
+              <div style="text-align: right; margin-bottom: 10px">
+                <img
+                  src="https://barcode.tec-it.com/barcode.ashx?data={{ factura.folio }}&code=Code128&dpi=96"
+                  alt="Código de barras"
+                  style="height: 40px"
+                />
+              </div>
+              <div class="datos-section">
+                <h4>Datos del Cliente</h4>
+                <table>
+                  <tr>
+                    <td><strong>Nombre:</strong></td>
+                    <td>{{ cliente.nombre }}</td>
+                  </tr>
+                  {% if cliente.rfc %}
+                  <tr>
+                    <td><strong>RFC:</strong></td>
+                    <td>{{ cliente.rfc }}</td>
+                  </tr>
+                  {% endif %} {% if cliente.telefono %}
+                  <tr>
+                    <td><strong>Teléfono:</strong></td>
+                    <td>{{ cliente.telefono }}</td>
+                  </tr>
+                  {% endif %} {% if cliente.email %}
+                  <tr>
+                    <td><strong>Email:</strong></td>
+                    <td>{{ cliente.email }}</td>
+                  </tr>
+                  {% endif %}
+                </table>
+              </div>
+              <div class="datos-section">
+                <h4>Datos Ubicacion</h4>
+                <table>
+                  {% if factura.local %}
+                  <tr>
+                    <td><strong>Local:</strong></td>
+                    <td>{{ factura.local.numero }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Referencia:</strong></td>
+                    <td>{{ factura.local.referencia }}</td>
+                  </tr>
+                  {% endif %} {% if factura.area_comun %}
+                  <tr>
+                    <td><strong>Área Común:</strong></td>
+                    <td>{{ factura.area_comun.numero }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Referencia:</strong></td>
+                    <td>{{ factura.area_comun.referencia }}</td>
+                  </tr>
+                  {% endif %}
+                  <tr>
+                    <td><strong>Tipo Cuota:</strong></td>
+                    <td>{{ factura.tipo_cuota }}</td>
+                </table>
+              </div>
+              <div class="datos-section">
+                <h4>Datos de la Factura</h4>
+                <table class="factura-table">
+                  <tr>
+                    <th>Folio</th>
+                    <th>Monto</th>
+                    <th>Saldo</th>
+                    {% comment %} <th>Fecha de Emisión</th> {% endcomment %}
+                    <th>Fecha de Vencimiento</th>
+                    <th>Observaciones</th>
+                    <th>Estado</th>
+                  </tr>
+                  <tr>
+                    <td>{{ factura.folio }}</td>
+                    <td>${{ factura.monto|floatformat:2|intcomma }}</td>
+                    <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
+                    {% comment %} <td>{{ factura.fecha_emision|date:'d/m/Y' }}</td> {% endcomment %}
+                    <td>{{ factura.fecha_vencimiento|date:'d/m/Y' }}</td>
+                    {% if factura.observaciones == None or factura.observaciones == "" %}
+                    <td></td>
+                    {% else %}
+                    <td>{{ factura.observaciones|title }}</td>
+                    {% endif %}
+                    <td>{{ factura.estatus|title }}</td>
+                  </tr>
+                </table>
+                <div class="total">
+                  Total: ${{ factura.monto|floatformat:2|intcomma }}
+                </div>
+                {% if factura.observaciones %}
+                <div style="margin-top: 8px; color: #888; font-size: 0.98em">
+                  <strong>Observaciones:</strong> {{ factura.observaciones }}
+                </div>
+                {% endif %}
+              </div>
+              <div class="footer">
+                <p>Gracias por su preferencia.</p>
+                <p>
+                  Para cualquier duda o aclaración, comuníquese a {{ empresa.telefono }} o {{ empresa.email }}.
+                </p>
+                <p>
+                  Este documento no tiene validez fiscal ni representa el pago de ningun adeudo.
+                </p>
+              </div>
+              <button onclick="window.print()" class="btn btn-primary">
+                Imprimir factura
+              </button>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  </body>
+</html>
+	
+
+

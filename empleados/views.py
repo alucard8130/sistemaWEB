@@ -36,7 +36,10 @@ def empleado_editar(request, pk):
 
 @login_required
 def empleado_lista(request):
-    if request.user.is_superuser:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
+        empleados = Empleado.objects.filter(empresa_id=empresa_id, activo=True).order_by('nombre')
+    elif request.user.is_superuser:
         empleados = Empleado.objects.filter(activo=True).order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa

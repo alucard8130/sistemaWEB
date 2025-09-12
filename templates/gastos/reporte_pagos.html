@@ -98,7 +98,7 @@
                         <th>Proveedor/Empleado</th>
                         <th>Forma de Pago</th>
                         <th>Comentarios</th>
-                        <th>Comprobante</th>
+                        {% comment %} <th>Comprobante</th> {% endcomment %}
                     </tr>
                 </thead>
                 <tbody>
@@ -117,14 +117,18 @@
                             {% endif %}
                         </td>
                         <td>{{ pago.get_forma_pago_display }}</td>
+                        {% if pago.referencia == None or pago.referencia == "" %}
+                        <td></td>
+                        {% else %}  
                         <td>{{ pago.referencia }}</td>
-                        <td>
+                        {% endif %}
+                        {% comment %} <td>
                             {% if pago.comprobante %}
                                 <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
                             {% else %}
                                 <span class="text-muted"></span>
                             {% endif %}
-                    </tr>
+                    </tr> {% endcomment %}
                     {% endfor %}
                     <!-- Caja Chica -->
                     {% for gasto in pagos_caja_chica %}

@@ -74,8 +74,16 @@
                         <td>{{ cliente.id }}</td>
                         <td>{{ cliente.nombre }}</td>
                         <td>{{ cliente.rfc }}</td>
-                        <td>{{ cliente.telefono }}</td>
-                        <td>{{ cliente.email }}</td>
+                        {% if cliente.telefono == None or cliente.telefono == '' %}
+                            <td></td>
+                        {% else %}
+                            <td>{{ cliente.telefono }}</td>
+                        {% endif %}
+                        {% if cliente.email == None or cliente.email == '' %}
+                            <td></td>
+                        {% else %}
+                            <td>{{ cliente.email }}</td>
+                        {% endif %}
                         {% if request.user.is_superuser %}
                             <td>{{ cliente.empresa.nombre }}</td>
                         {% endif %}

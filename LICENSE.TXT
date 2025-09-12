@@ -1,10 +1,10 @@
-# Gestor Administrativo Condominal (GAC)
+# Gestor Administrativo Condominal (GESAC)
 
 **Developer & Licensor:** Jaime Martin Estrada Bernabé
 
 ## Description
 
-Gestor Administrativo Condominal (GAC) is a specialized software for the efficient management and administration of condominiums and similar real estate properties. This tool streamlines billing, collections, expense control, and reporting, tailored for the unique needs of condominium administrators.
+Gestor Administrativo Condominal (GESAC) is a specialized software for the efficient management and administration of condominiums and similar real estate properties. This tool streamlines billing, collections, expense control, and reporting, tailored for the unique needs of condominium administrators.
 
 ---
 
@@ -17,11 +17,11 @@ Gestor Administrativo Condominal (GAC) is a specialized software for the efficie
 
 #### 1. Purpose
 
-The Licensor grants the Licensee a **non-exclusive, non-transferable, and limited license** to use the software named **"Gestor Administrativo Condominal (GAC)"**, in accordance with the terms and conditions set forth below.
+The Licensor grants the Licensee a **non-exclusive, non-transferable, and limited license** to use the software named **"Gestor Administrativo Condominal (GESAC)"**, in accordance with the terms and conditions set forth below.
 
 #### 2. Granted Rights
 
-- The Licensee may install and use GAC on [specify number of devices/licenses] exclusively for commercial and management purposes within their organization.
+- The Licensee may install and use GESAC on [specify number of devices/licenses] exclusively for commercial and management purposes within their organization.
 - The Licensee may make backup copies of the software solely for internal safeguarding purposes.
 
 #### 3. Restrictions
@@ -69,7 +69,8 @@ The Licensee may choose the plan that best fits their needs. Payment is required
 For purchase, technical support, or additional information, please contact:
 
 **Jaime Martin Estrada Bernabé**  
-Email: codefullstack@infinitummail.com  
+Email: codefullstack@infinitummail.com, smart8130@hotmail.com
+Cel: 01 52 5548822343  
 Location: Mexico
 
 ---

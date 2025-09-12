@@ -33,7 +33,7 @@
             <div class="col-md-4 col-sm-6 mx-auto">
 
                 <!-- Styled title with the same width as the form -->
-                <h2 class="form-title text-center mb-0">Registrar otra cuota</h2>
+                <h2 class="form-title text-center mb-0">Registrar otros ingresos</h2>
 
                 <!-- Form -->
                 <form method="post" class="p-4 rounded custom-form" enctype="multipart/form-data">
@@ -67,7 +67,8 @@
 </div>
                     
                     <div class="mb-3">
-                        {{ form.fecha_vencimiento.label_tag }}
+                        <label for="{{ form.fecha_vencimiento.id_for_label }}" class="form-label">Fecha de factura</label>
+                        {% comment %} {{ form.fecha_vencimiento.label_tag }} {% endcomment %}
                         {{ form.fecha_vencimiento }}
                         {% if form.fecha_vencimiento.errors %}
                             <div class="text-danger">{{ form.fecha_vencimiento.errors }}</div>
@@ -126,8 +127,8 @@
 </div>
     <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
+        Creado por JMEB
     </footer>
 
     <!-- Scripts -->

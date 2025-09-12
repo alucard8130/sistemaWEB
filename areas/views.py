@@ -24,8 +24,11 @@ from django.db.models import Q
 def lista_areas(request):
     user = request.user
     query = request.GET.get("q", "")
-    if user.is_superuser:
-        areas = AreaComun.objects.filter(activo=True)
+    empresa_id = request.session.get("empresa_id")
+    if user.is_superuser and empresa_id:
+        areas = AreaComun.objects.filter(empresa_id=empresa_id, activo=True).order_by('numero')
+    elif user.is_superuser:
+        areas = AreaComun.objects.filter(activo=True).order_by('numero')
     else:
         empresa = user.perfilusuario.empresa
         areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
@@ -36,6 +39,7 @@ def lista_areas(request):
         )
 
     areas = areas.order_by('numero')
+
     paginator = Paginator(areas, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -88,6 +92,12 @@ def editar_area(request, pk):
             if not user.is_superuser and perfil and perfil.empresa:
                 area_modificada.empresa = perfil.empresa
 
+            # CONSERVA FECHAS ORIGINALES SI EL USUARIO NO MODIFICA
+            if not area_modificada.fecha_inicial:
+                area_modificada.fecha_inicial = area.fecha_inicial
+            if not area_modificada.fecha_fin:
+                area_modificada.fecha_fin = area.fecha_fin
+
             for field in form.changed_data:
                 valor_ant = getattr(area_original, field)
                 valor_nuevo = getattr(area_modificada, field)
@@ -121,14 +131,19 @@ def eliminar_area(request, pk):
 
     return render(request, 'areas/eliminar_area.html', {'area': area})
 
-#@user_passes_test(lambda u: u.is_staff)
 @login_required
 def areas_inactivas(request):
-    if empresa := getattr(request.user, 'perfilusuario', None):
-        empresa = request.user.perfilusuario.empresa
+    empresa_id = request.session.get("empresa_id")
+    user = request.user
+    if user.is_superuser and empresa_id:
+        areas = AreaComun.objects.filter(empresa_id=empresa_id, activo=False)
+    elif user.is_superuser:
+        areas = AreaComun.objects.filter(activo=False)
+    elif hasattr(user, 'perfilusuario') and user.perfilusuario.empresa:
+        empresa = user.perfilusuario.empresa
+        areas = AreaComun.objects.filter(empresa=empresa, activo=False)
     else:
-        empresa = None
-    areas = AreaComun.objects.filter(empresa=empresa,activo=False)
+        areas = AreaComun.objects.none()
     return render(request, 'areas/areas_inactivas.html', {'areas': areas})
 
 #@user_passes_test(lambda u: u.is_staff)

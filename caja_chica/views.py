@@ -2,13 +2,16 @@ from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from num2words import num2words
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from .forms import FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
 
 
 def imprimir_vale_caja(request, vale_id):
     vale = get_object_or_404(ValeCaja, id=vale_id)
-    return render(request, "caja_chica/imprimir_vale_caja.html", {"vale": vale})
+    monto_letra = num2words(vale.importe, lang='es', to='currency', currency='MXN').capitalize()
+    empresa = request.user.perfilusuario.empresa
+    return render(request, "caja_chica/imprimir_vale_caja.html", {"vale": vale, "monto_letra": monto_letra, "empresa": empresa})
 
 
 def detalle_fondeo(request, fondeo_id):
@@ -116,31 +119,37 @@ def generar_vale_caja(request):
 
 @login_required
 def lista_fondeos(request):
-    empresa = None
-    if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if perfil:
-            empresa = getattr(perfil, "empresa", None)
-    if empresa:
-        fondeos = FondeoCajaChica.objects.filter(empresa=empresa)
-    else:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
+        fondeos = FondeoCajaChica.objects.filter(empresa_id=empresa_id)
+    elif request.user.is_superuser:
         fondeos = FondeoCajaChica.objects.all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            fondeos = FondeoCajaChica.objects.filter(empresa=perfil.empresa)
+        else:
+            fondeos = FondeoCajaChica.objects.none()
     return render(request, "caja_chica/lista_fondeos.html", {"fondeos": fondeos})
 
 
 @login_required
 def lista_gastos_caja_chica(request):
-    empresa = None
-    if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if perfil:
-            empresa = getattr(perfil, "empresa", None)
-    if empresa:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
         gastos = GastoCajaChica.objects.select_related("fondeo").filter(
-            fondeo__empresa=empresa
+            fondeo__empresa_id=empresa_id
         )
-    else:
+    elif request.user.is_superuser:
         gastos = GastoCajaChica.objects.select_related("fondeo").all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            gastos = GastoCajaChica.objects.select_related("fondeo").filter(
+                fondeo__empresa=perfil.empresa
+            )
+        else:
+            gastos = GastoCajaChica.objects.select_related("fondeo").none()
     return render(
         request, "caja_chica/lista_gastos_caja_chica.html", {"gastos": gastos}
     )
@@ -148,15 +157,26 @@ def lista_gastos_caja_chica(request):
 
 @login_required
 def lista_vales_caja_chica(request):
-    empresa = None
-    if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if perfil:
-            empresa = getattr(perfil, "empresa", None)
-    if empresa:
+    empresa_id = request.session.get("empresa_id")
+    if request.user.is_superuser and empresa_id:
         vales = ValeCaja.objects.select_related("fondeo").filter(
-            fondeo__empresa=empresa
+            fondeo__empresa_id=empresa_id
         )
-    else:
+    elif request.user.is_superuser:
         vales = ValeCaja.objects.select_related("fondeo").all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            vales = ValeCaja.objects.select_related("fondeo").filter(
+                fondeo__empresa=perfil.empresa
+            )
+        else:
+            vales = ValeCaja.objects.select_related("fondeo").none()
     return render(request, "caja_chica/lista_vales_caja_chica.html", {"vales": vales})
+
+@login_required
+def recibo_fondeo_caja(request, fondeo_id):
+    fondeo = get_object_or_404(FondeoCajaChica, pk=fondeo_id)
+    empresa = request.user.perfilusuario.empresa
+    monto_letra = num2words(fondeo.importe_cheque, lang='es', to='currency', currency='MXN').capitalize()
+    return render(request, 'caja_chica/recibo_fondeo.html', {'fondeo': fondeo, 'monto_letra': monto_letra, 'empresa': empresa })

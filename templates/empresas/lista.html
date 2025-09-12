@@ -73,7 +73,7 @@
                             <td>{{ empresa.rfc }}</td>
                             <td>{{ empresa.telefono }}</td>
                             <td>{{ empresa.email }}</td>
-                            <td>{{ empresa.banco }}</td>
+                            <td>{{ empresa.cuenta_bancaria }}</td>
                             <td>{{ empresa.numero_cuenta }}</td>
                             <td>
                                 {% if request.user.is_superuser %}
@@ -107,8 +107,8 @@
 
     <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
+        Creado por JMEB
     </footer>
 
     <!-- Scripts -->
