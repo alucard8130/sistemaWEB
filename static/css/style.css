@@ -2,7 +2,7 @@
     Created by: María Martínez
     Modified by: María Martínez
     Date of creation: 05/06/2025
-    Date of modification: 08/09/2025
+    Date of modification: 12/09/2025
     Description: General styles for the GAC system   
 */
     
@@ -461,6 +461,10 @@ body:not(.dark-mode) .card-header-pastel {
     color: #aecbfa !important; /* azul pastel para contraste */
 }
 
+.dark-mode .encabezado-claro th {
+    color: #bbaeae !important;
+    border-bottom: 2px solid #0c4a6e;
+}
 
 .main-content {
     padding-top: 5rem; /* Antes 2*/
@@ -614,9 +618,23 @@ body.dark-mode .btn-primary:hover {
 }
 
 body.dark-mode footer {
-    background-color: #2c2c2c;  /* fondo más oscuro */
-    color: #666;                /* texto más claro */
+    background-color: #2c2c2c;  
+    color: #666;                
 }
+
+.dark-mode tfoot tr.table-warning {
+    background-color: #1f2a44 !important; 
+    color: #e0e6ed !important;            
+}
+
+.dark-mode tfoot tr.table-warning td {
+    border-color: #2e3a55 !important;     
+}
+
+.dark-mode tfoot tr.table-warning strong {
+    color: #ffffff !important;            
+}
+
 
 /* Estílo para login.html light*/
 .login-box {
