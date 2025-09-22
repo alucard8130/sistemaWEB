@@ -1,4 +1,4 @@
-from turtle import st
+
 from uuid import uuid4
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
