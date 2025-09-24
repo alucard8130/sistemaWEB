@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "informes_financieros",
     "storages", 
     "caja_chica",
+    "widget_tweaks"
 ]
 
 
