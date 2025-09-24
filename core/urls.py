@@ -6,6 +6,7 @@ from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
 from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
+from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
 from facturacion.views import recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
 from principal.views import actualizar_ticket, agregar_seguimiento, lista_tickets, crear_ticket, seleccionar_empresa,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook
@@ -94,8 +95,11 @@ urlpatterns = [
     path("tickets/<int:ticket_id>/agregar_seguimiento/", agregar_seguimiento, name="agregar_seguimiento"),
     path("tickets/<int:ticket_id>/actualizar/", actualizar_ticket, name="actualizar_ticket"),
     path('seleccionar-empresa/', seleccionar_empresa, name='seleccionar_empresa'),
-
-
+    path('incidencias/', incidencias_lista, name='incidencias_lista'),
+    path('incidencias/nueva/', incidencia_crear, name='incidencia_crear'),
+    path('incidencias/exportar/', exportar_incidencias_excel, name='exportar_incidencias_excel'),
+    path('incidencias/<int:pk>/editar/', incidencia_editar, name='incidencia_editar'),
+    path('incidencias/<int:pk>/cancelar/', incidencia_cancelar, name='incidencia_cancelar'),
 ]
 
 if settings.DEBUG:

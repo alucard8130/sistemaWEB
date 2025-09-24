@@ -1,0 +1,63 @@
+{% load static %}
+{% load widget_tweaks %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nueva incidencia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <h2>Nueva Incidencia</h2>
+        <form method="post" class="mt-3">
+            {% csrf_token %}
+            <div class="row">
+                {% for field in form %}
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field|add_class:"form-control" }}
+                    {% if field.help_text %}
+                        <small class="form-text text-muted">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-save"></i> Guardar
+            </button>
+            <a href="{% url 'incidencias_lista' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+    <footer>
+        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
+        Creado por JMEB
+    </footer>
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+     <script>
+        // Mostrar/ocultar el campo de incapacidad según el tipo seleccionado
+        function toggleIncapacidadField() {
+            var tipo = document.getElementById("id_tipo").value;
+            var incapacidadDiv = document.getElementById("field-numero_incapacidad_imss");
+            if (tipo === "incapacidad") {
+                incapacidadDiv.style.display = "block";
+            } else {
+                incapacidadDiv.style.display = "none";
+                document.getElementById("id_numero_incapacidad_imss").value = "";
+            }
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            toggleIncapacidadField();
+            document.getElementById("id_tipo").addEventListener("change", toggleIncapacidadField);
+        });
+    </script>
+</body>
+</html>

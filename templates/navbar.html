@@ -61,9 +61,8 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nueva Propiedad</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista Propiedades</a></li>
-
-                            <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
-
+                        <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Inactivos</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
                         
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
@@ -77,7 +76,7 @@
                         <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista</a></li>
           
                             <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivos</a></li>
-
+                            <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
                         
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
@@ -89,7 +88,9 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Cuota</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Cuotas</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturacion Mensual Cuotas</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros Cuotas</a></li>
 
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard</a></li>
@@ -106,6 +107,7 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otro ingreso</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista  otros Ingresos</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros  otros Ingresos</a></li>
                     </ul>
                 <!-- MENÚ cartera -->
@@ -116,22 +118,19 @@
              
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Cartera</a></li>
              
-                        
+                        <li><hr class="dropdown-divider"></li>                     
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard</a></li>
                     </ul>
                 </li>
-                <!-- MENÚ CATÁLOGOS -->
+                <!-- MENÚ incidencias -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Catálogos</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Nomina</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
+                        
                         <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Empleados</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        {% if request.user.is_superuser %}
-                            <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
-                        {% endif %}
-                        <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
-                        <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incidencia_crear' %}">Registrar Incidencia</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incidencias_lista' %}">Listado Incidencias</a></li>
                         
                         <!-- Agrega aquí más catálogos si lo deseas -->
                     </ul>
@@ -140,8 +139,16 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Gastos</a>
                     <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
                         <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Gasto</a></li>
-                        <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Gastos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Solicitudes Gastos</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        {% if request.user.is_superuser %}
+                            <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+                        {% endif %}
+                        <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard</a></li>
                         {% if request.user.is_superuser %}
@@ -185,6 +192,7 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Ingresos</a></li>
                     </ul>
