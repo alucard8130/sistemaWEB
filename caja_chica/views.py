@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from num2words import num2words
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from .forms import FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
+from gastos.models import TipoGasto
 
 
 def imprimir_vale_caja(request, vale_id):
@@ -66,14 +67,19 @@ def registrar_gasto_caja_chica(request):
         if empresa:
             form.fields["proveedor"].queryset = form.fields["proveedor"].queryset.filter(empresa=empresa)
             form.fields["tipo_gasto"].queryset = form.fields["tipo_gasto"].queryset.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
         if form.is_valid():
             gasto = form.save(commit=False)
             fondeo = gasto.fondeo
-            fondeo.saldo -= gasto.importe
-            fondeo.save()
-            gasto.save()
-            messages.success(request, "Gasto registrado exitosamente.")
-            return redirect("lista_gastos_caja_chica")
+            if gasto.importe > fondeo.saldo:
+                form.add_error("importe", f"El importe excede el saldo disponible (${fondeo.saldo}) en el fondeo.")
+                messages.error(request, f"El importe excede el saldo disponible ${fondeo.saldo} en el fondeo.")
+            else:
+                fondeo.saldo -= gasto.importe
+                fondeo.save()
+                gasto.save()
+                messages.success(request, "Gasto registrado exitosamente.")
+                return redirect("lista_gastos_caja_chica")
     else:
         initial = {}
         if fondeo_instance:
@@ -82,14 +88,13 @@ def registrar_gasto_caja_chica(request):
         if empresa:
             form.fields["proveedor"].queryset = form.fields["proveedor"].queryset.filter(empresa=empresa)
             form.fields["tipo_gasto"].queryset = form.fields["tipo_gasto"].queryset.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
         if fondeo_instance:
             form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(id=fondeo_instance.id)
     return render(request, "caja_chica/registrar_gasto_caja_chica.html", {"form": form})
 
 @login_required
 def generar_vale_caja(request):
-    from gastos.models import TipoGasto
-
     empresa = None
     if request.user.is_authenticated:
         perfil = getattr(request.user, "perfilusuario", None)
@@ -98,23 +103,25 @@ def generar_vale_caja(request):
     if request.method == "POST":
         form = ValeCajaForm(request.POST)
         if empresa:
-            form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(
-                empresa=empresa
-            )
+            form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
         if form.is_valid():
             vale = form.save(commit=False)
             fondeo = vale.fondeo
-            fondeo.saldo -= vale.importe
-            fondeo.save()
-            vale.save()
-            messages.success(request, "Vale generado exitosamente.")
-            return redirect("lista_vales_caja_chica")
+            if vale.importe > fondeo.saldo:
+                form.add_error("importe", f"El importe excede el saldo disponible (${fondeo.saldo}) en el fondeo.")
+                messages.error(request, f"El importe excede el saldo disponible ${fondeo.saldo} en el fondeo.")
+            else:
+                fondeo.saldo -= vale.importe
+                fondeo.save()
+                vale.save()
+                messages.success(request, "Vale generado exitosamente.")
+                return redirect("lista_vales_caja_chica")
     else:
         form = ValeCajaForm()
         if empresa:
-            form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(
-                empresa=empresa
-            )
+            form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
     return render(request, "caja_chica/generar_vale_caja.html", {"form": form})
 
 @login_required

@@ -47,6 +47,7 @@ class GastoCajaChicaForm(forms.ModelForm):
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
     )
 
+    
 
 class ValeCajaForm(forms.ModelForm):
     class Meta:
