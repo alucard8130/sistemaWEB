@@ -7,9 +7,9 @@ from django.contrib.auth import views as auth_views
 from areas import views
 from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
-from facturacion.views import recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
+from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
-from principal.views import actualizar_ticket, agregar_seguimiento, lista_tickets, crear_ticket, seleccionar_empresa,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook
+from principal.views import actualizar_ticket, agregar_seguimiento, lista_tickets, crear_ticket, seleccionar_empresa,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, visitante_consulta_facturas, visitante_login, visitante_logout
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -21,6 +21,7 @@ from areas.views import (
 from clientes.views import (
     carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
     editar_cliente, eliminar_cliente, plantilla_clientes_excel, reactivar_cliente)
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -100,6 +101,11 @@ urlpatterns = [
     path('incidencias/exportar/', exportar_incidencias_excel, name='exportar_incidencias_excel'),
     path('incidencias/<int:pk>/editar/', incidencia_editar, name='incidencia_editar'),
     path('incidencias/<int:pk>/cancelar/', incidencia_cancelar, name='incidencia_cancelar'),
+    path('consulta-facturas/', consulta_facturas, name='consulta_facturas'),
+    path('consulta-facturas/exportar/', exportar_consulta_facturas_excel, name='exportar_consulta_facturas_excel'),
+    path('visitante/login/', visitante_login, name='visitante_login'),
+    path('visitante/consulta/', visitante_consulta_facturas, name='visitante_consulta_facturas'),
+    path('visitante/logout/', visitante_logout, name='visitante_logout'),
 ]
 
 if settings.DEBUG:

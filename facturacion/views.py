@@ -26,7 +26,6 @@ from decimal import Decimal, InvalidOperation
 from unidecode import unidecode
 from django.db.models.functions import TruncMonth, TruncYear
 from datetime import datetime
-from django.db.models import Sum
 from django.db import transaction
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
@@ -38,6 +37,7 @@ import json
 from django.http import JsonResponse
 from django.db.models import Max
 from decimal import Decimal, ROUND_HALF_UP
+from django.db.models import Sum
 
 @login_required
 def crear_factura(request):
@@ -2024,3 +2024,96 @@ def recibo_pago_otras_cuotas(request, pago_id):
             "empresa": empresa,
         },
     )
+
+
+@login_required
+def consulta_facturas(request):
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
+
+    if request.user.is_superuser:
+        facturas = Factura.objects.all().order_by('-fecha_vencimiento')
+        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(activo=True).order_by('numero')
+    else:
+        empresa = request.user.perfilusuario.empresa
+        facturas = Factura.objects.filter(empresa=empresa).order_by('-fecha_vencimiento')
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+
+    # Solo filtrar por local o área común
+    if local_id:
+        facturas = facturas.filter(local_id=local_id)
+    if area_id:
+        facturas = facturas.filter(area_comun_id=area_id)
+
+    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos')
+
+    # ... después de aplicar los filtros por local_id y area_id ...
+    total_pendiente = sum(f.saldo_pendiente for f in facturas if f.estatus == 'pendiente')
+    total_cobrado = sum(f.monto for f in facturas if f.estatus == 'cobrada')
+
+    # Paginación
+    paginator = Paginator(facturas, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'facturacion/consulta_facturas.html', {
+        'facturas': page_obj,
+        'locales': locales,
+        'areas': areas,
+        'local_id': local_id,
+        'area_id': area_id,
+        'total_pendiente': total_pendiente,
+        'total_cobrado': total_cobrado,
+    })
+
+@login_required
+def exportar_consulta_facturas_excel(request):
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
+
+    if request.user.is_superuser:
+        facturas = Factura.objects.all()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        facturas = Factura.objects.filter(empresa=empresa)
+
+    if local_id:
+        facturas = facturas.filter(local_id=local_id)
+    if area_id:
+        facturas = facturas.filter(area_comun_id=area_id)
+
+    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun')
+
+    # Crear libro y hoja
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Consulta Facturas"
+    # Encabezados
+    ws.append([
+        'Folio', 'Empresa', 'Cliente', 'Local', 'Área común', 'Monto',
+        'Saldo', 'Fecha emisión', 'Fecha vencimiento', 'Estatus', 'Observaciones'
+    ])
+    # Contenido
+    for factura in facturas:
+        ws.append([
+            factura.folio,
+            factura.empresa.nombre,
+            factura.cliente.nombre,
+            factura.local.numero if factura.local else '',
+            factura.area_comun.numero if factura.area_comun else '',
+            float(factura.monto),
+            float(factura.saldo_pendiente),
+            factura.fecha_emision,
+            factura.fecha_vencimiento,
+            factura.estatus,
+            factura.observaciones or ''
+        ])
+    # Respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=consulta_facturas.xlsx'
+    wb.save(response)
+    return response    

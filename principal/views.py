@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
 import openpyxl
+from areas import models
 from core import settings
 from empleados.models import Empleado
 from empresas.models import Empresa
@@ -17,6 +18,7 @@ from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from presupuestos.models import Presupuesto, PresupuestoIngreso
+from principal.forms import VisitanteLoginForm
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
 from django.http import JsonResponse
@@ -24,7 +26,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
-from .models import Evento, PerfilUsuario
+from .models import Evento, PerfilUsuario, VisitanteAcceso
 import json
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
@@ -35,6 +37,7 @@ from .models import TicketMantenimiento
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import TicketMantenimiento, SeguimientoTicket
+from django.contrib.auth.hashers import check_password
 
 # stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -715,3 +718,68 @@ def seleccionar_empresa(request):
             return redirect('bienvenida')  # O la vista principal
     empresas = Empresa.objects.all()
     return render(request, 'seleccionar_empresa.html', {'empresas': empresas})
+
+def visitante_login(request):
+    if request.method == "POST":
+        form = VisitanteLoginForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data["username"]
+            password = form.cleaned_data["password"]
+            try:
+                visitante = VisitanteAcceso.objects.get(username=username)
+                if check_password(password, visitante.password):
+                    request.session["visitante_id"] = visitante.id
+                    return redirect("visitante_consulta_facturas")
+                else:
+                    messages.error(request, "Contraseña incorrecta.")
+            except VisitanteAcceso.DoesNotExist:
+                messages.error(request, "Usuario no encontrado.")
+    else:
+        form = VisitanteLoginForm()
+    return render(request, "visitantes/login.html", {"form": form})
+
+def visitante_consulta_facturas(request):
+    visitante_id = request.session.get("visitante_id")
+    if not visitante_id:
+        return redirect("visitante_login")
+    visitante = VisitanteAcceso.objects.get(id=visitante_id)
+
+    # Filtros
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
+
+    locales = visitante.locales.all()
+    areas = visitante.areas.all()
+
+    facturas = Factura.objects.none()
+    if local_id:
+        facturas = Factura.objects.filter(local_id=local_id, local__in=locales)
+    elif area_id:
+        facturas = Factura.objects.filter(area_comun_id=area_id, area_comun__in=areas)
+    else:
+        facturas = Factura.objects.filter(
+            Q(local__in=locales) | Q(area_comun__in=areas)
+        )
+    # Calcula total pendiente y total cobrado
+    total_pendiente = sum(f.saldo_pendiente for f in facturas if f.estatus == 'pendiente')
+    total_cobrado = sum(f.monto for f in facturas if f.estatus == 'cobrada')
+
+    return render(
+        request,
+        "facturacion/consulta_facturas.html",
+        {
+            "facturas": facturas,
+            "visitante": visitante,
+            "locales": locales,
+            "areas": areas,
+            "local_id": local_id,
+            "area_id": area_id,
+            "total_pendiente": total_pendiente,
+            "total_cobrado": total_cobrado,
+            "es_visitante": True,
+        }
+    )
+
+def visitante_logout(request):
+    request.session.flush()
+    return redirect('visitante_login')

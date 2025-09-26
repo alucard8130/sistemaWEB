@@ -1,9 +1,13 @@
 
 from django.contrib.auth.models import User, AbstractUser
 from django.db import models
+from areas.models import AreaComun
 from empresas.models import Empresa
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password, check_password
+
+from locales.models import LocalComercial
 
 # Create your models here.
 class PerfilUsuario(models.Model):
@@ -78,3 +82,20 @@ class SeguimientoTicket(models.Model):
 
     def __str__(self):
         return f"Seguimiento {self.fecha} - {self.usuario}"    
+    
+class VisitanteAcceso(models.Model):
+    username = models.CharField(max_length=50, unique=True)
+    password = models.CharField(max_length=128)  # Guarda hash, no texto plano
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    locales = models.ManyToManyField(LocalComercial, blank=True, verbose_name="Locales")
+    areas = models.ManyToManyField(AreaComun, blank=True, verbose_name="Áreas comunes")
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+        self.save()
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+
+    def __str__(self):
+        return self.username        

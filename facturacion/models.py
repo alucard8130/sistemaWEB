@@ -89,6 +89,7 @@ class Pago(models.Model):
     def __str__(self):
         return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
     
+
  #modulo otros ingresos   
 class FacturaOtrosIngresos(models.Model):
     empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -162,3 +163,4 @@ class TipoOtroIngreso(models.Model):
 
     def __str__(self):
         return self.nombre
+    
