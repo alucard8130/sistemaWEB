@@ -22,7 +22,7 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 #DEBUG = True
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com").split(",")
 #ALLOWED_HOSTS = ['*']  # For development purposes, change this in production
-#ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
 
 
 # Application definition

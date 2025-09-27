@@ -783,3 +783,17 @@ def visitante_consulta_facturas(request):
 def visitante_logout(request):
     request.session.flush()
     return redirect('visitante_login')
+
+
+def visitante_factura_detalle(request, factura_id):
+    visitante_id = request.session.get("visitante_id")
+    if not visitante_id:
+        return redirect("visitante_login")
+    visitante = VisitanteAcceso.objects.get(id=visitante_id)
+    factura = get_object_or_404(Factura, id=factura_id)
+    # Verifica que la factura pertenezca a los locales/áreas del visitante
+    if factura.local not in visitante.locales.all() and factura.area_comun not in visitante.areas.all():
+        return redirect("visitante_consulta_facturas")
+    cobros = factura.pagos.all()
+    return render(request, "facturacion/facturas_detalle.html",
+                   {"factura": factura, "cobros": cobros, "es_visitante": True})

@@ -41,6 +41,7 @@
         {% endif %}
     <!-- Main content -->
     <div class="container-fluid mt-4">
+        <h2>Reporte Adeudos</h2>
         <div class="row mb-4">
     <div class="col-md-6">
         <div class="card border-warning shadow-sm mb-2">
@@ -58,8 +59,9 @@
             </div>
         </div>
     </div>
+    <p>Si existe algun pago no registrado, contacte al administrador del condominio.</p>
 </div>
-        <h2>Consulta de facturas</h2>
+        <h2></h2>
         <form method="get" class="row g-2 mb-3">
             <div class="col-auto">
                 <select name="local_id" id="local_id" class="form-select">
@@ -86,10 +88,10 @@
                     <i class="bi bi-funnel"></i> 
                         Filtrar
                 </button>
-                <a href="{% url 'consulta_facturas' %}" class="btn btn-outline-secondary">
+                <a href="{% if es_visitante %}{% url 'visitante_consulta_facturas' %}{% else %}{% url 'consulta_facturas' %}{% endif %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-clockwise"></i> 
-                        Limpiar
-                </a>
+                                Limpiar
+                        </a>
             </div>
             {% comment %} <div class="col-auto">
                 <a href="{% url 'exportar_consulta_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
@@ -109,10 +111,11 @@
                         <th>Saldo</th>
                         <th>Tipo Cuota</th>
                         <th>Periodo</th>
+                        {% comment %} <th>Fecha de Pago</th> {% endcomment %}
                         <th>Descripción</th>
                         <th>Estatus</th>
                         {% comment %} <th>Acciones</th> {% endcomment %}
-                        {% comment %} <th>Historial</th> {% endcomment %}
+                        <th>Historial</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -133,6 +136,13 @@
                             <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
                             <td>{{ factura.tipo_cuota }}</td>
                             <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
+                            {% comment %} <td>
+                                {% if factura.estatus == 'cobrada' and factura.pagos.all %}
+                                    {{ factura.pagos.last.fecha_pago|date:"d/m/Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td> {% endcomment %}
                             {% if factura.observaciones == None or factura.observaciones == '' %}
                                 <td></td>
                             {% else %}
@@ -147,8 +157,8 @@
                                     <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
                                 {% endif %}
                             </td>
-                            <td class="text-nowrap">
-                                {% comment %} {% if factura.saldo_pendiente > 0 %}    
+                            {% comment %} <td class="text-nowrap">
+                                 {% if factura.saldo_pendiente > 0 %}    
                                     <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
                                         <i class="bi bi-cash-coin me-1"></i> 
                                     </a>
@@ -159,11 +169,17 @@
                                     <i class="bi bi-printer" title="Imprimir Documento"></i>
                                 </a>
                             </td> {% endcomment %}
-                            {% comment %} <td>
-                                <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
-                                    <i class="bi bi-eye me-1"></i> 
-                                </a>
-                            </td> {% endcomment %}
+                             <td> 
+                            {% if es_visitante %}
+                            <a href="{% url 'visitante_factura_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
+                                <i class="bi bi-eye me-1"></i> 
+                            </a>
+                        {% else %}
+                            <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
+                                <i class="bi bi-eye me-1"></i> 
+                            </a>
+                        {% endif %}
+                    </td>
                         </tr>
                     {% empty %}
                         <tr class="no-data-row">

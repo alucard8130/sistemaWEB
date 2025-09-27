@@ -21,7 +21,9 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    {% include 'navbar.html' %}
+    {% if not es_visitante %}
+        {% include 'navbar.html' %}
+    {% endif %}
 
     <!-- Dark button -->
     <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
@@ -60,7 +62,7 @@
                     <th>Forma de Cobro</th>
                     <th>Registrado por</th>
                     <th>Observaciones</th>
-                    <th>Comprobante</th>
+                    {% comment %} <th>Comprobante</th> {% endcomment %}
                 </tr>
             </thead>
             <tbody>
@@ -75,12 +77,12 @@
                     {% else %}
                     <td>{{ cobro.observaciones }}</td>
                     {% endif %}
-                    <td>
+                    {% comment %} <td>
                         {% if cobro.comprobante %}
                         <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-primary btn-sm" title="Ver Comprobante"></a>
                         {% else %}
                         <span class="text-muted"></span>
-                        {% endif %}
+                        {% endif %} {% endcomment %}
                 </tr>
                 {% empty %}
                 <tr>
@@ -89,7 +91,18 @@
                 {% endfor %}
             </tbody>
         </table>
-        <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Regresar</a>
+        {% if es_visitante %}
+    <div class="mb-3 text-end">
+        <a href="{% url 'visitante_consulta_facturas' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Regresar
+        </a>
+    </div>
+    {% else %}
+        <div class="mb-3 text-end">
+        <a href="{% url 'consulta_facturas' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Regresar
+        </a>
+{% endif %}
     </div>
 
     <!-- 🔹 Footer -->
