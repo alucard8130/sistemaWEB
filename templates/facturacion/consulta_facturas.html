@@ -39,8 +39,17 @@
                 </a>
             </div>
         {% endif %}
+        {% if request.GET.pagook %}
+    <div class="alert alert-success">¡Pago realizado correctamente! En breve se reflejará en el sistema.</div>
+{% endif %}
     <!-- Main content -->
     <div class="container-fluid mt-4">
+         {% if facturas|length > 0 %}
+        <h1 class="mb-3">{{ facturas.0.empresa.nombre }}</h1>
+        {% comment %} <h2 class="mb-3">{{ facturas.0.empresa.rfc }}</h2> {% endcomment %}
+    {% else %}
+        <h1 class="mb-3"> <span>No hay facturas disponibles</span></h1>
+    {% endif %}
         <h2>Reporte Adeudos</h2>
         <div class="row mb-4">
     <div class="col-md-6">
@@ -105,16 +114,16 @@
                 <thead>
                     <tr>
                         <th>Folio</th>
+                        {% comment %} <th>Empresa</th> {% endcomment %}
                         <th>Cliente</th>
                         <th>Local/Área</th>
                         <th>Importe</th>
                         <th>Saldo</th>
                         <th>Tipo Cuota</th>
                         <th>Periodo</th>
-                        {% comment %} <th>Fecha de Pago</th> {% endcomment %}
                         <th>Descripción</th>
                         <th>Estatus</th>
-                        {% comment %} <th>Acciones</th> {% endcomment %}
+                        <th>Acciones</th>
                         <th>Historial</th>
                     </tr>
                 </thead>
@@ -122,6 +131,7 @@
                     {% for factura in facturas %}
                         <tr>
                             <td>{{ factura.folio }}</td>
+                            {% comment %} <td>{{ factura.empresa.nombre }}</td> {% endcomment %}
                             <td>{{ factura.cliente.nombre }}</td>
                             <td>
                                 {% if factura.local %}
@@ -136,13 +146,7 @@
                             <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
                             <td>{{ factura.tipo_cuota }}</td>
                             <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
-                            {% comment %} <td>
-                                {% if factura.estatus == 'cobrada' and factura.pagos.all %}
-                                    {{ factura.pagos.last.fecha_pago|date:"d/m/Y" }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td> {% endcomment %}
+                    
                             {% if factura.observaciones == None or factura.observaciones == '' %}
                                 <td></td>
                             {% else %}
@@ -157,29 +161,24 @@
                                     <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
                                 {% endif %}
                             </td>
-                            {% comment %} <td class="text-nowrap">
-                                 {% if factura.saldo_pendiente > 0 %}    
-                                    <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
-                                        <i class="bi bi-cash-coin me-1"></i> 
-                                    </a>
-                                {% else %}
-                                    <span class="text-muted"></span>
-                                {% endif %} {% endcomment %}
-                                {% comment %} <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
-                                </a>
-                            </td> {% endcomment %}
-                             <td> 
-                            {% if es_visitante %}
-                            <a href="{% url 'visitante_factura_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
-                                <i class="bi bi-eye me-1"></i> 
-                            </a>
-                        {% else %}
-                            <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
-                                <i class="bi bi-eye me-1"></i> 
-                            </a>
-                        {% endif %}
-                    </td>
+                    <td>
+                    {% if factura.estatus == 'pendiente' and es_visitante %}
+                        <a href="{% url 'visitante_stripe_checkout' factura.id %}" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-credit-card"></i> Pagar en línea
+                        </a>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if es_visitante %}
+                        <a href="{% url 'visitante_factura_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
+                            <i class="bi bi-eye me-1"></i> 
+                        </a>
+                    {% else %}
+                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
+                            <i class="bi bi-eye me-1"></i> 
+                        </a>
+                    {% endif %}
+                </td>
                         </tr>
                     {% empty %}
                         <tr class="no-data-row">

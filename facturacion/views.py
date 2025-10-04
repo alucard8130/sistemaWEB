@@ -2031,17 +2031,21 @@ def consulta_facturas(request):
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
 
-    if request.user.is_superuser:
-        facturas = Factura.objects.all().order_by('-fecha_vencimiento')
-        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
-        areas = AreaComun.objects.filter(activo=True).order_by('numero')
-    else:
-        empresa = request.user.perfilusuario.empresa
-        facturas = Factura.objects.filter(empresa=empresa).order_by('-fecha_vencimiento')
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+    # Obtén los locales y áreas asignados al visitante
+    locales = LocalComercial.objects.filter(visitantes=request.user, activo=True).order_by('numero')
+    areas = AreaComun.objects.filter(visitantes=request.user, activo=True).order_by('numero')
 
-    # Solo filtrar por local o área común
+    empresa = None
+    if locales.exists():
+        empresa = locales.first().empresa
+        facturas = Factura.objects.filter(local__in=locales, empresa=empresa).order_by('-fecha_vencimiento')
+    elif areas.exists():
+        empresa = areas.first().empresa
+        facturas = Factura.objects.filter(area_comun__in=areas, empresa=empresa).order_by('-fecha_vencimiento')
+    else:
+        facturas = Factura.objects.none()
+
+    # Filtros adicionales
     if local_id:
         facturas = facturas.filter(local_id=local_id)
     if area_id:
@@ -2049,7 +2053,6 @@ def consulta_facturas(request):
 
     facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos')
 
-    # ... después de aplicar los filtros por local_id y area_id ...
     total_pendiente = sum(f.saldo_pendiente for f in facturas if f.estatus == 'pendiente')
     total_cobrado = sum(f.monto for f in facturas if f.estatus == 'cobrada')
 
@@ -2066,6 +2069,7 @@ def consulta_facturas(request):
         'area_id': area_id,
         'total_pendiente': total_pendiente,
         'total_cobrado': total_cobrado,
+        'empresa': empresa,
     })
 
 @login_required

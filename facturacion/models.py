@@ -76,6 +76,7 @@ class Pago(models.Model):
         ('nota_credito', 'Nota de Crédito'),
         ('deposito', 'Depósito'),
         ('efectivo', 'Efectivo'),
+        ('stripe', 'Stripe'),
         ('otro', 'Otro'),
     ]
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')

@@ -6,7 +6,4 @@ urlpatterns = [
     path('reiniciar/', reiniciar_sistema, name='reiniciar_sistema'),
     path('auditoria/', reporte_auditoria, name='reporte_auditoria'),
     path('registro/', registro_usuario, name='registro'), 
-    
-    
-
 ]

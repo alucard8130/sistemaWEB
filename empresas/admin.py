@@ -5,5 +5,5 @@ from .models import Empresa
 
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'rfc', 'cuenta_bancaria', 'numero_cuenta', 'saldo_inicial', 'saldo_final')
+    list_display = ('nombre', 'rfc', 'cuenta_bancaria', 'numero_cuenta', 'saldo_inicial', 'saldo_final','stripe_public_key', 'stripe_secret_key', 'stripe_webhook_secret')
     search_fields = ('nombre', 'rfc')

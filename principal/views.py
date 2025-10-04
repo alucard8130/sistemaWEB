@@ -476,7 +476,7 @@ def usuarios_demo(request):
     return render(request, "usuarios_demo.html", {"usuarios": usuarios_info})
 
 
-
+# Webhook de Stripe pago sistema de suscripciones
 @csrf_exempt
 def stripe_webhook(request):
     import stripe
@@ -616,7 +616,6 @@ def guardar_datos_empresa(request):
 #MODULO DE TICKETS DE MANTENIMIENTO-->   
 @login_required
 def crear_ticket(request):
-    #User = get_user_model()
     empresa = request.user.perfilusuario.empresa
     empleados = Empleado.objects.filter(empresa=empresa, activo=True)
     if request.method == 'POST':
@@ -719,6 +718,8 @@ def seleccionar_empresa(request):
     empresas = Empresa.objects.all()
     return render(request, 'seleccionar_empresa.html', {'empresas': empresas})
 
+
+#modulo visitantes consulta adeudos y pagos de facturas-->
 def visitante_login(request):
     if request.method == "POST":
         form = VisitanteLoginForm(request.POST)
@@ -797,3 +798,117 @@ def visitante_factura_detalle(request, factura_id):
     cobros = factura.pagos.all()
     return render(request, "facturacion/facturas_detalle.html",
                    {"factura": factura, "cobros": cobros, "es_visitante": True})
+
+# Pago con Stripe para visitantes
+def stripe_checkout_visitante(request, factura_id):
+    from facturacion.models import Factura
+    factura = get_object_or_404(Factura, id=factura_id)
+    empresa = factura.empresa
+
+    # Verifica que la empresa tenga las claves de Stripe configuradas
+    if not (empresa.stripe_secret_key and empresa.stripe_public_key and empresa.stripe_webhook_secret):
+        messages.error(
+            request,
+            "Esta empresa no cuenta con la configuración para recibir pagos en línea. Contacta al administrador del sistema."
+        )
+        return redirect('visitante_consulta_facturas')  # O la vista/lista que corresponda
+    
+    import stripe
+    stripe.api_key = empresa.stripe_secret_key  # <-- Usa la clave secreta de la empresa
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': 'mxn',
+                'product_data': {
+                    'name': f'Pago factura {factura.folio}',
+                },
+                'unit_amount': int(factura.saldo_pendiente * 100),
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url=request.build_absolute_uri('/visitante/consulta/?pagook=1'),
+        cancel_url=request.build_absolute_uri('/visitante/consulta/?pagocancel=1'),
+        metadata={'factura_id': factura.id}
+    )
+    return redirect(session.url)
+
+
+
+@csrf_exempt
+def stripe_webhook_visitante(request):
+    import logging
+    import stripe
+    import json
+    from facturacion.models import Factura, Pago
+    from django.utils import timezone
+
+    logger = logging.getLogger("django")
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    
+
+    # 1. Carga el evento para saber el tipo
+    try:
+        event_data = json.loads(payload)
+        event_type = event_data.get("type")
+    except Exception as e:
+        logger.error(f"Error leyendo el evento Stripe: {e}")
+        logger.error(f"Factura no encontrada: {factura_id}")
+        return HttpResponse(status=400)
+
+    # 2. Solo procesa checkout.session.completed
+    if event_type != "checkout.session.completed":
+        logger.info(f"Ignorando evento Stripe tipo: {event_type}")
+        return JsonResponse({'status': 'ignored'})
+
+    # 3. Ahora sí, procesa normalmente
+    try:
+        session = event_data['data']['object']
+        factura_id = session.get('metadata', {}).get('factura_id')
+        logger.error(f"Buscando factura con id: {factura_id}")
+        print(f"Buscando factura con id: {factura_id}")
+        if not factura_id:
+            logger.error("No se encontró factura_id en metadata.")
+            return HttpResponse(status=400)
+        factura = Factura.objects.select_related('empresa').get(id=int(factura_id))
+        empresa = factura.empresa
+        endpoint_secret = empresa.stripe_webhook_secret
+    except Exception as e:
+        logger.error(f"Error extrayendo factura/empresa: {e}")
+        return HttpResponse(status=400)
+
+    # 4. Valida la firma
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except Exception as e:
+        logger.error(f"Stripe webhook error: {e}")
+        return HttpResponse(status=400)
+
+    logger.info(f"Stripe event type: {event['type']}")
+
+    session = event['data']['object']
+    logger.info(f"Webhook session metadata: {session.get('metadata')}")
+    factura_id = session['metadata'].get('factura_id') if session.get('metadata') else None
+    logger.info(f"Factura ID recibido: {factura_id}")
+    if factura_id:
+        try:
+            factura = Factura.objects.get(id=int(factura_id))
+            monto_pagado = session.get('amount_total', 0) / 100.0
+            Pago.objects.create(
+                factura=factura,
+                monto=monto_pagado,
+                forma_pago='stripe',
+                fecha_pago=timezone.now(),
+                registrado_por=None,
+                observaciones=f"Pago en línea, ID transacción: {session.get('payment_intent')}"
+            )
+            factura.actualizar_estatus()
+            factura.save()
+        except Factura.DoesNotExist:
+            logger.error(f"Factura no encontrada: {factura_id}")
+    return JsonResponse({'status': 'ok'})
