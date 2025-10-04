@@ -1,4 +1,3 @@
-<!-- filepath: c:\Users\smart\Documents\GitHub\sistemaWEB\templates\correo_evento.html -->
 {% load static %}
 <!DOCTYPE html>
 <html>
@@ -14,7 +13,7 @@
           <tr>
             <td align="center" style="padding: 30px 0 10px 0;">
               <!-- Cambia la URL del logo si tienes uno propio -->
-              <img src="{% static 'img/logo.png' %}" alt="Logo" width="80" style="margin-bottom: 10px;">
+              {% comment %} <img src="{% static 'img/logo.png' %}" alt="Logo" width="80" style="margin-bottom: 10px;"> {% endcomment %}
               <h1 style="color: #2c3e50; margin: 0; font-size: 1.6em;">{{ empresa.nombre }}</h1>
             </td>
           </tr>
@@ -30,12 +29,12 @@
             <td style="padding: 0 40px 30px 40px;">
               <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
               <p style="color: #888; font-size: 0.95em; margin-bottom: 8px;">
-                Este correo fue enviado automáticamente por el sistema GAC.
+                Este correo fue enviado automáticamente por el sistema GESAC.
               </p>
               <p style="color: #888; font-size: 0.95em;">
                 Visita nuestra página web: 
                 <a href="https://paginaweb-ro9v.onrender.com" style="color: #007bff; text-decoration: none;" target="_blank">
-                  Gestor Administrativo Condominal (GAC v1.0)
+                  Sistema Web Administrativo Condominal (GESAC v1.0)
                 </a>
               </p>
             </td>

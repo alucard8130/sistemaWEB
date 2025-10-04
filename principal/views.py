@@ -41,11 +41,9 @@ from .models import TicketMantenimiento, SeguimientoTicket
 from django.contrib.auth.hashers import check_password
 from django.urls import reverse
 from django.conf import settings
-
-
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-
+# Vista de bienvenida / dashboard
 @login_required
 def bienvenida(request):
     empresa = None
@@ -86,6 +84,7 @@ def bienvenida(request):
     )
 
 
+#Configuración del sistema
 @staff_member_required
 @login_required
 def reiniciar_sistema(request):
@@ -112,7 +111,6 @@ def reiniciar_sistema(request):
             messages.error(request, f"Error al reiniciar: {e}")
         return redirect("bienvenida")
     return render(request, "reiniciar_sistema.html")
-
 
 @staff_member_required
 def respaldo_empresa_excel(request):
@@ -329,8 +327,7 @@ def respaldo_empresa_excel(request):
     wb.save(response)
     return response
 
-
-@staff_member_required  # Solo para admin/superusuario, opcional
+@staff_member_required  
 def reporte_auditoria(request):
     modelo = request.GET.get("modelo")
     queryset = AuditoriaCambio.objects.all().order_by("-fecha_cambio")
@@ -339,7 +336,6 @@ def reporte_auditoria(request):
     return render(
         request, "auditoria/reporte.html", {"auditorias": queryset, "modelo": modelo}
     )
-
 
 @csrf_exempt
 @login_required
@@ -359,7 +355,6 @@ def crear_evento(request):
         return JsonResponse({"ok": True, "id": evento.id})
     return JsonResponse({"ok": False}, status=400)
 
-
 @csrf_exempt
 @login_required
 def eliminar_evento(request, evento_id):
@@ -373,7 +368,6 @@ def eliminar_evento(request, evento_id):
         except Evento.DoesNotExist:
             return JsonResponse({"ok": False, "error": "No encontrado"}, status=404)
     return JsonResponse({"ok": False}, status=400)
-
 
 @csrf_exempt
 @login_required
@@ -412,7 +406,6 @@ def enviar_correo_evento(request, evento_id):
             )
     return JsonResponse({"ok": False}, status=400)
 
-
 def registro_usuario(request):
     mensaje = ""
     if request.method == "POST":
@@ -442,7 +435,6 @@ def registro_usuario(request):
             perfil.save()
             return redirect("login")
     return render(request, "registro.html", {"mensaje": mensaje})
-
 
 @staff_member_required
 @login_required
@@ -550,7 +542,6 @@ def stripe_webhook(request):
 
     return HttpResponse(status=200)
 
-
 @login_required
 def crear_sesion_pago(request):
     session = stripe.checkout.Session.create(
@@ -568,7 +559,6 @@ def crear_sesion_pago(request):
         customer_email=request.user.email,
     )
     return JsonResponse({"id": session.id})
-
 
 @login_required
 def cancelar_suscripcion(request):
@@ -642,7 +632,6 @@ def crear_ticket(request):
         return redirect('lista_tickets')
     return render(request, 'mantenimiento/crear_ticket.html', {'empleados': empleados})
 
-
 @login_required
 def actualizar_ticket(request, ticket_id):
     ticket = TicketMantenimiento.objects.get(id=ticket_id)
@@ -654,7 +643,6 @@ def actualizar_ticket(request, ticket_id):
         ticket.save()
         return redirect('detalle_ticket', ticket_id=ticket.id)
     return render(request, 'mantenimiento/actualizar_ticket.html', {'ticket': ticket})
-
 
 @login_required
 def agregar_seguimiento(request, ticket_id):
@@ -786,7 +774,6 @@ def visitante_logout(request):
     request.session.flush()
     return redirect('visitante_login')
 
-
 def visitante_factura_detalle(request, factura_id):
     visitante_id = request.session.get("visitante_id")
     if not visitante_id:
@@ -799,6 +786,7 @@ def visitante_factura_detalle(request, factura_id):
     cobros = factura.pagos.all()
     return render(request, "facturacion/facturas_detalle.html",
                    {"factura": factura, "cobros": cobros, "es_visitante": True})
+
 
 # Pago con Stripe para visitantes
 def stripe_checkout_visitante(request, factura_id):
@@ -835,7 +823,6 @@ def stripe_checkout_visitante(request, factura_id):
         metadata={'factura_id': factura.id}
     )
     return redirect(session.url)
-
 
 @csrf_exempt
 def stripe_webhook_visitante(request):
@@ -912,6 +899,7 @@ def stripe_webhook_visitante(request):
         except Factura.DoesNotExist:
             logger.error(f"Factura no encontrada: {factura_id}")
     return JsonResponse({'status': 'ok'})
+
 
 # Módulo de votaciones por correo electrónico
 def enviar_votacion(tema, lista_correos, request):
