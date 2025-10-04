@@ -1,5 +1,6 @@
 
 from uuid import uuid4
+import uuid
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
@@ -18,7 +19,7 @@ from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from presupuestos.models import Presupuesto, PresupuestoIngreso
-from principal.forms import VisitanteLoginForm
+from principal.forms import TemaGeneralForm, VisitanteLoginForm
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
 from django.http import JsonResponse
@@ -26,7 +27,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
-from .models import Evento, PerfilUsuario, VisitanteAcceso
+from .models import Evento, PerfilUsuario, TemaGeneral, VisitanteAcceso, VotacionCorreo
 import json
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
@@ -38,11 +39,11 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import TicketMantenimiento, SeguimientoTicket
 from django.contrib.auth.hashers import check_password
+from django.urls import reverse
+from django.conf import settings
 
-# stripe.api_key = settings.STRIPE_SECRET_KEY
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
-
-# Create your views here.
 
 
 @login_required
@@ -836,7 +837,6 @@ def stripe_checkout_visitante(request, factura_id):
     return redirect(session.url)
 
 
-
 @csrf_exempt
 def stripe_webhook_visitante(request):
     import logging
@@ -912,3 +912,126 @@ def stripe_webhook_visitante(request):
         except Factura.DoesNotExist:
             logger.error(f"Factura no encontrada: {factura_id}")
     return JsonResponse({'status': 'ok'})
+
+# Módulo de votaciones por correo electrónico
+def enviar_votacion(tema, lista_correos, request):
+    empresa = None
+    if hasattr(request.user, "perfilusuario"):
+        empresa = request.user.perfilusuario.empresa
+    else:
+        empresa = None
+
+    nombre_empresa = empresa.nombre if empresa else "Tu empresa"
+
+    for correo in lista_correos:
+        token = uuid4().hex
+        votacion = VotacionCorreo.objects.create(
+            tema=tema,
+            email=correo,
+            token=token
+        )
+        url_si = request.build_absolute_uri(
+            reverse('votar_tema_correo', args=[token, 'si'])
+        )
+        url_no = request.build_absolute_uri(
+            reverse('votar_tema_correo', args=[token, 'no'])    
+        )
+        url_abstencion = request.build_absolute_uri(
+            reverse('votar_tema_correo', args=[token, 'abstencion'])
+        )
+        asunto = f"Votación: {tema.titulo} - {nombre_empresa}"
+        mensaje = (
+            f"Buen día,<br><br>"
+            f"Estimado miembro del comité, te invitamos a participar en la siguiente votación:<br><br>"
+            f"<strong>{tema.titulo}</strong><br>"
+            f"{tema.descripcion}<br><br>"
+            f"¿Estás de acuerdo?<br><br><br>"
+            f"<a href='{url_si}' style='padding:10px 20px; background:#4caf50; color:white; text-decoration:none;'>Sí</a> "
+            f"<a href='{url_no}' style='padding:10px 20px; background:#f44336; color:white; text-decoration:none;'>No</a><br><br>"
+            f"<a href='{url_abstencion}' style='padding:10px 20px; background:#ffc107; color:black; text-decoration:none;'>Abstención</a><br><br>"
+            f"Gracias por tu participación.<br>"
+        )
+        send_mail(
+            subject=asunto,
+            message="Te invitamos a votar. Si no ves los botones, copia y pega los enlaces en tu navegador:\nSí: {0}\nNo: {1}".format(url_si, url_no),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[correo],
+            html_message=mensaje
+        )
+
+def votar_tema_correo(request, token, respuesta):
+    votacion = get_object_or_404(VotacionCorreo, token=token)
+    if votacion.voto is not None:
+        return HttpResponse("Ya has votado.")
+    if respuesta not in ['si', 'no', 'abstencion']:
+        return HttpResponse("Respuesta inválida.")
+    votacion.voto = respuesta
+    votacion.fecha_voto = timezone.now()
+    votacion.save()
+    return HttpResponse("¡Gracias por tu voto!")
+
+def resultados_votacion(request, tema_id):
+    empresa = request.user.perfilusuario.empresa
+    tema = get_object_or_404(TemaGeneral, id=tema_id, empresa=empresa)
+    votos = VotacionCorreo.objects.filter(tema=tema)
+    total = votos.count()
+    si = votos.filter(voto='si').count()
+    no = votos.filter(voto='no').count()
+    abstencion = votos.filter(voto='abstencion').count()
+    pendientes = votos.filter(voto__isnull=True).count()
+    return render(request, 'votaciones/resultados_votacion.html', {
+        'tema': tema,
+        'total': total,
+        'si': si,
+        'no': no,
+        'abstencion': abstencion,
+        'pendientes': pendientes,
+        'votos': votos,
+    })
+
+@login_required
+def lista_temas(request):
+    empresa = request.user.perfilusuario.empresa
+    temas = TemaGeneral.objects.filter(empresa=empresa).order_by('-fecha_creacion')
+    return render(request, 'votaciones/lista_temas.html', {'temas': temas})
+
+@login_required
+def crear_tema_y_enviar(request):
+    empresa = request.user.perfilusuario.empresa
+    tema_id = request.GET.get('tema_id')
+    tema = None
+    if tema_id:
+        tema = get_object_or_404(TemaGeneral, id=tema_id, empresa=empresa)
+    if request.method == 'POST':
+        if tema:
+            form = TemaGeneralForm(request.POST, instance=tema)
+        else:
+            form = TemaGeneralForm(request.POST)
+        if form.is_valid():
+            tema = form.save(commit=False)
+            tema.creado_por = request.user
+            tema.empresa = empresa
+            tema.save()
+            # Procesa los correos
+            lista_correos = [c.strip() for c in form.cleaned_data['correos'].split(',') if c.strip()]
+            enviar_votacion(tema, lista_correos, request)
+            messages.success(request, "Asunto creado y correos enviados.")
+            return redirect('lista_temas')
+    else:
+        if tema:
+            # Precarga los correos anteriores si existen votaciones previas
+            correos_previos = ', '.join(
+                VotacionCorreo.objects.filter(tema=tema).values_list('email', flat=True)
+            )
+            form = TemaGeneralForm(instance=tema, initial={'correos': correos_previos})
+        else:
+            form = TemaGeneralForm()
+    return render(request, 'votaciones/crear_tema.html', {'form': form})
+
+@login_required
+def eliminar_tema(request, tema_id):
+    empresa = request.user.perfilusuario.empresa
+    tema = get_object_or_404(TemaGeneral, id=tema_id, empresa=empresa)
+    tema.delete()
+    messages.success(request, "Asunto eliminado correctamente.")
+    return redirect('lista_temas')

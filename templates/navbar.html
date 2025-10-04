@@ -84,7 +84,7 @@
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos cuotas</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Cuota</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Cuotas</a></li>
@@ -93,8 +93,11 @@
                         <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturacion Mensual Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros Cuotas</a></li>
-
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otro ingreso</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista  otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros  otros Ingresos</a></li>
                         
                         {% if request.user.is_superuser %}
                         <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
@@ -102,7 +105,7 @@
                         {% endif %}
                     </ul>
                 </li>
-                <!-- MENÚ otros ingresos -->
+                {% comment %} <!-- MENÚ otros ingresos -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Otros Ingresos</a>
                     <ul class="dropdown-menu">
@@ -110,7 +113,7 @@
                         <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista  otros Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros  otros Ingresos</a></li>
-                    </ul>
+                    </ul> {% endcomment %}
                 <!-- MENÚ cartera -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
@@ -206,6 +209,14 @@
                         <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos y Gastos</a></li>
+                    </ul>
+                </li>
+                <!-- MENÚ COMUNICACION -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Comunicacion</a>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="{% url 'crear_tema_y_enviar' %}">Nuevo asunto y enviar votación</a></li>
+                      <li><a class="dropdown-item" href="{% url 'lista_temas' %}">Lista Asuntos Generales</a></li> 
                     </ul>
                 </li>
             </ul>

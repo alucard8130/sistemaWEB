@@ -6,10 +6,10 @@ from empresas.models import Empresa
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
-
 from locales.models import LocalComercial
+from django import forms
 
-# Create your models here.
+#perfil de usuario extendido
 class PerfilUsuario(models.Model):
     TIPO_USUARIOS = [
         ('demo', 'Demo'),
@@ -26,6 +26,7 @@ class PerfilUsuario(models.Model):
     def __str__(self):
        return f"{self.usuario.username} → {self.empresa.nombre if self.empresa else 'Sin empresa'}"
 
+# Modulo de auditoria 
 class AuditoriaCambio(models.Model):
     MODELOS_AUDITABLES = [
         ('local', 'Local Comercial'),
@@ -42,7 +43,8 @@ class AuditoriaCambio(models.Model):
 
     def __str__(self):
         return f'{self.get_modelo_display()} {self.objeto_id} - {self.campo}'
-    
+
+# Modulo de eventos y notificaciones    
 class Evento(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE) 
     titulo = models.CharField(max_length=200)
@@ -82,7 +84,8 @@ class SeguimientoTicket(models.Model):
 
     def __str__(self):
         return f"Seguimiento {self.fecha} - {self.usuario}"    
-    
+
+# Modulo de acceso para visitantes    
 class VisitanteAcceso(models.Model):
     username = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=128)  # Guarda hash, no texto plano
@@ -99,3 +102,27 @@ class VisitanteAcceso(models.Model):
 
     def __str__(self):
         return self.username        
+
+# Modulo de votaciones por correo electrónico    
+class TemaGeneral(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    titulo = models.CharField(max_length=255)
+    descripcion = models.TextField()
+    creado_por = models.ForeignKey(User, on_delete=models.CASCADE)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+class VotacionCorreo(models.Model):
+    VOTO_CHOICES = (
+        ('si', 'Sí'),
+        ('no', 'No'),
+        ('abstencion', 'Abstención'),
+    )
+    tema = models.ForeignKey(TemaGeneral, on_delete=models.CASCADE)
+    email = models.EmailField()
+    token = models.CharField(max_length=64, unique=True)
+    voto = models.CharField(max_length=20, choices=VOTO_CHOICES, null=True, blank=True)
+    fecha_envio = models.DateTimeField(auto_now_add=True)
+    fecha_voto = models.DateTimeField(null=True, blank=True)
+
+    def ya_voto(self):
+        return self.voto is not None    

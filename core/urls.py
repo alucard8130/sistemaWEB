@@ -9,7 +9,7 @@ from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caj
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
 from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
-from principal.views import actualizar_ticket, agregar_seguimiento, lista_tickets, crear_ticket, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, visitante_consulta_facturas, visitante_factura_detalle, visitante_login, visitante_logout
+from principal.views import actualizar_ticket, agregar_seguimiento, crear_tema_y_enviar, eliminar_tema, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, visitante_consulta_facturas, visitante_factura_detalle, visitante_login, visitante_logout, votar_tema_correo
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -109,6 +109,11 @@ urlpatterns = [
     path('visitante/factura/<int:factura_id>/detalle/',visitante_factura_detalle, name='visitante_factura_detalle'),
     path('visitante/factura/<int:factura_id>/stripe/', stripe_checkout_visitante, name='visitante_stripe_checkout'),
     path('visitante/stripe/webhook/', stripe_webhook_visitante, name='stripe_webhook_visitante'),
+    path('votar/<str:token>/<str:respuesta>/', votar_tema_correo, name='votar_tema_correo'),
+    path('votaciones/', lista_temas, name='lista_temas'),
+    path('votaciones/resultados/<int:tema_id>/', resultados_votacion, name='resultados_votacion'),
+    path('votaciones/crear/', crear_tema_y_enviar, name='crear_tema_y_enviar'),
+    path('votaciones/eliminar/<int:tema_id>/', eliminar_tema, name='eliminar_tema'),
 ]
 
 if settings.DEBUG:
