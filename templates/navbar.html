@@ -33,6 +33,7 @@
                         <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
                         <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
                         <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
+                        <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>
                         </ul>
                 </li>
                 {% elif request.user.is_superuser %}
@@ -98,6 +99,7 @@
                         <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otro ingreso</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista  otros Ingresos</a></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros  otros Ingresos</a></li>
+                        {% comment %} <li><hr class="dropdown-divider"></li> {% endcomment %}
                         
                         {% if request.user.is_superuser %}
                         <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->

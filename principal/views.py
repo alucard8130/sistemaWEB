@@ -1,4 +1,5 @@
 
+import csv
 from uuid import uuid4
 import uuid
 from django.contrib.auth.decorators import login_required
@@ -1023,3 +1024,256 @@ def eliminar_tema(request, tema_id):
     tema.delete()
     messages.success(request, "Asunto eliminado correctamente.")
     return redirect('lista_temas')
+
+
+# Módulo de conciliación bancaria
+def conciliar_estado_cuenta(ruta_archivo, empresa):
+    from facturacion.models import Factura, FacturaOtrosIngresos
+    from caja_chica.models import FondeoCajaChica
+    from gastos.models import Gasto
+    from datetime import datetime
+
+    conciliados = []
+    no_conciliados = []
+    fechas = []
+    movimientos_csv = []
+
+    # 1. Lee el archivo y guarda fechas y movimientos
+    with open(ruta_archivo, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            fecha_str = row['fecha']
+            try:
+                fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+            except ValueError:
+                continue  # Salta filas con fecha inválida
+            fechas.append(fecha)
+            movimientos_csv.append({
+                'fecha': fecha,
+                'monto': float(row['monto']),
+                'descripcion': row.get('descripcion', '')
+            })
+
+    if not fechas:
+        return {
+            'conciliados': [],
+            'no_conciliados': movimientos_csv,
+            'fecha_min': None,
+            'fecha_max': None,
+            'error': 'No se detectaron fechas válidas en el archivo.'
+        }
+
+    fecha_min = min(fechas)
+    fecha_max = max(fechas)
+
+    # 2. Filtra movimientos del sistema solo dentro del rango de fechas
+    facturas = Factura.objects.filter(
+        empresa=empresa,
+        fecha_emision__gte=fecha_min,
+        fecha_emision__lte=fecha_max,
+        estatus='pendiente'
+    )
+    otros_ingresos = FacturaOtrosIngresos.objects.filter(
+        empresa=empresa,
+        fecha_emision__gte=fecha_min,
+        fecha_emision__lte=fecha_max,
+        estatus='pendiente'
+    )
+    gastos = Gasto.objects.filter(
+        empresa=empresa,
+        fecha__gte=fecha_min,
+        fecha__lte=fecha_max,
+        estatus='pendiente'
+    )
+    fondeos = FondeoCajaChica.objects.filter(
+        empresa=empresa,
+        fecha__gte=fecha_min,
+        fecha__lte=fecha_max
+    )
+
+    # 3. Procesa cada movimiento del CSV
+    for mov in movimientos_csv:
+        monto = mov['monto']
+        descripcion = mov['descripcion']
+        fecha = mov['fecha']
+
+        # Buscar coincidencia en cuotas
+        cuota = facturas.filter(saldo_pendiente=monto).first()
+        if cuota:
+            cuota.estatus = 'cobrada'
+            cuota.save()
+            conciliados.append({
+                'fecha': fecha,
+                'monto': monto,
+                'descripcion': descripcion,
+                'tipo': 'Cuota'
+            })
+            continue
+
+        # Buscar coincidencia en otros ingresos
+        ingreso = otros_ingresos.filter(saldo_pendiente=monto).first()
+        if ingreso:
+            ingreso.estatus = 'cobrada'
+            ingreso.save()
+            conciliados.append({
+                'fecha': fecha,
+                'monto': monto,
+                'descripcion': descripcion,
+                'tipo': 'Otro ingreso'
+            })
+            continue
+
+        # Buscar coincidencia en gastos
+        gasto = gastos.filter(saldo_pendiente=monto).first()
+        if gasto:
+            gasto.estatus = 'pagado'
+            gasto.save()
+            conciliados.append({
+                'fecha': fecha,
+                'monto': monto,
+                'descripcion': descripcion,
+                'tipo': 'Gasto'
+            })
+            continue
+
+        # Buscar coincidencia en fondeos de caja chica
+        fondeo = fondeos.filter(saldo=monto).first()
+        if fondeo:
+            fondeo.numero_cheque = descripcion or fondeo.numero_cheque
+            fondeo.save()
+            conciliados.append({
+                'fecha': fecha,
+                'monto': monto,
+                'descripcion': descripcion,
+                'tipo': 'Fondeo caja chica'
+            })
+            continue
+
+        # Si no se encontró coincidencia
+        no_conciliados.append({
+            'fecha': fecha,
+            'monto': monto,
+            'descripcion': descripcion
+        })
+
+    return {
+        'conciliados': conciliados,
+        'no_conciliados': no_conciliados,
+        'fecha_min': fecha_min,
+        'fecha_max': fecha_max,
+    }
+
+@login_required
+def subir_estado_cuenta(request):
+    empresa = request.user.perfilusuario.empresa
+    if request.method == 'POST':
+        archivo = request.FILES['archivo']
+        # Guarda el archivo temporalmente
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+            for chunk in archivo.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        # Conciliación mejorada: guarda lista de conciliados con tipo
+        resultado = conciliar_estado_cuenta(tmp_path, empresa)
+        conciliados = []
+        no_conciliados = resultado.get('no_conciliados', [])
+        fecha_min = resultado.get('fecha_min')
+        fecha_max = resultado.get('fecha_max')
+
+        # Vuelve a leer el archivo para obtener los conciliados con tipo
+        from facturacion.models import Factura, FacturaOtrosIngresos
+        from caja_chica.models import FondeoCajaChica
+        from gastos.models import Gasto
+        from datetime import datetime
+
+        with open(tmp_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                fecha_str = row['fecha']
+                try:
+                    fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+                monto = float(row['monto'])
+                descripcion = row.get('descripcion', '')
+
+                # Buscar coincidencia en cuotas
+                cuota = Factura.objects.filter(
+                    empresa=empresa,
+                    fecha_emision__gte=fecha_min,
+                    fecha_emision__lte=fecha_max,
+                    saldo_pendiente=monto,
+                    estatus='cobrada'
+                ).first()
+                if cuota:
+                    conciliados.append({
+                        'fecha': fecha,
+                        'monto': monto,
+                        'descripcion': descripcion,
+                        'tipo': 'Cuota'
+                    })
+                    continue
+
+                # Buscar coincidencia en otros ingresos
+                ingreso = FacturaOtrosIngresos.objects.filter(
+                    empresa=empresa,
+                    fecha_emision__gte=fecha_min,
+                    fecha_emision__lte=fecha_max,
+                    saldo_pendiente=monto,
+                    estatus='cobrada'
+                ).first()
+                if ingreso:
+                    conciliados.append({
+                        'fecha': fecha,
+                        'monto': monto,
+                        'descripcion': descripcion,
+                        'tipo': 'Otro ingreso'
+                    })
+                    continue
+
+                # Buscar coincidencia en gastos
+                gasto = Gasto.objects.filter(
+                    empresa=empresa,
+                    fecha__gte=fecha_min,
+                    fecha__lte=fecha_max,
+                    saldo_pendiente=monto,
+                    estatus='pagado'
+                ).first()
+                if gasto:
+                    conciliados.append({
+                        'fecha': fecha,
+                        'monto': monto,
+                        'descripcion': descripcion,
+                        'tipo': 'Gasto'
+                    })
+                    continue
+
+                # Buscar coincidencia en fondeos de caja chica
+                fondeo = FondeoCajaChica.objects.filter(
+                    empresa=empresa,
+                    fecha__gte=fecha_min,
+                    fecha__lte=fecha_max,
+                    saldo=monto
+                ).first()
+                if fondeo:
+                    conciliados.append({
+                        'fecha': fecha,
+                        'monto': monto,
+                        'descripcion': descripcion,
+                        'tipo': 'Fondeo caja chica'
+                    })
+                    continue
+
+        return render(request, 'conciliacion/resultado_conciliacion.html', {
+            'conciliados': conciliados,
+            'no_conciliados': no_conciliados,
+            'fecha_min': fecha_min,
+            'fecha_max': fecha_max,
+        })
+
+    return render(request, 'conciliacion/subir_estado_cuenta.html')
+
+
+#Modulo de timbrado de facturas con FACTURAMA
