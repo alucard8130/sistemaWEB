@@ -1,0 +1,93 @@
+<!-- templates/facturacion/consulta_cfdis.html -->
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Subir CSD a Facturama</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+{% include 'navbar.html' %}
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+<body>
+<div class="container">
+    <h3>Consulta de CFDIs emitidos por empresa</h3>
+    <form method="post" class="mb-4">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label>Empresa:</label>
+                <select name="empresa_id" class="form-control">
+                    {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}">{{ empresa.nombre }} ({{ empresa.rfc }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group col-md-2">
+                <label>UUID:</label>
+                <input type="text" name="uuid" class="form-control">
+            </div>
+            <div class="form-group col-md-2">
+                <label>Folio inicio:</label>
+                <input type="text" name="folio_start" class="form-control">
+            </div>
+            <div class="form-group col-md-2">
+                <label>Folio fin:</label>
+                <input type="text" name="folio_end" class="form-control">
+            </div>
+            <div class="form-group col-md-2">
+                <label>Fecha inicio (dd/mm/yyyy):</label>
+                <input type="text" name="date_start" class="form-control">
+            </div>
+            <div class="form-group col-md-2">
+                <label>Fecha fin (dd/mm/yyyy):</label>
+                <input type="text" name="date_end" class="form-control">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Buscar</button>
+    </form>
+
+    {% if mensaje %}
+        <div class="alert alert-info">{{ mensaje }}</div>
+    {% endif %}
+
+    {% if resultados %}
+        <table class="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    <th>UUID</th>
+                    <th>Folio</th>
+                    <th>RFC Emisor</th>
+                    <th>RFC Receptor</th>
+                    <th>Fecha</th>
+                    <th>Total</th>
+                    <th>Descargar</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for cfdi in resultados %}
+                <tr>
+                    <td>{{ cfdi.Uuid }}</td>
+                    <td>{{ cfdi.Folio }}</td>
+                    <td>{{ cfdi.RfcIssuer }}</td>
+                    <td>{{ cfdi.Rfc }}</td>
+                    <td>{{ cfdi.Date }}</td>
+                    <td>{{ cfdi.Total }}</td>
+                    <td>
+                       <a href="{% url 'descargar_cfdi_facturama' cfdi.Id %}" class="btn btn-success btn-sm">
+    PDF/XML
+</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+</body>
+</html>

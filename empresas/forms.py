@@ -7,6 +7,8 @@ class EmpresaForm(forms.ModelForm):
         fields = [
             'nombre',
             'rfc',
+            'regimen_fiscal',
+            'codigo_postal',
             'cuenta_bancaria',
             'numero_cuenta',
             'saldo_inicial',
@@ -24,10 +26,18 @@ class EmpresaForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'RFC'
             }),
+            'regimen_fiscal': forms.Select(attrs={
+                'class': 'form-control',
+                'placeholder': 'Régimen Fiscal'
+            }),
             'direccion': forms.Textarea(attrs={
                 'rows': 2,
                 'class': 'form-control',
                 'placeholder': 'Dirección'
+            }),
+            'codigo_postal': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Código Postal'
             }),
             'telefono': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -56,6 +66,8 @@ class EmpresaForm(forms.ModelForm):
         labels = {
             'nombre': 'Nombre de la empresa',
             'rfc': 'RFC',
+            'regimen_fiscal': 'Régimen Fiscal',
+            'codigo_postal': 'Código Postal',
             'direccion': 'Dirección',
             'telefono': 'Teléfono',
             'email': 'Email',

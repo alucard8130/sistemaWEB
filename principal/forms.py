@@ -1,6 +1,8 @@
 
 from django import forms
 
+from empresas.models import Empresa
+
 class VisitanteLoginForm(forms.Form):
     username = forms.CharField(label="Usuario")
     password = forms.CharField(label="Contraseña", widget=forms.PasswordInput)
@@ -32,3 +34,9 @@ class TemaGeneralForm(forms.ModelForm):
                 'placeholder': 'Describe el asunto a votar'
             }),
         }    
+
+class CSDUploadForm(forms.Form):
+    empresa = forms.ModelChoiceField(queryset=Empresa.objects.all(), label="Empresa")
+    cer_file = forms.FileField(label="Certificado (.cer)")
+    key_file = forms.FileField(label="Llave privada (.key)")
+    key_password = forms.CharField(label="Contraseña de la llave", widget=forms.PasswordInput)

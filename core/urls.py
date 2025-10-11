@@ -7,9 +7,9 @@ from django.contrib.auth import views as auth_views
 from areas import views
 from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
-from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
+from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
-from principal.views import actualizar_ticket, agregar_seguimiento, crear_tema_y_enviar, eliminar_tema, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, visitante_consulta_facturas, visitante_factura_detalle, visitante_login, visitante_logout, votar_tema_correo
+from principal.views import actualizar_ticket, agregar_seguimiento, consulta_cfdis_facturama, crear_tema_y_enviar, descargar_cfdi_facturama, descargar_factura_timbrada, eliminar_tema, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_login, visitante_logout, visitante_timbrar_factura, votar_tema_correo
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -115,8 +115,17 @@ urlpatterns = [
     path('votaciones/crear/', crear_tema_y_enviar, name='crear_tema_y_enviar'),
     path('votaciones/eliminar/<int:tema_id>/', eliminar_tema, name='eliminar_tema'),
     path('conciliacion/subir/', subir_estado_cuenta, name='subir_estado_cuenta'),
-    
+    # path('factura/timbrar/<int:factura_id>/', timbrar_factura, name='timbrar_factura'),
+    path('factura/timbrar/<int:pk>/', timbrar_factura, name='timbrar_factura'),
+    path('factura/descargar-timbrada/<int:pk>/', descargar_factura_timbrada, name='descargar_factura_timbrada'),
+    path('facturacion/subir-csd/', subir_csd_facturama, name='subir_csd_facturama'),
+    path('facturacion/consulta-cfdis/', consulta_cfdis_facturama, name='consulta_cfdis_facturama'),
+    path('facturacion/descargar-cfdi/<str:id>/', descargar_cfdi_facturama, name='descargar_cfdi_facturama'),
+    path('otros-ingresos/timbrar/<int:pk>/', timbrar_factura_otros_ingresos, name='timbrar_factura_otros_ingresos'),
+    path('visitante/timbrar-factura/<int:pk>/', visitante_timbrar_factura, name='visitante_timbrar_factura'),
 ]
+    
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

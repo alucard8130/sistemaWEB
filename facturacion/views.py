@@ -164,7 +164,8 @@ def lista_facturas(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
-    query=request.GET.get('q', '')
+    tipo_cuota = request.GET.get('tipo_cuota')
+    query = request.GET.get('q', '')
 
     if request.user.is_superuser:
         facturas = Factura.objects.all().order_by('-fecha_vencimiento')
@@ -179,32 +180,38 @@ def lista_facturas(request):
         areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
     if empresa_id:
-        facturas = facturas.filter(empresa_id=empresa_id).order_by('-fecha_vencimiento')
+        facturas = facturas.filter(empresa_id=empresa_id)
     if local_id:
-        facturas = facturas.filter(local_id=local_id).order_by('-fecha_vencimiento')
+        facturas = facturas.filter(local_id=local_id)
     if area_id:
-        facturas = facturas.filter(area_comun_id=area_id).order_by('-fecha_vencimiento')
-
+        facturas = facturas.filter(area_comun_id=area_id)
+    if tipo_cuota:
+        facturas = facturas.filter(tipo_cuota=tipo_cuota)
     if query:
         facturas = facturas.filter(
             Q(folio__icontains=query) | Q(cliente__nombre__icontains=query)
-        ).order_by('-fecha_vencimiento')
+        )
 
-    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos')    
+    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos').order_by('-fecha_vencimiento')
+
+    # Opciones únicas de tipo_cuota para el filtro
+    tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
+
     # Paginación
     paginator = Paginator(facturas, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'facturacion/lista_facturas.html', {
-        'facturas': facturas,
+        'facturas': page_obj,
         'empresas': empresas,
         'empresa_seleccionada': int(empresa_id) if empresa_id else None,
         'locales': locales,
         'areas': areas,
         'local_id': local_id,
         'area_id': area_id,
-        'facturas': page_obj,
+        'tipos_cuota': tipos_cuota,
+        'tipo_cuota_seleccionada': tipo_cuota,
         'q': query,
     })
 
@@ -560,6 +567,7 @@ def dashboard_saldos(request):
     hoy = timezone.now().date()
     cliente_id = request.GET.get('cliente')
     origen = request.GET.get('origen')
+    tipo_cuota = request.GET.get('tipo_cuota')
     if not origen:
         origen = 'todos'
         
@@ -596,6 +604,10 @@ def dashboard_saldos(request):
     elif origen == 'area':
         facturas = facturas.filter(area_comun__isnull=False)
         
+    if tipo_cuota:
+        facturas = facturas.filter(tipo_cuota=tipo_cuota)
+
+
     # Subconsulta: total pagado por factura
     pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
         .values('factura') \
@@ -757,6 +769,8 @@ def dashboard_saldos(request):
     else:
         clientes = Cliente.objects.filter(empresa__in=empresas)
 
+    tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
+    
     return render(request, 'dashboard/saldos.html', {
         'facturas': facturas,
         'clientes': clientes,
@@ -784,6 +798,8 @@ def dashboard_saldos(request):
         'saldo_61_90_total': saldo_61_90_total,
         'saldo_91_180_total': saldo_91_180_total,
         'saldo_181_mas_total': saldo_181_mas_total,
+        'tipos_cuota': tipos_cuota,
+        'tipo_cuota_seleccionada': tipo_cuota,
     })
 
 
@@ -1102,6 +1118,7 @@ def cartera_vencida(request):
     hoy = timezone.now().date()
     filtro = request.GET.get('rango')
     origen = request.GET.get('origen')
+    tipo_cuota = request.GET.get('tipo_cuota')  
 
     # Optimiza con select_related para evitar N+1 queries
     facturas = Factura.objects.filter(
@@ -1135,6 +1152,11 @@ def cartera_vencida(request):
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
         facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
+
+    # Filtrar por tipo de cuota
+    if tipo_cuota:
+        facturas = facturas.filter(tipo_cuota=tipo_cuota)
+
 
     # Filtrar por origen
     if origen == 'local':
@@ -1194,7 +1216,10 @@ def cartera_vencida(request):
     # Unir ambos queryset y ordenar
     facturas_todas = list(facturas) + list(facturas_otros)
     facturas_todas.sort(key=lambda x: x.fecha_vencimiento, reverse=True)
-
+   
+    # Opciones únicas de tipo_cuota para el filtro
+    tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
+   
     # Paginar la lista combinada
     paginator = Paginator(facturas_todas, 25)
     page_number = request.GET.get('page')
@@ -1205,14 +1230,19 @@ def cartera_vencida(request):
         'hoy': hoy,
         'empresas': Empresa.objects.all(),
         'clientes': clientes,
-        'rango_seleccionado': filtro
+        'rango_seleccionado': filtro,
+        'tipo_cuota_seleccionado': tipo_cuota,
+        'tipos_cuota': tipos_cuota,
     })
 
 @login_required
 def exportar_cartera_excel(request):
-    cliente_id = request.GET.get('cliente')
     hoy = timezone.now().date()
+    filtro = request.GET.get('rango')
     origen = request.GET.get('origen')
+    tipo_cuota = request.GET.get('tipo_cuota')
+    empresa_id = request.GET.get('empresa')
+    cliente_id = request.GET.get('cliente')
 
     # Facturas cuotas
     facturas = Factura.objects.filter(
@@ -1227,15 +1257,25 @@ def exportar_cartera_excel(request):
         activo=True
     )
 
+    # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
         facturas_otros = facturas_otros.filter(empresa=empresa)
-    elif request.GET.get('empresa'):
-        empresa_id = request.GET.get('empresa')
+    elif empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
         facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
 
+    # Filtrar por cliente
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+        facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
+
+    # Filtrar por tipo de cuota
+    if tipo_cuota:
+        facturas = facturas.filter(tipo_cuota=tipo_cuota)
+
+    # Filtrar por origen
     if origen == 'local':
         facturas = facturas.filter(local__isnull=False)
         facturas_otros = facturas_otros.none()
@@ -1246,9 +1286,40 @@ def exportar_cartera_excel(request):
         facturas = facturas.none()
         # facturas_otros ya trae todos los otros ingresos
 
-    if cliente_id:
-        facturas = facturas.filter(cliente_id=cliente_id)
-        facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
+    # Filtros de rango de días vencidos
+    if filtro == 'menor30':
+        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
+        facturas_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
+    elif filtro == '30a60':
+        facturas = facturas.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=30),
+            fecha_vencimiento__gt=hoy - timedelta(days=60)
+        )
+        facturas_otros = facturas_otros.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=30),
+            fecha_vencimiento__gt=hoy - timedelta(days=60)
+        )
+    elif filtro == '60a90':
+        facturas = facturas.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=60),
+            fecha_vencimiento__gt=hoy - timedelta(days=90)
+        )
+        facturas_otros = facturas_otros.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=60),
+            fecha_vencimiento__gt=hoy - timedelta(days=90)
+        )
+    elif filtro == '90a180':
+        facturas = facturas.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=90),
+            fecha_vencimiento__gt=hoy - timedelta(days=180)
+        )
+        facturas_otros = facturas_otros.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=90),
+            fecha_vencimiento__gt=hoy - timedelta(days=180)
+        )
+    elif filtro == 'mas180':
+        facturas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
+        facturas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
 
     # Crear libro y hoja
     wb = openpyxl.Workbook()
@@ -1436,6 +1507,8 @@ def exportar_lista_facturas_excel(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
+    tipo_cuota = request.GET.get('tipo_cuota')
+    query=request.GET.get('q','')
     
     facturas = Factura.objects.all().select_related('cliente', 'empresa', 'local', 'area_comun')
     
@@ -1448,6 +1521,13 @@ def exportar_lista_facturas_excel(request):
         facturas = facturas.filter(local_id=local_id)
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id)
+    if tipo_cuota:
+        facturas = facturas.filter(tipo_cuota=tipo_cuota)
+    if query:
+        facturas = facturas.filter(
+            Q(folio__icontains=query) |
+            Q(cliente__nombre__icontains=query) 
+        )
     # Crear libro y hoja
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -2121,3 +2201,6 @@ def exportar_consulta_facturas_excel(request):
     response['Content-Disposition'] = 'attachment; filename=consulta_facturas.xlsx'
     wb.save(response)
     return response    
+
+
+

@@ -68,7 +68,7 @@
                       <th>Descripción</th>
                       <th>Estatus</th>
                       <th>Acciones</th>
-                      {% comment %} <th>CFDI</th>     {% endcomment %}
+                      <th>CFDI</th>    
                       <th>Historial</th>
                   
                   </tr>
@@ -92,35 +92,47 @@
                               <td>{{ factura.observaciones }}</td>
                           {% endif %}
 
-                          <td>{% if factura.estatus == 'cobrada' %} 
+                        <td>{% if factura.estatus == 'cobrada' %} 
                               <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
                           {% elif factura.estatus == 'pendiente' %} 
                               <span class="badge bg-warning">{{ factura.get_estatus_display }}</span>
                           {% elif factura.estatus == 'cancelada' %} 
                               <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
-                          {% endif %}</td>
+                          {% endif %}
+                        </td>
         
-                            <td class="text-nowrap">
-
-                          {% if factura.saldo > 0%}
+                          <td class="text-nowrap">
+                          {% if factura.saldo > 0 %}
                               <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
                           {% endif %}
-                          <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
-                                        </a>
+                          {% if not factura.empresa.es_plus %}  
+                            <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
+                              <i class="bi bi-printer" title="Imprimir Documento"></i>
+                            </a>
+                          {% else %}
+                            <span class="text-muted" title="Solo disponible en versión PLUS"></span>
+                          {% endif %}
+
+                          {% if not factura.uuid %}
+                                <a href="{% url 'timbrar_factura_otros_ingresos' factura.pk %}" class="btn btn-outline-success btn-sm" title="Timbrar factura">
+                                    <i class="bi bi-file-earmark-check"></i>
+                                </a>
+                            {% else %}
+                                <span class="badge bg-success">T</span>   
+                            {% endif %}
+
                           </td>
-                          
-                              {% comment %} <td>
-                              {% if factura.cfdi|archivo_existe %}
-                                  <a href="{{ factura.cfdi.url }}" class="btn btn-sm btn-outline-dark" target="_blank" title="Ver CFDI">
-                                      <i class="bi bi-file-earmark-pdf me-1"></i> 
-                                  </a>
-                              {% else %}
-                                  <span class="text-muted"></span>
-                              {% endif %}
-                            </td> {% endcomment %}
+                           <td>
+                    {% if factura.facturama_id %}
+                                <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" class="btn btn-success btn-sm" title="Descargar CFDI PDF/XML">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted"></span>
+                            {% endif %}
+                    </td>
                           <td>
                             <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
                                 <i class="bi bi-eye me-1"></i>

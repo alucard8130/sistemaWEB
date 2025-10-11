@@ -23,7 +23,7 @@ class Factura(models.Model):
     ]   
     tipo_cuota= models.CharField(max_length=100, choices=TIPO_CUOTA_CHOICES)
     folio = models.CharField(max_length=100)
-    cfdi = models.FileField(upload_to='fact_sat/', max_length=255, blank=True, null=True)
+    uuid= models.CharField(max_length=100, blank=True, null=True)
     fecha_emision = models.DateField()
     fecha_vencimiento = models.DateField()
     monto = models.DecimalField(max_digits=20, decimal_places=2)
@@ -35,6 +35,7 @@ class Factura(models.Model):
     estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
     observaciones = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
+    facturama_id = models.CharField(max_length=100, blank=True, null=True)  # Nuevo campo para almacenar el ID de Facturama
     
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"
@@ -97,13 +98,14 @@ class FacturaOtrosIngresos(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT)
     tipo_ingreso = models.ForeignKey('TipoOtroIngreso', on_delete=models.PROTECT)
     folio = models.CharField(max_length=50, unique=True)
-    cfdi = models.FileField(upload_to='fact_sat_oi/', max_length=255, blank=True, null=True)
+    uuid= models.CharField(max_length=100, blank=True, null=True)
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField()
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     estatus = models.CharField(max_length=20, choices=[('pendiente','Pendiente'),('cobrada','Cobrada'),('cancelada','Cancelada')], default='pendiente')
     observaciones = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
+    facturama_id = models.CharField(max_length=100, blank=True, null=True)  # Nuevo campo para almacenar el ID de Facturama
 
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"

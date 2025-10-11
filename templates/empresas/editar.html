@@ -54,13 +54,21 @@
         {{ form.nombre }}
         {{ form.nombre.errors }}
     </div>
-
     <div class="form-group mb-3">
         {{ form.rfc.label_tag }}
         {{ form.rfc }}
         {{ form.rfc.errors }}
     </div>
-
+    <div class="form-group mb-3">
+        {{ form.regimen_fiscal.label_tag }}
+        {{ form.regimen_fiscal }}
+        {{ form.regimen_fiscal.errors }}    
+    </div>
+    <div class="form-group mb-3">
+        {{ form.codigo_postal.label_tag }}
+        {{ form.codigo_postal }}
+        {{ form.codigo_postal.errors }}
+    </div>
     <div class="form-group mb-3">
         {{ form.direccion.label_tag }}
         {{ form.direccion }}

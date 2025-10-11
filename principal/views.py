@@ -1,5 +1,8 @@
 
 import csv
+from decimal import ROUND_HALF_UP
+import os
+from urllib import response
 from uuid import uuid4
 import uuid
 from django.contrib.auth.decorators import login_required
@@ -9,12 +12,14 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
+from openai import base_url
 import openpyxl
 from areas import models
 from core import settings
 from empleados.models import Empleado
 from empresas.models import Empresa
 from clientes.models import Cliente
+from facturacion.forms import TimbrarFacturaForm
 from gastos.models import Gasto
 from locales.models import LocalComercial
 from areas.models import AreaComun
@@ -42,6 +47,10 @@ from .models import TicketMantenimiento, SeguimientoTicket
 from django.contrib.auth.hashers import check_password
 from django.urls import reverse
 from django.conf import settings
+import requests
+
+
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # Vista de bienvenida / dashboard
@@ -549,7 +558,8 @@ def crear_sesion_pago(request):
         payment_method_types=["card"],
         line_items=[
             {
-                "price": "price_1RqexnPYnlfwKZQHILP9tgW5",
+                # "price": "price_1RqexnPYnlfwKZQHILP9tgW5",
+                "price":"price_1RxsU7PYnlfwKZQH4u5DJ7aH",
                 "quantity": 1,
             }
         ],
@@ -799,11 +809,17 @@ def stripe_checkout_visitante(request, factura_id):
     if not (empresa.stripe_secret_key and empresa.stripe_public_key and empresa.stripe_webhook_secret):
         messages.error(
             request,
-            "Esta empresa no cuenta con la configuración para recibir pagos en línea. Contacta al administrador del sistema."
+            " PAGO EN LINEA no esta configurado. Contacta al administrador del sistema."
+        )
+        return redirect('visitante_consulta_facturas')
+    elif not empresa.es_plus:
+        messages.error(
+            request,
+            " PAGO EN LINEA solo está disponible en la versión PLUS del sistema.Contacta al administrador del sistema."
         )
         return redirect('visitante_consulta_facturas')  # O la vista/lista que corresponda
     
-    import stripe
+    
     stripe.api_key = empresa.stripe_secret_key  # <-- Usa la clave secreta de la empresa
 
     session = stripe.checkout.Session.create(
@@ -1277,3 +1293,477 @@ def subir_estado_cuenta(request):
 
 
 #Modulo de timbrado de facturas con FACTURAMA
+FACTURAMA_USER = os.getenv("FACTURAMA_USER")
+FACTURAMA_PASS = os.getenv("FACTURAMA_PASSWORD")
+
+def timbrar_factura_facturama(datos_factura):
+    url = 'https://apisandbox.facturama.mx/api-lite/3/cfdis'  # URL de sandbox desarrollo
+    url = 'https://api.facturama.mx/'  # URL de producción
+    print("JSON enviado a Facturama:", json.dumps(datos_factura, indent=2))
+    print("FACTURAMA_USER:", FACTURAMA_USER)
+    print("FACTURAMA_PASS:", FACTURAMA_PASS)
+    response = requests.post(
+        url,
+        auth=(FACTURAMA_USER, FACTURAMA_PASS),
+        headers={'Content-Type': 'application/json'},
+        data=json.dumps(datos_factura)
+    )
+    print("Status code:", response.status_code)
+    print("Response text:", response.text)
+    try:
+        return response.json()
+    except Exception:
+        return {'error': response.text}
+
+def factura_a_json_facturama(factura, tax_object="02", payment_method="PUE", payment_form="99"):
+    from decimal import Decimal, ROUND_HALF_UP
+    from babel.dates import format_date
+    import pytz
+
+    monto = Decimal(factura.monto)
+    tasa_iva = Decimal('0.16')
+    divisor_iva = Decimal('1.16')
+
+    empresa = factura.empresa
+    cliente = factura.cliente
+
+    tz_mx = pytz.timezone('America/Mexico_City')
+    fecha_timbrado = timezone.now().astimezone(tz_mx).strftime("%Y-%m-%d %H:%M:%S")
+
+    # --- ADAPTACIÓN PARA AMBOS TIPOS DE FACTURA ---
+    # Para Factura normales
+    if hasattr(factura, "tipo_cuota") and hasattr(factura, "fecha_vencimiento"):
+        descripcion = "Aportación cuota " + str(getattr(factura, "tipo_cuota", "")) + " " + format_date(factura.fecha_vencimiento, "LLLL yyyy", locale="es")
+    # Para FacturaOtrosIngresos
+    elif hasattr(factura, "tipo_ingreso"):
+        descripcion = "Otro ingreso: " + str(getattr(factura, "tipo_ingreso", "")) + (f" - {factura.observaciones}" if getattr(factura, "observaciones", "") else "")
+    else:
+        descripcion = factura.observaciones or "Concepto de factura"
+
+    if tax_object == "01":
+        # Sin objeto de impuesto: total y subtotal son iguales al monto
+        subtotal = monto.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        item_total = subtotal
+        total = subtotal
+    else:
+        # Con objeto de impuesto: calcula subtotal y desglose de IVA
+        subtotal = (monto / divisor_iva).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        iva = (subtotal * tasa_iva).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        item_total = (subtotal + iva).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        total = item_total
+
+    item = {
+        "ProductCode": "25173108",        
+        "Description": descripcion,
+        "UnitCode": "E48",
+        "Quantity": 1.0,
+        "UnitPrice": float(subtotal),
+        "Subtotal": float(subtotal),
+        "TaxObject": tax_object,
+        "Total": float(item_total)
+    }
+
+    if tax_object == "02":
+        item["Taxes"] = [{
+            "Total": float(iva),
+            "Name": "IVA",
+            "Base": float(subtotal),
+            "Rate": float(tasa_iva),
+            "IsRetention": False
+        }]
+
+    return {
+        "CfdiType": "I",
+        "PaymentForm": payment_form,
+        "PaymentMethod": payment_method,
+        "ExpeditionPlace": empresa.codigo_postal,
+        "Date": fecha_timbrado,
+        "Folio": factura.folio,
+        "Issuer": {
+            "FiscalRegime": empresa.regimen_fiscal,
+            "Rfc": empresa.rfc,
+            "Name": empresa.nombre
+        },
+        "Receiver": {
+            "Rfc": cliente.rfc,
+            "CfdiUse": cliente.uso_cfdi,
+            "Name": cliente.nombre,
+            "FiscalRegime": cliente.regimen_fiscal,
+            "TaxZipCode": cliente.codigo_postal,
+        },
+        "Items": [item],
+        "Total": float(total)
+    }
+        
+
+@login_required
+def timbrar_factura(request, pk):
+    factura = get_object_or_404(Factura, pk=pk)
+    empresa = factura.empresa
+    
+    # Solo permite timbrar si la empresa es PLUS
+    if not empresa.es_plus:
+        messages.error(request, "El timbrado solo está disponible en la versión PLUS del sistema.")
+        return redirect('lista_facturas')
+
+    if not request.user.is_superuser and factura.empresa != request.user.perfilusuario.empresa:
+        messages.error(request, "No tienes permiso para timbrar esta factura.")
+        return redirect('lista_facturas')
+
+    if factura.uuid:
+        messages.info(request, "La factura ya está timbrada.")
+        return redirect('lista_facturas')
+
+    if request.method == "POST":
+        form = TimbrarFacturaForm(request.POST)
+        if form.is_valid():
+            tax_object = form.cleaned_data["tax_object"]
+            payment_method = form.cleaned_data["payment_method"]
+            payment_form = form.cleaned_data["payment_form"]
+            datos_json = factura_a_json_facturama(factura, tax_object, payment_method, payment_form)
+            resultado = timbrar_factura_facturama(datos_json)
+            print("Resultado de timbrado:", resultado)
+            if 'error' in resultado:
+                messages.error(request, f"Error al timbrar: {resultado['error']}")
+            else:
+                uuid = (
+                    resultado.get('Uuid') or
+                    resultado.get('Complement', {}).get('TaxStamp', {}).get('Uuid')
+                )
+                facturama_id = resultado.get('Id')
+                if not uuid or not facturama_id:
+                    messages.error(request, f"Error inesperado: {resultado}")
+                else:
+                    factura.uuid = uuid
+                    factura.facturama_id = facturama_id
+                    factura.save()
+                    messages.success(request, "Factura " + factura.folio + " timbrada correctamente. Ahora puedes descargar el PDF y XML.")
+            return redirect('lista_facturas')
+    else:
+        form = TimbrarFacturaForm()
+
+    return render(request, "facturacion/timbrar_factura.html", {
+                  "form": form, 
+                   "factura": factura,
+                   "url_cancelar":"lista_facturas"})
+
+import requests
+import io
+import zipfile
+from django.http import HttpResponse
+
+@login_required
+def descargar_factura_timbrada(request, pk):
+    factura = get_object_or_404(Factura, pk=pk)
+    if not factura.uuid:
+        messages.error(request, "La factura no está timbrada.")
+        return redirect('lista_facturas')
+
+    uuid = factura.uuid
+    usuario = os.getenv("FACTURAMA_USER")
+    password = os.getenv("FACTURAMA_PASSWORD")
+
+    # Corrige las URLs aquí:
+    xml_url = f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/xml"
+    pdf_url = f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/pdf"
+
+
+    # Descarga XML
+    xml_response = requests.get(xml_url, auth=(usuario, password))
+    xml_content = xml_response.content if xml_response.status_code == 200 else None
+    print("XML status:", xml_response.status_code)
+    print("XML response:", xml_response.text)
+
+    # Descarga PDF
+    pdf_response = requests.get(pdf_url, auth=(usuario, password))
+    pdf_content = pdf_response.content if pdf_response.status_code == 200 else None
+    print("PDF status:", pdf_response.status_code)
+    print("PDF response:", pdf_response.text)
+
+    if not xml_content and not pdf_content:
+        messages.error(request, "No se pudo descargar el PDF ni el XML desde Facturama.")
+        return redirect('lista_facturas')
+
+    # Prepara ZIP
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        if xml_content:
+            zip_file.writestr(f"factura_{factura.folio}.xml", xml_content)
+        if pdf_content:
+            zip_file.writestr(f"factura_{factura.folio}.pdf", pdf_content)
+
+    zip_buffer.seek(0)
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename=factura_{factura.folio}.zip'
+    return response
+
+
+from .forms import CSDUploadForm
+import base64
+
+@staff_member_required
+def subir_csd_facturama(request):
+    import os
+    mensaje = ""
+    usuario = os.getenv("FACTURAMA_USER")
+    password = os.getenv("FACTURAMA_PASSWORD")
+    csds = obtener_csds_facturama(usuario, password)
+
+    if request.method == "POST":
+        form = CSDUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            empresa = form.cleaned_data["empresa"]
+            rfc = empresa.rfc.upper()
+            cer_file = form.cleaned_data["cer_file"]
+            key_file = form.cleaned_data["key_file"]
+            key_password = form.cleaned_data["key_password"]
+
+            # Valida si ya existe un CSD para ese RFC
+            if any(csd.get("Rfc", "").upper() == rfc for csd in csds):
+                mensaje = f"Ya existe un CSD cargado para el RFC {rfc}."
+            else:
+                # Convierte archivos a base64
+                cert_b64 = base64.b64encode(cer_file.read()).decode("utf-8")
+                key_b64 = base64.b64encode(key_file.read()).decode("utf-8")
+
+                # Llama a la API de Facturama
+                #url = "https://apisandbox.facturama.mx/api-lite/csds" #en desarrollo
+                url = "https://api.facturama.mx/api-lite/csds" # en producción
+                data = {
+                    "Rfc": rfc,
+                    "Certificate": cert_b64,
+                    "PrivateKey": key_b64,
+                    "PrivateKeyPassword": key_password
+                }
+                response = requests.post(
+                    url,
+                    auth=(usuario, password),
+                    headers={"Content-Type": "application/json"},
+                    data=json.dumps(data)
+                )
+                if response.status_code == 200:
+                    mensaje = f"CSD cargado correctamente para la empresa {empresa.nombre}."
+                    csds = obtener_csds_facturama(usuario, password)  # Actualiza lista
+                else:
+                    print("Status code:", response.status_code)
+                    print("Response text:", response.text)
+                    mensaje = f"Error al cargar CSD: {response.text}"
+    else:
+        form = CSDUploadForm()
+    return render(request, "facturacion/subir_csd.html", {"form": form, "mensaje": mensaje, "csds": csds})
+
+
+def obtener_csds_facturama(usuario, password):
+    #url = "https://apisandbox.facturama.mx/api-lite/csds"  # URL de sandbox desarrollo
+    url = "https://api.facturama.mx/api-lite/csds"  # URL de producción
+    response = requests.get(url, auth=(usuario, password))
+    if response.status_code == 200:
+        return response.json()  # Lista de CSDs
+    return []    
+
+
+def consultar_cfdis_facturama(rfc_issuer=None, uuid=None, folio_start=None, folio_end=None, date_start=None, date_end=None, status="active", page=0):
+    #url = "https://apisandbox.facturama.mx/cfdi" # URL de sandbox desarrollo
+    url = "https://api.facturama.mx/cfdi"  # URL de producción
+    params = {
+        "type": "issuedLite",
+        "status": status,
+        "page": page
+    }
+    if rfc_issuer:
+        params["rfcIssuer"] = rfc_issuer
+    if uuid:
+        params["uuid"] = uuid
+    if folio_start:
+        params["folioStart"] = folio_start
+    if folio_end:
+        params["folioEnd"] = folio_end
+    if date_start:
+        params["dateStart"] = date_start  # formato: dd/mm/yyyy
+    if date_end:
+        params["dateEnd"] = date_end      # formato: dd/mm/yyyy
+
+    usuario = os.getenv("FACTURAMA_USER")
+    password = os.getenv("FACTURAMA_PASSWORD")
+    response = requests.get(url, params=params, auth=(usuario, password))
+    if response.status_code == 200:
+        return response.json()
+    return []
+
+@staff_member_required
+def consulta_cfdis_facturama(request):
+    empresas = Empresa.objects.all()
+    resultados = []
+    mensaje = ""
+    if request.method == "POST":
+        empresa_id = request.POST.get("empresa_id")
+        uuid = request.POST.get("uuid")
+        folio_start = request.POST.get("folio_start")
+        folio_end = request.POST.get("folio_end")
+        date_start = request.POST.get("date_start")
+        date_end = request.POST.get("date_end")
+
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        rfc_issuer = empresa.rfc if empresa else None
+
+        resultados = consultar_cfdis_facturama(
+            rfc_issuer=rfc_issuer,
+            uuid=uuid,
+            folio_start=folio_start,
+            folio_end=folio_end,
+            date_start=date_start,
+            date_end=date_end
+        )
+        if not resultados:
+            mensaje = "No se encontraron CFDIs con esos filtros o hubo un error en la consulta."
+
+    return render(request, "facturacion/consulta_cfdis.html", {
+        "empresas": empresas,
+        "resultados": resultados,
+        "mensaje": mensaje
+    })
+
+
+def descargar_cfdi_facturama(request, id):
+    usuario = os.getenv("FACTURAMA_USER")
+    password = os.getenv("FACTURAMA_PASSWORD")
+    #base_url = "https://apisandbox.facturama.mx/cfdi" # URL de sandbox desarrollo
+    base_url = "https://api.facturama.mx/cfdi"  # URL de producción
+
+    # Descarga XML
+    xml_url = f"{base_url}/xml/issuedLite/{id}"
+    xml_response = requests.get(xml_url, auth=(usuario, password))
+    xml_content = None
+    if xml_response.status_code == 200:
+        xml_json = xml_response.json()
+        xml_content = base64.b64decode(xml_json.get("Content", ""))
+
+    # Descarga PDF
+    pdf_url = f"{base_url}/pdf/issuedLite/{id}"
+    pdf_response = requests.get(pdf_url, auth=(usuario, password))
+    pdf_content = None
+    if pdf_response.status_code == 200:
+        pdf_json = pdf_response.json()
+        pdf_content = base64.b64decode(pdf_json.get("Content", ""))
+
+    if not xml_content and not pdf_content:
+        messages.error(request, "No se pudo descargar el PDF ni el XML desde Facturama.")
+        return redirect('consulta_cfdis_facturama')
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        if xml_content:
+            zip_file.writestr(f"{id}.xml", xml_content)
+        if pdf_content:
+            zip_file.writestr(f"{id}.pdf", pdf_content)
+
+    zip_buffer.seek(0)
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename=cfdi_{id}.zip'
+    return response
+
+
+# timbrar facturas de otros ingresos
+@login_required
+def timbrar_factura_otros_ingresos(request, pk):
+    factura = get_object_or_404(FacturaOtrosIngresos, pk=pk)
+    empresa = factura.empresa
+
+    # Solo permite timbrar si la empresa es PLUS
+    if not empresa.es_plus:
+        messages.error(request, "El timbrado solo está disponible en la versión PLUS del sistema.")
+        return redirect('lista_facturas_otros_ingresos')
+
+    if factura.uuid:
+        messages.info(request, "La factura ya está timbrada.")
+        return redirect('lista_facturas_otros_ingresos')
+
+    if request.method == "POST":
+        form = TimbrarFacturaForm(request.POST)
+        if form.is_valid():
+            tax_object = form.cleaned_data["tax_object"]
+            payment_method = form.cleaned_data["payment_method"]
+            payment_form = form.cleaned_data["payment_form"]
+            datos_json = factura_a_json_facturama(factura, tax_object, payment_method, payment_form)
+            resultado = timbrar_factura_facturama(datos_json)
+            print("Resultado de timbrado:", resultado)
+            if 'error' in resultado:
+                messages.error(request, f"Error al timbrar: {resultado['error']}")
+            else:
+                uuid = (
+                    resultado.get('Uuid') or
+                    resultado.get('Complement', {}).get('TaxStamp', {}).get('Uuid')
+                )
+                facturama_id = resultado.get('Id')
+                if not uuid or not facturama_id:
+                    messages.error(request, f"Error inesperado: {resultado}")
+                else:
+                    factura.uuid = uuid
+                    factura.facturama_id = facturama_id
+                    factura.save()
+                    messages.success(request, "Factura " + factura.folio + " timbrada correctamente. Ahora puedes descargar el PDF y XML.")
+            return redirect('lista_facturas_otros_ingresos')
+    else:
+        form = TimbrarFacturaForm()
+
+    return render(request, "facturacion/timbrar_factura.html",
+                   {"form": form, 
+                    "factura": factura
+                    , "url_cancelar":"lista_facturas_otros_ingresos"})
+
+
+
+# Módulo de timbrado para visitantes
+def visitante_timbrar_factura(request, pk):
+    visitante_id = request.session.get("visitante_id")
+    if not visitante_id:
+        return redirect("visitante_login")
+    visitante = VisitanteAcceso.objects.get(id=visitante_id)
+    factura = get_object_or_404(Factura, pk=pk)
+    # Verifica que la factura pertenezca a los locales/áreas del visitante
+    if factura.local not in visitante.locales.all() and factura.area_comun not in visitante.areas.all():
+        messages.error(request, "No tienes permiso para timbrar esta factura.")
+        return redirect("visitante_consulta_facturas")
+
+    empresa = factura.empresa
+    if not empresa.es_plus:
+        messages.error(request, "TIMBRADO de Facturas solo está disponible en la versión PLUS. Contacta al administrador del sistema.")
+        return redirect("visitante_consulta_facturas")
+
+    if factura.uuid:
+        messages.info(request, "La factura ya está timbrada.")
+        return redirect("visitante_consulta_facturas")
+
+    if request.method == "POST":
+        form = TimbrarFacturaForm(request.POST)
+        if form.is_valid():
+            tax_object = form.cleaned_data["tax_object"]
+            payment_method = form.cleaned_data["payment_method"]
+            payment_form = form.cleaned_data["payment_form"]
+            datos_json = factura_a_json_facturama(factura, tax_object, payment_method, payment_form)
+            resultado = timbrar_factura_facturama(datos_json)
+            print("Resultado de timbrado:", resultado)
+            if 'error' in resultado:
+                messages.error(request, f"Error al timbrar: {resultado['error']}")
+            else:
+                uuid = (
+                    resultado.get('Uuid') or
+                    resultado.get('Complement', {}).get('TaxStamp', {}).get('Uuid')
+                )
+                facturama_id = resultado.get('Id')
+                if not uuid or not facturama_id:
+                    messages.error(request, f"Error inesperado: {resultado}")
+                else:
+                    factura.uuid = uuid
+                    factura.facturama_id = facturama_id
+                    factura.save()
+                    messages.success(request, "Factura " + factura.folio + " timbrada correctamente. Ahora puedes descargar el PDF y XML.")
+            return redirect("visitante_consulta_facturas")
+    else:
+        form = TimbrarFacturaForm()
+
+    return render(request, "facturacion/timbrar_factura.html", {
+        "form": form,
+        "factura": factura,
+        "url_cancelar": "visitante_consulta_facturas"
+    })

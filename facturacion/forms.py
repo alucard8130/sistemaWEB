@@ -14,7 +14,7 @@ class FacturaForm(forms.ModelForm):
 
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto','cfdi', 'observaciones']
+        fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto','observaciones']
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-select'
@@ -36,13 +36,10 @@ class FacturaForm(forms.ModelForm):
                 'class': 'form-control',                                                                                                                                                                
                 'placeholder': 'Monto'
                 }),
-            'cfdi': forms.FileInput(attrs={
-                'class': 'form-control'
-                }),
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
                 'class': 'form-control',
-                'placeholder': 'Observaciones'
+                'placeholder': 'concepto de la factura'
                 }),
         }
 
@@ -53,7 +50,7 @@ class FacturaForm(forms.ModelForm):
         # campos no requeridos
         self.fields['local'].required = False
         self.fields['area_comun'].required = False
-        self.fields['cfdi'].disabled = True
+        # self.fields['cfdi'].disabled = True
 
         if self.user and not self.user.is_superuser:
             empresa = self.user.perfilusuario.empresa
@@ -136,7 +133,7 @@ class FacturaCargaMasivaForm(forms.Form):
 class FacturaEditForm(forms.ModelForm):
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota','cfdi', 'estatus', 'observaciones']    
+        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota', 'estatus', 'observaciones']    
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-select'
@@ -159,9 +156,6 @@ class FacturaEditForm(forms.ModelForm):
             }),
             'tipo_cuota': forms.Select(attrs={
                 'class': 'form-select'
-            }),
-            'cfdi': forms.FileInput(attrs={
-                'class': 'form-control'
             }),
             'estatus': forms.Select(attrs={
                 'class': 'form-select'
@@ -190,8 +184,7 @@ class FacturaEditForm(forms.ModelForm):
 class FacturaOtrosIngresosForm(forms.ModelForm):
     class Meta:
         model = FacturaOtrosIngresos
-        fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'cfdi','observaciones']
-        #fields = '__all__'
+        fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'observaciones']
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-select'             
@@ -206,19 +199,17 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control'
             }),
-            'cfdi': forms.FileInput(attrs={
-                'class': 'form-control'
-            }),
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
-                'class': 'form-control'
+                'class': 'form-control',
+                'placeholder': 'concepto de la factura'
             }),
         }  
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['cfdi'].disabled = True 
+        # self.fields['cfdi'].disabled = True 
         if user and hasattr(user, 'perfilusuario'):
             empresa = user.perfilusuario.empresa
             self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
@@ -275,3 +266,28 @@ class TipoOtroIngresoForm(forms.ModelForm):
         model = TipoOtroIngreso
         fields = ['nombre']
 
+
+
+
+# Formulario para timbrar factura
+class TimbrarFacturaForm(forms.Form):
+    TAX_OBJECT_CHOICES = [
+        ("02", "Sí objeto de impuesto"),
+        ("01", "No objeto de impuesto"),
+    ]
+    PAYMENT_METHOD_CHOICES = [
+        ("PUE", "Pago en una sola exhibición"),
+        ("PPD", "Pago en parcialidades o diferido"),
+    ]
+    PAYMENT_FORM_CHOICES = [
+        ("01", "Efectivo"),
+        ("02", "Cheque nominativo"),
+        ("03", "Transferencia electrónica de fondos"),
+        ("04", "Tarjeta de crédito"),
+        ("28", "Tarjeta de débito"),
+        ("99", "Por definir"),
+        # Agrega más según catálogo SAT si lo necesitas
+    ]
+    tax_object = forms.ChoiceField(choices=TAX_OBJECT_CHOICES, label="Objeto de impuesto")
+    payment_method = forms.ChoiceField(choices=PAYMENT_METHOD_CHOICES, label="Método de pago")
+    payment_form = forms.ChoiceField(choices=PAYMENT_FORM_CHOICES, label="Forma de pago")

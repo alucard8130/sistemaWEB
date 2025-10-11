@@ -48,7 +48,7 @@
 
            <div class="col-md-2">
                 <select name="origen" id="origen" class="form-select">
-                    <option value="">Tipo de Cuota</option>
+                    <option value="">Tipo de Ingreso</option>
                     <option value="local" {% if request.GET.origen == 'local' %}selected{% endif %}>Local Comercial</option>
                     <option value="area" {% if request.GET.origen == 'area' %}selected{% endif %}>Área Común</option>
                     <option value="otros" {% if request.GET.origen == 'otros' %}selected{% endif %}>Otros ingresos</option>
@@ -77,7 +77,15 @@
                     <option value="mas180" {% if rango_seleccionado == 'mas180' %}selected{% endif %}>Más de 180 días</option>
                 </select>
             </div>
-
+                
+            <div class="col-auto">
+    <select name="tipo_cuota" class="form-select">
+        <option value="">Todos los tipos de cuota</option>
+        {% for cuota in tipos_cuota %}
+            <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
+        {% endfor %}
+    </select>
+</div>
             <div class="col-md-3 d-flex gap-2">
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-funnel-fill"></i> Filtrar
@@ -88,9 +96,9 @@
             </div>
         </form>
         <div class="mb-2"> 
-            <a href="{% url 'exportar_cartera_excel' %}?origen={{ request.GET.origen }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.dias %}&dias={{ request.GET.dias }}{% endif %}" class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
-            </a>
+            <a href="{% url 'exportar_cartera_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
+    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+</a>
         </div>
 
         <div class="table-responsive rounded-3 border">
@@ -98,6 +106,7 @@
                 <thead>
                     <tr>
                         <th>Folio</th>
+                        <th>Tipo de Cuota</th>
                         <th>Cliente</th>
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
@@ -113,6 +122,7 @@
                     {% for factura in facturas %}
                     <tr>
                         <td>{{ factura.folio }}</td>
+                        <td>{{ factura.tipo_cuota }}</td>
                         <td>{{ factura.cliente.nombre }}</td>
                         {% if request.user.is_superuser %}
                             <td>{{ factura.empresa.nombre }}</td>

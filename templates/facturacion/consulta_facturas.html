@@ -124,6 +124,7 @@
                         <th>Descripción</th>
                         <th>Estatus</th>
                         <th>Acciones</th>
+                        <th>CFDI</th>
                         <th>Historial</th>
                     </tr>
                 </thead>
@@ -163,12 +164,31 @@
                             </td>
                     <td>
                     {% if factura.estatus == 'pendiente' and es_visitante %}
-                        <a href="{% url 'visitante_stripe_checkout' factura.id %}" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-credit-card"></i> Pagar en línea
+                        <a href="{% url 'visitante_stripe_checkout' factura.id %}" class="btn btn-sm btn-outline-success" title="Pagar factura">
+                            <i class="bi bi-credit-card"></i> 
                         </a>
+                    {% endif %}
+                    {% if factura.estatus == 'cobrada' %}
+                        {% if not factura.uuid %}
+                            <a href="{% url 'visitante_timbrar_factura' factura.pk %}" class="btn btn-outline-success btn-sm" title="Timbrar factura">
+                                <i class="bi bi-file-earmark-check"></i>
+                            </a>
+                        {% else %}
+                            <span class="badge bg-success">T</span>
+                        {% endif %}
                     {% endif %}
                 </td>
                 <td>
+                    {% if factura.facturama_id %}
+            <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" class="btn btn-success btn-sm" title="Descargar CFDI PDF/XML">
+                <i class="bi bi-download"></i>
+            </a>
+        {% else %}
+            <span class="text-muted"></span>
+        {% endif %}
+                </td>
+                <td>
+
                     {% if es_visitante %}
                         <a href="{% url 'visitante_factura_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
                             <i class="bi bi-eye me-1"></i> 

@@ -61,9 +61,14 @@
                     <option value="otros" {% if origen == "otros" %}selected{% endif %}>Otras Cuotas</option>
                 </select>
             </div>
-            <div class="col-md-2 align-self-end">
-                <!--<button type="submit" class="btn btn-primary">Filtrar</button>-->
-            </div>
+            <div class="col-auto">
+    <select name="tipo_cuota" class="form-select", onchange="this.form.submit()">
+        <option value="">Todos los tipos de cuota</option>
+        {% for cuota in tipos_cuota %}
+            <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
+        {% endfor %}
+    </select>
+</div>
         </form>
 
         <!-- Gráficos y KPIs -->

@@ -208,3 +208,6 @@ sentry_sdk.init(
     traces_sample_rate=1.0,  # Puedes bajarlo a 0.1 si no quieres rastreo de performance
     send_default_pii=True,   # Para capturar datos de usuario autenticado
 )
+
+FACTURAMA_USER = os.getenv("FACTURAMA_USER")
+FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")

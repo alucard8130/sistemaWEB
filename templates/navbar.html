@@ -34,6 +34,8 @@
                         <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
                         <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
                         <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>
+                        <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
+                        <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
                         </ul>
                 </li>
                 {% elif request.user.is_superuser %}
