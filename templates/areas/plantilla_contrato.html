@@ -1,0 +1,190 @@
+<!doctype html>
+{% load static %}
+{% load humanize %}
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>Contrato Área Común #{{ area.pk }}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root { --brand:#0d6efd; --muted:#6c757d; --text:#222; }
+    body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:var(--text); margin:28px; font-size:12.5px; }
+    header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .logo { max-height:70px; }
+    .empresa-info { text-align:right; font-size:13px; }
+    h1 { font-size:18px; margin:6px 0; color:var(--brand); text-align:center; }
+    .meta { display:flex; justify-content:space-between; gap:12px; margin-bottom:16px; }
+    .box { border:1px solid #e9ecef; padding:12px; border-radius:6px; background:#fff; }
+    .clausula { margin-bottom:10px; text-align:justify; line-height:1.4; }
+    table.detalle { width:100%; margin-top:8px; border-collapse:collapse; }
+    table.detalle td { padding:6px; vertical-align:top; border:1px solid #e9ecef; }
+    .firma { margin-top:36px; display:flex; gap:24px; justify-content:space-between; }
+    .firmante { width:48%; text-align:center; margin-top:12px; }
+    .right { text-align:right; }
+    .small { font-size:11px; color:var(--muted); }
+    .btns { position:fixed; right:18px; top:18px; z-index:2000; display:flex; gap:8px; }
+    @media print {
+      .btns { display:none; }
+      body { margin:10mm; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Botones: Descargar PDF / Imprimir -->
+  {% comment %} <div class="btns"> {% endcomment %}
+    <!-- Descargar PDF: apunta a la vista que genera el PDF -->
+    {% comment %} <a href="{% url 'generar_contrato' area.pk %}" class="btn btn-sm btn-primary" target="_blank" title="Descargar PDF">
+      <i class="bi bi-download"></i> Descargar PDF
+    </a> {% endcomment %}
+    <!-- Imprimir / Guardar desde navegador -->
+    <button class="btn btn-sm btn-primary" onclick="window.print()" title="Imprimir / Guardar">
+      <i class="bi bi-printer"></i> Imprimir / Guardar
+    </button>
+  {% comment %} </div> {% endcomment %}
+
+  <header>
+    <div>
+      {% if empresa.logo %}
+        <img src="{{ empresa.logo.url }}" alt="{{ empresa.nombre }}" class="logo">
+      {% else %}
+        <div style="font-weight:700; color:var(--brand); font-size:18px;">{{ empresa.nombre }}</div>
+      {% endif %}
+    </div>
+    <div class="empresa-info">
+      <div><strong>{{ empresa.nombre }}</strong></div>
+      {% if empresa.rfc %}<div>RFC: {{ empresa.rfc }}</div>{% endif %}
+      {% if empresa.direccion %}<div class="small">{{ empresa.direccion }}</div>{% endif %}
+      {% if empresa.telefono %}<div class="small">Tel: {{ empresa.telefono }}</div>{% endif %}
+    </div>
+  </header>
+
+  <h1>CONTRATO DE USO Y GOCE DE ÁREA COMÚN</h1>
+
+  <div class="meta">
+    <div class="box" style="flex:1;">
+      <strong>CONTRATANTE (EMPRESA)</strong>
+      <div>{{ empresa.nombre }}</div>
+      {% if empresa.representante %}<div class="small">Representante: {{ empresa.representante }}</div>{% endif %}
+      {% if empresa.rfc %}<div class="small">RFC: {{ empresa.rfc }}</div>{% endif %}
+    </div>
+    <div class="box" style="flex:1;">
+      <strong>CONTRATADO (CLIENTE)</strong>
+      <div>{{ area.cliente.nombre }}</div>
+      {% if area.cliente.rfc %}<div class="small">RFC/ID: {{ area.cliente.rfc }}</div>{% endif %}
+      {% if area.cliente.telefono %}<div class="small">Tel: {{ area.cliente.telefono }}</div>{% endif %}
+    </div>
+    <div class="box" style="flex:0.7;">
+      <strong>CONTRATO</strong>
+      <div>Núm: <strong>{{ area.pk }}</strong></div>
+      <div class="small">Área: {{ area.numero }}</div>
+      {% comment %} <div class="small">Fecha emisión: {{ now|date:"d/m/Y" }}</div> {% endcomment %}
+      <div class="small">Fecha emisión: {% now "d/m/Y" %}</div>
+    </div>
+  </div>
+
+  <section class="box">
+    <h5>1. Objeto</h5>
+    <p class="clausula">
+      El presente contrato tiene por objeto la cesión temporal del uso del área común identificada como <strong>{{ area.numero }}</strong>,
+      con una superficie de <strong>{{ area.superficie_m2 }}</strong> m² ubicada en <strong>{{ area.ubicacion }}</strong>, en los términos y condiciones que se detallan a continuación.
+    </p>
+
+    <h5>2. Vigencia y tarifas</h5>
+    <table class="detalle">
+      <tr>
+        <td><strong>Fecha inicio</strong><br>{{ area.fecha_inicial }}</td>
+        <td><strong>Fecha fin</strong><br>{{ area.fecha_fin }}</td>
+        <td><strong>Cuota</strong><br>$ {{ area.cuota|floatformat:2|intcomma }}</td>
+      </tr>
+      <tr>
+        <td colspan="3"><strong>Estado: </strong> {{ area.estado_vigencia }}</td>
+      </tr>
+    </table>
+
+    <h5>3. Pago y depósito</h5>
+    <p class="clausula">
+      El contratante pagará la cuota indicada en la forma y plazos acordados. El depósito de garantía será de ${{ area.deposito|floatformat:2|intcomma }} (en su caso).
+      Los pagos se realizarán en la cuenta o medio que la empresa indique.
+    </p>
+
+    <h5>4. Obligaciones</h5>
+    <p class="clausula">
+      El contratado se obliga a dar un uso adecuado del área, conservarla en buen estado y cumplir las normas internas establecidas por la empresa.
+      Queda prohibida cualquier actividad ilícita o que ponga en riesgo la integridad del inmueble.
+    </p>
+
+    <h5>5. Terminación y renovación</h5>
+    <p class="clausula">
+      Al vencimiento del presente contrato, las partes podrán acordar la renovación. En caso de renovación, las partes podrán aplicar incrementos en la cuota por porcentaje o monto fijo según acuerdo.
+      El contrato podrá darse por terminado por incumplimiento conforme a lo establecido en este documento.
+    </p>
+
+    <h5>6. Responsabilidad</h5>
+    <p class="clausula">
+      La empresa no será responsable por daños indirectos, lucro cesante o pérdida de bienes del cliente salvo dolo o negligencia comprobada.
+    </p>
+
+    <h5>7. Protección de datos</h5>
+    <p class="clausula">
+      Los datos personales recabados se tratarán conforme a la legislación aplicable en materia de protección de datos personales en México y la política de privacidad de la empresa.
+    </p>
+
+    <h5>8. Ley aplicable y jurisdicción</h5>
+    <p class="clausula">
+      Este contrato se regirá por las leyes vigentes en los Estados Unidos Mexicanos. Para la resolución de controversias, las partes se someten a la jurisdicción de los tribunales competentes de {{ empresa.ciudad|default:"la ciudad correspondiente" }}, renunciando a cualquier otro fuero que pudiera corresponderles.
+    </p>
+
+    <h5>9. Cláusulas adicionales</h5>
+    <p class="clausula">
+      {% if area.observaciones %}
+        {{ area.observaciones }}
+      {% else %}
+        Ninguna.
+      {% endif %}
+    </p>
+  </section>
+
+  <div class="firma">
+    <div class="firmante">
+      <div>__________________________________</div>
+      <div><strong>Por {{ empresa.nombre }}</strong></div>
+      <div class="small">Nombre y firma</div>
+    </div>
+    <div class="firmante">
+      <div>__________________________________</div>
+      <div><strong>Por {{ area.cliente.nombre }}</strong></div>
+      <div class="small">Nombre y firma</div>
+    </div>
+  </div>
+
+  {% comment %} <footer style="margin-top:18px; font-size:11px; color:var(--muted);">
+    <div>Documento generado por {{ request.get_host }} — Fecha: {{ now|date:"d/m/Y H:i" }}</div>
+    <div>Nota: Este documento es una plantilla. Verifique cláusulas específicas con asesoría legal si requiere fuerza contractual adicional.</div>
+  </footer> {% endcomment %}
+
+  <!-- Scripts: descarga directa del PDF (si la vista devuelve PDF en la misma URL) -->
+  <script>
+    // Si desea forzar descarga vía fetch (opcional): aquí un helper que solicita la ruta PDF y fuerza descarga.
+    async function descargarPDF(url, filename) {
+      try {
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Error al descargar');
+        const blob = await res.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+      } catch (e) {
+        alert('No se pudo descargar el PDF: ' + e.message);
+      }
+    }
+
+    // Si se quiere, se puede enlazar un botón para ejecutar:
+    // descargarPDF("{% url 'generar_contrato' area.pk %}", "contrato_area_{{ area.pk }}.pdf");
+  </script>
+</body>
+</html>

@@ -15,19 +15,19 @@
             <div class="col-lg-10">
                 <div class="card shadow-lg">
                     <div class="card-header bg-info text-white text-center">
-                        <h4 class="mb-0">Tickets de Mantenimiento</h4>
+                        <h4 class="mb-0">Reportes de Mantenimiento</h4>
                     </div>
                     <div class="card-body">
                         <div class="mb-3 text-end">
-                            <a href="{% url 'crear_ticket' %}" class="btn btn-info">Crear nuevo ticket</a>
+                            <a href="{% url 'crear_ticket' %}" class="btn btn-info">Crear nuevo reporte</a>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>No. Ticket</th>
-                                        <th>Título</th>
-                                        <th>Descripción</th>
+                                        <th>No.Ticket</th>
+                                        <th>Título Reporte</th>
+                                        <th>Descripción Reporte</th>
                                         <th>Empleado asignado</th>
                                         <th>Estado</th>
                                         <th>Fecha creación</th>
@@ -73,7 +73,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">No hay tickets registrados.</td>
+                                        <td colspan="7" class="text-center text-muted">No hay reportes registrados.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

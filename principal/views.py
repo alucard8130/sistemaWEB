@@ -1296,20 +1296,21 @@ def subir_estado_cuenta(request):
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASS = os.getenv("FACTURAMA_PASSWORD")
 
+
 def timbrar_factura_facturama(datos_factura):
     url = 'https://apisandbox.facturama.mx/api-lite/3/cfdis'  # URL de sandbox desarrollo
-    url = 'https://api.facturama.mx/'  # URL de producción
-    print("JSON enviado a Facturama:", json.dumps(datos_factura, indent=2))
-    print("FACTURAMA_USER:", FACTURAMA_USER)
-    print("FACTURAMA_PASS:", FACTURAMA_PASS)
+    #url = 'https://api.facturama.mx/'  # URL de producción
+    # print("JSON enviado a Facturama:", json.dumps(datos_factura, indent=2))
+    # print("FACTURAMA_USER:", FACTURAMA_USER)
+    # print("FACTURAMA_PASS:", FACTURAMA_PASS)
     response = requests.post(
         url,
         auth=(FACTURAMA_USER, FACTURAMA_PASS),
         headers={'Content-Type': 'application/json'},
         data=json.dumps(datos_factura)
     )
-    print("Status code:", response.status_code)
-    print("Response text:", response.text)
+    # print("Status code:", response.status_code)
+    # print("Response text:", response.text)
     try:
         return response.json()
     except Exception:
@@ -1422,7 +1423,7 @@ def timbrar_factura(request, pk):
             payment_form = form.cleaned_data["payment_form"]
             datos_json = factura_a_json_facturama(factura, tax_object, payment_method, payment_form)
             resultado = timbrar_factura_facturama(datos_json)
-            print("Resultado de timbrado:", resultado)
+            # print("Resultado de timbrado:", resultado)
             if 'error' in resultado:
                 messages.error(request, f"Error al timbrar: {resultado['error']}")
             else:
@@ -1463,9 +1464,12 @@ def descargar_factura_timbrada(request, pk):
     usuario = os.getenv("FACTURAMA_USER")
     password = os.getenv("FACTURAMA_PASSWORD")
 
-    # Corrige las URLs aquí:
-    xml_url = f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/xml"
-    pdf_url = f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/pdf"
+    # URLs para descargar XML y PDF
+    xml_url = f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/xml"  #desarrollo
+    pdf_url = f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/pdf"  #desarrollo
+    
+    #xml_url = f"https://api.facturama.mx/api-lite/3/cfdis/{uuid}/xml"  #producción
+    #pdf_url = f"https://api.facturama.mx/api-lite/3/cfdis/{uuid}/pdf"  #producción
 
 
     # Descarga XML
@@ -1527,8 +1531,8 @@ def subir_csd_facturama(request):
                 key_b64 = base64.b64encode(key_file.read()).decode("utf-8")
 
                 # Llama a la API de Facturama
-                #url = "https://apisandbox.facturama.mx/api-lite/csds" #en desarrollo
-                url = "https://api.facturama.mx/api-lite/csds" # en producción
+                url = "https://apisandbox.facturama.mx/api-lite/csds" #en desarrollo
+                #url = "https://api.facturama.mx/api-lite/csds" # en producción
                 data = {
                     "Rfc": rfc,
                     "Certificate": cert_b64,
@@ -1554,8 +1558,8 @@ def subir_csd_facturama(request):
 
 
 def obtener_csds_facturama(usuario, password):
-    #url = "https://apisandbox.facturama.mx/api-lite/csds"  # URL de sandbox desarrollo
-    url = "https://api.facturama.mx/api-lite/csds"  # URL de producción
+    url = "https://apisandbox.facturama.mx/api-lite/csds"  # URL de sandbox desarrollo
+    #url = "https://api.facturama.mx/api-lite/csds"  # URL de producción
     response = requests.get(url, auth=(usuario, password))
     if response.status_code == 200:
         return response.json()  # Lista de CSDs
@@ -1563,8 +1567,8 @@ def obtener_csds_facturama(usuario, password):
 
 
 def consultar_cfdis_facturama(rfc_issuer=None, uuid=None, folio_start=None, folio_end=None, date_start=None, date_end=None, status="active", page=0):
-    #url = "https://apisandbox.facturama.mx/cfdi" # URL de sandbox desarrollo
-    url = "https://api.facturama.mx/cfdi"  # URL de producción
+    url = "https://apisandbox.facturama.mx/cfdi" # URL de sandbox desarrollo
+    #url = "https://api.facturama.mx/cfdi"  # URL de producción
     params = {
         "type": "issuedLite",
         "status": status,
@@ -1627,8 +1631,8 @@ def consulta_cfdis_facturama(request):
 def descargar_cfdi_facturama(request, id):
     usuario = os.getenv("FACTURAMA_USER")
     password = os.getenv("FACTURAMA_PASSWORD")
-    #base_url = "https://apisandbox.facturama.mx/cfdi" # URL de sandbox desarrollo
-    base_url = "https://api.facturama.mx/cfdi"  # URL de producción
+    base_url = "https://apisandbox.facturama.mx/cfdi" # URL de sandbox desarrollo
+    #base_url = "https://api.facturama.mx/cfdi"  # URL de producción
 
     # Descarga XML
     xml_url = f"{base_url}/xml/issuedLite/{id}"

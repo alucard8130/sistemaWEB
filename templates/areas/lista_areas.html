@@ -60,6 +60,7 @@
                         <th>Cantidad</th>
                         <th>Fecha Ini</th>
                         <th>Fecha Fin</th>
+                        <th>Status</th>
                         <th>Ubicación</th>
                         <th>Acciones</th>
                     </tr>
@@ -80,7 +81,14 @@
                             <td>{{ area.cantidad_areas }}</td>
                             <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
                             <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
-                            <td>{{ area.ubicacion }}</td>
+                            <td>
+                                {% if area.estado_vigencia == "Vencido" %}
+                                    <span class="badge bg-danger">{{ area.estado_vigencia }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ area.estado_vigencia }}</span>
+                                {% endif %}
+                            </td>
+                           <td>{% if area.ubicacion %}{{ area.ubicacion }}{% endif %}</td>
                             <td style="white-space: nowrap;">
                                 <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
                                     <i class="bi bi-pencil-square"></i>
@@ -88,8 +96,15 @@
                                 <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-outline-danger" title="Inactivar">
                                     <i class="bi bi-slash-circle"></i>
                                 </a>
+                              
+                                <a href="{% url 'generar_contrato' area.pk %}" class="btn btn-sm btn-primary" {% if area.empresa and area.empresa.es_plus %}target="_blank"{% endif %} title="Generar contrato">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                                <!-- Button to assign client if area is available -->
                             {% if area.status == 'disponible' %}
-                                <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-outline-success btn-sm">Asignar cliente</a>
+                                <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-outline-success btn-sm" title="Asignar cliente">
+                                    <i class="bi bi-person-plus"></i>
+                                </a>
                             {% endif %}
                             </td>
                         </tr>

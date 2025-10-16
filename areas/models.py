@@ -3,6 +3,7 @@ from django import forms
 from django.db import models
 from clientes.models import Cliente
 from empresas.models import Empresa
+from django.utils import timezone
 
 # Create your models here.
 class AreaComun(models.Model):
@@ -20,7 +21,6 @@ class AreaComun(models.Model):
         ('Area', 'area'),
         ('Otro', 'otro'),
         ]
-    
     tipo_area = models.CharField(max_length=20, choices=TIPO_AREA_CHOICES, default='Modulo')
     cantidad_areas = models.PositiveIntegerField(default=1, blank=True, null=True)
     cuota = models.DecimalField(max_digits=10, decimal_places=2)
@@ -40,6 +40,12 @@ class AreaComun(models.Model):
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     fecha_baja = models.DateTimeField(blank=True, null=True)
     observaciones = models.CharField(blank=True, null=True)
+    
+    @property
+    def estado_vigencia(self):
+        if self.fecha_fin and self.fecha_fin < timezone.now().date():
+            return "Vencido"
+        return "Vigente"
 
     widgets = {
             'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),

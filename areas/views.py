@@ -1,5 +1,5 @@
 
-# Create your views here.
+
 from decimal import Decimal
 from django.contrib import messages
 from django.http import HttpResponse
@@ -16,7 +16,7 @@ from unidecode import unidecode
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db.models import Q
-
+from django.template.loader import render_to_string
 
 
 
@@ -308,3 +308,35 @@ def plantilla_areas_excel(request):
     response['Content-Disposition'] = 'attachment; filename=plantilla_areas.xlsx'
     wb.save(response)
     return response  
+
+
+# modulo generar contrato y guardar PDF
+
+try:
+    from weasyprint import HTML
+except Exception:
+    HTML = None
+    
+@login_required
+def generar_contrato(request, area_id):
+    area = get_object_or_404(AreaComun, pk=area_id)
+
+    if not getattr(area.empresa, 'es_plus', False):
+        messages.error(request, "La Generación de contratos solo está disponible en la versión PLUS")
+        return redirect('lista_areas')
+        
+    
+    contexto = {'area': area, 'empresa': area.empresa}
+    html_string = render_to_string('areas/plantilla_contrato.html', contexto)
+
+    
+    if HTML:
+        html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
+        pdf_bytes = html.write_pdf()
+        filename = f"contrato_area_{area.pk}.pdf"
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
+    return HttpResponse(html_string)

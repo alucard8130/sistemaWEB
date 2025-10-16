@@ -16,7 +16,7 @@ from locales.views import (
     crear_local, editar_local, eliminar_local, lista_locales, 
     locales_inactivos, reactivar_local)
 from areas.views import (
-    lista_areas, crear_area, editar_area, eliminar_area,
+    generar_contrato, lista_areas, crear_area, editar_area, eliminar_area,
     areas_inactivas, reactivar_area)
 from clientes.views import (
     carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
@@ -123,6 +123,7 @@ urlpatterns = [
     path('facturacion/descargar-cfdi/<str:id>/', descargar_cfdi_facturama, name='descargar_cfdi_facturama'),
     path('otros-ingresos/timbrar/<int:pk>/', timbrar_factura_otros_ingresos, name='timbrar_factura_otros_ingresos'),
     path('visitante/timbrar-factura/<int:pk>/', visitante_timbrar_factura, name='visitante_timbrar_factura'),
+    path('contrato/generar/<int:area_id>/', generar_contrato, name='generar_contrato'),
 ]
     
 
