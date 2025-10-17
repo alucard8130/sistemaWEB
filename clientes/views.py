@@ -154,7 +154,7 @@ def carga_masiva_clientes(request):
             ws = wb.active
             errores = []
             exitos = 0
-            COLUMNAS_ESPERADAS = 5  # Cambia según tus columnas
+            COLUMNAS_ESPERADAS = 8  # Cambia según tus columnas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
@@ -163,7 +163,7 @@ def carga_masiva_clientes(request):
                         f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})"
                     )
                     continue
-                empresa_val, nombre, rfc, telefono, email = row
+                empresa_val, nombre, rfc, telefono, codigo_postal, regimen_fiscal, uso_cfdi, email = row
                 try:
                     empresa = buscar_empresa(empresa_val)
                     if not nombre:
@@ -180,6 +180,9 @@ def carga_masiva_clientes(request):
                         nombre=nombre,
                         rfc=rfc.strip() if rfc else None,
                         telefono=telefono,
+                        codigo_postal=codigo_postal,
+                        regimen_fiscal=regimen_fiscal,
+                        uso_cfdi=uso_cfdi,
                         email=email,
                         activo=True,
                     )
@@ -205,9 +208,9 @@ def plantilla_clientes_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Plantilla Clientes"
-    ws.append(["empresa", "nombre", "rfc", "telefono", "email"])
+    ws.append(["empresa", "nombre", "rfc", "telefono", "codigo_postal", "regimen_fiscal", "uso_cfdi", "email"])
     ws.append(
-        ["Torre Reforma", "Juan Pérez", "JUPE800101ABC", "5551234567", "juan@email.com"]
+        ["Torre Reforma", "Juan Pérez", "JUPE800101ABC", "5551234567", "01234", "persona fisica", "G03", "juan@email.com"]
     )
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

@@ -35,7 +35,7 @@ class Factura(models.Model):
     estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
     observaciones = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
-    facturama_id = models.CharField(max_length=100, blank=True, null=True)  # Nuevo campo para almacenar el ID de Facturama
+    facturama_id = models.CharField(max_length=100, blank=True, null=True)  
     
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"

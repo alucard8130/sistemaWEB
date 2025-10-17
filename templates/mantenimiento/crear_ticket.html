@@ -9,7 +9,12 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    
+    <!-- Block for displaying messages -->
+        {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+        {% endfor %}
+        {% endif %}
     <div class="container py-4">
         <div class="row justify-content-center">
             <div class="col-lg-6">
@@ -18,7 +23,7 @@
                         <h4 class="mb-0">Registrar Reporte de Mantenimiento</h4>
                     </div>
                     <div class="card-body">
-                        <form method="post">
+                        <form method="post" enctype="multipart/form-data">
                             {% csrf_token %}
                             <div class="mb-3">
                                 <label for="titulo" class="form-label">Título del problema</label>
@@ -28,6 +33,13 @@
                                 <label for="descripcion" class="form-label">Descripción detallada</label>
                                 <textarea name="descripcion" id="descripcion" class="form-control" rows="4" required placeholder="Describe el problema y ubicación"></textarea>
                             </div>
+                              <div class="mb-3">
+                                <label for="imagenes" class="form-label">Previsualizar imágenes (no se guardan)</label>
+                                <!-- Sin atributo name => el navegador no enviará los archivos al servidor -->
+                                <input type="file" id="imagenes" name="imagenes" accept="image/*" multiple class="form-control" />
+                                <div class="form-text">Máx 5 imágenes, 5 MB por imagen. Sólo previsualización local.</div>
+                            </div>
+                            <div id="preview" class="mt-2 d-flex flex-wrap gap-2"></div>
                             <div class="mb-3">
                                 <label for="empleado_asignado" class="form-label">Asignar a empleado</label>
                                 <select name="empleado_asignado" id="empleado_asignado" class="form-select" required>
@@ -50,4 +62,69 @@
     <footer class="text-center mt-4 mb-2 text-muted">
         © {% now "Y" %} GESAC. Todos los derechos reservados.
     </footer>
-    <script
+  <script>
+(function(){
+  const input = document.getElementById('imagenes');
+  const preview = document.getElementById('preview');
+  const MAX_FILES = 5;
+  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+
+  function humanSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/(1024*1024)).toFixed(1) + ' MB';
+  }
+
+  input.addEventListener('change', () => {
+    preview.innerHTML = '';
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+
+    if (files.length > MAX_FILES) {
+      alert(`Has seleccionado ${files.length} archivos. Máximo permitido: ${MAX_FILES}.`);
+      // opcional: mantener sólo los primeros MAX_FILES en preview
+    }
+
+    files.slice(0, MAX_FILES).forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        const p = document.createElement('div');
+        p.className = 'text-danger small';
+        p.textContent = `${file.name} no es una imagen y será omitida.`;
+        preview.appendChild(p);
+        return;
+      }
+      if (file.size > MAX_SIZE) {
+        const p = document.createElement('div');
+        p.className = 'text-danger small';
+        p.textContent = `${file.name} es demasiado grande (${humanSize(file.size)}). Máx ${humanSize(MAX_SIZE)}.`;
+        preview.appendChild(p);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wrapper = document.createElement('div');
+        wrapper.style.maxWidth = '200px';
+        wrapper.style.textAlign = 'center';
+
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'img-thumbnail';
+        img.style.maxWidth = '200px';
+        img.style.maxHeight = '150px';
+        img.alt = file.name;
+
+        const caption = document.createElement('div');
+        caption.className = 'small text-truncate mt-1';
+        caption.style.maxWidth = '200px';
+        caption.textContent = `${file.name} • ${humanSize(file.size)}`;
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(caption);
+        preview.appendChild(wrapper);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+})();
+</script>

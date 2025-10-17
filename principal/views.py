@@ -632,14 +632,116 @@ def crear_ticket(request):
         )
         # Enviar correo si el empleado tiene email
         if empleado.email:
-            send_mail(
-                'Nuevo ticket de mantenimiento asignado',
-                f'Se te ha asignado el ticket: {titulo}\nDescripción: {descripcion}',
-                'soporte@tuempresa.com',
-                [empleado.email],
-                fail_silently=True,
+            # Preparar email con adjuntos (si hay)
+            asunto = 'Nuevo reporte de mantenimiento asignado'
+            cuerpo = f'Empresa: {empresa.nombre}\nSe te ha asignado el reporte: {titulo}\n\nDescripción: {descripcion}'
+            email = EmailMessage(
+                subject=asunto,
+                body=cuerpo,
+                from_email='avisoscondominio@infinitummail.com',
+                to=[empleado.email],
             )
-        # Aquí puedes integrar WhatsApp con una API externa
+            # Adjuntar imágenes si fueron subidas
+            archivos = request.FILES.getlist('imagenes')
+            MAX_SIZE = 5 * 1024 * 1024  # 5MB por archivo
+            skipped = []
+            attached_count = 0
+            for f in archivos:
+                try:
+                    content_type = getattr(f, 'content_type', '') or ''
+                    # validar tipo y tamaño
+                    if not content_type.startswith('image/'):
+                        skipped.append(f"{f.name} (no es imagen)")
+                        continue
+                    if f.size > MAX_SIZE:
+                        skipped.append(f"{f.name} (>{int(MAX_SIZE/1024/1024)}MB)")
+                        continue
+                    # adjuntar
+                    email.attach(f.name, f.read(), content_type)
+                    attached_count += 1
+                except Exception:
+                    skipped.append(f"{f.name} (error al adjuntar)")
+                    continue
+            try:
+                email.send(fail_silently=True)
+            except Exception:
+                pass
+
+            # Informar al usuario sobre adjuntos omitidos/adjuntados
+            if attached_count:
+                messages.info(request, f"Se adjuntaron {attached_count} imagen(es) al correo.")
+            if skipped:
+                messages.warning(request, "Se omitieron archivos al enviar el correo: " + ", ".join(skipped[:20]) + (f", ...(+{len(skipped)-20})" if len(skipped) > 20 else ""))
+
+
+        # # Enviar notificación por WhatsApp si el empleado tiene teléfono
+        # #PENDIENTE CONFIGURAR CLOUD API DE WHATSAPP (META)
+        # if empleado.telefono:
+        #     # Normalizar número (quitar espacios, paréntesis, guiones)
+        #     phone_raw = str(empleado.telefono)
+        #     phone_digits = "".join(ch for ch in phone_raw if ch.isdigit())
+        #     # Quitar prefijo internacional 00 si existe
+        #     if phone_digits.startswith("00"):
+        #         phone_digits = phone_digits[2:]
+        #     # Si aún no tiene código de país intenta no modificar; WhatsApp Cloud API requiere formato internacional
+        #     whatsapp_phone = phone_digits
+
+        #     # Intento con WhatsApp Cloud API (Meta) si están configuradas las vars de entorno
+        #     whatsapp_phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")  # e.g. "109876543210" (your phone number id)
+        #     whatsapp_token = os.getenv("WHATSAPP_TOKEN")  # bearer token (long-lived)
+
+        #     msg_text = f"Se te ha asignado el ticket: {titulo}\nDescripción: {descripcion}"
+
+        #     if whatsapp_phone_id and whatsapp_token:
+        #         headers = {"Authorization": f"Bearer {whatsapp_token}"}
+        #         base_url = f"https://graph.facebook.com/v15.0/{whatsapp_phone_id}"
+
+        #         # 1) Enviar texto
+        #         try:
+        #             payload = {
+        #                 "messaging_product": "whatsapp",
+        #                 "to": whatsapp_phone,
+        #                 "type": "text",
+        #                 "text": {"body": msg_text}
+        #             }
+        #             requests.post(f"{base_url}/messages", json=payload, headers=headers, timeout=10)
+        #         except Exception:
+        #             # no interrumpe el flujo si falla WhatsApp
+        #             pass
+
+        #         # 2) Si hay imágenes subidas, subir y enviar cada una como media
+        #         archivos = request.FILES.getlist("imagenes")
+        #         MAX_SIZE = 5 * 1024 * 1024  # 5MB por archivo
+        #         for f in archivos:
+        #             try:
+        #                 ct = getattr(f, "content_type", "") or ""
+        #                 if not ct.startswith("image/"):
+        #                     continue
+        #                 if f.size > MAX_SIZE:
+        #                     continue
+        #                 # Subir media -> devuelve id
+        #                 files = {"file": (f.name, f.read(), ct)}
+        #                 params = {"messaging_product": "whatsapp"}
+        #                 r = requests.post(f"{base_url}/media", files=files, params=params, headers=headers, timeout=30)
+        #                 media_resp = r.json() if r.ok else {}
+        #                 media_id = media_resp.get("id")
+        #                 if media_id:
+        #                     img_payload = {
+        #                         "messaging_product": "whatsapp",
+        #                         "to": whatsapp_phone,
+        #                         "type": "image",
+        #                         "image": {"id": media_id, "caption": titulo}
+        #                     }
+        #                     requests.post(f"{base_url}/messages", json=img_payload, headers=headers, timeout=10)
+        #             except Exception:
+        #                 continue
+        #     else:
+        #         # Fallback mínimo: construir URL wa.me para abrir en cliente (no puedo enviar desde servidor sin API)
+        #         # Se guarda en logs/messages para que el operador lo use
+        #         wa_link = f"https://wa.me/{whatsapp_phone}?text={requests.utils.requote_uri(msg_text)}"
+        #         # opcional: registrar en mensajes de Django para que el admin lo vea
+        #         messages.info(request, f"No está configurada la API de WhatsApp. Abre este enlace para notificar manualmente: {wa_link}")
+
         return redirect('lista_tickets')
     return render(request, 'mantenimiento/crear_ticket.html', {'empleados': empleados})
 

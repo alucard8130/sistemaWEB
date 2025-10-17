@@ -6,6 +6,7 @@ from django.contrib import messages
 import openpyxl
 from facturacion.models import (
     CobroOtrosIngresos,
+    Factura,
     FacturaOtrosIngresos,
     Pago,
     TipoOtroIngreso,
@@ -33,6 +34,7 @@ from openpyxl import load_workbook
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from caja_chica.models import GastoCajaChica
 from caja_chica.models import ValeCaja
+from django.db import models as djmodels
 
 @login_required
 def presupuesto_nuevo(request):
@@ -2274,3 +2276,270 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
                 f"Presupuesto de ingresos {anio_actual} copiado a {anio_nuevo} sin incremento.",
             )
     return redirect("matriz_presupuesto_ingresos")
+
+@login_required
+def comparativo_anual_total(request):
+    try:
+        anio = int(request.GET.get("anio", now().year))
+    except (TypeError, ValueError):
+            anio = now().year
+    anio_ant = anio - 1
+
+        # determinar empresa
+    if request.user.is_superuser:
+            empresa_id = request.GET.get("empresa")
+            empresa = Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
+            if not empresa:
+                messages.error(request, "Selecciona una empresa válida o usa el parámetro ?empresa=<id>.")
+                return redirect("dashboard")
+    else:
+            perfil = getattr(request.user, "perfilusuario", None)
+            if not perfil or not getattr(perfil, "empresa", None):
+                messages.error(request, "No se pudo determinar la empresa del usuario.")
+                return redirect("dashboard")
+            empresa = perfil.empresa
+
+        # consulta: sumar por tipo_gasto relacionando subgrupo y grupo para obtener nombres
+    qs = Presupuesto.objects.filter(empresa=empresa, anio__in=[anio, anio_ant])
+    rows = (
+            qs.values(
+                "tipo_gasto",
+                "tipo_gasto__nombre",
+                "tipo_gasto__subgrupo",
+                "tipo_gasto__subgrupo__nombre",
+                "tipo_gasto__subgrupo__grupo",
+                "tipo_gasto__subgrupo__grupo__nombre",
+                "anio",
+            )
+            .annotate(total=Sum("monto"))
+        )
+
+        # helper porcentaje: si anterior>0 -> porcentaje real; si anterior==0 -> +100/-100/0 según caso
+    def pct_calc(actual, anterior):
+            try:
+                a = float(actual or 0)
+                b = float(anterior or 0)
+            except Exception:
+                return None
+            if b != 0:
+                try:
+                    return round(((a - b) / b) * 100, 2)
+                except Exception:
+                    return None
+            # b == 0
+            if a == b:
+                return 0.0
+            return 100.0 if a > b else -100.0
+
+        # construir estructura nested por nombres (grupo -> subgrupo -> tipo)
+    estructura = {}
+    total_anio = {anio: 0, anio_ant: 0}
+    for r in rows:
+            g_nombre = r.get("tipo_gasto__subgrupo__grupo__nombre") or (r.get("tipo_gasto__subgrupo__grupo") and str(r.get("tipo_gasto__subgrupo__grupo"))) or "SIN GRUPO"
+            sg_nombre = r.get("tipo_gasto__subgrupo__nombre") or (r.get("tipo_gasto__subgrupo") and str(r.get("tipo_gasto__subgrupo"))) or "SIN SUBGRUPO"
+            tipo_nombre = r.get("tipo_gasto__nombre") or (r.get("tipo_gasto") and str(r.get("tipo_gasto"))) or "SIN TIPO"
+            y = r.get("anio")
+            tot = r.get("total") or 0
+
+            total_anio[y] += tot
+
+            estructura.setdefault(g_nombre, {})
+            estructura[g_nombre].setdefault(sg_nombre, {})
+            estructura[g_nombre][sg_nombre].setdefault(tipo_nombre, {anio: 0, anio_ant: 0})
+            estructura[g_nombre][sg_nombre][tipo_nombre][y] = estructura[g_nombre][sg_nombre][tipo_nombre].get(y, 0) + tot
+
+        # calcular agregados y porcentajes
+    resultado = []
+    for grupo, subgrupos in sorted(estructura.items(), key=lambda x: x[0]):
+            grupo_tot = {anio: 0, anio_ant: 0}
+            detalle_subs = []
+            for subgrupo, tipos in sorted(subgrupos.items(), key=lambda x: x[0]):
+                sub_tot = {anio: 0, anio_ant: 0}
+                detalle_tipos = []
+                for tipo, vals in sorted(tipos.items(), key=lambda x: x[0]):
+                    actual = vals.get(anio, 0) or 0
+                    anterior = vals.get(anio_ant, 0) or 0
+                    diff = actual - anterior
+                    pct = pct_calc(actual, anterior)
+                    detalle_tipos.append({
+                        "tipo": tipo,
+                        "actual": actual,
+                        "anterior": anterior,
+                        "diferencia": diff,
+                        "pct": pct,
+                    })
+                    sub_tot[anio] += actual
+                    sub_tot[anio_ant] += anterior
+                sdiff = sub_tot[anio] - sub_tot[anio_ant]
+                spct = pct_calc(sub_tot[anio], sub_tot[anio_ant])
+                detalle_subs.append({
+                    "subgrupo": subgrupo,
+                    "tot_actual": sub_tot[anio],
+                    "tot_anterior": sub_tot[anio_ant],
+                    "diferencia": sdiff,
+                    "pct": spct,
+                    "tipos": detalle_tipos,
+                })
+                grupo_tot[anio] += sub_tot[anio]
+                grupo_tot[anio_ant] += sub_tot[anio_ant]
+            gdiff = grupo_tot[anio] - grupo_tot[anio_ant]
+            gpct = pct_calc(grupo_tot[anio], grupo_tot[anio_ant])
+            resultado.append({
+                "grupo": grupo,
+                "tot_actual": grupo_tot[anio],
+                "tot_anterior": grupo_tot[anio_ant],
+                "diferencia": gdiff,
+                "pct": gpct,
+                "subgrupos": detalle_subs,
+            })
+
+    diferencia_total = total_anio[anio] - total_anio[anio_ant]
+    pct_total = pct_calc(total_anio[anio], total_anio[anio_ant])
+
+    contexto = {
+            "empresa": empresa,
+            "anio": anio,
+            "anio_ant": anio_ant,
+            "total_actual": total_anio[anio],
+            "total_anterior": total_anio[anio_ant],
+            "diferencia_total": diferencia_total,
+            "pct_total": pct_total,
+            "grupos": resultado,
+    }
+    return render(request, "presupuestos/comparativo_anual_total.html", contexto)
+
+
+@login_required
+def comparativo_anual_ingresos(request):
+    try:
+        anio = int(request.GET.get("anio", now().year))
+    except (TypeError, ValueError):
+        anio = now().year
+    anio_ant = anio - 1
+
+    # empresa
+    if request.user.is_superuser:
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
+        if not empresa:
+            messages.error(request, "Selecciona una empresa válida o usa el parámetro ?empresa=<id>.")
+            return redirect("dashboard")
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if not perfil or not getattr(perfil, "empresa", None):
+            messages.error(request, "No se pudo determinar la empresa del usuario.")
+            return redirect("dashboard")
+        empresa = perfil.empresa
+
+    # consultar presupuestos de ingresos sumando por origen/tipo_otro y año
+    qs = PresupuestoIngreso.objects.filter(empresa=empresa, anio__in=[anio, anio_ant])
+    rows = (
+        qs.values("origen", 
+                    "tipo_otro",
+                      "tipo_otro__nombre",
+                        "anio",)
+        .annotate(total=Sum("monto_presupuestado"))
+    )
+
+    TIPO_CUOTA_MAP = dict(getattr(Factura, "TIPO_CUOTA_CHOICES", []))
+
+    # helper porcentaje (misma regla que en gastos)
+    def pct_calc(actual, anterior):
+        try:
+            a = float(actual or 0)
+            b = float(anterior or 0)
+        except Exception:
+            return None
+        if b != 0:
+            try:
+                return round(((a - b) / b) * 100, 2)
+            except Exception:
+                return None
+        # b == 0
+        if a == b:
+            return 0.0
+        return 100.0 if a > b else -100.0
+
+    # estructura: {origen: {tipo_label: {anio: total, ...}}}
+    estructura = {}
+    total_anio = {anio: 0, anio_ant: 0}
+    for r in rows:
+        origen = r.get("origen") or "otros"
+        tipo_cuota_key = r.get("tipo_cuota")
+        if tipo_cuota_key:
+            tipo_label = TIPO_CUOTA_MAP.get(tipo_cuota_key, str(tipo_cuota_key))
+        else:
+            tipo_label = (
+                r.get("tipo_otro__nombre")
+                or (r.get("tipo_otro") and str(r.get("tipo_otro")))
+                or ("General" if origen != "otros" else "Sin tipo")
+            )
+        y = r.get("anio")
+        tot = r.get("total") or 0
+        total_anio[y] += tot
+        estructura.setdefault(origen, {})
+        estructura[origen].setdefault(tipo_label, {anio: 0, anio_ant: 0})
+        estructura[origen][tipo_label][y] = estructura[origen][tipo_label].get(y, 0) + tot
+
+    # construir lista ordenada con subtotales y pct
+    origenes = []
+    for origen, tipos in sorted(estructura.items()):
+        origen_tot = {anio: 0, anio_ant: 0}
+        tipos_list = []
+        for tipo, vals in sorted(tipos.items(), key=lambda x: x[0]):
+            actual = vals.get(anio, 0) or 0
+            anterior = vals.get(anio_ant, 0) or 0
+            diff = actual - anterior
+            pct = pct_calc(actual, anterior)
+            tipos_list.append(
+                {
+                    "tipo": tipo,
+                    "actual": actual,
+                    "anterior": anterior,
+                    "diferencia": diff,
+                    "pct": pct,
+                }
+            )
+            origen_tot[anio] += actual
+            origen_tot[anio_ant] += anterior
+        diff_o = origen_tot[anio] - origen_tot[anio_ant]
+        pct_o = pct_calc(origen_tot[anio], origen_tot[anio_ant])
+        origenes.append(
+            {
+                "origen": origen,
+                "tot_actual": origen_tot[anio],
+                "tot_anterior": origen_tot[anio_ant],
+                "diferencia": diff_o,
+                "pct": pct_o,
+                "tipos": tipos_list,
+            }
+        )
+
+    ORIGEN_LABELS = {
+        "area": "Areas comunes",
+        "local": "Locales",
+        "otros": "Otros",
+        "area_comun": "Areas comunes",
+        "local_comercial": "Local",
+    }    
+    
+    
+    diferencia_total = total_anio[anio] - total_anio[anio_ant]
+    pct_total = pct_calc(total_anio[anio], total_anio[anio_ant])
+
+    contexto = {
+        "empresa": empresa,
+        "anio": anio,
+        "anio_ant": anio_ant,
+        "total_actual": total_anio[anio],
+        "total_anterior": total_anio[anio_ant],
+        "diferencia_total": diferencia_total,
+        "pct_total": pct_total,
+        "origenes": origenes,
+    }
+    contexto.update({
+        "origen_labels": ORIGEN_LABELS,
+        "tipo_cuota_map": TIPO_CUOTA_MAP,
+        #"tipo_otro_map": tipo_otro_map,
+    })
+    return render(request, "presupuestos/comparativo_anual_ingresos.html", contexto)

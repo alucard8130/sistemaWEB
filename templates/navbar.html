@@ -54,9 +54,10 @@
                         <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Nuevo Cliente</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista</a></li>
                         <li><a class="dropdown-item" href="{% url 'clientes_inactivos' %}">Inactivos</a></li>
-                      <!--  {% if request.user.is_superuser %}
+                        <li><hr class="dropdown-divider"></li>
+                      {% comment %} {% if request.user.is_superuser %} {% endcomment %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_clientes' %}">Carga Masiva</a></li>
-                        {% endif %}  -->
+                        {% comment %} {% endif %} {% endcomment %}
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -109,25 +110,15 @@
                         {% endif %}
                     </ul>
                 </li>
-                {% comment %} <!-- MENÚ otros ingresos -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Otros Ingresos</a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otro ingreso</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista  otros Ingresos</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros  otros Ingresos</a></li>
-                    </ul> {% endcomment %}
                 <!-- MENÚ cartera -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Cartera Vencida</a></li>
-             
-                        <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Cartera</a></li>
-             
-                        <li><hr class="dropdown-divider"></li>                     
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard</a></li>
+                        <li><hr class="dropdown-divider"></li>                     
+                        
+                        <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
                     </ul>
                 </li>
                 <!-- MENÚ incidencias -->
@@ -148,6 +139,8 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Gastos</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'carga_masiva_proveedores' %}">Carga Masiva</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Gasto</a></li>
                         <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Solicitudes Gastos</a></li>
                         <li><hr class="dropdown-divider"></li>
@@ -202,7 +195,7 @@
                         <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Ingresos</a></li>  
                     </ul>
                 </li>
                 <!-- MENÚ REPORTES -->
@@ -210,8 +203,13 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Reportes</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'estado_resultados' %}">Estado Resultados</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'comparativo_anual_total' %}">Comparativo Ppto Gastos Anual</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'comparativo_anual_ingresos' %}">Comparativo Ppto Ingresos Anual</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos y Gastos</a></li>
                     </ul>
                 </li>

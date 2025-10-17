@@ -1660,85 +1660,214 @@ def carga_masiva_facturas_cobradas(request):
         form = FacturaCargaMasivaForm()
     return render(request, 'facturacion/carga_masiva_facturas_cobradas.html', {'form': form})
 
-@login_required
 #carga masiva cuentas x cobrar (cartera vencida)
+@login_required
 def carga_masiva_facturas(request):
     if request.method == 'POST':
         form = FacturaCargaMasivaForm(request.POST, request.FILES)
         if form.is_valid():
             archivo = request.FILES['archivo']
-            wb = openpyxl.load_workbook(archivo)
+            wb = openpyxl.load_workbook(archivo, data_only=True)
             ws = wb.active
             errores = []
-            COLUMNAS_ESPERADAS = 10  # Cambia según tus columnas
+            exitos = 0
+
+            # Intentar leer encabezado y mapear columnas por nombre (si existe)
+            header = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+            headers_map = {}
+            if header:
+                hdrs = [str(h).strip().lower() if h is not None else "" for h in header]
+                for idx, h in enumerate(hdrs):
+                    if h in ('folio', 'folio factura', 'número', 'numero'):
+                        headers_map['folio'] = idx
+                    if h in ('empresa', 'condominio'):
+                        headers_map['empresa'] = idx
+                    if h in ('cliente', 'cliente nombre', 'nombre'):
+                        headers_map['cliente'] = idx
+                    if h in ('rfc', 'rfc cliente', 'cliente rfc'):
+                        headers_map['rfc'] = idx
+                    if h in ('local', 'num.local', 'num local', 'local numero', 'número local'):
+                        headers_map['local'] = idx
+                    if h in ('area', 'area comun', 'área', 'num.area', 'num area', 'numero area'):
+                        headers_map['area'] = idx
+                    if h in ('tipo_cuota', 'tipo cuota', 'tipo'):
+                        headers_map['tipo_cuota'] = idx
+                    if h in ('monto', 'importe', 'cantidad'):
+                        headers_map['monto'] = idx
+                    if h in ('fecha_emision', 'fecha emision', 'fecha emisión'):
+                        headers_map['fecha_emision'] = idx
+                    if h in ('fecha_vencimiento', 'fecha vencimiento', 'vencimiento'):
+                        headers_map['fecha_vencimiento'] = idx
+                    if h in ('observaciones', 'obs', 'comentarios'):
+                        headers_map['observaciones'] = idx
+
+            # helper para leer celda con fallback positional si no hay encabezado
+            def cell(row, key, pos):
+                if key in headers_map:
+                    i = headers_map[key]
+                    return row[i] if i < len(row) else None
+                return row[pos] if pos < len(row) else None
+
+            # Iterar filas a partir de la 2
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                if row is None:
+                # saltar filas vacías
+                if not row or all((c is None or (isinstance(c, str) and c.strip() == "")) for c in row):
                     continue
-                if len(row) != COLUMNAS_ESPERADAS:
-                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
-                    continue
-                folio, empresa_val, cliente_val, local_val, area_val, tipo_cuota, monto, fecha_emision, fecha_vencimiento, observaciones = row
+
                 try:
-                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
-                    if not empresa:
-                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
-                        continue
+                    # obtener valores (posicional por defecto)
+                    folio = cell(row, 'folio', 0)
+                    empresa_val = cell(row, 'empresa', 1)
+                    cliente_val = cell(row, 'cliente', 2)
+                    rfc_val = cell(row, 'rfc', 10)
+                    local_val = cell(row, 'local', 3)
+                    area_val = cell(row, 'area', 4)
+                    tipo_cuota = cell(row, 'tipo_cuota', 5)
+                    monto = cell(row, 'monto', 6)
+                    fecha_emision = cell(row, 'fecha_emision', 7)
+                    fecha_vencimiento = cell(row, 'fecha_vencimiento', 8)
+                    observaciones = cell(row, 'observaciones', 9)
 
-                    # Validar folio único por empresa
-                    if Factura.objects.filter(folio=str(folio), empresa=empresa).exists():
-                        errores.append(f"Fila {i}: El folio '{folio}' ya existe para la empresa '{empresa}'.")
-                        continue
+                    # Normalizaciones simples
+                    folio = str(folio).strip() if folio is not None else ""
+                    cliente_nombre = str(cliente_val).strip() if cliente_val is not None else ""
+                    tipo_cuota = str(tipo_cuota).strip() if tipo_cuota is not None else ""
+                    observaciones = str(observaciones).strip() if observaciones is not None else ""
+                    rfc_val = str(rfc_val).strip().upper() if rfc_val not in (None, "") else None
 
-                    # Validar local o área
+                    # Determinar empresa
+                    if request.user.is_superuser:
+                        empresa = buscar_por_id_o_nombre(Empresa, empresa_val) if empresa_val else None
+                        if not empresa:
+                            raise Exception(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                    else:
+                        perfil = getattr(request.user, 'perfilusuario', None)
+                        if not perfil or not getattr(perfil, 'empresa', None):
+                            raise Exception("No se pudo determinar la empresa del usuario")
+                        empresa = perfil.empresa
+
+                    # Validar folio único por empresa (si se proporcionó)
+                    if folio:
+                        if Factura.objects.filter(folio=str(folio), empresa=empresa).exists():
+                            raise Exception(f"El folio '{folio}' ya existe para la empresa '{empresa.nombre}'.")
+
+                    # Validar local/area si se informaron
                     local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
                     area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
                     if local_val and not local:
-                        errores.append(f"Fila {i}: No se encontró el local '{local_val}'")
-                        continue
+                        raise Exception(f"No se encontró el local '{local_val}'")
                     if area_val and not area:
-                        errores.append(f"Fila {i}: No se encontró el área '{area_val}'")
-                        continue
+                        raise Exception(f"No se encontró el área '{area_val}'")
 
-                    clientes = Cliente.objects.filter(nombre=cliente_val, empresa=empresa)
-                    #if clientes.count() == 1:
-                    if clientes.exists():
-                        cliente = clientes.first()
-                    #elif clientes.count() == 0:
-                     #   cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)
+                    # ===== BÚSQUEDA/CREACIÓN DE CLIENTE - PRIORIDAD RFC =====
+                    if not cliente_nombre and not rfc_val:
+                        raise Exception("Nombre de cliente vacío y no se proporcionó RFC")
+
+                    cliente = None
+
+                    # 1) Si RFC viene en columna, buscar por RFC primero
+                    if rfc_val:
+                        cliente = Cliente.objects.filter(empresa=empresa, rfc__iexact=rfc_val).first()
+                        if cliente:
+                            # actualizar nombre si está vacío
+                            if not cliente.nombre and cliente_nombre:
+                                cliente.nombre = cliente_nombre
+                                cliente.save()
+                    # 2) Si no se encontró por RFC, intentar extraer RFC del campo cliente (ej. "Nombre | RFC")
+                    if not cliente and isinstance(cliente_val, str):
+                        potential_rfc = None
+                        if '|' in cliente_val:
+                            parts = [p.strip() for p in cliente_val.split('|') if p.strip()]
+                            if len(parts) >= 2:
+                                cliente_nombre = parts[0]
+                                potential_rfc = parts[1]
+                        elif ',' in cliente_val:
+                            parts = [p.strip() for p in cliente_val.split(',') if p.strip()]
+                            if len(parts) >= 2:
+                                cliente_nombre = parts[0]
+                                potential_rfc = parts[1]
+                        if potential_rfc:
+                            potential_rfc = potential_rfc.upper()
+                            cliente = Cliente.objects.filter(empresa=empresa, rfc__iexact=potential_rfc).first()
+                            if cliente and not rfc_val:
+                                rfc_val = potential_rfc
+
+                    # 3) Si sigue sin cliente, buscar por nombre (preferir registros con RFC)
+                    if not cliente:
+                        clientes_qs = Cliente.objects.filter(nombre__iexact=cliente_nombre, empresa=empresa)
+                        if clientes_qs.exists():
+                            cliente = clientes_qs.filter(rfc__isnull=False).exclude(rfc='').first() or clientes_qs.first()
+
+                    # 4) Si no existe cliente, crear uno nuevo (incluye RFC si lo tenemos)
+                    if not cliente:
+                        cliente = Cliente.objects.create(
+                            empresa=empresa,
+                            nombre=cliente_nombre,
+                            rfc=rfc_val if rfc_val else None,
+                            activo=True,
+                        )
                     else:
-                        cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)   
+                        # Si encontramos cliente por nombre pero tenemos RFC en archivo y cliente no tiene RFC, actualizarlo
+                        if rfc_val and (not getattr(cliente, 'rfc', None) or cliente.rfc.strip() == ''):
+                            cliente.rfc = rfc_val
+                            cliente.save()
 
-                    # Validar y convertir monto
+                    # Validar monto
                     try:
-                        cuota_decimal = Decimal(monto)
+                        cuota_decimal = Decimal(str(monto)) if monto is not None and str(monto).strip() != "" else Decimal('0.00')
                     except (InvalidOperation, TypeError, ValueError):
-                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
-                        continue
+                        raise Exception(f"El valor de monto '{monto}' no es válido.")
 
-                    factura=Factura.objects.create(
-                        folio=str(folio),
-                        empresa=empresa,
-                        cliente=cliente,
-                        local=local,
-                        area_comun=area,
-                        tipo_cuota=tipo_cuota,
-                        monto=cuota_decimal,
-                        fecha_emision=fecha_emision,
-                        fecha_vencimiento=fecha_vencimiento,
-                        observaciones=observaciones or "",
-                        estatus='pendiente',
-                    )
-                    #factura.actualizar_estatus()  # ✅ Correcto    
-                except ValueError as ve:
-                    errores.append(f"Fila {i}: Error de valor - {str(ve)}")     
+                    # Parsear fechas (acepta date o string)
+                    def parse_date(v):
+                        if v is None or (isinstance(v, str) and v.strip() == ""):
+                            return None
+                        if isinstance(v, (datetime, date)):
+                            return v.date() if isinstance(v, datetime) else v
+                        s = str(v).strip()
+                        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y"):
+                            try:
+                                return datetime.strptime(s, fmt).date()
+                            except Exception:
+                                pass
+                        # intento con dateutil si está disponible
+                        try:
+                            from dateutil.parser import parse as _parse
+                            return _parse(s, dayfirst=True).date()
+                        except Exception:
+                            raise Exception(f"Fecha inválida: '{v}'")
+
+                    fecha_emision_parsed = parse_date(fecha_emision) or timezone.now().date()
+                    fecha_vencimiento_parsed = parse_date(fecha_vencimiento)
+
+                    # Crear factura dentro de transacción por fila
+                    with transaction.atomic():
+                        factura = Factura.objects.create(
+                            folio=str(folio) if folio else None,
+                            empresa=empresa,
+                            cliente=cliente,
+                            local=local,
+                            area_comun=area,
+                            tipo_cuota=tipo_cuota or '',
+                            monto=cuota_decimal,
+                            fecha_emision=fecha_emision_parsed,
+                            fecha_vencimiento=fecha_vencimiento_parsed,
+                            observaciones=observaciones or "",
+                            estatus='pendiente',
+                        )
+                    exitos += 1
                 except Exception as e:
                     import traceback
-                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
-
+                    errores.append(f"Fila {i}: {str(e)}")
+            # mensajes
+            if exitos:
+                messages.success(request, f"¡{exitos} facturas cargadas correctamente!")
             if errores:
-                messages.error(request, "Algunas facturas no se cargaron:<br>" + "<br>".join(errores))
-            else:
-                messages.success(request, "¡Facturas cargadas exitosamente!")
+                from django.utils.safestring import mark_safe
+                msg = "<br>".join(errores[:80])
+                if len(errores) > 80:
+                    msg += f"<br>...y {len(errores)-80} errores más."
+                messages.error(request, mark_safe("Algunas facturas no se cargaron:<br>" + msg))
             return redirect('carga_masiva_facturas')
     else:
         form = FacturaCargaMasivaForm()

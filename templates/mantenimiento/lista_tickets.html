@@ -9,7 +9,12 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    
+    <!-- Block for displaying messages -->
+        {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message|safe }}</div>
+        {% endfor %}
+        {% endif %}
     <div class="container py-4">
         <div class="row justify-content-center">
             <div class="col-lg-10">

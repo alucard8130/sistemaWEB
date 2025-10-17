@@ -194,67 +194,167 @@ def carga_masiva_locales(request):
         form = LocalCargaMasivaForm(request.POST, request.FILES)
         if form.is_valid():
             archivo = request.FILES['archivo']
-            wb = openpyxl.load_workbook(archivo)
+            wb = openpyxl.load_workbook(archivo, data_only=True)
             ws = wb.active
             errores = []
             exitos = 0
-            COLUMNAS_ESPERADAS = 12  # Ajusta según tus columnas
+
+            # detectar encabezado y mapear columnas (si existe)
+            header = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+            headers_map = {}
+            if header:
+                hdrs = [str(h).strip().lower() if h is not None else "" for h in header]
+                for idx, h in enumerate(hdrs):
+                    if h in ('condominio', 'empresa'):
+                        headers_map['empresa'] = idx
+                    if h in ('propietario',):
+                        headers_map['propietario'] = idx
+                    if h in ('cliente', 'cliente nombre', 'nombre'):
+                        headers_map['cliente'] = idx
+                    if h in ('rfc', 'rfc cliente', 'cliente rfc'):
+                        headers_map['rfc'] = idx
+                    if h in ('email', 'correo', 'correo electronico'):
+                        headers_map['email'] = idx
+                    if h in ('numero', 'num', 'número'):
+                        headers_map['numero'] = idx
+                    if h in ('cuota', 'monto', 'importe'):
+                        headers_map['cuota'] = idx
+                    if h in ('ubicacion',):
+                        headers_map['ubicacion'] = idx
+                    if h in ('superficie', 'superficie_m2', 'm2'):
+                        headers_map['superficie_m2'] = idx
+                    if h in ('giro',):
+                        headers_map['giro'] = idx
+                    if h in ('status', 'estatus'):
+                        headers_map['status'] = idx
+                    if h in ('observaciones', 'obs', 'comentarios'):
+                        headers_map['observaciones'] = idx
+
+            def cell(row, key, pos):
+                if key in headers_map:
+                    i = headers_map[key]
+                    return row[i] if i < len(row) else None
+                return row[pos] if pos < len(row) else None
+
+            # iterar filas
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                if row is None:
+                # saltar filas totalmente vacías
+                if not row or all((c is None or (isinstance(c, str) and c.strip() == "")) for c in row):
                     continue
-                if len(row) != COLUMNAS_ESPERADAS:
-                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
-                    continue
-                empresa_val, propietario_val, nombre_cliente, rfc_cliente, email_cliente, numero, cuota, ubicacion, superficie_m2, giro, status, observaciones = row
+
                 try:
-                    empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
-                    if not empresa:
-                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
-                        continue
+                    # leer valores (fallback posicional si no hay headers)
+                    empresa_val = cell(row, 'empresa', 0)
+                    propietario_val = cell(row, 'propietario', 1)
+                    nombre_cliente = cell(row, 'cliente', 2)
+                    rfc_cliente = cell(row, 'rfc', 3)
+                    email_cliente = cell(row, 'email', 4)
+                    numero = cell(row, 'numero', 5)
+                    cuota = cell(row, 'cuota', 6)
+                    ubicacion = cell(row, 'ubicacion', 7)
+                    superficie_m2 = cell(row, 'superficie_m2', 8)
+                    giro = cell(row, 'giro', 9)
+                    status = cell(row, 'status', 10)
+                    observaciones = cell(row, 'observaciones', 11)
+
+                    # determinar empresa (superuser puede especificar, sino usar perfil)
+                    if request.user.is_superuser:
+                        empresa = buscar_por_id_o_nombre(Empresa, empresa_val) if empresa_val else None
+                        if not empresa:
+                            raise Exception(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                    else:
+                        perfil = getattr(request.user, 'perfilusuario', None)
+                        if not perfil or not getattr(perfil, 'empresa', None):
+                            raise Exception("No se pudo determinar la empresa del usuario")
+                        empresa = perfil.empresa
+
+                    # número requerido
                     if not numero:
                         raise Exception("Número vacío")
-                    # Validar que el número de local no se repita para la empresa
+
+                    # validar unicidad del número por empresa
                     if LocalComercial.objects.filter(empresa=empresa, numero=str(numero)).exists():
-                        errores.append(f"Fila {i}: El número de local '{numero}' ya existe para la empresa '{empresa}'.")
-                        continue
-                    # Validar y convertir cuota
+                        raise Exception(f"El número de local '{numero}' ya existe para la empresa '{empresa.nombre}'.")
+
+                    # validar cuota
                     try:
-                        cuota_decimal = Decimal(cuota)
+                        cuota_decimal = Decimal(str(cuota)) if cuota not in (None, "") else Decimal('0.00')
                     except (InvalidOperation, TypeError, ValueError):
-                        errores.append(f"Fila {i}: El valor de cuota '{cuota}' no es válido.")
-                        continue
-                    # Crear cliente solo si el RFC no existe
+                        raise Exception(f"El valor de cuota '{cuota}' no es válido.")
+
+                    # normalizar rfc y nombre
+                    rfc_norm = str(rfc_cliente).strip().upper() if rfc_cliente not in (None, "") else None
+                    nombre_norm = str(nombre_cliente).strip() if nombre_cliente not in (None, "") else ""
+
+                    # BUSCAR/CREAR CLIENTE priorizando RFC
                     cliente = None
-                    if rfc_cliente:
-                        cliente, creado = Cliente.objects.get_or_create(
-                            rfc=rfc_cliente,
-                            defaults={
-                                'nombre': nombre_cliente,
-                                'empresa': empresa,
-                                'email': email_cliente
-                            }
+                    if rfc_norm:
+                        cliente = Cliente.objects.filter(empresa=empresa, rfc__iexact=rfc_norm).first()
+                        if cliente:
+                            # actualizar datos faltantes
+                            updated = False
+                            if nombre_norm and (not getattr(cliente, 'nombre', None) or cliente.nombre.strip() == ""):
+                                cliente.nombre = nombre_norm; updated = True
+                            if email_cliente and (not getattr(cliente, 'email', None) or cliente.email.strip() == ""):
+                                cliente.email = email_cliente; updated = True
+                            if updated:
+                                cliente.save()
+                        else:
+                            # crear con RFC
+                            cliente = Cliente.objects.create(
+                                empresa=empresa,
+                                nombre=nombre_norm or f"Cliente {rfc_norm}",
+                                rfc=rfc_norm,
+                                email=email_cliente or None,
+                                activo=True,
+                            )
+                    else:
+                        # sin RFC: buscar por nombre (preferir registro con RFC)
+                        if not nombre_norm:
+                            raise Exception("Nombre de cliente vacío y no se proporcionó RFC")
+                        qs = Cliente.objects.filter(empresa=empresa, nombre__iexact=nombre_norm)
+                        if qs.exists():
+                            cliente = qs.filter(rfc__isnull=False).exclude(rfc='').first() or qs.first()
+                        else:
+                            cliente = Cliente.objects.create(
+                                empresa=empresa,
+                                nombre=nombre_norm,
+                                email=email_cliente or None,
+                                activo=True,
+                            )
+
+                    # crear local dentro de transacción para cada fila
+                    from django.db import transaction
+                    with transaction.atomic():
+                        LocalComercial.objects.create(
+                            empresa=empresa,
+                            propietario=propietario_val or "",
+                            cliente=cliente,
+                            numero=str(numero),
+                            cuota=cuota_decimal,
+                            ubicacion=ubicacion or "",
+                            superficie_m2=Decimal(superficie_m2) if superficie_m2 not in (None, "") else None,
+                            giro=giro or "",
+                            status=status or "ocupado",
+                            observaciones=observaciones or ""
                         )
-                    LocalComercial.objects.create(
-                        empresa=empresa,
-                        propietario=propietario_val or "",
-                        cliente=cliente,
-                        numero=str(numero),
-                        cuota= cuota_decimal,
-                        ubicacion=ubicacion or "",
-                        superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
-                        giro=giro or "",
-                        status=status or "ocupado",
-                        observaciones=observaciones or ""
-                    )
+
                     exitos += 1
+
                 except Exception as e:
                     import traceback
                     errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
 
+            # mensajes
             if exitos:
                 messages.success(request, f"¡{exitos} locales cargados exitosamente!")
             if errores:
-                messages.error(request, "Algunos locales no se cargaron:<br>" + "<br>".join(errores))
+                from django.utils.safestring import mark_safe
+                msg = "<br>".join(errores[:80])
+                if len(errores) > 80:
+                    msg += f"<br>...y {len(errores)-80} errores más."
+                messages.error(request, mark_safe("Algunos locales no se cargaron:<br>" + msg))
+
             return redirect('carga_masiva_locales')
     else:
         form = LocalCargaMasivaForm()

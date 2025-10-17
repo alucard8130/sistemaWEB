@@ -236,39 +236,79 @@ def carga_masiva_areas(request):
                 if len(row) != COLUMNAS_ESPERADAS:
                     errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
                     continue
+
                 empresa_val, nombre_cliente, rfc_cliente, email_cliente, numero, cuota, deposito, ubicacion, superficie_m2, tipo_area, cantidad_areas, giro, status, fecha_inicial, fecha_fin, observaciones = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     if not empresa:
                         errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
                         continue
+
                     if not numero:
                         raise Exception("Número vacío")
+
                     # Validar que el número de área no se repita para la empresa
                     if AreaComun.objects.filter(empresa=empresa, numero=str(numero)).exists():
                         errores.append(f"Fila {i}: El número de área '{numero}' ya existe para la empresa '{empresa}'.")
                         continue
-                    # Crear cliente solo si el RFC no existe
+
+                    # Normalizar RFC y nombre
+                    rfc_norm = str(rfc_cliente).strip().upper() if rfc_cliente not in (None, "") else None
+                    nombre_norm = str(nombre_cliente).strip() if nombre_cliente not in (None, "") else ""
+
+                    # Buscar o crear cliente — PRIORIDAD: RFC (si viene)
                     cliente = None
-                    if rfc_cliente:
-                        cliente, creado = Cliente.objects.get_or_create(
-                            rfc=rfc_cliente,
-                            defaults={
-                                'nombre': nombre_cliente,
-                                'empresa': empresa,
-                                'email': email_cliente
-                            }
-                        )
+                    if rfc_norm:
+                        cliente = Cliente.objects.filter(empresa=empresa, rfc__iexact=rfc_norm).first()
+                        if cliente:
+                            # actualizar datos si están vacíos
+                            updated = False
+                            if nombre_norm and (not getattr(cliente, 'nombre', None) or cliente.nombre.strip() == ""):
+                                cliente.nombre = nombre_norm
+                                updated = True
+                            if email_cliente and (not getattr(cliente, 'email', None) or cliente.email.strip() == ""):
+                                cliente.email = email_cliente
+                                updated = True
+                            if updated:
+                                cliente.save()
+                        else:
+                            # no existe cliente con ese RFC para la empresa -> crear
+                            cliente = Cliente.objects.create(
+                                empresa=empresa,
+                                nombre=nombre_norm or f"Cliente {rfc_norm}",
+                                rfc=rfc_norm,
+                                email=email_cliente or None,
+                                activo=True,
+                            )
+                    else:
+                        # Si no hay RFC, buscar por nombre dentro de la misma empresa
+                        if nombre_norm:
+                            qs = Cliente.objects.filter(empresa=empresa, nombre__iexact=nombre_norm)
+                            if qs.exists():
+                                # preferir cliente que ya tenga RFC (si hay)
+                                cliente = qs.filter(rfc__isnull=False).exclude(rfc='').first() or qs.first()
+                            else:
+                                # crear cliente mínimo sin RFC
+                                cliente = Cliente.objects.create(
+                                    empresa=empresa,
+                                    nombre=nombre_norm,
+                                    email=email_cliente or None,
+                                    activo=True,
+                                )
+                        else:
+                            raise Exception("Nombre de cliente vacío y no se proporcionó RFC")
+
+                    # Crear el área
                     AreaComun.objects.create(
                         empresa=empresa,
                         cliente=cliente,
                         numero=str(numero),
-                        cuota=Decimal(cuota),
-                        deposito=Decimal(deposito) if deposito else None,
+                        cuota=Decimal(cuota) if cuota not in (None, "") else Decimal('0.00'),
+                        deposito=Decimal(deposito) if deposito not in (None, "") else None,
                         ubicacion=ubicacion or "",
-                        superficie_m2=Decimal(superficie_m2) if superficie_m2 else None,
+                        superficie_m2=Decimal(superficie_m2) if superficie_m2 not in (None, "") else None,
                         tipo_area=tipo_area or "",
-                        cantidad_areas=int(cantidad_areas) if cantidad_areas else 1,
+                        cantidad_areas=int(cantidad_areas) if cantidad_areas not in (None, "") else 1,
                         giro=giro or "",
                         status=status or "ocupado",
                         fecha_inicial=fecha_inicial,
@@ -283,11 +323,15 @@ def carga_masiva_areas(request):
             if exitos:
                 messages.success(request, f"¡{exitos} áreas cargadas exitosamente!")
             if errores:
-                messages.error(request, "Algunas áreas no se cargaron:<br>" + "<br>".join(errores))
+                from django.utils.safestring import mark_safe
+                msg = "<br>".join(errores[:80])
+                if len(errores) > 80:
+                    msg += f"<br>...y {len(errores)-80} errores más."
+                messages.error(request, mark_safe("Algunas áreas no se cargaron:<br>" + msg))
             return redirect('carga_masiva_areas')
     else:
         form = AreaComunCargaMasivaForm()
-    return render(request, 'areas/carga_masiva_areas.html', {'form': form}) 
+    return render(request, 'areas/carga_masiva_areas.html', {'form': form})
 
 @login_required
 def plantilla_areas_excel(request):

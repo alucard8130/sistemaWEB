@@ -48,3 +48,6 @@ class ProveedorForm(forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("Ya existe un/a Proveedor con este/a RFC para esta empresa.")
         return rfc
+    
+class ProveedorCargaMasivaForm(forms.Form):
+    archivo = forms.FileField(label="Archivo Excel", help_text="Sube un archivo .xlsx con los datos de los proveedores.")
