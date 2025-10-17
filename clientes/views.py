@@ -144,7 +144,7 @@ def buscar_empresa(valor):
         raise Exception(f"No se encontró '{valor}' en Empresa")
 
 
-@staff_member_required
+@login_required
 def carga_masiva_clientes(request):
     if request.method == "POST":
         form = ClienteCargaMasivaForm(request.POST, request.FILES)
@@ -203,7 +203,7 @@ def carga_masiva_clientes(request):
     return render(request, "clientes/carga_masiva_clientes.html", {"form": form})
 
 
-@staff_member_required
+@login_required
 def plantilla_clientes_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active
