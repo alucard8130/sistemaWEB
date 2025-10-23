@@ -35,6 +35,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from caja_chica.models import GastoCajaChica
 from caja_chica.models import ValeCaja
 from django.db import models as djmodels
+from django.db.models import Sum, Q
 
 @login_required
 def presupuesto_nuevo(request):
@@ -2133,75 +2134,142 @@ def descargar_plantilla_matriz_presupuesto_ingresos(request):
     return response
 
 
-@login_required
+
 # clonar ppto gastos
 def copiar_presupuesto_gastos_a_nuevo_anio(request):
-    if request.method == "POST":
+    if request.method != "POST":
+        return redirect("matriz_presupuesto")
+
+    # Determinar empresa (multi-empresa)
+    if request.user.is_superuser:
+        empresa_id = request.POST.get("empresa") or request.GET.get("empresa")
+        empresa = Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
+        if not empresa:
+            messages.error(request, "Selecciona una empresa válida para clonar.")
+            return redirect("matriz_presupuesto")
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if not perfil or not getattr(perfil, "empresa", None):
+            messages.error(request, "No se pudo determinar la empresa del usuario.")
+            return redirect("matriz_presupuesto")
+        empresa = perfil.empresa
+
+    # Año actual / nuevo (permite override por formulario)
+    try:
+        anio_actual = int(request.POST.get("anio") or request.GET.get("anio") or date.today().year)
+    except (TypeError, ValueError):
         anio_actual = date.today().year
-        anio_nuevo = anio_actual + 1
-        existe = Presupuesto.objects.filter(anio=anio_nuevo).exists()
-        if existe:
-            messages.warning(
-                request, f"Ya existe presupuesto para el año {anio_nuevo}."
-            )
-            return redirect("matriz_presupuesto")
-        
-         # Verifica que haya datos capturados en el año actual
-        presupuestos_actuales = Presupuesto.objects.filter(anio=anio_actual)
-        if not presupuestos_actuales.exists():
-            messages.warning(
-                request, f"No hay datos capturados para el año {anio_actual}. No se puede clonar el presupuesto."
-            )
-            return redirect("matriz_presupuesto")
+    anio_nuevo = anio_actual + 1
 
-        tipo_clon = request.POST.get("tipo_clon", "sin")
-        porcentaje = request.POST.get("porcentaje", "0")
-        try:
-            porcentaje = Decimal(porcentaje)
-        except:
-            porcentaje = Decimal("0")
+    # comprobar existencia en el año destino SOLO para la empresa seleccionada
+    total_nuevo = (
+        Presupuesto.objects.filter(empresa=empresa, anio=anio_nuevo)
+        .aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
+    if total_nuevo > 0:
+        messages.warning(
+            request,
+            f"Ya existe presupuesto para el año {anio_nuevo} para {empresa.nombre}.",
+        )
+        return redirect("matriz_presupuesto")
 
-        presupuestos_actuales = Presupuesto.objects.filter(anio=anio_actual)
-        nuevos = []
-        for p in presupuestos_actuales:
-            monto = p.monto
-            if tipo_clon == "con" and porcentaje > 0:
-                monto = (
-                    Decimal(monto) * (Decimal("1") + porcentaje / Decimal("100"))
-                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            nuevos.append(
-                Presupuesto(
-                    grupo=p.grupo,
-                    subgrupo=p.subgrupo,
-                    tipo_gasto=p.tipo_gasto,
-                    mes=p.mes,
-                    monto=monto,
-                    anio=anio_nuevo,
-                    empresa=p.empresa,
-                )
-            )
+    # Verifica que haya datos capturados en el año actual para esa empresa
+    presupuestos_actuales = Presupuesto.objects.filter(empresa=empresa, anio=anio_actual)
+    if not presupuestos_actuales.exists():
+        messages.warning(
+            request,
+            f"No hay datos capturados para el año {anio_actual} en {empresa.nombre}. No se puede clonar el presupuesto.",
+        )
+        return redirect("matriz_presupuesto")
 
-        Presupuesto.objects.bulk_create(nuevos)
-        # --- Cerrar presupuesto del año anterior ---
-        for empresa in set(p.empresa for p in presupuestos_actuales):
-            cierre, _ = PresupuestoCierre.objects.get_or_create(
-                empresa=empresa, anio=anio_actual
-            )
-            cierre.cerrado = True
-            cierre.cerrado_por = request.user
-            cierre.fecha_cierre = now()
-            cierre.save()
+    tipo_clon = request.POST.get("tipo_clon", "sin")
+    porcentaje = request.POST.get("porcentaje", "0")
+    try:
+        porcentaje = Decimal(porcentaje)
+    except Exception:
+        porcentaje = Decimal("0")
 
+    nuevos = []
+
+    # Forecast helper: tendencia lineal por (tipo_gasto, mes) usando años previos
+    def forecast_next_year(tipo_obj, mes, empresa_obj, target_year, lookback_years=3):
+        qs = (
+            Presupuesto.objects.filter(tipo_gasto=tipo_obj, empresa=empresa_obj)
+            .exclude(anio=anio_actual)
+            .values("anio")
+            .annotate(total=Sum("monto", filter=Q(mes=mes)))
+            .order_by("anio")
+        )
+        data = [(int(item["anio"]), float(item["total"] or 0)) for item in qs]
+        if not data:
+            return None
+        if len(data) > lookback_years:
+            data = data[-lookback_years:]
+        xs = [y for y, _ in data]
+        ys = [v for _, v in data]
+        n = len(xs)
+        if n == 1:
+            return Decimal(str(ys[0]))
+        mean_x = sum(xs) / n
+        mean_y = sum(ys) / n
+        cov = sum((xi - mean_x) * (yi - mean_y) for xi, yi in zip(xs, ys))
+        var_x = sum((xi - mean_x) ** 2 for xi in xs)
+        slope = cov / var_x if var_x else 0.0
+        intercept = mean_y - slope * mean_x
+        y_pred = intercept + slope * target_year
+        return Decimal(str(y_pred))
+
+    for p in presupuestos_actuales:
+        monto = p.monto
         if tipo_clon == "con" and porcentaje > 0:
-            messages.success(
-                request,
-                f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%",
+            try:
+                monto = (
+                    Decimal(monto)
+                    * (Decimal("1") + porcentaje / Decimal("100"))
+                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            except Exception:
+                pass
+        elif tipo_clon == "forecast":
+            pred = forecast_next_year(p.tipo_gasto, p.mes, p.empresa, anio_nuevo)
+            if pred is not None:
+                try:
+                    pred = pred.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    if pred > 0:
+                        monto = pred
+                except Exception:
+                    pass
+        nuevos.append(
+            Presupuesto(
+                grupo=p.grupo,
+                subgrupo=p.subgrupo,
+                tipo_gasto=p.tipo_gasto,
+                mes=p.mes,
+                monto=monto,
+                anio=anio_nuevo,
+                empresa=p.empresa,
             )
-        else:
-            messages.success(
-                request,
-                f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.",
-            )
+        )
+
+    Presupuesto.objects.bulk_create(nuevos)
+
+    # Cerrar presupuesto del año anterior para la empresa afectada
+    cierre, _ = PresupuestoCierre.objects.get_or_create(empresa=empresa, anio=anio_actual)
+    cierre.cerrado = True
+    cierre.cerrado_por = request.user
+    cierre.fecha_cierre = now()
+    cierre.save()
+
+    if tipo_clon == "con" and porcentaje > 0:
+        messages.success(
+            request,
+            f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%",
+        )
+    else:
+        messages.success(
+            request,
+            f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.",
+        )
     return redirect("matriz_presupuesto")
 
 

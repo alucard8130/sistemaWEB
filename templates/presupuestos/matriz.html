@@ -115,9 +115,11 @@
             {% csrf_token %}
             <div class="col-auto">
                 <label for="tipo_clon" class="form-label mb-0">Clonar:</label>
-                <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm" onchange="document.getElementById('porcentaje_clon').style.display = this.value == 'con' ? 'inline-block' : 'none';">
+                <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm"
+                    onchange="document.getElementById('porcentaje_clon').style.display = this.value == 'con' ? 'inline-block' : 'none';">
                     <option value="sin">Sin incremento</option>
                     <option value="con">Con incremento</option>
+                    <option value="forecast">Forecast (tendencia)</option>
                 </select>
             </div>
             <div class="col-auto" id="porcentaje_clon" style="display:none;">
