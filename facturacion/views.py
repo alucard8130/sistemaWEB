@@ -1419,22 +1419,67 @@ def exportar_pagos_excel(request):
     return response
 
 
-def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
+def buscar_por_id_o_nombre(modelo, valor, campo='nombre', empresa=None):
     """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas y espacios)."""
     if not valor:
         return None
     val = unidecode(str(valor)).strip().lower()
+
+    # intento por PK
     try:
-        return modelo.objects.get(pk=int(val))
-    except (ValueError, modelo.DoesNotExist):
-        todos = modelo.objects.all()
-        candidatos = [
-            obj for obj in todos
-            if unidecode(str(getattr(obj, campo))).strip().lower() == val
-        ]
+        obj = modelo.objects.get(pk=int(val))
+        if empresa is not None:
+            obj_emp_id = getattr(obj, 'empresa_id', None)
+            if obj_emp_id is None and getattr(obj, 'empresa', None):
+                obj_emp_id = getattr(obj, 'empresa').id
+            empresa_id = empresa.id if hasattr(empresa, 'id') else empresa
+            if obj_emp_id != empresa_id:
+                raise Exception(f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada")
+        return obj
+    except ValueError:
+        # no era un entero -> seguir buscando por campo
+        pass
+    except modelo.DoesNotExist:
+        # seguir buscando por campo
+        pass
+
+    # normalizar y buscar entre todos los registros
+    def _norm(v):
+        return unidecode(str(v)).strip().lower() if v is not None else ''
+
+    todos = modelo.objects.all()
+    candidatos = [obj for obj in todos if _norm(getattr(obj, campo)) == val]
+
+    if empresa is not None:
+        # obtener id de empresa buscada
+        empresa_id = empresa.id if hasattr(empresa, 'id') else empresa
+
+        def _obj_empresa_id(o):
+            eid = getattr(o, 'empresa_id', None)
+            if eid is None and getattr(o, 'empresa', None):
+                try:
+                    return getattr(o, 'empresa').id
+                except Exception:
+                    return None
+            return eid
+
+        candidatos_same = [o for o in candidatos if _obj_empresa_id(o) == empresa_id]
+
+        if len(candidatos_same) == 1:
+            return candidatos_same[0]
+        if len(candidatos_same) > 1:
+            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos_same])
+            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__} para la misma empresa: {conflicto}")
+        # no hay coincidencias en la misma empresa:
+        if candidatos:
+            # existen coincidencias en otras empresas -> no considerarlo conflicto para esta empresa
+            return None
+        raise Exception(f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada")
+    else:
+        # comportamiento global (sin empresa)
         if len(candidatos) == 1:
             return candidatos[0]
-        elif len(candidatos) > 1:
+        if len(candidatos) > 1:
             conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos])
             raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
@@ -1752,8 +1797,10 @@ def carga_masiva_facturas(request):
                             raise Exception(f"El folio '{folio}' ya existe para la empresa '{empresa.nombre}'.")
 
                     # Validar local/area si se informaron
-                    local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
-                    area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
+                    local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero', empresa=empresa) if local_val else None
+                    area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero', empresa=empresa) if area_val else None
+                    # local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
+                    # area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
                     if local_val and not local:
                         raise Exception(f"No se encontró el local '{local_val}'")
                     if area_val and not area:
