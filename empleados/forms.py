@@ -25,11 +25,12 @@ class EmpleadoForm(forms.ModelForm):
 class IncidenciaForm(forms.ModelForm):
     class Meta:
         model = Incidencia
-        fields = ['empleado', 'tipo', 'fecha', 'fecha_fin', 'dias', 'descripcion', 'numero_incapacidad_imss']
+        fields = ['empleado', 'tipo', 'fecha', 'fecha_fin', 'dias', 'descripcion', 'numero_incapacidad_imss', 'importe']
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'descripcion': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'importe': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -37,7 +38,8 @@ class IncidenciaForm(forms.ModelForm):
         for field in self.fields.values():
             if not isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs['class'] = 'form-control'
-        self.fields['numero_incapacidad_imss'].required = False  # Por defecto no requerido        
+        self.fields['numero_incapacidad_imss'].required = False  # Por defecto no requerido
+        self.fields['importe'].required = False  # Por defecto no requerido
 
     def clean(self):
         cleaned_data = super().clean()

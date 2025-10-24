@@ -3,8 +3,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from num2words import num2words
+from django.utils import timezone
+from empleados.models import Empleado, Incidencia
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
-from .forms import FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
+from .forms import ComprobarValeForm, FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
 from gastos.models import TipoGasto
 from django.db import transaction
 from decimal import Decimal, InvalidOperation
@@ -140,6 +142,7 @@ def generar_vale_caja(request):
         if empresa:
             form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(empresa=empresa)
             form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
+            form.fields["recibido_por"].queryset = Empleado.objects.filter(empresa=empresa)
         if form.is_valid():
             vale = form.save(commit=False)
             fondeo = vale.fondeo
@@ -157,6 +160,7 @@ def generar_vale_caja(request):
         if empresa:
             form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(empresa=empresa)
             form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
+            form.fields["recibido_por"].queryset = Empleado.objects.filter(empresa=empresa)
     return render(request, "caja_chica/generar_vale_caja.html", {"form": form})
 
 @login_required
@@ -348,3 +352,96 @@ def eliminar_fondeo(request, fondeo_id):
             fondeo.delete()
         messages.success(request, "Fondeo eliminado correctamente.")
         return redirect("lista_fondeos")
+    
+
+@login_required
+def comprobar_vale(request, vale_id):
+    vale = get_object_or_404(ValeCaja, pk=vale_id)
+
+    # determinar empresa del vale (intentar fondeo -> fondeo.empresa o vale.empresa)
+    vale_empresa_id = None
+    if getattr(vale, 'fondeo', None) and getattr(vale.fondeo, 'empresa', None):
+        vale_empresa_id = vale.fondeo.empresa.id
+    else:
+        vale_empresa_id = getattr(vale, 'empresa_id', None)
+
+    # permisos multiempresa
+    if request.user.is_superuser:
+        sess_empresa_id = request.session.get("empresa_id")
+        if sess_empresa_id and vale_empresa_id and int(sess_empresa_id) != int(vale_empresa_id):
+            messages.error(request, "No tienes permiso para comprobar este vale bajo la empresa seleccionada.")
+            return redirect("lista_vales_caja_chica")
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if not perfil or not getattr(perfil, "empresa", None) or perfil.empresa.id != vale_empresa_id:
+            messages.error(request, "No tienes permiso para comprobar este vale.")
+            return redirect("lista_vales_caja_chica")
+
+    if request.method == "POST":
+        form = ComprobarValeForm(request.POST)
+        if form.is_valid():
+            importe_comprobado = form.cleaned_data["importe_comprobado"]
+            descripcion = form.cleaned_data.get("descripcion", "").strip()
+
+            try:
+                with transaction.atomic():
+                    importe_vale = Decimal(str(vale.importe or 0))
+                    comprobado = Decimal(str(importe_comprobado or 0))
+                    diferencia = comprobado - importe_vale
+
+                    # Si no hay diferencia: solo marcar comprobado y guardar datos mínimos
+                    if diferencia == Decimal("0.00"):
+                        vale.status = "comprobado"
+                        if hasattr(vale, "importe_comprobado"):
+                            setattr(vale, "importe_comprobado", comprobado)
+                        if descripcion and hasattr(vale, "observaciones"):
+                            vale.observaciones = (vale.observaciones or "") + "\nComprobación: " + descripcion
+                        vale.save()
+                        messages.success(request, "Vale comprobado correctamente.")
+                        return redirect("lista_vales_caja_chica")
+
+                    # intentar resolver empleado para registrar incidencia
+                    empleado_obj = getattr(vale, "recibido_por", None)
+                    if not empleado_obj:
+                        perfil = getattr(request.user, "perfilusuario", None)
+                        empleado_obj = getattr(perfil, "recibido_por", None) if perfil else None
+
+                    # crear incidencia si hay diferencia y si existe empleado
+                    if diferencia != Decimal("0.00"):
+                        if not empleado_obj:
+                            # no podemos crear Incidencia sin empleado, abortar creación de incidencia
+                            messages.error(request, "No se encontró un empleado asociado para registrar la incidencia; por favor asocia un empleado al vale o al usuario.")
+                        else:
+                            if diferencia < 0:
+                                tipo = "descuento"
+                                monto = abs(diferencia)
+                            else:
+                                tipo = "devolucion"
+                                monto = diferencia
+                            Incidencia.objects.create(
+                                empleado=empleado_obj,
+                                tipo=tipo,
+                                fecha=timezone.now().date(),
+                                dias=1,
+                                descripcion=descripcion or (f"Diferencia al comprobar vale #{vale.id}: {monto}"),
+                                importe=monto
+                            )
+
+                    # marcar vale como comprobado y guardar importe comprobado si existe ese campo
+                    #vale.status = getattr(vale, "status", "comprobado") or "comprobado"
+                    vale.status = "comprobado"
+                    if hasattr(vale, "importe_comprobado"):
+                        setattr(vale, "importe_comprobado", comprobado)
+                    if descripcion and hasattr(vale, "observaciones"):
+                        vale.observaciones = (vale.observaciones or "") + "\nComprobación: " + descripcion
+                    vale.save()
+
+                messages.success(request, "Vale comprobado correctamente.")
+                return redirect("lista_vales_caja_chica")
+            except Exception as e:
+                messages.error(request, f"Error al comprobar el vale: {e}")
+    else:
+        initial = {"importe_comprobado": getattr(vale, "importe", None)}
+        form = ComprobarValeForm(initial=initial)
+
+    return render(request, "caja_chica/comprobar_vale.html", {"form": form, "vale": vale})    

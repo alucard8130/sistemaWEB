@@ -45,6 +45,7 @@
     <th>Descripción</th>
     <th>Importe</th>
     <th>Fecha</th>
+    <th>Estado</th>
     <th>Acciones</th>
   </tr>
     </thead>
@@ -56,17 +57,27 @@
     <td>{{ vale.descripcion }}</td>
     <td>${{ vale.importe|floatformat:2|intcomma }}</td>
     <td>{{ vale.fecha|date:"d/b/y"|upper }}</td>
+    {% if vale.status == "pendiente" %}
+    <td><span class="badge bg-warning text-dark">pendiente comprobar</span></td>
+    {% else %}
+    <td><span class="badge bg-success text-light">comprobado</span></td>
+    {% endif %}
     <td>
       <a href="{% url 'imprimir_vale_caja' vale.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
         <i class="bi bi-printer" title="Imprimir Vale"></i>
       </a>
+      {% if vale.status == "pendiente" %}
+      <a href="{% url 'comprobar_vale' vale.id %}" class="btn btn-outline-success btn-sm" title="Comprobar vale">
+        <i class="bi bi-check2-circle"></i>
+      </a>
        <form method="post" action="{% url 'eliminar_vale_caja' vale.id %}" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este vale? Se devolverá el importe al fondeo.')"
-    ticket="Eliminar vale">
-        <i class="bi bi-trash"></i>
-    </button>
-</form> 
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este vale? Se devolverá el importe al fondeo.')"
+          title="Eliminar vale">
+              <i class="bi bi-trash"></i>
+          </button>
+      </form>
+      {% endif %}
     </td>
     
   </tr>

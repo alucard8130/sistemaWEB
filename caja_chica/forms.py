@@ -1,5 +1,7 @@
+from decimal import Decimal
 from django import forms
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
+
 
 
 class FondeoCajaChicaForm(forms.ModelForm):
@@ -57,20 +59,36 @@ class ValeCajaForm(forms.ModelForm):
             "tipo_gasto",
             "descripcion",
             "importe",
+            "status",
             "fecha",
             "recibido_por",
             "autorizado_por",
+            
         ]
         widgets = {
             "fondeo": forms.Select(attrs={"class": "form-control"}),
             "fecha": forms.DateInput(attrs={"type": "date"}),
-            "recibido_por": forms.TextInput(attrs={"class": "form-control"}),
+            "recibido_por": forms.Select(attrs={"class": "form-control"}),
             "autorizado_por": forms.TextInput(attrs={"class": "form-control"}),
             "tipo_gasto": forms.Select(attrs={"class": "form-control"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control"}),
             "importe": forms.NumberInput(attrs={"class": "form-control"}),
+            "status": forms.Select(attrs={"class": "form-control"}),
         }
 
     fecha = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
+    )
+
+
+class ComprobarValeForm(forms.Form):
+    importe_comprobado = forms.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal('0.00'),
+        label="Importe a comprobar",
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"})
+    )
+    descripcion = forms.CharField(
+        required=True,
+        label="Descripción / Observaciones",
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 3})
     )

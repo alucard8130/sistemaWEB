@@ -48,6 +48,8 @@ class Incidencia(models.Model):
         ('incapacidad', 'Incapacidad'),
         ('dias festivos', 'Festivos trabajados'),
         ('descanso', 'Descansos trabajados'),
+        ('descuento', 'Descuento'),
+        ('devolucion', 'Devolución'),
         ('otro', 'Otro'),
     ]
     empleado = models.ForeignKey(Empleado, on_delete=models.CASCADE)
@@ -58,6 +60,13 @@ class Incidencia(models.Model):
     descripcion = models.TextField(blank=True)
     numero_incapacidad_imss = models.CharField(
         max_length=30, blank=True, null=True, verbose_name="Número de incapacidad IMSS",help_text="Capturar solo si el tipo de incidencia es 'Incapacidad'"
+    )
+    importe= models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text="Solo si aplica descuento o devolución",
     )
 
     def __str__(self):
