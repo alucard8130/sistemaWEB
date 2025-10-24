@@ -68,6 +68,13 @@
     <a href="{% url 'recibo_fondeo' fondeo.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Recibo">
     <i class="bi bi-printer"></i>
 </a> 
+    <form method="post" action="{% url 'eliminar_fondeo' fondeo.id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este fondeo? Estas seguro?')"
+        title="Eliminar Fondeo">
+            <i class="bi bi-trash"></i>
+        </button>
+    </form>
    </td>
   </tr>
   {% empty %}

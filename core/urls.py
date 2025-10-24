@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
-from caja_chica.views import detalle_fondeo, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
+from caja_chica.views import detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
 from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
@@ -128,7 +128,10 @@ urlpatterns = [
     path('carga-masiva/', carga_masiva_proveedores, name='carga_masiva_proveedores'),
     path('plantilla-proveedores/', plantilla_proveedores_excel, name='plantilla_proveedores_excel'),
     path('comparativo-anual/', comparativo_anual_total, name='comparativo_anual_total'),
-    path('comparativo-anual-ingresos/', comparativo_anual_ingresos, name='comparativo_anual_ingresos')
+    path('comparativo-anual-ingresos/', comparativo_anual_ingresos, name='comparativo_anual_ingresos'),
+    path("vales/<int:vale_id>/eliminar/", eliminar_vale_caja, name="eliminar_vale_caja"),
+    path("gastos_caja_chica/<int:gasto_id>/eliminar/",eliminar_gasto_caja, name="eliminar_gasto_caja"),
+    path("fondeos/<int:fondeo_id>/eliminar/", eliminar_fondeo, name="eliminar_fondeo"),
 ]
     
 
