@@ -61,7 +61,8 @@
     <td>
     <form method="post" action="{% url 'eliminar_gasto_caja' gasto.id %}" style="display:inline;">
     {% csrf_token %}
-    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este gasto? Se devolverá el importe al fondeo si corresponde.')">
+    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este gasto? Se devolverá el importe al fondeo si corresponde.')"
+    title="Eliminar gasto">
         <i class="bi bi-trash"></i>
     </button>
 </form>

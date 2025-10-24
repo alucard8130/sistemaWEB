@@ -62,7 +62,8 @@
       </a>
        <form method="post" action="{% url 'eliminar_vale_caja' vale.id %}" style="display:inline;">
     {% csrf_token %}
-    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este vale? Se devolverá el importe al fondeo.')">
+    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este vale? Se devolverá el importe al fondeo.')"
+    ticket="Eliminar vale">
         <i class="bi bi-trash"></i>
     </button>
 </form> 

@@ -59,12 +59,12 @@
    <td>
     {% if fondeo.saldo > 0 %}
     <a href="{% url 'registrar_gasto_caja_chica' %}?fondeo_id={{ fondeo.id }}" class="btn btn-sm btn-outline-success" title="Registrar Gasto Caja Chica">
-                                        <i class="bi bi-cash-coin me-1"></i></a>
+    <i class="bi bi-cash-coin me-1"></i></a>
     {% else %}
     <span class="text-muted"></span>
     {% endif %}
     <a href="{% url 'detalle_fondeo' fondeo.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
-                                        <i class="bi bi-eye me-1"></i></a>
+    <i class="bi bi-eye me-1"></i></a>
     <a href="{% url 'recibo_fondeo' fondeo.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Recibo">
     <i class="bi bi-printer"></i>
 </a> 
