@@ -40,13 +40,13 @@
             {% endif %}
             </div>
             <div class="col-auto">
-                <select name="tipo_ingreso" class="form-select">
-    <option value="">Tipos</option>
-    {% for tipo in tipos_ingreso %}
-        <option value="{{ tipo.id }}" {% if tipo.id|stringformat:"s" == tipo_ingreso %}selected{% endif %}>{{ tipo.nombre }}</option>
-    {% endfor %}
-</select>
-            </div>
+        <select name="tipo_ingreso" id="tipo_ingreso" class="form-select">
+            <option value="">Tipo ingreso</option>
+            {% for tipo in tipos_ingreso %}
+                <option value="{{ tipo.id }}" {% if tipo_ingreso_id == tipo.id|stringformat:"s" %}selected{% endif %}>{{ tipo.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
             <div class="col-auto">
                 <select name="cliente" class="form-select">
                     <option value="">Clientes</option>
@@ -55,6 +55,7 @@
                     {% endfor %}
                 </select>
             </div>
+            
             <div class="col-auto">
                 <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
             </div>
@@ -65,7 +66,10 @@
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-funnel-fill"></i> Filtrar
                 </button>
-                <a href="{% url 'exportar_cobros_otros_ingresos_excel' %}?empresa={{ empresa_id }}&cliente={{ cliente_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-outline-success">
+                <a href="{% url 'reporte_cobros_otros_ingresos' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> Limpiar
+                </a>
+                <a href="{% url 'exportar_cobros_otros_ingresos_excel' %}?empresa={{ empresa_id }}&cliente={{ cliente_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&tipo_ingreso={{ tipo_ingreso_id }}" class="btn btn-outline-success">
                     <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
                 </a>
             </div>
@@ -80,32 +84,37 @@
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
-                        <th>Fecha cobro</th>
                         {% if request.user.is_superuser %}
                         <th>Empresa</th>
                         {% endif %}
+                        <th>Folio</th>
                         <th>Cliente</th>
                         <th>Tipo Ingreso</th>
                         <th>Monto</th>
                         <th>Forma cobro</th>
-                        <th>Folio</th>
+                        <th>Fecha cobro</th>   
+                        <th>Comentario</th>
                         <th>Acciones</th>
                         {% comment %} <th>Comprobante</th> {% endcomment %}
-                        <th>Comentario</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for cobro in cobros %}
                     <tr>
-                        <td>{{ cobro.fecha_cobro|date:"d/b/y"|upper}}</td>
                         {% if request.user.is_superuser %}
                         <td>{{ cobro.factura.empresa.nombre }}</td>
                         {% endif %}
+                        <td>{{ cobro.factura.folio }}</td>
                         <td>{{ cobro.factura.cliente.nombre }}</td>
                         <td>{{ cobro.factura.tipo_ingreso.nombre }}</td>
                         <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                         <td>{{ cobro.get_forma_cobro_display }}</td>
-                        <td>{{ cobro.factura.folio }}</td>
+                        <td>{{ cobro.fecha_cobro|date:"d/b/y"|upper}}</td>
+                        {% if cobro.observaciones == None or cobro.observaciones == "" %}
+                            <td></td>
+                        {% else %}
+                            <td>{{ cobro.observaciones }}</td>
+                        {% endif %}
                         <td> <a href="{% url 'recibo_pago_otras_cuotas' cobro.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
                                     <i class="bi bi-printer" title="Imprimir Documento"></i>
                                         </a>
@@ -119,11 +128,7 @@
                                 -
                             {% endif %}
                         </td> {% endcomment %}
-                        {% if cobro.observaciones == None or cobro.observaciones == "" %}
-                        <td></td>
-                    {% else %}
-                        <td>{{ cobro.observaciones }}</td>
-                    {% endif %}
+                        
                     </tr>
                     {% empty %}
                     <tr class="no-data-row">

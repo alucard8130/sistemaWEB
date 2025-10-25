@@ -1,7 +1,8 @@
 
 from django import forms
-
 from empresas.models import Empresa
+
+
 
 class VisitanteLoginForm(forms.Form):
     username = forms.CharField(label="Usuario")
@@ -40,3 +41,8 @@ class CSDUploadForm(forms.Form):
     cer_file = forms.FileField(label="Certificado (.cer)")
     key_file = forms.FileField(label="Llave privada (.key)")
     key_password = forms.CharField(label="Contraseña de la llave", widget=forms.PasswordInput)
+
+
+#modulo conciliacion bancaria
+class EstadoCuentaUploadForm(forms.Form):
+    archivo = forms.FileField(label="Archivo de estado de cuenta (CSV o XLSX)") 

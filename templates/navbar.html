@@ -33,17 +33,11 @@
                         <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
                         <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
                         <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
-                        <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>
+                        {% comment %} <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li> {% endcomment %}
                         <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
                         <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
+                        <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Subir Estado de Cuenta</a></li>
                         </ul>
-                </li>
-                {% elif request.user.is_superuser %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Configuración</a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
-                    </ul>
                 </li>
                 {% endif %}
                 

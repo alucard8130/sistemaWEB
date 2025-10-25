@@ -16,7 +16,7 @@ class Factura(models.Model):
     TIPO_CUOTA_CHOICES = [
         ('mantenimiento', 'Mantenimiento'),
         ('renta', 'Renta'),
-        ('deposito garantia', 'Deposito Garantía'),
+        ('deposito', 'Deposito Garantía'),
         ('extraordinaria', 'Extraordinaria'),
         ('penalidad', 'Multa'),
         ('intereses', 'Intereses'),

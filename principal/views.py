@@ -48,6 +48,7 @@ from django.contrib.auth.hashers import check_password
 from django.urls import reverse
 from django.conf import settings
 import requests
+from decimal import Decimal
 
 
 
@@ -1604,7 +1605,7 @@ def descargar_factura_timbrada(request, pk):
     return response
 
 
-from .forms import CSDUploadForm
+from .forms import CSDUploadForm, EstadoCuentaUploadForm
 import base64
 
 @staff_member_required
@@ -1873,3 +1874,110 @@ def visitante_timbrar_factura(request, pk):
         "factura": factura,
         "url_cancelar": "visitante_consulta_facturas"
     })
+
+
+# modulo conciliacion bancaria
+
+# Simulación de pagos y egresos (ajusta con tus modelos reales)
+from facturacion.models import Pago
+from gastos.models import PagoGasto
+
+@login_required
+def subir_estado_cuenta(request):
+    tabla = []
+    columnas = []
+    error = None
+    ingresos = Pago.objects.all()
+    egresos = PagoGasto.objects.all()
+
+    if request.method == "POST":
+        form = EstadoCuentaUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES["archivo"]
+            nombre = archivo.name.lower()
+            try:
+                if nombre.endswith(".csv"):
+                    text = archivo.read().decode("utf-8", errors="ignore")
+                    reader = csv.reader(io.StringIO(text))
+                    tabla = list(reader)
+                else:
+                    wb = openpyxl.load_workbook(archivo, data_only=True)
+                    ws = wb.active
+                    tabla = list(ws.values)
+                if tabla:
+                    columnas = [str(c) for c in tabla[0]]
+                    tabla = tabla[1:]
+            except Exception as e:
+                error = f"Error al leer el archivo: {e}"
+    else:
+        form = EstadoCuentaUploadForm()
+
+    return render(request, "conciliacion/estado_cuenta_vista.html", {
+        "form": form,
+        "columnas": columnas,
+        "tabla": tabla,
+        "error": error,
+        "ingresos": ingresos,
+        "egresos": egresos,
+    })
+
+
+# @login_required
+# def iniciar_conciliacion_masiva(request):
+#     # Sugerir coincidencias para todos los movimientos
+#     tabla = request.session.get("estado_cuenta_tabla", [])
+#     columnas = request.session.get("estado_cuenta_columnas", [])
+#     sugerencias = []
+
+#     # Ajusta los índices según tus columnas reales
+#     idx_importe = None
+#     idx_tipo = None
+#     idx_fecha = None
+#     idx_ref = None
+#     for i, col in enumerate(columnas):
+#         if col.lower() in ("importe", "monto", "amount"):
+#             idx_importe = i
+#         if col.lower() in ("tipo", "movimiento", "cargo/abono"):
+#             idx_tipo = i
+#         if col.lower() in ("fecha", "date"):
+#             idx_fecha = i
+#         if col.lower() in ("referencia", "ref"):
+#             idx_ref = i
+
+#     for row in tabla:
+#         matches = []
+#         try:
+#             importe = Decimal(str(row[idx_importe]).replace(",", "")) if idx_importe is not None else None
+#             tipo = str(row[idx_tipo]).lower() if idx_tipo is not None else ""
+#             fecha = row[idx_fecha] if idx_fecha is not None else ""
+#             referencia = str(row[idx_ref]) if idx_ref is not None else ""
+#         except Exception:
+#             importe = None
+#             tipo = ""
+#             fecha = ""
+#             referencia = ""
+
+#         # Sugerir: abono -> Pago, cargo -> PagoGasto
+#         if "abono" in tipo or tipo == "c":
+#             pagos = Pago.objects.filter(monto=importe)
+#             for p in pagos:
+#                 matches.append({"id": p.id, "descripcion": f"Pago #{p.id} - {p.monto} - {p.factura.folio if p.factura else ''}"})
+#         elif "cargo" in tipo or tipo == "d":
+#             egresos = PagoGasto.objects.filter(monto=importe)
+#             for g in egresos:
+#                 matches.append({"id": g.id, "descripcion": f"Gasto #{g.id} - {g.monto} - {g.gasto.descripcion if g.gasto else ''}"})
+#         sugerencias.append(matches)
+
+#     request.session["estado_cuenta_sugerencias"] = sugerencias
+#     return redirect("subir_estado_cuenta")
+
+
+@login_required
+def confirmar_conciliacion(request):
+    if request.method == "POST":
+        movimiento_idx = int(request.POST.get("movimiento_idx"))
+        match_id = request.POST.get("match_id")
+        # Aquí puedes guardar la conciliación en la base de datos si lo deseas
+        # Ejemplo: registrar el match en un modelo ConciliacionManual
+        messages.success(request, "Conciliación manual registrada.")
+    return redirect("subir_estado_cuenta")

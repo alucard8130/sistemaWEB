@@ -60,6 +60,7 @@
                     {% endfor %}
                 </select>
             </div>
+            
             <div class="col-auto">
                 <!-- <label for="area_id">Área común:</label> -->
                 <select name="area_id" id="area_id" class="form-select">
@@ -71,6 +72,22 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="col-auto">
+        <select name="tipo_cuota" id="tipo_cuota" class="form-select">
+            <option value="">Tipo cuota</option>
+            {% for val, display in TIPO_CUOTA_CHOICES %}
+                <option value="{{ val }}" {% if tipo_cuota == val %}selected{% endif %}>{{ display }}</option>
+            {% endfor %}
+        </select>
+    </div>
+            <div class="col-auto">
+        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+    </div>
+    <div class="col-auto">
+        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+    </div>
+    
+
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-funnel-fill"></i> Filtrar
@@ -92,14 +109,15 @@
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
-                        <th>Local \ Area</th>
-                        <th>Cliente</th>
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
-                        {% endif %}    
+                        {% endif %}
+                        <th>Folio</th>
+                        <th>Local \ Area</th>
+                        <th>Cliente</th>
+                        <th>Tipo Cuota</th>
                         <th>Monto</th>
                         <th>Forma de cobro</th>
-                        <th>Folio</th>
                         <th>Fecha Cobro</th>
                         <th>Comentarios</th>
                         <th>Acciones</th>
@@ -108,6 +126,10 @@
                 <tbody>
                     {% for pago in pagos %}
                         <tr>
+                            {% if request.user.is_superuser %}
+                                <td>{{ pago.factura.empresa.nombre }}</td>
+                            {% endif %}
+                                <td>{{ pago.factura.folio }}</td>
                             <td>
                                 {% if pago.factura.local %}
                                     {{ pago.factura.local.numero }}
@@ -118,12 +140,9 @@
                                 {% endif %}
                             </td>
                             <td>{{ pago.factura.cliente.nombre }}</td>
-                            {% if request.user.is_superuser %}
-                                <td>{{ pago.factura.empresa.nombre }}</td>
-                            {% endif %}
+                            <td>{{ pago.factura.get_tipo_cuota_display }}</td>
                             <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                             <td>{{ pago.forma_pago|title }}</td>
-                            <td>{{ pago.factura.folio }}</td>
                             <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td> 
                             {% if pago.observaciones == None or pago.observaciones == "" %}
                             <td></td>

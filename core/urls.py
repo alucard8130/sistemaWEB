@@ -10,7 +10,7 @@ from empleados.views import exportar_incidencias_excel, incidencia_cancelar, inc
 from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
 from presupuestos.views import comparativo_anual_ingresos, comparativo_anual_total
-from principal.views import actualizar_ticket, agregar_seguimiento, consulta_cfdis_facturama, crear_tema_y_enviar, descargar_cfdi_facturama, descargar_factura_timbrada, eliminar_tema, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_login, visitante_logout, visitante_timbrar_factura, votar_tema_correo
+from principal.views import actualizar_ticket, agregar_seguimiento, confirmar_conciliacion, consulta_cfdis_facturama, crear_tema_y_enviar, descargar_cfdi_facturama, descargar_factura_timbrada, eliminar_tema, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_login, visitante_logout, visitante_timbrar_factura, votar_tema_correo
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -133,6 +133,9 @@ urlpatterns = [
     path("gastos_caja_chica/<int:gasto_id>/eliminar/",eliminar_gasto_caja, name="eliminar_gasto_caja"),
     path("fondeos/<int:fondeo_id>/eliminar/", eliminar_fondeo, name="eliminar_fondeo"),
     path("vales/<int:vale_id>/comprobar/", comprobar_vale, name="comprobar_vale"),
+    path('estado-cuenta/', subir_estado_cuenta, name='subir_estado_cuenta'),
+    #path('conciliacion/sugerir/', iniciar_conciliacion_masiva, name='iniciar_conciliacion_masiva'),
+    path('conciliacion/confirmar/',confirmar_conciliacion, name='confirmar_conciliacion'),
 ]
     
 

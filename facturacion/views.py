@@ -130,19 +130,6 @@ def crear_factura(request):
                             factura.area_comun.cliente = cliente
                             factura.area_comun.save()
 
-                        # Auditoría
-                        # for field in form.fields:
-                        #     if hasattr(factura, field):
-                        #         valor = getattr(factura, field)
-                        #         AuditoriaCambio.objects.create(
-                        #             modelo='factura',
-                        #             objeto_id=factura.pk,
-                        #             usuario=request.user,
-                        #             campo=field,
-                        #             valor_anterior='--CREADA--',
-                        #             valor_nuevo=valor
-                        #         )
-
                         messages.success(request, "Registro Exitoso.")
                        
                         return redirect('lista_facturas')
@@ -517,6 +504,9 @@ def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    tipo_cuota= request.GET.get('tipo_cuota')
     
     if request.user.is_superuser:
         pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all().order_by('-fecha_pago')
@@ -537,7 +527,17 @@ def pagos_por_origen(request):
     if area_id:
         pagos = pagos.filter(factura__area_comun_id=area_id).order_by('fecha_pago')
 
-   
+    if fecha_inicio and fecha_fin:
+        try:
+            from datetime import datetime
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__range=[fecha_i, fecha_f])
+        except Exception:
+            pass
+    if tipo_cuota:
+        pagos = pagos.filter(factura__tipo_cuota=tipo_cuota).order_by('fecha_pago')
+
     pagos_validos = pagos.exclude(forma_pago='nota_credito')
     total_pagos = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
 
@@ -558,6 +558,10 @@ def pagos_por_origen(request):
         'local_id': local_id,
         'area_id': area_id,
         'pagos': page_obj,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'tipo_cuota': tipo_cuota,
+        'TIPO_CUOTA_CHOICES': Factura.TIPO_CUOTA_CHOICES,
     })
 
 @login_required
@@ -1375,6 +1379,9 @@ def exportar_pagos_excel(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    tipo_cuota = request.GET.get('tipo_cuota')
 
     pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all()
     if not request.user.is_superuser:
@@ -1385,6 +1392,16 @@ def exportar_pagos_excel(request):
         pagos = pagos.filter(factura__local_id=local_id)
     if area_id:
         pagos = pagos.filter(factura__area_comun_id=area_id)
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__range=[fecha_i, fecha_f])
+        except Exception:
+            pass
+    if tipo_cuota:
+        pagos = pagos.filter(factura__tipo_cuota=tipo_cuota)
+
     # Crear libro y hoja
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -1392,7 +1409,7 @@ def exportar_pagos_excel(request):
 
     # Encabezados
     ws.append([
-        'Local/Área','Cliente','Monto Cobro','Forma de Cobro','Folio Factura', 'Empresa',  
+        'Local/Área','Cliente','Monto Cobro','Tipo Cuota','Forma de Cobro','Folio Factura', 'Empresa',  
         'Fecha Cobro', 
     ])
 
@@ -1404,6 +1421,7 @@ def exportar_pagos_excel(request):
             local_area,
             factura.cliente.nombre,
             float(pago.monto),
+            factura.get_tipo_cuota_display() if hasattr(factura, 'get_tipo_cuota_display') else factura.tipo_cuota,
             pago.forma_pago,
             factura.folio,
             factura.empresa.nombre,
@@ -2030,16 +2048,14 @@ def detalle_factura_otros_ingresos(request, factura_id):
     })
 
 @login_required
-def reporte_cobros_otros_ingresos(request):
-    
+def reporte_cobros_otros_ingresos(request):    
     empresa_id = request.GET.get('empresa')
     cliente_id = request.GET.get('cliente')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
-    tipo_ingreso = request.GET.get('tipo_ingreso')
     tipo_ingreso_id = request.GET.get('tipo_ingreso')    
 
-    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente')
+    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente', 'factura__tipo_ingreso')
 
     # Filtros
     if not request.user.is_superuser:
@@ -2051,10 +2067,8 @@ def reporte_cobros_otros_ingresos(request):
     if fecha_inicio and fecha_fin:
         cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin]).order_by('-fecha_cobro')
         
-    
-    #if tipo_ingreso:
     if tipo_ingreso_id and tipo_ingreso_id.isdigit():
-        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id).order_by('-fecha_cobro')
+        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id)
 
     total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
 
@@ -2076,7 +2090,6 @@ def reporte_cobros_otros_ingresos(request):
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
         'total_cobrado': total_cobrado,
-        'tipo_ingreso': tipo_ingreso,
         'tipo_ingreso_id': tipo_ingreso_id,
         'tipos_ingreso': tipos_ingreso,
     })
@@ -2088,8 +2101,9 @@ def exportar_cobros_otros_ingresos_excel(request):
     cliente_id = request.GET.get('cliente')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
+    tipo_ingreso_id = request.GET.get('tipo_ingreso')
 
-    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente')
+    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente','factura__tipo_ingreso')
 
     if not request.user.is_superuser:
         cobros = cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
@@ -2097,7 +2111,7 @@ def exportar_cobros_otros_ingresos_excel(request):
         cobros = cobros.filter(factura__empresa_id=empresa_id)
     if cliente_id and cliente_id.isdigit():
         cobros = cobros.filter(factura__cliente_id=cliente_id)
-    # Validar fechas antes de filtrar
+
     if fecha_inicio and fecha_fin:
         try:
             fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
@@ -2105,6 +2119,10 @@ def exportar_cobros_otros_ingresos_excel(request):
             cobros = cobros.filter(fecha_cobro__range=[fecha_i, fecha_f])
         except ValueError:
             pass  # Ignora el filtro si las fechas no son válidas
+
+    if tipo_ingreso_id and tipo_ingreso_id.isdigit():
+        cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id)
+
 
     wb = openpyxl.Workbook()
     ws = wb.active

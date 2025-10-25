@@ -96,6 +96,7 @@
                             <th>Empresa</th>
                         {% endif %}
                         <th>Proveedor/Empleado</th>
+                        <th>Tipo Gasto</th>
                         <th>Forma de Pago</th>
                         <th>Comentarios</th>
                         {% comment %} <th>Comprobante</th> {% endcomment %}
@@ -116,19 +117,13 @@
                                 {{ pago.gasto.empleado.nombre }}
                             {% endif %}
                         </td>
+                        <td>{{ pago.gasto.tipo_gasto.nombre }}</td>
                         <td>{{ pago.get_forma_pago_display }}</td>
                         {% if pago.referencia == None or pago.referencia == "" %}
                         <td></td>
                         {% else %}  
                         <td>{{ pago.referencia }}</td>
                         {% endif %}
-                        {% comment %} <td>
-                            {% if pago.comprobante %}
-                                <a href="{{ pago.comprobante.url }}" target="_blank">Ver Comprobante</a>
-                            {% else %}
-                                <span class="text-muted"></span>
-                            {% endif %}
-                    </tr> {% endcomment %}
                     {% endfor %}
                     <!-- Caja Chica -->
                     {% for gasto in pagos_caja_chica %}
@@ -147,6 +142,7 @@
                                 Caja Chica
                             {% endif %}
                         </td>
+                        <td>{{ gasto.tipo_gasto.nombre }}</td>
                         <td><span class="badge bg-warning text-dark">Caja Chica</span></td>
                         <td>{{ gasto.descripcion }}</td>
                         <td></td>
@@ -167,6 +163,7 @@
                                 Vale Caja Chica
                             {% endif %}
                         </td>
+                        <td>{{ vale.tipo_gasto.nombre }}</td>
                         <td><span class="badge bg-info text-dark">Vale Caja Chica</span></td>
                         <td>{{ vale.descripcion }}</td>
                         <td></td>

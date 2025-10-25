@@ -126,3 +126,12 @@ class VotacionCorreo(models.Model):
 
     def ya_voto(self):
         return self.voto is not None    
+    
+    
+#modulo conciliacion bancaria
+class EstadoCuentaArchivo(models.Model):
+    archivo = models.FileField(upload_to='estados_cuenta/')
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    fecha_subida = models.DateTimeField(auto_now_add=True)
+    nombre_original = models.CharField(max_length=255, blank=True)       
