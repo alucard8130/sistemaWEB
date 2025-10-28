@@ -5,11 +5,16 @@ from django.contrib.auth.decorators import login_required
 from num2words import num2words
 from django.utils import timezone
 from empleados.models import Empleado, Incidencia
+from proveedores.models import Proveedor
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from .forms import ComprobarValeForm, FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
 from gastos.models import TipoGasto
 from django.db import transaction
 from decimal import Decimal, InvalidOperation
+from django.db.models import Sum
+from caja_chica import models
+from openpyxl import Workbook
+from django.core.paginator import Paginator
 
 def imprimir_vale_caja(request, vale_id):
     vale = get_object_or_404(ValeCaja, id=vale_id)
@@ -182,6 +187,11 @@ def lista_fondeos(request):
 @login_required
 def lista_gastos_caja_chica(request):
     empresa_id = request.session.get("empresa_id")
+    proveedor_id = request.GET.get("proveedor")
+    tipo_gasto_id = request.GET.get("tipo_gasto")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
     if request.user.is_superuser and empresa_id:
         gastos = GastoCajaChica.objects.select_related("fondeo").filter(
             fondeo__empresa_id=empresa_id
@@ -196,29 +206,240 @@ def lista_gastos_caja_chica(request):
             )
         else:
             gastos = GastoCajaChica.objects.select_related("fondeo").none()
+
+    # Filtros
+    if proveedor_id and proveedor_id.isdigit():
+        gastos = gastos.filter(proveedor_id=proveedor_id)
+    if tipo_gasto_id and tipo_gasto_id.isdigit():
+        gastos = gastos.filter(tipo_gasto_id=tipo_gasto_id)
+    if fecha_inicio:
+        gastos = gastos.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        gastos = gastos.filter(fecha__lte=fecha_fin)
+
+    total_gastos = gastos.aggregate(total=Sum('importe'))['total'] or 0
+
+    # Para los selects en el template
+    proveedores = Proveedor.objects.filter(activo=True)
+    tipos_gasto = TipoGasto.objects.all()
+
+    paginator = Paginator(gastos, 25)
+    page_number = request.GET.get("page")
+    gastos = paginator.get_page(page_number)
+
     return render(
-        request, "caja_chica/lista_gastos_caja_chica.html", {"gastos": gastos}
+        request, "caja_chica/lista_gastos_caja_chica.html", {
+            "gastos": gastos,
+            "proveedores": proveedores,
+            "tipos_gasto": tipos_gasto,
+            "proveedor_id": proveedor_id,
+            "tipo_gasto_id": tipo_gasto_id,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "total_gastos": total_gastos,
+        }
     )
 
+from datetime import datetime
+
+@login_required
+def exportar_gastos_caja_chica_excel(request):
+    empresa_id = request.session.get("empresa_id")
+    proveedor_id = request.GET.get("proveedor")
+    tipo_gasto_id = request.GET.get("tipo_gasto")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
+    if request.user.is_superuser and empresa_id:
+        gastos = GastoCajaChica.objects.select_related("fondeo").filter(
+            fondeo__empresa_id=empresa_id
+        )
+    elif request.user.is_superuser:
+        gastos = GastoCajaChica.objects.select_related("fondeo").all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            gastos = GastoCajaChica.objects.select_related("fondeo").filter(
+                fondeo__empresa=perfil.empresa
+            )
+        else:
+            gastos = GastoCajaChica.objects.select_related("fondeo").none()
+
+    # Filtros
+    if proveedor_id and proveedor_id.isdigit():
+        gastos = gastos.filter(proveedor_id=proveedor_id)
+    if tipo_gasto_id and tipo_gasto_id.isdigit():
+        gastos = gastos.filter(tipo_gasto_id=tipo_gasto_id)
+    # Validar fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            gastos = gastos.filter(fecha__gte=fecha_inicio_dt)
+        except ValueError:
+            pass
+    if fecha_fin:
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            gastos = gastos.filter(fecha__lte=fecha_fin_dt)
+        except ValueError:
+            pass
+
+    # Crear Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gastos Caja Chica"
+    ws.append([
+        "Fondo", "Proveedor", "Tipo de Gasto", "Descripción", "Importe", "Fecha"
+    ])
+
+    for gasto in gastos.select_related("fondeo", "proveedor", "tipo_gasto"):
+        ws.append([
+            gasto.fondeo.numero_cheque if gasto.fondeo else '',
+            gasto.proveedor.nombre if gasto.proveedor else '',
+            gasto.tipo_gasto.nombre if gasto.tipo_gasto else '',
+            gasto.descripcion,
+            float(gasto.importe),
+            gasto.fecha.strftime("%d/%m/%Y") if gasto.fecha else ''
+        ])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=gastos_caja_chica.xlsx'
+    wb.save(response)
+    return response
 
 @login_required
 def lista_vales_caja_chica(request):
     empresa_id = request.session.get("empresa_id")
+    empleado_id = request.GET.get("empleado")
+    tipo_gasto_id = request.GET.get("tipo_gasto")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
     if request.user.is_superuser and empresa_id:
-        vales = ValeCaja.objects.select_related("fondeo").filter(
+        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
             fondeo__empresa_id=empresa_id
         )
     elif request.user.is_superuser:
-        vales = ValeCaja.objects.select_related("fondeo").all()
+        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").all()
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
-            vales = ValeCaja.objects.select_related("fondeo").filter(
+            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
                 fondeo__empresa=perfil.empresa
             )
         else:
-            vales = ValeCaja.objects.select_related("fondeo").none()
-    return render(request, "caja_chica/lista_vales_caja_chica.html", {"vales": vales})
+            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").none()
+
+    # Filtros
+    if empleado_id and empleado_id.isdigit():
+        vales = vales.filter(recibido_por_id=empleado_id)
+    if tipo_gasto_id and tipo_gasto_id.isdigit():
+        vales = vales.filter(tipo_gasto_id=tipo_gasto_id)
+    if fecha_inicio:
+        vales = vales.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        vales = vales.filter(fecha__lte=fecha_fin)
+
+    # total_vales = vales.aggregate(total=Sum('importe'))['total'] or 0
+    total_pendientes = vales.filter(status="pendiente").aggregate(total=Sum('importe'))['total'] or 0
+    total_comprobados = vales.filter(status="comprobado").aggregate(total=Sum('importe'))['total'] or 0
+    gran_total = total_pendientes + total_comprobados
+
+    # Para los selects en el template
+    empleados = Empleado.objects.filter(id__in=vales.values_list('recibido_por_id', flat=True)).order_by('nombre')
+    tipos_gasto = TipoGasto.objects.all()
+
+    paginator = Paginator(vales, 25)
+    page_number = request.GET.get("page")
+    vales = paginator.get_page(page_number)
+
+    return render(
+        request, "caja_chica/lista_vales_caja_chica.html",
+        {
+            "vales": vales,
+            "empleados": empleados,
+            "empleado_id": empleado_id,
+            "tipos_gasto": tipos_gasto,
+            "tipo_gasto_id": tipo_gasto_id,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "total_vales": gran_total,
+            "total_pendientes": total_pendientes,
+            "total_comprobados": total_comprobados,
+        }
+    )
+
+
+@login_required
+def exportar_vales_caja_chica_excel(request):
+    empresa_id = request.session.get("empresa_id")
+    empleado_id = request.GET.get("empleado")
+    tipo_gasto_id = request.GET.get("tipo_gasto")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
+    if request.user.is_superuser and empresa_id:
+        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
+            fondeo__empresa_id=empresa_id
+        )
+    elif request.user.is_superuser:
+        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
+                fondeo__empresa=perfil.empresa
+            )
+        else:
+            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").none()
+
+    # Filtros
+    if empleado_id and empleado_id.isdigit():
+        vales = vales.filter(recibido_por_id=empleado_id)
+    if tipo_gasto_id and tipo_gasto_id.isdigit():
+        vales = vales.filter(tipo_gasto_id=tipo_gasto_id)
+    # Validar fechas
+    if fecha_inicio:
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            vales = vales.filter(fecha__gte=fecha_inicio_dt)
+        except ValueError:
+            pass
+    if fecha_fin:
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            vales = vales.filter(fecha__lte=fecha_fin_dt)
+        except ValueError:
+            pass
+
+    # Crear Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Vales Caja Chica"
+    ws.append([
+        "Fondo", "Empleado", "Tipo de Gasto", "Descripción", "Importe", "Fecha", "Estatus"
+    ])
+
+    for vale in vales:
+        ws.append([
+            vale.fondeo.numero_cheque if vale.fondeo else '',
+            vale.recibido_por.nombre if vale.recibido_por else '',
+            vale.tipo_gasto.nombre if vale.tipo_gasto else '',
+            vale.descripcion,
+            float(vale.importe),
+            vale.fecha.strftime("%d/%m/%Y") if vale.fecha else '',
+            vale.status
+        ])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=vales_caja_chica.xlsx'
+    wb.save(response)
+    return response
+
 
 @login_required
 def recibo_fondeo_caja(request, fondeo_id):

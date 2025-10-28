@@ -3,28 +3,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 02/09/2025
-        Description: Expenditure report
-    -->
     <meta charset="UTF-8">
     <title>Reporte egresos</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
     {% include 'navbar.html' %}
     <div class="container-fluid mt-4">
-        <h2>Reporte pagos gastos</h2>
+        <h2>Reporte Pagos Gastos</h2>
 
         <form method="get" class="row g-2 mb-3">
             {% if empresas|length > 1 %}
@@ -39,24 +28,24 @@
             </div>
             {% endif %}
             <div class="col-auto">
-                <select name="proveedor" class="form-select">
-                    <option value="">Proveedores</option>
-                    {% for p in proveedores %}
-                        <option value="{{ p.id }}" {% if p.id|stringformat:"s" == proveedor_id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
-                    {% endfor %}
-                </select>
+               <select name="proveedor" class="form-select">
+                <option value="">Proveedores</option>
+                {% for p in proveedores %}
+                    <option value="{{ p.id }}" {% if p.id|stringformat:"s" == proveedor_id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                {% endfor %}
+            </select>
             </div>
             <div class="col-auto">
-                <select name="empleado" class="form-select">
+              <select name="empleado" class="form-select">
                     <option value="">Empleados</option>
-                    {% for e in empleados %}
-                        <option value="{{ e.id }}" {% if e.id|stringformat:"s" == empleado_id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+                    {% for empleado in empleados %}
+                        <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-auto">
                 <select name="forma_pago" class="form-select">
-                    <option value="">Formas de pago</option>
+                    <option value="">Forma de Pago</option>
                     {% for val, label in formas_pago %}
                         <option value="{{ val }}" {% if val == forma_pago_actual %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
@@ -75,15 +64,12 @@
                 <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-clockwise"></i> Limpiar</a>
                 <a href="{% url 'exportar_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
                 </a>
             </div>
         </form>
         <div class="alert alert-info">
-            <strong>Total pagado regular:</strong> ${{ total|floatformat:2|intcomma }}<br>
-            <strong>Total caja chica:</strong> ${{ total_caja_chica|floatformat:2|intcomma }}<br>
-            <strong>Total vales caja chica:</strong> ${{ total_vales_caja_chica|floatformat:2|intcomma }}<br>
-            <strong>Total general:</strong> ${{ total_general|floatformat:2|intcomma }}
+            <strong>Total Gastado:</strong> ${{ total|floatformat:2|intcomma }}
         </div>
 
         <div class="table-responsive rounded-3 border">
@@ -99,83 +85,35 @@
                         <th>Tipo Gasto</th>
                         <th>Forma de Pago</th>
                         <th>Comentarios</th>
-                        {% comment %} <th>Comprobante</th> {% endcomment %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for pago in pagos %}
-                    <tr>
-                        <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td>
-                        <td>${{ pago.monto|floatformat:2|intcomma }}</td>
-                        {% if request.user.is_superuser %}
-                        <td>{{ pago.gasto.empresa.nombre }}</td>
-                        {% endif %}
-                        <td>
-                            {% if pago.gasto.proveedor %}
-                                {{ pago.gasto.proveedor.nombre }}
-                            {% elif pago.gasto.empleado %}
-                                {{ pago.gasto.empleado.nombre }}
+                        <tr>
+                            <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td>
+                            <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                            {% if request.user.is_superuser %}
+                            <td>{{ pago.gasto.empresa.nombre }}</td>
                             {% endif %}
-                        </td>
-                        <td>{{ pago.gasto.tipo_gasto.nombre }}</td>
-                        <td>{{ pago.get_forma_pago_display }}</td>
-                        {% if pago.referencia == None or pago.referencia == "" %}
-                        <td></td>
-                        {% else %}  
-                        <td>{{ pago.referencia }}</td>
-                        {% endif %}
+                            <td>
+                                {% if pago.gasto.proveedor %}
+                                    {{ pago.gasto.proveedor.nombre }}
+                                {% elif pago.gasto.empleado %}
+                                    {{ pago.gasto.empleado.nombre }}
+                                {% endif %}
+                            </td>
+                            <td>{{ pago.gasto.tipo_gasto.nombre }}</td>
+                            <td>{{ pago.get_forma_pago_display }}</td>
+                            <td>{{ pago.referencia }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr class="no-data-row">
+                            <td colspan="7">No hay pagos registrados con los filtros seleccionados.</td>
+                        </tr>
                     {% endfor %}
-                    <!-- Caja Chica -->
-                    {% for gasto in pagos_caja_chica %}
-                    <tr class="table-warning">
-                        <td>{{ gasto.fecha|date:"d/b/y"|upper }}</td>
-                        <td>${{ gasto.importe|floatformat:2|intcomma }}</td>
-                        {% if request.user.is_superuser %}
-                        <td>{{ gasto.fondeo.empresa.nombre }}</td>
-                        {% endif %}
-                        <td>
-                            {% if gasto.proveedor %}
-                                {{ gasto.proveedor.nombre }}
-                            {% elif gasto.empleado %}
-                                {{ gasto.empleado.nombre }}
-                            {% else %}
-                                Caja Chica
-                            {% endif %}
-                        </td>
-                        <td>{{ gasto.tipo_gasto.nombre }}</td>
-                        <td><span class="badge bg-warning text-dark">Caja Chica</span></td>
-                        <td>{{ gasto.descripcion }}</td>
-                        <td></td>
-                    </tr>
-                    {% endfor %}
-                    <!-- Vales Caja Chica -->
-                    {% for vale in vales_caja_chica %}
-                    <tr class="table-info">
-                        <td>{{ vale.fecha|date:"d/b/y"|upper }}</td>
-                        <td>${{ vale.importe|floatformat:2|intcomma }}</td>
-                        {% if request.user.is_superuser %}
-                        <td>{{ vale.fondeo.empresa.nombre }}</td>
-                        {% endif %}
-                        <td>
-                            {% if vale.recibido_por %}
-                                {{ vale.recibido_por }}
-                            {% else %}
-                                Vale Caja Chica
-                            {% endif %}
-                        </td>
-                        <td>{{ vale.tipo_gasto.nombre }}</td>
-                        <td><span class="badge bg-info text-dark">Vale Caja Chica</span></td>
-                        <td>{{ vale.descripcion }}</td>
-                        <td></td>
-                    </tr>
-                    {% endfor %}
-                    {% if not pagos and not pagos_caja_chica and not vales_caja_chica %}
-                    <tr class="no-data-row">
-                        <td colspan="7">No hay pagos registrados con los filtros seleccionados.</td>
-                    </tr>
-                    {% endif %}
                 </tbody>
             </table>
+            
             <nav aria-label="Paginación">
                 <ul class="pagination">
                     {% if pagos.has_previous %}
@@ -197,15 +135,11 @@
             </nav> 
         </div>
     </div>
-        <!-- 🔹 Footer -->
-        <footer>
-            © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-            Creado por Jaime M. Estrada Bernabé
-        </footer>
-
-        <!-- Scripts -->
-        <script src="{% static 'js/script.js' %}"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
+    <footer>
+        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
+        Creado por Jaime M. Estrada Bernabé
+    </footer>
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

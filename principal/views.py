@@ -1922,56 +1922,6 @@ def subir_estado_cuenta(request):
     })
 
 
-# @login_required
-# def iniciar_conciliacion_masiva(request):
-#     # Sugerir coincidencias para todos los movimientos
-#     tabla = request.session.get("estado_cuenta_tabla", [])
-#     columnas = request.session.get("estado_cuenta_columnas", [])
-#     sugerencias = []
-
-#     # Ajusta los índices según tus columnas reales
-#     idx_importe = None
-#     idx_tipo = None
-#     idx_fecha = None
-#     idx_ref = None
-#     for i, col in enumerate(columnas):
-#         if col.lower() in ("importe", "monto", "amount"):
-#             idx_importe = i
-#         if col.lower() in ("tipo", "movimiento", "cargo/abono"):
-#             idx_tipo = i
-#         if col.lower() in ("fecha", "date"):
-#             idx_fecha = i
-#         if col.lower() in ("referencia", "ref"):
-#             idx_ref = i
-
-#     for row in tabla:
-#         matches = []
-#         try:
-#             importe = Decimal(str(row[idx_importe]).replace(",", "")) if idx_importe is not None else None
-#             tipo = str(row[idx_tipo]).lower() if idx_tipo is not None else ""
-#             fecha = row[idx_fecha] if idx_fecha is not None else ""
-#             referencia = str(row[idx_ref]) if idx_ref is not None else ""
-#         except Exception:
-#             importe = None
-#             tipo = ""
-#             fecha = ""
-#             referencia = ""
-
-#         # Sugerir: abono -> Pago, cargo -> PagoGasto
-#         if "abono" in tipo or tipo == "c":
-#             pagos = Pago.objects.filter(monto=importe)
-#             for p in pagos:
-#                 matches.append({"id": p.id, "descripcion": f"Pago #{p.id} - {p.monto} - {p.factura.folio if p.factura else ''}"})
-#         elif "cargo" in tipo or tipo == "d":
-#             egresos = PagoGasto.objects.filter(monto=importe)
-#             for g in egresos:
-#                 matches.append({"id": g.id, "descripcion": f"Gasto #{g.id} - {g.monto} - {g.gasto.descripcion if g.gasto else ''}"})
-#         sugerencias.append(matches)
-
-#     request.session["estado_cuenta_sugerencias"] = sugerencias
-#     return redirect("subir_estado_cuenta")
-
-
 @login_required
 def confirmar_conciliacion(request):
     if request.method == "POST":
@@ -1981,3 +1931,39 @@ def confirmar_conciliacion(request):
         # Ejemplo: registrar el match en un modelo ConciliacionManual
         messages.success(request, "Conciliación manual registrada.")
     return redirect("subir_estado_cuenta")
+
+
+
+# modulo vistantes para FLUTTER
+
+from .serializers import FacturaSerializer
+from facturacion.models import Factura
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.db.models import Q
+
+
+@api_view(['POST'])
+def visitante_login_api(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    try:
+        visitante = VisitanteAcceso.objects.get(username=username)
+        if visitante.check_password(password):
+            return Response({'ok': True, 'visitante_id': visitante.id})
+        else:
+            return Response({'ok': False, 'error': 'Contraseña incorrecta'}, status=400)
+    except VisitanteAcceso.DoesNotExist:
+        return Response({'ok': False, 'error': 'Usuario no encontrado'}, status=404)
+
+@api_view(['GET'])
+def visitante_facturas_api(request):
+    visitante_id = request.GET.get('visitante_id')
+    if not visitante_id:
+        return Response({'error': 'No autenticado'}, status=403)
+    visitante = VisitanteAcceso.objects.get(id=visitante_id)
+    locales = visitante.locales.all()
+    areas = visitante.areas.all()
+    facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
+    serializer = FacturaSerializer(facturas, many=True)
+    return Response({'facturas': serializer.data})    

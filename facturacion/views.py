@@ -546,8 +546,6 @@ def pagos_por_origen(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-
-
     return render(request, 'facturacion/pagos_por_origen.html', {
         'pagos': pagos,
         'total_pagos': total_pagos,

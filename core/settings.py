@@ -23,8 +23,6 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com").split(",")
 #ALLOWED_HOSTS = ['*']  # For development purposes, change this in production
 
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -48,7 +46,8 @@ INSTALLED_APPS = [
     "informes_financieros",
     "storages", 
     "caja_chica",
-    "widget_tweaks"
+    "widget_tweaks",
+    "rest_framework",
 ]
 
 

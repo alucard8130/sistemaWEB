@@ -306,15 +306,14 @@ def gasto_detalle(request, pk):
     })
 
 
-@login_required
 #reporte_pagos.html
+@login_required
 def reporte_pagos_gastos(request):
     es_super = request.user.is_superuser
     pagos = PagoGasto.objects.select_related(
         "gasto", "gasto__empresa", "gasto__proveedor", "gasto__empleado"
     )
 
-    # Filtros
     empresas = (
         Empresa.objects.all()
         if es_super
@@ -342,9 +341,10 @@ def reporte_pagos_gastos(request):
             proveedores = Proveedor.objects.all().order_by('nombre')
             empleados = Empleado.objects.all().order_by('nombre')
 
-    if proveedor_id:
+    # Solo aplica el filtro si el parámetro es numérico
+    if proveedor_id and proveedor_id.isdigit():
         pagos = pagos.filter(gasto__proveedor_id=proveedor_id)
-    if empleado_id:
+    if empleado_id and empleado_id.isdigit():
         pagos = pagos.filter(gasto__empleado_id=empleado_id)
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
@@ -353,76 +353,41 @@ def reporte_pagos_gastos(request):
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
 
+    # Solo pagos de solicitudes de gastos
+    pagos_list = list(pagos)
+    for p in pagos_list:
+        p.tipo_pago = 'normal'
+        p.fecha = p.fecha_pago
 
-    pagos_caja_chica = GastoCajaChica.objects.all()
-    vales_caja_chica = ValeCaja.objects.all()
-    if not es_super:
-        pagos_caja_chica = pagos_caja_chica.filter(
-            fondeo__empresa=request.user.perfilusuario.empresa
-        )
-        vales_caja_chica = vales_caja_chica.filter(
-            fondeo__empresa=request.user.perfilusuario.empresa
-        )
-    else:
-        if empresa_id:
-            pagos_caja_chica = pagos_caja_chica.filter(fondeo__empresa_id=empresa_id)
-            vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
-    if proveedor_id:
-        pagos_caja_chica = pagos_caja_chica.filter(proveedor_id=proveedor_id)
-    # Filtrar vales por empleado si corresponde
-    if empleado_id:
-        # Si tienes una relación con Empleado, ajusta aquí. Si no, filtra por nombre:
-        vales_caja_chica = (
-            vales_caja_chica.filter(
-                recibido_por=Empleado.objects.filter(pk=empleado_id).first().nombre
-            )
-            if Empleado.objects.filter(pk=empleado_id).exists()
-            else vales_caja_chica
-        )
-    if fecha_inicio:
-        pagos_caja_chica = pagos_caja_chica.filter(fecha__gte=fecha_inicio)
-        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
-    if fecha_fin:
-        pagos_caja_chica = pagos_caja_chica.filter(fecha__lte=fecha_fin)
-        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
+    pagos_list.sort(key=lambda x: x.fecha, reverse=True)
 
-    total_regular = pagos.aggregate(total=Sum("monto"))["total"] or 0
-    total_caja_chica = pagos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
-    total_vales_caja_chica = (
-        vales_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
-    )
-    total_general = total_regular + total_caja_chica + total_vales_caja_chica
-
-    FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
-
-    paginator = Paginator(pagos, 25)
+    paginator = Paginator(pagos_list, 25)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    total_regular = sum(p.monto for p in pagos_list)
+
+    FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
 
     return render(
         request,
         "gastos/reporte_pagos.html",
         {
-            "pagos": pagos,
-            "pagos_caja_chica": pagos_caja_chica,
-            "vales_caja_chica": vales_caja_chica,
+            "pagos": page_obj,
             "empresas": empresas,
             "empresa_id": empresa_id,
             "proveedores": proveedores,
             "empleados": empleados,
             "forma_pago_actual": forma_pago,
             "total": total_regular,
-            "total_caja_chica": total_caja_chica,
-            "total_vales_caja_chica": total_vales_caja_chica,
-            "total_general": total_general,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
             "proveedor_id": proveedor_id,
             "empleado_id": empleado_id,
             "formas_pago": FORMAS_PAGO,
-            "pagos": page_obj,
         },
     )
+
 
 @login_required
 #dasboard_pagos.html
@@ -712,34 +677,19 @@ def exportar_pagos_gastos_excel(request):
     # Filtro de empresa
     if es_super and empresa_id:
         gastos = Gasto.objects.filter(empresa_id=empresa_id, fecha__year=anio)
-        gastos_caja_chica = GastoCajaChica.objects.filter(fondeo__empresa_id=empresa_id, fecha__year=anio)
-        vales_caja_chica = ValeCaja.objects.filter(fondeo__empresa_id=empresa_id, fecha__year=anio)
     else:
         empresa = request.user.perfilusuario.empresa
         gastos = Gasto.objects.filter(empresa=empresa, fecha__year=anio)
-        gastos_caja_chica = GastoCajaChica.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
-        vales_caja_chica = ValeCaja.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
 
     # Otros filtros
-    if proveedor_id:
+    if proveedor_id and proveedor_id.isdigit():
         gastos = gastos.filter(proveedor_id=proveedor_id)
-        gastos_caja_chica = gastos_caja_chica.filter(proveedor_id=proveedor_id)
-    if empleado_id:
+    if empleado_id and empleado_id.isdigit():
         gastos = gastos.filter(empleado_id=empleado_id)
-        # Vales: filtra por recibido_por si tienes relación con Empleado
-        vales_caja_chica = (
-            vales_caja_chica.filter(recibido_por=Empleado.objects.filter(pk=empleado_id).first().nombre)
-            if Empleado.objects.filter(pk=empleado_id).exists()
-            else vales_caja_chica
-        )
     if fecha_inicio:
         gastos = gastos.filter(fecha__gte=fecha_inicio)
-        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
-        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         gastos = gastos.filter(fecha__lte=fecha_fin)
-        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
-        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
     # Solo los pagos normales
     pagos = PagoGasto.objects.filter(gasto__in=gastos)
@@ -769,30 +719,6 @@ def exportar_pagos_gastos_excel(request):
             pago.get_forma_pago_display(),
             float(pago.monto),
             gasto.estatus
-        ])
-
-    # Gastos de caja chica
-    for gasto in gastos_caja_chica.select_related('fondeo', 'fondeo__empresa', 'proveedor'):
-        ws.append([
-            gasto.fecha if gasto.fecha else '',
-            gasto.fondeo.empresa.nombre if gasto.fondeo and gasto.fondeo.empresa else '',
-            gasto.proveedor.nombre if gasto.proveedor else '',
-            gasto.descripcion if hasattr(gasto, 'descripcion') else '',
-            'Caja Chica',
-            float(gasto.importe),
-            'Pagada'
-        ])
-
-    # Vales de caja chica
-    for vale in vales_caja_chica.select_related('fondeo', 'fondeo__empresa'):
-        ws.append([
-            vale.fecha if vale.fecha else '',
-            vale.fondeo.empresa.nombre if vale.fondeo and vale.fondeo.empresa else '',
-            vale.recibido_por if hasattr(vale, 'recibido_por') else '',
-            vale.descripcion if hasattr(vale, 'descripcion') else '',
-            'Vale Caja Chica',
-            float(vale.importe),
-            'Pagada'
         ])
 
     response = HttpResponse(
