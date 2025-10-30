@@ -27,14 +27,12 @@
 
     <!-- Main content -->
     <div class="container-fluid mt-4">
-        <h2>Solicitudes gastos</h2>
+        <h2>Solicitudes de Gastos</h2>
 
         <a href="{% url 'gasto_nuevo' %}" class="btn btn-crear mb-3">
             <i class="bi bi-plus-circle-fill me-1"></i> Nueva solicitud
         </a>
-        <a href="{% url 'exportar_gastos_lista_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success mb-3">
-            <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
-        </a>
+        
         <!-- Bloque para mostrar mensajes -->
         {% if messages %}
             {% for message in messages %}
@@ -44,7 +42,7 @@
         <form method="get" class="row g-2 mb-3">
             <div class="col-auto">
                 <select name="proveedor" class="form-select">
-                    <option value="">Todos los proveedores</option>
+                    <option value="">Proveedores</option>
                     {% for proveedor in proveedores %}
                         <option value="{{ proveedor.id }}" {% if proveedor_id == proveedor.id|stringformat:"s" %}selected{% endif %}>{{ proveedor.nombre }}</option>
                     {% endfor %}
@@ -52,7 +50,7 @@
             </div>
             <div class="col-auto">
                 <select name="empleado" class="form-select">
-                    <option value="">Todos los empleados</option>
+                    <option value="">Empleados</option>
                     {% for empleado in empleados %}
                         <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
                     {% endfor %}
@@ -60,7 +58,7 @@
             </div>
             <div class="col-auto">
                 <select name="tipo_gasto" class="form-select">
-                    <option value="">Todos los tipos</option>
+                    <option value="">Tipos de Gasto</option>
                     {% for tipo in tipos_gasto %}
                         <option value="{{ tipo.id }}" {% if tipo_gasto_sel == tipo.id %}selected{% endif %}>{{ tipo }}</option>
                     {% endfor %}
@@ -69,6 +67,12 @@
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-funnel-fill"></i> Filtrar</button>
+                      <a href="{% url 'gastos_lista' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise"></i> Limpiar
+        </a>
+                    <a href="{% url 'exportar_gastos_lista_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+        </a>
             </div>
         </form>
     

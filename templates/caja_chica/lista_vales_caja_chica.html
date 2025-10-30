@@ -40,7 +40,7 @@
 <form method="get" class="row g-2 mb-3">
     <div class="col-auto">
         <select name="empleado" class="form-select">
-            <option value="">Todos los empleados</option>
+            <option value="">Empleados</option>
             {% for empleado in empleados %}
                 <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
             {% endfor %}
@@ -48,7 +48,7 @@
     </div>
     <div class="col-auto">
         <select name="tipo_gasto" class="form-select">
-            <option value="">Todos los tipos de gasto</option>
+            <option value="">Tipos de Gasto</option>
             {% for tg in tipos_gasto %}
                 <option value="{{ tg.id }}" {% if tipo_gasto_id == tg.id|stringformat:"s" %}selected{% endif %}>{{ tg.nombre }}</option>
             {% endfor %}
@@ -103,9 +103,9 @@
     <td>${{ vale.importe|floatformat:2|intcomma }}</td>
     <td>{{ vale.fecha|date:"d/b/y"|upper }}</td>
     {% if vale.status == "pendiente" %}
-    <td><span class="badge bg-warning text-dark">pendiente comprobar</span></td>
+    <td><span class="badge bg-warning text-dark">Pendiente comprobar</span></td>
     {% else %}
-    <td><span class="badge bg-success text-light">comprobado</span></td>
+    <td><span class="badge bg-success text-light">Comprobado</span></td>
     {% endif %}
     <td>
       <a href="{% url 'imprimir_vale_caja' vale.id %}" class="btn btn-outline-primary btn-sm" target="_blank">

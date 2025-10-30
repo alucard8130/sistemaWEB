@@ -85,17 +85,17 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Cuota</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Lista Facturas Cuotas</a></li>
                         {% comment %} <li><a class="dropdown-item" href="{% url 'consulta_facturas' %}">Consulta Cuotas</a></li> {% endcomment %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Facturacion Mensual Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Generacion Mensual Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Cobros Cuotas</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otro ingreso</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista  otros Ingresos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros  otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Cobros otros Ingresos</a></li>
                         {% comment %} <li><hr class="dropdown-divider"></li> {% endcomment %}
                         
                         {% if request.user.is_superuser %}

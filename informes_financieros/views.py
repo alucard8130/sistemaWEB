@@ -373,10 +373,11 @@ def estado_resultados(request):
     if fecha_inicio:
         gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
         vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
+
     if fecha_fin:
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
-    # --- FIN FILTRO POR FECHA ---
+
 
     # --- Saldo inicial dinámico en modo flujo por mes ---
     if modo == "flujo" and mes and anio and empresa:

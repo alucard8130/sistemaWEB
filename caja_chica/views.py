@@ -171,6 +171,11 @@ def generar_vale_caja(request):
 @login_required
 def lista_fondeos(request):
     empresa_id = request.session.get("empresa_id")
+    cheque = request.GET.get("cheque")
+    empleado_id = request.GET.get("empleado")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
     if request.user.is_superuser and empresa_id:
         fondeos = FondeoCajaChica.objects.filter(empresa_id=empresa_id)
     elif request.user.is_superuser:
@@ -181,7 +186,103 @@ def lista_fondeos(request):
             fondeos = FondeoCajaChica.objects.filter(empresa=perfil.empresa)
         else:
             fondeos = FondeoCajaChica.objects.none()
-    return render(request, "caja_chica/lista_fondeos.html", {"fondeos": fondeos})
+
+    # Filtros
+    if cheque:
+        # fondeos = fondeos.filter(numero_cheque__icontains=cheque)
+        # Coincidencia exacta
+        fondeos = fondeos.filter(numero_cheque=cheque)
+    if empleado_id and empleado_id.isdigit():
+        fondeos = fondeos.filter(empleado_asignado_id=empleado_id)
+    if fecha_inicio:
+        fondeos = fondeos.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        fondeos = fondeos.filter(fecha__lte=fecha_fin)
+    
+    fondeos = fondeos.order_by('-fecha')
+    empleados = Empleado.objects.filter(id__in=fondeos.values_list('empleado_asignado_id', flat=True)).order_by('nombre')
+    cheques_existentes = fondeos.values_list('numero_cheque', flat=True).distinct().order_by('numero_cheque')
+    total_importe = fondeos.object_list.aggregate(total=Sum('importe_cheque'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('importe_cheque'))['total']
+    total_saldo = fondeos.object_list.aggregate(total=Sum('saldo'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('saldo'))['total']
+
+    paginator = Paginator(fondeos, 25)
+    page_number = request.GET.get("page")
+    fondeos = paginator.get_page(page_number)
+
+    return render(request, "caja_chica/lista_fondeos.html", {
+        "fondeos": fondeos,
+          "empleados": empleados, 
+          "cheque": cheque, 
+          "empleado_id": empleado_id,
+            "fecha_inicio": fecha_inicio,
+              "fecha_fin": fecha_fin,
+              "cheques_existentes": cheques_existentes,
+                "total_importe": total_importe or 0,
+                    "total_saldo": total_saldo or 0,
+          })
+
+@login_required
+def exportar_fondeos_excel(request):
+    empresa_id = request.session.get("empresa_id")
+    cheque = request.GET.get("cheque")
+    empleado_id = request.GET.get("empleado")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
+    if request.user.is_superuser and empresa_id:
+        fondeos = FondeoCajaChica.objects.filter(empresa_id=empresa_id)
+    elif request.user.is_superuser:
+        fondeos = FondeoCajaChica.objects.all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.empresa:
+            fondeos = FondeoCajaChica.objects.filter(empresa=perfil.empresa)
+        else:
+            fondeos = FondeoCajaChica.objects.none()
+
+    # Filtros
+    if cheque:
+        fondeos = fondeos.filter(numero_cheque=cheque)
+    if empleado_id and empleado_id.isdigit():
+        fondeos = fondeos.filter(empleado_asignado_id=empleado_id)
+    if fecha_inicio:
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            fondeos = fondeos.filter(fecha__gte=fecha_inicio_dt)
+        except ValueError:
+            pass
+    if fecha_fin:
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            fondeos = fondeos.filter(fecha__lte=fecha_fin_dt)
+        except ValueError:
+            pass
+
+    fondeos = fondeos.order_by('-fecha')
+
+    # Crear Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Fondeos Caja Chica"
+    ws.append([
+        "No. Cheque/Transfer", "Fecha", "Importe", "Responsable", "Saldo"
+    ])
+
+    for fondeo in fondeos.select_related("empleado_asignado"):
+        ws.append([
+            fondeo.numero_cheque,
+            fondeo.fecha.strftime("%d/%m/%Y") if fondeo.fecha else '',
+            float(fondeo.importe_cheque),
+            fondeo.empleado_asignado.nombre if fondeo.empleado_asignado else '',
+            float(fondeo.saldo)
+        ])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=fondeos_caja_chica.xlsx'
+    wb.save(response)
+    return response
 
 
 @login_required

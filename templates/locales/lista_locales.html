@@ -88,6 +88,9 @@
                                 <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger" title="Inactivar">
                                     <i class="bi bi-slash-circle"></i>
                                 </a>
+                                <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm">
+                                    Consultar facturas
+                                </a>
                             </td>
                         </tr>
                     {% empty %}

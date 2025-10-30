@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from areas import views
-from caja_chica.views import comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
+from caja_chica.views import comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
 from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
@@ -140,6 +140,7 @@ urlpatterns = [
     path('api/visitante/facturas/',visitante_facturas_api, name='visitante_facturas_api'),
     path('gastos_caja_chica/exportar/', exportar_gastos_caja_chica_excel, name='exportar_gastos_caja_chica_excel'),
     path('vales_caja_chica/exportar/', exportar_vales_caja_chica_excel, name='exportar_vales_caja_chica_excel'),
+    path('fondeos/exportar/', exportar_fondeos_excel, name='exportar_fondeos_excel'),
 ]
     
 

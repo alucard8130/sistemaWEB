@@ -100,6 +100,9 @@
                                 <a href="{% url 'generar_contrato' area.pk %}" class="btn btn-sm btn-primary" {% if area.empresa and area.empresa.es_plus %}target="_blank"{% endif %} title="Generar contrato">
                                     <i class="bi bi-file-earmark-text"></i>
                                 </a>
+                                <a href="{% url 'lista_facturas' %}?area_id={{ area.id }}" class="btn btn-outline-primary btn-sm">
+                                    Consultar facturas
+                                </a>
                                 <!-- Button to assign client if area is available -->
                             {% if area.status == 'disponible' %}
                                 <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-outline-success btn-sm" title="Asignar cliente">

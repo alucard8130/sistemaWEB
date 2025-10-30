@@ -153,6 +153,7 @@ def lista_facturas(request):
     area_id = request.GET.get('area_id')
     tipo_cuota = request.GET.get('tipo_cuota')
     query = request.GET.get('q', '')
+    anio = request.GET.get('anio')
 
     if request.user.is_superuser:
         facturas = Factura.objects.all().order_by('-fecha_vencimiento')
@@ -166,29 +167,38 @@ def lista_facturas(request):
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
         areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
-    if empresa_id:
-        facturas = facturas.filter(empresa_id=empresa_id)
-    if local_id:
-        facturas = facturas.filter(local_id=local_id)
-    if area_id:
-        facturas = facturas.filter(area_comun_id=area_id)
-    if tipo_cuota:
-        facturas = facturas.filter(tipo_cuota=tipo_cuota)
-    if query:
-        facturas = facturas.filter(
-            Q(folio__icontains=query) | Q(cliente__nombre__icontains=query)
-        )
+    # Si no hay ningún filtro, no mostrar nada
+    if not (local_id or area_id or empresa_id or tipo_cuota or query):
+        facturas = Factura.objects.none()
+
+    else:    
+        if empresa_id:
+            facturas = facturas.filter(empresa_id=empresa_id)
+        if local_id:
+            facturas = facturas.filter(local_id=local_id)
+        if area_id:
+            facturas = facturas.filter(area_comun_id=area_id)
+        if tipo_cuota:
+            facturas = facturas.filter(tipo_cuota=tipo_cuota)
+        if query:
+            facturas = facturas.filter(
+                Q(folio__icontains=query) | Q(cliente__nombre__icontains=query)
+            )
+        if anio:
+            facturas = facturas.filter(fecha_vencimiento__year=anio)
 
     facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos').order_by('-fecha_vencimiento')
 
     # Opciones únicas de tipo_cuota para el filtro
     tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
-
+    
     # Paginación
     paginator = Paginator(facturas, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    anios_disponibles = Factura.objects.dates('fecha_vencimiento', 'year').distinct()
+    
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': page_obj,
         'empresas': empresas,
@@ -200,6 +210,8 @@ def lista_facturas(request):
         'tipos_cuota': tipos_cuota,
         'tipo_cuota_seleccionada': tipo_cuota,
         'q': query,
+        'anios_disponibles': anios_disponibles,
+        'anio_seleccionado': int(anio) if anio else None,
     })
 
 @login_required

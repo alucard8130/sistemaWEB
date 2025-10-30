@@ -43,8 +43,16 @@
     <!-- Main content -->
     <div class="container-fluid mt-4">
 
-        <h2>Lista de Facturas</h2>  
-        <form method="get" class="row g-2 mb-3">
+        <h2>Facturas Cuotas</h2> 
+        <div class="row">
+                <div class="col-auto">
+                    <a href="{% url 'crear_factura' %}" class="btn btn-crear mb-3">
+                        <i class="bi bi-plus-circle me-1"></i> Nueva cuota
+                    </a>
+                </div>    
+            </div>
+
+        <form method="get" class="row g-2">
             {% if request.user.is_superuser %}
             <div class="col-auto">
                 <select name="empresa" id="empresa" class="form-select">
@@ -59,7 +67,7 @@
             {% endif %}
             <div class="col-auto">
                 <select name="local_id" id="local_id" class="form-select">
-                    <option value="">Todos los locales</option>
+                    <option value="">Propiedades</option>
                     {% for local in locales %}
                         <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
                             {{ local }}
@@ -69,7 +77,7 @@
             </div>
             <div class="col-auto">
                 <select name="area_id" id="area_id" class="form-select">
-                    <option value="">Todas las áreas</option>
+                    <option value="">Areas Comunes</option>
                     {% for area in areas %}
                         <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
                             {{ area }}
@@ -78,13 +86,21 @@
                 </select>
             </div>
             <div class="col-auto">
-        <select name="tipo_cuota" class="form-select">
-            <option value="">Todos los tipos de cuota</option>
-            {% for cuota in tipos_cuota %}
-                <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
-            {% endfor %}
-        </select>
-    </div>
+                <select name="tipo_cuota" class="form-select">
+                    <option value="">Tipo de Cuota</option>
+                    {% for cuota in tipos_cuota %}
+                        <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="anio" class="form-select">
+                    <option value="">Año</option>
+                    {% for fecha in anios_disponibles %}
+                        <option value="{{ fecha.year }}" {% if fecha.year|stringformat:"s" == anio_seleccionado %}selected{% endif %}>{{ fecha.year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <div class="col-auto mb-3">
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-funnel"></i> 
@@ -93,25 +109,18 @@
                 <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-clockwise"></i> 
                         Limpiar
+                        <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}"
+                        class="btn btn-outline-success {% if not empresa_seleccionada and not local_id and not area_id and not tipo_cuota_seleccionada and not anio_seleccionado and not q %}disabled{% endif %}">
+                            <i class="bi bi-file-earmark-excel-fill"></i>
+                            Exportar a Excel
+                        </a>
                 </a>
             </div>
-            <div class="row">
-                <div class="col-auto">
-                    <a href="{% url 'crear_factura' %}" class="btn btn-crear">
-                        <i class="bi bi-plus-circle me-1"></i> Nueva cuota
-                    </a>
-                    <!--   <a href="{% url 'facturar_mes' %}" class="btn btn-warning mb-3">Generar facturación mensual</a>  -->
-                    <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
-                        <i class="bi bi-file-earmark-excel-fill"></i>
-                        Exportar a Excel
-                    </a>
-                </div>    
-            </div>
         </form>
-             <form method="get" class="mb-3 d-flex" role="search">
+             {% comment %} <form method="get" class="mb-3 d-flex" role="search">
     <input type="text" name="q" class="form-control me-2" placeholder="Buscar por folio o cliente" value="{{ q|default:'' }}">
     <button type="submit" class="btn btn-outline-primary">Buscar</button>
-</form>
+</form> {% endcomment %}
         <!-- Invoices table -->
         <div class="table-responsive rounded-3 border">
     <table class="table align-middle mb-0 shadow-sm">
@@ -214,7 +223,7 @@
                 </tr>
             {% empty %}
                 <tr class="no-data-row">
-                    <td colspan="12">No hay facturas registradas.</td>
+                    <td colspan="12">Sin Facturas Consultadas.</td>
                 </tr>
             {% endfor %}
         </tbody>
