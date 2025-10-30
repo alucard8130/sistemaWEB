@@ -455,6 +455,9 @@ def registrar_pago(request, factura_id):
                     request,
                     "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",
                 )
+                next_url = request.GET.get('next')
+                if next_url:
+                     return redirect(next_url)
                 return redirect("lista_facturas")
 
             # Permitir pagar hasta el saldo pendiente, considerando decimales
@@ -484,6 +487,9 @@ def registrar_pago(request, factura_id):
                     request,
                     f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}",
                 )
+                next_url = request.GET.get('next')
+                if next_url:
+                     return redirect(next_url)
                 return redirect("lista_facturas")
     else:
         form = PagoForm()
@@ -502,7 +508,6 @@ def registrar_pago(request, factura_id):
 def facturas_detalle(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     cobros = factura.pagos.all().order_by('fecha_pago')
-
     return render(request, 'facturacion/facturas_detalle.html', {
         'factura': factura,
         'cobros': cobros,
@@ -1567,6 +1572,11 @@ def editar_factura(request, factura_id):
                         usuario=request.user,
                     )
             factura_modificada.save()
+            messages.success(request, "Factura actualizada correctamente.")
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
+            
             return redirect('lista_facturas')
     else:
         form = FacturaEditForm(instance=factura)

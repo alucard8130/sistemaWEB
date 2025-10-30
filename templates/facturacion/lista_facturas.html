@@ -117,10 +117,6 @@
                 </a>
             </div>
         </form>
-             {% comment %} <form method="get" class="mb-3 d-flex" role="search">
-    <input type="text" name="q" class="form-control me-2" placeholder="Buscar por folio o cliente" value="{{ q|default:'' }}">
-    <button type="submit" class="btn btn-outline-primary">Buscar</button>
-</form> {% endcomment %}
         <!-- Invoices table -->
         <div class="table-responsive rounded-3 border">
     <table class="table align-middle mb-0 shadow-sm">
@@ -180,10 +176,10 @@
                     </td>
                     <td class="text-nowrap">
                         {% if factura.saldo_pendiente > 0 %}    
-                            <a href="{% url 'registrar_pago' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
+                            <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
                                 <i class="bi bi-cash-coin me-1"></i> 
                             </a>
-                            <a href="{% url 'editar_factura' factura.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                            <a href="{% url 'editar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-primary" title="Editar">
                                 <i class="bi bi-pencil-square me-1"></i> 
                             </a>  
                         {% else %}
@@ -199,7 +195,7 @@
                         {% endif %}
 
                             {% if not factura.uuid %}
-                                <a href="{% url 'timbrar_factura' factura.pk %}" class="btn btn-outline-success btn-sm" title="Timbrar factura">
+                                <a href="{% url 'timbrar_factura' factura.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-success btn-sm" title="Timbrar factura">
                                     <i class="bi bi-file-earmark-check"></i>
                                 </a>
                             {% else %}
@@ -216,7 +212,7 @@
                             {% endif %}
                     </td>
                     <td>
-                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
+                        <a href="{% url 'facturas_detalle' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-info" title="Ver Historial">
                             <i class="bi bi-eye me-1"></i> 
                         </a>
                     </td>

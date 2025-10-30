@@ -25,15 +25,6 @@
         {% include 'navbar.html' %}
     {% endif %}
 
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
-
     <!-- Main content -->
     <div class="container-fluid mt-5">
         <div class="row justify-content-center">
@@ -77,13 +68,7 @@
                     {% else %}
                     <td>{{ cobro.observaciones }}</td>
                     {% endif %}
-                
-                    {% comment %} <td>
-                        {% if cobro.comprobante %}
-                        <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-primary btn-sm" title="Ver Comprobante"></a>
-                        {% else %}
-                        <span class="text-muted"></span>
-                        {% endif %} {% endcomment %}
+
                 </tr>
                 {% empty %}
                 <tr>
@@ -93,18 +78,24 @@
             </tbody>
         </table>
         {% if es_visitante %}
-    <div class="mb-3 text-end">
-        <a href="{% url 'visitante_consulta_facturas' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Regresar
-        </a>
-    </div>
-    {% else %}
-        <div class="mb-3 text-end">
-        <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Regresar
-        </a>
-{% endif %}
-    </div>
+            <div class="mb-3 text-end">
+                <a href="{% url 'visitante_consulta_facturas' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Regresar
+                </a>
+            </div>
+        {% else %}
+            <div class="mb-3 text-end">
+            {% if request.GET.next %}
+                <a href="{{ request.GET.next }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Regresar
+                </a>    
+            {% else %}
+                <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Regresar
+                </a>
+            {% endif %}
+        {% endif %}
+         </div>
 
     <!-- 🔹 Footer -->
     <footer>

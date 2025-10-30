@@ -46,7 +46,7 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Clientes</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Nuevo Cliente</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista Clientes</a></li>
                         <li><a class="dropdown-item" href="{% url 'clientes_inactivos' %}">Inactivos</a></li>
                         <li><hr class="dropdown-divider"></li>
                       {% comment %} {% if request.user.is_superuser %} {% endcomment %}
@@ -71,7 +71,7 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Áreas Comunes</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_area' %}">Nueva Área común</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista Áreas Comunes</a></li>
           
                             <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Inactivos</a></li>
                             <li><hr class="dropdown-divider"></li>
