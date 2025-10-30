@@ -44,7 +44,7 @@
                     {{ form.as_p }}
                     <div class="d-flex justify-content-between mt-3">
                         <button type="submit" class="btn btn-primary">Guardar</button>
-                        <a href="{% url 'lista_facturas' %}" class="btn btn-secondary">Cancelar</a>
+                        <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'lista_facturas' %}{% endif %}" class="btn btn-secondary">Cancelar</a>
                     </div>
                 </form>
             </div>

@@ -110,11 +110,7 @@ class FacturaOtrosIngresos(models.Model):
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"
     
-    # @property
-    # def saldo(self):
-    #     total_cobrado = sum(c.monto for c in self.cobros.all())
-    #     return float(self.monto) - float(total_cobrado)     
-    
+   
     @property
     def saldo(self):
         if self.estatus == 'cancelada':

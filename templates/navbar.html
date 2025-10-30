@@ -135,15 +135,15 @@
                         <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_proveedores' %}">Carga Masiva</a></li>
                         <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Gasto</a></li>
                         <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Solicitudes Gastos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
                         {% endif %}
-                        <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo gasto</a></li>
-                        <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista tipo gasto</a></li>
-                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard</a></li>
                         {% if request.user.is_superuser %}

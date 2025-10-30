@@ -45,6 +45,7 @@ def crear_factura(request):
     conflicto_tipo = ""
     superuser_auth_ok = False
 
+    
     if request.method == 'POST':
         form = FacturaForm(request.POST, request.FILES, user=request.user)
         superuser_username = request.POST.get('superuser_username')
@@ -140,10 +141,11 @@ def crear_factura(request):
             ''
     else:
         form = FacturaForm(user=request.user)
-
+   
     return render(request, 'facturacion/crear_factura.html', {
         'form': form,
-        'pedir_superuser': conflicto and not superuser_auth_ok and request.method == 'POST'
+        'pedir_superuser': conflicto and not superuser_auth_ok and request.method == 'POST',
+        
     })
 
 @login_required
@@ -198,7 +200,8 @@ def lista_facturas(request):
     page_obj = paginator.get_page(page_number)
 
     anios_disponibles = Factura.objects.dates('fecha_vencimiento', 'year').distinct()
-    
+    total_saldo = sum(f.saldo_pendiente for f in facturas)
+
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': page_obj,
         'empresas': empresas,
@@ -212,6 +215,7 @@ def lista_facturas(request):
         'q': query,
         'anios_disponibles': anios_disponibles,
         'anio_seleccionado': int(anio) if anio else None,
+        'total_saldo': total_saldo,
     })
 
 @login_required

@@ -33,7 +33,7 @@
     {% include 'navbar.html' %}
     <!-- Main content -->
     <div class="container-fluid mt-4">
-      <h2>Áreas Comunes (Contratos)</h2>
+      <h2>Áreas Comunes</h2>
 
       <!-- Block for displaying messages -->
       {% if messages %} {% for message in messages %}
@@ -118,7 +118,7 @@
 
                 <a
                   href="{% url 'generar_contrato' area.pk %}"
-                  class="btn btn-sm btn-primary"
+                  class="btn btn-sm btn-primary" target="_blank"
                   {%
                   if
                   area.empresa
@@ -135,7 +135,7 @@
                 <a
                   href="{% url 'lista_facturas' %}?area_id={{ area.id }}"
                   class="btn btn-outline-primary btn-sm"
-                  title="Ver Facturas"
+                  title="Estado de cuenta"
                 >
                   <i class="bi bi-receipt"></i>
                 </a>
@@ -159,48 +159,31 @@
           </tbody>
         </table>
         <nav aria-label="Paginación">
-          <ul class="pagination">
-            {% if areas.has_previous %}
-            <li class="page-item">
-              <a
-                class="page-link"
-                href="?q={{ q }}&page={{ areas.previous_page_number }}"
-                >Anterior</a
-              >
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-              <span class="page-link">Anterior</span>
-            </li>
-            {% endif %}
-            <li class="page-item disabled">
-              <span class="page-link"
-                >Página {{ areas.number }} de {{ areas.paginator.num_pages
-                }}</span
-              >
-            </li>
-            {% if areas.has_next %}
-            <li class="page-item">
-              <a
-                class="page-link"
-                href="?q={{ q }}&page={{ areas.next_page_number }}"
-                >Siguiente</a
-              >
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-              <span class="page-link">Siguiente</span>
-            </li>
-            {% endif %}
-          </ul>
-        </nav>
+  <ul class="pagination">
+    {% if areas.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?q={{ q }}&page={{ areas.previous_page_number }}">Anterior</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ areas.number }} de {{ areas.paginator.num_pages }}</span></li>
+    {% if areas.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?q={{ q }}&page={{ areas.next_page_number }}">Siguiente</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% endif %}
+  </ul>
+</nav>
       </div>
     </div>
 
     <!-- 🔹 Footer -->
     <footer>
       © {% now "Y" %} GAC. Todos los derechos reservados. <br />
-      Creado por JM. Estrada Bernabé
+      Creado por JMEB
     </footer>
 
     <!-- Scripts -->

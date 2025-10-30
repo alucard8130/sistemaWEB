@@ -40,7 +40,7 @@ def lista_areas(request):
 
     areas = areas.order_by('numero')
 
-    paginator = Paginator(areas, 20)
+    paginator = Paginator(areas, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

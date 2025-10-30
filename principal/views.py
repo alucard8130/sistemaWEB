@@ -1504,7 +1504,7 @@ def factura_a_json_facturama(factura, tax_object="02", payment_method="PUE", pay
 def timbrar_factura(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     empresa = factura.empresa
-    
+    next_url = request.GET.get('next') or request.POST.get('next')
     # Solo permite timbrar si la empresa es PLUS
     if not empresa.es_plus:
         messages.error(request, "El timbrado solo está disponible en la versión PLUS del sistema.")
@@ -1526,7 +1526,7 @@ def timbrar_factura(request, pk):
             payment_form = form.cleaned_data["payment_form"]
             datos_json = factura_a_json_facturama(factura, tax_object, payment_method, payment_form)
             resultado = timbrar_factura_facturama(datos_json)
-            # print("Resultado de timbrado:", resultado)
+          
             if 'error' in resultado:
                 messages.error(request, f"Error al timbrar: {resultado['error']}")
             else:
@@ -1542,14 +1542,17 @@ def timbrar_factura(request, pk):
                     factura.facturama_id = facturama_id
                     factura.save()
                     messages.success(request, "Factura " + factura.folio + " timbrada correctamente. Ahora puedes descargar el PDF y XML.")
+            if next_url:
+                return redirect(next_url)
             return redirect('lista_facturas')
     else:
         form = TimbrarFacturaForm()
-
+    next_url = request.GET.get('next')
     return render(request, "facturacion/timbrar_factura.html", {
                   "form": form, 
                    "factura": factura,
-                   "url_cancelar":"lista_facturas"})
+                   "url_cancelar": next_url,
+               })
 
 import requests
 import io
