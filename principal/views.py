@@ -1881,7 +1881,6 @@ def visitante_timbrar_factura(request, pk):
 
 # modulo conciliacion bancaria
 
-# Simulación de pagos y egresos (ajusta con tus modelos reales)
 from facturacion.models import Pago
 from gastos.models import PagoGasto
 
