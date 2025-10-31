@@ -1429,7 +1429,7 @@ def exportar_pagos_excel(request):
     # Encabezados
     ws.append([
         'Local/Área','Cliente','Monto Cobro','Tipo Cuota','Forma de Cobro','Folio Factura', 'Empresa',  
-        'Fecha Cobro', 
+        'Fecha Cobro', 'Observaciones'
     ])
 
     # Contenido
@@ -1445,6 +1445,7 @@ def exportar_pagos_excel(request):
             factura.folio,
             factura.empresa.nombre,
             pago.fecha_pago,
+            pago.observaciones or '',
         ])
 
     # Respuesta
