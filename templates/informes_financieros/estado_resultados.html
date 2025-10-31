@@ -146,7 +146,13 @@
             <span><strong>Saldo inicial bancos:</strong></span>
                     <span>${{ saldo_inicial|floatformat:2|intcomma }}</span>
                 </div>
+                </div>
+    {% comment %} <div class="alert alert-info text-end">
+        <span><strong>Saldo fondeos caja chica:</strong></span>
+        <span>${{ saldo_fondeos_caja_chica|floatformat:2|intcomma }}</span>
+    </div> {% endcomment %}
         {% endif %}
+        
                 <div class="card my-4">
         <div class="card-header pastel-green">
             <h5 class="mb-0">Ingresos</h5>
@@ -212,6 +218,11 @@
                 <span><strong>Saldo final bancos:</strong></span>
                 <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
             </div>
+            </div>
+    {% comment %} <div class="alert alert-info text-end">
+        <span><strong>Saldo fondeos caja chica:</strong></span>
+        <span>${{ saldo_fondeos_caja_chica|floatformat:2|intcomma }}</span>
+    </div> {% endcomment %}
         {% endif %}
     </div>
 

@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.db.models import Sum
-from caja_chica.models import GastoCajaChica, ValeCaja
+from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from gastos.models import Gasto, PagoGasto
 from empresas.models import Empresa
@@ -790,6 +790,15 @@ def estado_resultados(request):
                 ]
         total_gastos = sum([g["total"] for g in gastos_por_tipo])
         saldo_final_flujo = None
+    #  Saldo de fondeos de caja chica
+    # if empresa_id:
+    #     saldo_fondeos_caja_chica = FondeoCajaChica.objects.filter(empresa_id=empresa_id).aggregate(
+    #         total=Sum('saldo')
+    #     )['total'] or 0
+    # else:
+    #     saldo_fondeos_caja_chica = FondeoCajaChica.objects.aggregate(
+    #         total=Sum('saldo')
+    #     )['total'] or 0
 
     saldo = float(total_ingresos) - float(total_gastos)
 
@@ -816,9 +825,13 @@ def estado_resultados(request):
             "saldo_final_flujo": saldo_final_flujo,
             "meses_unicos": meses_unicos,
             "anios_unicos": anios_unicos,
+            #"saldo_fondeos_caja_chica": saldo_fondeos_caja_chica,
         },
     )
 
+
+
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 @login_required
 def exportar_estado_resultados_excel(request):
@@ -834,6 +847,17 @@ def exportar_estado_resultados_excel(request):
         empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
         empresa_id = request.GET.get("empresa") or ""
+
+    empresa_nombre = ""
+    if empresa_id:
+        try:
+            empresa = Empresa.objects.get(id=empresa_id)
+            empresa_nombre = empresa.nombre
+            saldo_inicial = float(empresa.saldo_inicial or 0)
+        except Empresa.DoesNotExist:
+            saldo_inicial = 0
+    else:
+        saldo_inicial = 0
 
     pagos = Pago.objects.exclude(forma_pago="nota_credito")
     cobros_otros = CobroOtrosIngresos.objects.select_related(
@@ -1160,38 +1184,112 @@ def exportar_estado_resultados_excel(request):
 
     saldo = float(total_ingresos) - float(total_gastos)
 
-    # --- Generar Excel ---
+    # --- Estilos ---
+    bold = Font(bold=True)
+    title_font = Font(size=14, bold=True)
+    header_fill = PatternFill("solid", fgColor="BDD7EE")
+    group_fill = PatternFill("solid", fgColor="DDEBF7")
+    sub_fill = PatternFill("solid", fgColor="F7F7F7")
+    border = Border(
+        left=Side(style='thin', color='000000'),
+        right=Side(style='thin', color='000000'),
+        top=Side(style='thin', color='000000'),
+        bottom=Side(style='thin', color='000000'),
+    )
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Estado de Resultados"
 
-    ws.append(["Estado de Resultados"])
+    # --- Cabecera ---
+    ws.merge_cells("A1:B1")
+    ws["A1"] = "Estado de Resultados"
+    ws["A1"].font = title_font
+    ws["A1"].alignment = Alignment(horizontal="center")
+    ws.merge_cells("A2:B2")
+    ws["A2"] = f"Empresa: {empresa_nombre}"
+    ws["A2"].font = bold
+    ws["A2"].alignment = Alignment(horizontal="center")
+    ws.merge_cells("A3:B3")
+    periodo_str = f"Periodo: {fecha_inicio} a {fecha_fin}"
+    ws["A3"] = periodo_str
+    ws["A3"].font = bold
+    ws["A3"].alignment = Alignment(horizontal="center")
+    ws.merge_cells("A4:B4")
+    ws["A4"] = f"Tipo: {'Flujo' if modo == 'flujo' else 'Resultados'}"
+    ws["A4"].font = bold
+    ws["A4"].alignment = Alignment(horizontal="center")
     ws.append([])
 
+    row = ws.max_row + 1
     if modo == "flujo":
         ws.append(["Saldo inicial bancos", saldo_inicial])
+        ws[f"A{row}"].font = bold
+        ws[f"B{row}"].font = bold
 
-    # Ingresos
+    # --- Ingresos ---
     ws.append(["Ingresos", "Importe"])
+    for cell in ws[ws.max_row]:
+        cell.font = bold
+        cell.fill = header_fill
+        cell.border = border
     for origen, monto in ingresos_por_origen.items():
         ws.append([origen, monto])
+        ws[f"A{ws.max_row}"].fill = group_fill
+        ws[f"A{ws.max_row}"].border = border
+        ws[f"B{ws.max_row}"].border = border
     ws.append(["Total Ingresos", total_ingresos])
+    for cell in ws[ws.max_row]:
+        cell.font = bold
+        cell.fill = header_fill
+        cell.border = border
     ws.append([])
 
-    # Gastos
+    # --- Gastos ---
     ws.append(["Gastos", "Importe"])
+    for cell in ws[ws.max_row]:
+        cell.font = bold
+        cell.fill = header_fill
+        cell.border = border
     for grupo, subgrupos in estructura_gastos.items():
         ws.append([grupo, ""])
+        ws[f"A{ws.max_row}"].fill = group_fill
+        ws[f"A{ws.max_row}"].font = bold
+        ws[f"A{ws.max_row}"].border = border
+        ws[f"B{ws.max_row}"].border = border
         for subgrupo, tipos in subgrupos.items():
             ws.append(["  " + subgrupo, ""])
+            ws[f"A{ws.max_row}"].fill = sub_fill
+            ws[f"A{ws.max_row}"].font = bold
+            ws[f"A{ws.max_row}"].border = border
+            ws[f"B{ws.max_row}"].border = border
             for tipo in tipos:
                 ws.append(["    " + tipo["tipo"], tipo["total"]])
+                ws[f"A{ws.max_row}"].border = border
+                ws[f"B{ws.max_row}"].border = border
     ws.append(["Total Gastos", total_gastos])
+    for cell in ws[ws.max_row]:
+        cell.font = bold
+        cell.fill = header_fill
+        cell.border = border
     ws.append([])
 
+    # --- Resultado ---
     ws.append(["Resultado", saldo])
+    for cell in ws[ws.max_row]:
+        cell.font = bold
+        cell.fill = header_fill
+        cell.border = border
     if modo == "flujo":
         ws.append(["Saldo final bancos", saldo_final_flujo])
+        for cell in ws[ws.max_row]:
+            cell.font = bold
+            cell.fill = header_fill
+            cell.border = border
+
+    # --- Ajusta ancho de columnas ---
+    ws.column_dimensions["A"].width = 40
+    ws.column_dimensions["B"].width = 18
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

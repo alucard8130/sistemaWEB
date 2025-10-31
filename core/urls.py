@@ -140,7 +140,7 @@ urlpatterns = [
     path('api/visitante/facturas/',visitante_facturas_api, name='visitante_facturas_api'),
     path('gastos_caja_chica/exportar/', exportar_gastos_caja_chica_excel, name='exportar_gastos_caja_chica_excel'),
     path('vales_caja_chica/exportar/', exportar_vales_caja_chica_excel, name='exportar_vales_caja_chica_excel'),
-    path('fondeos/exportar/', exportar_fondeos_excel, name='exportar_fondeos_excel'),
+    path('fondeos/exportar/', exportar_fondeos_excel, name='exportar_fondeos_excel'),   
 ]
     
 
