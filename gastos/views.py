@@ -193,12 +193,16 @@ def gastos_lista(request):
     empleado_id = request.GET.get("empleado")
     tipo_gasto = request.GET.get("tipo_gasto")
 
+    # # Si no hay ningún filtro, no mostrar nada
+    # if not (proveedor_id or empleado_id or tipo_gasto):
+    #     gastos = gastos.none()
+    # else:
     if proveedor_id:
-        gastos = gastos.filter(proveedor_id=proveedor_id)
+            gastos = gastos.filter(proveedor_id=proveedor_id)
     if empleado_id:
-        gastos = gastos.filter(empleado_id=empleado_id)
+            gastos = gastos.filter(empleado_id=empleado_id)
     if tipo_gasto:
-        gastos = gastos.filter(tipo_gasto=tipo_gasto)
+            gastos = gastos.filter(tipo_gasto=tipo_gasto)
 
     # paginacion
     paginator = Paginator(gastos, 25)
@@ -701,7 +705,7 @@ def exportar_pagos_gastos_excel(request):
     ws = wb.active
     ws.title = "Pagos de Gastos"
     ws.append([
-        "Fecha pago", "Empresa", "Proveedor/Empleado", "Concepto", 
+        "Folio", "Fecha pago", "Empresa", "Proveedor/Empleado", "Concepto", 
         "Forma de pago", "Monto", "Estatus"
     ])
 
@@ -712,6 +716,7 @@ def exportar_pagos_gastos_excel(request):
             gasto.empleado.nombre if gasto.empleado else ''
         )
         ws.append([
+            gasto.id,
             pago.fecha_pago if pago.fecha_pago else '',
             gasto.empresa.nombre if gasto.empresa else '',
             origen,
@@ -967,12 +972,13 @@ def exportar_gastos_lista_excel(request):
     ws.title = "Gastos"
 
     ws.append([
-        "Fecha", "Empresa", "Proveedor", "Empleado", "Tipo de Gasto",
+        "Folio", "Fecha", "Empresa", "Proveedor", "Empleado", "Tipo de Gasto",
         "Monto","Saldo", "Descripción", "Estatus", "Observaciones"
     ])
 
     for gasto in gastos:
         ws.append([
+            gasto.id,
             gasto.fecha if gasto.fecha else '',
             gasto.empresa.nombre if gasto.empresa else '',
             gasto.proveedor.nombre if gasto.proveedor else '',

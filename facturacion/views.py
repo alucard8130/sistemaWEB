@@ -170,7 +170,7 @@ def lista_facturas(request):
         areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
     # Si no hay ningún filtro, no mostrar nada
-    if not (local_id or area_id or empresa_id or tipo_cuota or query):
+    if not (local_id or area_id or empresa_id  or query):
         facturas = Factura.objects.none()
 
     else:    
@@ -181,7 +181,7 @@ def lista_facturas(request):
         if area_id:
             facturas = facturas.filter(area_comun_id=area_id)
         if tipo_cuota:
-            facturas = facturas.filter(tipo_cuota=tipo_cuota)
+             facturas = facturas.filter(tipo_cuota=tipo_cuota)
         if query:
             facturas = facturas.filter(
                 Q(folio__icontains=query) | Q(cliente__nombre__icontains=query)
@@ -1622,7 +1622,7 @@ def exportar_lista_facturas_excel(request):
     ws.title = "Lista de Facturas"
     # Encabezados
     ws.append([
-        'Folio', 'Empresa', 'Cliente', 'Local/Área', 'Monto',
+        'Folio', 'Empresa', 'Cliente', "Tipo Cuota",'Local/Área', 'Monto',
         'Saldo', 'Periodo', 'Estatus', 'Observaciones'
     ])
     # Contenido
@@ -1632,6 +1632,7 @@ def exportar_lista_facturas_excel(request):
             factura.folio,
             factura.empresa.nombre,
             factura.cliente.nombre,
+            factura.get_tipo_cuota_display() if hasattr(factura, 'get_tipo_cuota_display') else factura.tipo_cuota,
             local_area,
             float(factura.monto),
             float(factura.saldo_pendiente),
@@ -1994,20 +1995,38 @@ def crear_factura_otros_ingresos(request):
 @login_required
 def lista_facturas_otros_ingresos(request):
     empresa_id = request.session.get("empresa_id")
-    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_emision')
+    tipo_ingreso=request.GET.get('tipo_ingreso')
+    cliente_id=request.GET.get('cliente_id')
     
-    # Filtrar por empresa si no es superusuario
+    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_emision')
+    # Filtrar por empresa si no es superusuario 
     if request.user.is_superuser and empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
     elif not request.user.is_superuser:
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+   
+    # Filtros adicionales
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+    if tipo_ingreso:
+        facturas = facturas.filter(tipo_ingreso__nombre=tipo_ingreso)
 
+    # Para el filtro de clientes y tipos en el formulario
+    clientes = Cliente.objects.all()
+    tipos_ingreso = FacturaOtrosIngresos.objects.values_list('tipo_ingreso__nombre', flat=True).distinct()
+    
     # Paginación
     paginator = Paginator(facturas, 25)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'otros_ingresos/lista_facturas.html', {'facturas': page_obj})
+    return render(request, 'otros_ingresos/lista_facturas.html', {
+        'facturas': page_obj,
+        'clientes': clientes,
+        'tipos_ingreso': tipos_ingreso,
+        'cliente_id': cliente_id,
+        'tipo_ingreso_seleccionado': tipo_ingreso,
+    })
 
 @login_required
 def registrar_cobro_otros_ingresos(request, factura_id):
@@ -2185,11 +2204,12 @@ def exportar_cobros_otros_ingresos_excel(request):
 @login_required
 def exportar_lista_facturas_otros_ingresos_excel(request):
     empresa_id = request.GET.get('empresa')
-    cliente_id = request.GET.get('cliente')
+    cliente_id = request.GET.get('cliente_id')  # <-- usa cliente_id para consistencia
+    tipo_ingreso = request.GET.get('tipo_ingreso')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-    facturas = FacturaOtrosIngresos.objects.select_related('empresa', 'cliente').all()
+    facturas = FacturaOtrosIngresos.objects.select_related('empresa', 'cliente', 'tipo_ingreso').all()
 
     if not request.user.is_superuser:
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
@@ -2197,6 +2217,8 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
         facturas = facturas.filter(empresa_id=empresa_id)
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
+    if tipo_ingreso:
+        facturas = facturas.filter(tipo_ingreso__nombre=tipo_ingreso)
     if fecha_inicio and fecha_fin:
         try:
             fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
@@ -2210,8 +2232,8 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
     ws.title = "Facturas Otros Ingresos"
 
     ws.append([
-        'Folio', 'Empresa', 'Cliente', 'Tipo ingreso', 'Monto','Saldo',
-         'Periodo', 'Estatus', 'Observaciones'
+        'Folio', 'Empresa', 'Cliente', 'Tipo ingreso', 'Monto', 'Saldo',
+        'Periodo', 'Estatus', 'Observaciones'
     ])
 
     for factura in facturas:
@@ -2219,7 +2241,7 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
             factura.folio,
             factura.empresa.nombre,
             factura.cliente.nombre,
-            str(factura.tipo_ingreso) if factura.tipo_ingreso else '',
+            factura.tipo_ingreso.nombre if factura.tipo_ingreso else '',
             float(factura.monto),
             float(factura.saldo),
             factura.fecha_vencimiento if factura.fecha_vencimiento else '',

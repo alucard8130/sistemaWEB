@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
+from facturacion.models import Factura
 from gastos.models import Gasto
 from .forms import EmpleadoForm, IncidenciaForm
 from .models import Empleado, Incidencia
@@ -74,6 +75,8 @@ def incidencia_crear(request):
 
 @login_required
 def incidencias_lista(request):
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
 
     if request.user.is_superuser:
         empleados = Empleado.objects.all()
@@ -85,20 +88,44 @@ def incidencias_lista(request):
             incidencias = incidencias.filter(empleado__empresa=request.user.perfilusuario.empresa)
         if empleado_id:
             incidencias = incidencias.filter(empleado_id=empleado_id)
+
+    # Si no hay ningún filtro, no mostrar nada
+    if not (empleado_id or fecha_inicio or fecha_fin):
+        incidencias = Incidencia.objects.none()
+    else:            
+        if fecha_inicio:
+            incidencias = incidencias.filter(fecha__gte=fecha_inicio)
+        if fecha_fin:
+            incidencias = incidencias.filter(fecha__lte=fecha_fin)
+
     return render(request, 'incidencias/lista.html', {
         'incidencias': incidencias,
         'empleados': empleados,
         'empleado_id': empleado_id,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
     })
 
 @login_required
 def exportar_incidencias_excel(request):
     empleado_id = request.GET.get('empleado')
-    incidencias = Incidencia.objects.select_related('empleado').order_by('-fecha')
-    if not request.user.is_superuser:
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    if request.user.is_superuser:
+        incidencias = Incidencia.objects.select_related('empleado').order_by('-fecha')
+        if empleado_id:
+            incidencias = incidencias.filter(empleado_id=empleado_id)
+    else:
+        incidencias = Incidencia.objects.select_related('empleado').order_by('-fecha')
         incidencias = incidencias.filter(empleado__empresa=request.user.perfilusuario.empresa)
-    if empleado_id:
-        incidencias = incidencias.filter(empleado_id=empleado_id)
+        if empleado_id:
+            incidencias = incidencias.filter(empleado_id=empleado_id)
+
+    if fecha_inicio:
+        incidencias = incidencias.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        incidencias = incidencias.filter(fecha__lte=fecha_fin)
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="incidencias.csv"'

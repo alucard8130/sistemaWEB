@@ -116,19 +116,10 @@
                             <td>{{ cobro.observaciones }}</td>
                         {% endif %}
                         <td> <a href="{% url 'recibo_pago_otras_cuotas' cobro.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
+                                    <i class="bi bi-printer" title="Imprimir Recibo Cobro"></i>
+                                    Imp.Cobro
                                         </a>
                                     </td>
-                        {% comment %} <td>
-                            {% if cobro.comprobante %}
-                                <a href="{{ cobro.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Comprobante">
-                                    <i class="bi-file-earmark-pdf me-1"></i>
-                                </a>
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td> {% endcomment %}
-                        
                     </tr>
                     {% empty %}
                     <tr class="no-data-row">

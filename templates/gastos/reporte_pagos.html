@@ -59,7 +59,7 @@
             </div>
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-funnel-fill"></i> Filtrar
+                    <i class="bi bi-funnel-fill"></i>Buscar
                 </button>
                 <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-clockwise"></i> Limpiar</a>
@@ -76,6 +76,7 @@
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
+                        <th>Folio</th>
                         <th>Fecha Pago</th>
                         <th>Monto</th>
                         {% if request.user.is_superuser %}
@@ -90,6 +91,7 @@
                 <tbody>
                     {% for pago in pagos %}
                         <tr>
+                            <td>{{ pago.gasto.id}}</td>
                             <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td>
                             <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                             {% if request.user.is_superuser %}
@@ -104,7 +106,11 @@
                             </td>
                             <td>{{ pago.gasto.tipo_gasto.nombre }}</td>
                             <td>{{ pago.get_forma_pago_display }}</td>
-                            <td>{{ pago.referencia }}</td>
+                            {% if pago.referencia %}
+                                <td>{{ pago.referencia }}</td>
+                            {% else %}
+                                <td class="text-muted"></td>
+                            {% endif %}
                         </tr>
                     {% empty %}
                         <tr class="no-data-row">

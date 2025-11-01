@@ -3,7 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Recibo de Cobro otras Cuotas</title>
+    <title>Recibo de Cobro otros Ingresos</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -115,7 +115,7 @@
             {% if empresa.telefono %}<p>Tel: {{ empresa.telefono }}</p>{% endif %}
             {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
         </div>
-        <div class="recibo-title">RECIBO DE COBRO DE OTRAS CUOTAS</div>
+        <div class="recibo-title">RECIBO DE COBRO OTROS INGRESOS</div>
         <div style="text-align:right;margin-bottom:10px;">
             <img src="https://barcode.tec-it.com/barcode.ashx?data={{ pago.id }}&code=Code128&dpi=96" alt="Código de barras" style="height:40px;">
         </div>
@@ -132,6 +132,7 @@
             <h4>Factura</h4>
             <p><strong>Número de Factura:</strong> {{ factura.folio }}</p>
             <p><strong>Importe de la Factura:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
+            <p><strong>Tipo de Ingreso:</strong> {{ factura.tipo_ingreso }}</p>
         </div>
         <div class="datos-section">
             <h4>Datos del Pago</h4>

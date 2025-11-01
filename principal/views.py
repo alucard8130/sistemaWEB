@@ -851,6 +851,10 @@ def visitante_consulta_facturas(request):
     # Filtros
     local_id = request.GET.get('local_id')
     area_id = request.GET.get('area_id')
+    pagook = request.GET.get('pagook')
+    factura_id = request.GET.get('factura_id')
+    anio = request.GET.get('anio')
+    
 
     locales = visitante.locales.all()
     areas = visitante.areas.all()
@@ -864,9 +868,37 @@ def visitante_consulta_facturas(request):
         facturas = Factura.objects.filter(
             Q(local__in=locales) | Q(area_comun__in=areas)
         )
+
+    # Obtén los años únicos de las facturas
+    anios_unicos = (
+        facturas.order_by()
+        .values_list('fecha_vencimiento__year', flat=True)
+        .distinct()
+    )
+    anios_unicos = sorted(set(filter(None, anios_unicos)), reverse=True)
+
+    # Filtro por año
+    if anio and anio.isdigit():
+        facturas = facturas.filter(fecha_vencimiento__year=int(anio))
+
     # Calcula total pendiente y total cobrado
     total_pendiente = sum(f.saldo_pendiente for f in facturas if f.estatus == 'pendiente')
     total_cobrado = sum(f.monto for f in facturas if f.estatus == 'cobrada')
+
+    mensaje_pago = None
+    if pagook and factura_id:
+        try:
+            factura_pagada = Factura.objects.get(id=factura_id)
+            mensaje_pago = f"¡Pago de la factura {factura_pagada.folio}: realizado correctamente! En breve se reflejará en el sistema."
+        except Factura.DoesNotExist:
+            mensaje_pago = "¡Pago realizado correctamente! En breve se reflejará en el sistema."
+
+    factura_pendiente_mas_antigua = (
+    facturas.filter(estatus='pendiente')
+    .order_by('fecha_vencimiento')
+    .first()
+    )
+    factura_pendiente_id = factura_pendiente_mas_antigua.id if factura_pendiente_mas_antigua else None
 
     return render(
         request,
@@ -881,6 +913,10 @@ def visitante_consulta_facturas(request):
             "total_pendiente": total_pendiente,
             "total_cobrado": total_cobrado,
             "es_visitante": True,
+            "mensaje_pago": mensaje_pago,
+            "anio": anio,
+            "anios_unicos": anios_unicos,
+            "factura_pendiente_id": factura_pendiente_id,
         }
     )
 
@@ -938,7 +974,8 @@ def stripe_checkout_visitante(request, factura_id):
             'quantity': 1,
         }],
         mode='payment',
-        success_url=request.build_absolute_uri('/visitante/consulta/?pagook=1'),
+        #success_url=request.build_absolute_uri('/visitante/consulta/?pagook=1'),
+        success_url=request.build_absolute_uri(f'/visitante/consulta/?pagook=1&factura_id={factura.id}'),
         cancel_url=request.build_absolute_uri('/visitante/consulta/?pagocancel=1'),
         metadata={'factura_id': factura.id}
     )

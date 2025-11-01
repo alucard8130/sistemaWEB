@@ -85,14 +85,14 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-auto">
+            {% comment %} <div class="col-auto">
                 <select name="tipo_cuota" class="form-select">
                     <option value="">Tipo de Cuota</option>
                     {% for cuota in tipos_cuota %}
                         <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
                     {% endfor %}
                 </select>
-            </div>
+            </div> {% endcomment %}
             <div class="col-auto">
                 <select name="anio" class="form-select">
                     <option value="">Año</option>
@@ -104,7 +104,7 @@
             <div class="col-auto mb-3">
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-funnel"></i> 
-                        Filtrar
+                        Buscar
                 </button>
                 <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-clockwise"></i> 
@@ -182,9 +182,11 @@
                     <td class="text-nowrap">
                         {% if factura.saldo_pendiente > 0 %}    
                             <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
+                                Reg.Cobro
                                 <i class="bi bi-cash-coin me-1"></i> 
                             </a>
                             <a href="{% url 'editar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                Editar
                                 <i class="bi bi-pencil-square me-1"></i> 
                             </a>  
                         {% else %}
@@ -193,7 +195,8 @@
                         
                         {% if not factura.empresa.es_plus %}
                          <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                            <i class="bi bi-printer" title="Imprimir Documento"></i>
+                            Imprimir Recibo
+                            <i class="bi bi-printer" title="Imprimir Recibo"></i>
                         </a> 
                         {% else %}
                             <span></span>
@@ -203,6 +206,7 @@
                             {% else %}
                             {% if not factura.uuid %}
                                 <a href="{% url 'timbrar_factura' factura.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-success btn-sm" title="Timbrar factura">
+                                    Timbrar
                                     <i class="bi bi-file-earmark-check"></i>
                                 </a>
                             {% else %}

@@ -44,13 +44,25 @@
             {% endfor %}
         </select>
     </div>
+    <div class="col-auto">
+        <input type="date" name="fecha_inicio" class="form-control" placeholder="Fecha inicio" value="{{ fecha_inicio }}">
+    </div>
+    <div class="col-auto">
+        <input type="date" name="fecha_fin" class="form-control" placeholder="Fecha fin" value="{{ fecha_fin }}">
+    </div>
     <div class="col-auto align-self-end">
         <button type="submit" class="btn btn-outline-primary">
             <i class="bi bi-funnel-fill"></i> Filtrar
         </button>
     </div>
+    {% comment %} limpiar filtros {% endcomment %}
     <div class="col-auto align-self-end">
-        <a href="{% url 'exportar_incidencias_excel' %}?empleado={{ empleado_id }}" class="btn btn-outline-success">
+        <a href="{% url 'incidencias_lista' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle-fill"></i> Limpiar
+        </a>
+    </div>
+    <div class="col-auto align-self-end">
+        <a href="{% url 'exportar_incidencias_excel' %}?empleado={{ empleado_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-outline-success">
             <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
         </a>
     </div>
