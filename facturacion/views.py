@@ -517,10 +517,9 @@ def facturas_detalle(request, pk):
         'cobros': cobros,
     })
 
-
-@login_required
 #pagos_por_origen.html
 #reporte cobros cuotas
+@login_required
 def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
@@ -583,9 +582,9 @@ def pagos_por_origen(request):
         'TIPO_CUOTA_CHOICES': Factura.TIPO_CUOTA_CHOICES,
     })
 
-@login_required
 #saldos.html
 #dashboard cartera vencida
+@login_required
 def dashboard_saldos(request):
     hoy = timezone.now().date()
     cliente_id = request.GET.get('cliente')
@@ -824,7 +823,6 @@ def dashboard_saldos(request):
         'tipos_cuota': tipos_cuota,
         'tipo_cuota_seleccionada': tipo_cuota,
     })
-
 
 #pagos.html
 #dashboard cuotas

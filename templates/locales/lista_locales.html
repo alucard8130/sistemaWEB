@@ -81,15 +81,15 @@
                             {% endif %}
                             <td> {{ local.get_status_display }}</td>    
                             <td style="white-space: nowrap;">
+                                   <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm" title="Estado de Cuenta">
+                                    Saldos
+                                    <i class="bi bi-receipt"></i> 
+                                </a>
                                 <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
                                 <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger" title="Inactivar">
                                     <i class="bi bi-slash-circle"></i>
-                                </a>
-                                <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm" title="Estado de Cuenta">
-                                    <i class="bi bi-receipt"></i>
-                                    
                                 </a>
                             </td>
                         </tr>

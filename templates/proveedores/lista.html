@@ -25,10 +25,19 @@
 
     <div class="container-fluid mt-4">
         <h2>Proveedores</h2>
-        <a href="{% url 'proveedor_crear' %}" class="btn btn-crear mb-3">
+        <a href="{% url 'proveedor_crear' %}" class="btn btn-crear">
             <i class="bi bi-plus-circle me-1"></i> Nuevo proveedor
         </a>
-
+        <!-- clean button -->
+        <a href="{% url 'proveedor_lista' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise"></i> Limpiar
+        </a>
+        <form method="get" class="mb-3">
+            <div class="input-group">
+                <input type="text" name="proveedor" class="form-control" placeholder="Buscar proveedor..." value="{{ proveedor_nombre }}">
+                <button type="submit" class="btn btn-primary">Buscar</button>
+            </div>
+        </form>
         <!-- Suppliers table -->
         <div class="table-responsive rounded-3 border">
             <table class="table align-middle mb-0 shadow-sm">
@@ -36,11 +45,14 @@
                     <tr>
                         <th>Nombre</th>
                         <th>RFC</th>
+                        <th>REPSE</th>
+                        <th>Fecha REPSE</th>
                         <th>Teléfono</th>
                         <th>Email</th>
                         {% if request.user.is_superuser %}
                         <th>Empresa</th>
                         {% endif %}
+                        <th>Estatus</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -49,15 +61,50 @@
                     <tr>
                         <td>{{ proveedor.nombre }}</td>
                         <td>{{ proveedor.rfc }}</td>
+                        {% if proveedor.repse_numero == None %}
+                            <td></td>
+                        {% else %}
+                        <td>{{ proveedor.repse_numero }}</td>
+                        {% endif %}
+                        {% if proveedor.repse_vigencia|date:"d/b/y"|upper == None %}
+                            <td></td>
+                        {% else %}
+                        <td>{{ proveedor.repse_vigencia|date:"d/b/y"|upper }}</td>
+                        {% endif %}
+                        {% if proveedor.telefono == None %}
+                            <td></td>
+                        {% else %}
                         <td>{{ proveedor.telefono }}</td>
+                        {% endif %}
+                        {% if proveedor.email == None %}
+                            <td></td>
+                        {% else %}
                         <td>{{ proveedor.email }}</td>
+                        {% endif %}
                         {% if request.user.is_superuser %}
                             <td>{{ proveedor.empresa.nombre }}</td>
-                        {% endif %} 
+                        {% endif %}
+                        <td>
+                            {% if proveedor.repse_vigencia %}
+                                {% if proveedor.repse_vigencia < today %}
+                                    <span class="badge bg-danger">Vencido</span>
+                                {% else %}
+                                    <span class="badge bg-success">Vigente</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary"></span>
+                            {% endif %}
+                        </td>
                         <td>
                             <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-outline-primary me-1" title="Editar">
+                                Editar
                                 <i class="bi bi-pencil-square"></i>
                             </a>
+                            <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                                <i class="bi bi-trash3"></i>
+                                Eliminar
+                            </a>
+
                         </td>
                     </tr>
                     {% empty %}

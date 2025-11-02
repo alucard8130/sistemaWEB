@@ -115,9 +115,9 @@
                         {% else %}
                             <td>{{ cobro.observaciones }}</td>
                         {% endif %}
-                        <td> <a href="{% url 'recibo_pago_otras_cuotas' cobro.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                                    <i class="bi bi-printer" title="Imprimir Recibo Cobro"></i>
-                                    Imp.Cobro
+                        <td> <a href="{% url 'recibo_pago_otras_cuotas' cobro.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Recibo">
+                                    <i class="bi bi-printer"></i>
+                                    Recibo
                                         </a>
                                     </td>
                     </tr>

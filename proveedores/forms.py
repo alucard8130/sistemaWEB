@@ -9,11 +9,16 @@ class ProveedorForm(forms.ModelForm):
             "empresa",
             "nombre",
             "rfc",
+            "repse_numero",
+            "repse_vigencia",
             "telefono",
             "email",
             "direccion",
             "activo",
         ]
+        widgets = {
+            "repse_vigencia": forms.DateInput(format='%Y-%m-%d', attrs={"type": "date"}),
+        }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
@@ -48,6 +53,13 @@ class ProveedorForm(forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("Ya existe un/a Proveedor con este/a RFC para esta empresa.")
         return rfc
+
+    def clean_repse_vigencia(self):
+        fecha = self.cleaned_data.get('repse_vigencia')
+        # Si el campo viene vacío o como cadena vacía, conserva la original
+        if not fecha or str(fecha).strip() == "":
+            return self.instance.repse_vigencia
+        return fecha
     
 class ProveedorCargaMasivaForm(forms.Form):
     archivo = forms.FileField(label="Archivo Excel", help_text="Sube un archivo .xlsx con los datos de los proveedores.")

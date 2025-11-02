@@ -182,11 +182,10 @@
                     <td class="text-nowrap">
                         {% if factura.saldo_pendiente > 0 %}    
                             <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
-                                Reg.Cobro
+                                Cobrar
                                 <i class="bi bi-cash-coin me-1"></i> 
                             </a>
                             <a href="{% url 'editar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-primary" title="Editar">
-                                Editar
                                 <i class="bi bi-pencil-square me-1"></i> 
                             </a>  
                         {% else %}
@@ -194,9 +193,9 @@
                         {% endif %}
                         
                         {% if not factura.empresa.es_plus %}
-                         <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                            Imprimir Recibo
-                            <i class="bi bi-printer" title="Imprimir Recibo"></i>
+                         <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Factura">
+                            Factura
+                            <i class="bi bi-printer"></i>
                         </a> 
                         {% else %}
                             <span></span>

@@ -368,13 +368,18 @@ def generar_contrato(request, area_id):
     if not getattr(area.empresa, 'es_plus', False):
         messages.error(request, "La Generación de contratos solo está disponible en la versión PLUS")
         return redirect('lista_areas')
-        
-    
+        # contexto = {
+        #     'error': "La Generación de contratos solo está disponible en la versión PLUS",
+        #     'area': area,
+        #     'empresa': area.empresa,
+        # }
+        # return render(request, 'areas/plantilla_contrato.html', contexto)
+
     contexto = {'area': area, 'empresa': area.empresa}
     html_string = render_to_string('areas/plantilla_contrato.html', contexto)
 
-    
-    if HTML:
+    # Si el usuario solicita el PDF (por parámetro ?pdf=1)
+    if request.GET.get('pdf') == '1' and HTML:
         html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
         pdf_bytes = html.write_pdf()
         filename = f"contrato_area_{area.pk}.pdf"
@@ -382,5 +387,5 @@ def generar_contrato(request, area_id):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
-
+    # Por defecto, muestra la vista previa HTML
     return HttpResponse(html_string)

@@ -1,5 +1,3 @@
-
-# Create your views here.
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render, redirect,get_object_or_404
@@ -12,6 +10,8 @@ from .models import Proveedor
 from django import forms
 from django.utils.safestring import mark_safe
 from decimal import Decimal
+from datetime import date
+
 
 @login_required
 def proveedor_crear(request):
@@ -33,6 +33,7 @@ def proveedor_crear(request):
 
 @login_required
 def proveedor_lista(request):
+    proveedor_nombre = request.GET.get('proveedor', '').strip()
     if request.user.is_superuser:
         empresa_id = request.session.get("empresa_id")
         if empresa_id:
@@ -42,7 +43,16 @@ def proveedor_lista(request):
     else:
         empresa = request.user.perfilusuario.empresa
         proveedores = Proveedor.objects.filter(empresa=empresa, activo=True)
-    return render(request, 'proveedores/lista.html', {'proveedores': proveedores})
+    
+    if proveedor_nombre:
+        proveedores = proveedores.filter(nombre__icontains=proveedor_nombre)
+
+    context={
+        'proveedores': proveedores,
+        'today': date.today(),
+        'proveedor_nombre': proveedor_nombre,
+    }    
+    return render(request, 'proveedores/lista.html', context)
 
 @login_required
 def proveedor_editar(request, pk):
@@ -50,7 +60,6 @@ def proveedor_editar(request, pk):
     # Solo el superusuario o usuarios de la empresa pueden editar
     if not request.user.is_superuser and proveedor.empresa != request.user.perfilusuario.empresa:
         return redirect('proveedor_lista')
-
     if request.method == 'POST':
         form = ProveedorForm(request.POST, instance=proveedor, user=request.user)
         if form.is_valid():
@@ -60,7 +69,16 @@ def proveedor_editar(request, pk):
         form = ProveedorForm(instance=proveedor, user=request.user)
     return render(request, 'proveedores/editar.html', {'form': form, 'proveedor': proveedor})
 
-
+@login_required
+def eliminar_proveedor(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    # Solo el superusuario o usuarios de la empresa pueden eliminar
+    if not request.user.is_superuser and proveedor.empresa != request.user.perfilusuario.empresa:
+        return redirect('proveedor_lista')
+    if request.method == 'POST':
+        proveedor.delete()
+        return redirect('proveedor_lista')
+    return render(request, 'proveedores/confirmar_eliminar.html', {'proveedor': proveedor})
 
 def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
     if not valor:

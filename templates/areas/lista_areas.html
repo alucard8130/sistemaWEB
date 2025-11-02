@@ -39,7 +39,9 @@
       {% if messages %} {% for message in messages %}
       <div class="alert alert-{{ message.tags }}">{{ message }}</div>
       {% endfor %} {% endif %}
-
+      {% if error %}
+          <div class="alert alert-danger text-center">{{ error }}</div>
+      {% endif %}
       <a href="{% url 'crear_area' %}" class="btn btn-crear mb-3">
         <i class="bi bi-plus-circle me-1"></i> Nueva área
       </a>
@@ -64,15 +66,15 @@
               <th>Empresa</th>
               {% endif %}
               <th>Superficie</th>
+              <th>Ubicación</th>
               <th>Cuota</th>
               <th>Depósito</th>
               <th>Giro</th>
               <th>Tipo</th>
-              <th>Cantidad</th>
+              {% comment %} <th>Cantidad</th> {% endcomment %}
               <th>Fecha Ini</th>
               <th>Fecha Fin</th>
               <th>Status</th>
-              <th>Ubicación</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -85,11 +87,12 @@
               <td>{{ area.empresa.nombre }}</td>
               {% endif %}
               <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
+              <td>{% if area.ubicacion %}{{ area.ubicacion }}{% endif %}</td>
               <td>${{ area.cuota|floatformat:2|intcomma }}</td>
               <td>${{ area.deposito|floatformat:2|intcomma }}</td>
               <td>{{ area.giro }}</td>
               <td>{{ area.tipo_area }}</td>
-              <td>{{ area.cantidad_areas }}</td>
+              {% comment %} <td>{{ area.cantidad_areas }}</td> {% endcomment %}
               <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
               <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
               <td>
@@ -99,8 +102,26 @@
                 <span class="badge bg-success">{{ area.estado_vigencia }}</span>
                 {% endif %}
               </td>
-              <td>{% if area.ubicacion %}{{ area.ubicacion }}{% endif %}</td>
               <td style="white-space: nowrap">
+                 <a
+                  href="{% url 'lista_facturas' %}?area_id={{ area.id }}"
+                  class="btn btn-outline-primary btn-sm"
+                  title="Estado de cuenta"
+                >
+                  Saldos
+                  <i class="bi bi-receipt"></i>
+                </a>
+                {% if area.estado_vigencia == "Vigente" %}
+                 <a href="{% url 'generar_contrato' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="ver Contrato">  
+                Contrato
+                  <i class="bi bi-file-earmark-text"></i>
+                </a>
+                {% else %}
+                <spam class="btn btn-sm btn-secondary m-1 disabled" title="Contrato no disponible">
+                  Contrato
+                  <i class="bi bi-file-earmark-text"></i>
+                </spam>
+                {% endif %}
                 <a
                   href="{% url 'editar_area' area.pk %}"
                   class="btn btn-sm btn-outline-primary me-1"
@@ -114,31 +135,7 @@
                   title="Inactivar"
                 >
                   <i class="bi bi-slash-circle"></i>
-                </a>
-
-                <a
-                  href="{% url 'generar_contrato' area.pk %}"
-                  class="btn btn-sm btn-primary" target="_blank"
-                  {%
-                  if
-                  area.empresa
-                  and
-                  area.empresa.es_plus
-                  %}target="_blank"
-                  {%
-                  endif
-                  %}
-                  title="Generar contrato"
-                >
-                  <i class="bi bi-file-earmark-text"></i>
-                </a>
-                <a
-                  href="{% url 'lista_facturas' %}?area_id={{ area.id }}"
-                  class="btn btn-outline-primary btn-sm"
-                  title="Estado de cuenta"
-                >
-                  <i class="bi bi-receipt"></i>
-                </a>
+              </a>
                 <!-- Button to assign client if area is available -->
                 {% if area.status == 'disponible' %}
                 <a

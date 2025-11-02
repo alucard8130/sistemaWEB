@@ -87,6 +87,7 @@
     <th>Responsable</th>
     <th>Saldo</th>
    <th>Acciones</th>
+   <th>Historial</th>
   </tr>
     </thead>
     <tbody>
@@ -100,13 +101,15 @@
    <td>
     {% if fondeo.saldo > 0 %}
     <a href="{% url 'registrar_gasto_caja_chica' %}?fondeo_id={{ fondeo.id }}" class="btn btn-sm btn-outline-success" title="Registrar Gasto Caja Chica">
+    Gasto
     <i class="bi bi-cash-coin me-1"></i></a>
     {% else %}
     <span class="text-muted"></span>
     {% endif %}
-    <a href="{% url 'detalle_fondeo' fondeo.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
-    <i class="bi bi-eye me-1"></i></a>
+    {% comment %} <a href="{% url 'detalle_fondeo' fondeo.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
+    <i class="bi bi-eye me-1"></i></a> {% endcomment %}
     <a href="{% url 'recibo_fondeo' fondeo.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Recibo">
+    Recibo
     <i class="bi bi-printer"></i>
 </a> 
     <form method="post" action="{% url 'eliminar_fondeo' fondeo.id %}" style="display:inline;">
@@ -117,6 +120,10 @@
         </button>
     </form>
    </td>
+    <td>
+     <a href="{% url 'detalle_fondeo' fondeo.id %}" class="btn btn-outline-secondary btn-sm" title="Ver Historial">
+     <i class="bi bi-eye me-1"></i>
+     </a>
   </tr>
   {% empty %}
   <tr class="no-data-row">

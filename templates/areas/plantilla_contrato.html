@@ -41,6 +41,7 @@
     <button class="btn btn-sm btn-primary" onclick="window.print()" title="Imprimir / Guardar">
       <i class="bi bi-printer"></i> Imprimir / Guardar
     </button>
+    <a href="{% url 'generar_contrato' area.pk %}?pdf=1" class="btn btn-primary">Descargar PDF</a>
   {% comment %} </div> {% endcomment %}
 
   <header>

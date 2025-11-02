@@ -122,24 +122,23 @@
                             <td class="text-nowrap">
                                 {% if gasto.saldo_restante > 0 %}
                                     <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Registrar Pago">
-                                        Reg.Pago
+                                        Pagar
                                         <i class="bi bi-cash-coin me-1"></i>
                                     </a>
                                 {% else %}
                                     <span class="text-muted"></span>
                                 {% endif %}
-
-                                {% if gasto.estatus == 'pendiente' and gasto.total_pagado == 0 %}
+                               <a href="{% url 'recibo_gasto' gasto.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Solicitud Pago">
+                                Solicitud
+                                    <i class="bi bi-printer"></i>
+                                        </a>
+                                        {% if gasto.estatus == 'pendiente' and gasto.total_pagado == 0 %}
                                     <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
-                                        Eliminar
                                         <i class="bi bi-trash3 me-1"></i>
                                     </a>
                                 {% endif %}
-                               <a href="{% url 'recibo_gasto' gasto.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                                Imprimir
-                                    <i class="bi bi-printer" title="Imprimir Documento"></i>
-                                        </a>
                             </td>
+                            
                             {% comment %} <td>
                                 {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
                                     <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-outline-dark btn-sm" title="Ver CFDI">

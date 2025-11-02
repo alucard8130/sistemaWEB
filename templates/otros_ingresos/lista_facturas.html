@@ -129,14 +129,14 @@
                           <td class="text-nowrap">
                           {% if factura.saldo > 0 %}
                               <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
-                                Reg.Cobro
+                                Cobrar
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
                           {% endif %}
                           {% if not factura.empresa.es_plus %}  
-                            <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-                              Imprimir Recibo
-                              <i class="bi bi-printer" title="Imprimir Recibo"></i>
+                            <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Factura">
+                              Factura
+                              <i class="bi bi-printer"></i>
                             </a>
                           {% else %}
                             <span class="text-muted" title="Solo disponible en versión PLUS"></span>

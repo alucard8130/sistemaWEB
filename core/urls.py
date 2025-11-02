@@ -22,7 +22,7 @@ from areas.views import (
 from clientes.views import (
     carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
     editar_cliente, eliminar_cliente, plantilla_clientes_excel, reactivar_cliente)
-from proveedores.views import carga_masiva_proveedores, plantilla_proveedores_excel
+from proveedores.views import carga_masiva_proveedores, eliminar_proveedor, plantilla_proveedores_excel
 
 
 urlpatterns = [
@@ -141,6 +141,7 @@ urlpatterns = [
     path('gastos_caja_chica/exportar/', exportar_gastos_caja_chica_excel, name='exportar_gastos_caja_chica_excel'),
     path('vales_caja_chica/exportar/', exportar_vales_caja_chica_excel, name='exportar_vales_caja_chica_excel'),
     path('fondeos/exportar/', exportar_fondeos_excel, name='exportar_fondeos_excel'),   
+    path('proveedores/<int:pk>/eliminar/', eliminar_proveedor, name='eliminar_proveedor'),
 ]
     
 

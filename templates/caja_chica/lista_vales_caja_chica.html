@@ -108,8 +108,9 @@
     <td><span class="badge bg-success text-light">Comprobado</span></td>
     {% endif %}
     <td>
-      <a href="{% url 'imprimir_vale_caja' vale.id %}" class="btn btn-outline-primary btn-sm" target="_blank">
-        <i class="bi bi-printer" title="Imprimir Vale"></i>
+      <a href="{% url 'imprimir_vale_caja' vale.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Vale de Caja">
+        Vale
+        <i class="bi bi-printer"></i>
       </a>
       {% if vale.status == "pendiente" %}
       <a href="{% url 'comprobar_vale' vale.id %}" class="btn btn-outline-success btn-sm" title="Comprobar vale">

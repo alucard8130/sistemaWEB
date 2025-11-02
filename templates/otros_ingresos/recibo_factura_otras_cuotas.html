@@ -201,7 +201,7 @@
                     <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
                     {% comment %} <td>{{ factura.fecha_emision|date:'d/m/Y' }}</td> {% endcomment %}
                     <td>{{ factura.fecha_vencimiento|date:'d/m/Y' }}</td>
-                    <td>{{ factura.observaciones|title }}</td>
+                    <td>{% if factura.observaciones %}{{ factura.observaciones|title }}{% else %}{% endif %}</td>
                     <td>{{ factura.estatus|title }}</td>
                   </tr>
                 </table>
