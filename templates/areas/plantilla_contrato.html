@@ -1,191 +1,576 @@
-<!doctype html>
-{% load static %}
-{% load humanize %}
+<!DOCTYPE html>
+{% load static %} {% load humanize %}
 <html lang="es">
-<head>
-  <meta charset="utf-8"/>
-  <title>Contrato Área Común #{{ area.pk }}</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    :root { --brand:#0d6efd; --muted:#6c757d; --text:#222; }
-    body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:var(--text); margin:28px; font-size:12.5px; }
-    header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-    .logo { max-height:70px; }
-    .empresa-info { text-align:right; font-size:13px; }
-    h1 { font-size:18px; margin:6px 0; color:var(--brand); text-align:center; }
-    .meta { display:flex; justify-content:space-between; gap:12px; margin-bottom:16px; }
-    .box { border:1px solid #e9ecef; padding:12px; border-radius:6px; background:#fff; }
-    .clausula { margin-bottom:10px; text-align:justify; line-height:1.4; }
-    table.detalle { width:100%; margin-top:8px; border-collapse:collapse; }
-    table.detalle td { padding:6px; vertical-align:top; border:1px solid #e9ecef; }
-    .firma { margin-top:36px; display:flex; gap:24px; justify-content:space-between; }
-    .firmante { width:48%; text-align:center; margin-top:12px; }
-    .right { text-align:right; }
-    .small { font-size:11px; color:var(--muted); }
-    .btns { position:fixed; right:18px; top:18px; z-index:2000; display:flex; gap:8px; }
-    @media print {
-      .btns { display:none; }
-      body { margin:10mm; }
-    }
-  </style>
-</head>
-<body>
-  <!-- Botones: Descargar PDF / Imprimir -->
-  {% comment %} <div class="btns"> {% endcomment %}
-    <!-- Descargar PDF: apunta a la vista que genera el PDF -->
-    {% comment %} <a href="{% url 'generar_contrato' area.pk %}" class="btn btn-sm btn-primary" target="_blank" title="Descargar PDF">
-      <i class="bi bi-download"></i> Descargar PDF
-    </a> {% endcomment %}
-    <!-- Imprimir / Guardar desde navegador -->
-    <button class="btn btn-sm btn-primary" onclick="window.print()" title="Imprimir / Guardar">
+  <head>
+    <meta charset="utf-8" />
+    <title>Contrato Área Común #{{ area.pk }}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --brand: #0d6efd;
+        --muted: #6c757d;
+        --text: #222;
+      }
+      body {
+        font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        margin: 28px;
+        font-size: 12.5px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .logo {
+        max-height: 70px;
+      }
+      .empresa-info {
+        text-align: right;
+        font-size: 13px;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 6px 0;
+        color: var(--brand);
+        text-align: center;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .box {
+        border: 1px solid #e9ecef;
+        padding: 12px;
+        border-radius: 6px;
+        background: #fff;
+      }
+      .clausula {
+        margin-bottom: 10px;
+        text-align: justify;
+        line-height: 1.4;
+      }
+      table.detalle {
+        width: 100%;
+        margin-top: 8px;
+        border-collapse: collapse;
+      }
+      table.detalle td {
+        padding: 6px;
+        vertical-align: top;
+        border: 1px solid #e9ecef;
+      }
+      .firma {
+        margin-top: 36px;
+        display: flex;
+        gap: 24px;
+        justify-content: space-between;
+      }
+      .firmante {
+        width: 48%;
+        text-align: center;
+        margin-top: 12px;
+      }
+      .right {
+        text-align: right;
+      }
+      .small {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .btns {
+        position: fixed;
+        right: 18px;
+        top: 18px;
+        z-index: 2000;
+        display: flex;
+        gap: 8px;
+      }
+      @media print {
+        .btns {
+          display: none;
+        }
+        body {
+          margin: 10mm;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="btns">
+    <button
+      class="btn btn-sm btn-primary"
+      onclick="window.print()"
+      title="Imprimir / Guardar"
+    >
       <i class="bi bi-printer"></i> Imprimir / Guardar
     </button>
-    <a href="{% url 'generar_contrato' area.pk %}?pdf=1" class="btn btn-primary">Descargar PDF</a>
-  {% comment %} </div> {% endcomment %}
-
-  <header>
-    <div>
-      {% if empresa.logo %}
-        <img src="{{ empresa.logo.url }}" alt="{{ empresa.nombre }}" class="logo">
-      {% else %}
-        <div style="font-weight:700; color:var(--brand); font-size:18px;">{{ empresa.nombre }}</div>
-      {% endif %}
-    </div>
-    <div class="empresa-info">
-      <div><strong>{{ empresa.nombre }}</strong></div>
-      {% if empresa.rfc %}<div>RFC: {{ empresa.rfc }}</div>{% endif %}
-      {% if empresa.direccion %}<div class="small">{{ empresa.direccion }}</div>{% endif %}
-      {% if empresa.telefono %}<div class="small">Tel: {{ empresa.telefono }}</div>{% endif %}
-    </div>
-  </header>
-
-  <h1>CONTRATO DE USO Y GOCE DE ÁREA COMÚN</h1>
-
-  <div class="meta">
-    <div class="box" style="flex:1;">
-      <strong>CONTRATANTE (EMPRESA)</strong>
-      <div>{{ empresa.nombre }}</div>
-      {% if empresa.representante %}<div class="small">Representante: {{ empresa.representante }}</div>{% endif %}
-      {% if empresa.rfc %}<div class="small">RFC: {{ empresa.rfc }}</div>{% endif %}
-    </div>
-    <div class="box" style="flex:1;">
-      <strong>CONTRATADO (CLIENTE)</strong>
-      <div>{{ area.cliente.nombre }}</div>
-      {% if area.cliente.rfc %}<div class="small">RFC/ID: {{ area.cliente.rfc }}</div>{% endif %}
-      {% if area.cliente.telefono %}<div class="small">Tel: {{ area.cliente.telefono }}</div>{% endif %}
-    </div>
-    <div class="box" style="flex:0.7;">
-      <strong>CONTRATO</strong>
-      <div>Núm: <strong>{{ area.pk }}</strong></div>
-      <div class="small">Área: {{ area.numero }}</div>
-      {% comment %} <div class="small">Fecha emisión: {{ now|date:"d/m/Y" }}</div> {% endcomment %}
-      <div class="small">Fecha emisión: {% now "d/m/Y" %}</div>
-    </div>
+    <a href="{% url 'generar_contrato' area.pk %}?pdf=1" class="btn btn-primary"
+      >Descargar PDF
+    </a>
   </div>
+    <header>
+      {% comment %} <div>
+        {% if empresa.logo %}
+        <img
+          src="{{ empresa.logo.url }}"
+          alt="{{ empresa.nombre }}"
+          class="logo"
+        />
+        {% else %}
+        <div style="font-weight: 700; color: var(--brand); font-size: 18px">
+          {{ empresa.nombre }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="empresa-info">
+        <div><strong>{{ empresa.nombre }}</strong></div>
+        {% if empresa.rfc %}
+        <div>RFC: {{ empresa.rfc }}</div>
+        {% endif %} {% if empresa.direccion %}
+        <div class="small">{{ empresa.direccion }}</div>
+        {% endif %} {% if empresa.telefono %}
+        <div class="small">Tel: {{ empresa.telefono }}</div>
+        {% endif %}
+      </div> {% endcomment %}
+    </header>
 
-  <section class="box">
-    <h5>1. Objeto</h5>
-    <p class="clausula">
-      El presente contrato tiene por objeto la cesión temporal del uso del área común identificada como <strong>{{ area.numero }}</strong>,
-      con una superficie de <strong>{{ area.superficie_m2 }}</strong> m² ubicada en <strong>{{ area.ubicacion }}</strong>, en los términos y condiciones que se detallan a continuación.
-    </p>
-
-    <h5>2. Vigencia y tarifas</h5>
-    <table class="detalle">
-      <tr>
-        <td><strong>Fecha inicio</strong><br>{{ area.fecha_inicial }}</td>
-        <td><strong>Fecha fin</strong><br>{{ area.fecha_fin }}</td>
-        <td><strong>Cuota</strong><br>$ {{ area.cuota|floatformat:2|intcomma }}</td>
-      </tr>
-      <tr>
-        <td colspan="3"><strong>Estado: </strong> {{ area.estado_vigencia }}</td>
-      </tr>
-    </table>
-
-    <h5>3. Pago y depósito</h5>
-    <p class="clausula">
-      El contratante pagará la cuota indicada en la forma y plazos acordados. El depósito de garantía será de ${{ area.deposito|floatformat:2|intcomma }} (en su caso).
-      Los pagos se realizarán en la cuenta o medio que la empresa indique.
-    </p>
-
-    <h5>4. Obligaciones</h5>
-    <p class="clausula">
-      El contratado se obliga a dar un uso adecuado del área, conservarla en buen estado y cumplir las normas internas establecidas por la empresa.
-      Queda prohibida cualquier actividad ilícita o que ponga en riesgo la integridad del inmueble.
-    </p>
-
-    <h5>5. Terminación y renovación</h5>
-    <p class="clausula">
-      Al vencimiento del presente contrato, las partes podrán acordar la renovación. En caso de renovación, las partes podrán aplicar incrementos en la cuota por porcentaje o monto fijo según acuerdo.
-      El contrato podrá darse por terminado por incumplimiento conforme a lo establecido en este documento.
-    </p>
-
-    <h5>6. Responsabilidad</h5>
-    <p class="clausula">
-      La empresa no será responsable por daños indirectos, lucro cesante o pérdida de bienes del cliente salvo dolo o negligencia comprobada.
-    </p>
-
-    <h5>7. Protección de datos</h5>
-    <p class="clausula">
-      Los datos personales recabados se tratarán conforme a la legislación aplicable en materia de protección de datos personales en México y la política de privacidad de la empresa.
-    </p>
-
-    <h5>8. Ley aplicable y jurisdicción</h5>
-    <p class="clausula">
-      Este contrato se regirá por las leyes vigentes en los Estados Unidos Mexicanos. Para la resolución de controversias, las partes se someten a la jurisdicción de los tribunales competentes de {{ empresa.ciudad|default:"la ciudad correspondiente" }}, renunciando a cualquier otro fuero que pudiera corresponderles.
-    </p>
-
-    <h5>9. Cláusulas adicionales</h5>
-    <p class="clausula">
-      {% if area.observaciones %}
-        {{ area.observaciones }}
+    <!-- Cabecera del contrato -->
+    <h1 class="text-center mb-3">
+      CONTRATO DE USO Y APROVECHAMIENTO DE ÁREA COMÚN CONDOMINAL
+    </h1>
+    <p>
+      Que celebran, por una parte
+      <strong>{{ empresa.nombre }}</strong> representada por
+      <strong>{{apoderado_nombre_arrendador }}</strong>, a quien en lo sucesivo se le
+      denominará como "EL CONDOMINIO", y por la otra parte,
+      {% if area.cliente.tipo_contribuyente == "Moral" %}
+          <strong>{{ area.cliente.nombre }}</strong>, representada por,<strong>{{ apoderado_nombre_arrendatario }}</strong>, a quien en lo sucesivo
+          se le denominará "EL BENEFICIARIO", y a las que de manera conjunta se les
+          identificará como "LAS PARTES", al tenor de las siguientes declaraciones y
+          cláusulas:
       {% else %}
-        Ninguna.
+          <strong>{{ area.cliente.nombre }}</strong>, a quien en lo sucesivo se le
+          denominará "EL BENEFICIARIO", y a las que de manera conjunta se les
+          identificará como "LAS PARTES", al tenor de las siguientes declaraciones y
+          cláusulas:
       {% endif %}
     </p>
-  </section>
 
-  <div class="firma">
-    <div class="firmante">
-      <div>__________________________________</div>
-      <div><strong>Por {{ empresa.nombre }}</strong></div>
-      <div class="small">Nombre y firma</div>
+    <!-- Declaraciones -->
+    <h4>DECLARACIONES</h4>
+    <ol>
+      <li>
+        <strong>EL CONDOMINIO</strong>, por conducto de su representante legal
+        declara que:
+        <ul>
+          <li>
+            Es una Asociación Civil legalmente existente, constituida de
+            conformidad con las leyes mexicanas, como se acredita con la
+            Escritura Pública número
+            <strong>{{ escritura_numero_arrendador }}</strong> de fecha
+            <strong>{{ escritura_fecha_arrendador }}</strong>, otorgada ante la fe
+            del Notario Público número
+            <strong>{{ notario_numero_arrendador }}</strong> de
+            <strong>{{ notario_ciudad_arrendador }}</strong>, Licenciado
+            <strong>{{ notario_nombre_arrendador }}</strong>.
+          </li>
+          <li>
+            El nombramiento de Apoderado de
+            <strong>{{ apoderado_nombre_arrendador }}</strong> consta en la
+            Escritura Pública número
+            <strong>{{ apoderado_numero_escritura_arrendador }}</strong> de fecha
+            <strong>{{ apoderado_escritura_fecha_arrendador }}</strong>, otorgada ante la fe
+            del Notario Público número
+            <strong>{{ apoderado_notario_numero_arrendador }}</strong>, Licenciado
+            <strong>{{ apoderado_notario_nombre_arrendador }}</strong>.
+          </li>
+          <li>
+            Su representada es legítima Administradora del inmueble en
+            Condominio ubicado en <strong>{{ empresa.direccion }}</strong>, con
+            una superficie aproximada de
+            <strong>{{ area.superficie_m2 }}</strong> m².
+          </li>
+          <li>
+            Es voluntad de sus administrados otorgar en USO Y APROVECHAMIENTO a
+            "EL BENEFICIARIO" una superficie perteneciente a sus áreas comunes,
+            identificada con el número <strong>{{ area.numero }}</strong>, con
+            <strong>{{ area.superficie_m2 }}</strong> m², ubicada en
+            <strong>{{ area.ubicacion }}</strong>.
+          </li>
+          <li>
+            Su representante cuenta con facultades para celebrar actos jurídicos
+            en su nombre en los términos del presente Contrato.
+          </li>
+        </ul>
+      </li>
+      <li>
+      <strong>EL BENEFICIARIO</strong>, por su propio derecho declara que:
+  {% if area.cliente.tipo_contribuyente == "Moral" %}
+    <ul>
+      <li>
+        Es una persona moral legalmente constituida bajo la denominación de
+        <strong>{{ area.cliente.nombre }}</strong>, según se acredita con la Escritura Pública número <strong>{{ escritura_numero_arrendatario }}</strong>, de fecha <strong>{{ escritura_fecha_arrendatario }}</strong>, otorgada ante la fe del Notario Público número <strong>{{ notario_numero_arrendatario }}</strong>, Licenciado <strong>{{ notario_nombre_arrendatario }}</strong>.
+      </li>
+      <li>
+        Está inscrita en el RFC bajo la clave
+        <strong>{{ area.cliente.rfc }}</strong>.
+      </li>
+      <li>
+        El apoderado legal
+        <strong>{{ apoderado_nombre_arrendatario }}</strong> cuenta con facultades para celebrar el presente contrato.
+      </li>
+      <li>
+        Es su voluntad tomar en USO Y APROVECHAMIENTO la superficie otorgada, identificada con el número
+        <strong>{{ area.numero }}</strong>, en los términos y condiciones de este contrato.
+      </li>
+      <li>
+        Cuenta con la capacidad económica y financiera para obligarse en los términos establecidos en este Contrato.
+      </li>
+    </ul>
+  {% else %}
+    <ul>
+      <li>
+        Es una persona física de nacionalidad mexicana, de nombre
+        <strong>{{ area.cliente.nombre }}</strong>, con domicilio en
+        <strong>{{ area.cliente.direccion }}</strong>, inscrito en el RFC bajo la clave
+        <strong>{{ area.cliente.rfc }}</strong>.
+      </li>
+      <li>
+        Que actúa por su propio derecho y cuenta con capacidad legal para celebrar el presente contrato.
+      </li>
+      <li>
+        Es su voluntad tomar en USO Y APROVECHAMIENTO la superficie otorgada, identificada con el número
+        <strong>{{ area.numero }}</strong>, en los términos y condiciones de este contrato.
+      </li>
+      <li>
+        Cuenta con la capacidad económica y financiera para obligarse en los términos establecidos en este Contrato.
+      </li>
+    </ul>
+  {% endif %}
+</li>
+    </ol>
+    <!-- Cláusulas principales -->
+    <h5>PRIMERA: OBJETO</h5>
+    <p class="clausula">
+      "EL CONDOMINIO" da en USO Y APROVECHAMIENTO a "EL BENEFICIARIO" el uso y
+      goce temporal de la superficie identificada con el número
+      <strong>{{ area.numero }}</strong>, destinada a
+      <strong>{{ area.giro }}</strong>, con
+      <strong>{{ area.superficie_m2 }}</strong> m², ubicada en
+      <strong>{{ area.ubicacion }}</strong>. El acondicionamiento será por
+      cuenta y riesgo de "EL BENEFICIARIO", conforme a las condiciones que
+      establezca "EL CONDOMINIO".
+    </p>
+
+    <h5>SEGUNDA: VIGENCIA</h5>
+    <p class="clausula">
+      La vigencia será de <strong>{{ meses_vigencia }}</strong> meses,
+      contados a partir de la fecha de entrega
+      <strong>{{ area.fecha_inicial }}</strong> y concluye el
+      <strong>{{ area.fecha_fin }}</strong>. Si "EL BENEFICIARIO" no desocupa la
+      superficie al término, se aumentará la renta pactada en un 10%. Si
+      desocupa antes, deberá pagar una pena equivalente a un mes de aportación
+      vigente.
+    </p>
+
+    <h5>TERCERA: APORTACIÓN</h5>
+    <p class="clausula">
+      "EL BENEFICIARIO" se obliga a pagar mensualmente a "EL CONDOMINIO" la
+      cantidad de <strong>${{ area.cuota|floatformat:2|intcomma }}</strong> IVA
+      incluido, por meses adelantados, dentro de los primeros 10 días naturales
+      del mes, en el domicilio de "EL CONDOMINIO" o mediante transferencia
+      bancaria a la cuenta <strong>{{ empresa.cuenta_bancaria }}</strong>, clave
+      interbancaria <strong>{{ clabe_interbancaria_arrendador }}</strong>.
+    </p>
+
+    <h4>CUARTA: DEPOSITO EN GARANTIA</h4>
+    <p class="clausula">
+      "EL BENEFICIARIO" se obliga a entregar a "EL CONDOMINIO" un depósito en
+      garantía equivalente a un mes de la APORTACIÓN, el cual será devuelto al
+      término del Contrato, siempre que "EL BENEFICIARIO" haya cumplido con
+      todas sus obligaciones.
+    </p>
+
+    <h4>QUINTA: GIRO Y NOMBRE COMERCIAL</h4>
+    <p class="clausula">
+      "EL BENEFICIARIO" se obliga a destinar la SUPERFICIE" otorgada única y
+      exclusivamente para <strong>{{ area.giro }}</strong> no pudiendo "EL
+      BENEFICIARIO" modificar ni destinar "LA SUPERFICIE", sin el consentimiento
+      de "EL CONDOMINIO" dado previamente por escrito, "EL BENEFICIARIO" se
+      obliga a usar SUPERFICIE" otorgada, solamente para el uso convenido
+      conforme a la naturaleza y destino establecido, por lo que se obliga a no
+      contravenir las disposiciones legales aplicables. Asimismo, deberá
+      acreditar ante EL CONDOMINIO, en caso de ser legalmente necesario, contar
+      con los Permisos y Licencias que requiera SUPERFICIE" otorgada número
+      <strong>{{ area.numero }}</strong>, aceptando que la contravención a lo
+      establecido en la presente cláusula será causa de rescisión del Contrato
+      en los términos de ley y que en caso de clausura de "LA SUPERFICIE" por
+      autoridades administrativas, no será motivo para que "BENEFICIARIO" deje
+      de cubrir la APORTACIÓN, pactada en la Cláusula TERCERA de presente
+      Contrato.
+    </p>
+
+    <h5>SEXTA: POSESIÓN DE LA SUPERFICIE OTORGADA NUMERO {{ area.numero }}</h5>
+    <p class="clausula">
+      Las partes manifiestan que "EL BENEFICIARIO", tomara en posesión de "LA
+      SUPERFICIE" otorgada número <strong>{{ area.numero }}</strong>, el día
+      <strong>{{ area.fecha_inicial }}</strong>, a la firma del presente
+      Contrato adquiriere la obligación del pago de los impuestos, derechos,
+      aprovechamientos y demás contribuciones que el mismo pueda generar.
+    </p>
+
+    <h5>SEPTIMA: ACONDICIONAMIENTO DEL LOCAL COMERCIAL</h5>
+    <p class="clausula">
+      "EL BENEFICIARIO" conviene en efectuar a su costa todas las obras de
+      acondicionamiento, decoración y remodelación que requiera LA SUPERFICIE
+      OTORGADA NUMERO <strong>{{ area.numero }}</strong> previa autorización de
+      EL CONDOMINIO. "EL BENEFICIARIO" deberá entregar a EL CONDOMINIO, previa
+      remodelación o modificación de LA SUPERFICIE OTORGADA número
+      <strong>{{ area.numero }}</strong>, el anteproyecto de modificación de LA
+      SUPERFICIE OTORGADA, en caso de ser necesario, incluyendo planos y
+      especificaciones, el cual deberá estar ajustado a los lineamientos
+      establecidos previamente por "EL BENEFICIARIO", EL CONDOMINIO podrá
+      aprobar el anteproyecto o, en su caso, señalar las modificaciones que sea
+      necesario llevar a cabo para ajustarlo, a fin de que "EL BENEFICIARIO"
+      proceda a hacer los ajustes pertinentes dentro de los 10 (diez) días
+      posteriores a la recepción del proyecto definitivo. "EL BENEFICIARIO" está
+      de acuerdo en que, hasta no tener el proyecto aprobado, no empezará a
+      llevar las obras de acondicionamiento, las cuales llevará a cabo bajo la
+      supervisión de EL CONDOMINIO; estando de acuerdo también que en caso de no
+      ajustarse el proyecto, no podrá llevar a cabo la remodelación o
+      modificación de LA SUPERFICIE OTORGADA. Serán a cargo y por cuenta
+      exclusiva de "EL BENEFICIARIO" todos los costos y gastos que cause la
+      ejecución de las obras de acondicionamiento, reparación, modificación
+      cuidado y conservación de LA SUPERFICIE OTORGADA, quedando dichas obras en
+      beneficio de EL CONDOMINIO al terminar el Contrato de USO Y
+      APROVECHAMIENTO, sin que ésta quede obligada a cubrir a "EL BENEFICIARIO"
+      contraprestación alguna por tal concepto. Igualmente será a cargo de "EL
+      BENEFICIARIO" la tramitación de todos y cada uno de los permisos que se
+      requieran para el acondicionamiento y/o modificación de "LA SUPERFICIE"
+      otorgada número <strong>{{ area.numero }}</strong>, autorizado por EL
+      CONDOMINIO, en caso de ser necesarios. Durante el tiempo que "EL
+      BENEFICIARIO" realice obras de remodelación, modificación y/o
+      acondicionamiento, se obliga a conservar limpieza y seguridad. "EL
+      BENEFICIARIO" recibe SUPERFICIE <strong>{{ area.numero }}</strong> en el
+      estado en que se encuentra, y renuncia expresamente a cualquier derecho
+      bajo los artículos 2412, fracción II, 2421, 2490, fracción III, y
+      cualquier otra disposición aplicable del Código Civil para el Distrito
+      Federal, hoy Ciudad de México, para exigir de EL CONDOMINIO responder
+      especto de cualquier vicio oculto que pudiera existir con anterioridad a
+      esta fecha en LA SUPERFICIE OTORGADA.
+    </p>
+
+    <h5>OCTAVA: IMPUESTOS Y DERECHOS</h5>
+    <p class="clausula">
+      El Impuesto al Valor Agregado que cause la APORTACION mensual será
+      trasladado por "EL CONDOMINIO" a "EL BENEFICIARIO" en forma expresa, por
+      separado y en los términos de la Ley aplicable. Cualquier otro impuesto
+      aplicable a la propiedad de "LA SUPERFICIE" otorgada será pagado por EL
+      CONDOMINIO.
+    </p>
+
+    <h5>NOVENA: GASTOS COMUNES</h5>
+    <p class="clausula">
+      "EL BENEFICIARIO" se obliga a cubrir a EL CONDOMINIO o a la persona física
+      o moral que preste los servicios de administración y mantenimiento en EL
+      CENTRO COMERCIAL, los gastos de mantenimiento, conservación, publicidad
+      institucional, servicios, derechos, pólizas de seguros y demás gastos de
+      las áreas comunes de la propia plaza comercial que al efecto le sean
+      establecidos.
+    </p>
+
+    <h5>DECIMA: MANTENIMIENTO</h5>
+    <p class="clausula">
+      "EL BENEFICIARIO" se hará cargo a su costo del mantenimiento "LA
+      SUPERFICIE" otorgado número <strong>{{ area.numero }}</strong> que puede
+      incluir: pintura, reparaciones, adaptaciones e instalaciones especiales
+      vigilancia y limpieza, incluyendo sin limitación, aditamentos, sistemas
+      eléctricos y sus aditamentos, etcétera. "EL BENEFICIARIO" dará a "LA
+      SUPERFICIE" otorgada todo el mantenimiento que éste requiera y lo
+      conservará con el mismo buen estado en que lo recibe (salvo por el uso y
+      deterioro normales). Salvo por las reparaciones a la estructura de "LA
+      SUPERFICIE OTORGADA", cualquier otro tipo de reparación deberá ser
+      realizada oportunamente por "EL BENEFICIARIO", Ésta renuncia expresamente
+      a cualquier derecho bajo los artículos 2416, 2417 y 2445 del Código Civil
+      para el Distrito Federal, salvo respecto de las citadas reparaciones a la
+      estructura. El mantenimiento en general de "LA SUPERFICIE" otorgada
+      corresponderá a "EL BENEFICIARIO". Serán únicamente por cuenta de "EL
+      CONDOMINIO" aquellas obras de mantenimiento y reparación que se requieran
+      debido a daños sufridos en la cimentación y los elementos estructurales de
+      la edificación, siempre y cuando tales daños no hubieran tenido su causa
+      en actos u omisiones de "EL BENEFICIARIO", conviniendo las partes que "EL
+      BENEFICIARIO" deberá notificar a "EL CONDOMINIO" la necesidad de tales
+      reparaciones, bajo pena de pagar los daños y perjuicios derivados de su
+      omisión.
+    </p>
+
+    <h5>DÉCIMA PRIMERA: SUBUSO Y APROVECHAMIENTO, CESIÓN Y TRASPASO</h5>
+    <p class="clausula">
+      Salvo lo previsto en el presente Contrato, "EL BENEFICIARIO" no podrá
+      subarrendar u otorgar en uso en todo o en parte LA SUPERFICIE OTORGADA
+      número <strong>{{ area.numero }}</strong> ni ceder o traspasar en todo o
+      en parte los derechos y obligaciones derivados del presente contrato, sin
+      la autorización previa y por escrito de EL CONDOMINIO. "EL BENEFICIARIO"
+      en este acto renuncia expresamente a su derecho de exigir la rescisión del
+      presente Contrato bajo el artículo 2492 del Código Civil para el Distrito
+      Federal.
+    </p>
+
+    <h5>DÉCIMA SEGUNDA: RESCISIÓN</h5>
+    <p class="clausula">
+      El incumplimiento de "EL BENEFICIARIO" a cualquiera de las obligaciones
+      que le impone el presente Contrato dará derecho a EL CONDOMINIO a exigir
+      el cumplimiento forzoso de las mismas o la rescisión del contrato,
+      debiendo "EL BENEFICIARIO" devolver "LA SUPERFICIE" otorgada en las
+      condiciones en que lo recibió salvo el deterioro por el uso normal y
+      cubrir en forma inmediata todas aquellas obligaciones pendientes de pago
+      frente a EL CONDOMINIO o terceros. Las partes acuerdan que, de manera
+      enunciativa más no limitativa, serán causa de rescisión los siguientes
+      eventos: a) Que "EL BENEFICIARIO" deje de pagar 2 (dos) o más
+      mensualidades de aportaciones o incurra en mora en el pago de la
+      APORTACION. b) Que "EL BENEFICIARIO" se declare insolvente para cumplir
+      con las obligaciones que les impone este contrato. c) Que "EL
+      BENEFICIARIO" destine "LA SUPERFICIE" otorgada objeto del USO Y
+      APROVECHAMIENTO a un uso distinto del señalado en el presente Contrato,
+      sin la previa autorización de EL CONDOMINIO. d) Que "EL BENEFICIARIO"
+      subarriende o en cualquier forma ceda, traspase o transmita a terceros el
+      uso o goce de todo o parte de "LA SUPERFICIE" otorgada, sin el previo
+      consentimiento de EL CONDOMINIO. En caso de surgir alguno de los casos
+      señalados en los incisos anteriores el derecho de rescisión de EL
+      CONDOMINIO surgirá de inmediato, sin necesidad de aviso previo o
+      requerimiento.
+    </p>
+
+    <h5>DÉCIMA TERCERA: INSPECCIÓN</h5>
+    <p class="clausula">
+      EL CONDOMINIO cuenta con la autorización de "EL BENEFICIARIO" para
+      supervisar por sí o por conducto de sus empleados, "LA SUPERFICIE"
+      otorgada en cualquier horario razonable para cerciorarse de las
+      condiciones de este, previo aviso por escrito con al menos 24
+      (veinticuatro) horas de anticipación a "EL BENEFICIARIO".
+    </p>
+
+    <h5>DÉCIMA CUARTA: DIVISIBILIDAD</h5>
+    <p class="clausula">
+      En caso de que cualquier disposición de este Contrato sea nula o exigible,
+      dicho hecho no afectará o impedirá la validez o exigibilidad de cualquier
+      otra disposición.
+    </p>
+
+    <h5>DÉCIMA QUINTA: CESIÓN</h5>
+    <p class="clausula">
+      EL CONDOMINIO podrá en cualquier momento ceder o gravar los derechos del
+      presente Contrato, incluyendo los derechos de cobro del importe de las
+      ORTACIONES y demás prestaciones económicas que se pactan en el mismo.
+      Asimismo, EL CONDOMINIO podrá hipotecar o gravar en cualquier forma LA
+      SUPERFICIE OTORGADA <strong>{{ area.numero }}</strong> en favor de la
+      persona física o moral que ésta designe, o transferir el usufructo, sin
+      necesidad de juicio previo, notificación o consentimiento de "EL
+      BENEFICIARIO".
+    </p>
+
+    <h5>DÉCIMA SEXTA: PENA CONVENCIONAL</h5>
+    <p class="clausula">
+      Si "EL BENEFICIARIO" incumple alguna de las obligaciones contenidas en las
+      cláusulas del presente Contrato, que no tenga una penalización específica
+      cubrirá una pena convencional equivalente a un mes de APORTACION vigente,
+      o los daños y perjuicios que resulten, a elección de EL CONDOMINIO, además
+      de pagar los gastos y costas legales que en su caso se originen.
+    </p>
+
+    <h5>DÉCIMA SEPTIMA: INTERPRETACIÓN Y CUMPLIMIENTO</h5>
+    <p class="clausula">
+      Para todo lo relativo a la interpretación y cumplimiento de este Contrato,
+      las partes se someten expresamente a las leyes aplicables en Mexico, y a
+      la Jurisdicción de los Tribunales del fuero común de la Ciudad de México,
+      que serán los únicos competentes para conocer de cualquier juicio o
+      reclamación derivado del presente Contrato, renunciando a cualquier otro
+      fuero que pudiera corresponderles por razón de su domicilio presente o
+      futuro.
+    </p>
+
+    <div style="height: 60px"></div>
+    <!-- Firmas -->
+    <div class="firma">
+      <div class="firmante">
+        <div>__________________________________</div>
+        <div><strong>Por {{ empresa.nombre }}</strong></div>
+        <div>{{ apoderado_nombre_arrendador }}</div>
+        <div class="small">Nombre y firma</div>
+      </div>
+      <div class="firmante">
+        <div>__________________________________</div>
+        <div><strong>Por {{ area.cliente.nombre }}</strong></div>
+        {% if area.cliente.tipo_contribuyente == "Moral" %}
+          <div>{{ apoderado_nombre_arrendatario }}</div>
+        {% else %}
+          <span></span>
+        {% endif %}
+        <div class="small">Nombre y firma</div>
+      </div>
     </div>
-    <div class="firmante">
-      <div>__________________________________</div>
-      <div><strong>Por {{ area.cliente.nombre }}</strong></div>
-      <div class="small">Nombre y firma</div>
+
+
+    <div style="height: 60px"></div>
+    <!-- Testigos -->
+    <div class="firma" style="margin-top: 48px;">
+      <div class="firmante">
+        <div>__________________________________</div>
+        <div><strong>Testigo </strong></div>
+        <div class="small">Nombre y firma</div>
+      </div>
+      <div class="firmante">
+        <div>__________________________________</div>
+        <div><strong>Testigo</strong></div>
+        <div class="small">Nombre y firma</div>
+      </div>
     </div>
-  </div>
 
-  {% comment %} <footer style="margin-top:18px; font-size:11px; color:var(--muted);">
-    <div>Documento generado por {{ request.get_host }} — Fecha: {{ now|date:"d/m/Y H:i" }}</div>
-    <div>Nota: Este documento es una plantilla. Verifique cláusulas específicas con asesoría legal si requiere fuerza contractual adicional.</div>
-  </footer> {% endcomment %}
+    <!-- Pie de página -->
+    <div style="height: 40px"></div>
+    <p>
+      Leído que fue por las partes el presente Contrato y conformes con todas y
+      cada una de sus cláusulas por encontrarse exentas de vicio alguno que las
+      pudiera invalidar, declaran que conocen y aceptan a su entera satisfacción
+      el Reglamento Interno de EL CENTRO COMERCIAL y firman de conformidad en la
+      Ciudad de Mexico, a los
+      <strong>{{ area.fecha_dia }}</strong> días del mes de
+      <strong>{{ area.fecha_mes }}</strong> del año
+      <strong>{{ area.fecha_anio }}</strong>.
+    </p>
+    
+  
 
-  <!-- Scripts: descarga directa del PDF (si la vista devuelve PDF en la misma URL) -->
-  <script>
-    // Si desea forzar descarga vía fetch (opcional): aquí un helper que solicita la ruta PDF y fuerza descarga.
-    async function descargarPDF(url, filename) {
-      try {
-        const res = await fetch(url, { credentials: 'same-origin' });
-        if (!res.ok) throw new Error('Error al descargar');
-        const blob = await res.blob();
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(link.href);
-      } catch (e) {
-        alert('No se pudo descargar el PDF: ' + e.message);
+    <!-- Scripts: descarga directa del PDF (si la vista devuelve PDF en la misma URL) -->
+    <script>
+      // Si desea forzar descarga vía fetch (opcional): aquí un helper que solicita la ruta PDF y fuerza descarga.
+      async function descargarPDF(url, filename) {
+        try {
+          const res = await fetch(url, { credentials: "same-origin" });
+          if (!res.ok) throw new Error("Error al descargar");
+          const blob = await res.blob();
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(link.href);
+        } catch (e) {
+          alert("No se pudo descargar el PDF: " + e.message);
+        }
       }
-    }
 
-    // Si se quiere, se puede enlazar un botón para ejecutar:
-    // descargarPDF("{% url 'generar_contrato' area.pk %}", "contrato_area_{{ area.pk }}.pdf");
-  </script>
-</body>
+      // Si se quiere, se puede enlazar un botón para ejecutar:
+      // descargarPDF("{% url 'generar_contrato' area.pk %}", "contrato_area_{{ area.pk }}.pdf");
+    </script>
+  </body>
 </html>

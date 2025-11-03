@@ -145,3 +145,36 @@ class AsignarClienteForm(forms.ModelForm):
 
 class AreaComunCargaMasivaForm(forms.Form):
     archivo = forms.FileField(label='Archivo Excel (.xlsx)')
+
+
+from django import forms
+
+class DatosContratoForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        tipo_contribuyente = kwargs.pop('tipo_contribuyente', None)
+        super().__init__(*args, **kwargs)
+
+        # Campos de datos arrendador (siempre)
+        self.fields['escritura_numero_arrendador'] = forms.CharField(label="Escritura Número Arrendador", max_length=50)
+        self.fields['escritura_fecha_arrendador'] = forms.CharField(label="Fecha de Escritura Arrendador", max_length=50)
+        self.fields['notario_nombre_arrendador'] = forms.CharField(label="Nombre del Notario Arrendador", max_length=100)
+        self.fields['notario_numero_arrendador'] = forms.CharField(label="Notario Número Arrendador", max_length=50)
+        self.fields['notario_ciudad_arrendador'] = forms.CharField(label="Ciudad del Notario Arrendador", max_length=100)
+        self.fields['clabe_interbancaria_arrendador'] = forms.CharField(label="CLABE Interbancaria Arrendador", max_length=50)
+        self.fields['apoderado_nombre_arrendador'] = forms.CharField(label="Nombre del Apoderado Arrendador", max_length=100)
+        self.fields['apoderado_numero_escritura_arrendador'] = forms.CharField(label="Escritura Pública del Apoderado", max_length=50)
+        self.fields['apoderado_escritura_fecha_arrendador'] = forms.CharField(label="Fecha de Escritura del Apoderado", max_length=50)
+        self.fields['apoderado_notario_nombre_arrendador'] = forms.CharField(label="Nombre del Notario del Apoderado", max_length=100)
+        self.fields['apoderado_notario_numero_arrendador'] = forms.CharField(label="Número del Notario del Apoderado", max_length=50)
+        self.fields['apoderado_notario_ciudad_arrendador'] = forms.CharField(label="Ciudad del Notario del Apoderado", max_length=100)
+
+        # Si es persona moral, agrega los campos extra
+        if tipo_contribuyente == 'Moral':
+            self.fields['escritura_numero_arrendatario'] = forms.CharField(label="Escritura Número Arrendatario", max_length=50)
+            self.fields['escritura_fecha_arrendatario'] = forms.CharField(label="Fecha de Escritura Arrendatario", max_length=50)
+            self.fields['notario_nombre_arrendatario'] = forms.CharField(label="Nombre del Notario Arrendatario", max_length=100)
+            self.fields['notario_numero_arrendatario'] = forms.CharField(label="Notario Número Arrendatario", max_length=50)
+            self.fields['notario_ciudad_arrendatario'] = forms.CharField(label="Ciudad del Notario Arrendatario", max_length=100)
+            self.fields['apoderado_nombre_arrendatario'] = forms.CharField(label="Nombre del Apoderado Arrendatario", max_length=100)
+
+

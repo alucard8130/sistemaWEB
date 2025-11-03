@@ -4,7 +4,7 @@ from .models import Cliente
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
-        fields = ['empresa','nombre', 'rfc', 'regimen_fiscal','codigo_postal','uso_cfdi','telefono', 'email', 'activo']
+        fields = ['empresa','nombre', 'rfc', 'tipo_contribuyente','regimen_fiscal','codigo_postal','uso_cfdi','telefono', 'email', 'activo']
         widgets = {
             'empresa': forms.Select(attrs={
                 'class': 'form-control'
@@ -17,12 +17,15 @@ class ClienteForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'RFC'
             }),
+            'tipo_contribuyente': forms.Select(attrs={
+                'class': 'form-control',
+            }),
             'regimen_fiscal': forms.Select(attrs={
                 'class': 'form-control',
             }),
             'codigo_postal': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'si es publico en general se toma el CP del emisor'
+                'placeholder': 'Publico en general captura Codigo Postal del emisor'
             }),
             'uso_cfdi': forms.Select(attrs={
                 'class': 'form-control',
@@ -51,6 +54,7 @@ class ClienteForm(forms.ModelForm):
         self.fields['regimen_fiscal'].required = True
         self.fields['uso_cfdi'].required = True
         self.fields['codigo_postal'].required = True
+        self.fields['tipo_contribuyente'].required = True
 
 
     def clean(self):

@@ -1,5 +1,4 @@
-
-
+from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from django.contrib import messages
 from django.http import HttpResponse
@@ -11,7 +10,7 @@ from empresas.models import Empresa
 from locales.forms import LocalComercialForm
 from principal.models import AuditoriaCambio
 from .models import AreaComun
-from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm
+from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm, DatosContratoForm
 from unidecode import unidecode
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
@@ -368,13 +367,7 @@ def generar_contrato(request, area_id):
     if not getattr(area.empresa, 'es_plus', False):
         messages.error(request, "La Generación de contratos solo está disponible en la versión PLUS")
         return redirect('lista_areas')
-        # contexto = {
-        #     'error': "La Generación de contratos solo está disponible en la versión PLUS",
-        #     'area': area,
-        #     'empresa': area.empresa,
-        # }
-        # return render(request, 'areas/plantilla_contrato.html', contexto)
-
+      
     contexto = {'area': area, 'empresa': area.empresa}
     html_string = render_to_string('areas/plantilla_contrato.html', contexto)
 
@@ -389,3 +382,38 @@ def generar_contrato(request, area_id):
 
     # Por defecto, muestra la vista previa HTML
     return HttpResponse(html_string)
+
+
+@login_required
+def contrato_formulario(request, area_id):
+    area = get_object_or_404(AreaComun, pk=area_id)
+    empresa = area.empresa
+
+    if not getattr(area.empresa, 'es_plus', False):
+        messages.error(request, "La Generación de contratos solo está disponible en la versión PLUS")
+        return redirect('lista_areas')
+    
+    tipo_contribuyente = getattr(area.cliente, 'tipo_contribuyente', None)
+
+    if request.method == 'POST':
+        form = DatosContratoForm(request.POST, tipo_contribuyente=tipo_contribuyente)
+        if form.is_valid():
+            # Calcular meses de vigencia
+            fecha_inicial = area.fecha_inicial
+            fecha_final = area.fecha_fin
+            meses_vigencia = 0
+            if fecha_inicial and fecha_final:
+                delta = relativedelta(fecha_final, fecha_inicial)
+                meses_vigencia = delta.years * 12 + delta.months
+                if delta.days > 0:
+                    meses_vigencia += 1  # Si hay días extra, cuenta como mes adicional
+            contexto = {
+                'area': area,
+                'empresa': empresa,
+                'meses_vigencia': meses_vigencia,
+                **form.cleaned_data, 
+            }
+            return render(request, 'areas/plantilla_contrato.html', contexto)
+    else:
+        form = DatosContratoForm(tipo_contribuyente=tipo_contribuyente)
+    return render(request, 'areas/formulario_contrato.html', {'form': form, 'area': area, 'empresa': empresa})

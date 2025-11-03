@@ -17,7 +17,7 @@ from locales.views import (
     crear_local, editar_local, eliminar_local, lista_locales, 
     locales_inactivos, reactivar_local)
 from areas.views import (
-    generar_contrato, lista_areas, crear_area, editar_area, eliminar_area,
+    contrato_formulario, generar_contrato, lista_areas, crear_area, editar_area, eliminar_area,
     areas_inactivas, reactivar_area)
 from clientes.views import (
     carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
@@ -142,6 +142,7 @@ urlpatterns = [
     path('vales_caja_chica/exportar/', exportar_vales_caja_chica_excel, name='exportar_vales_caja_chica_excel'),
     path('fondeos/exportar/', exportar_fondeos_excel, name='exportar_fondeos_excel'),   
     path('proveedores/<int:pk>/eliminar/', eliminar_proveedor, name='eliminar_proveedor'),
+    path('contrato/formulario/<int:area_id>/', contrato_formulario, name='contrato_formulario'),
 ]
     
 

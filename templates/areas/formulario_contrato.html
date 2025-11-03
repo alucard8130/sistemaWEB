@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lista áreas</title>
+    <!-- Bootstrap base styles -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Bootstrap icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <!-- Google Font Rubik -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Customised CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  </head>
+  <body>
+    <div class="container">
+        <h2>Datos adicionales para el contrato</h2>
+        <form method="post">
+    {% csrf_token %}
+    <div class="row">
+        <!-- Sección Arrendador -->
+        <div class="col-md-6">
+            <h4 class="mb-3">Datos del Arrendador</h4>
+            {% for field in form %}
+                {% if "arrendador" in field.name %}
+                    <div class="mb-3">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <!-- Sección Arrendatario -->
+        <div class="col-md-6">
+            <h4 class="mb-3">Datos del Arrendatario</h4>
+            {% for field in form %}
+                {% if "arrendatario" in field.name %}
+                    <div class="mb-3">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-4">Generar contrato</button>
+</form>
+    </div>
+    <!-- 🔹 Footer -->
+    <footer>
+      © {% now "Y" %} GAC. Todos los derechos reservados. <br />
+      Creado por JMEB
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

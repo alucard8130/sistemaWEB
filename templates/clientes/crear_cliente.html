@@ -22,15 +22,7 @@
 </head>
 <body>
     {% include 'navbar.html' %}
-    
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
+    <!-- Main content -->
     <div class="container mt-5">
         <div class="row justify-content-center">
             <div class="col-md-4 col-sm-6 mx-auto">
@@ -76,6 +68,11 @@
                         {{ form.rfc.label_tag }}
                         {{ form.rfc }}
                         {{ form.rfc.errors }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.tipo_contribuyente.label_tag }}
+                        {{ form.tipo_contribuyente }}
+                        {{ form.tipo_contribuyente.errors }}
                     </div>
                     <div class="mb-3">
                         {{ form.regimen_fiscal.label_tag }}
