@@ -49,7 +49,16 @@ from django.urls import reverse
 from django.conf import settings
 import requests
 from decimal import Decimal
-
+from .forms import CSDUploadForm, EstadoCuentaUploadForm
+import base64
+import io
+import zipfile
+from gastos.models import PagoGasto
+from .serializers import FacturaSerializer
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from datetime import datetime
+from caja_chica.models import FondeoCajaChica
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -1182,256 +1191,6 @@ def eliminar_tema(request, tema_id):
     return redirect('lista_temas')
 
 
-# Módulo de conciliación bancaria
-def conciliar_estado_cuenta(ruta_archivo, empresa):
-    from facturacion.models import Factura, FacturaOtrosIngresos
-    from caja_chica.models import FondeoCajaChica
-    from gastos.models import Gasto
-    from datetime import datetime
-
-    conciliados = []
-    no_conciliados = []
-    fechas = []
-    movimientos_csv = []
-
-    # 1. Lee el archivo y guarda fechas y movimientos
-    with open(ruta_archivo, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            fecha_str = row['fecha']
-            try:
-                fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-            except ValueError:
-                continue  # Salta filas con fecha inválida
-            fechas.append(fecha)
-            movimientos_csv.append({
-                'fecha': fecha,
-                'monto': float(row['monto']),
-                'descripcion': row.get('descripcion', '')
-            })
-
-    if not fechas:
-        return {
-            'conciliados': [],
-            'no_conciliados': movimientos_csv,
-            'fecha_min': None,
-            'fecha_max': None,
-            'error': 'No se detectaron fechas válidas en el archivo.'
-        }
-
-    fecha_min = min(fechas)
-    fecha_max = max(fechas)
-
-    # 2. Filtra movimientos del sistema solo dentro del rango de fechas
-    facturas = Factura.objects.filter(
-        empresa=empresa,
-        fecha_emision__gte=fecha_min,
-        fecha_emision__lte=fecha_max,
-        estatus='pendiente'
-    )
-    otros_ingresos = FacturaOtrosIngresos.objects.filter(
-        empresa=empresa,
-        fecha_emision__gte=fecha_min,
-        fecha_emision__lte=fecha_max,
-        estatus='pendiente'
-    )
-    gastos = Gasto.objects.filter(
-        empresa=empresa,
-        fecha__gte=fecha_min,
-        fecha__lte=fecha_max,
-        estatus='pendiente'
-    )
-    fondeos = FondeoCajaChica.objects.filter(
-        empresa=empresa,
-        fecha__gte=fecha_min,
-        fecha__lte=fecha_max
-    )
-
-    # 3. Procesa cada movimiento del CSV
-    for mov in movimientos_csv:
-        monto = mov['monto']
-        descripcion = mov['descripcion']
-        fecha = mov['fecha']
-
-        # Buscar coincidencia en cuotas
-        cuota = facturas.filter(saldo_pendiente=monto).first()
-        if cuota:
-            cuota.estatus = 'cobrada'
-            cuota.save()
-            conciliados.append({
-                'fecha': fecha,
-                'monto': monto,
-                'descripcion': descripcion,
-                'tipo': 'Cuota'
-            })
-            continue
-
-        # Buscar coincidencia en otros ingresos
-        ingreso = otros_ingresos.filter(saldo_pendiente=monto).first()
-        if ingreso:
-            ingreso.estatus = 'cobrada'
-            ingreso.save()
-            conciliados.append({
-                'fecha': fecha,
-                'monto': monto,
-                'descripcion': descripcion,
-                'tipo': 'Otro ingreso'
-            })
-            continue
-
-        # Buscar coincidencia en gastos
-        gasto = gastos.filter(saldo_pendiente=monto).first()
-        if gasto:
-            gasto.estatus = 'pagado'
-            gasto.save()
-            conciliados.append({
-                'fecha': fecha,
-                'monto': monto,
-                'descripcion': descripcion,
-                'tipo': 'Gasto'
-            })
-            continue
-
-        # Buscar coincidencia en fondeos de caja chica
-        fondeo = fondeos.filter(saldo=monto).first()
-        if fondeo:
-            fondeo.numero_cheque = descripcion or fondeo.numero_cheque
-            fondeo.save()
-            conciliados.append({
-                'fecha': fecha,
-                'monto': monto,
-                'descripcion': descripcion,
-                'tipo': 'Fondeo caja chica'
-            })
-            continue
-
-        # Si no se encontró coincidencia
-        no_conciliados.append({
-            'fecha': fecha,
-            'monto': monto,
-            'descripcion': descripcion
-        })
-
-    return {
-        'conciliados': conciliados,
-        'no_conciliados': no_conciliados,
-        'fecha_min': fecha_min,
-        'fecha_max': fecha_max,
-    }
-
-@login_required
-def subir_estado_cuenta(request):
-    empresa = request.user.perfilusuario.empresa
-    if request.method == 'POST':
-        archivo = request.FILES['archivo']
-        # Guarda el archivo temporalmente
-        import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
-            for chunk in archivo.chunks():
-                tmp.write(chunk)
-            tmp_path = tmp.name
-
-        # Conciliación mejorada: guarda lista de conciliados con tipo
-        resultado = conciliar_estado_cuenta(tmp_path, empresa)
-        conciliados = []
-        no_conciliados = resultado.get('no_conciliados', [])
-        fecha_min = resultado.get('fecha_min')
-        fecha_max = resultado.get('fecha_max')
-
-        # Vuelve a leer el archivo para obtener los conciliados con tipo
-        from facturacion.models import Factura, FacturaOtrosIngresos
-        from caja_chica.models import FondeoCajaChica
-        from gastos.models import Gasto
-        from datetime import datetime
-
-        with open(tmp_path, newline='', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                fecha_str = row['fecha']
-                try:
-                    fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-                except ValueError:
-                    continue
-                monto = float(row['monto'])
-                descripcion = row.get('descripcion', '')
-
-                # Buscar coincidencia en cuotas
-                cuota = Factura.objects.filter(
-                    empresa=empresa,
-                    fecha_emision__gte=fecha_min,
-                    fecha_emision__lte=fecha_max,
-                    saldo_pendiente=monto,
-                    estatus='cobrada'
-                ).first()
-                if cuota:
-                    conciliados.append({
-                        'fecha': fecha,
-                        'monto': monto,
-                        'descripcion': descripcion,
-                        'tipo': 'Cuota'
-                    })
-                    continue
-
-                # Buscar coincidencia en otros ingresos
-                ingreso = FacturaOtrosIngresos.objects.filter(
-                    empresa=empresa,
-                    fecha_emision__gte=fecha_min,
-                    fecha_emision__lte=fecha_max,
-                    saldo_pendiente=monto,
-                    estatus='cobrada'
-                ).first()
-                if ingreso:
-                    conciliados.append({
-                        'fecha': fecha,
-                        'monto': monto,
-                        'descripcion': descripcion,
-                        'tipo': 'Otro ingreso'
-                    })
-                    continue
-
-                # Buscar coincidencia en gastos
-                gasto = Gasto.objects.filter(
-                    empresa=empresa,
-                    fecha__gte=fecha_min,
-                    fecha__lte=fecha_max,
-                    saldo_pendiente=monto,
-                    estatus='pagado'
-                ).first()
-                if gasto:
-                    conciliados.append({
-                        'fecha': fecha,
-                        'monto': monto,
-                        'descripcion': descripcion,
-                        'tipo': 'Gasto'
-                    })
-                    continue
-
-                # Buscar coincidencia en fondeos de caja chica
-                fondeo = FondeoCajaChica.objects.filter(
-                    empresa=empresa,
-                    fecha__gte=fecha_min,
-                    fecha__lte=fecha_max,
-                    saldo=monto
-                ).first()
-                if fondeo:
-                    conciliados.append({
-                        'fecha': fecha,
-                        'monto': monto,
-                        'descripcion': descripcion,
-                        'tipo': 'Fondeo caja chica'
-                    })
-                    continue
-
-        return render(request, 'conciliacion/resultado_conciliacion.html', {
-            'conciliados': conciliados,
-            'no_conciliados': no_conciliados,
-            'fecha_min': fecha_min,
-            'fecha_max': fecha_max,
-        })
-
-    return render(request, 'conciliacion/subir_estado_cuenta.html')
-
-
 #Modulo de timbrado de facturas con FACTURAMA
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASS = os.getenv("FACTURAMA_PASSWORD")
@@ -1591,10 +1350,6 @@ def timbrar_factura(request, pk):
                    "url_cancelar": next_url,
                })
 
-import requests
-import io
-import zipfile
-from django.http import HttpResponse
 
 @login_required
 def descargar_factura_timbrada(request, pk):
@@ -1644,9 +1399,6 @@ def descargar_factura_timbrada(request, pk):
     response['Content-Disposition'] = f'attachment; filename=factura_{factura.folio}.zip'
     return response
 
-
-from .forms import CSDUploadForm, EstadoCuentaUploadForm
-import base64
 
 @staff_member_required
 def subir_csd_facturama(request):
@@ -1859,7 +1611,6 @@ def timbrar_factura_otros_ingresos(request, pk):
                     , "url_cancelar":"lista_facturas_otros_ingresos"})
 
 
-
 # Módulo de timbrado para visitantes
 def visitante_timbrar_factura(request, pk):
     visitante_id = request.session.get("visitante_id")
@@ -1915,73 +1666,7 @@ def visitante_timbrar_factura(request, pk):
         "url_cancelar": "visitante_consulta_facturas"
     })
 
-
-# modulo conciliacion bancaria
-
-from facturacion.models import Pago
-from gastos.models import PagoGasto
-
-@login_required
-def subir_estado_cuenta(request):
-    tabla = []
-    columnas = []
-    error = None
-    ingresos = Pago.objects.all()
-    egresos = PagoGasto.objects.all()
-
-    if request.method == "POST":
-        form = EstadoCuentaUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            archivo = request.FILES["archivo"]
-            nombre = archivo.name.lower()
-            try:
-                if nombre.endswith(".csv"):
-                    text = archivo.read().decode("utf-8", errors="ignore")
-                    reader = csv.reader(io.StringIO(text))
-                    tabla = list(reader)
-                else:
-                    wb = openpyxl.load_workbook(archivo, data_only=True)
-                    ws = wb.active
-                    tabla = list(ws.values)
-                if tabla:
-                    columnas = [str(c) for c in tabla[0]]
-                    tabla = tabla[1:]
-            except Exception as e:
-                error = f"Error al leer el archivo: {e}"
-    else:
-        form = EstadoCuentaUploadForm()
-
-    return render(request, "conciliacion/estado_cuenta_vista.html", {
-        "form": form,
-        "columnas": columnas,
-        "tabla": tabla,
-        "error": error,
-        "ingresos": ingresos,
-        "egresos": egresos,
-    })
-
-
-@login_required
-def confirmar_conciliacion(request):
-    if request.method == "POST":
-        movimiento_idx = int(request.POST.get("movimiento_idx"))
-        match_id = request.POST.get("match_id")
-        # Aquí puedes guardar la conciliación en la base de datos si lo deseas
-        # Ejemplo: registrar el match en un modelo ConciliacionManual
-        messages.success(request, "Conciliación manual registrada.")
-    return redirect("subir_estado_cuenta")
-
-
-
 # modulo vistantes para FLUTTER
-
-from .serializers import FacturaSerializer
-from facturacion.models import Factura
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.db.models import Q
-
-
 @api_view(['POST'])
 def visitante_login_api(request):
     username = request.data.get('username')
@@ -2006,3 +1691,164 @@ def visitante_facturas_api(request):
     facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
     serializer = FacturaSerializer(facturas, many=True)
     return Response({'facturas': serializer.data})    
+
+
+#conciliación bancaria
+@login_required
+@login_required
+def subir_estado_cuenta(request):
+    conciliados_cargos = []
+    conciliados_abonos = []
+    no_conciliados_cargos = []
+    no_conciliados_abonos = []
+    periodo = None
+    error = None
+
+    if request.method == "POST":
+        form = EstadoCuentaUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES.get("archivo")
+            if not archivo:
+                error = "No se recibió ningún archivo."
+            else:
+                movimientos_banco = []
+                try:
+                    text = archivo.read().decode("utf-8", errors="ignore")
+                    reader = csv.DictReader(io.StringIO(text))
+                    for row in reader:
+                        try:
+                            fecha = datetime.strptime(row['fecha'], "%d/%m/%Y").date()
+                        except ValueError:
+                            fecha = datetime.strptime(row['fecha'], "%Y-%m-%d").date()
+                        cargo = float(row.get('cargo', 0) or 0)
+                        abono = float(row.get('abono', 0) or 0)
+                        descripcion = row.get('descripcion', '')
+                        movimientos_banco.append({'fecha': fecha, 'cargo': cargo, 'abono': abono, 'descripcion': descripcion, 'usado': False})
+                except Exception as e:
+                    error = f"Error al leer el archivo: {e}"
+
+                if movimientos_banco:
+                    fecha_min = min(m['fecha'] for m in movimientos_banco)
+                    fecha_max = max(m['fecha'] for m in movimientos_banco)
+                    periodo = f"{fecha_min.strftime('%d/%m/%Y')} al {fecha_max.strftime('%d/%m/%Y')}"
+                    empresa = request.user.perfilusuario.empresa
+
+                    # 1. Movimientos del sistema en el periodo
+                    pagos_cuotas = list(Pago.objects.filter(
+                        factura__empresa=empresa,
+                        fecha_pago__gte=fecha_min,
+                        fecha_pago__lte=fecha_max
+                    ))
+                    pagos_otros = list(CobroOtrosIngresos.objects.filter(
+                        factura__empresa=empresa,
+                        fecha_cobro__gte=fecha_min,
+                        fecha_cobro__lte=fecha_max
+                    ))
+                    pagos_gastos = list(PagoGasto.objects.filter(
+                        gasto__empresa=empresa,
+                        fecha_pago__gte=fecha_min,
+                        fecha_pago__lte=fecha_max
+                    ))
+                    fondeos = list(FondeoCajaChica.objects.filter(
+                        empresa=empresa,
+                        fecha__gte=fecha_min,
+                        fecha__lte=fecha_max
+                    ))
+
+                    # 2. Conciliación de abonos (cuotas y otros ingresos)
+                    for pago in pagos_cuotas:
+                        encontrado = next((b for b in movimientos_banco if not b['usado'] and b['abono'] == pago.monto and b['fecha'] == pago.fecha_pago), None)
+                        mov = {
+                            'fecha': pago.fecha_pago,
+                            'abono': pago.monto,
+                            'cargo': 0,
+                            'descripcion': f'Pago cuota {getattr(pago.factura, "folio", "")}',
+                            'tipo': 'Pago cuota'
+                        }
+                        if encontrado:
+                            conciliados_abonos.append(mov)
+                            encontrado['usado'] = True
+                        else:
+                            no_conciliados_abonos.append(mov)
+
+                    for cobro in pagos_otros:
+                        encontrado = next((b for b in movimientos_banco if not b['usado'] and b['abono'] == cobro.monto and b['fecha'] == cobro.fecha_cobro), None)
+                        mov = {
+                            'fecha': cobro.fecha_cobro,
+                            'abono': cobro.monto,
+                            'cargo': 0,
+                            'descripcion': f'Pago otros ingresos {getattr(cobro.factura, "folio", "")}',
+                            'tipo': 'Pago otros ingresos'
+                        }
+                        if encontrado:
+                            conciliados_abonos.append(mov)
+                            encontrado['usado'] = True
+                        else:
+                            no_conciliados_abonos.append(mov)
+
+                    # 3. Conciliación de cargos (gastos y fondeos)
+                    for gasto in pagos_gastos:
+                        encontrado = next((b for b in movimientos_banco if not b['usado'] and b['cargo'] == gasto.monto and b['fecha'] == gasto.fecha_pago), None)
+                        mov = {
+                            'fecha': gasto.fecha_pago,
+                            'cargo': gasto.monto,
+                            'abono': 0,
+                            'descripcion': f'Pago gasto {getattr(gasto.gasto, "referencia", "")}',
+                            'tipo': 'Pago gasto'
+                        }
+                        if encontrado:
+                            conciliados_cargos.append(mov)
+                            encontrado['usado'] = True
+                        else:
+                            no_conciliados_cargos.append(mov)
+
+                    for fondeo in fondeos:
+                        encontrado = next((b for b in movimientos_banco if not b['usado'] and b['cargo'] == fondeo.importe_cheque and b['fecha'] == fondeo.fecha), None)
+                        mov = {
+                            'fecha': fondeo.fecha,
+                            'cargo': fondeo.importe_cheque,
+                            'abono': 0,
+                            'descripcion': 'Fondeo caja chica',
+                            'tipo': 'Fondeo caja chica'
+                        }
+                        if encontrado:
+                            conciliados_cargos.append(mov)
+                            encontrado['usado'] = True
+                        else:
+                            no_conciliados_cargos.append(mov)
+
+    else:
+        form = EstadoCuentaUploadForm()
+
+    # Totales
+    total_conciliado_cargos = sum(mov['cargo'] for mov in conciliados_cargos)
+    total_conciliado_abonos = sum(mov['abono'] for mov in conciliados_abonos)
+    total_no_conciliado_cargos = sum(mov['cargo'] for mov in no_conciliados_cargos)
+    total_no_conciliado_abonos = sum(mov['abono'] for mov in no_conciliados_abonos)
+
+    return render(request, 'conciliacion/estado_cuenta_vista.html', {
+        'form': form,
+        'periodo': periodo,
+        'error': error,
+        'conciliados_cargos': conciliados_cargos,
+        'conciliados_abonos': conciliados_abonos,
+        'no_conciliados_cargos': no_conciliados_cargos,
+        'no_conciliados_abonos': no_conciliados_abonos,
+        'total_conciliado_cargos': total_conciliado_cargos,
+        'total_conciliado_abonos': total_conciliado_abonos,
+        'total_no_conciliado_cargos': total_no_conciliado_cargos,
+        'total_no_conciliado_abonos': total_no_conciliado_abonos,
+    })
+
+@login_required
+def descargar_plantilla_estado_cuenta(request):
+    contenido = (
+        "fecha,cargo,abono,descripcion\n"
+        "01/10/2025,0,1500.00,Pago cuota octubre\n"
+        "02/10/2025,500.00,0,Pago gasto limpieza\n"
+        "03/10/2025,0,2000.00,Fondeo caja chica\n"
+        "04/10/2025,0,1200.00,Pago otros ingresos\n"
+    )
+    response = HttpResponse(contenido, content_type="text/csv")
+    response["Content-Disposition"] = "attachment; filename=plantilla_estado_cuenta.csv"
+    return response

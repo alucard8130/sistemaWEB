@@ -45,4 +45,4 @@ class CSDUploadForm(forms.Form):
 
 #modulo conciliacion bancaria
 class EstadoCuentaUploadForm(forms.Form):
-    archivo = forms.FileField(label="Archivo de estado de cuenta (CSV o XLSX)") 
+    archivo = forms.FileField(label="Estado de cuenta bancario (.csv)")

@@ -33,7 +33,6 @@
                         <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
                         <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
                         <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
-                        {% comment %} <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li> {% endcomment %}
                         <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
                         <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
                         <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Subir Estado de Cuenta</a></li>
@@ -97,8 +96,12 @@
                         <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Cobros otros Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
-                        {% comment %} <li><hr class="dropdown-divider"></li> {% endcomment %}
-                        
+                        <li><hr class="dropdown-divider"></li>
+                        {% if empresa.es_plus %}
+                        <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>
+                        {% else %}
+                        <spam><li><a class="dropdown-item disabled" href="#" tabindex="-1" aria-disabled="true">Conciliación Bancaria (Plus)</a></li></spam>
+                        {% endif %}
                         {% if request.user.is_superuser %}
                         <!--    <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> -->
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>

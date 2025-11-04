@@ -7,174 +7,218 @@ from empresas.models import Empresa
 class AreaComunForm(forms.ModelForm):
     class Meta:
         model = AreaComun
-        fields = ['numero','cliente','empresa' , 'superficie_m2','tipo_area','cantidad_areas', 'cuota','deposito','giro','ubicacion','fecha_inicial', 'fecha_fin', 'status',  'observaciones']
+        fields = [
+            "numero",
+            "cliente",
+            "empresa",
+            "superficie_m2",
+            "tipo_area",
+            "cantidad_areas",
+            "cuota",
+            "deposito",
+            "giro",
+            "ubicacion",
+            "fecha_inicial",
+            "fecha_fin",
+            "status",
+            "observaciones",
+        ]
         widgets = {
-            'numero': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Número'
-            }),
-            'cliente': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'empresa': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'superficie_m2': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Superficie_m2'
-            }),
-            'tipo_area': forms.Select(attrs={
-                'class': 'form-control'       
-            }),
-            'cantidad_areas': forms.TextInput(attrs={
-                'class': 'form-control'
-            }),
-            'cuota': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Cuota'
-            }),
-            'deposito': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Depósito'
-            }),
-            'giro': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Giro'
-            }),
-            'ubicacion': forms.Textarea(attrs={
-                'rows': 2,
-                'class': 'form-control',
-                'placeholder': 'Ubicación'        
-            }),
-            'fecha_inicial': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
-            }, format='%Y-%m-%d'),
-            'fecha_fin': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
-            }, format='%Y-%m-%d'),
-            'status': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'observaciones': forms.Textarea(attrs={
-                'rows': 2,
-                'class': 'form-control',
-                'placeholder': 'Observaciones'        
-            }),
+            "numero": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Número"}
+            ),
+            "cliente": forms.Select(attrs={"class": "form-control"}),
+            "empresa": forms.Select(attrs={"class": "form-control"}),
+            "superficie_m2": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Superficie_m2"}
+            ),
+            "tipo_area": forms.Select(attrs={"class": "form-control"}),
+            "cantidad_areas": forms.TextInput(attrs={"class": "form-control"}),
+            "cuota": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Cuota"}
+            ),
+            "deposito": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Depósito"}
+            ),
+            "giro": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Giro"}
+            ),
+            "ubicacion": forms.Textarea(
+                attrs={"rows": 2, "class": "form-control", "placeholder": "Ubicación"}
+            ),
+            "fecha_inicial": forms.DateInput(
+                attrs={"type": "date", "class": "form-control"}, format="%Y-%m-%d"
+            ),
+            "fecha_fin": forms.DateInput(
+                attrs={"type": "date", "class": "form-control"}, format="%Y-%m-%d"
+            ),
+            "status": forms.Select(attrs={"class": "form-control"}),
+            "observaciones": forms.Textarea(
+                attrs={
+                    "rows": 2,
+                    "class": "form-control",
+                    "placeholder": "Observaciones",
+                }
+            ),
         }
         labels = {
-            'numero': 'Número',
-            'tipo_area': 'Tipo de área',
-            'cantidad_areas': 'Cantidad de áreas',
-            'deposito': 'Depósito',
-            'ubicacion': 'Ubicación',
-            'status': 'Estatus',
+            "numero": "Número",
+            "tipo_area": "Tipo de área",
+            "cantidad_areas": "Cantidad de áreas",
+            "deposito": "Depósito",
+            "ubicacion": "Ubicación",
+            "status": "Estatus",
         }
+
     def __init__(self, *args, **kwargs):
-        #self.user = kwargs.pop('user', None)
-        user = kwargs.pop('user', None)
+        # self.user = kwargs.pop('user', None)
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-   
+
         if user and not user.is_superuser:
-            self.fields['empresa'].widget = forms.HiddenInput()
+            self.fields["empresa"].widget = forms.HiddenInput()
             empresa = user.perfilusuario.empresa
-            self.fields['empresa'].initial = empresa  # <-- Asigna el valor aquí
-            self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
+            self.fields["empresa"].initial = empresa  # <-- Asigna el valor aquí
+            self.fields["cliente"].queryset = Cliente.objects.filter(empresa=empresa)
         else:
-            self.fields['cliente'].queryset = Cliente.objects.all()
-         
+            self.fields["cliente"].queryset = Cliente.objects.all()
+
         # Deshabilita el campo cliente si se está editando un local existente
         if self.instance and self.instance.pk:
-            self.fields['cliente'].disabled = True
-            self.fields['numero'].disabled = True
-            self.fields['status'].disabled = True    
+            self.fields["cliente"].disabled = True
+            self.fields["numero"].disabled = True
+            self.fields["status"].disabled = True
 
     def clean(self):
         cleaned_data = super().clean()
-        numero = cleaned_data.get('numero')  # Cambiado de 'nombre' a 'numero'
-        empresa = cleaned_data.get('empresa')
-        fecha_inicial = cleaned_data.get('fecha_inicial')
-        fecha_fin = cleaned_data.get('fecha_fin')
+        numero = cleaned_data.get("numero")  # Cambiado de 'nombre' a 'numero'
+        empresa = cleaned_data.get("empresa")
+        fecha_inicial = cleaned_data.get("fecha_inicial")
+        fecha_fin = cleaned_data.get("fecha_fin")
 
         if numero and empresa:
-            qs = AreaComun.objects.filter(numero__iexact=numero, empresa=empresa, activo=True)
+            qs = AreaComun.objects.filter(
+                numero__iexact=numero, empresa=empresa, activo=True
+            )
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise forms.ValidationError("Ya existe un área común con ese número en esta empresa.")
+                raise forms.ValidationError(
+                    "Ya existe un área común con ese número en esta empresa."
+                )
 
         if not fecha_inicial:
-            raise forms.ValidationError("Debe ingresar la fecha inicial.")        
+            raise forms.ValidationError("Debe ingresar la fecha inicial.")
         if not fecha_fin:
             raise forms.ValidationError("Debe ingresar la fecha fin.")
 
         if fecha_inicial and fecha_fin and fecha_inicial > fecha_fin:
-            raise forms.ValidationError("La fecha inicial no puede ser posterior a la fecha fin.")
+            raise forms.ValidationError(
+                "La fecha inicial no puede ser posterior a la fecha fin."
+            )
 
         return cleaned_data
-          
+
 
 class AsignarClienteForm(forms.ModelForm):
     class Meta:
         model = AreaComun
-        fields = ['cliente','fecha_inicial', 'fecha_fin']
+        fields = ["cliente", "fecha_inicial", "fecha_fin"]
         widgets = {
-            'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),
-            'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
+            "fecha_inicial": forms.DateInput(attrs={"type": "date"}),
+            "fecha_fin": forms.DateInput(attrs={"type": "date"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['cliente'].queryset = Cliente.objects.all()
+        self.fields["cliente"].queryset = Cliente.objects.all()
 
     def clean(self):
         cleaned_data = super().clean()
-        cliente = cleaned_data.get('cliente')
-        fecha_inicial = cleaned_data.get('fecha_inicial')
-        fecha_fin = cleaned_data.get('fecha_fin')
+        cliente = cleaned_data.get("cliente")
+        fecha_inicial = cleaned_data.get("fecha_inicial")
+        fecha_fin = cleaned_data.get("fecha_fin")
 
         if not cliente:
-            self.add_error('cliente', 'Debe seleccionar un cliente.')
+            self.add_error("cliente", "Debe seleccionar un cliente.")
         if not fecha_inicial:
-            self.add_error('fecha_inicial', 'Debe ingresar la fecha inicial.')
+            self.add_error("fecha_inicial", "Debe ingresar la fecha inicial.")
         if not fecha_fin:
-            self.add_error('fecha_fin', 'Debe ingresar la fecha fin.')
+            self.add_error("fecha_fin", "Debe ingresar la fecha fin.")
 
-        return cleaned_data    
+        return cleaned_data
+
 
 class AreaComunCargaMasivaForm(forms.Form):
-    archivo = forms.FileField(label='Archivo Excel (.xlsx)')
+    archivo = forms.FileField(label="Archivo Excel (.xlsx)")
 
 
 from django import forms
 
+
 class DatosContratoForm(forms.Form):
     def __init__(self, *args, **kwargs):
-        tipo_contribuyente = kwargs.pop('tipo_contribuyente', None)
+        tipo_contribuyente = kwargs.pop("tipo_contribuyente", None)
         super().__init__(*args, **kwargs)
 
         # Campos de datos arrendador (siempre)
-        self.fields['escritura_numero_arrendador'] = forms.CharField(label="Escritura Número Arrendador", max_length=50)
-        self.fields['escritura_fecha_arrendador'] = forms.CharField(label="Fecha de Escritura Arrendador", max_length=50)
-        self.fields['notario_nombre_arrendador'] = forms.CharField(label="Nombre del Notario Arrendador", max_length=100)
-        self.fields['notario_numero_arrendador'] = forms.CharField(label="Notario Número Arrendador", max_length=50)
-        self.fields['notario_ciudad_arrendador'] = forms.CharField(label="Ciudad del Notario Arrendador", max_length=100)
-        self.fields['clabe_interbancaria_arrendador'] = forms.CharField(label="CLABE Interbancaria Arrendador", max_length=50)
-        self.fields['apoderado_nombre_arrendador'] = forms.CharField(label="Nombre del Apoderado Arrendador", max_length=100)
-        self.fields['apoderado_numero_escritura_arrendador'] = forms.CharField(label="Escritura Pública del Apoderado", max_length=50)
-        self.fields['apoderado_escritura_fecha_arrendador'] = forms.CharField(label="Fecha de Escritura del Apoderado", max_length=50)
-        self.fields['apoderado_notario_nombre_arrendador'] = forms.CharField(label="Nombre del Notario del Apoderado", max_length=100)
-        self.fields['apoderado_notario_numero_arrendador'] = forms.CharField(label="Número del Notario del Apoderado", max_length=50)
-        self.fields['apoderado_notario_ciudad_arrendador'] = forms.CharField(label="Ciudad del Notario del Apoderado", max_length=100)
+        self.fields["escritura_numero_arrendador"] = forms.CharField(
+            label="Número Escritura Arrendador", max_length=50
+        )
+        self.fields["escritura_fecha_arrendador"] = forms.CharField(
+            label="Fecha Escritura Arrendador", max_length=50
+        )
+        self.fields["notario_nombre_arrendador"] = forms.CharField(
+            label="Nombre Notario Arrendador", max_length=100
+        )
+        self.fields["notario_numero_arrendador"] = forms.CharField(
+            label="Número Notario Arrendador", max_length=50
+        )
+        self.fields["notario_ciudad_arrendador"] = forms.CharField(
+            label="Ciudad Notario Arrendador", max_length=100
+        )
+        self.fields["clabe_interbancaria_arrendador"] = forms.CharField(
+            label="CLABE Interbancaria Arrendador", max_length=50
+        )
+        self.fields["apoderado_nombre_arrendador"] = forms.CharField(
+            label="Nombre Apoderado Arrendador", max_length=100
+        )
+        self.fields["apoderado_numero_escritura_arrendador"] = forms.CharField(
+            label="Número Escritura Apoderado", max_length=50
+        )
+        self.fields["apoderado_escritura_fecha_arrendador"] = forms.CharField(
+            label="Fecha Escritura del Apoderado", max_length=50
+        )
+        self.fields["apoderado_notario_nombre_arrendador"] = forms.CharField(
+            label="Nombre Notario del Apoderado", max_length=100
+        )
+        self.fields["apoderado_notario_numero_arrendador"] = forms.CharField(
+            label="Número Notario del Apoderado", max_length=50
+        )
+        self.fields["apoderado_notario_ciudad_arrendador"] = forms.CharField(
+            label="Ciudad Notario del Apoderado", max_length=100
+        )
+        self.fields["fecha_firma_contrato_arrendador"] = forms.CharField(
+            label="Fecha de Firma del Contrato", max_length=50
+        )
 
         # Si es persona moral, agrega los campos extra
-        if tipo_contribuyente == 'Moral':
-            self.fields['escritura_numero_arrendatario'] = forms.CharField(label="Escritura Número Arrendatario", max_length=50)
-            self.fields['escritura_fecha_arrendatario'] = forms.CharField(label="Fecha de Escritura Arrendatario", max_length=50)
-            self.fields['notario_nombre_arrendatario'] = forms.CharField(label="Nombre del Notario Arrendatario", max_length=100)
-            self.fields['notario_numero_arrendatario'] = forms.CharField(label="Notario Número Arrendatario", max_length=50)
-            self.fields['notario_ciudad_arrendatario'] = forms.CharField(label="Ciudad del Notario Arrendatario", max_length=100)
-            self.fields['apoderado_nombre_arrendatario'] = forms.CharField(label="Nombre del Apoderado Arrendatario", max_length=100)
-
-
+        if tipo_contribuyente == "Moral":
+            self.fields["escritura_numero_arrendatario"] = forms.CharField(
+                label="Número Escritura Arrendatario", max_length=50
+            )
+            self.fields["escritura_fecha_arrendatario"] = forms.CharField(
+                label="Fecha Escritura Arrendatario", max_length=50
+            )
+            self.fields["notario_nombre_arrendatario"] = forms.CharField(
+                label="Nombre Notario Arrendatario", max_length=100
+            )
+            self.fields["notario_numero_arrendatario"] = forms.CharField(
+                label="Número Notario Arrendatario", max_length=50
+            )
+            self.fields["notario_ciudad_arrendatario"] = forms.CharField(
+                label="Ciudad Notario Arrendatario", max_length=100
+            )
+            self.fields["apoderado_nombre_arrendatario"] = forms.CharField(
+                label="Nombre Apoderado Arrendatario", max_length=100
+            )

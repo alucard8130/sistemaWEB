@@ -114,12 +114,14 @@
       </a>
       {% if vale.status == "pendiente" %}
       <a href="{% url 'comprobar_vale' vale.id %}" class="btn btn-outline-success btn-sm" title="Comprobar vale">
+        Comprobar
         <i class="bi bi-check2-circle"></i>
       </a>
        <form method="post" action="{% url 'eliminar_vale_caja' vale.id %}" style="display:inline;">
           {% csrf_token %}
           <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este vale? Se devolverá el importe al fondeo.')"
           title="Eliminar vale">
+          
               <i class="bi bi-trash"></i>
           </button>
       </form>

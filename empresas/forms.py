@@ -76,3 +76,5 @@ class EmpresaForm(forms.ModelForm):
             'saldo_inicial': 'Saldo Inicial',
             'saldo_final': 'Saldo Final',
         }
+
+        
