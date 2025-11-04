@@ -92,12 +92,11 @@
               <td>${{ area.deposito|floatformat:2|intcomma }}</td>
               <td>{{ area.giro }}</td>
               <td>{{ area.tipo_area }}</td>
-              {% comment %} <td>{{ area.cantidad_areas }}</td> {% endcomment %}
               <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
               <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
               <td>
                 {% if area.estado_vigencia == "Vencido" %}
-                <span class="badge bg-danger">{{ area.estado_vigencia }}</span>
+                <span class="badge bg-danger" title="Edita Fechas para Generar Contrato">{{ area.estado_vigencia }}</span>
                 {% else %}
                 <span class="badge bg-success">{{ area.estado_vigencia }}</span>
                 {% endif %}

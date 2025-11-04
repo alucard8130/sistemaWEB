@@ -110,6 +110,8 @@ class FacturaOtrosIngresos(models.Model):
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"
     
+    class Meta:
+        unique_together = ('folio', 'empresa')  # Folio único por empresa
    
     @property
     def saldo(self):
