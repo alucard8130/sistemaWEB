@@ -97,7 +97,7 @@ class FacturaOtrosIngresos(models.Model):
     empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT)
     tipo_ingreso = models.ForeignKey('TipoOtroIngreso', on_delete=models.PROTECT)
-    folio = models.CharField(max_length=50, unique=True)
+    folio = models.CharField(max_length=50)
     uuid= models.CharField(max_length=100, blank=True, null=True)
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField()
