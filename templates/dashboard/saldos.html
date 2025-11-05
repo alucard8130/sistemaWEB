@@ -69,6 +69,28 @@
         {% endfor %}
     </select>
 </div>
+<div class="col-auto">
+        <select name="mes" id="mes" class="form-select form-select-sm" onchange="this.form.submit()">
+    <option value="">Meses</option>
+    {% for m in meses %}
+        <option value="{{ m }}" {% if mes|default:'' == m|stringformat:"s" %}selected{% endif %}>
+            {{ m|stringformat:"02d" }}
+        </option>
+    {% endfor %}
+</select>
+    </div>
+    <div class="col-auto">
+        <select name="anio" id="anio" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Años</option>
+            {% for a in anios_facturas %}
+                <option value="{{ a }}" {% if anio|default:'' == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <!-- limpiar-->
+    <div class="col-auto">
+        <a href="{% url 'dashboard_saldos' %}" class="btn btn-secondary">Limpiar filtros</a>
+    </div>
         </form>
 
         <!-- Gráficos y KPIs -->

@@ -35,7 +35,7 @@ from presupuestos.models import PresupuestoIngreso
 from collections import defaultdict
 import json
 from django.http import JsonResponse
-from django.db.models import Max
+from django.db.models import Max,Min
 from decimal import Decimal, ROUND_HALF_UP
 from django.db.models import Sum
 
@@ -590,6 +590,9 @@ def dashboard_saldos(request):
     cliente_id = request.GET.get('cliente')
     origen = request.GET.get('origen')
     tipo_cuota = request.GET.get('tipo_cuota')
+    mes= request.GET.get('mes')
+    anio= request.GET.get('anio')
+
     if not origen:
         origen = 'todos'
         
@@ -629,6 +632,19 @@ def dashboard_saldos(request):
     if tipo_cuota:
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
+    if anio:
+        try:
+            anio = int(anio)
+            facturas = facturas.filter(fecha_vencimiento__year=anio)
+        except ValueError:
+            pass
+    if mes:
+        try:
+            mes = int(mes)
+            facturas = facturas.filter(fecha_vencimiento__month=mes)
+        except ValueError:
+            pass
+
 
     # Subconsulta: total pagado por factura
     pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
@@ -650,6 +666,19 @@ def dashboard_saldos(request):
         facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
     if cliente_id:
         facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
+
+    if anio:
+        try:
+            anio = int(anio)
+            facturas_otros = facturas_otros.filter(fecha_vencimiento__year=anio)
+        except ValueError:
+            pass
+    if mes:
+        try:
+            mes = int(mes)
+            facturas_otros = facturas_otros.filter(fecha_vencimiento__month=mes)
+        except ValueError:
+            pass
 
     cobros_subquery = CobroOtrosIngresos.objects.filter(factura=OuterRef('pk')) \
         .values('factura') \
@@ -791,8 +820,22 @@ def dashboard_saldos(request):
     else:
         clientes = Cliente.objects.filter(empresa__in=empresas)
 
+    # Obtén el rango de años de las facturas y facturas_otros
+    min_year = Factura.objects.aggregate(min=Min('fecha_vencimiento'))['min']
+    max_year = Factura.objects.aggregate(max=Max('fecha_vencimiento'))['max']
+    min_year_otros = FacturaOtrosIngresos.objects.aggregate(min=Min('fecha_vencimiento'))['min']
+    max_year_otros = FacturaOtrosIngresos.objects.aggregate(max=Max('fecha_vencimiento'))['max']
+
+    years = set()
+    if min_year and max_year:
+        years.update(range(min_year.year, max_year.year + 1))
+    if min_year_otros and max_year_otros:
+        years.update(range(min_year_otros.year, max_year_otros.year + 1))
+    anios_facturas = sorted(years)
+
     tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
-    
+    #meses=range(1,13)
+
     return render(request, 'dashboard/saldos.html', {
         'facturas': facturas,
         'clientes': clientes,
@@ -822,6 +865,8 @@ def dashboard_saldos(request):
         'saldo_181_mas_total': saldo_181_mas_total,
         'tipos_cuota': tipos_cuota,
         'tipo_cuota_seleccionada': tipo_cuota,
+        'meses': range(1,13),
+        'anios_facturas': anios_facturas,
     })
 
 #pagos.html
