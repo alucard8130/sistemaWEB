@@ -59,9 +59,12 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from datetime import datetime
 from caja_chica.models import FondeoCajaChica
+import logging
+from facturacion.models import Factura, Pago
 
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+
+#stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # Vista de bienvenida / dashboard
 @login_required
@@ -949,10 +952,9 @@ def visitante_factura_detalle(request, factura_id):
 
 # Pago con Stripe para visitantes
 def stripe_checkout_visitante(request, factura_id):
-    from facturacion.models import Factura
     factura = get_object_or_404(Factura, id=factura_id)
     empresa = factura.empresa
-
+ 
     # Verifica que la empresa tenga las claves de Stripe configuradas
     if not (empresa.stripe_secret_key and empresa.stripe_public_key and empresa.stripe_webhook_secret):
         messages.error(
@@ -987,21 +989,15 @@ def stripe_checkout_visitante(request, factura_id):
         success_url=request.build_absolute_uri(f'/visitante/consulta/?pagook=1&factura_id={factura.id}'),
         cancel_url=request.build_absolute_uri('/visitante/consulta/?pagocancel=1'),
         metadata={'factura_id': factura.id}
+        
     )
     return redirect(session.url)
 
 @csrf_exempt
 def stripe_webhook_visitante(request):
-    import logging
-    import stripe
-    import json
-    from facturacion.models import Factura, Pago
-    from django.utils import timezone
-
     logger = logging.getLogger("django")
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    
 
     # 1. Carga el evento para saber el tipo
     try:
@@ -1009,31 +1005,25 @@ def stripe_webhook_visitante(request):
         event_type = event_data.get("type")
     except Exception as e:
         logger.error(f"Error leyendo el evento Stripe: {e}")
-        logger.error(f"Factura no encontrada: {factura_id}")
         return HttpResponse(status=400)
 
-    # 2. Solo procesa checkout.session.completed
-    if event_type != "checkout.session.completed":
-        logger.info(f"Ignorando evento Stripe tipo: {event_type}")
-        return JsonResponse({'status': 'ignored'})
+    # 2. Obtén el objeto y la metadata
+    session = event_data.get('data', {}).get('object', {})
+    metadata = session.get('metadata', {})
 
-    # 3. Ahora sí, procesa normalmente
-    try:
-        session = event_data['data']['object']
-        factura_id = session.get('metadata', {}).get('factura_id')
-        logger.error(f"Buscando factura con id: {factura_id}")
-        print(f"Buscando factura con id: {factura_id}")
-        if not factura_id:
-            logger.error("No se encontró factura_id en metadata.")
+    # 3. Obtén el endpoint_secret (por empresa si aplica, o de settings)
+    factura_id = metadata.get('factura_id')
+    endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
+    if factura_id:
+        try:
+            factura = Factura.objects.select_related('empresa').get(id=int(factura_id))
+            empresa = factura.empresa
+            endpoint_secret = getattr(empresa, 'stripe_webhook_secret', endpoint_secret)
+        except Exception as e:
+            logger.error(f"Error extrayendo factura/empresa: {e}")
             return HttpResponse(status=400)
-        factura = Factura.objects.select_related('empresa').get(id=int(factura_id))
-        empresa = factura.empresa
-        endpoint_secret = empresa.stripe_webhook_secret
-    except Exception as e:
-        logger.error(f"Error extrayendo factura/empresa: {e}")
-        return HttpResponse(status=400)
 
-    # 4. Valida la firma
+    # 4. Valida la firma del webhook
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, endpoint_secret
@@ -1042,28 +1032,46 @@ def stripe_webhook_visitante(request):
         logger.error(f"Stripe webhook error: {e}")
         return HttpResponse(status=400)
 
-    logger.info(f"Stripe event type: {event['type']}")
+    # 5. Procesa eventos relevantes
+    event_type = event['type']
+    obj = event['data']['object']
+    metadata = obj.get('metadata', {})
+    factura_id = metadata.get('factura_id')
 
-    session = event['data']['object']
-    logger.info(f"Webhook session metadata: {session.get('metadata')}")
-    factura_id = session['metadata'].get('factura_id') if session.get('metadata') else None
-    logger.info(f"Factura ID recibido: {factura_id}")
-    if factura_id:
-        try:
-            factura = Factura.objects.get(id=int(factura_id))
-            monto_pagado = session.get('amount_total', 0) / 100.0
-            Pago.objects.create(
-                factura=factura,
-                monto=monto_pagado,
-                forma_pago='stripe',
-                fecha_pago=timezone.now(),
-                registrado_por=None,
-                observaciones=f"Pago en línea, ID transacción: {session.get('payment_intent')}"
-            )
-            factura.actualizar_estatus()
-            factura.save()
-        except Factura.DoesNotExist:
-            logger.error(f"Factura no encontrada: {factura_id}")
+    if not factura_id:
+        logger.error("No se encontró factura_id en metadata.")
+        return HttpResponse(status=400)
+
+    try:
+        factura = Factura.objects.get(id=int(factura_id))
+        if event_type == "checkout.session.completed":
+            monto_pagado = obj.get('amount_total', 0) / 100.0
+            observaciones = f"ID transacción: {obj.get('payment_intent')}"
+        elif event_type == "payment_intent.succeeded":
+            monto_pagado = obj.get('amount', 0) / 100.0
+            observaciones = f"ID transacción: {obj.get('id')}"
+        else:
+            logger.info(f"Ignorando evento Stripe tipo: {event_type}")
+            return JsonResponse({'status': 'ignored'})
+
+        # Registra el pago y actualiza el estado
+        Pago.objects.create(
+            factura=factura,
+            monto=monto_pagado,
+            forma_pago='stripe',
+            fecha_pago=timezone.now(),
+            registrado_por=None,
+            observaciones=observaciones
+        )
+        factura.actualizar_estatus()
+        factura.save()
+    except Factura.DoesNotExist:
+        logger.error(f"Factura no encontrada: {factura_id}")
+        return HttpResponse(status=400)
+    except Exception as e:
+        logger.error(f"Error actualizando factura: {e}")
+        return HttpResponse(status=400)
+
     return JsonResponse({'status': 'ok'})
 
 
@@ -1666,7 +1674,7 @@ def visitante_timbrar_factura(request, pk):
         "url_cancelar": "visitante_consulta_facturas"
     })
 
-# modulo vistantes para FLUTTER
+# APIS visitantes para FLUTTER
 @api_view(['POST'])
 def visitante_login_api(request):
     username = request.data.get('username')
@@ -1691,6 +1699,29 @@ def visitante_facturas_api(request):
     facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
     serializer = FacturaSerializer(facturas, many=True)
     return Response({'facturas': serializer.data})    
+
+@api_view(['POST'])
+def create_payment_intent(request):
+    import stripe
+    from django.conf import settings
+    #stripe.api_key = settings.STRIPE_TEST_SECRET_KEY #desarrollo
+    stripe.api_key = settings.STRIPE_SECRET_KEY #producción
+    amount = request.data.get('amount')
+    factura_id = request.data.get('factura_id')
+    if not amount:
+        return Response({'error': 'Monto requerido'}, status=400)
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=int(float(amount) * 100),  # Stripe usa centavos
+            currency='mxn',
+            payment_method_types=['card'],
+            metadata={'factura_id': factura_id},
+        )
+        return Response({'client_secret': intent.client_secret})   
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+
 
 
 #conciliación bancaria

@@ -62,7 +62,11 @@
                     <td>{{ cobro.fecha_pago|date:"d/b/y"|upper }}</td>
                     <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                     <td>{{ cobro.get_forma_pago_display }}</td>
+                    {% if cobro.registrado_por == None %}
+                    <td>Sistema</td>
+                    {% else %}
                     <td>{{ cobro.registrado_por }}</td>
+                    {% endif %}
                     {% if cobro.observaciones == None or cobro.observaciones == "" %}
                     <td></td>
                     {% else %}
