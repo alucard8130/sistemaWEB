@@ -1,4 +1,5 @@
 
+import secrets
 from django.contrib.auth.models import User, AbstractUser
 from django.db import models
 from areas.models import AreaComun
@@ -101,8 +102,22 @@ class VisitanteAcceso(models.Model):
         return check_password(raw_password, self.password)
 
     def __str__(self):
-        return self.username        
+        return self.username  
+          
+class VisitanteToken(models.Model):
+    visitante = models.OneToOneField('VisitanteAcceso', on_delete=models.CASCADE)
+    key = models.CharField(max_length=40, unique=True, db_index=True)
+    created = models.DateTimeField(auto_now_add=True)
 
+    @staticmethod
+    def generate_key():
+        return secrets.token_hex(20)
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = self.generate_key()
+        return super().save(*args, **kwargs)
+    
 # Modulo de votaciones por correo electrónico    
 class TemaGeneral(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
