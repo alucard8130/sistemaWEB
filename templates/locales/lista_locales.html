@@ -57,9 +57,9 @@
                         {% endif %}
                         <th>Superficie (m²)</th>
                         <th>Cuota</th>
+                        <th>Anual</th>
                         <th>Giro</th>
                         <th>Status</th>
-                    <!--  <th>Ubicación</th> -->
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -74,12 +74,19 @@
                             {% endif %}
                             <td>{{ local.superficie_m2|floatformat:2|intcomma }}</td>
                             <td>${{ local.cuota|floatformat:2|intcomma }}</td>
+                            <td>
+                                {% if local.es_cuota_anual %}
+                                    <span class="badge bg-info">Si</span>
+                                {% else %}
+                                    <span class="badge bg-success"></span>
+                                {% endif %}   
+                            </td>
                             {% if local.giro == None or local.giro == '' %}
                                 <td></td>
                             {% else %}
                                 <td>{{ local.giro }}</td>
                             {% endif %}
-                            <td> {{ local.get_status_display }}</td>    
+                            <td> {{ local.get_status_display }}</td> 
                             <td style="white-space: nowrap;">
                                    <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm" title="Estado de Cuenta">
                                     Saldos

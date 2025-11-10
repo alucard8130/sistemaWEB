@@ -22,6 +22,7 @@ class AreaComunForm(forms.ModelForm):
             "fecha_fin",
             "status",
             "observaciones",
+            "es_cuota_anual",
         ]
         widgets = {
             "numero": forms.TextInput(
@@ -35,10 +36,13 @@ class AreaComunForm(forms.ModelForm):
             "tipo_area": forms.Select(attrs={"class": "form-control"}),
             "cantidad_areas": forms.TextInput(attrs={"class": "form-control"}),
             "cuota": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Cuota"}
+                attrs={"class": "form-control", "placeholder": "Importe Cuota Mensual"}
+            ),
+            "es_cuota_anual": forms.CheckboxInput(
+                attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
             ),
             "deposito": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Depósito"}
+                attrs={"class": "form-control", "placeholder": "Depósito Garanrtía"}
             ),
             "giro": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Giro"}

@@ -24,6 +24,7 @@ class LocalComercial(models.Model):
     fecha_baja = models.DateTimeField(blank=True, null=True)
     activo = models.BooleanField(default=True)
     observaciones = models.CharField(blank=True, null=True)
+    es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota anual?")
 
 
     def __str__(self):

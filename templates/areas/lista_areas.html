@@ -68,6 +68,7 @@
               <th>Superficie</th>
               <th>Ubicación</th>
               <th>Cuota</th>
+              <th>Anual</th>
               <th>Depósito</th>
               <th>Giro</th>
               <th>Tipo</th>
@@ -89,6 +90,13 @@
               <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
               <td>{% if area.ubicacion %}{{ area.ubicacion }}{% endif %}</td>
               <td>${{ area.cuota|floatformat:2|intcomma }}</td>
+              <td>
+                  {% if area.es_cuota_anual %}
+                      <span class="badge bg-info">Si</span>
+                  {% else %}
+                      <span class="badge bg-success"></span>
+                  {% endif %}
+              </td>
               <td>${{ area.deposito|floatformat:2|intcomma }}</td>
               <td>{{ area.giro }}</td>
               <td>{{ area.tipo_area }}</td>

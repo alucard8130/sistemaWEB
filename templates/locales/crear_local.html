@@ -22,16 +22,6 @@
 </head>
 <body>
     {% include 'navbar.html' %}
-
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
-     
         <!-- Contenido principal -->
         <main class="flex-grow-1">
             <div class="container mt-5">
@@ -97,7 +87,11 @@
                                 {{ form.cuota }}
                                 {{ form.cuota.errors }}
                             </div>
-
+                            <div class="form-check mb-3">
+                                {{ form.es_cuota_anual }}
+                                {{ form.es_cuota_anual.label_tag }}
+                                {{ form.es_cuota_anual.errors }}
+                            </div>
                             <div class="mb-3">
                                 {{ form.giro.label_tag }}
                                 {{ form.giro }}
