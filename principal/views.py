@@ -1954,6 +1954,8 @@ def create_payment_intent(request):
         return Response({"error": str(e)}, status=500)
 
 
+
+
 # conciliación bancaria
 @login_required
 def subir_estado_cuenta(request):
