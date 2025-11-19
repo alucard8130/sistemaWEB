@@ -21,7 +21,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 #DEBUG = True
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com").split(",")
-#ALLOWED_HOSTS = ['*']  # For development purposes, change this in production
+#ALLOWED_HOSTS = ["192.168.0.159", '*']  # For development purposes, change this in production
 
 # Application definition
 
@@ -210,3 +210,8 @@ sentry_sdk.init(
 
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")
+
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': (
+#         'rest_framework_simplejwt.authentication.JWTAuthentication',
+#     )}

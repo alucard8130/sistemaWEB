@@ -93,6 +93,7 @@ class VisitanteAcceso(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     locales = models.ManyToManyField(LocalComercial, blank=True, verbose_name="Locales")
     areas = models.ManyToManyField(AreaComun, blank=True, verbose_name="Áreas comunes")
+    acceso_api_reporte = models.BooleanField(default=False)
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)

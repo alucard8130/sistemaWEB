@@ -1,6 +1,8 @@
 import csv
 from decimal import ROUND_HALF_UP
+import locale
 import os
+from typing_extensions import OrderedDict
 from urllib import response
 from uuid import uuid4
 import uuid
@@ -37,7 +39,7 @@ import json
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.contrib.auth.models import User
-from datetime import date
+from datetime import date, datetime, timedelta
 import stripe
 from .models import TicketMantenimiento
 from django.contrib.auth import get_user_model
@@ -56,8 +58,8 @@ from gastos.models import PagoGasto
 from .serializers import FacturaSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from datetime import datetime
-from caja_chica.models import FondeoCajaChica
+from datetime import datetime,date
+from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 import logging
 from facturacion.models import Factura, Pago
 from rest_framework.authtoken.models import Token
@@ -66,8 +68,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import authentication_classes, permission_classes
 from .models import VisitanteToken
 from functools import wraps
-
-
+from django.db.models import Sum
+from django.db.models import Case, When, Value, CharField
 # stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
@@ -1881,11 +1883,11 @@ def visitante_token_required(view_func):
         token_key = request.headers.get("Authorization", "").replace("Token ", "")
         try:
             token = VisitanteToken.objects.get(key=token_key)
-            request.visitante = token.visitante
+            visitante = token.visitante
+            request.visitante = visitante
             return view_func(request, *args, **kwargs)
         except VisitanteToken.DoesNotExist:
             return Response({"error": "Token inválido"}, status=401)
-
     return _wrapped_view
 
 
@@ -1903,6 +1905,8 @@ def visitante_login_api(request):
             elif visitante.areas.exists():
                 empresa = visitante.areas.first().empresa
             stripe_public_key = empresa.stripe_public_key if empresa else ""
+            empresa_nombre = empresa.nombre if empresa else ""
+            empresa_email = empresa.email if empresa else ""
             # Crea o recupera el token
             token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
             return Response(
@@ -1911,6 +1915,8 @@ def visitante_login_api(request):
                     "visitante_id": visitante.id,
                     "stripe_public_key": stripe_public_key,
                     "token": token.key,
+                    "empresa_nombre": empresa_nombre,
+                    "empresa_email": empresa_email,
                 }
             )
         else:
@@ -1922,10 +1928,7 @@ def visitante_login_api(request):
 @api_view(["GET"])
 @visitante_token_required
 def visitante_facturas_api(request):
-    # visitante_id = request.GET.get("visitante_id")
     visitante = request.visitante  # El usuario autenticado por token
-    # if not visitante.is_authenticated:
-    #     return Response({"error": "No autenticado"}, status=403)
     locales = visitante.locales.all()
     areas = visitante.areas.all()
     facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
@@ -1953,7 +1956,228 @@ def create_payment_intent(request):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+# API reporte ingresos vs gastos
+@api_view(["GET"])
+@visitante_token_required
+def api_reporte_ingresos_vs_gastos(request):
+    visitante = request.visitante
+    if not getattr(visitante, "acceso_api_reporte", False):
+        return Response({"error": "Acceso denegado"}, status=403)
+    
+    visitante = request.visitante
+    empresa = None
+    if visitante.locales.exists():
+        empresa = visitante.locales.first().empresa
+    elif visitante.areas.exists():
+        empresa = visitante.areas.first().empresa
 
+    # Elimina el parámetro empresa_id y todo filtro por empresa
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    mes = request.GET.get("mes")
+    anio = request.GET.get("anio")
+    periodo = request.GET.get("periodo")
+
+    #Si no hay ningún filtro, mostrar periodo actual por default
+    if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
+        periodo = "periodo_actual"
+
+    hoy = date.today()
+    # Prioridad: periodo > mes/año > fechas manuales
+    if periodo == "mes_actual":
+        fecha_inicio = hoy.replace(day=1)
+        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(
+            day=1
+        ) - timedelta(days=1)
+        mes = hoy.month
+        anio = hoy.year
+    elif periodo == "periodo_actual":
+        fecha_inicio = hoy.replace(month=1, day=1)
+        fecha_fin = hoy
+        mes = ""
+        anio = ""
+    elif mes and anio:
+        try:
+            mes = int(mes)
+            anio = int(anio)
+            fecha_inicio =date(anio, mes, 1)
+            if mes == 12:
+                fecha_fin = date(anio, 12, 31)
+            else:
+                fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
+        except Exception:
+            fecha_inicio = None
+            fecha_fin = None
+    elif fecha_inicio and fecha_fin:
+        # Ya vienen del formulario
+        pass
+    else:
+        fecha_inicio = None
+        fecha_fin = None
+
+    # Convierte a date si es string
+    if isinstance(fecha_inicio, str):
+        try:
+            fecha_inicio_dt = datetime.strptime(
+                fecha_inicio, "%Y-%m-%d"
+            ).date()
+        except Exception:
+            fecha_inicio_dt = None
+    else:
+        fecha_inicio_dt = fecha_inicio
+
+    if isinstance(fecha_fin, str):
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        except Exception:
+            fecha_fin_dt = None
+    else:
+        fecha_fin_dt = fecha_fin
+
+    # Para mostrar el mes y año en letras
+
+    try:
+        locale.setlocale(locale.LC_TIME, "es_MX.UTF-8")
+    except locale.Error:
+        try:
+            locale.setlocale(locale.LC_TIME, "es_ES.UTF-8")
+        except locale.Error:
+            locale.setlocale(locale.LC_TIME, "C")  # Fallback seguro
+
+    mes_letra = ""
+    if (
+        fecha_inicio_dt
+        and fecha_fin_dt
+        and fecha_inicio_dt == fecha_fin_dt.replace(day=1)
+    ):
+        mes_letra = fecha_inicio_dt.strftime("%B %Y").capitalize()
+    elif fecha_inicio_dt and fecha_fin_dt:
+        mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
+
+    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    pagos_gastos = PagoGasto.objects.all()
+    cobros_otros = CobroOtrosIngresos.objects.select_related(
+        "factura", "factura__empresa"
+    )
+    gastos_caja_chica = GastoCajaChica.objects.all()
+    vales_caja_chica = ValeCaja.objects.all()
+
+    
+    # Filtra todos los objetos por la empresa del visitante
+    pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(factura__empresa=empresa)
+    pagos_gastos = PagoGasto.objects.filter(gasto__empresa=empresa)
+    cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa").filter(factura__empresa=empresa)
+    gastos_caja_chica = GastoCajaChica.objects.filter(fondeo__empresa=empresa)
+    vales_caja_chica = ValeCaja.objects.filter(fondeo__empresa=empresa)
+
+    # Aplica filtros de fecha
+    if fecha_inicio:
+        pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
+        pagos_gastos = pagos_gastos.filter(gasto__fecha__gte=fecha_inicio)
+        cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        pagos = pagos.filter(fecha_pago__lte=fecha_fin)
+        pagos_gastos = pagos_gastos.filter(gasto__fecha__lte=fecha_fin)
+        cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
+
+    total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
+    total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
+    total_ingresos_cobrados = total_ingresos + total_otros_ingresos
+    total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
+    total_gastos_caja_chica = (
+        gastos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
+    )
+    total_vales_caja_chica = (
+        vales_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
+    )
+    total_egresos = (
+        total_gastos_pagados + total_gastos_caja_chica + total_vales_caja_chica
+    )
+
+    # Agrupar por tipo de origen (Local/Área)
+    ingresos_qs = (
+        pagos.annotate(
+            origen=Case(
+                When(factura__local__isnull=False, then=Value("Propiedades")),
+                When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
+                default=Value("Sin origen"),
+                output_field=CharField(),
+            )
+        )
+        .values("origen")
+        .annotate(total=Sum("monto"))
+        .order_by("origen")
+    )
+
+    otros_ingresos_qs = (
+        cobros_otros.select_related("factura__tipo_ingreso")
+        .values("factura__tipo_ingreso__nombre")
+        .annotate(total=Sum("monto"))
+        .order_by("factura__tipo_ingreso")
+    )
+
+    # Agrupar y sumar todos los gastos por tipo (gastos normales, caja chica y vales)
+    gastos_por_tipo_dict = {}
+    # Gastos normales
+    for g in pagos_gastos.values("gasto__tipo_gasto__nombre").annotate(
+        total=Sum("monto")
+    ):
+        tipo = g["gasto__tipo_gasto__nombre"] or "Sin tipo"
+        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
+            g["total"]
+        )
+    # Caja chica
+    for g in gastos_caja_chica.values("tipo_gasto__nombre").annotate(
+        total=Sum("importe")
+    ):
+        tipo = g["tipo_gasto__nombre"] or "Sin tipo"
+        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
+            g["total"]
+        )
+    # Vales de caja chica agrupados por tipo real
+    for g in vales_caja_chica.values("tipo_gasto__nombre").annotate(
+        total=Sum("importe")
+    ):
+        tipo = g["tipo_gasto__nombre"] or "Sin tipo"
+        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
+            g["total"]
+        )
+
+    gastos_por_tipo = [
+        {"tipo": tipo, "total": total} for tipo, total in gastos_por_tipo_dict.items()
+    ]
+
+    # Crear un diccionario ordenado para los ingresos por origen
+    ingresos_por_origen = OrderedDict()
+    for x in ingresos_qs:
+        ingresos_por_origen[x["origen"]] = float(x["total"])
+    for x in otros_ingresos_qs:
+        tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
+        ingresos_por_origen[f" {tipo}"] = float(x["total"])
+
+    saldo = total_ingresos_cobrados - total_egresos
+    # Ejemplo de resultado (ajusta según tus variables):
+    resultado = {
+        "total_ingresos": total_ingresos_cobrados,
+        "total_otros_ingresos": total_otros_ingresos,
+        "total_gastos_pagados": total_gastos_pagados,
+        "total_gastos_caja_chica": total_gastos_caja_chica,
+        "total_vales_caja_chica": total_vales_caja_chica,
+        "total_egresos": total_egresos,
+        "ingresos_por_origen": ingresos_por_origen,
+        "gastos_por_tipo": gastos_por_tipo,
+        "saldo": saldo,
+        "periodo": periodo,
+        "mes_letra": mes_letra,
+        "empresa_nombre": empresa.nombre if empresa else "",
+        "empresa_email": empresa.email if empresa else "",
+        # Agrega otros campos que necesites
+    }
+    return Response(resultado)
 
 
 # conciliación bancaria
