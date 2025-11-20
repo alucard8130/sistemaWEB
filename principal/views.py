@@ -2449,18 +2449,19 @@ def enviar_recordatorio_morosidad(request):
             messages.error(request, "El cliente no tiene email registrado.")
             return redirect('lista_facturas')
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
+        email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
         mensaje = f"{empresa_nombre}\n\nEstimado cliente {cliente.nombre}, tiene los siguientes adeudos en cuotas de área común:\n\n"
         total = 0
         def formato_importe(importe):
             return "${:,.2f}".format(round(importe, 2))
         for factura in facturas:
             if factura.area_comun:
-                ubicacion = f"Área común: {factura.area_comun.nombre}"
+                ubicacion = f"Área común: {factura.area_comun.numero}"
             else:
                 ubicacion = "Sin ubicación"
             mensaje += f"- Folio: {factura.folio},{ubicacion}, Monto pendiente: {formato_importe(factura.saldo_pendiente)}\n"
             total += factura.saldo_pendiente
-        mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible."
+        mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible.\n\n Si ya realizo su pago envie su comprobante al correo: {email_empresa}"
         send_mail(
             subject="Recordatorio de cuotas pendientes de pago (Área común)",
             message=mensaje,
