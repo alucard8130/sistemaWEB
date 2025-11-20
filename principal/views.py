@@ -2398,11 +2398,21 @@ def descargar_plantilla_estado_cuenta(request):
 
 #recordatorios morosidad
 @login_required
+@login_required
 def enviar_recordatorio_morosidad(request):
     local_id = request.GET.get("local_id")
     area_id = request.GET.get("area_id")
 
+    # Validación de parámetros
+    if local_id and not local_id.isdigit():
+        messages.error(request, "ID de local inválido.")
+        return redirect('lista_facturas')
+    if area_id and not area_id.isdigit():
+        messages.error(request, "ID de área común inválido.")
+        return redirect('lista_facturas')
+
     if local_id:
+        local_id = int(local_id)
         facturas = Factura.objects.filter(local_id=local_id, estatus='pendiente')
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
@@ -2420,10 +2430,7 @@ def enviar_recordatorio_morosidad(request):
         def formato_importe(importe):
             return "${:,.2f}".format(round(importe, 2))
         for factura in facturas:
-            if factura.local:
-                ubicacion = f"Local: {factura.local.numero}"
-            else:
-                ubicacion = "Sin ubicación"
+            ubicacion = f"Local: {factura.local.numero}" if factura.local else "Sin ubicación"
             mensaje += f"- Folio: {factura.folio},{ubicacion}, Monto pendiente: {formato_importe(factura.saldo_pendiente)}\n"
             total += factura.saldo_pendiente
         mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible. \n\n Si ya realizo su pago envie su comprobante al correo: {email_empresa}"
@@ -2438,6 +2445,7 @@ def enviar_recordatorio_morosidad(request):
         return redirect('lista_facturas')
 
     elif area_id:
+        area_id = int(area_id)
         facturas = Factura.objects.filter(area_comun_id=area_id, estatus='pendiente')
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
@@ -2455,10 +2463,7 @@ def enviar_recordatorio_morosidad(request):
         def formato_importe(importe):
             return "${:,.2f}".format(round(importe, 2))
         for factura in facturas:
-            if factura.area_comun:
-                ubicacion = f"Área común: {factura.area_comun.numero}"
-            else:
-                ubicacion = "Sin ubicación"
+            ubicacion = f"Área común: {factura.area_comun.numero}" if factura.area_comun else "Sin ubicación"
             mensaje += f"- Folio: {factura.folio},{ubicacion}, Monto pendiente: {formato_importe(factura.saldo_pendiente)}\n"
             total += factura.saldo_pendiente
         mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible.\n\n Si ya realizo su pago envie su comprobante al correo: {email_empresa}"

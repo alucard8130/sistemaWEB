@@ -64,9 +64,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     <a href="{% url 'crear_factura' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-crear mb-3">
                         <i class="bi bi-plus-circle me-1"></i> Nueva cuota
                     </a>
-                  <a href="{% url 'enviar_recordatorio_morosidad' %}?local_id={{ local_id }}&area_id={{ area_id }}" class="btn btn-warning mb-3">
-                    Enviar recordatorio de adeudos
-                </a>
+               {% if local_id %}
+                    <a href="{% url 'enviar_recordatorio_morosidad' %}?local_id={{ local_id }}" class="btn btn-warning mb-3">
+                        Enviar recordatorio de adeudos
+                    </a>
+                {% elif area_id %}
+                    <a href="{% url 'enviar_recordatorio_morosidad' %}?area_id={{ area_id }}" class="btn btn-warning mb-3">
+                        Enviar recordatorio de adeudos
+                    </a>
+                {% else %}
+                    <a href="#" class="btn btn-warning mb-3" onclick="alert('Debes seleccionar un local o un área común antes de enviar el recordatorio.'); return false;">
+                        Enviar recordatorio de adeudos
+                    </a>
+                {% endif %}
                 </div>    
             </div>
 
