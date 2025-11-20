@@ -54,14 +54,15 @@ class ClienteForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
+            if self.instance.pk:
+                self.fields['empresa'].initial = self.user.perfilusuario.empresa
             
         self.fields['regimen_fiscal'].required = True
         self.fields['uso_cfdi'].required = True
         self.fields['codigo_postal'].required = True
         self.fields['tipo_contribuyente'].required = True
         self.fields['direccion_domicilio'].required = True
-
-
+    
     def clean(self):
         cleaned_data = super().clean()
         nombre = cleaned_data.get('nombre')

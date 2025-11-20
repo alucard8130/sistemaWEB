@@ -10,7 +10,7 @@ from empleados.views import exportar_incidencias_excel, incidencia_cancelar, inc
 from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import recibo_gasto
 from presupuestos.views import comparativo_anual_ingresos, comparativo_anual_total
-from principal.views import actualizar_ticket, agregar_seguimiento, api_reporte_ingresos_vs_gastos, consulta_cfdis_facturama, crear_tema_y_enviar, create_payment_intent, descargar_cfdi_facturama, descargar_factura_timbrada, descargar_plantilla_estado_cuenta, eliminar_tema, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout, visitante_timbrar_factura, votar_tema_correo
+from principal.views import actualizar_ticket, agregar_seguimiento, api_reporte_ingresos_vs_gastos, consulta_cfdis_facturama, crear_tema_y_enviar, create_payment_intent, descargar_cfdi_facturama, descargar_factura_timbrada, descargar_plantilla_estado_cuenta, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout, visitante_timbrar_factura, votar_tema_correo
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -144,13 +144,10 @@ urlpatterns = [
     path('proveedores/<int:pk>/eliminar/', eliminar_proveedor, name='eliminar_proveedor'),
     path('contrato/formulario/<int:area_id>/', contrato_formulario, name='contrato_formulario'),
     path('create-payment-intent/', create_payment_intent),
-
-    #path('api/token',TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    #path('api/token/refresh',TokenRefreshView.as_view(), name='token_refresh'),
+    path('enviar_recordatorio_morosidad/', enviar_recordatorio_morosidad, name='enviar_recordatorio_morosidad'),
 ]
+
     
-
-
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 

@@ -22,6 +22,21 @@
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnRecordatorio = document.querySelector('.btn-warning');
+    if (btnRecordatorio) {
+        btnRecordatorio.addEventListener('click', function(e) {
+            const localId = document.getElementById('local_id').value;
+            const areaId = document.getElementById('area_id').value;
+            if (!localId && !areaId) {
+                e.preventDefault();
+                alert('Debes seleccionar un local o un área común antes de enviar el recordatorio.');
+            }
+        });
+    }
+});
+</script>
 <body>
     {% include 'navbar.html' %}
 
@@ -49,6 +64,9 @@
                     <a href="{% url 'crear_factura' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-crear mb-3">
                         <i class="bi bi-plus-circle me-1"></i> Nueva cuota
                     </a>
+                  <a href="{% url 'enviar_recordatorio_morosidad' %}?local_id={{ local_id }}&area_id={{ area_id }}" class="btn btn-warning mb-3">
+                    Enviar recordatorio de adeudos
+                </a>
                 </div>    
             </div>
 
@@ -85,14 +103,6 @@
                     {% endfor %}
                 </select>
             </div>
-            {% comment %} <div class="col-auto">
-                <select name="tipo_cuota" class="form-select">
-                    <option value="">Tipo de Cuota</option>
-                    {% for cuota in tipos_cuota %}
-                        <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
-                    {% endfor %}
-                </select>
-            </div> {% endcomment %}
             <div class="col-auto">
                 <select name="anio" class="form-select">
                     <option value="">Año</option>

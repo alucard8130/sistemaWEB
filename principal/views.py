@@ -2393,3 +2393,84 @@ def descargar_plantilla_estado_cuenta(request):
     response = HttpResponse(contenido, content_type="text/csv")
     response["Content-Disposition"] = "attachment; filename=plantilla_estado_cuenta.csv"
     return response
+
+
+
+#recordatorios morosidad
+@login_required
+def enviar_recordatorio_morosidad(request):
+    local_id = request.GET.get("local_id")
+    area_id = request.GET.get("area_id")
+
+    if local_id:
+        facturas = Factura.objects.filter(local_id=local_id, estatus='pendiente')
+        facturas = [f for f in facturas if f.saldo_pendiente > 0]
+        if not facturas:
+            messages.warning(request, "No hay adeudos pendientes para este local.")
+            return redirect('lista_facturas')
+        cliente = facturas[0].cliente
+        email = cliente.email
+        email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
+        if not email:
+            messages.error(request, "El cliente no tiene email registrado.")
+            return redirect('lista_facturas')
+        empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
+        mensaje = f"{empresa_nombre}\n\nEstimado cliente {cliente.nombre}, tiene los siguientes adeudos en cuotas:\n\n"
+        total = 0
+        def formato_importe(importe):
+            return "${:,.2f}".format(round(importe, 2))
+        for factura in facturas:
+            if factura.local:
+                ubicacion = f"Local: {factura.local.numero}"
+            else:
+                ubicacion = "Sin ubicación"
+            mensaje += f"- Folio: {factura.folio},{ubicacion}, Monto pendiente: {formato_importe(factura.saldo_pendiente)}\n"
+            total += factura.saldo_pendiente
+        mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible. \n\n Si ya realizo su pago envie su comprobante al correo: {email_empresa}"
+        send_mail(
+            subject="Recordatorio de cuotas pendientes de pago",
+            message=mensaje,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        messages.success(request, "Recordatorio enviado correctamente al cliente del local.")
+        return redirect('lista_facturas')
+
+    elif area_id:
+        facturas = Factura.objects.filter(area_comun_id=area_id, estatus='pendiente')
+        facturas = [f for f in facturas if f.saldo_pendiente > 0]
+        if not facturas:
+            messages.warning(request, "No hay adeudos pendientes para esta área común.")
+            return redirect('lista_facturas')
+        cliente = facturas[0].cliente
+        email = cliente.email
+        if not email:
+            messages.error(request, "El cliente no tiene email registrado.")
+            return redirect('lista_facturas')
+        empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
+        mensaje = f"{empresa_nombre}\n\nEstimado cliente {cliente.nombre}, tiene los siguientes adeudos en cuotas de área común:\n\n"
+        total = 0
+        def formato_importe(importe):
+            return "${:,.2f}".format(round(importe, 2))
+        for factura in facturas:
+            if factura.area_comun:
+                ubicacion = f"Área común: {factura.area_comun.nombre}"
+            else:
+                ubicacion = "Sin ubicación"
+            mensaje += f"- Folio: {factura.folio},{ubicacion}, Monto pendiente: {formato_importe(factura.saldo_pendiente)}\n"
+            total += factura.saldo_pendiente
+        mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible."
+        send_mail(
+            subject="Recordatorio de cuotas pendientes de pago (Área común)",
+            message=mensaje,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        messages.success(request, "Recordatorio enviado correctamente al cliente del área común.")
+        return redirect('lista_facturas')
+
+    else:
+        messages.error(request, "Debes seleccionar un local o un área común antes de enviar el recordatorio.")
+        return redirect('lista_facturas')

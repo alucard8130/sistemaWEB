@@ -7,6 +7,7 @@ import dj_database_url
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -111,6 +112,7 @@ DATABASES = {
 
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+#EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  #testing email backend  
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 465))
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True") == "True"
@@ -211,7 +213,3 @@ sentry_sdk.init(
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#         'rest_framework_simplejwt.authentication.JWTAuthentication',
-#     )}

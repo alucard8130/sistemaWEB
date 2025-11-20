@@ -94,8 +94,14 @@ def editar_cliente(request, pk):
     if request.method == "POST":
         form = ClienteForm(request.POST, instance=cliente, user=request.user)
         if form.is_valid():
-            form.save()
+            cliente = form.save(commit=False)
+            if not request.user.is_superuser:
+                cliente.empresa = request.user.perfilusuario.empresa
+            cliente.save()
             return redirect("lista_clientes")
+        else:
+            from django.contrib import messages
+            messages.error(request, "No se pudo guardar el cliente. Revisa los datos ingresados.")
     else:
         form = ClienteForm(instance=cliente, user=request.user)
 

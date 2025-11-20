@@ -51,9 +51,9 @@
                         <th>RFC</th>
                         <th>Tipo Contribuyente</th>
                         <th>Régimen Fiscal</th>
+                        <th>Domicilio Fiscal</th>
                         <th>Código Postal</th>
                         <th>Uso CFDI</th>
-                        <th>Teléfono</th>
                         <th>Email</th>
                         {% if request.user.is_superuser %}
                             <th>Empresa</th> 
@@ -70,13 +70,9 @@
                         <td>{{ cliente.rfc }}</td>
                         <td>{{ cliente.tipo_contribuyente }}</td>
                         <td>{{ cliente.regimen_fiscal }}</td>
+                        <td>{{ cliente.direccion_domicilio }}</td>
                         <td>{{ cliente.codigo_postal }}</td>
                         <td>{{ cliente.uso_cfdi }}</td>
-                        {% if cliente.telefono == None or cliente.telefono == '' %}
-                            <td></td>
-                        {% else %}
-                            <td>{{ cliente.telefono }}</td>
-                        {% endif %}
                         {% if cliente.email == None or cliente.email == '' %}
                             <td></td>
                         {% else %}

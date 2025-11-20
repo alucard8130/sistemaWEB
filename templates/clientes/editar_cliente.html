@@ -46,12 +46,9 @@
                 <form method="post" class="p-4 custom-form">
                     {% csrf_token %}
                     <!-- {{ form.as_p }} -->
-
-                    <div class="mb-3 select-wrapper">
-                        {{ form.empresa.label_tag }}
+                    {% if form.empresa.is_hidden %}
                         {{ form.empresa }}
-                        {{ form.empresa.errors }}
-                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         {{ form.nombre.label_tag }}
                         {{ form.nombre }}
@@ -73,6 +70,11 @@
                         {{ form.regimen_fiscal }}
                         {{ form.regimen_fiscal.errors }}
                     </div>  
+                    <div class="mb-3">
+                        {{ form.direccion_domicilio.label_tag }}
+                        {{ form.direccion_domicilio }}
+                        {{ form.direccion_domicilio.errors }}
+                    </div>
                     <div class="mb-3">
                         {{ form.codigo_postal.label_tag }}
                         {{ form.codigo_postal }}
