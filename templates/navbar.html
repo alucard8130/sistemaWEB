@@ -45,7 +45,7 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Clientes</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Alta Clientes</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Clientes</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista Clientes</a></li>
                         <li><a class="dropdown-item" href="{% url 'clientes_inactivos' %}">Clientes Inactivos</a></li>
                         <li><hr class="dropdown-divider"></li>
                       {% comment %} {% if request.user.is_superuser %} {% endcomment %}
@@ -57,7 +57,7 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Propiedades</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_local' %}">Registro Propiedades</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Propiedades</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista Propiedades</a></li>
                         <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Propiedades Inactivas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
@@ -70,7 +70,7 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Áreas Comunes</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_area' %}">Registro Área común</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Áreas Comunes</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista Áreas Comunes</a></li>
 
                             <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Áreas Inactivas</a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -124,10 +124,10 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Nomina</a>
                     <ul class="dropdown-menu">
                         
-                        <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Alta Empleados</a></li>
+                        <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Lista y alta Empleados</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'incidencia_crear' %}">Registrar Incidencia</a></li>
-                        <li><a class="dropdown-item" href="{% url 'incidencias_lista' %}">Incidencias</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incidencias_lista' %}">Reporte Incidencias</a></li>
                         
                         <!-- Agrega aquí más catálogos si lo deseas -->
                     </ul>
@@ -136,14 +136,14 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Gastos</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Alta Proveedores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Lista y alta Proveedores</a></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_proveedores' %}">Carga Masiva</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo Gasto</a></li>
                         <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Tipos de Gasto</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Solicitud de Gasto</a></li>
-                        <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Solicitudes de Gastos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Solicitudes de Gastos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
@@ -257,113 +257,25 @@
         <h5 class="modal-title" id="modalAyudaLabel">Ayuda</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-      <div class="modal-body">
-        <h5 class="mb-3">Manual de Operación del Sistema GESAC</h5>
-        <div class="accordion" id="ayudaAccordion">
-          <!-- Inicio de Sesión -->
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingLogin">
-              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLogin" aria-expanded="true" aria-controls="collapseLogin">
-                Inicio de Sesión
-              </button>
-            </h2>
-            <div id="collapseLogin" class="accordion-collapse collapse show" aria-labelledby="headingLogin" data-bs-parent="#ayudaAccordion">
-              <div class="accordion-body">
-                <ol>
-                  <li>Ingresa tu usuario y contraseña en la pantalla principal.</li>
-                  <li>Haz clic en <b>Iniciar sesión</b>.</li>
-                  <li>Si los datos son correctos, accederás al sistema.</li>
-                  <li>Si olvidaste tu contraseña, contacta al administrador.</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-          <!-- Menú Principal -->
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingMenu">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMenu" aria-expanded="false" aria-controls="collapseMenu">
-                Menú Principal
-              </button>
-            </h2>
-            <div id="collapseMenu" class="accordion-collapse collapse" aria-labelledby="headingMenu" data-bs-parent="#ayudaAccordion">
-              <div class="accordion-body">
-                <ul>
-                  <li><b>Clientes:</b> Registra nuevos clientes, consulta la lista y administra su información.</li>
-                  <li><b>Locales:</b> Da de alta nuevos locales, consulta la lista, administra e incrementa las cuotas de mantenimiento por porcentaje de forma automatica.</li>
-                  <li><b>Áreas Comunes:</b> Administra las áreas comunes, crea nuevas y consulta las existentes, administra e incrementa las cuotas de areas por porcentaje de forma automatica.</li>
-                  <li><b>Cuotas:</b> Registra cuotas de mantenimiento y áreas , consulta el historial, registra la cobranza de las cuotas, 
-                    genera la carga mensual automatica de las cuotas, visualiza la cobranza de las cuotas mediante un reporte, e incluye un <strong>DASHBOARD</strong> que grafica las cuentas por cobrar,
-                    el presupuesto y la cobranza de las cuotas </li>
-                  <li><b>Otras Cuotas:</b>Registra ingresos adicionales distintos a las cuotas regulares, puedes crear nuevos tipos de otros ingresos como: Servicios(recuperacion de servicios),
-                        Intereses por inversiones, Por cobro de estacionamiento, ya sea operado o rentado, por cobro de sanitarios etc... cuenta con sus propios reportes de otros ingresos
-                        y reporte de su cobranza. </li>
-                  <li><b>Cartera Vencida:</b> Consulta adeudos pendientes de cuotas de mantenimiento, áreas comunes y otros ingresos por periodos de vencimiento (30, 60, 90 ....dias), cuenta con un reporte detallado de la cobranza,
-                        asi como un <strong>DASHBOARD</strong> que grafica los diferentes parámetros de la cartera vencida.</li>
-                  <li><b>Catálogos:</b> Registra proveedores, empleados y crea nuevos tipos de gasto de acuerdo al usuario y sus necesidades.
-                        Los tipos de gasto se crean en base a un catalogo de Grupo de Gastos y Subgrupos ya definido y precargado en el sistema, usted puede consultar dichos catalogos
-                        en la opcion <strong>Alta tipo de gasto, opcion subgrupos</strong> dentro del menu <strong>Catálogos</strong>, ahi usted podra consultar los diferentes Grupo de gasto
-                        y a partir de ahi el usuario podra crear nuevos tipos de gasto por ejemplo: <strong>Gastos Nomina/Sueldos/Sueldo Gerente Operativo</strong>, donde <strong>"Gastos Nomina/Sueldos"</strong>
-                        ya esta predefinida por el sistema y la parte que el usurio puede crear como tipo de gasto es <strong>Sueldo Gerente Operativo</strong>., a partir de ahi
-                        con el tipo de gasto creado, el usuario podra registrar gastos en base a este nuevo tipo de gasto.</li>
-                  <li><b>Gastos:</b> Registra y consulta solicitudes de gastos, registra el pago de gastos solicitados y consulta los pagos mediante un reporte, 
-                        asi mismo cuenta con un <strong>DASHBOARD</strong> que visualiza los pagos realizados, el presupuesto y los pagos pendientes (cxp).</li>
-                  <li><b>Presupuesto:</b> Administra presupuestos de ingresos y egresos, edita y guarda los cambios, cuenta con la opcion de cerrar el presupuesto:  hace que el presupuesto
-                    no pueda ser editado, opcion clonar presupuesto: clona el presupuesto actual y lo traspasa al siguiente periodo anual.
-                    Los presupuesto pueden crearse manualmente o mediante carga masiva.</li>
-                  <li><b>Reportes:</b> Estado de Resultados, con dos opciones de vizualizacion en base a Flujo y en base a Resultados, Reporte comparativo de Gastos vs Presupuesto,
-                    con opciones de vizualizacion por periodos, Reporte comparativo de Ingresos vs Presupuesto, con opciones de vizualizacion por periodos,
-                     y un <strong>DASHBOARD</strong> que grafica los resultados financieros por periodos.</li>
-                     <li><b>Calendario Eventos:</b> Permite visualizar y gestionar eventos importantes relacionados
-                         con el presupuesto y la cobranza de cuotas, facilitando la planificación y el seguimiento de actividades clave, como juntas de comité, juntas de asamblea, etc.
-                         Una vez registrado el evento, el usuario podrá enviar por correo la invitación.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <!-- Ayuda -->
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingAyuda">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAyuda" aria-expanded="false" aria-controls="collapseAyuda">
-                Ayuda
-              </button>
-            </h2>
-            <div id="collapseAyuda" class="accordion-collapse collapse" aria-labelledby="headingAyuda" data-bs-parent="#ayudaAccordion">
-              <div class="accordion-body">
-                <ul>
-                  <li>Haz clic en el botón <b>Ayuda</b> para consultar este manual en cualquier momento.</li>
-                  <li>Si tienes dudas adicionales, contacta al administrador del sistema.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <!-- Cerrar Sesión -->
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingLogout">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLogout" aria-expanded="false" aria-controls="collapseLogout">
-                Cerrar Sesión
-              </button>
-            </h2>
-            <div id="collapseLogout" class="accordion-collapse collapse" aria-labelledby="headingLogout" data-bs-parent="#ayudaAccordion">
-              <div class="accordion-body">
-                <ol>
-                  <li>Haz clic en el botón <b>Salir</b> ubicado en la parte superior derecha.</li>
-                  <li>Tu sesión se cerrará de forma segura.</li>
-                </ol>
-              </div>
-            </div>
-          </div>
+      <div class="modal-body text-center">
+        <h5 class="mb-3">Manual de Operación Sistema GESAC</h5>
+        <a href="{% static 'docs/manual_gesac.pdf' %}" target="_blank" class="btn btn-outline-primary mb-3">
+          <i class="bi bi-file-earmark-pdf"></i> Consultar Manual en PDF
+        </a>
+        <div>
+          <a href="https://www.youtube.com/@Gesac.GestorAdministrativoCond" target="_blank">
+            <p class="mt-3">Videos Tutoriales.</p>
+          </a>
+          <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
+            <p class="mt-2">Visita la página web GESAC.</p>
+          </a>
         </div>
-        <a href="https://www.youtube.com/@Gesac.GestorAdministrativoCond" target="_blank"><p class="mt-3 ">VIDEOS Tutoriales.</p></a>
       </div>
-      <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank"><div class="modal-body">
-        <p class="mt-2">Visita nuestra página web para más información.</p>
-      </div></a>
       <div class="modal-footer">
         {% if not es_demo %}
         <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Suscripción</button>
         {% endif %}
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-        
       </div>
     </div>
   </div>

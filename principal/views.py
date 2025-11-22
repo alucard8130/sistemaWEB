@@ -12,7 +12,6 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
 from openai import base_url
 import openpyxl
 from areas import models
@@ -69,8 +68,8 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from .models import VisitanteToken
 from functools import wraps
 from django.db.models import Sum
-from django.db.models import Case, When, Value, CharField
-# stripe.api_key = settings.STRIPE_SECRET_KEY
+from django.db.models import Case, When, Value, CharField, Q, DecimalField, ExpressionWrapper, OuterRef, Subquery, F
+from django.db.models.functions import Coalesce
 
 
 # Vista de bienvenida / dashboard
@@ -2180,6 +2179,180 @@ def api_reporte_ingresos_vs_gastos(request):
     return Response(resultado)
 
 
+#API dashboard cartera vencida
+@api_view(['GET'])
+@visitante_token_required  
+def api_dashboard_saldos_visitante(request):
+    visitante = request.visitante
+    if not getattr(visitante, "acceso_api_reporte", False):
+        return Response({"error": "Acceso denegado"}, status=403)
+    
+    visitante = request.visitante
+    empresa = None
+    if visitante.locales.exists():
+        empresa = visitante.locales.first().empresa
+    elif visitante.areas.exists():
+        empresa = visitante.areas.first().empresa
+
+    hoy = timezone.now().date()
+    cliente_id = request.GET.get('cliente')
+    origen = request.GET.get('origen', 'todos')
+    tipo_cuota = request.GET.get('tipo_cuota')
+    mes = request.GET.get('mes')
+    anio = request.GET.get('anio')
+
+    # Filtro por empresa del visitante
+    filtro_empresa = Q(empresa=empresa)
+
+    facturas = Factura.objects.filter(estatus='pendiente').filter(filtro_empresa)
+    if cliente_id:
+        facturas = facturas.filter(cliente_id=cliente_id)
+    if origen == 'local':
+        facturas = facturas.filter(local__isnull=False)
+    elif origen == 'area':
+        facturas = facturas.filter(area_comun__isnull=False)
+    if tipo_cuota:
+        facturas = facturas.filter(tipo_cuota=tipo_cuota)
+    if anio:
+        try:
+            anio = int(anio)
+            facturas = facturas.filter(fecha_vencimiento__year=anio)
+        except ValueError:
+            pass
+    if mes:
+        try:
+            mes = int(mes)
+            facturas = facturas.filter(fecha_vencimiento__month=mes)
+        except ValueError:
+            pass
+          
+    pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
+        .values('factura') \
+        .annotate(total_pagado_dash=Coalesce(Sum('monto'), Value(0, output_field=DecimalField()))) \
+        .values('total_pagado_dash')
+    facturas = facturas.annotate(
+        total_pagado_dash=Coalesce(Subquery(pagos_subquery), Value(0, output_field=DecimalField())),
+        saldo_pendiente_dash=ExpressionWrapper(
+            F('monto') - Coalesce(Subquery(pagos_subquery), Value(0, output_field=DecimalField())),
+            output_field=DecimalField()
+        )
+    )
+
+    # Facturas otros ingresos
+    facturas_otros = FacturaOtrosIngresos.objects.filter(estatus='pendiente', activo=True).filter(filtro_empresa)
+    if cliente_id:
+        facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
+    if anio:
+        try:
+            anio = int(anio)
+            facturas_otros = facturas_otros.filter(fecha_vencimiento__year=anio)
+        except ValueError:
+            pass
+    if mes:
+        try:
+            mes = int(mes)
+            facturas_otros = facturas_otros.filter(fecha_vencimiento__month=mes)
+        except ValueError:
+            pass
+
+    cobros_subquery = CobroOtrosIngresos.objects.filter(factura=OuterRef('pk')) \
+        .values('factura') \
+        .annotate(total_cobrado_dash=Coalesce(Sum('monto'), Value(0, output_field=DecimalField()))) \
+        .values('total_cobrado_dash')
+    facturas_otros = facturas_otros.annotate(
+        total_cobrado_dash=Coalesce(Subquery(cobros_subquery), Value(0, output_field=DecimalField())),
+        saldo_pendiente_dash=ExpressionWrapper(
+            F('monto') - Coalesce(Subquery(cobros_subquery), Value(0, output_field=DecimalField())),
+            output_field=DecimalField()
+        )
+    )
+
+    # Saldos por rango de vencimiento
+    saldo_0_30 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_91_180 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_181_mas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+
+    saldo_0_30_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_31_60_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_61_90_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_91_180_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    saldo_181_mas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+
+    # Top 10 adeudos
+    top_adeudos = (
+        facturas
+        .annotate(
+            nombre_local_area=Coalesce(
+                F('local__numero'),
+                F('area_comun__numero'),
+                output_field=CharField()
+            ),
+            tipo_origen=Case(
+                When(local__isnull=False, then=Value('Local')),
+                When(area_comun__isnull=False, then=Value('Área')),
+                default=Value(''),
+                output_field=CharField()
+            ),
+            nombre_cliente=F('cliente__nombre')
+        )
+        .values('nombre_local_area', 'tipo_origen', 'nombre_cliente')
+        .annotate(total=Sum('saldo_pendiente_dash'))
+        .order_by('-total')[:10]
+    )
+
+    # Serializa resultados
+    facturas_data = [
+        {
+            "folio": f.folio,
+            "cliente": f.cliente.nombre if f.cliente else "",
+            "empresa": f.empresa.nombre if f.empresa else "",
+            "local": f.local.numero if f.local else "",
+            "area_comun": f.area_comun.numero if f.area_comun else "",
+            "monto": float(f.monto),
+            "saldo_pendiente": float(f.saldo_pendiente_dash),
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "estatus": f.estatus,
+        }
+        for f in facturas
+    ]
+
+    otros_data = [
+        {
+            "folio": f.folio,
+            "cliente": f.cliente.nombre if f.cliente else "",
+            "empresa": f.empresa.nombre if f.empresa else "",
+            "tipo_ingreso": f.tipo_ingreso.nombre if f.tipo_ingreso else "",
+            "monto": float(f.monto),
+            "saldo_pendiente": float(f.saldo_pendiente_dash),
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "estatus": f.estatus,
+        }
+        for f in facturas_otros
+    ]
+
+    return Response({
+        "saldos": {
+            "0_30": float(saldo_0_30) + float(saldo_0_30_otros),
+            "31_60": float(saldo_31_60) + float(saldo_31_60_otros),
+            "61_90": float(saldo_61_90) + float(saldo_61_90_otros),
+            "91_180": float(saldo_91_180) + float(saldo_91_180_otros),
+            "181_mas": float(saldo_181_mas) + float(saldo_181_mas_otros),
+        },
+        "top_adeudos": list(top_adeudos),
+        "facturas": facturas_data,
+        "facturas_otros": otros_data,
+    })
+
+
+
+
+
+
+
+
+
 # conciliación bancaria
 @login_required
 def subir_estado_cuenta(request):
@@ -2397,7 +2570,6 @@ def descargar_plantilla_estado_cuenta(request):
 
 
 #recordatorios morosidad
-@login_required
 @login_required
 def enviar_recordatorio_morosidad(request):
     local_id = request.GET.get("local_id")
