@@ -59,7 +59,6 @@
                     <th>Forma de Pago</th>
                     <th>Registrado por</th>
                     <th>Comentario</th>
-                    <th>Comprobante</th>
                 </tr>
             </thead>
             <tbody>
@@ -74,14 +73,6 @@
                     {% else %}
                     <td>{{ pago.referencia }}</td>
                     {% endif %}
-                    <td>
-                        {% if pago.comprobante %}
-                            <a href="{{ pago.comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Comprobante">
-                                <i class="bi-file-earmark-pdf me-1"></i>
-                            </a>
-                        {% else %}
-                            <span class="text-muted"></span>
-                        {% endif %}
                 </tr>
                 {% empty %}
                 <tr>

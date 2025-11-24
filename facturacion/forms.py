@@ -15,6 +15,7 @@ class FacturaForm(forms.ModelForm):
     class Meta:
         model = Factura
         fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto','observaciones']
+        labels = {'observaciones': 'Comentario'}
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-select'
@@ -39,7 +40,7 @@ class FacturaForm(forms.ModelForm):
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
                 'class': 'form-control',
-                'placeholder': 'concepto de la factura'
+                'placeholder': 'Comentario'
                 }),
         }
 
@@ -50,7 +51,7 @@ class FacturaForm(forms.ModelForm):
         # campos no requeridos
         self.fields['local'].required = False
         self.fields['area_comun'].required = False
-        # self.fields['cfdi'].disabled = True
+
 
         if self.user and not self.user.is_superuser:
             empresa = self.user.perfilusuario.empresa
@@ -80,7 +81,8 @@ class FacturaForm(forms.ModelForm):
 class PagoForm(forms.ModelForm):
     class Meta:
         model = Pago
-        fields = ['fecha_pago', 'monto', 'forma_pago','comprobante', 'observaciones']
+        fields = ['fecha_pago', 'monto', 'forma_pago', 'observaciones']
+        labels = {'observaciones': 'Comentario'}
         widgets = {
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
@@ -93,20 +95,16 @@ class PagoForm(forms.ModelForm):
             'forma_pago': forms.Select(attrs={
                 'class': 'form-select'
             }),
-            'comprobante': forms.FileInput(attrs={
-                'class': 'form-control'
-            }),
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
                 'class': 'form-control',
-                'placeholder': 'Observaciones'
+                'placeholder': 'Comentario'
             }),
                 
         }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['monto'].required = False
-        self.fields['comprobante'].disabled = True
 
     def clean(self):
         cleaned_data = super().clean()
@@ -133,7 +131,8 @@ class FacturaCargaMasivaForm(forms.Form):
 class FacturaEditForm(forms.ModelForm):
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota', 'estatus', 'observaciones']    
+        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota', 'estatus', 'observaciones']
+        labels = {'observaciones': 'Comentario'}   
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-select'
@@ -162,7 +161,8 @@ class FacturaEditForm(forms.ModelForm):
             }),
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
-                'class': 'form-control'
+                'class': 'form-control',
+                'placeholder': 'comentario'
             }),
         }
 
@@ -185,6 +185,7 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
     class Meta:
         model = FacturaOtrosIngresos
         fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'observaciones']
+        labels = {'observaciones': 'Comentario'}
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-select'             
@@ -202,14 +203,14 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
                 'class': 'form-control',
-                'placeholder': 'concepto de la factura'
+                'placeholder': 'Comentario'
             }),
         }  
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        # self.fields['cfdi'].disabled = True 
+
         if user and hasattr(user, 'perfilusuario'):
             empresa = user.perfilusuario.empresa
             self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
@@ -220,7 +221,8 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
 class CobroForm(forms.ModelForm):
     class Meta:
         model = CobroOtrosIngresos
-        fields = ['fecha_cobro', 'monto', 'forma_cobro', 'comprobante', 'observaciones']
+        fields = ['fecha_cobro', 'monto', 'forma_cobro', 'observaciones']
+        labels = {'observaciones': 'Comentario'}
         widgets = {
             'fecha_cobro': forms.DateInput(attrs={
                 'type': 'date',
@@ -233,13 +235,10 @@ class CobroForm(forms.ModelForm):
             'forma_cobro': forms.Select(attrs={
                 'class': 'form-select'
             }),
-            'comprobante': forms.FileInput(attrs={
-                'class': 'form-control'
-            }),
             'observaciones': forms.Textarea(attrs={
                 'rows': 2,
                 'class': 'form-control',
-                'placeholder': 'Observaciones'
+                'placeholder': 'Comentario'
             }),
         }
 
@@ -247,7 +246,7 @@ class CobroForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
-        self.fields['comprobante'].disabled = True
+
 
     def clean(self):
         cleaned_data = super().clean()

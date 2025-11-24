@@ -49,7 +49,7 @@
                     {% for tema in temas %}
                         <tr>
                             <td><strong>{{ tema.titulo }}</strong></td>
-                            <td>{{ tema.descripcion|truncatechars:60 }}</td>
+                            <td title="{{ tema.descripcion }}">{{ tema.descripcion|truncatechars:60 }}</td>
                             <td>{{ tema.creado_por.get_full_name|default:tema.creado_por.username }}</td>
                             <td>{{ tema.fecha_creacion|date:"d/m/Y H:i" }}</td>
                             <td class="text-nowrap">

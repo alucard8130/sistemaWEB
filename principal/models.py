@@ -59,7 +59,6 @@ class Evento(models.Model):
     
 
 # Modulo de tickets de mantenimiento
-
 class TicketMantenimiento(models.Model):
     ESTADO_CHOICES = [
         ('pendiente', 'Pendiente'),
@@ -94,6 +93,7 @@ class VisitanteAcceso(models.Model):
     locales = models.ManyToManyField(LocalComercial, blank=True, verbose_name="Locales")
     areas = models.ManyToManyField(AreaComun, blank=True, verbose_name="Áreas comunes")
     acceso_api_reporte = models.BooleanField(default=False)
+    email= models.EmailField(blank=True, null=True)
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
@@ -144,4 +144,15 @@ class VotacionCorreo(models.Model):
         return self.voto is not None    
     
     
+#Modulo de Avisos y recordatorios
+from django.db import models
+from django.contrib.auth.models import User
 
+class Aviso(models.Model):
+    titulo = models.CharField(max_length=200)
+    mensaje = models.TextField()
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.titulo

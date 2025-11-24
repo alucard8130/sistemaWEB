@@ -70,9 +70,12 @@ class GastoForm(forms.ModelForm):
  
     class Meta:
         model = Gasto
-        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr','comprobante', 'observaciones']
+        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr', 'observaciones']
         widgets = {
             'proveedor': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'empleado': forms.Select(attrs={
                 'class': 'form-select'
             }),
             'empresa': forms.Select(attrs={
@@ -94,9 +97,6 @@ class GastoForm(forms.ModelForm):
             'retencion_isr': forms.NumberInput(attrs={
                 'class': 'form-control'
             }),
-            'comprobante': forms.FileInput(attrs={
-                'class': 'form-control'
-            }),
             'descripcion': forms.Textarea(attrs={
                 'rows':2,
                 'class': 'form-control'
@@ -114,7 +114,7 @@ class GastoForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        self.fields['comprobante'].disabled = True  
+        # self.fields['comprobante'].disabled = True  
 
         if not user or not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
@@ -166,7 +166,8 @@ class GastoForm(forms.ModelForm):
 class PagoGastoForm(forms.ModelForm):
     class Meta:
         model = PagoGasto
-        fields = ['fecha_pago', 'monto', 'forma_pago','comprobante', 'referencia']
+        fields = ['fecha_pago', 'monto', 'forma_pago', 'referencia']
+        labels = {'referencia': 'Comentario'}
         widgets = {
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
@@ -179,18 +180,15 @@ class PagoGastoForm(forms.ModelForm):
             'forma_pago': forms.Select(attrs={
                 'class': 'form-select'
             }),
-            'comprobante': forms.FileInput(attrs={
-                'class': 'form-control'
-            }),
             'referencia': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Referencia'
+                'placeholder': 'Comentario'
             }),
         }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
-        self.fields['comprobante'].disabled = True
+        # self.fields['comprobante'].disabled = True
 
 class GastosCargaMasivaForm(forms.Form):
         archivo = forms.FileField(label='Archivo Excel (.xlsx)')     

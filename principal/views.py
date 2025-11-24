@@ -33,7 +33,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
-from .models import Evento, PerfilUsuario, TemaGeneral, VisitanteAcceso, VotacionCorreo
+from .models import Aviso, Evento, PerfilUsuario, TemaGeneral, VisitanteAcceso, VotacionCorreo
 import json
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
@@ -49,7 +49,7 @@ from django.urls import reverse
 from django.conf import settings
 import requests
 from decimal import Decimal
-from .forms import CSDUploadForm, EstadoCuentaUploadForm
+from .forms import AvisoForm, CSDUploadForm, EstadoCuentaUploadForm
 import base64
 import io
 import zipfile
@@ -64,12 +64,13 @@ from facturacion.models import Factura, Pago
 from rest_framework.authtoken.models import Token
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import authentication_classes, permission_classes
+from rest_framework.decorators import authentication_classes, permission_classes, parser_classes
 from .models import VisitanteToken
 from functools import wraps
 from django.db.models import Sum
 from django.db.models import Case, When, Value, CharField, Q, DecimalField, ExpressionWrapper, OuterRef, Subquery, F
 from django.db.models.functions import Coalesce
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 # Vista de bienvenida / dashboard
@@ -1310,6 +1311,33 @@ def eliminar_tema(request, tema_id):
     messages.success(request, "Asunto eliminado correctamente.")
     return redirect("lista_temas")
 
+#modulo avisos y notificaciones-->
+@login_required
+def avisos_lista(request):
+    avisos = Aviso.objects.order_by('-fecha_creacion')
+    return render(request, 'avisos/avisos_lista.html', {'avisos': avisos})
+
+@login_required
+def aviso_crear(request):
+    if request.method == 'POST':
+        form = AvisoForm(request.POST)
+        if form.is_valid():
+            aviso = form.save(commit=False)
+            aviso.usuario = request.user
+            aviso.save()
+            return redirect('avisos_lista')
+    else:
+        form = AvisoForm()
+    return render(request, 'avisos/aviso_form.html', {'form': form})
+
+@login_required
+def aviso_eliminar(request, aviso_id):
+    aviso = get_object_or_404(Aviso, id=aviso_id)
+    if request.method == "POST":
+        aviso.delete()
+        return redirect('avisos_lista')
+    return render(request, 'avisos/aviso_confirmar_eliminar.html', {'aviso': aviso})
+
 
 # Modulo de timbrado de facturas con FACTURAMA
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
@@ -1875,7 +1903,9 @@ def visitante_timbrar_factura(request, pk):
     )
 
 
-# APIS visitantes Flutter
+# Modulo APIS visitantes Flutter
+
+# Decorador para verificar token de visitante
 def visitante_token_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
@@ -1890,6 +1920,110 @@ def visitante_token_required(view_func):
     return _wrapped_view
 
 
+# API registro visitante
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def visitante_registro_api(request):
+    empresa_input = request.data.get("empresa")
+    locales_numeros = request.data.getlist("locales_numeros[]")
+    areas_numeros = request.data.getlist("areas_numeros[]")
+    username = request.data.get("username")
+    password = request.data.get("password")
+    email = request.data.get("email")
+    ine_file = request.FILES.get("ine_file")
+
+    if not empresa_input:
+        return Response({"ok": False, "error": "Debes escribir el nombre o RFC de la empresa."}, status=400)
+    if not ine_file:
+        return Response({"ok": False, "error": "Debes subir tu INE."}, status=400)
+
+    empresa = Empresa.objects.filter(Q(nombre__iexact=empresa_input) | Q(rfc__iexact=empresa_input)).first()
+    if not empresa:
+        return Response({"ok": False, "error": "Empresa no encontrada."}, status=404)
+
+    if not locales_numeros and not areas_numeros:
+        return Response({"ok": False, "error": "Debes seleccionar al menos un local o un área común."}, status=400)
+
+    if VisitanteAcceso.objects.filter(username=username).exists():
+        return Response({"ok": False, "error": "El usuario ya existe."}, status=400)
+
+    # Validar correo con el cliente de cada local/área
+    locales = []
+    areas = []
+    errores = []
+
+    for num in locales_numeros:
+        local = LocalComercial.objects.filter(empresa=empresa, numero=num).first()
+        if not local:
+            errores.append(f"Local {num} no existe en la empresa.")
+        elif not local.cliente or local.cliente.email.lower() != email.lower():
+            errores.append(f"El correo no coincide con el cliente del local {num}.")
+        else:
+            locales.append(local)
+
+    for num in areas_numeros:
+        area = AreaComun.objects.filter(empresa=empresa, numero=num).first()
+        if not area:
+            errores.append(f"Área común {num} no existe en la empresa.")
+        elif not area.cliente or area.cliente.email.lower() != email.lower():
+            errores.append(f"El correo no coincide con el cliente del área {num}.")
+        else:
+            areas.append(area)
+
+    if errores:
+        return Response({"ok": False, "error": " ".join(errores)}, status=400)
+
+    # Crear visitante (sin guardar INE)
+    visitante = VisitanteAcceso.objects.create(
+        username=username,
+        email=email,
+        empresa=empresa
+    )
+    visitante.set_password(password)
+    visitante.save()
+    if locales:
+        visitante.locales.add(*locales)
+    if areas:
+        visitante.areas.add(*areas)
+
+    token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
+
+    # Enviar correo a la empresa y al admin con el INE adjunto
+    asunto = "Nuevo visitante registrado en App"
+    mensaje = (
+        f"Se ha registrado un nuevo visitante en App.\n\n"
+        f"Usuario: {visitante.username}\n"
+        f"Email: {visitante.email}\n"
+        f"Empresa: {empresa.nombre}\n"
+        f"Locales: {', '.join([str(l.numero) for l in locales]) if locales else '-'}\n"
+        f"Áreas comunes: {', '.join([str(a.numero) for a in areas]) if areas else '-'}\n"
+    )
+    destinatarios = [empresa.email]
+    if hasattr(settings, "ADMIN_EMAIL"):
+        destinatarios.append(settings.ADMIN_EMAIL)
+
+    email_msg = EmailMessage(
+        subject=asunto,
+        body=mensaje,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=destinatarios,
+    )
+    if ine_file:
+        email_msg.attach(ine_file.name, ine_file.read(), ine_file.content_type)
+    email_msg.send(fail_silently=True)
+
+    return Response({
+        "ok": True,
+        "visitante_id": visitante.id,
+        "token": token.key,
+        "empresa_nombre": empresa.nombre,
+        "empresa_email": empresa.email,
+        "locales": [l.numero for l in locales],
+        "areas": [a.numero for a in areas],
+    })
+
+
+# API login visitante
 @api_view(["POST"])
 def visitante_login_api(request):
     username = request.data.get("username")
@@ -1924,6 +2058,7 @@ def visitante_login_api(request):
         return Response({"ok": False, "error": "Usuario no encontrado"}, status=404)
 
 
+# API obtener facturas del visitante
 @api_view(["GET"])
 @visitante_token_required
 def visitante_facturas_api(request):
@@ -1934,7 +2069,7 @@ def visitante_facturas_api(request):
     serializer = FacturaSerializer(facturas, many=True)
     return Response({"facturas": serializer.data})
 
-
+# API crear Payment Intent con Stripe
 @api_view(["POST"])
 def create_payment_intent(request):
     amount = request.data.get("amount")
@@ -2345,12 +2480,31 @@ def api_dashboard_saldos_visitante(request):
         "facturas_otros": otros_data,
     })
 
+# vista API para avisos
+@api_view(['GET'])
+@visitante_token_required
+def api_avisos_empresa(request):
+    visitante = request.visitante
+    empresa = None
+    if visitante.locales.exists():
+        empresa = visitante.locales.first().empresa
+    elif visitante.areas.exists():
+        empresa = visitante.areas.first().empresa
 
+    if not empresa:
+        return Response({"error": "No se encontró empresa asociada al visitante."}, status=400)
 
-
-
-
-
+    avisos = Aviso.objects.filter(usuario__perfilusuario__empresa=empresa).order_by('-fecha_creacion')
+    data = [
+        {
+            "id": aviso.id,
+            "titulo": aviso.titulo,
+            "mensaje": aviso.mensaje,
+            "fecha_creacion": aviso.fecha_creacion.strftime("%Y-%m-%d %H:%M"),
+        }
+        for aviso in avisos
+    ]
+    return Response(data)
 
 
 # conciliación bancaria

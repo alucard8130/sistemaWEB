@@ -8,7 +8,7 @@ class VisitanteLoginForm(forms.Form):
     username = forms.CharField(label="Usuario")
     password = forms.CharField(label="Contraseña", widget=forms.PasswordInput)
 
-from .models import TemaGeneral
+from .models import Aviso, TemaGeneral
 
 class TemaGeneralForm(forms.ModelForm):
     correos = forms.CharField(
@@ -46,3 +46,21 @@ class CSDUploadForm(forms.Form):
 #modulo conciliacion bancaria
 class EstadoCuentaUploadForm(forms.Form):
     archivo = forms.FileField(label="Estado de cuenta bancario (.csv)")
+
+
+#Modulo avisos y recordatorios
+class AvisoForm(forms.ModelForm):
+    class Meta:
+        model = Aviso
+        fields = ['titulo', 'mensaje']
+        widgets = {
+            'titulo': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Título del aviso'
+            }),
+            'mensaje': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Escribe el mensaje del aviso'
+            }),
+        }
