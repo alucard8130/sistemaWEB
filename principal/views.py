@@ -1920,25 +1920,69 @@ def visitante_token_required(view_func):
     return _wrapped_view
 
 
+# APIS registro visitante
+
+# Lista de empresas
+@api_view(['GET'])
+def api_empresas_lista(request):
+    empresas = Empresa.objects.all().order_by('nombre')
+    data = [
+        {"id": e.id, "nombre": e.nombre}
+        for e in empresas
+    ]
+    return Response(data)
+
+# Lista de locales por empresa
+@api_view(['GET'])
+def api_locales_por_empresa(request, empresa_id):
+    locales = LocalComercial.objects.filter(empresa_id=empresa_id).order_by('numero')
+    data = [
+        {"id": l.id, "numero": l.numero}
+        for l in locales
+    ]
+    return Response(data)
+
+# Lista de áreas comunes por empresa
+@api_view(['GET'])
+def api_areas_por_empresa(request, empresa_id):
+    areas = AreaComun.objects.filter(empresa_id=empresa_id).order_by('numero')
+    data = [
+        {"id": a.id, "numero": a.numero}
+        for a in areas
+    ]
+    return Response(data)
+
 # API registro visitante
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def visitante_registro_api(request):
-    empresa_input = request.data.get("empresa")
+    empresa_id = request.data.get("empresa_id")
     locales_numeros = request.data.getlist("locales_numeros[]")
     areas_numeros = request.data.getlist("areas_numeros[]")
+    # Convierte a string
+    locales_numeros = [str(num) for num in locales_numeros]
+    areas_numeros = [str(num) for num in areas_numeros]
     username = request.data.get("username")
     password = request.data.get("password")
     email = request.data.get("email")
     ine_file = request.FILES.get("ine_file")
+    
+    # Imprime los valores recibidos para depuración
+    # print("empresa_id:", empresa_id)
+    # print("locales_numeros:", locales_numeros)
+    # print("areas_numeros:", areas_numeros)
+    # print("username:", username)
+    # print("email:", email)
+    # print("ine_file:", ine_file)
 
-    if not empresa_input:
-        return Response({"ok": False, "error": "Debes escribir el nombre o RFC de la empresa."}, status=400)
+    if not empresa_id:
+        return Response({"ok": False, "error": "Debes seleccionar una empresa."}, status=400)
     if not ine_file:
         return Response({"ok": False, "error": "Debes subir tu INE."}, status=400)
 
-    empresa = Empresa.objects.filter(Q(nombre__iexact=empresa_input) | Q(rfc__iexact=empresa_input)).first()
-    if not empresa:
+    try:
+        empresa = Empresa.objects.get(id=empresa_id)
+    except Empresa.DoesNotExist:
         return Response({"ok": False, "error": "Empresa no encontrada."}, status=404)
 
     if not locales_numeros and not areas_numeros:
@@ -1947,33 +1991,52 @@ def visitante_registro_api(request):
     if VisitanteAcceso.objects.filter(username=username).exists():
         return Response({"ok": False, "error": "El usuario ya existe."}, status=400)
 
-    # Validar correo con el cliente de cada local/área
     locales = []
     areas = []
     errores = []
 
-    for num in locales_numeros:
-        local = LocalComercial.objects.filter(empresa=empresa, numero=num).first()
-        if not local:
-            errores.append(f"Local {num} no existe en la empresa.")
-        elif not local.cliente or local.cliente.email.lower() != email.lower():
-            errores.append(f"El correo no coincide con el cliente del local {num}.")
-        else:
-            locales.append(local)
-
-    for num in areas_numeros:
-        area = AreaComun.objects.filter(empresa=empresa, numero=num).first()
-        if not area:
-            errores.append(f"Área común {num} no existe en la empresa.")
-        elif not area.cliente or area.cliente.email.lower() != email.lower():
-            errores.append(f"El correo no coincide con el cliente del área {num}.")
-        else:
-            areas.append(area)
+    # Solo valida locales si hay locales seleccionados y no áreas
+    if locales_numeros and not areas_numeros:
+        for num in locales_numeros:
+            local = LocalComercial.objects.filter(empresa=empresa, numero=num).first()
+            if not local:
+                errores.append(f"Local {num} no existe en la empresa.")
+            elif not local.cliente or local.cliente.email.lower() != email.lower():
+                errores.append(f"El correo no coincide con el cliente del local {num}.")
+            else:
+                locales.append(local)
+    # Solo valida áreas si hay áreas seleccionadas y no locales
+    elif areas_numeros and not locales_numeros:
+        for num in areas_numeros:
+            area = AreaComun.objects.filter(empresa=empresa, numero=num).first()
+            if not area:
+                errores.append(f"Área común {num} no existe en la empresa.")
+            elif not area.cliente or area.cliente.email.lower() != email.lower():
+                errores.append(f"El correo no coincide con el cliente del área {num}.")
+            else:
+                areas.append(area)
+    # Si hay ambos, valida ambos
+    else:
+        for num in locales_numeros:
+            local = LocalComercial.objects.filter(empresa=empresa, numero=num).first()
+            if not local:
+                errores.append(f"Local {num} no existe en la empresa.")
+            elif not local.cliente or local.cliente.email.lower() != email.lower():
+                errores.append(f"El correo no coincide con el cliente del local {num}.")
+            else:
+                locales.append(local)
+        for num in areas_numeros:
+            area = AreaComun.objects.filter(empresa=empresa, numero=num).first()
+            if not area:
+                errores.append(f"Área común {num} no existe en la empresa.")
+            elif not area.cliente or area.cliente.email.lower() != email.lower():
+                errores.append(f"El correo no coincide con el cliente del área {num}.")
+            else:
+                areas.append(area)
 
     if errores:
         return Response({"ok": False, "error": " ".join(errores)}, status=400)
 
-    # Crear visitante (sin guardar INE)
     visitante = VisitanteAcceso.objects.create(
         username=username,
         email=email,
@@ -1988,7 +2051,6 @@ def visitante_registro_api(request):
 
     token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
 
-    # Enviar correo a la empresa y al admin con el INE adjunto
     asunto = "Nuevo visitante registrado en App"
     mensaje = (
         f"Se ha registrado un nuevo visitante en App.\n\n"
@@ -2065,7 +2127,9 @@ def visitante_facturas_api(request):
     visitante = request.visitante  # El usuario autenticado por token
     locales = visitante.locales.all()
     areas = visitante.areas.all()
-    facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
+    #facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
+    facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas)) \
+        .select_related("cliente", "empresa", "local", "area_comun")
     serializer = FacturaSerializer(facturas, many=True)
     return Response({"facturas": serializer.data})
 
@@ -2105,7 +2169,6 @@ def api_reporte_ingresos_vs_gastos(request):
     elif visitante.areas.exists():
         empresa = visitante.areas.first().empresa
 
-    # Elimina el parámetro empresa_id y todo filtro por empresa
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     mes = request.GET.get("mes")
@@ -2169,7 +2232,6 @@ def api_reporte_ingresos_vs_gastos(request):
         fecha_fin_dt = fecha_fin
 
     # Para mostrar el mes y año en letras
-
     try:
         locale.setlocale(locale.LC_TIME, "es_MX.UTF-8")
     except locale.Error:
@@ -2188,15 +2250,12 @@ def api_reporte_ingresos_vs_gastos(request):
     elif fecha_inicio_dt and fecha_fin_dt:
         mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
-    pagos = Pago.objects.exclude(forma_pago="nota_credito")
-    pagos_gastos = PagoGasto.objects.all()
-    cobros_otros = CobroOtrosIngresos.objects.select_related(
-        "factura", "factura__empresa"
-    )
-    gastos_caja_chica = GastoCajaChica.objects.all()
-    vales_caja_chica = ValeCaja.objects.all()
+    # pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(factura__empresa=empresa)
+    # pagos_gastos = PagoGasto.objects.all()
+    # cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
+    # gastos_caja_chica = GastoCajaChica.objects.all()
+    # vales_caja_chica = ValeCaja.objects.all()
 
-    
     # Filtra todos los objetos por la empresa del visitante
     pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(factura__empresa=empresa)
     pagos_gastos = PagoGasto.objects.filter(gasto__empresa=empresa)
@@ -2207,13 +2266,13 @@ def api_reporte_ingresos_vs_gastos(request):
     # Aplica filtros de fecha
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
-        pagos_gastos = pagos_gastos.filter(gasto__fecha__gte=fecha_inicio)
+        pagos_gastos = pagos_gastos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
         vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
-        pagos_gastos = pagos_gastos.filter(gasto__fecha__lte=fecha_fin)
+        pagos_gastos = pagos_gastos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
@@ -2294,7 +2353,7 @@ def api_reporte_ingresos_vs_gastos(request):
         ingresos_por_origen[f" {tipo}"] = float(x["total"])
 
     saldo = total_ingresos_cobrados - total_egresos
-    # Ejemplo de resultado (ajusta según tus variables):
+
     resultado = {
         "total_ingresos": total_ingresos_cobrados,
         "total_otros_ingresos": total_otros_ingresos,
@@ -2309,7 +2368,6 @@ def api_reporte_ingresos_vs_gastos(request):
         "mes_letra": mes_letra,
         "empresa_nombre": empresa.nombre if empresa else "",
         "empresa_email": empresa.email if empresa else "",
-        # Agrega otros campos que necesites
     }
     return Response(resultado)
 
@@ -2372,6 +2430,24 @@ def api_dashboard_saldos_visitante(request):
             output_field=DecimalField()
         )
     )
+    # Anota el rango de vencimiento en cada factura
+    facturas = facturas.annotate(
+        rango=Case(
+            When(fecha_vencimiento__gt=hoy - timedelta(days=30), then=Value('0_30')),
+            When(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30), then=Value('31_60')),
+            When(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60), then=Value('61_90')),
+            When(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90), then=Value('91_180')),
+            When(fecha_vencimiento__lte=hoy - timedelta(days=180), then=Value('181_mas')),
+            default=Value('otro'),
+            output_field=CharField(),
+        )
+    )
+
+    # Agrupa y suma en una sola consulta
+    saldos = facturas.values('rango').annotate(total=Sum('saldo_pendiente_dash'))
+    saldos_dict = {x['rango']: float(x['total']) for x in saldos}
+    for key in ['0_30', '31_60', '61_90', '91_180', '181_mas']:
+        saldos_dict.setdefault(key, 0.0)
 
     # Facturas otros ingresos
     facturas_otros = FacturaOtrosIngresos.objects.filter(estatus='pendiente', activo=True).filter(filtro_empresa)
@@ -2402,18 +2478,22 @@ def api_dashboard_saldos_visitante(request):
         )
     )
 
-    # Saldos por rango de vencimiento
-    saldo_0_30 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_91_180 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_181_mas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-
-    saldo_0_30_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_31_60_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_61_90_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_91_180_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_181_mas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    # Anota el rango de vencimiento en cada factura otros ingresos
+    facturas_otros = facturas_otros.annotate(
+        rango=Case(
+            When(fecha_vencimiento__gt=hoy - timedelta(days=30), then=Value('0_30')),
+            When(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30), then=Value('31_60')),
+            When(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60), then=Value('61_90')),
+            When(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90), then=Value('91_180')),
+            When(fecha_vencimiento__lte=hoy - timedelta(days=180), then=Value('181_mas')),
+            default=Value('otro'),
+            output_field=CharField(),
+        )
+    )
+    saldos_otros = facturas_otros.values('rango').annotate(total=Sum('saldo_pendiente_dash'))
+    saldos_otros_dict = {x['rango']: float(x['total']) for x in saldos_otros}
+    for key in ['0_30', '31_60', '61_90', '91_180', '181_mas']:
+        saldos_otros_dict.setdefault(key, 0.0)
 
     # Top 10 adeudos
     top_adeudos = (
@@ -2468,12 +2548,12 @@ def api_dashboard_saldos_visitante(request):
     ]
 
     return Response({
-        "saldos": {
-            "0_30": float(saldo_0_30) + float(saldo_0_30_otros),
-            "31_60": float(saldo_31_60) + float(saldo_31_60_otros),
-            "61_90": float(saldo_61_90) + float(saldo_61_90_otros),
-            "91_180": float(saldo_91_180) + float(saldo_91_180_otros),
-            "181_mas": float(saldo_181_mas) + float(saldo_181_mas_otros),
+         "saldos": {
+            "0_30": saldos_dict['0_30'] + saldos_otros_dict['0_30'],
+            "31_60": saldos_dict['31_60'] + saldos_otros_dict['31_60'],
+            "61_90": saldos_dict['61_90'] + saldos_otros_dict['61_90'],
+            "91_180": saldos_dict['91_180'] + saldos_otros_dict['91_180'],
+            "181_mas": saldos_dict['181_mas'] + saldos_otros_dict['181_mas'],
         },
         "top_adeudos": list(top_adeudos),
         "facturas": facturas_data,

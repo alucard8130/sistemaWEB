@@ -122,13 +122,13 @@ def reporte_ingresos_vs_gastos(request):
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
-        pagos_gastos = pagos_gastos.filter(gasto__fecha__gte=fecha_inicio)
+        pagos_gastos = pagos_gastos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
         vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
-        pagos_gastos = pagos_gastos.filter(gasto__fecha__lte=fecha_fin)
+        pagos_gastos = pagos_gastos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
