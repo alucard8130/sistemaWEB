@@ -2064,10 +2064,9 @@ def visitante_registro_api(request):
     destinatarios = set()
     if empresa.email:
         destinatarios.add(empresa.email)
-    admin_email = getattr(settings, "ADMIN_EMAIL", None)
+    admin_email = getattr(settings, "EMAIL_HOST_USER", None)
     if admin_email:
         destinatarios.add(admin_email)
-
     email_msg = EmailMessage(
         subject=asunto,
         body=mensaje,
@@ -2078,6 +2077,7 @@ def visitante_registro_api(request):
         email_msg.attach(ine_file.name, ine_file.read(), ine_file.content_type)
     email_msg.send(fail_silently=True)
 
+    #print(list(destinatarios))
     return Response({
         "ok": True,
         "visitante_id": visitante.id,
