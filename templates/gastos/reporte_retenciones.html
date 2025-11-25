@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista solicitudes de gasto</title>
+    <!-- Bootstrap base styles -->  
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <title>Reporte de Retenciones ISR e IVA</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; }
+        th { background: #f0f0f0; }
+        form { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <!-- Main content -->
+    <div class="container-fluid mt-4">
+        <h2>Reporte de Retenciones</h2>
+        <form method="get"  class="row g-2 mb-3">
+            <div class="col-auto">
+                <label>Fecha inicio:
+                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}">
+                </label>
+                <label>Fecha fin:
+                    <input type="date" name="fecha_fin" value="{{ fecha_fin }}">
+                </label>
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <!-- Limpiar filtros -->
+                <a href="{% url 'reporte_retenciones_gastos' %}" class="btn btn-secondary">Limpiar filtros</a>
+                <!-- descargar reporte -->
+                <a href="{% url 'descargar_reporte_retenciones_gastos' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-success">
+                    Descargar reporte
+                </a>
+            </div>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Proveedor/Empleado</th>
+                        <th>Subgrupo de Gasto</th>
+                        <th>Tipo de Gasto</th>
+                        <th>Fecha</th>
+                        <th>ISR</th>
+                        <th>IVA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in gastos %}
+                    <tr>
+                        <td>{{ g.persona }}</td>
+                        <td>{{ g.subgrupo }}</td>
+                        <td>{{ g.tipo }}</td>
+                        <td>{{ g.fecha|date:"d/m/Y" }}</td>
+                        <td style="text-align:right;">{{ g.retencion_isr|floatformat:2 }}</td>
+                        <td style="text-align:right;">{{ g.retencion_iva|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6">No hay datos.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+    </div>
+
+     <!-- 🔹 Footer -->
+    <footer>
+        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
+        Creado por JMEB
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

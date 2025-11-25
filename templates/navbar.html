@@ -148,9 +148,10 @@
                         {% endif %}
                         <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Pagos Solicitudes de Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Gastos</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_retenciones_gastos' %}">Reporte Retenciones</a></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
-                
                         {% endif %}
                     </ul>
                 </li>

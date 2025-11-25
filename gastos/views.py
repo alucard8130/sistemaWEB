@@ -1016,3 +1016,99 @@ def recibo_gasto(request, gasto_id):
             "monto_letra": monto_letra,
         },
     )
+
+#consulta retenciones de gastos
+@login_required
+def reporte_retenciones_gastos(request):
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
+    gastos = Gasto.objects.select_related(
+        "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo"
+    ).all()
+
+    # Filtro por fechas si se proporcionan
+    if fecha_inicio:
+        gastos = gastos.filter(fecha__gte=parse_date(fecha_inicio))
+    if fecha_fin:
+        gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
+
+    # Solo los que tengan retención ISR o IVA mayor a cero
+    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by("-fecha")
+
+    data = []
+    for g in gastos:
+        if g.proveedor:
+            nombre = g.proveedor.nombre
+        elif g.empleado:
+            nombre = g.empleado.nombre
+        else:
+            nombre = ""
+        data.append({
+            "persona": nombre,
+            "subgrupo": g.tipo_gasto.subgrupo.nombre if g.tipo_gasto and g.tipo_gasto.subgrupo else "",
+            "tipo": g.tipo_gasto.nombre if g.tipo_gasto else "",
+            "fecha": g.fecha,
+            "retencion_isr": getattr(g, "retencion_isr", 0),
+            "retencion_iva": getattr(g, "retencion_iva", 0),
+        })
+
+    return render(request, "gastos/reporte_retenciones.html", {
+        "gastos": data,
+        "fecha_inicio": fecha_inicio or "",
+        "fecha_fin": fecha_fin or "",
+    })
+
+#descagar reporte de retenciones de gastos en Excel
+@login_required
+def descargar_reporte_retenciones_gastos(request):
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
+    gastos = Gasto.objects.select_related(
+        "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo"
+    ).all()
+
+    # Filtro por fechas si se proporcionan
+    if fecha_inicio:
+        gastos = gastos.filter(fecha__gte=parse_date(fecha_inicio))
+    if fecha_fin:
+        gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
+
+    # Solo los que tengan retención ISR o IVA mayor a cero
+    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by("-fecha")
+
+    # Crear el archivo Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reporte Retenciones Gastos"
+
+    # Encabezados
+    ws.append([
+        "Persona", "Subgrupo", "Tipo de Gasto", "Fecha",
+        "Retención ISR", "Retención IVA"
+    ])
+
+    for g in gastos:
+        if g.proveedor:
+            nombre = g.proveedor.nombre
+        elif g.empleado:
+            nombre = g.empleado.nombre
+        else:
+            nombre = ""
+        ws.append([
+            nombre,
+            g.tipo_gasto.subgrupo.nombre if g.tipo_gasto and g.tipo_gasto.subgrupo else "",
+            g.tipo_gasto.nombre if g.tipo_gasto else "",
+            g.fecha if g.fecha else '',
+            float(getattr(g, "retencion_isr", 0)),
+            float(getattr(g, "retencion_iva", 0)),
+        ])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    filename = "reporte_retenciones_gastos.xlsx"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    wb.save(response)
+    return response     
