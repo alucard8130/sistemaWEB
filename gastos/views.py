@@ -1023,17 +1023,26 @@ def reporte_retenciones_gastos(request):
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
 
+    # Obtén la empresa del usuario logueado correctamente
+    perfil = getattr(request.user, "perfilusuario", None)
+    empresa = perfil.empresa if perfil else None
+    if not empresa:
+        return render(request, "gastos/reporte_retenciones.html", {
+            "gastos": [],
+            "fecha_inicio": fecha_inicio or "",
+            "fecha_fin": fecha_fin or "",
+            "error": "No se pudo determinar la empresa del usuario."
+        })
+
     gastos = Gasto.objects.select_related(
         "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo"
-    ).all()
+    ).filter(empresa=empresa)
 
-    # Filtro por fechas si se proporcionan
     if fecha_inicio:
         gastos = gastos.filter(fecha__gte=parse_date(fecha_inicio))
     if fecha_fin:
         gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
 
-    # Solo los que tengan retención ISR o IVA mayor a cero
     gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by("-fecha")
 
     data = []
@@ -1057,6 +1066,7 @@ def reporte_retenciones_gastos(request):
         "gastos": data,
         "fecha_inicio": fecha_inicio or "",
         "fecha_fin": fecha_fin or "",
+        "error": None,
     })
 
 #descagar reporte de retenciones de gastos en Excel
