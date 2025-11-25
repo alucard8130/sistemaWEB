@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "caja_chica",
     "widget_tweaks",
     "rest_framework",
+    "adminpanel",
 ]
 
 

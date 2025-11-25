@@ -713,7 +713,7 @@ def crear_ticket(request):
             email = EmailMessage(
                 subject=asunto,
                 body=cuerpo,
-                from_email="avisoscondominio@infinitummail.com",
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[empleado.email],
             )
             # Adjuntar imágenes si fueron subidas
@@ -2060,15 +2060,19 @@ def visitante_registro_api(request):
         f"Locales: {', '.join([str(l.numero) for l in locales]) if locales else '-'}\n"
         f"Áreas comunes: {', '.join([str(a.numero) for a in areas]) if areas else '-'}\n"
     )
-    destinatarios = [empresa.email]
-    if hasattr(settings, "ADMIN_EMAIL"):
-        destinatarios.append(settings.ADMIN_EMAIL)
+    # Agrega ambos correos y elimina duplicados
+    destinatarios = set()
+    if empresa.email:
+        destinatarios.add(empresa.email)
+    admin_email = getattr(settings, "ADMIN_EMAIL", None)
+    if admin_email:
+        destinatarios.add(admin_email)
 
     email_msg = EmailMessage(
         subject=asunto,
         body=mensaje,
         from_email=settings.DEFAULT_FROM_EMAIL,
-        to=destinatarios,
+        to=list(destinatarios),
     )
     if ine_file:
         email_msg.attach(ine_file.name, ine_file.read(), ine_file.content_type)

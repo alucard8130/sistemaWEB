@@ -4,6 +4,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
+from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, toggle_activo_visitante, toggle_reporte_visitante
 from areas import views
 from caja_chica.views import comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
@@ -156,6 +157,10 @@ urlpatterns = [
     path('avisos/eliminar/<int:aviso_id>/', aviso_eliminar, name='aviso_eliminar'),
     path('gastos/reporte-retenciones/', reporte_retenciones_gastos, name='reporte_retenciones_gastos'),
     path('gastos/reporte-retenciones/descargar/', descargar_reporte_retenciones_gastos, name='descargar_reporte_retenciones_gastos'),
+    path('adminpanel/usuarios-normales/', lista_usuarios_normales, name='lista_usuarios_normales'),
+    path('adminpanel/usuarios-visitantes/', lista_usuarios_visitantes, name='lista_usuarios_visitantes'),
+     path('usuarios/visitantes/<int:visitante_id>/toggle-activo/', toggle_activo_visitante, name='toggle_activo_visitante'),
+    path('usuarios/visitantes/<int:visitante_id>/toggle-reporte/', toggle_reporte_visitante, name='toggle_reporte_visitante'),
 ]
 
     

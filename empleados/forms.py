@@ -9,6 +9,7 @@ class EmpleadoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        self.fields['email'].required = True
         if user and not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
 
