@@ -24,6 +24,8 @@ from clientes.views import (
     carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
     editar_cliente, eliminar_cliente, plantilla_clientes_excel, reactivar_cliente)
 from proveedores.views import carga_masiva_proveedores, eliminar_proveedor, plantilla_proveedores_excel
+from publicidad.views import anuncios_api, solicitud_publicidad_api
+from publicidad.views import anuncios_publicos
 #from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView,)
 
 urlpatterns = [
@@ -145,6 +147,8 @@ urlpatterns = [
     path('api/visitante/reportes/', api_reporte_ingresos_vs_gastos, name='visitante_reportes_api'),
     path('api/visitante/cartera-vencida/', api_dashboard_saldos_visitante, name='api_dashboard_saldos_visitante'),
     path('api/visitante/avisos/', api_avisos_empresa, name='api_avisos_empresa'),
+    path('api/publicidad/anuncios/', anuncios_api, name='anuncios_api'),
+    path('api/publicidad/solicitud/', solicitud_publicidad_api, name='solicitud_publicidad_api'),
     path('gastos_caja_chica/exportar/', exportar_gastos_caja_chica_excel, name='exportar_gastos_caja_chica_excel'),
     path('vales_caja_chica/exportar/', exportar_vales_caja_chica_excel, name='exportar_vales_caja_chica_excel'),
     path('fondeos/exportar/', exportar_fondeos_excel, name='exportar_fondeos_excel'),   
@@ -161,6 +165,7 @@ urlpatterns = [
     path('adminpanel/usuarios-visitantes/', lista_usuarios_visitantes, name='lista_usuarios_visitantes'),
      path('usuarios/visitantes/<int:visitante_id>/toggle-activo/', toggle_activo_visitante, name='toggle_activo_visitante'),
     path('usuarios/visitantes/<int:visitante_id>/toggle-reporte/', toggle_reporte_visitante, name='toggle_reporte_visitante'),
+    path('publicidad/', anuncios_publicos, name='anuncios_publicos'),
 ]
 
     

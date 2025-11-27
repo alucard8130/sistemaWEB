@@ -1,0 +1,30 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Anuncios Institucionales</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <h2>Anuncios Institucionales</h2>
+    <div class="row">
+        {% for anuncio in anuncios %}
+            <div class="card mb-3" style="max-width: 400px;">
+                <h4>{{ anuncio.nombre_negocio }}</h4>
+                <p>{{ anuncio.descripcion }}</p>
+                <ul>
+                    {% if anuncio.telefono %}<li>Tel: {{ anuncio.telefono }}</li>{% endif %}
+                    {% if anuncio.email %}<li> Email:<a href="mailto:{{ anuncio.email }}">{{ anuncio.email }}</a></li>{% endif %}
+                    {% if anuncio.link_pagina %}<li><a href="{{ anuncio.link_pagina }}" target="_blank">Página web</a></li>{% endif %}
+                    {% if anuncio.link_facebook %}<li><a href="{{ anuncio.link_facebook }}" target="_blank">Facebook</a></li>{% endif %}
+                    {% if anuncio.link_instagram %}<li><a href="{{ anuncio.link_instagram }}" target="_blank">Instagram</a></li>{% endif %}
+                    {% if anuncio.link_otro %}<li><a href="{{ anuncio.link_otro }}" target="_blank">Otro enlace</a></li>{% endif %}
+                </ul>
+            </div>
+        {% empty %}
+            <p>No hay anuncios activos.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

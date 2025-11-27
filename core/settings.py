@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "widget_tweaks",
     "rest_framework",
     "adminpanel",
+    "publicidad",
 ]
 
 
@@ -90,8 +91,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-#MEDIA_URL = "/media/"
-#MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
 # Database
@@ -123,7 +124,6 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
-#ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
 
 # Password validation
@@ -197,13 +197,10 @@ AWS_DEFAULT_ACL = 'public-read'
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.nyc3.digitaloceanspaces.com'
 
-#STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/static/'
-#STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
-
-MEDIA_URL = f'https://gesacbucket.nyc3.digitaloceanspaces.com/media/'
-#MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
-DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+# MEDIA_URL = f'https://gesacbucket.nyc3.digitaloceanspaces.com/media/'
+# #MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
+# DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
 SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")
 
