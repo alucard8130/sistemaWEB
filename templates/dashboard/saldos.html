@@ -1,5 +1,6 @@
 {% load static %}
 {% load humanize %}
+{% load dashboard_extras %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -32,7 +33,46 @@
     <div class="container-fluid mt-4">
         
         <h2>Dashboard de saldos / Cartera vencida</h2>
-
+        <!-- Resumen de filtros aplicados -->
+<div class="alert alert-info mb-3">
+    <strong>Consulta actual:</strong>
+    {% if es_super %}
+        <span>Empresa: 
+            {% if empresa_id and empresa_id != "todas" %}
+                {{ empresas|get_empresa_nombre:empresa_id }}
+            {% else %}
+                Todas
+            {% endif %}
+        </span> |
+    {% endif %}
+    <span>Cliente: 
+        {% if cliente_id %}
+            {{ clientes|get_cliente_nombre:cliente_id }}
+        {% else %}
+            Todos
+        {% endif %}
+    </span> |
+    <span>Origen: 
+        {% if origen == "local" %}Cuotas Locales
+        {% elif origen == "area" %}Cuotas Áreas Comunes
+        {% elif origen == "otros" %}Otras Cuotas
+        {% else %}Todos{% endif %}
+    </span> |
+    <span>Tipo de cuota: 
+        {% if tipo_cuota_seleccionada %}{{ tipo_cuota_seleccionada }}{% else %}Todos{% endif %}
+    </span> |
+    <span>Periodo: 
+    {% if mes and anio %}
+        {{ mes|nombre_mes }} {{ anio }}
+    {% elif mes %}
+        {{ mes|nombre_mes }}
+    {% elif anio %}
+        Año {{ anio }}
+    {% else %}
+        Todos
+    {% endif %}
+</span>
+</div>
         <!-- Filtros -->
         <form method="get" class="row g-2 mb-4">
             {% if es_super %}
@@ -70,7 +110,7 @@
     </select>
 </div>
 <div class="col-auto">
-        <select name="mes" id="mes" class="form-select form-select-sm" onchange="this.form.submit()">
+        <select name="mes" id="mes" class="form-select" onchange="this.form.submit()">
     <option value="">Meses</option>
     {% for m in meses %}
         <option value="{{ m }}" {% if mes|default:'' == m|stringformat:"s" %}selected{% endif %}>
@@ -80,7 +120,7 @@
 </select>
     </div>
     <div class="col-auto">
-        <select name="anio" id="anio" class="form-select form-select-sm" onchange="this.form.submit()">
+        <select name="anio" id="anio" class="form-select" onchange="this.form.submit()">
             <option value="">Años</option>
             {% for a in anios_facturas %}
                 <option value="{{ a }}" {% if anio|default:'' == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>

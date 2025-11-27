@@ -672,11 +672,11 @@ def dashboard_saldos(request):
     cliente_id = request.GET.get('cliente')
     origen = request.GET.get('origen')
     tipo_cuota = request.GET.get('tipo_cuota')
-    mes= request.GET.get('mes')
-    anio= request.GET.get('anio')
-
-    if not origen:
-        origen = 'todos'
+    
+    mes = request.GET.get('mes')
+    anio = request.GET.get('anio')
+    mes = int(mes) if mes and mes.isdigit() else None
+    anio = int(anio) if anio and anio.isdigit() else None
         
     es_super = request.user.is_superuser
 
@@ -684,7 +684,6 @@ def dashboard_saldos(request):
     if es_super:
         empresas = Empresa.objects.all()
         if not empresas.exists():
-            #messages.error(request, "No hay empresas registradas en el sistema.")
             return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})
         empresa_id = request.GET.get('empresa')
         if not empresa_id or empresa_id == "todas":
@@ -715,17 +714,9 @@ def dashboard_saldos(request):
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
     if anio:
-        try:
-            anio = int(anio)
-            facturas = facturas.filter(fecha_vencimiento__year=anio)
-        except ValueError:
-            pass
+        facturas = facturas.filter(fecha_vencimiento__year=anio)
     if mes:
-        try:
-            mes = int(mes)
-            facturas = facturas.filter(fecha_vencimiento__month=mes)
-        except ValueError:
-            pass
+        facturas = facturas.filter(fecha_vencimiento__month=mes)
 
 
     # Subconsulta: total pagado por factura
@@ -748,19 +739,10 @@ def dashboard_saldos(request):
         facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
     if cliente_id:
         facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
-
     if anio:
-        try:
-            anio = int(anio)
-            facturas_otros = facturas_otros.filter(fecha_vencimiento__year=anio)
-        except ValueError:
-            pass
+        facturas_otros = facturas_otros.filter(fecha_vencimiento__year=anio)
     if mes:
-        try:
-            mes = int(mes)
-            facturas_otros = facturas_otros.filter(fecha_vencimiento__month=mes)
-        except ValueError:
-            pass
+        facturas_otros = facturas_otros.filter(fecha_vencimiento__month=mes)
 
     cobros_subquery = CobroOtrosIngresos.objects.filter(factura=OuterRef('pk')) \
         .values('factura') \
@@ -916,7 +898,6 @@ def dashboard_saldos(request):
     anios_facturas = sorted(years)
 
     tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
-    #meses=range(1,13)
 
     return render(request, 'dashboard/saldos.html', {
         'facturas': facturas,
@@ -949,6 +930,8 @@ def dashboard_saldos(request):
         'tipo_cuota_seleccionada': tipo_cuota,
         'meses': range(1,13),
         'anios_facturas': anios_facturas,
+        'mes': mes,
+        'anio': anio,
     })
 
 #pagos.html
