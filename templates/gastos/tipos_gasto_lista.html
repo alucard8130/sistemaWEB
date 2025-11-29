@@ -10,7 +10,7 @@
         Description: List expenditure types
     -->
     <meta charset="UTF-8">
-    <title>Alta tipo de gasto</title>
+    <title>Lista tipos de gasto</title>
         <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
@@ -79,6 +79,25 @@
                 </tbody>
             </table>
         </div>
+         <nav aria-label="Paginación">
+            <ul class="pagination">
+                {% if tipos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tipos.previous_page_number }}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Página {{ tipos.number }} de {{ tipos.paginator.num_pages }}</span></li>
+                {% if tipos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ tipos.next_page_number }}">Siguiente</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
+            </ul>
+        </nav>
     </div>
 
     <!-- 🔹 Footer -->

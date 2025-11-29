@@ -138,16 +138,7 @@
                                     </a>
                                 {% endif %}
                             </td>
-                            
-                            {% comment %} <td>
-                                {% if gasto.comprobante and gasto.comprobante|archivo_existe %}
-                                    <a href="{{ gasto.comprobante.url }}" target="_blank" class="btn btn-outline-dark btn-sm" title="Ver CFDI">
-                                        <i class="bi bi-file-earmark-pdf me-1"></i> 
-                                    </a>
-                                {% elif gasto.comprobante %}
-                                    
-                                {% endif %}             
-                            </td> {% endcomment %}
+        
                             <td>
                                     <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
                                         <i class="bi bi-eye me-1"></i>
