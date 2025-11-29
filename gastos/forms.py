@@ -5,7 +5,7 @@ from proveedores.models import Proveedor
 from .models import Gasto, GrupoGasto, SubgrupoGasto, TipoGasto
 from django import forms
 from .models import PagoGasto
-
+from unidecode import unidecode
 
 class SubgrupoGastoForm(forms.ModelForm):
     class Meta:
@@ -58,6 +58,27 @@ class TipoGastoForm(forms.ModelForm):
         # labels con tilde
         self.fields['descripcion'].label = 'Descripción'
 
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data['nombre']
+        nombre_normalizado = unidecode(nombre).strip().lower()
+        if nombre_normalizado == "caja chica" or nombre_normalizado == "gastos caja chica" or nombre_normalizado == "gasto caja chica" or nombre_normalizado == "caja chica gastos" or nombre_normalizado == "caja chica gasto":
+            raise forms.ValidationError("No se permite crear un tipo de gasto relacionado a 'caja chica'.")
+
+        subgrupo = self.cleaned_data.get('subgrupo')
+        empresa = self.cleaned_data.get('empresa')
+
+        # Excluir el propio objeto si es edición
+        qs = TipoGasto.objects.all()
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        # Buscar duplicados ignorando acentos y mayúsculas
+        for tg in qs.filter(subgrupo=subgrupo, empresa=empresa):
+            if unidecode(tg.nombre).strip().lower() == nombre_normalizado:
+                raise forms.ValidationError("Ya existe un tipo de gasto con ese nombre para este subgrupo y empresa.")
+
+        return nombre
                     
 #solicitud de gastos
 class GastoForm(forms.ModelForm):
@@ -144,6 +165,30 @@ class GastoForm(forms.ModelForm):
                     self.fields['proveedor'].queryset = Proveedor.objects.filter(empresa=empresa)
                     self.fields['empleado'].queryset = Empleado.objects.filter(empresa=empresa)
                     self.fields['tipo_gasto'].queryset = TipoGasto.objects.filter(empresa=empresa)
+
+        # Excluir tipos de gasto "caja chica" y similares del queryset
+        def exclude_caja_chica(qs):
+            return qs.exclude(
+                nombre__iexact="caja chica"
+            ).exclude(
+                nombre__icontains="caja chica gastos"
+            ).exclude(
+                nombre__icontains="gastos caja chica"
+            ).exclude(
+                nombre__icontains="gasto caja chica"
+            ).exclude(
+                nombre__icontains="caja chica gasto"
+            )
+
+        if user:
+            if user.is_superuser:
+                self.fields['tipo_gasto'].queryset = exclude_caja_chica(TipoGasto.objects.all())
+            else:
+                empresa = getattr(user.perfilusuario, 'empresa', None)
+                if empresa:
+                    self.fields['tipo_gasto'].queryset = exclude_caja_chica(
+                        TipoGasto.objects.filter(empresa=empresa)
+                    )            
         
     #si se selecciona proveedor, empleado no es requerido y viceversa
     def clean(self):

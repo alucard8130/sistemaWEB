@@ -74,7 +74,11 @@ def tipos_gasto_lista(request):
         empresa = request.user.perfilusuario.empresa
         tipos = TipoGasto.objects.filter(empresa=empresa).select_related('subgrupo__grupo').order_by('subgrupo__grupo__nombre')
 
-    return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': tipos})
+    paginator = Paginator(tipos, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)    
+
+    return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': tipos, 'page_obj': page_obj})
 
 @login_required
 def tipo_gasto_crear(request):
