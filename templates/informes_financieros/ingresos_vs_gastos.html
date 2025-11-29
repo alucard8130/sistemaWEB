@@ -120,10 +120,12 @@
                 <h5>Ingresos por origen</h5>
                 <canvas id="chartIngresos" style="width:100% !important; height:60vh !important;"></canvas>
             </div>
-            <div class="col-6 d-flex flex-column align-items-center justify-content-center">
+             <div class="col-6 d-flex flex-column align-items-center justify-content-center">
                 <h5>Gastos por tipo</h5>
                 <canvas id="chartGastos" style="width:100% !important; height:60vh !important;"></canvas>
             </div>
+            
+            
         </div>    
     </div>
     
@@ -170,9 +172,26 @@
     });
 
     // Gastos por tipo
-    const gastosLabels = [{% for g in gastos_por_tipo %}'{{ g.tipo|capfirst }}',{% endfor %}];
-    const gastosData = [{% for g in gastos_por_tipo %}{{ g.total }},{% endfor %}];
-
+    //const gastosLabels = [{% for g in gastos_por_tipo %}'{{ g.tipo|capfirst }}',{% endfor %}];
+    //const gastosData = [{% for g in gastos_por_tipo %}{{ g.total }},{% endfor %}];
+    const gastosLabels = [
+    {% for grupo, subgrupos in estructura_gastos.items %}
+        {% for subgrupo, tipos in subgrupos.items %}
+            {% for tipo in tipos %}
+                '{{ subgrupo }} - {{ tipo.tipo }}',
+            {% endfor %}
+        {% endfor %}
+    {% endfor %}
+    ];
+    const gastosData = [
+    {% for grupo, subgrupos in estructura_gastos.items %}
+        {% for subgrupo, tipos in subgrupos.items %}
+            {% for tipo in tipos %}
+                {{ tipo.total }},
+            {% endfor %}
+        {% endfor %}
+    {% endfor %}
+];
     const ctxGastos = document.getElementById('chartGastos');
     new Chart(ctxGastos, {
         type: 'bar',

@@ -2264,11 +2264,6 @@ def api_reporte_ingresos_vs_gastos(request):
     elif fecha_inicio_dt and fecha_fin_dt:
         mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
-    # pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(factura__empresa=empresa)
-    # pagos_gastos = PagoGasto.objects.all()
-    # cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
-    # gastos_caja_chica = GastoCajaChica.objects.all()
-    # vales_caja_chica = ValeCaja.objects.all()
 
     # Filtra todos los objetos por la empresa del visitante
     pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(factura__empresa=empresa)
@@ -2327,44 +2322,62 @@ def api_reporte_ingresos_vs_gastos(request):
         .order_by("factura__tipo_ingreso")
     )
 
-    # Agrupar y sumar todos los gastos por tipo (gastos normales, caja chica y vales)
-    gastos_por_tipo_dict = {}
-    # Gastos normales
-    for g in pagos_gastos.values("gasto__tipo_gasto__nombre").annotate(
-        total=Sum("monto")
-    ):
-        tipo = g["gasto__tipo_gasto__nombre"] or "Sin tipo"
-        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
-            g["total"]
-        )
-    # Caja chica
-    for g in gastos_caja_chica.values("tipo_gasto__nombre").annotate(
-        total=Sum("importe")
-    ):
-        tipo = g["tipo_gasto__nombre"] or "Sin tipo"
-        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
-            g["total"]
-        )
-    # Vales de caja chica agrupados por tipo real
-    for g in vales_caja_chica.values("tipo_gasto__nombre").annotate(
-        total=Sum("importe")
-    ):
-        tipo = g["tipo_gasto__nombre"] or "Sin tipo"
-        gastos_por_tipo_dict[tipo] = gastos_por_tipo_dict.get(tipo, 0) + float(
-            g["total"]
-        )
-
-    gastos_por_tipo = [
-        {"tipo": tipo, "total": total} for tipo, total in gastos_por_tipo_dict.items()
-    ]
-
-    # Crear un diccionario ordenado para los ingresos por origen
     ingresos_por_origen = OrderedDict()
     for x in ingresos_qs:
         ingresos_por_origen[x["origen"]] = float(x["total"])
     for x in otros_ingresos_qs:
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
-        ingresos_por_origen[f" {tipo}"] = float(x["total"])
+        ingresos_por_origen[f"{tipo}"] = float(x["total"])
+
+    gastos_agregados = {}
+    gastos_qs = PagoGasto.objects.select_related("gasto__tipo_gasto__subgrupo__grupo")
+    gastos_qs = gastos_qs.filter(gasto__empresa=empresa)
+    
+    if fecha_inicio:
+        gastos_qs = gastos_qs.filter(fecha_pago__gte=fecha_inicio)
+    if fecha_fin:
+        gastos_qs = gastos_qs.filter(fecha_pago__lte=fecha_fin)
+
+    for g in gastos_qs.values(
+        "gasto__tipo_gasto__subgrupo__grupo__nombre",
+        "gasto__tipo_gasto__subgrupo__nombre",
+        "gasto__tipo_gasto__nombre"
+    ).annotate(total=Sum("monto")):
+        grupo = (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        subgrupo = (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        tipo = (g["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
+        key = (grupo, subgrupo, tipo)
+        gastos_agregados[key] = gastos_agregados.get(key, 0) + float(g["total"])
+
+    for g in gastos_caja_chica.values(
+        "tipo_gasto__subgrupo__grupo__nombre",
+        "tipo_gasto__subgrupo__nombre",
+        "tipo_gasto__nombre"
+    ).annotate(total=Sum("importe")):
+        grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+        key = (grupo, subgrupo, tipo)
+        gastos_agregados[key] = gastos_agregados.get(key, 0) + float(g["total"])
+
+    for g in vales_caja_chica.values(
+        "tipo_gasto__subgrupo__grupo__nombre",
+        "tipo_gasto__subgrupo__nombre",
+        "tipo_gasto__nombre"
+    ).annotate(total=Sum("importe")):
+        grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+        key = (grupo, subgrupo, tipo)
+        gastos_agregados[key] = gastos_agregados.get(key, 0) + float(g["total"])
+
+    estructura_gastos = OrderedDict()
+    for (grupo, subgrupo, tipo), total in gastos_agregados.items():
+        if grupo not in estructura_gastos:
+            estructura_gastos[grupo] = OrderedDict()
+        if subgrupo not in estructura_gastos[grupo]:
+            estructura_gastos[grupo][subgrupo] = []
+        estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
 
     saldo = total_ingresos_cobrados - total_egresos
 
@@ -2376,12 +2389,16 @@ def api_reporte_ingresos_vs_gastos(request):
         "total_vales_caja_chica": total_vales_caja_chica,
         "total_egresos": total_egresos,
         "ingresos_por_origen": ingresos_por_origen,
-        "gastos_por_tipo": gastos_por_tipo,
         "saldo": saldo,
         "periodo": periodo,
         "mes_letra": mes_letra,
         "empresa_nombre": empresa.nombre if empresa else "",
         "empresa_email": empresa.email if empresa else "",
+        "estructura_gastos": estructura_gastos,
+        "fecha_inicio": str(fecha_inicio) if fecha_inicio else "",
+        "fecha_fin": str(fecha_fin) if fecha_fin else "",
+        "mes": mes,
+        "anio": anio,
     }
     return Response(resultado)
 

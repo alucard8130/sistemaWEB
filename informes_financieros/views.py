@@ -208,6 +208,64 @@ def reporte_ingresos_vs_gastos(request):
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f" {tipo}"] = float(x["total"])
 
+    gastos_agregados = {}
+
+    # Define gastos_qs similar to the commented-out section above
+    gastos_qs = PagoGasto.objects.select_related(
+        "gasto__tipo_gasto__subgrupo__grupo"
+    )
+    if empresa_id:
+        gastos_qs = gastos_qs.filter(gasto__empresa_id=empresa_id)
+    if fecha_inicio:
+        gastos_qs = gastos_qs.filter(fecha_pago__gte=fecha_inicio)
+    if fecha_fin:
+        gastos_qs = gastos_qs.filter(fecha_pago__lte=fecha_fin)
+
+    # Gastos normales
+    for g in gastos_qs.values(
+        "gasto__tipo_gasto__subgrupo__grupo__nombre",
+        "gasto__tipo_gasto__subgrupo__nombre",
+        "gasto__tipo_gasto__nombre"
+    ).annotate(total=Sum("monto")):
+        grupo = (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        subgrupo = (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        tipo = (g["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
+        key = (grupo, subgrupo, tipo)
+        gastos_agregados[key] = gastos_agregados.get(key, 0) + float(g["total"])
+
+    # Caja chica
+    for g in gastos_caja_chica.values(
+        "tipo_gasto__subgrupo__grupo__nombre",
+        "tipo_gasto__subgrupo__nombre",
+        "tipo_gasto__nombre"
+    ).annotate(total=Sum("importe")):
+        grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+        key = (grupo, subgrupo, tipo)
+        gastos_agregados[key] = gastos_agregados.get(key, 0) + float(g["total"])
+
+    # Vales de caja chica
+    for g in vales_caja_chica.values(
+        "tipo_gasto__subgrupo__grupo__nombre",
+        "tipo_gasto__subgrupo__nombre",
+        "tipo_gasto__nombre"
+    ).annotate(total=Sum("importe")):
+        grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+        key = (grupo, subgrupo, tipo)
+        gastos_agregados[key] = gastos_agregados.get(key, 0) + float(g["total"])
+
+    # Ahora arma la estructura final agrupada
+    estructura_gastos = OrderedDict()
+    for (grupo, subgrupo, tipo), total in gastos_agregados.items():
+        if grupo not in estructura_gastos:
+            estructura_gastos[grupo] = OrderedDict()
+        if subgrupo not in estructura_gastos[grupo]:
+            estructura_gastos[grupo][subgrupo] = []
+        estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})    
+
     saldo = total_ingresos_cobrados - total_egresos
 
     return render(
@@ -231,6 +289,7 @@ def reporte_ingresos_vs_gastos(request):
             "anio": anio,
             "gastos_por_tipo": gastos_por_tipo,
             "saldo": saldo,
+            "estructura_gastos": estructura_gastos,
         },
     )
 
