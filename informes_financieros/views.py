@@ -337,6 +337,43 @@ def estado_resultados(request):
     else:
         fecha_inicio = None
         fecha_fin = None
+    # Convierte a date si es string
+    if isinstance(fecha_inicio, str):
+        try:
+            fecha_inicio_dt = datetime.strptime(
+                fecha_inicio, "%Y-%m-%d"
+            ).date()
+        except Exception:
+            fecha_inicio_dt = None
+    else:
+        fecha_inicio_dt = fecha_inicio
+
+    if isinstance(fecha_fin, str):
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        except Exception:
+            fecha_fin_dt = None
+    else:
+        fecha_fin_dt = fecha_fin
+
+    # Para mostrar el mes y año en letras
+    try:
+        locale.setlocale(locale.LC_TIME, "es_MX.UTF-8")
+    except locale.Error:
+        try:
+            locale.setlocale(locale.LC_TIME, "es_ES.UTF-8")
+        except locale.Error:
+            locale.setlocale(locale.LC_TIME, "C")  # Fallback seguro
+
+    mes_letra = ""
+    if (
+        fecha_inicio_dt
+        and fecha_fin_dt
+        and fecha_inicio_dt == fecha_fin_dt.replace(day=1)
+    ):
+        mes_letra = fecha_inicio_dt.strftime("%B %Y").capitalize()
+    elif fecha_inicio_dt and fecha_fin_dt:
+        mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
     pagos = Pago.objects.exclude(forma_pago="nota_credito")
     cobros_otros = CobroOtrosIngresos.objects.select_related(
@@ -790,15 +827,6 @@ def estado_resultados(request):
                 ]
         total_gastos = sum([g["total"] for g in gastos_por_tipo])
         saldo_final_flujo = None
-    #  Saldo de fondeos de caja chica
-    # if empresa_id:
-    #     saldo_fondeos_caja_chica = FondeoCajaChica.objects.filter(empresa_id=empresa_id).aggregate(
-    #         total=Sum('saldo')
-    #     )['total'] or 0
-    # else:
-    #     saldo_fondeos_caja_chica = FondeoCajaChica.objects.aggregate(
-    #         total=Sum('saldo')
-    #     )['total'] or 0
 
     saldo = float(total_ingresos) - float(total_gastos)
 
@@ -825,7 +853,7 @@ def estado_resultados(request):
             "saldo_final_flujo": saldo_final_flujo,
             "meses_unicos": meses_unicos,
             "anios_unicos": anios_unicos,
-            #"saldo_fondeos_caja_chica": saldo_fondeos_caja_chica,
+            "mes_letra": mes_letra,
         },
     )
 

@@ -59,7 +59,8 @@
                             {{ meses|index:mes|default:"" }} {{ anio }}
                         {% endwith %}
                     {% else %}
-                        Periodo actual
+                        {% comment %} Periodo actual {% endcomment %}
+                         <small class="text-muted">Periodo Actual: <strong>{{ mes_letra }}</strong></small>
                     {% endif %}
                 </strong>
             </div>

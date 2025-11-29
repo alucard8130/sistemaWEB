@@ -71,6 +71,7 @@ from django.db.models import Sum
 from django.db.models import Case, When, Value, CharField, Q, DecimalField, ExpressionWrapper, OuterRef, Subquery, F
 from django.db.models.functions import Coalesce
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models.functions import ExtractMonth, ExtractYear
 
 
 # Vista de bienvenida / dashboard
@@ -2106,6 +2107,7 @@ def visitante_login_api(request):
             stripe_public_key = empresa.stripe_public_key if empresa else ""
             empresa_nombre = empresa.nombre if empresa else ""
             empresa_email = empresa.email if empresa else ""
+            es_admin = getattr(visitante, "es_admin", False)
             # Crea o recupera el token
             token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
             return Response(
@@ -2116,6 +2118,7 @@ def visitante_login_api(request):
                     "token": token.key,
                     "empresa_nombre": empresa_nombre,
                     "empresa_email": empresa_email,
+                    "es_admin": es_admin,
                 }
             )
         else:
@@ -2149,7 +2152,7 @@ def create_payment_intent(request):
         empresa = factura.empresa
         stripe.api_key = empresa.stripe_secret_key
         intent = stripe.PaymentIntent.create(
-            amount=int(float(amount) * 100),  # Stripe usa centavos
+            amount=int(float(amount) * 100),  
             currency="mxn",
             payment_method_types=["card"],
             metadata={"factura_id": factura_id},
@@ -2164,14 +2167,21 @@ def create_payment_intent(request):
 def api_reporte_ingresos_vs_gastos(request):
     visitante = request.visitante
     if not getattr(visitante, "acceso_api_reporte", False):
-        return Response({"error": "Acceso denegado"}, status=403)
+        return Response({"error": "Acceso denegado"}, status=403)    
     
-    visitante = request.visitante
-    empresa = None
-    if visitante.locales.exists():
-        empresa = visitante.locales.first().empresa
-    elif visitante.areas.exists():
-        empresa = visitante.areas.first().empresa
+    if getattr(visitante, "es_admin", False):
+        empresa_id = request.GET.get("empresa_id")
+        if not empresa_id:
+            return Response({"error": "Debe seleccionar una empresa"}, status=400)
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        if not empresa:
+            return Response({"error": "Empresa no encontrada"}, status=404)
+    else:
+        empresa = None
+        if visitante.locales.exists():
+            empresa = visitante.locales.first().empresa
+        elif visitante.areas.exists():
+            empresa = visitante.areas.first().empresa
 
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
@@ -2380,16 +2390,33 @@ def api_reporte_ingresos_vs_gastos(request):
 @api_view(['GET'])
 @visitante_token_required  
 def api_dashboard_saldos_visitante(request):
+    # visitante = request.visitante
+    # if not getattr(visitante, "acceso_api_reporte", False):
+    #     return Response({"error": "Acceso denegado"}, status=403)
+        
+    # #visitante = request.visitante
+    # empresa = None
+    # if visitante.locales.exists():
+    #     empresa = visitante.locales.first().empresa
+    # elif visitante.areas.exists():
+    #     empresa = visitante.areas.first().empresa
     visitante = request.visitante
     if not getattr(visitante, "acceso_api_reporte", False):
-        return Response({"error": "Acceso denegado"}, status=403)
+        return Response({"error": "Acceso denegado"}, status=403)    
     
-    visitante = request.visitante
-    empresa = None
-    if visitante.locales.exists():
-        empresa = visitante.locales.first().empresa
-    elif visitante.areas.exists():
-        empresa = visitante.areas.first().empresa
+    if getattr(visitante, "es_admin", False):
+        empresa_id = request.GET.get("empresa_id")
+        if not empresa_id:
+            return Response({"error": "Debe seleccionar una empresa"}, status=400)
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        if not empresa:
+            return Response({"error": "Empresa no encontrada"}, status=404)
+    else:
+        empresa = None
+        if visitante.locales.exists():
+            empresa = visitante.locales.first().empresa
+        elif visitante.areas.exists():
+            empresa = visitante.areas.first().empresa
 
     hoy = timezone.now().date()
     cliente_id = request.GET.get('cliente')
@@ -2563,6 +2590,647 @@ def api_dashboard_saldos_visitante(request):
         "facturas": facturas_data,
         "facturas_otros": otros_data,
     })
+
+# vista API estado de resultados
+@api_view(['GET'])
+@visitante_token_required  
+def api_estado_resultados(request):
+    visitante = request.visitante
+    if not getattr(visitante, "acceso_api_reporte", False):
+        return Response({"error": "Acceso denegado"}, status=403)    
+    
+    if getattr(visitante, "es_admin", False):
+        empresa_id = request.GET.get("empresa_id")
+        if not empresa_id:
+            return Response({"error": "Debe seleccionar una empresa"}, status=400)
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        if not empresa:
+            return Response({"error": "Empresa no encontrada"}, status=404)
+    else:
+        empresa = None
+        if visitante.locales.exists():
+            empresa = visitante.locales.first().empresa
+        elif visitante.areas.exists():
+            empresa = visitante.areas.first().empresa
+
+    # empresas = Empresa.objects.all()
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    mes = request.GET.get("mes")
+    anio = request.GET.get("anio")
+    periodo = request.GET.get("periodo")
+    modo = request.GET.get("modo", "flujo")
+    hoy = date.today()
+
+    # if not request.user.is_superuser:
+    #     empresa_id = str(request.user.perfilusuario.empresa.id)
+    # else:
+    #     empresa_id = request.GET.get("empresa") or request.session.get("empresa_id")
+    #     if not empresa_id or not str(empresa_id).isdigit():
+    #         empresa_id = None
+
+    # Obtener meses y años existentes en la base de datos
+    if empresa_id:
+        meses_anios = (
+            Factura.objects.filter(empresa_id=empresa_id)
+            .annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
+        )
+        meses_anios_otros = (
+            FacturaOtrosIngresos.objects.filter(empresa_id=empresa_id)
+            .annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
+        )
+    else:
+        meses_anios = (
+            Factura.objects.annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
+        )
+        meses_anios_otros = (
+            FacturaOtrosIngresos.objects.annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
+        )
+
+    meses_anios_set = set(
+        (x["mes"], x["anio"]) for x in list(meses_anios) + list(meses_anios_otros)
+    )
+    # Filtra tuplas donde mes o año sean None
+    meses_anios_list = sorted(
+        [t for t in meses_anios_set if t[0] is not None and t[1] is not None],
+        key=lambda x: (x[1], x[0])
+    )
+    # meses_anios_list = sorted(list(meses_anios_set), key=lambda x: (x[1], x[0]))
+    meses_unicos = sorted(set(m for m, y in meses_anios_list if m))
+    anios_unicos = sorted(set(y for m, y in meses_anios_list if y))
+
+  
+
+    if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
+        periodo = "periodo_actual"
+
+    if periodo == "mes_actual":
+        fecha_inicio = hoy.replace(day=1)
+        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(
+            day=1
+        ) - timedelta(days=1)
+        mes = hoy.month
+        anio = hoy.year
+    elif periodo == "periodo_actual":
+        fecha_inicio = hoy.replace(month=1, day=1)
+        fecha_fin = hoy
+        mes = ""
+        anio = ""
+    elif mes and anio:
+        try:
+            mes = int(mes)
+            anio = int(anio)
+            fecha_inicio = date(anio, mes, 1)
+            if mes == 12:
+                fecha_fin = date(anio, 12, 31)
+            else:
+                fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
+        except Exception:
+            fecha_inicio = None
+            fecha_fin = None
+    elif fecha_inicio and fecha_fin:
+        pass
+    else:
+        fecha_inicio = None
+        fecha_fin = None
+    # Convierte a date si es string
+    if isinstance(fecha_inicio, str):
+        try:
+            fecha_inicio_dt = datetime.strptime(
+                fecha_inicio, "%Y-%m-%d"
+            ).date()
+        except Exception:
+            fecha_inicio_dt = None
+    else:
+        fecha_inicio_dt = fecha_inicio
+
+    if isinstance(fecha_fin, str):
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        except Exception:
+            fecha_fin_dt = None
+    else:
+        fecha_fin_dt = fecha_fin
+
+    # Para mostrar el mes y año en letras
+    try:
+        locale.setlocale(locale.LC_TIME, "es_MX.UTF-8")
+    except locale.Error:
+        try:
+            locale.setlocale(locale.LC_TIME, "es_ES.UTF-8")
+        except locale.Error:
+            locale.setlocale(locale.LC_TIME, "C")  # Fallback seguro
+
+    mes_letra = ""
+    if (
+        fecha_inicio_dt
+        and fecha_fin_dt
+        and fecha_inicio_dt == fecha_fin_dt.replace(day=1)
+    ):
+        mes_letra = fecha_inicio_dt.strftime("%B %Y").capitalize()
+    elif fecha_inicio_dt and fecha_fin_dt:
+        mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
+
+    # --- CONSULTAS BASE ---
+    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    cobros_otros = CobroOtrosIngresos.objects.select_related(
+        "factura", "factura__empresa"
+    )
+    gastos = Gasto.objects.select_related(
+        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    ).all()
+    gastos_caja_chica = GastoCajaChica.objects.select_related(
+        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    ).all()
+    vales_caja_chica = ValeCaja.objects.select_related(
+        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    ).all()
+
+    empresa = None
+    saldo_inicial = 0
+    saldo_final = 0
+
+    if empresa_id:
+        pagos = pagos.filter(factura__empresa_id=empresa_id)
+        cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
+        gastos = gastos.filter(empresa_id=empresa_id)
+        gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
+        vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
+    try:
+        empresa = Empresa.objects.get(id=empresa_id)
+        saldo_inicial = float(empresa.saldo_inicial or 0)
+        saldo_final = float(empresa.saldo_final or 0)
+    except Empresa.DoesNotExist:
+        saldo_inicial = 0
+        saldo_final = 0
+    # --- FILTRO POR FECHA ---
+    if fecha_inicio:
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
+
+    if fecha_fin:
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
+
+
+    # --- Saldo inicial dinámico en modo flujo por mes ---
+    if modo == "flujo" and mes and anio and empresa:
+        mes = int(mes)
+        anio = int(anio)
+        saldo_inicial = float(empresa.saldo_inicial or 0)
+        # Determina el año de inicio (puedes ajustar si tienes fecha de inicio real)
+        anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') else anio
+        for y in range(anio_inicio, anio + 1):
+            mes_inicio = 1
+            mes_fin = mes - 1 if y == anio else 12
+            for m in range(mes_inicio, mes_fin + 1):
+                fecha_inicio_loop = date(y, m, 1)
+                if m == 12:
+                    fecha_fin_loop = date(y, 12, 31)
+                else:
+                    fecha_fin_loop = date(y, m + 1, 1) - timedelta(days=1)
+                pagos_loop = Pago.objects.exclude(forma_pago="nota_credito").filter(
+                    factura__empresa_id=empresa_id,
+                    fecha_pago__gte=fecha_inicio_loop,
+                    fecha_pago__lte=fecha_fin_loop,
+                )
+                cobros_otros_loop = CobroOtrosIngresos.objects.filter(
+                    factura__empresa_id=empresa_id,
+                    fecha_cobro__gte=fecha_inicio_loop,
+                    fecha_cobro__lte=fecha_fin_loop,
+                )
+                gastos_loop = PagoGasto.objects.filter(
+                    gasto__empresa_id=empresa_id,
+                    fecha_pago__gte=fecha_inicio_loop,
+                    fecha_pago__lte=fecha_fin_loop,
+                )
+                total_ingresos_loop = float(
+                    pagos_loop.aggregate(total=Sum("monto"))["total"] or 0
+                ) + float(cobros_otros_loop.aggregate(total=Sum("monto"))["total"] or 0)
+                total_gastos_loop = float(
+                    gastos_loop.aggregate(total=Sum("monto"))["total"] or 0
+                )
+                saldo_inicial += total_ingresos_loop - total_gastos_loop
+        # --- Fin de saldo inicial dinámico ---
+
+    if fecha_inicio:
+        pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
+        cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
+        gastos = gastos.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        pagos = pagos.filter(fecha_pago__lte=fecha_fin)
+        cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
+        gastos = gastos.filter(fecha__lte=fecha_fin)
+
+    saldo_final_flujo = None
+    total_gastos = 0.0
+    gastos_por_grupo = []
+
+    if modo == "flujo":
+        pagos_modo = pagos
+        cobros_otros_modo = cobros_otros
+        gastos_modo = PagoGasto.objects.filter(
+            fecha_pago__range=[fecha_inicio, fecha_fin]
+        )
+        if empresa_id:
+            gastos_modo = gastos_modo.filter(gasto__empresa_id=empresa_id)
+        ingresos_qs = (
+            pagos_modo.annotate(
+                origen=Case(
+                    When(factura__local__isnull=False, then=Value("Propiedades")),
+                    When(
+                        factura__area_comun__isnull=False, then=Value("Áreas Comunes")
+                    ),
+                    default=Value("Sin origen"),
+                    output_field=CharField(),
+                )
+            )
+            .values("origen")
+            .annotate(total=Sum("monto"))
+            .order_by("origen")
+        )
+        otros_ingresos_qs = (
+            cobros_otros_modo.select_related("factura__tipo_ingreso")
+            .values("factura__tipo_ingreso__nombre")
+            .annotate(total=Sum("monto"))
+            .order_by("factura__tipo_ingreso__nombre")
+        )
+        ingresos_por_origen = OrderedDict()
+        for x in ingresos_qs:
+            origen = (x["origen"] or "Sin origen").strip().title()
+            ingresos_por_origen[origen] = float(x["total"])
+        for x in otros_ingresos_qs:
+            tipo = (
+                (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            )
+            ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
+        total_ingresos = float(sum(ingresos_por_origen.values()))
+
+        # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
+        gastos_por_tipo_dict = {}
+        tipos_gasto = set()
+        tipos_gasto.update(
+            [
+                g["gasto__tipo_gasto__nombre"]
+                for g in gastos_modo.values("gasto__tipo_gasto__nombre")
+                if g["gasto__tipo_gasto__nombre"]
+            ]
+        )
+        # Agrupa y suma en una sola consulta para cada fuente
+        gastos_modo_agrupados = gastos_modo.values(
+            "gasto__tipo_gasto__nombre"
+        ).annotate(suma=Sum("monto"))
+        gastos_caja_agrupados = gastos_caja_chica.values("tipo_gasto__nombre").annotate(
+            suma=Sum("importe")
+        )
+        gastos_vales_agrupados = vales_caja_chica.values("tipo_gasto__nombre").annotate(
+            suma=Sum("importe")
+        )
+
+        # Unifica todos los tipos
+        tipos_gasto = set()
+        tipos_gasto.update(
+            g["gasto__tipo_gasto__nombre"]
+            for g in gastos_modo_agrupados
+            if g["gasto__tipo_gasto__nombre"]
+        )
+        tipos_gasto.update(
+            g["tipo_gasto__nombre"]
+            for g in gastos_caja_agrupados
+            if g["tipo_gasto__nombre"]
+        )
+        tipos_gasto.update(
+            g["tipo_gasto__nombre"]
+            for g in gastos_vales_agrupados
+            if g["tipo_gasto__nombre"]
+        )
+
+        # Crea diccionarios para acceso rápido
+        dict_modo = {
+            g["gasto__tipo_gasto__nombre"]: g["suma"] for g in gastos_modo_agrupados
+        }
+        dict_caja = {g["tipo_gasto__nombre"]: g["suma"] for g in gastos_caja_agrupados}
+        dict_vales = {
+            g["tipo_gasto__nombre"]: g["suma"] for g in gastos_vales_agrupados
+        }
+
+        for tipo in tipos_gasto:
+            nombre_tipo = (tipo or "Sin tipo").strip().title()
+            total_gastos_modo = float(dict_modo.get(tipo, 0) or 0)
+            total_gastos_caja = float(dict_caja.get(tipo, 0) or 0)
+            total_vales = float(dict_vales.get(tipo, 0) or 0)
+            total = total_gastos_modo + total_gastos_caja + total_vales
+            if total > 0:
+                gastos_por_tipo_dict[nombre_tipo] = total
+
+        gastos_por_tipo = [
+            {"tipo": tipo, "total": total}
+            for tipo, total in gastos_por_tipo_dict.items()
+        ]
+
+        estructura_gastos = OrderedDict()
+        # Gastos modo flujo
+        for g in gastos_modo.values(
+            "gasto__tipo_gasto__subgrupo__grupo__nombre",
+            "gasto__tipo_gasto__subgrupo__nombre",
+            "gasto__tipo_gasto__nombre",
+        ).annotate(total=Sum("monto")):
+            grupo = (
+                (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo")
+                .strip()
+                .title()
+            )
+            tipo = (g["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Caja chica modo flujo
+        for g in gastos_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Vales de caja chica modo flujo
+        for g in vales_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Convertir los dicts de tipos a listas para compatibilidad con el template
+        for grupo in estructura_gastos:
+            for subgrupo in estructura_gastos[grupo]:
+                tipos_dict = estructura_gastos[grupo][subgrupo]
+                estructura_gastos[grupo][subgrupo] = [
+                    {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
+                ]
+        total_gastos = sum([g["total"] for g in gastos_por_tipo])
+        saldo_final_flujo = (
+            float(saldo_inicial) + float(total_ingresos) - float(total_gastos)
+        )
+    else:
+        facturas_cuotas = Factura.objects.filter(
+            fecha_vencimiento__range=[fecha_inicio, fecha_fin]
+        )
+        facturas_otros = FacturaOtrosIngresos.objects.filter(
+            fecha_vencimiento__range=[fecha_inicio, fecha_fin]
+        )
+        if empresa_id:
+            facturas_cuotas = facturas_cuotas.filter(empresa_id=empresa_id)
+            facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
+        ingresos_por_origen = OrderedDict()
+        origenes = (
+            facturas_cuotas.annotate(
+                origen=Case(
+                    When(local__isnull=False, then=Value("Propiedades")),
+                    When(area_comun__isnull=False, then=Value("Áreas Comunes")),
+                    default=Value("Sin origen"),
+                    output_field=CharField(),
+                )
+            )
+            .values("origen")
+            .annotate(total=Sum("monto"))
+            .order_by("origen")
+        )
+        for x in origenes:
+            origen = (x["origen"] or "Sin origen").strip().title()
+            ingresos_por_origen[origen] = float(x["total"])
+        otros = (
+            facturas_otros.values("tipo_ingreso__nombre")
+            .annotate(total=Sum("monto"))
+            .order_by("tipo_ingreso__nombre")
+        )
+        for x in otros:
+            tipo = (x["tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
+            ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
+        total_ingresos = float(sum(ingresos_por_origen.values()))
+
+        # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
+        gastos_por_tipo_dict = {}
+        tipos_gasto = set()
+        tipos_gasto.update(
+            [g["tipo_gasto__nombre"] for g in gastos.values("tipo_gasto__nombre")]
+        )
+        tipos_gasto.update(
+            [
+                g["tipo_gasto__nombre"]
+                for g in gastos_caja_chica.values("tipo_gasto__nombre")
+            ]
+        )
+        tipos_gasto.update(
+            [
+                g["tipo_gasto__nombre"]
+                for g in vales_caja_chica.values("tipo_gasto__nombre")
+            ]
+        )
+        for tipo in tipos_gasto:
+            if tipo and tipo not in ["Gastos de caja chica", "Vales de caja chica"]:
+                nombre_tipo = (tipo or "Sin tipo").strip().title()
+                total = 0.0
+                total_gastos = (
+                    gastos.filter(tipo_gasto__nombre=tipo).aggregate(suma=Sum("monto"))[
+                        "suma"
+                    ]
+                    or 0
+                )
+                total_gastos_caja = (
+                    gastos_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
+                        suma=Sum("importe")
+                    )["suma"]
+                    or 0
+                )
+                total_vales = (
+                    vales_caja_chica.filter(tipo_gasto__nombre=tipo).aggregate(
+                        suma=Sum("importe")
+                    )["suma"]
+                    or 0
+                )
+                total = (
+                    float(total_gastos) + float(total_gastos_caja) + float(total_vales)
+                )
+                if total > 0:
+                    gastos_por_tipo_dict[nombre_tipo] = total
+
+        gastos_por_tipo = []
+        for tipo, total in gastos_por_tipo_dict.items():
+            gastos_por_tipo.append({"tipo": tipo, "total": total})
+
+        # Unificar gastos normales, caja chica y vales por grupo, subgrupo y tipo
+        estructura_gastos = OrderedDict()
+        # Gastos normales
+        for g in gastos.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("monto")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Caja chica
+        for g in gastos_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Vales de caja chica
+        for g in vales_caja_chica.values(
+            "tipo_gasto__subgrupo__grupo__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+        ).annotate(total=Sum("importe")):
+            grupo = (
+                (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+                .strip()
+                .title()
+            )
+            subgrupo = (
+                (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+            )
+            tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
+            total = float(g["total"])
+            if grupo not in estructura_gastos:
+                estructura_gastos[grupo] = OrderedDict()
+            if subgrupo not in estructura_gastos[grupo]:
+                estructura_gastos[grupo][subgrupo] = {}
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
+
+        # Convertir los dicts de tipos a listas para compatibilidad con el template
+        for grupo in estructura_gastos:
+            for subgrupo in estructura_gastos[grupo]:
+                tipos_dict = estructura_gastos[grupo][subgrupo]
+                estructura_gastos[grupo][subgrupo] = [
+                    {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
+                ]
+        total_gastos = sum([g["total"] for g in gastos_por_tipo])
+        saldo_final_flujo = None
+
+    saldo = float(total_ingresos) - float(total_gastos)
+
+    return Response(
+        {
+            "ingresos_por_origen": ingresos_por_origen,
+            "gastos_por_tipo": gastos_por_tipo,
+            "estructura_gastos": estructura_gastos,
+            "total_ingresos": total_ingresos,
+            "total_gastos": total_gastos,
+            "saldo": saldo,
+            "empresa_id": str(empresa_id or ""),
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "mes": str(mes or ""),
+            "anio": str(anio or ""),
+            "periodo": periodo,
+            "modo": modo,
+            "saldo_inicial": saldo_inicial,
+            "saldo_final": saldo_final,
+            "saldo_final_flujo": saldo_final_flujo,
+            "meses_unicos": meses_unicos,
+            "anios_unicos": anios_unicos,
+            "mes_letra": mes_letra,
+        },
+    )
+
 
 # vista API para avisos
 @api_view(['GET'])

@@ -96,6 +96,7 @@ class VisitanteAcceso(models.Model):
     email= models.EmailField(blank=True, null=True)
     fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de registro",blank=True, null=True)
     activo= models.BooleanField(default=True, verbose_name="Activo")
+    es_admin= models.BooleanField(default=False, verbose_name="Es administrador")
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)

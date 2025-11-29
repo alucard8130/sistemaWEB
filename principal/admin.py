@@ -38,10 +38,10 @@ class VisitanteAccesoForm(forms.ModelForm):
 
 class VisitanteAccesoAdmin(admin.ModelAdmin):
     form = VisitanteAccesoForm
-    list_display = ('username', 'empresa','acceso_api_reporte', 'get_locales', 'get_areas')
-    search_fields = ('username', 'empresa__nombre', 'locales__numero', 'areas__nombre')
-    list_filter = ('empresa', 'locales', 'areas')
-    fields = ('username', 'password', 'empresa', 'locales', 'areas', 'acceso_api_reporte')
+    list_display = ('username', 'empresa','acceso_api_reporte', 'get_locales', 'get_areas', 'es_admin')
+    search_fields = ('username', 'empresa__nombre', 'locales__numero', 'areas__nombre', 'es_admin')
+    list_filter = ('empresa', 'locales', 'areas', 'es_admin')
+    fields = ('username', 'password', 'empresa', 'locales', 'areas', 'acceso_api_reporte', 'es_admin')
     filter_horizontal = ('locales', 'areas')
 
     def get_locales(self, obj):
