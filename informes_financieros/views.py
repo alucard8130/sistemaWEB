@@ -13,7 +13,8 @@ from django.contrib.auth.decorators import login_required
 from openpyxl import Workbook
 from django.http import HttpResponse
 from django.db.models.functions import ExtractMonth, ExtractYear
-
+from django.utils import timezone
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 @login_required
 def reporte_ingresos_vs_gastos(request):
@@ -917,9 +918,6 @@ def estado_resultados(request):
     )
 
 
-
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-
 @login_required
 def exportar_estado_resultados_excel(request):
     fecha_inicio = request.GET.get("fecha_inicio")
@@ -1382,5 +1380,251 @@ def exportar_estado_resultados_excel(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = "attachment; filename=estado_resultados.xlsx"
+    wb.save(response)
+    return response
+
+#reporte detalle cartera
+@login_required
+def cartera_vencida_por_origen(request):
+    empresa_id = request.GET.get("empresa")
+    hoy = timezone.now().date()
+
+    if not request.user.is_superuser:
+        empresa_id = str(request.user.perfilusuario.empresa.id)
+    else:
+        empresa_id = request.GET.get("empresa") or ""
+
+    facturas = Factura.objects.filter(
+        estatus="pendiente",
+        fecha_vencimiento__lt=hoy,
+        monto__gt=0
+    ).select_related('local', 'area_comun')
+    # Facturas otros ingresos
+    facturas_oi = FacturaOtrosIngresos.objects.filter(
+        estatus="pendiente",
+        fecha_vencimiento__lt=hoy,
+        monto__gt=0
+    ).select_related('tipo_ingreso')
+
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+        facturas_oi = facturas_oi.filter(empresa_id=empresa_id)
+
+    # Agrupa por origen (Local o Área Común)
+    origenes_dict = {}
+    for factura in facturas.order_by('local__numero', 'area_comun__numero', 'fecha_vencimiento'):
+        if factura.local:
+            origen_id = f"local_{factura.local.id}"
+            origen_nombre = f"Local: {factura.local.numero}"
+        elif factura.area_comun:
+            origen_id = f"area_{factura.area_comun.id}"
+            origen_nombre = f"Área Común: {factura.area_comun.numero}"
+        else:
+            origen_id = "sin_origen"
+            origen_nombre = "Sin origen"
+
+        if origen_id not in origenes_dict:
+            origenes_dict[origen_id] = {
+                "origen_nombre": origen_nombre,
+                "total_vencido": 0,
+                "facturas": []
+            }
+        saldo = float(getattr(factura, "saldo", factura.saldo_pendiente))
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
+            "factura_id": factura.id,
+            "folio": factura.folio,
+            "fecha_vencimiento": factura.fecha_vencimiento,
+            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
+            "monto": float(factura.monto),
+            "saldo": saldo,
+            "concepto": factura.observaciones,
+        })
+        origenes_dict[origen_id]["total_vencido"] += saldo
+
+    # Facturas otros ingresos agrupadas por tipo de ingreso
+    for factura in facturas_oi.order_by('tipo_ingreso__nombre', 'fecha_vencimiento'):
+        origen_id = f"tipoingreso_{factura.tipo_ingreso.id}"
+        origen_nombre = f"Tipo de Ingreso: {factura.tipo_ingreso.nombre}"
+
+        if origen_id not in origenes_dict:
+            origenes_dict[origen_id] = {
+                "origen_nombre": origen_nombre,
+                "total_vencido": 0,
+                "facturas": []
+            }
+        saldo = float(getattr(factura, "saldo", factura.saldo))
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
+            "factura_id": factura.id,
+            "folio": factura.folio,
+            "fecha_vencimiento": factura.fecha_vencimiento,
+            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
+            "monto": float(factura.monto),
+            "saldo": saldo,
+            "concepto": factura.observaciones,
+        })
+        origenes_dict[origen_id]["total_vencido"] += saldo
+
+    resultado = list(origenes_dict.values())
+    total_cartera = sum(origen["total_vencido"] for origen in resultado)
+    return render(
+        request,
+        "informes_financieros/cartera_vencida.html",
+        {"cartera_vencida": resultado, "total_cartera": total_cartera}
+    )
+
+@login_required
+def exportar_cartera_vencida_excel(request):
+    empresa_id = request.GET.get("empresa")
+    hoy = timezone.now().date()
+
+    if not request.user.is_superuser:
+        empresa_id = str(request.user.perfilusuario.empresa.id)
+    else:
+        empresa_id = request.GET.get("empresa") or ""
+
+    facturas = Factura.objects.filter(
+        estatus="pendiente",
+        fecha_vencimiento__lt=hoy,
+        monto__gt=0
+    ).select_related('local', 'area_comun', 'cliente')
+    facturas_oi = FacturaOtrosIngresos.objects.filter(
+        estatus="pendiente",
+        fecha_vencimiento__lt=hoy,
+        monto__gt=0
+    ).select_related('tipo_ingreso', 'cliente')
+
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+        facturas_oi = facturas_oi.filter(empresa_id=empresa_id)
+
+    # Agrupa igual que la vista HTML
+    origenes_dict = {}
+    for factura in facturas.order_by('local__numero', 'area_comun__numero', 'fecha_vencimiento'):
+        if factura.local:
+            origen_id = f"local_{factura.local.id}"
+            origen_nombre = f"Local: {factura.local.numero}"
+        elif factura.area_comun:
+            origen_id = f"area_{factura.area_comun.id}"
+            origen_nombre = f"Área Común: {factura.area_comun.numero}"
+        else:
+            origen_id = "sin_origen"
+            origen_nombre = "Sin origen"
+
+        if origen_id not in origenes_dict:
+            origenes_dict[origen_id] = {
+                "origen_nombre": origen_nombre,
+                "total_vencido": 0,
+                "facturas": []
+            }
+        saldo = float(getattr(factura, "saldo", factura.saldo_pendiente))
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
+            "folio": factura.folio,
+            "fecha_vencimiento": factura.fecha_vencimiento,
+            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
+            "monto": float(factura.monto),
+            "saldo": saldo,
+            "concepto": factura.observaciones,
+        })
+        origenes_dict[origen_id]["total_vencido"] += saldo
+
+    for factura in facturas_oi.order_by('tipo_ingreso__nombre', 'fecha_vencimiento'):
+        origen_id = f"tipoingreso_{factura.tipo_ingreso.id}"
+        origen_nombre = f"Tipo de Ingreso: {factura.tipo_ingreso.nombre}"
+
+        if origen_id not in origenes_dict:
+            origenes_dict[origen_id] = {
+                "origen_nombre": origen_nombre,
+                "total_vencido": 0,
+                "facturas": []
+            }
+        saldo = float(getattr(factura, "saldo", factura.saldo))
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
+            "folio": factura.folio,
+            "fecha_vencimiento": factura.fecha_vencimiento,
+            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
+            "monto": float(factura.monto),
+            "saldo": saldo,
+            "concepto": factura.observaciones,
+        })
+        origenes_dict[origen_id]["total_vencido"] += saldo
+
+    resultado = list(origenes_dict.values())
+    total_cartera = sum(origen["total_vencido"] for origen in resultado)
+
+    # --- Excel ---
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cartera Vencida"
+
+    bold = Font(bold=True)
+    header_fill = PatternFill("solid", fgColor="BDD7EE")
+    border = Border(
+        left=Side(style='thin', color='000000'),
+        right=Side(style='thin', color='000000'),
+        top=Side(style='thin', color='000000'),
+        bottom=Side(style='thin', color='000000'),
+    )
+
+    ws.append(["Cartera Vencida por Origen"])
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=7)
+    ws["A1"].font = Font(size=14, bold=True)
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    row = 2
+    for origen in resultado:
+        ws.append([origen["origen_nombre"], f"Total vencido: ${origen['total_vencido']:.2f}"])
+        ws[f"A{row}"].font = bold
+        ws[f"A{row}"].fill = header_fill
+        ws[f"A{row}"].border = border
+        ws[f"B{row}"].font = bold
+        ws[f"B{row}"].fill = header_fill
+        ws[f"B{row}"].border = border
+        row += 1
+        ws.append(["Cliente", "Folio", "Fecha Vencimiento", "Días Vencidos", "Monto", "Saldo", "Concepto"])
+        for col in "ABCDEFG"[:7]:
+            ws[f"{col}{row}"].font = bold
+            ws[f"{col}{row}"].fill = header_fill
+            ws[f"{col}{row}"].border = border
+        row += 1
+        for factura in origen["facturas"]:
+            ws.append([
+                factura["cliente"],
+                factura["folio"],
+                factura["fecha_vencimiento"].strftime("%Y-%m-%d"),
+                factura["dias_vencidos"],
+                factura["monto"],
+                factura["saldo"],
+                factura["concepto"] or "",
+            ])
+            for col in "ABCDEFG"[:7]:
+                ws[f"{col}{row}"].border = border
+            row += 1
+        ws.append([])
+        row += 1
+
+    ws.append(["Gran Total Vencido", total_cartera])
+    ws[f"A{row}"].font = bold
+    ws[f"B{row}"].font = bold
+    ws[f"A{row}"].fill = header_fill
+    ws[f"B{row}"].fill = header_fill
+    ws[f"A{row}"].border = border
+    ws[f"B{row}"].border = border
+
+    ws.column_dimensions["A"].width = 25
+    ws.column_dimensions["B"].width = 15
+    ws.column_dimensions["C"].width = 18
+    ws.column_dimensions["D"].width = 15
+    ws.column_dimensions["E"].width = 12
+    ws.column_dimensions["F"].width = 12
+    ws.column_dimensions["G"].width = 30
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=cartera_vencida.xlsx"
     wb.save(response)
     return response

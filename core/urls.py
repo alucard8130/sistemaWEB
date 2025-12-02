@@ -10,6 +10,7 @@ from caja_chica.views import comprobar_vale, detalle_fondeo, eliminar_fondeo, el
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
 from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos
+from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
 from presupuestos.views import comparativo_anual_ingresos, comparativo_anual_total
 from principal.views import actualizar_ticket, agregar_seguimiento, api_areas_por_empresa, api_avisos_empresa, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_reporte_ingresos_vs_gastos, aviso_crear, aviso_eliminar, avisos_lista, consulta_cfdis_facturama, crear_tema_y_enviar, create_payment_intent, descargar_cfdi_facturama, descargar_factura_timbrada, descargar_plantilla_estado_cuenta, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, lista_tickets, crear_ticket, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout, visitante_registro_api, visitante_timbrar_factura, votar_tema_correo
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
@@ -164,9 +165,11 @@ urlpatterns = [
     path('gastos/reporte-retenciones/descargar/', descargar_reporte_retenciones_gastos, name='descargar_reporte_retenciones_gastos'),
     path('adminpanel/usuarios-normales/', lista_usuarios_normales, name='lista_usuarios_normales'),
     path('adminpanel/usuarios-visitantes/', lista_usuarios_visitantes, name='lista_usuarios_visitantes'),
-     path('usuarios/visitantes/<int:visitante_id>/toggle-activo/', toggle_activo_visitante, name='toggle_activo_visitante'),
+    path('usuarios/visitantes/<int:visitante_id>/toggle-activo/', toggle_activo_visitante, name='toggle_activo_visitante'),
     path('usuarios/visitantes/<int:visitante_id>/toggle-reporte/', toggle_reporte_visitante, name='toggle_reporte_visitante'),
     path('publicidad/', anuncios_publicos, name='anuncios_publicos'),
+    path('informes/cartera-vencida/', cartera_vencida_por_origen, name='cartera_vencida_por_origen'),
+    path('cartera_vencida_excel/', exportar_cartera_vencida_excel, name='cartera_vencida_excel'),
 ]
 
     
