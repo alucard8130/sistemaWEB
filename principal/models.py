@@ -152,6 +152,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Aviso(models.Model):
+    empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     titulo = models.CharField(max_length=200)
     mensaje = models.TextField()
     fecha_creacion = models.DateTimeField(auto_now_add=True)

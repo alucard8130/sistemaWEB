@@ -1312,18 +1312,22 @@ def eliminar_tema(request, tema_id):
     messages.success(request, "Asunto eliminado correctamente.")
     return redirect("lista_temas")
 
+
 #modulo avisos y notificaciones-->
 @login_required
 def avisos_lista(request):
-    avisos = Aviso.objects.order_by('-fecha_creacion')
+    empresa=request.user.perfilusuario.empresa
+    avisos = Aviso.objects.filter(empresa=empresa).order_by('-fecha_creacion')
     return render(request, 'avisos/avisos_lista.html', {'avisos': avisos})
 
 @login_required
 def aviso_crear(request):
+    empresa=request.user.perfilusuario.empresa
     if request.method == 'POST':
         form = AvisoForm(request.POST)
         if form.is_valid():
             aviso = form.save(commit=False)
+            aviso.empresa = empresa
             aviso.usuario = request.user
             aviso.save()
             return redirect('avisos_lista')
