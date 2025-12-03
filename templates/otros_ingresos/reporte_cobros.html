@@ -12,7 +12,7 @@
       Description: Report of collections (other income)
     -->
     <meta charset="UTF-8">
-    <title>Reporte de cobros otros ingresos</title>
+    <title>Reporte cobros otros ingresos</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -26,7 +26,7 @@
     {% include 'navbar.html' %}
 
     <div class="container-fluid mt-4">
-        <h2>Cobros Otros Ingresos</h2>
+        <h2>Reporte Cobros Otros Ingresos</h2>
 
         <form method="get" class="row g-2 mb-3">
             <div class="col-auto">
@@ -76,8 +76,8 @@
         </form>
         
         <div class="alert alert-info">
-            <strong>Total cobrado:</strong>
-            ${{ total_cobrado|floatformat:2|intcomma }}
+            <h4><strong>Total cobrado:</strong>
+            ${{ total_cobrado|floatformat:2|intcomma }}</h4>
         </div>
         
         <div class="table-responsive rounded-3 border">

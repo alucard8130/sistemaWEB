@@ -57,11 +57,11 @@
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Propiedades</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Locales</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Registro Propiedades</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista Propiedades</a></li>
-                        <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Propiedades Inactivas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Registro Locales</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista Locales</a></li>
+                        <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Locales Inactivos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
                         
@@ -86,16 +86,15 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Cuota</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Estados de Cuenta</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Cobros Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Factura(cuotas)</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Registrar pagos de facturas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte pagos cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Generacion Mensual Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar otro ingreso</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Facturas Otros Ingresos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Cobros otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar Factura(otro ingreso)</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista Facturas Otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte pagos otros ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>

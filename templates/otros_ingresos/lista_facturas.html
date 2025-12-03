@@ -35,11 +35,11 @@
     <!-- Main content -->
     <div class="container-fluid mt-4">
 
-      <h2>Facturas Otros Ingresos</h2>
+      <h2>Facturas Otros Ingresos y registro de pagos</h2>
           <div class="col-auto">
             <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
               <i class="bi bi-plus-circle me-1"></i> 
-                Registrar otro ingreso
+                Registrar Factura otro ingreso
             </a>
           </div>
     <form method="get" class="row g-2 mb-3">
@@ -128,8 +128,8 @@
         
                           <td class="text-nowrap">
                           {% if factura.saldo > 0 %}
-                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
-                                Cobrar
+                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Pago">
+                                Reg.Pago
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
                           {% endif %}

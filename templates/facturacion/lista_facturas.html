@@ -12,7 +12,7 @@
       Description: Generated invoices
     -->
     <meta charset="UTF-8">
-    <title>Facturas ingresos</title>
+    <title>Estado de Cuenta</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- Main content -->
     <div class="container-fluid mt-4">
 
-        <h2>Estados de Cuenta</h2> 
+        <h2>Estado de Cuenta y Registro de pagos</h2> 
         <div class="row">
                 <div class="col-auto">
                     <a href="{% url 'crear_factura' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-crear mb-3">
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endif %}
             <div class="col-auto">
                 <select name="local_id" id="local_id" class="form-select">
-                    <option value="">Propiedades</option>
+                    <option value="">Selecciona una opcion</option>
                     {% for local in locales %}
                         <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
                             {{ local }}
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="col-auto">
                 <select name="area_id" id="area_id" class="form-select">
-                    <option value="">Areas Comunes</option>
+                    <option value="">Selecciona una opcion</option>
                     {% for area in areas %}
                         <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
                             {{ area }}
@@ -139,8 +139,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
         </form>
         <div class="alert alert-info mb-3">
-            <strong>Saldo Pendiente:</strong>
-            ${{ total_saldo|floatformat:2|intcomma }}
+            <h4><strong>Adeudo Total Pendiente:</strong>
+            ${{ total_saldo|floatformat:2|intcomma }}</h4>
         </div>
         <!-- Invoices table -->
         <div class="table-responsive rounded-3 border">
@@ -201,8 +201,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td class="text-nowrap">
                         {% if factura.saldo_pendiente > 0 %}    
-                            <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success" title="Registrar Cobro">
-                                Cobrar
+                            <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success" title="Registrar pago">
+                                Reg.Pago
                                 <i class="bi bi-cash-coin me-1"></i> 
                             </a>
                             <a href="{% url 'editar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-primary" title="Editar">

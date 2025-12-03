@@ -88,8 +88,8 @@
                             {% endif %}
                             <td> {{ local.get_status_display }}</td> 
                             <td style="white-space: nowrap;">
-                                   <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm" title="Estado de Cuenta">
-                                    Saldos
+                                   <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm" title="Registrar pagos">
+                                    Adeudos
                                     <i class="bi bi-receipt"></i> 
                                 </a>
                                 <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
