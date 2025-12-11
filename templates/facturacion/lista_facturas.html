@@ -65,11 +65,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="bi bi-plus-circle me-1"></i> Nueva cuota
                     </a>
                {% if local_id %}
-                    <a href="{% url 'enviar_recordatorio_morosidad' %}?local_id={{ local_id }}" class="btn btn-warning mb-3">
+                    <a href="{% url 'enviar_recordatorio_morosidad' %}?local_id={{ local_id }}&next={{ request.get_full_path|urlencode }}" class="btn btn-warning mb-3">
                         Enviar recordatorio de adeudos
                     </a>
                 {% elif area_id %}
-                    <a href="{% url 'enviar_recordatorio_morosidad' %}?area_id={{ area_id }}" class="btn btn-warning mb-3">
+                    <a href="{% url 'enviar_recordatorio_morosidad' %}?area_id={{ area_id }}&next={{ request.get_full_path|urlencode }}" class="btn btn-warning mb-3">
                         Enviar recordatorio de adeudos
                     </a>
                 {% else %}

@@ -33,7 +33,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
-from .models import Aviso, Evento, PerfilUsuario, TemaGeneral, VisitanteAcceso, VotacionCorreo
+from .models import Aviso, CapturarEmailForm, Evento, PerfilUsuario, TemaGeneral, VisitanteAcceso, VotacionCorreo
 import json
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
@@ -72,6 +72,7 @@ from django.db.models import Case, When, Value, CharField, Q, DecimalField, Expr
 from django.db.models.functions import Coalesce
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models.functions import ExtractMonth, ExtractYear
+
 
 
 # Vista de bienvenida / dashboard
@@ -921,24 +922,6 @@ def seleccionar_empresa(request):
 
 
 # modulo visitantes consulta adeudos y pagos de facturas-->
-# def visitante_login(request):
-#     if request.method == "POST":
-#         form = VisitanteLoginForm(request.POST)
-#         if form.is_valid():
-#             username = form.cleaned_data["username"]
-#             password = form.cleaned_data["password"]
-#             try:
-#                 visitante = VisitanteAcceso.objects.get(username=username)
-#                 if check_password(password, visitante.password):
-#                     request.session["visitante_id"] = visitante.id
-#                     return redirect("visitante_consulta_facturas")
-#                 else:
-#                     messages.error(request, "Contraseña incorrecta.")
-#             except VisitanteAcceso.DoesNotExist:
-#                 messages.error(request, "Usuario no encontrado.")
-#     else:
-#         form = VisitanteLoginForm()
-#     return render(request, "visitantes/login.html", {"form": form})
 
 def visitante_login(request):
     if request.method == "POST":
@@ -3542,28 +3525,40 @@ def descargar_plantilla_estado_cuenta(request):
 def enviar_recordatorio_morosidad(request):
     local_id = request.GET.get("local_id")
     area_id = request.GET.get("area_id")
+    next_url = request.GET.get("next")
 
     # Validación de parámetros
     if local_id and not local_id.isdigit():
         messages.error(request, "ID de local inválido.")
-        return redirect('lista_facturas')
+        return redirect(next_url or 'lista_facturas')
     if area_id and not area_id.isdigit():
         messages.error(request, "ID de área común inválido.")
-        return redirect('lista_facturas')
+        return redirect(next_url or 'lista_facturas')
 
     if local_id:
         local_id = int(local_id)
         facturas = Factura.objects.filter(local_id=local_id, estatus='pendiente')
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
-            messages.warning(request, "No hay adeudos pendientes para este local.")
-            return redirect('lista_facturas')
+            messages.warning(request, f"No hay adeudos pendientes para el local {facturas[0].local.numero}.")
+            return redirect(next_url or 'lista_facturas')
         cliente = facturas[0].cliente
         email = cliente.email
         email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
         if not email:
-            messages.error(request, "El cliente no tiene email registrado.")
-            return redirect('lista_facturas')
+            if request.method == "POST":
+                form = CapturarEmailForm(request.POST)
+                next_url = request.POST.get("next")
+                if form.is_valid():
+                    email = form.cleaned_data["email"]
+                    if cliente.nombre.strip().lower() != "venta al publico en general":
+                        cliente.email = email
+                        cliente.save()
+                else:
+                    return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+            else:
+                form = CapturarEmailForm()
+                return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
         mensaje = f"{empresa_nombre}\n\nEstimado cliente {cliente.nombre}, tiene los siguientes adeudos en cuotas:\n\n"
         total = 0
@@ -3575,27 +3570,38 @@ def enviar_recordatorio_morosidad(request):
             total += factura.saldo_pendiente
         mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible. \n\n Si ya realizo su pago envie su comprobante al correo: {email_empresa}"
         send_mail(
-            subject="Recordatorio de cuotas pendientes de pago",
+            subject="Recordatorio de cuotas pendientes de pago (Locales)",
             message=mensaje,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
-        messages.success(request, "Recordatorio enviado correctamente al cliente del local.")
-        return redirect('lista_facturas')
+        messages.success(request, f"Recordatorio enviado correctamente al cliente {cliente.nombre}\ndel local {factura.local.numero}",)
+        return redirect(next_url or 'lista_facturas')
 
     elif area_id:
         area_id = int(area_id)
         facturas = Factura.objects.filter(area_comun_id=area_id, estatus='pendiente')
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
-            messages.warning(request, "No hay adeudos pendientes para esta área común.")
-            return redirect('lista_facturas')
+            messages.warning(request, f"No hay adeudos pendientes para esta área común {facturas[0].area_comun.numero}.")
+            return redirect(next_url or 'lista_facturas')
         cliente = facturas[0].cliente
         email = cliente.email
         if not email:
-            messages.error(request, "El cliente no tiene email registrado.")
-            return redirect('lista_facturas')
+            if request.method == "POST":
+                form = CapturarEmailForm(request.POST)
+                next_url = request.POST.get("next")
+                if form.is_valid():
+                    email = form.cleaned_data["email"]
+                    if cliente.nombre.strip().lower() != "venta al publico en general":
+                        cliente.email = email
+                        cliente.save()
+                else:
+                    return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+            else:
+                form = CapturarEmailForm()
+                return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
         email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
         mensaje = f"{empresa_nombre}\n\nEstimado cliente {cliente.nombre}, tiene los siguientes adeudos en cuotas de área común:\n\n"
@@ -3614,9 +3620,9 @@ def enviar_recordatorio_morosidad(request):
             recipient_list=[email],
             fail_silently=True,
         )
-        messages.success(request, "Recordatorio enviado correctamente al cliente del área común.")
-        return redirect('lista_facturas')
+        messages.success(request, f"Recordatorio enviado correctamente al cliente {cliente.nombre}\ndel área común {factura.area_comun.numero}.",)
+        return redirect(next_url or 'lista_facturas')
 
     else:
-        messages.error(request, "Debes seleccionar un local o un área común antes de enviar el recordatorio.")
-        return redirect('lista_facturas')
+        messages.error(request, "Debes seleccionar un local o un área común antes de enviar el recordatorio.",)
+        return redirect(next_url or 'lista_facturas')

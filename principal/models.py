@@ -161,3 +161,7 @@ class Aviso(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class CapturarEmailForm(forms.Form):
+    email = forms.EmailField(label="Email del cliente", required=True)

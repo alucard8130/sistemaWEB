@@ -537,10 +537,7 @@ def registrar_pago(request, factura_id):
                 factura.estatus = "cancelada"
                 factura.monto = 0  # Saldo pendiente a 0
                 factura.save()
-                messages.success(
-                    request,
-                    "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",
-                )
+                messages.success(request,"La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",)
                 next_url = request.GET.get('next')
                 if next_url:
                      return redirect(next_url)
@@ -569,10 +566,7 @@ def registrar_pago(request, factura_id):
                     factura.estatus = "pendiente"
                 factura.save()
                 factura.actualizar_estatus()  
-                messages.success(
-                    request,
-                    f"Cobro registrado. Saldo restante: ${factura.saldo_pendiente:.2f}",
-                )
+                messages.success(request,f"Cobro registrado Factura:{factura.folio}. Saldo restante: ${factura.saldo_pendiente:.2f}",)
                 next_url = request.GET.get('next')
                 if next_url:
                      return redirect(next_url)
