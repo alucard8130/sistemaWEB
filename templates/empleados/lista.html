@@ -35,6 +35,7 @@
                 <thead>
                     <tr>
                         <th>Nombre</th>
+                        <th>RFC</th>
                         <th>Puesto</th>
                         <th>Departamento</th>
                         <th>Teléfono</th>
@@ -49,6 +50,7 @@
                     {% for empleado in empleados %}
                     <tr>
                         <td>{{ empleado.nombre }}</td>
+                        <td>{{ empleado.rfc }}</td>
                         <td>{{ empleado.puesto }}</td>
                         <td>{{ empleado.departamento }}</td>
                         <td>{{ empleado.telefono }}</td>

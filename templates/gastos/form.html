@@ -28,7 +28,7 @@
             <div class="col-md-4 col-sm-6 mx-auto">
             
                 <!-- Styled title with the same width as the form -->
-                <h2 class="form-title text-center mb-0">{% if modo == 'crear' %}Registrar{% else %}Editar{% endif %} solicitudes pago</h2>
+                <h2 class="form-title text-center mb-0">{% if modo == 'crear' %}Registrar{% else %}Editar{% endif %} Solicitud de Gasto</h2>
             
                 <form method="post" class="p-4 rounded custom-form" enctype="multipart/form-data">
                     {% csrf_token %}
@@ -89,9 +89,8 @@
     </script>
 
     <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por Jaime M. Estrada Bernabé
+<footer class="mt-4">
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
     </footer>
 
     <!-- Scripts -->

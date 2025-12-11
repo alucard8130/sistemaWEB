@@ -14,7 +14,7 @@
       Description: Matrix revenue budgets
     -->
     <meta charset="UTF-8">
-    <title>Matriz ingresos presupuestos</title>
+    <title>Matriz presupuesto ingresos</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -85,7 +85,7 @@
 
         <!-- Formulario de filtros (GET) -->
         <form method="get" class="row g-2 mb-3">
-            <h2>Presupuesto ingresos cuotas {{ anio }}</h2>
+            <h2>Matriz Presupuesto Ingresos</h2>
             <div class="col-auto">
                 <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
                 <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
@@ -234,9 +234,8 @@
     </div>
 
     <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
-        Creado por JMEB
+<footer class="mt-4">
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
     </footer>
 
     <!-- Scripts -->

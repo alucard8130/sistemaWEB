@@ -921,6 +921,25 @@ def seleccionar_empresa(request):
 
 
 # modulo visitantes consulta adeudos y pagos de facturas-->
+# def visitante_login(request):
+#     if request.method == "POST":
+#         form = VisitanteLoginForm(request.POST)
+#         if form.is_valid():
+#             username = form.cleaned_data["username"]
+#             password = form.cleaned_data["password"]
+#             try:
+#                 visitante = VisitanteAcceso.objects.get(username=username)
+#                 if check_password(password, visitante.password):
+#                     request.session["visitante_id"] = visitante.id
+#                     return redirect("visitante_consulta_facturas")
+#                 else:
+#                     messages.error(request, "Contraseña incorrecta.")
+#             except VisitanteAcceso.DoesNotExist:
+#                 messages.error(request, "Usuario no encontrado.")
+#     else:
+#         form = VisitanteLoginForm()
+#     return render(request, "visitantes/login.html", {"form": form})
+
 def visitante_login(request):
     if request.method == "POST":
         form = VisitanteLoginForm(request.POST)
@@ -931,7 +950,7 @@ def visitante_login(request):
                 visitante = VisitanteAcceso.objects.get(username=username)
                 if check_password(password, visitante.password):
                     request.session["visitante_id"] = visitante.id
-                    return redirect("visitante_consulta_facturas")
+                    return redirect("visitante_seleccionar_empresa")
                 else:
                     messages.error(request, "Contraseña incorrecta.")
             except VisitanteAcceso.DoesNotExist:
@@ -941,11 +960,31 @@ def visitante_login(request):
     return render(request, "visitantes/login.html", {"form": form})
 
 
-def visitante_consulta_facturas(request):
+def visitante_seleccionar_empresa(request):
     visitante_id = request.session.get("visitante_id")
     if not visitante_id:
         return redirect("visitante_login")
     visitante = VisitanteAcceso.objects.get(id=visitante_id)
+    empresas = visitante.empresas.all()
+    if request.method == "POST":
+        empresa_id = request.POST.get("empresa_id")
+        if empresa_id:
+            request.session["empresa_id"] = empresa_id
+            return redirect("visitante_consulta_facturas")
+    return render(request, "visitantes/seleccionar_empresa.html", {"empresas": empresas})
+
+
+def visitante_consulta_facturas(request):
+    visitante_id = request.session.get("visitante_id")
+    empresa_id = request.session.get("empresa_id")
+    if not visitante_id:
+        return redirect("visitante_login")
+    visitante = VisitanteAcceso.objects.get(id=visitante_id)
+
+    if not empresa_id:
+        # Si no hay empresa seleccionada, redirige a la selección
+        return redirect("visitante_seleccionar_empresa")
+    empresa = Empresa.objects.get(id=empresa_id)
 
     # Filtros
     local_id = request.GET.get("local_id")
@@ -954,18 +993,19 @@ def visitante_consulta_facturas(request):
     factura_id = request.GET.get("factura_id")
     anio = request.GET.get("anio")
 
-    locales = visitante.locales.all()
-    areas = visitante.areas.all()
+    locales = visitante.locales.filter(empresa=empresa)
+    areas = visitante.areas.filter(empresa=empresa)
+    # locales = visitante.locales.all()
+    # areas = visitante.areas.all()
 
     facturas = Factura.objects.none()
     if local_id:
-        facturas = Factura.objects.filter(local_id=local_id, local__in=locales)
+        facturas = Factura.objects.filter(local_id=local_id, local__in=locales,empresa=empresa)
     elif area_id:
-        facturas = Factura.objects.filter(area_comun_id=area_id, area_comun__in=areas)
+        facturas = Factura.objects.filter(area_comun_id=area_id, area_comun__in=areas,empresa=empresa)
     else:
         facturas = Factura.objects.filter(
-            Q(local__in=locales) | Q(area_comun__in=areas)
-        )
+            Q(local__in=locales) | Q(area_comun__in=areas), empresa=empresa)
 
     # Obtén los años únicos de las facturas
     anios_unicos = (
@@ -1017,6 +1057,7 @@ def visitante_consulta_facturas(request):
             "anio": anio,
             "anios_unicos": anios_unicos,
             "factura_pendiente_id": factura_pendiente_id,
+            "empresa": empresa,
         },
     )
 

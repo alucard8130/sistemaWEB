@@ -47,7 +47,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Clientes</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Alta Clientes</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_cliente' %}">Nuevo Cliente</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_clientes' %}">Lista Clientes</a></li>
                         <li><a class="dropdown-item" href="{% url 'clientes_inactivos' %}">Clientes Inactivos</a></li>
                         <li><hr class="dropdown-divider"></li>
@@ -59,11 +59,11 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Locales</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Registro Locales</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nuevo Local</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_locales' %}">Lista Locales</a></li>
                         <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Locales Inactivos</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas Locales</a></li>
                         
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
                         
@@ -72,12 +72,12 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Áreas Comunes</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_area' %}">Registro Área común</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_area' %}">Nueva Área común</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_areas' %}">Lista Áreas Comunes</a></li>
 
                             <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Áreas Inactivas</a></li>
                             <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas Áreas</a></li>
                         
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
                         
@@ -86,15 +86,15 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Registrar Factura(cuotas)</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Registrar pagos de facturas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte pagos cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Registrar Pago Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Pago Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Generacion Mensual Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Registrar Factura(otro ingreso)</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Lista Facturas Otros Ingresos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte pagos otros ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Nueva Factura Otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Registrar Pago Otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Pago Otros Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
@@ -112,8 +112,8 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Antiguedad Saldos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'cartera_vencida_por_origen' %}">Detalle Saldos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Reporte Antiguedad Saldos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'cartera_vencida_por_origen' %}">Reporte Detalle Saldos</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Saldos</a></li>
                         <li><hr class="dropdown-divider"></li>                     
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
@@ -123,11 +123,11 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Nomina</a>
                     <ul class="dropdown-menu">
-                        
+                        <li><a class="dropdown-item" href="{% url 'empleado_crear' %}">Nuevo Empleado</a></li>
                         <li><a class="dropdown-item" href="{% url 'empleado_lista' %}">Lista Empleados</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'incidencia_crear' %}">Registrar Incidencia</a></li>
-                        <li><a class="dropdown-item" href="{% url 'incidencias_lista' %}">Reporte Incidencias</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incidencia_crear' %}">Nueva Incidencia</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incidencias_lista' %}">Lista de Incidencias</a></li>
                         
                         <!-- Agrega aquí más catálogos si lo deseas -->
                     </ul>
@@ -136,54 +136,39 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Gastos</a>
                     <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'proveedor_crear' %}">Nuevo Proveedor</a></li>
                         <li><a class="dropdown-item" href="{% url 'proveedor_lista' %}">Lista Proveedores</a></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_proveedores' %}">Carga Masiva</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Alta tipo Gasto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'tipo_gasto_crear'%}">Nuevo Tipo Gasto</a></li>
                         <li><a class="dropdown-item" href="{% url 'tipos_gasto_lista'%}">Lista Tipos de Gasto</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Registrar Solicitud de Gasto</a></li>
-                        <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Lista Solicitudes de Gastos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'gasto_nuevo' %}">Nueva Solicitud de Gasto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'gastos_lista' %}">Registrar Pago Solicitud de Gasto</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
                         {% endif %}
-                        <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Pagos Solicitudes de Gastos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Gastos</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_retenciones_gastos' %}">Reporte Retenciones</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_retenciones_gastos' %}">Reporte Retencion Impuestos</a></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
                         {% endif %}
                     </ul>
                 </li>
                 <!-- MENÚ CAJA CHICA -->
-        <li class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle"
-            href="#"
-            role="button"
-            data-bs-toggle="dropdown"
-            >Caja Chica</a
-          >
+        <li class="nav-item dropdown"><a class="nav-link dropdown-toggle"href="#"role="button"data-bs-toggle="dropdown">Caja Chica</a>
           <ul class="dropdown-menu">
-            <li>
-              <a class="dropdown-item" href="{% url 'lista_fondeos' %}"
-                >Fondeos Caja Chica</a
-              >
-            </li>
-            <li>
-              <a
-                class="dropdown-item"
-                href="{% url 'lista_gastos_caja_chica' %}"
-                >Gastos Caja Chica</a
-              >
-            </li>
-            <li>
-              <a class="dropdown-item" href="{% url 'lista_vales_caja_chica' %}"
-                >Vales Caja Chica</a
-              >
-            </li>
+            <li><a class="dropdown-item" href="{% url 'fondeo_caja_chica' %}">Nuevo Fondo Caja Chica</a></li>
+            <li><a class="dropdown-item" href="{% url 'lista_fondeos' %}">Lista Fondos Caja Chica</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'registrar_gasto_caja_chica' %}">Nuevo Gasto Caja Chica</a></li>
+            <li><a class="dropdown-item" href="{% url 'lista_gastos_caja_chica' %}">Lista Gastos Caja Chica</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'generar_vale_caja' %}">Nuevo Vale Caja Chica</a></li>
+            <li><a class="dropdown-item" href="{% url 'lista_vales_caja_chica' %}">Lista Vales Caja Chica</a></li>
           </ul>
         </li>
                 <!-- MENÚ PPTOS -->
@@ -216,11 +201,11 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Comunicacion</a>
                     <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="{% url 'crear_tema_y_enviar' %}">Registrar Asuntos Generales</a></li>
-                      <li><a class="dropdown-item" href="{% url 'lista_temas' %}">Asuntos Generales</a></li>
+                      <li><a class="dropdown-item" href="{% url 'crear_tema_y_enviar' %}">Nuevo Asunto General</a></li>
+                      <li><a class="dropdown-item" href="{% url 'lista_temas' %}">Lista Asuntos Generales</a></li>
                       <li><hr class="dropdown-divider"></li> 
-                      <li><a class="dropdown-item" href="{% url 'aviso_crear' %}">Registrar Avisos App</a></li>
-                      <li><a class="dropdown-item" href="{% url 'avisos_lista' %}">Lista Avisos</a></li>
+                      <li><a class="dropdown-item" href="{% url 'aviso_crear' %}">Nuevo Aviso App</a></li>
+                      <li><a class="dropdown-item" href="{% url 'avisos_lista' %}">Lista Avisos App</a></li>
                 </li>
             </ul>
         </div>

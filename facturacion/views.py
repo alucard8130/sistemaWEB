@@ -1288,7 +1288,6 @@ def cartera_vencida(request):
     if tipo_cuota:
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
-
     # Filtrar por origen
     if origen == 'local':
         facturas = facturas.filter(local__isnull=False)
@@ -1299,65 +1298,48 @@ def cartera_vencida(request):
     elif origen == 'otros':
         facturas = facturas.none()
 
-    # Filtros de rango de días vencidos
-    if filtro == 'menor30':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
-        facturas_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
-    elif filtro == '30a60':
-        facturas = facturas.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=30),
-            fecha_vencimiento__gt=hoy - timedelta(days=60)
-        )
-        facturas_otros = facturas_otros.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=30),
-            fecha_vencimiento__gt=hoy - timedelta(days=60)
-        )
-    elif filtro == '60a90':
-        facturas = facturas.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=60),
-            fecha_vencimiento__gt=hoy - timedelta(days=90)
-        )
-        facturas_otros = facturas_otros.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=60),
-            fecha_vencimiento__gt=hoy - timedelta(days=90)
-        )
-    elif filtro == '90a180':
-        facturas = facturas.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=90),
-            fecha_vencimiento__gt=hoy - timedelta(days=180)
-        )
-        facturas_otros = facturas_otros.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=90),
-            fecha_vencimiento__gt=hoy - timedelta(days=180)
-        )
-    elif filtro == 'mas180':
-        facturas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
-        facturas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
+    # Agrupar por antigüedad
+    rangos = [
+        ('0-30 días', 0, 30),
+        ('31-60 días', 31, 60),
+        ('61-90 días', 61, 90),
+        ('91-180 días', 91, 180),
+        ('181+ días', 181, 10000),
+    ]
+    agrupado = []
+    gran_total = 0
 
-    # Días de atraso y tipo
-    for f in facturas:
-        f.dias_vencidos = (hoy - f.fecha_vencimiento).days
-        f.tipo_origen = 'local' if getattr(f, 'local_id', None) else 'area' if getattr(f, 'area_comun_id', None) else 'cuota'
-        f.es_otro = False
-    for f in facturas_otros:
-        f.dias_vencidos = (hoy - f.fecha_vencimiento).days
-        f.tipo_origen = 'otros'
-        f.es_otro = True
+    for nombre, desde, hasta in rangos:
+        grupo_facturas = []
+        subtotal = 0
+        # Facturas cuotas
+        for f in facturas:
+            dias = (hoy - f.fecha_vencimiento).days
+            if desde <= dias <= hasta:
+                f.dias_vencidos = dias
+                f.es_otro = False
+                grupo_facturas.append(f)
+                subtotal += float(getattr(f, 'saldo_pendiente', f.monto))
+        # Facturas otros ingresos
+        for f in facturas_otros:
+            dias = (hoy - f.fecha_vencimiento).days
+            if desde <= dias <= hasta:
+                f.dias_vencidos = dias
+                f.es_otro = True
+                grupo_facturas.append(f)
+                subtotal += float(getattr(f, 'saldo', f.monto))
+        agrupado.append({
+            'rango': nombre,
+            'facturas': grupo_facturas,
+            'subtotal': subtotal,
+        })
+        gran_total += subtotal
 
-    # Unir ambos queryset y ordenar
-    facturas_todas = list(facturas) + list(facturas_otros)
-    facturas_todas.sort(key=lambda x: x.fecha_vencimiento, reverse=True)
-   
-    # Opciones únicas de tipo_cuota para el filtro
     tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
-   
-    # Paginar la lista combinada
-    paginator = Paginator(facturas_todas, 25)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
 
     return render(request, 'facturacion/cartera_vencida.html', {
-        'facturas': page_obj,
+        'agrupado': agrupado,
+        'gran_total': gran_total,
         'hoy': hoy,
         'empresas': Empresa.objects.all(),
         'clientes': clientes,
@@ -1375,20 +1357,17 @@ def exportar_cartera_excel(request):
     empresa_id = request.GET.get('empresa')
     cliente_id = request.GET.get('cliente')
 
-    # Facturas cuotas
     facturas = Factura.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
     )
-    # Facturas otros ingresos
     facturas_otros = FacturaOtrosIngresos.objects.filter(
         estatus='pendiente',
         fecha_vencimiento__lt=hoy,
         activo=True
     )
 
-    # Filtrar por empresa
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
@@ -1397,16 +1376,13 @@ def exportar_cartera_excel(request):
         facturas = facturas.filter(empresa_id=empresa_id)
         facturas_otros = facturas_otros.filter(empresa_id=empresa_id)
 
-    # Filtrar por cliente
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
         facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
 
-    # Filtrar por tipo de cuota
     if tipo_cuota:
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
-    # Filtrar por origen
     if origen == 'local':
         facturas = facturas.filter(local__isnull=False)
         facturas_otros = facturas_otros.none()
@@ -1415,85 +1391,110 @@ def exportar_cartera_excel(request):
         facturas_otros = facturas_otros.none()
     elif origen == 'otros':
         facturas = facturas.none()
-        # facturas_otros ya trae todos los otros ingresos
 
-    # Filtros de rango de días vencidos
-    if filtro == 'menor30':
-        facturas = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
-        facturas_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30))
-    elif filtro == '30a60':
-        facturas = facturas.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=30),
-            fecha_vencimiento__gt=hoy - timedelta(days=60)
-        )
-        facturas_otros = facturas_otros.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=30),
-            fecha_vencimiento__gt=hoy - timedelta(days=60)
-        )
-    elif filtro == '60a90':
-        facturas = facturas.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=60),
-            fecha_vencimiento__gt=hoy - timedelta(days=90)
-        )
-        facturas_otros = facturas_otros.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=60),
-            fecha_vencimiento__gt=hoy - timedelta(days=90)
-        )
-    elif filtro == '90a180':
-        facturas = facturas.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=90),
-            fecha_vencimiento__gt=hoy - timedelta(days=180)
-        )
-        facturas_otros = facturas_otros.filter(
-            fecha_vencimiento__lte=hoy - timedelta(days=90),
-            fecha_vencimiento__gt=hoy - timedelta(days=180)
-        )
-    elif filtro == 'mas180':
-        facturas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
-        facturas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180))
+    # Agrupación por rangos de antigüedad
+    rangos = [
+        ('0-30 días', 0, 30),
+        ('31-60 días', 31, 60),
+        ('61-90 días', 61, 90),
+        ('91-180 días', 91, 180),
+        ('181+ días', 181, 10000),
+    ]
+    agrupado = []
+    gran_total = 0
+
+    for nombre, desde, hasta in rangos:
+        grupo_facturas = []
+        subtotal = 0
+        for f in facturas:
+            dias = (hoy - f.fecha_vencimiento).days
+            if desde <= dias <= hasta:
+                f.dias_vencidos = dias
+                grupo_facturas.append(f)
+                subtotal += float(getattr(f, 'saldo_pendiente', f.monto))
+        for f in facturas_otros:
+            dias = (hoy - f.fecha_vencimiento).days
+            if desde <= dias <= hasta:
+                f.dias_vencidos = dias
+                grupo_facturas.append(f)
+                subtotal += float(getattr(f, 'saldo', f.monto))
+        agrupado.append({
+            'rango': nombre,
+            'facturas': grupo_facturas,
+            'subtotal': subtotal,
+        })
+        gran_total += subtotal
 
     # Crear libro y hoja
+    import openpyxl
+    from openpyxl.styles import Font, Alignment
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Cartera Vencida"
 
-    # Encabezados
-    ws.append([
-        'Folio', 'Cliente', 'Empresa', 'Origen', 'Monto',
-        'Saldo Pendiente', 'Fecha Vencimiento', 'Días Vencidos'
-    ])
+    bold = Font(bold=True)
+    ws.append(["Reporte de Cartera Vencida por Antigüedad"])
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=8)
+    ws["A1"].font = Font(size=14, bold=True)
+    ws["A1"].alignment = Alignment(horizontal="center")
 
-    # Contenido: Facturas cuotas
-    for factura in facturas:
-        dias_vencidos = (hoy - factura.fecha_vencimiento).days
-        origen_str = f"Local {factura.local.numero}" if factura.local else f"Área {factura.area_comun.numero}" if factura.area_comun else "-"
+    row = 2
+    for grupo in agrupado:
+        ws.append([grupo['rango'], f"Subtotal: ${grupo['subtotal']:.2f}"])
+        ws[f"A{row}"].font = bold
+        ws[f"B{row}"].font = bold
+        row += 1
         ws.append([
-            factura.folio,
-            factura.cliente.nombre,
-            factura.empresa.nombre,
-            origen_str,
-            float(factura.monto),
-            float(factura.saldo_pendiente),
-            str(factura.fecha_vencimiento),
-            dias_vencidos
+            'Folio', 'Tipo de Cuota', 'Cliente', 'Origen',
+            'Monto', 'Saldo Pendiente', 'Fecha Vencimiento', 'Días Vencidos'
         ])
+        for col in "ABCDEFGH":
+            ws[f"{col}{row}"].font = bold
+        row += 1
+        for f in grupo['facturas']:
+            if isinstance(f, FacturaOtrosIngresos):
+                # Es un "otro ingreso"
+                tipo_cuota = f.tipo_ingreso.nombre if f.tipo_ingreso else 'Otro ingreso'
+                origen_str = tipo_cuota
+                saldo = float(getattr(f, 'saldo', f.monto))
+            else:
+                # Es una Factura normal
+                tipo_cuota = f.tipo_cuota
+                if f.local:
+                    origen_str = f"Local {f.local.numero}"
+                elif f.area_comun:
+                    origen_str = f"Área {f.area_comun.numero}"
+                else:
+                    origen_str = "-"
+                saldo = float(getattr(f, 'saldo_pendiente', f.monto))
+            ws.append([
+                f.folio,
+                tipo_cuota,
+                f.cliente.nombre,
+                #f.empresa.nombre,
+                origen_str,
+                float(f.monto),
+                saldo,
+                str(f.fecha_vencimiento),
+                f.dias_vencidos
+            ])
+            row += 1
+        # Línea vacía después de cada grupo
+        ws.append([])
+        row += 1
 
-    # Contenido: Facturas otros ingresos
-    for factura in facturas_otros:
-        dias_vencidos = (hoy - factura.fecha_vencimiento).days
-        tipo_ingreso = factura.get_tipo_ingreso_display() if hasattr(factura, 'get_tipo_ingreso_display') else (factura.tipo_ingreso.nombre if hasattr(factura.tipo_ingreso, 'nombre') else 'Otro ingreso')
-        ws.append([
-            factura.folio,
-            factura.cliente.nombre,
-            factura.empresa.nombre,
-            tipo_ingreso,
-            float(factura.monto),
-            float(getattr(factura, 'saldo', factura.saldo_pendiente if hasattr(factura, 'saldo_pendiente') else factura.monto)),
-            str(factura.fecha_vencimiento),
-            dias_vencidos
-        ])
+    # Gran total
+    ws.append(["Gran Total", "", "", "", "", "", f"${gran_total:.2f}"])
+    ws[f"A{row}"].font = bold
+    ws[f"G{row}"].font = bold
+
+    # Ajustar anchos de columna
+    for col in "ABCDEFGHI":
+        ws.column_dimensions[col].width = 18
 
     # Respuesta HTTP
+    from django.http import HttpResponse
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )

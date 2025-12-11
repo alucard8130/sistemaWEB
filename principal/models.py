@@ -88,8 +88,9 @@ class SeguimientoTicket(models.Model):
 # Modulo de acceso para visitantes    
 class VisitanteAcceso(models.Model):
     username = models.CharField(max_length=50, unique=True)
-    password = models.CharField(max_length=128)  # Guarda hash, no texto plano
-    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    password = models.CharField(max_length=128) 
+    #empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    empresas = models.ManyToManyField(Empresa)
     locales = models.ManyToManyField(LocalComercial, blank=True, verbose_name="Locales")
     areas = models.ManyToManyField(AreaComun, blank=True, verbose_name="Áreas comunes")
     acceso_api_reporte = models.BooleanField(default=False)

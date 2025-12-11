@@ -5,7 +5,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Detalle Cartera Vencida</title>
+    <title>Saldos antiguedad </title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -18,7 +18,7 @@
 <body>
     {% include 'navbar.html' %}
 <div class="container-fluid mt-4">
-    <h2>Detalle Cartera Vencida</h2>
+    <h2>Reporte Detalle Saldos</h2>
     <a href="{% url 'cartera_vencida_excel' %}" class="btn btn-success mb-3">Exportar a Excel</a>
         <div class="row">
             {% for origen in cartera_vencida %}
@@ -54,9 +54,8 @@
 <h3 style="color:darkred;">Gran Total Cartera: ${{ total_cartera|floatformat:2|intcomma }}</h3>
 </div>
 <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por JMEB
+<footer class="mt-4">
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
     </footer>
 
     <!-- Scripts -->

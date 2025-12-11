@@ -22,7 +22,20 @@
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
+<div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
+    <div class="d-flex align-items-center ms-auto">  
+        <button id="toggleDark" class="toggle-switch">
+            <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
+        </button>
+    </div>
+</div>
 <body>
+    <!-- Botón salir arriba a la derecha -->
+<div class="d-flex justify-content-end mt-3 me-3">
+    <a href="{% url 'visitante_logout' %}" class="btn btn-outline-danger btn-lg">
+        <i class="bi bi-box-arrow-right"></i> Salir
+    </a>
+</div>
     {% if not es_visitante %}
         {% include 'navbar.html' %}
     {% endif %}
@@ -39,13 +52,17 @@
 {% endif %}
     <!-- Main content -->
     <div class="container-fluid mt-4">
-         {% if facturas|length > 0 %}
-        <h1 class="mb-3">{{ facturas.0.empresa.nombre }}</h1>
-        {% comment %} <h2 class="mb-3">{{ facturas.0.empresa.rfc }}</h2> {% endcomment %}
+        <div class="d-flex align-items-center justify-content-between">
+                {% if facturas|length > 0 %}
+        <h2 class="mb-3">{{ facturas.0.empresa.nombre }}</h2>
     {% else %}
-        <h1 class="mb-3"> <span>No hay facturas disponibles</span></h1>
+        <h2 class="mb-3"> <span>No hay facturas disponibles</span></h2>
     {% endif %}
-        <h2>Estado de Cuenta</h2>
+    <a href="{% url 'visitante_seleccionar_empresa' %}" class="btn btn-warning btn-lg">
+        <i class="bi bi-arrow-repeat"></i> Cambiar empresa
+    </a>
+</div>
+        <h4>Estado de Cuenta</h4>
         <div class="row mb-4">
     <div class="col-md-6">
         <div class="card border-warning shadow-sm mb-2">
@@ -64,9 +81,8 @@
         </div>
     </div>
     <p>Si existe algun pago no registrado, contacte al administrador del condominio.</p>
-    <p>LAS CUOTAS SOLO SE PUEDEN PAGAR DE LA MAS ANTIGUA A LAS MAS RECIENTE.</p>
+    <p>LOS ADEUDOS SOLO SE PUEDEN PAGAR DEL MÁS ANTIGUO AL MÁS RECIENTE.</p>
 </div>
-        <h2></h2>
         <form method="get" class="row g-2 mb-3">
             <div class="col-auto">
                 <select name="local_id" id="local_id" class="form-select">
@@ -105,11 +121,6 @@
                     <i class="bi bi-arrow-clockwise"></i> 
                                 Limpiar
                         </a>
-                {% if es_visitante %}
-                    <a href="{% url 'visitante_logout' %}" class="btn btn-outline-danger">
-                        <i class="bi bi-box-arrow-right"></i> Salir
-                    </a>
-                {% endif %}
             </div>
         </form>
         <div class="table-responsive rounded-3 border">
@@ -236,8 +247,8 @@
 
     <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por JMEB
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
+        
     </footer>
 
     <!-- Scripts -->

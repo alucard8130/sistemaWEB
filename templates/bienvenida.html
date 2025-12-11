@@ -134,13 +134,14 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
               </a>
               <!-- Texto a la derecha -->
               <div>
-                <p class="mb-2 text-muted">Sistema Web Administrativo Condominal</p>
-                <h1 class="welcome-title mb-2 fs-4">Bienvenid@ <br> {{ request.user.get_full_name|default:request.user.username }}</h1>
+                <h3 class="welcome-title mb-3 fs-5">Sistema Web Administrativo Condominal</h3>
+                
                 {% if empresa %}
                     <p class="text-muted">Empresa: <strong>{{ empresa.nombre }}</strong></p>
                 {% else %}
                     <p class="text-muted">Administrador General</p>
                 {% endif %}
+                <p class="mb-2 text-muted">Usuario:  <strong>{{ request.user.get_full_name|default:request.user.username }}</strong></p>
               </div>     
             </div>
           </div>
@@ -195,7 +196,7 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
               <a href="https://youtu.be/0o-7sUIOKbk" target="_blank">Timbrado Facturas</a>
             </li>
             <li class="list-group-item py-1 px-2">
-              <a href="https://youtu.be/BRdF5OZnHrA" target="_blank">Contratos Areas Comunes</a>
+              <a href="https://youtu.be/9Mecb9_Ue8Y?si=3KAJTQPJwIVjtBRt" target="_blank">App GESAC</a>
             </li>
           </ul>
         </div>
@@ -246,17 +247,17 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
     <div class="col-md-2 mb-4 d-flex flex-column align-items-end">
       <div class="card" style="width: 220px; position: sticky; top: 90px;">
         <div class="card-header bg-info text-white">
-          <h6 class="mb-0">Reportes de Mantenimiento</h6>
+          <h6 class="mb-0">Reportes Mantenimiento</h6>
         </div>
         <div class="list-group list-group-flush">
           <a href="{% url 'crear_ticket' %}" target="_blank" class="list-group-item list-group-item-action">
-            Registrar Reporte
+            Nuevo Reporte Mantto
           </a>
           <a href="{% url 'lista_tickets' %}" target="_blank" class="list-group-item list-group-item-action">
-            Lista de Reportes
+            Lista Reportes Mantto
           </a>
           <a href="{% url 'tickets_asignados' %}" target="_blank" class="list-group-item list-group-item-action">
-            Reportes asignados
+            Lista Mantenimientos Asignados
           </a>
         </div>
       </div>
@@ -417,9 +418,8 @@ function nextStep(step) {
     </script>
 
     <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GESAC. Todos los derechos reservados. <br>
-        Creado por JMEB
+<footer class="mt-4">
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
     </footer>
 
     <!-- Scripts -->

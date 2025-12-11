@@ -11,7 +11,7 @@
         Description: Overdue invoices
     -->
     <meta charset="UTF-8">
-    <title>Reporte cartera vencida</title>
+    <title>Reporte antiguedad saldos</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -25,7 +25,7 @@
     {% include 'navbar.html' %}
 
     <div class="container-fluid mt-4">
-        <h2>Cartera Antiguedad de Saldos</h2>
+        <h2>Reporte Antiguedad de Saldos</h2>
 
         <!-- Block for displaying messages -->
         {% if messages %}
@@ -65,22 +65,10 @@
                     {% endfor %}
                 </select>
             </div>
-
-            <div class="col-md-3">
-                <select name="rango" id="rango" class="form-select me-2">
-                <!--  <select name="dias" id="dias" class="form-select"> -->
-                    <option value="">Antigüedad</option>
-                    <option value="menor30" {% if rango_seleccionado == 'menor30' %}selected{% endif %}>Menos de 30 días</option>
-                    <option value="30a60" {% if rango_seleccionado == '30a60' %}selected{% endif %}>30 a 60 días</option>
-                    <option value="60a90" {% if rango_seleccionado == '60a90' %}selected{% endif %}>60 a 90 días</option>
-                    <option value="90a180" {% if rango_seleccionado == '90a180' %}selected{% endif %}>90 a 180 días</option>
-                    <option value="mas180" {% if rango_seleccionado == 'mas180' %}selected{% endif %}>Más de 180 días</option>
-                </select>
-            </div>
                 
             <div class="col-auto">
     <select name="tipo_cuota" class="form-select">
-        <option value="">Todos los tipos de cuota</option>
+        <option value="">Tipos de Cuotas</option>
         {% for cuota in tipos_cuota %}
             <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
         {% endfor %}
@@ -93,14 +81,18 @@
                 <a href="{% url 'cartera_vencida' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-counterclockwise"></i> Limpiar
                 </a>
+           
+            <a href="{% url 'exportar_cartera_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel</a>
             </div>
         </form>
-        <div class="mb-2"> 
-            <a href="{% url 'exportar_cartera_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
-    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
-</a>
-        </div>
+       <div class="container-fluid mt-4">
 
+    {% for grupo in agrupado %}
+    <div class="mt-4">
+        <h4 class="text-primary">{{ grupo.rango }} 
+            <span class="badge bg-info text-dark ms-2">Subtotal: ${{ grupo.subtotal|floatformat:2|intcomma }}</span>
+        </h4>
         <div class="table-responsive rounded-3 border">
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
@@ -119,7 +111,34 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for factura in facturas %}
+                    {% for factura in grupo.facturas %}
+                        {% if factura.es_otro %}
+                            <tr>
+                            <td>{{ factura.folio }}</td>
+                            <td>
+                                {% if factura.tipo_ingreso %}
+                                    {{ factura.tipo_ingreso.nombre }}
+                                {% else %}
+                                    Otro ingreso
+                                {% endif %}
+                            </td>
+                            <td>{{ factura.cliente.nombre }}</td>
+                            {% if request.user.is_superuser %}
+                            <td>{{ factura.empresa.nombre }}</td>
+                        {% endif %}
+                        <td>
+                            {% if factura.tipo_ingreso %}
+                                {{ factura.tipo_ingreso.nombre }}
+                            {% else %}
+                                Otro ingreso
+                            {% endif %}
+                        </td>
+                        <td>${{ factura.monto|floatformat:2|intcomma }}</td>
+                        <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
+                        <td>{{ factura.fecha_vencimiento|date:"d/b/y"|upper }}</td>
+                        <td>{{ factura.dias_vencidos }}</td>
+                    </tr>
+                    {% else %}
                     <tr>
                         <td>{{ factura.folio }}</td>
                         <td>{{ factura.tipo_cuota }}</td>
@@ -127,66 +146,40 @@
                         {% if request.user.is_superuser %}
                             <td>{{ factura.empresa.nombre }}</td>
                         {% endif %}
-                     <td>
-                        {% if factura.es_otro %}
-                            {% if factura.tipo_ingreso %}
-                                {{ factura.tipo_ingreso.nombre }}
-                            {% else %}
-                                Otra cuota
-                            {% endif %}
-                        {% elif factura.local %}
-                            {{ factura.local.numero }}
-                        {% elif factura.area_comun %}
-                            {{ factura.area_comun.numero }}
-                        {% else %}
-                            {{ factura.tipo_origen|title }}
-                        {% endif %}
-                    </td>
-                        <td>${{ factura.monto|floatformat:2|intcomma }}</td>
                         <td>
-                            {% if factura.es_otro %}
-                                ${{ factura.saldo|floatformat:2|intcomma }}
+                            {% if factura.local %}
+                                Local {{ factura.local.numero }}
+                            {% elif factura.area_comun %}
+                                Área {{ factura.area_comun.numero }}
                             {% else %}
-                                ${{ factura.saldo_pendiente|floatformat:2|intcomma }}
+                                {{ factura.tipo_origen|title }}
                             {% endif %}
                         </td>
+                        <td>${{ factura.monto|floatformat:2|intcomma }}</td>
+                        <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
                         <td>{{ factura.fecha_vencimiento|date:"d/b/y"|upper }}</td>
                         <td>{{ factura.dias_vencidos }}</td>
                     </tr>
+                {% endif %}
                     {% empty %}
                     <tr class="no-data-row">
-                        <td colspan="8">No hay facturas vencidas.</td>
+                        <td colspan="9">No hay facturas en este rango.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        
-        <nav aria-label="Paginación">
-            <ul class="pagination">
-            {% if facturas.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.rango %}&rango={{ request.GET.rango }}{% endif %}">Anterior</a>
-            </li>
-            {% else %}
-            <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-            {% endif %}
-            <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
-            {% if facturas.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ facturas.next_page_number }}{% if request.GET.empresa %}&empresa={{ request.GET.empresa }}{% endif %}{% if request.GET.origen %}&origen={{ request.GET.origen }}{% endif %}{% if request.GET.cliente %}&cliente={{ request.GET.cliente }}{% endif %}{% if request.GET.rango %}&rango={{ request.GET.rango }}{% endif %}">Siguiente</a>
-            </li>
-            {% else %}
-            <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-            {% endif %}
-            </ul>
-        </nav>
     </div>
+{% endfor %}
+
+    <div class="mt-4">
+        <h3 class="text-danger">Gran Total: ${{ gran_total|floatformat:2|intcomma }}</h3>
+    </div>
+</div>
 
     <!-- 🔹 Footer -->
     <footer>
-        © {% now "Y" %} GAC. Todos los derechos reservados. <br>
-        Creado por JMEB
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
     </footer>
 
     <!-- Scripts -->
