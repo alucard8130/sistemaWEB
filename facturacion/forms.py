@@ -290,3 +290,15 @@ class TimbrarFacturaForm(forms.Form):
     tax_object = forms.ChoiceField(choices=TAX_OBJECT_CHOICES, label="Objeto de impuesto")
     payment_method = forms.ChoiceField(choices=PAYMENT_METHOD_CHOICES, label="Método de pago")
     payment_form = forms.ChoiceField(choices=PAYMENT_FORM_CHOICES, label="Forma de pago")
+
+
+#reversa cobro erroneo
+class MotivoReversaCobroForm(forms.Form):
+    MOTIVOS_REVERSA = [
+        ('Error captura', 'Error en la captura'),
+        ('Duplicado', 'Pago duplicado'),
+        ('Sin fondos', 'Cheque sin fondos'),
+        ('Error cliente', 'Error por parte del cliente'),
+        ('Error spei', 'Devolución SPEI'),
+    ]
+    motivo = forms.ChoiceField(choices=MOTIVOS_REVERSA, label="Motivo", widget=forms.Select, required=True)    

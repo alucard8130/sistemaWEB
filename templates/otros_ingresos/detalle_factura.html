@@ -61,6 +61,7 @@
                     <th>Forma cobro</th>
                     <th>Registrado por</th>
                     <th>Comentario</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -75,6 +76,11 @@
                     {% else %}
                     <td>{{ cobro.observaciones }}</td>
                     {% endif %}
+                    <td> 
+                    {% if cobro.monto > 0 and cobro.id not in reversados_ids %}
+                        <a href="{% url 'reversa_cobro_erroneo_otros_ingresos' cobro.id factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-danger btn-sm">Cancelar Cobro</a>
+                    {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>

@@ -97,5 +97,3 @@ class PagoGasto(models.Model):
     def __str__(self):
         return f'Pago de ${self.monto} para solicitud {self.gasto.id}'
 
-    
-  

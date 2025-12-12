@@ -127,7 +127,7 @@ class FacturaOtrosIngresos(models.Model):
         return sum(c.monto for c in self.cobros.all())
     
     def actualizar_estatus(self):
-        total_cobrado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
+        total_cobrado = self.cobros.aggregate(total=Sum('monto'))['total'] or 0
 
         if total_cobrado >= self.monto:
             self.estatus = 'cobrada'

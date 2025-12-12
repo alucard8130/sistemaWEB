@@ -6,7 +6,7 @@ from areas.models import AreaComun
 from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
-from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, PagoForm,FacturaCargaMasivaForm, CobroForm, TipoOtroIngresoForm
+from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, TipoOtroIngresoForm
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from principal.models import AuditoriaCambio, PerfilUsuario
 from django.utils.timezone import now
@@ -588,9 +588,54 @@ def registrar_pago(request, factura_id):
 def facturas_detalle(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     cobros = factura.pagos.all().order_by('fecha_pago')
+    reversados_ids = set()
+    for cobro in cobros:
+        if cobro.monto < 0 and cobro.observaciones and "Reversa de pago ID" in cobro.observaciones:
+            # Extrae el ID del pago original
+            try:
+                id_original = int(cobro.observaciones.split("Reversa de pago ID")[1].split(".")[0].strip())
+                reversados_ids.add(id_original)
+            except Exception:
+                pass
     return render(request, 'facturacion/facturas_detalle.html', {
         'factura': factura,
         'cobros': cobros,
+        'reversados_ids': reversados_ids,
+    })
+
+#reversa cobros erroneos
+@login_required
+def reversa_cobro_erroneo(request, pago_id, factura_id):
+    pago = get_object_or_404(Pago, id=pago_id)
+    factura = get_object_or_404(Factura, id=factura_id)
+    next_url = request.GET.get('next')
+
+    if request.method == "POST":
+        form = MotivoReversaCobroForm(request.POST)
+        if form.is_valid():
+            motivo = form.cleaned_data["motivo"]
+            # Registrar un pago negativo
+            Pago.objects.create(
+                factura=factura,
+                monto=-pago.monto,
+                forma_pago=pago.forma_pago,
+                fecha_pago=pago.fecha_pago,
+                observaciones=f"Reversa de pago ID {pago.id}. Motivo: {motivo}",
+                registrado_por=request.user,
+            )
+            factura.actualizar_estatus()
+            factura.save()
+
+            messages.success(request, "Pago reversado correctamente.")
+            return redirect(next_url or 'facturas_detalle', pk=factura.id)
+    else:
+        form = MotivoReversaCobroForm()
+
+    return render(request, "facturacion/reversa_cobro_erroneo.html", {
+        "form": form,
+        "pago": pago,
+        "factura": factura,
+        "next": next_url,
     })
 
 #pagos_por_origen.html
@@ -2189,10 +2234,55 @@ def registrar_cobro_otros_ingresos(request, factura_id):
 def detalle_factura_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
     cobros = factura.cobros.all().order_by('fecha_cobro')
+    reversados_ids = set()
+    for cobro in cobros:
+        if cobro.monto < 0 and cobro.observaciones and "Reversa de pago ID" in cobro.observaciones:
+            # Extrae el ID del pago original
+            try:
+                id_original = int(cobro.observaciones.split("Reversa de pago ID")[1].split(".")[0].strip())
+                reversados_ids.add(id_original)
+            except Exception:
+                pass
     return render(request, 'otros_ingresos/detalle_factura.html', {
         'factura': factura,
         'cobros': cobros,
+        'reversados_ids': reversados_ids,
     })
+
+#reversar cobro otros ingresos
+@login_required
+def reversa_cobro_erroneo_otros_ingresos(request, pago_id, factura_id):
+    cobro = get_object_or_404(CobroOtrosIngresos, id=pago_id)
+    factura = get_object_or_404(FacturaOtrosIngresos, id=factura_id)
+    next_url = request.GET.get('next')
+
+    if request.method == "POST":
+        form = MotivoReversaCobroForm(request.POST)
+        if form.is_valid():
+            motivo = form.cleaned_data["motivo"]
+            # Registrar un pago negativo
+            CobroOtrosIngresos.objects.create(
+                factura=factura,
+                monto=-cobro.monto,
+                forma_cobro=cobro.forma_cobro,
+                fecha_cobro=cobro.fecha_cobro,
+                observaciones=f"Reversa de pago ID {cobro.id}. Motivo: {motivo}",
+                registrado_por=request.user,
+            )
+            factura.actualizar_estatus()
+            factura.save()
+
+            messages.success(request, "Cobro cancelado correctamente.")
+            return redirect(next_url or 'detalle_factura_otros_ingresos', pk=factura.id)
+    else:
+        form = MotivoReversaCobroForm()
+
+    return render(request, "otros_ingresos/reversa_cobro_erroneo_oi.html", {
+        "form": form,
+        "cobro": cobro,
+        "factura": factura,
+        "next": next_url,
+    })    
 
 @login_required
 def reporte_cobros_otros_ingresos(request):    

@@ -28,7 +28,7 @@
     <div class="container-fluid mt-5" encictype="multipart/form-data">
         <div class="row justify-content-center">
             <div class="col-md-4 col-sm-6 mx-auto">
-                <h2 class="form-title text-center mb-0">Detalle Gastos</h2>
+                <h2 class="form-title text-center mb-0">Detalle Solicitud Gastos</h2>
 
                 <!-- Detail of expenses table -->
                 <table class="table table-bordered mb-4">
@@ -59,6 +59,7 @@
                     <th>Forma de Pago</th>
                     <th>Registrado por</th>
                     <th>Comentario</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -73,6 +74,10 @@
                     {% else %}
                     <td>{{ pago.referencia }}</td>
                     {% endif %}
+                    <td>{% if pago.monto > 0 and pago.id not in reversados_ids %}
+                        <a href="{% url 'reversa_pago_gasto' pago.id gasto.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-danger btn-sm">Cancelar Pago</a>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>

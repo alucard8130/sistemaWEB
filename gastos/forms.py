@@ -237,3 +237,14 @@ class PagoGastoForm(forms.ModelForm):
 
 class GastosCargaMasivaForm(forms.Form):
         archivo = forms.FileField(label='Archivo Excel (.xlsx)')     
+
+
+#reversa pagos gastos erroneos
+class MotivoReversaPagoForm(forms.Form):
+    MOTIVOS_REVERSA = [
+        ('Error captura', 'Error en la captura'),
+        ('Duplicado', 'Pago duplicado'),
+        ('Sin fondos', 'Cheque sin fondos'),
+        ('Error spei', 'Devolución SPEI'),
+    ]
+    motivo = forms.ChoiceField(choices=MOTIVOS_REVERSA, label="Motivo", widget=forms.Select, required=True)        

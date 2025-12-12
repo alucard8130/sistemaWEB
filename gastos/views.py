@@ -13,7 +13,7 @@ from empresas.models import Empresa
 from facturacion.models import Pago
 from presupuestos.models import Presupuesto
 from proveedores.models import Proveedor
-from .forms import GastoForm, GastosCargaMasivaForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
+from .forms import GastoForm, GastosCargaMasivaForm, MotivoReversaPagoForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
 from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
 from datetime import datetime
 from django.utils.timezone import localtime
@@ -28,6 +28,7 @@ from django.db.models import ProtectedError
 from django.db.models.functions import ExtractMonth
 from caja_chica.models import GastoCajaChica, ValeCaja
 from num2words import num2words
+from django.utils import timezone
 
 @login_required
 def subgrupo_gasto_crear(request):
@@ -197,10 +198,6 @@ def gastos_lista(request):
     empleado_id = request.GET.get("empleado")
     tipo_gasto = request.GET.get("tipo_gasto")
 
-    # # Si no hay ningún filtro, no mostrar nada
-    # if not (proveedor_id or empleado_id or tipo_gasto):
-    #     gastos = gastos.none()
-    # else:
     if proveedor_id:
             gastos = gastos.filter(proveedor_id=proveedor_id)
     if empleado_id:
@@ -307,12 +304,54 @@ def registrar_pago_gasto(request, gasto_id):
 def gasto_detalle(request, pk):
     gasto = get_object_or_404(Gasto, pk=pk)
     pagos = gasto.pagos.all().order_by('fecha_pago')
-
+    reversados_ids = set()
+    for pago in pagos:
+        if pago.monto < 0 and pago.referencia and "Reverso de pago ID" in pago.referencia:
+            # Extrae el ID del pago original
+            try:
+                id_original = int(pago.referencia.split("Reverso de pago ID")[1].split(".")[0].strip())
+                reversados_ids.add(id_original)
+            except Exception:
+                pass
     return render(request, 'gastos/gasto_detalle.html', {
         'gasto': gasto,
         'pagos': pagos,
+        'reversados_ids': reversados_ids,
     })
 
+#reversa pago gastos
+@login_required
+def reversa_pago_gasto(request, pago_id, gasto_id):
+    pago = get_object_or_404(PagoGasto, id=pago_id)
+    gasto = get_object_or_404(Gasto, id=gasto_id)
+    next_url = request.GET.get('next')
+
+    if request.method == "POST":
+        form = MotivoReversaPagoForm(request.POST)
+        if form.is_valid():
+            motivo = form.cleaned_data["motivo"]
+            motivo_display = dict(MotivoReversaPagoForm.MOTIVOS_REVERSA)[motivo]
+            PagoGasto.objects.create(
+                gasto=gasto,
+                monto=-pago.monto,
+                forma_pago=pago.forma_pago,
+                fecha_pago=pago.fecha_pago,
+                referencia=f"Reverso de pago ID {pago.id}. Motivo: {motivo_display}",
+                registrado_por=request.user
+            )
+            gasto.actualizar_estatus()
+            gasto.save()
+            messages.success(request, "Pago de gasto reversado correctamente.")
+            return redirect(next_url or 'gasto_detalle', pk=gasto.id)
+    else:
+        form = MotivoReversaPagoForm()
+
+    return render(request, "gastos/reversa_pago_gasto.html", {
+        "form": form,
+        "pago": pago,
+        "gasto": gasto,
+        "next": next_url,
+    })
 
 #reporte_pagos.html
 @login_required
