@@ -17,6 +17,7 @@ import openpyxl
 from areas import models
 from core import settings
 from empleados.models import Empleado
+import empresas
 from empresas.models import Empresa
 from clientes.models import Cliente
 from facturacion.forms import TimbrarFacturaForm
@@ -921,7 +922,7 @@ def seleccionar_empresa(request):
     return render(request, "seleccionar_empresa.html", {"empresas": empresas})
 
 
-# modulo visitantes consulta adeudos y pagos de facturas-->
+# modulo visitantes consulta adeudos y pagos de facturas via WEB
 
 def visitante_login(request):
     if request.method == "POST":
@@ -1932,7 +1933,7 @@ def visitante_timbrar_factura(request, pk):
     )
 
 
-# Modulo APIS visitantes Flutter
+# Modulo APIS visitantes via APLICACIONES MOVILES
 
 # Decorador para verificar token de visitante
 def visitante_token_required(view_func):
@@ -1950,7 +1951,6 @@ def visitante_token_required(view_func):
 
 
 # APIS registro visitante
-
 # Lista de empresas
 @api_view(['GET'])
 def api_empresas_lista(request):
@@ -1985,34 +1985,18 @@ def api_areas_por_empresa(request, empresa_id):
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def visitante_registro_api(request):
-    empresa_id = request.data.get("empresa_id")
+    empresa_ids = request.data.getlist("empresa_ids[]")
     locales_numeros = request.data.getlist("locales_numeros[]")
     areas_numeros = request.data.getlist("areas_numeros[]")
-    # Convierte a string
-    locales_numeros = [str(num) for num in locales_numeros]
-    areas_numeros = [str(num) for num in areas_numeros]
     username = request.data.get("username")
     password = request.data.get("password")
     email = request.data.get("email")
     ine_file = request.FILES.get("ine_file")
-    
-    # Imprime los valores recibidos para depuración
-    # print("empresa_id:", empresa_id)
-    # print("locales_numeros:", locales_numeros)
-    # print("areas_numeros:", areas_numeros)
-    # print("username:", username)
-    # print("email:", email)
-    # print("ine_file:", ine_file)
 
-    if not empresa_id:
+    if not empresa_ids:
         return Response({"ok": False, "error": "Debes seleccionar una empresa."}, status=400)
     if not ine_file:
         return Response({"ok": False, "error": "Debes subir tu INE."}, status=400)
-
-    try:
-        empresa = Empresa.objects.get(id=empresa_id)
-    except Empresa.DoesNotExist:
-        return Response({"ok": False, "error": "Empresa no encontrada."}, status=404)
 
     if not locales_numeros and not areas_numeros:
         return Response({"ok": False, "error": "Debes seleccionar al menos un local o un área común."}, status=400)
@@ -2020,87 +2004,60 @@ def visitante_registro_api(request):
     if VisitanteAcceso.objects.filter(username=username).exists():
         return Response({"ok": False, "error": "El usuario ya existe."}, status=400)
 
-    locales = []
-    areas = []
-    errores = []
-
-    # Solo valida locales si hay locales seleccionados y no áreas
-    if locales_numeros and not areas_numeros:
-        for num in locales_numeros:
-            local = LocalComercial.objects.filter(empresa=empresa, numero=num).first()
-            if not local:
-                errores.append(f"Local {num} no existe en la empresa.")
-            elif not local.cliente or local.cliente.email.lower() != email.lower():
-                errores.append(f"El correo no coincide con el cliente del local {num}.")
-            else:
-                locales.append(local)
-    # Solo valida áreas si hay áreas seleccionadas y no locales
-    elif areas_numeros and not locales_numeros:
-        for num in areas_numeros:
-            area = AreaComun.objects.filter(empresa=empresa, numero=num).first()
-            if not area:
-                errores.append(f"Área común {num} no existe en la empresa.")
-            elif not area.cliente or area.cliente.email.lower() != email.lower():
-                errores.append(f"El correo no coincide con el cliente del área {num}.")
-            else:
-                areas.append(area)
-    # Si hay ambos, valida ambos
-    else:
-        for num in locales_numeros:
-            local = LocalComercial.objects.filter(empresa=empresa, numero=num).first()
-            if not local:
-                errores.append(f"Local {num} no existe en la empresa.")
-            elif not local.cliente or local.cliente.email.lower() != email.lower():
-                errores.append(f"El correo no coincide con el cliente del local {num}.")
-            else:
-                locales.append(local)
-        for num in areas_numeros:
-            area = AreaComun.objects.filter(empresa=empresa, numero=num).first()
-            if not area:
-                errores.append(f"Área común {num} no existe en la empresa.")
-            elif not area.cliente or area.cliente.email.lower() != email.lower():
-                errores.append(f"El correo no coincide con el cliente del área {num}.")
-            else:
-                areas.append(area)
-
-    if errores:
-        return Response({"ok": False, "error": " ".join(errores)}, status=400)
-
     visitante = VisitanteAcceso.objects.create(
         username=username,
         email=email,
-        empresa=empresa
+        activo=False,
+        #empresa=empresas.set(empresa)
     )
+    
     visitante.set_password(password)
     visitante.save()
-    if locales:
-        visitante.locales.add(*locales)
-    if areas:
-        visitante.areas.add(*areas)
 
-    token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
+    empresa_objs = Empresa.objects.filter(id__in=empresa_ids)
+    empresas_dict = {str(e.id): e.nombre for e in empresa_objs}
 
-    asunto = "Nuevo visitante registrado en App"
+    # Agrupa locales por empresa
+    locales_por_empresa = {}
+    for item in locales_numeros:
+        if '-' in item:
+            empresa_id, numero = item.split('-', 1)
+            nombre_empresa = empresas_dict.get(empresa_id, f"ID {empresa_id}")
+            locales_por_empresa.setdefault(nombre_empresa, []).append(numero)
+
+    # Agrupa áreas por empresa
+    areas_por_empresa = {}
+    for item in areas_numeros:
+        if '-' in item:
+            empresa_id, numero = item.split('-', 1)
+            nombre_empresa = empresas_dict.get(empresa_id, f"ID {empresa_id}")
+            areas_por_empresa.setdefault(nombre_empresa, []).append(numero)
+
+    # Construye el mensaje agrupado
+    detalle_empresas = ""
+    for empresa in empresa_objs:
+        nombre = empresa.nombre
+        locales_list = locales_por_empresa.get(nombre, [])
+        areas_list = areas_por_empresa.get(nombre, [])
+        detalle_empresas += f"\nEmpresa: {nombre}\n"
+        detalle_empresas += f"  Locales: {', '.join(locales_list) if locales_list else '-'}\n"
+        detalle_empresas += f"  Áreas: {', '.join(areas_list) if areas_list else '-'}\n"
+
+   # Notifica solo al superusuario/admin para validación manual
+    admin_email = settings.EMAIL_HOST_USER
+    asunto = "Solicitud de registro de visitante"
     mensaje = (
-        f"Se ha registrado un nuevo visitante en App.\n\n"
-        f"Usuario: {visitante.username}\n"
-        f"Email: {visitante.email}\n"
-        f"Empresa: {empresa.nombre}\n"
-        f"Locales: {', '.join([str(l.numero) for l in locales]) if locales else '-'}\n"
-        f"Áreas comunes: {', '.join([str(a.numero) for a in areas]) if areas else '-'}\n"
+        f"Nuevo visitante solicita acceso:\n\n"
+        f"Usuario: {username}\n"
+        f"Email: {email}\n"
+        f"{detalle_empresas}\n"
+        f"Revisar y asignar relaciones en el admin.\n"
     )
-    # Agrega ambos correos y elimina duplicados
-    destinatarios = set()
-    if empresa.email:
-        destinatarios.add(empresa.email)
-    admin_email = getattr(settings, "EMAIL_HOST_USER", None)
-    if admin_email:
-        destinatarios.add(admin_email)
     email_msg = EmailMessage(
         subject=asunto,
         body=mensaje,
         from_email=settings.DEFAULT_FROM_EMAIL,
-        to=list(destinatarios),
+        to=[admin_email] if admin_email else [],
     )
     if ine_file:
         email_msg.attach(ine_file.name, ine_file.read(), ine_file.content_type)
@@ -2109,12 +2066,7 @@ def visitante_registro_api(request):
     #print(list(destinatarios))
     return Response({
         "ok": True,
-        "visitante_id": visitante.id,
-        "token": token.key,
-        "empresa_nombre": empresa.nombre,
-        "empresa_email": empresa.email,
-        "locales": [l.numero for l in locales],
-        "areas": [a.numero for a in areas],
+        "mensaje": "Tu registro fue enviado. El sistema validará tus datos y te notificará por correo.",
     })
 
 

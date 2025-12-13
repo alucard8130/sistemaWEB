@@ -28,6 +28,7 @@ def solicitud_publicidad_api(request):
         Detalles de la solicitud:
         --------------------------------------------------
         Nombre del Negocio: {data.get('nombre_negocio')}
+        Descripcion del negocio: {data.get('giro_negocio')}
         Persona de Contacto: {data.get('nombre_responsable')}
         Teléfono: {data.get('telefono')}
         Correo Electrónico: {data.get('email')}
@@ -40,11 +41,11 @@ def solicitud_publicidad_api(request):
         send_mail(
             subject=asunto,
             message=mensaje,
-            from_email=None,  # Usará el DEFAULT_FROM_EMAIL de tu settings
+            from_email=None,
             recipient_list=['publicidad@gesacadmin.com'], # Tu correo
             fail_silently=False,
         )
         
-        return Response({"ok": True, "message": "Correo enviado."})
+        return Response({"ok": True, "message": "Correo enviado. El área de Marketing se pondrá en contacto."})
     except Exception as e:
         return Response({"ok": False, "error": str(e)}, status=500)
