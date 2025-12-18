@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- Main content -->
     <div class="container-fluid mt-4">
 
-        <h2>Estado de Cuenta y Registro de pagos</h2> 
+        <h2>Estado de Cuenta y Registro de depositos</h2> 
         <div class="row">
                 <div class="col-auto">
                     <a href="{% url 'crear_factura' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-crear mb-3">
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td class="text-nowrap">
                         {% if factura.saldo_pendiente > 0 %}    
                             <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success" title="Registrar pago">
-                                Reg.Pago
+                                Reg.Deposito
                                 <i class="bi bi-cash-coin me-1"></i> 
                             </a>
                             <a href="{% url 'editar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-primary" title="Editar">

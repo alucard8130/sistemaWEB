@@ -80,16 +80,20 @@ class Pago(models.Model):
         ('stripe', 'Stripe'),
         ('otro', 'Otro'),
     ]
-    factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos')
+    factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos',null=True, blank=True)
     fecha_pago = models.DateField(blank=True, null=True)
     monto = models.DecimalField(max_digits=20, decimal_places=2)
     forma_pago = models.CharField(max_length=100, choices=FORMAS_PAGO, default='transferencia')
     comprobante = models.FileField(upload_to='comprobantes/', blank=True, null=True)
     registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
     observaciones = models.CharField(max_length=255, blank=True, null=True)
+    identificado= models.BooleanField(default=False)
+    empresa = models.ForeignKey(Empresa, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
+        if self.factura:
+            return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
+        return f"Deposito por identificar de ${self.monto} el {self.fecha_pago}"
     
 
  #modulo otros ingresos   

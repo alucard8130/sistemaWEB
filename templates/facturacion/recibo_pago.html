@@ -3,7 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Recibo de Cobro de Cuota</title>
+    <title>Recibo de Deposito por Cuota</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -115,7 +115,7 @@
             {% if empresa.telefono %}<p>Tel: {{ empresa.telefono }}</p>{% endif %}
             {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
         </div>
-        <div class="recibo-title">RECIBO DE COBRO CUOTAS</div>
+        <div class="recibo-title">RECIBO DE DEPOSITO CUOTAS</div>
         <div style="text-align:right;margin-bottom:10px;">
             <img src="https://barcode.tec-it.com/barcode.ashx?data={{ pago.id }}&code=Code128&dpi=96" alt="Código de barras" style="height:40px;">
         </div>
@@ -149,12 +149,12 @@
             <p><strong>Tipo de Cuota:</strong> {{ factura.tipo_cuota }}</p>
         </div>
         <div class="datos-section">
-            <h4>Datos del Pago</h4>
+            <h4>Datos del Deposito</h4>
             <table class="factura-table">
                 <tr>
-                    <th>Monto Pagado</th>
-                    <th>Fecha de Pago</th>
-                    <th>Método de Pago</th>
+                    <th>Monto Depositado</th>
+                    <th>Fecha de Deposito</th>
+                    <th>Método de Deposito</th>
                     <th>Observaciones</th>
                 </tr>
                 <tr>

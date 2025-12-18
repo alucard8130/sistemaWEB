@@ -87,16 +87,19 @@
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Ingresos</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura Cuotas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Registrar Pago Cuotas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Pago Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Registrar Deposito Cuotas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Depositos Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Generacion Mensual Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Nueva Factura Otros Ingresos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Registrar Pago Otros Ingresos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Pago Otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Registrar Deposito Otros Ingresos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Depositos Otros Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'registrar_deposito_por_identificar' %}">Registrar Deposito no identificado</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_depositos_por_identificar' %}">Asignar Deposito no identificado</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% if empresa.es_plus %}
                         <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>

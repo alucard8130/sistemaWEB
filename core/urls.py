@@ -8,7 +8,7 @@ from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes,
 from areas import views
 from caja_chica.views import comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
-from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos
+from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
 from presupuestos.views import comparativo_anual_ingresos, comparativo_anual_total
@@ -174,6 +174,10 @@ urlpatterns = [
     path('reversa-cobro-erroneo/<int:pago_id>/<int:factura_id>/', reversa_cobro_erroneo, name='reversa_cobro_erroneo'),
     path('reversa-pago-gasto/<int:pago_id>/<int:gasto_id>/', reversa_pago_gasto, name='reversa_pago_gasto'),
     path('reversa-cobro-erroneo-otros-ingresos/<int:pago_id>/<int:factura_id>/', reversa_cobro_erroneo_otros_ingresos, name='reversa_cobro_erroneo_otros_ingresos'),
+    path('pagos-por-identificar/registrar/', registrar_deposito_por_identificar, name='registrar_deposito_por_identificar'),
+    path('pagos-por-identificar/', lista_depositos_por_identificar, name='lista_depositos_por_identificar'),
+    path('pagos/identificar/<int:pago_id>/', identificar_deposito, name='identificar_deposito'),
+    
 ]
 
     

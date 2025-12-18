@@ -6,7 +6,7 @@ from areas.models import AreaComun
 from clientes.models import Cliente
 from empresas.models import Empresa
 from locales.models import LocalComercial
-from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, TipoOtroIngresoForm
+from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, PagoPorIdentificarForm, TipoOtroIngresoForm
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from principal.models import AuditoriaCambio, PerfilUsuario
 from django.utils.timezone import now
@@ -638,8 +638,91 @@ def reversa_cobro_erroneo(request, pago_id, factura_id):
         "next": next_url,
     })
 
+#registro depositos x identificar
+@login_required
+def registrar_deposito_por_identificar(request):
+    if request.method == 'POST':
+        form = PagoPorIdentificarForm(request.POST, request.FILES)
+        if form.is_valid():
+            pago = form.save(commit=False)
+            pago.registrado_por = request.user
+            pago.identificado = False
+            pago.factura = None
+            pago.empresa= request.user.perfilusuario.empresa
+            pago.save()
+            return redirect('lista_depositos_por_identificar')
+    else:
+        form = PagoPorIdentificarForm()
+    return render(request, 'facturacion/registrar_deposito_por_identificar.html', {'form': form})    
+
+@login_required
+def identificar_deposito(request, pago_id):
+    pago = get_object_or_404(Pago, id=pago_id, factura__isnull=True, identificado=False)
+    if request.method == 'POST':
+        factura_id = request.POST.get('factura_id')
+        factura = get_object_or_404(Factura, id=factura_id)
+        saldo_pendiente = Decimal(str(factura.saldo_pendiente))
+
+        if pago.monto > saldo_pendiente:
+            # Asignación parcial: descuenta del depósito y crea un nuevo pago para la factura
+            pago.monto -= saldo_pendiente
+            pago.observaciones = (pago.observaciones or '') + f'Deposito parcialmente asignado a {factura.folio} el {timezone.now().date()}'
+            pago.save()
+            Pago.objects.create(
+                factura=factura,
+                monto=saldo_pendiente,
+                fecha_pago=pago.fecha_pago,
+                forma_pago=pago.forma_pago,
+                observaciones=f'Depósito identificado asignado el {timezone.now().date()}',
+                registrado_por=pago.registrado_por,
+                identificado=True,
+                empresa=pago.empresa,
+                #comprobante=pago.comprobante
+            )
+            messages.success(request, f'Se asignaron ${saldo_pendiente:.2f} a la factura {factura.folio}. El depósito sigue con saldo disponible.')
+        else:
+            # Asignación total
+            pago.factura = factura
+            pago.identificado = True
+            pago.observaciones = (pago.observaciones or '') + f'Deposito identificado el {timezone.now().date()}'
+            pago.save()
+            messages.success(request, f'El depósito fue asignado completamente a la factura {factura.folio}.')
+        factura.actualizar_estatus()
+        return redirect('lista_depositos_por_identificar')
+    facturas = Factura.objects.filter(empresa=pago.empresa, estatus='pendiente').order_by('cliente__nombre', 'fecha_vencimiento')
+    return render(request, 'facturacion/identificar_deposito.html', {'pago': pago, 'facturas': facturas})
+
+
+@login_required
+def lista_depositos_por_identificar(request):
+    empresa= request.user.perfilusuario.empresa
+    pagos = Pago.objects.filter(identificado=False, factura__isnull=True, empresa=empresa).order_by('-fecha_pago')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    if fecha_inicio:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__gte=fecha_i)
+        except Exception:
+            pass
+    if fecha_fin:
+        try:
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__lte=fecha_f)
+        except Exception:
+            pass
+    total_depositos = pagos.aggregate(total=Sum('monto'))['total'] or 0        
+    return render(request, 'facturacion/lista_depositos_por_identificar.html', 
+                  {'pagos': pagos,
+                   'fecha_inicio': fecha_inicio,
+                   'fecha_fin': fecha_fin,
+                    'total_depositos': total_depositos,
+                   })
+
+
 #pagos_por_origen.html
-#reporte cobros cuotas
+#reporte depositos cuotas
 @login_required
 def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')

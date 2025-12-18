@@ -52,13 +52,13 @@
             </div>
         </div>
         
-        <h2>Historial de cobros</h2>
+        <h2>Historial de depositos</h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th>Fecha cobro</th>
-                    <th>Monto</th>
-                    <th>Forma cobro</th>
+                    <th>Fecha deposito</th>
+                    <th>Monto depositado</th>
+                    <th>Forma deposito</th>
                     <th>Registrado por</th>
                     <th>Comentario</th>
                     <th>Acciones</th>
@@ -84,7 +84,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5">No hay cobros registrados.</td>
+                    <td colspan="5">No hay depositos registrados.</td>
                 </tr>
                 {% endfor %}
             </tbody>

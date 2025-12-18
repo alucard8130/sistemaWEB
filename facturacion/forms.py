@@ -82,7 +82,7 @@ class PagoForm(forms.ModelForm):
     class Meta:
         model = Pago
         fields = ['fecha_pago', 'monto', 'forma_pago', 'observaciones']
-        labels = {'observaciones': 'Comentario'}
+        labels = {'observaciones': 'Comentario','forma_pago': 'Forma de depósito','fecha_pago': 'Fecha de depósito','monto': 'Monto depositado'}
         widgets = {
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
@@ -90,7 +90,7 @@ class PagoForm(forms.ModelForm):
             }),
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Monto'
+                'placeholder': 'Importe'
             }),
             'forma_pago': forms.Select(attrs={
                 'class': 'form-select'
@@ -123,6 +123,25 @@ class PagoForm(forms.ModelForm):
         if fecha_pago == None:
             raise forms.ValidationError("La fecha de pago es obligatoria.")
         return fecha_pago
+
+class PagoPorIdentificarForm(forms.ModelForm):
+    class Meta:
+        model=Pago
+        fields=[
+            'monto',
+            'fecha_pago',
+            'forma_pago',
+            'observaciones'
+        ]
+        labesls={
+            'monto': 'monto depositado',
+            'fecha_pago': 'Fecha de deposito',
+            'forma_pago': 'Forma de deposito',}
+        
+        widgets={
+            'fecha_pago': forms.DateInput(attrs={
+                'type': 'date'}),
+        }
 
 
 class FacturaCargaMasivaForm(forms.Form):
@@ -222,7 +241,7 @@ class CobroForm(forms.ModelForm):
     class Meta:
         model = CobroOtrosIngresos
         fields = ['fecha_cobro', 'monto', 'forma_cobro', 'observaciones']
-        labels = {'observaciones': 'Comentario'}
+        labels = {'observaciones': 'Comentario','monto': 'Monto depositado','fecha_cobro': 'Fecha de deposito','forma_cobro': 'Forma de deposito'}
         widgets = {
             'fecha_cobro': forms.DateInput(attrs={
                 'type': 'date',

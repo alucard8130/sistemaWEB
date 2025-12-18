@@ -115,28 +115,37 @@ def reporte_ingresos_vs_gastos(request):
     gastos_caja_chica = GastoCajaChica.objects.all()
     vales_caja_chica = ValeCaja.objects.all()
 
+    # PAGOS POR IDENTIFICAR
+    pagos_por_identificar = Pago.objects.filter(
+        factura__isnull=True,
+        identificado=False)
+
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
         pagos_gastos = pagos_gastos.filter(gasto__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
+        pagos_por_identificar = pagos_por_identificar.filter(empresa_id=empresa_id)
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         pagos_gastos = pagos_gastos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
         vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
+        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
         pagos_gastos = pagos_gastos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
+        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__lte=fecha_fin)
 
     total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
     total_ingresos_cobrados = total_ingresos + total_otros_ingresos
+    total_pagos_por_identificar = pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
     total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
     total_gastos_caja_chica = (
         gastos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
@@ -208,6 +217,7 @@ def reporte_ingresos_vs_gastos(request):
     for x in otros_ingresos_qs:
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f" {tipo}"] = float(x["total"])
+    ingresos_por_origen["Depositos no identificados"] = float(total_pagos_por_identificar)
 
     gastos_agregados = {}
 
@@ -276,6 +286,7 @@ def reporte_ingresos_vs_gastos(request):
             "empresas": empresas,
             "total_ingresos": total_ingresos_cobrados,
             "total_otros_ingresos": total_otros_ingresos,
+            "total_pagos_por_identificar": total_pagos_por_identificar,
             "total_gastos_pagados": total_gastos_pagados,
             "total_gastos_caja_chica": total_gastos_caja_chica,
             "total_vales_caja_chica": total_vales_caja_chica,
@@ -525,6 +536,19 @@ def estado_resultados(request):
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos = gastos.filter(fecha__lte=fecha_fin)
 
+    # PAGOS POR IDENTIFICAR
+    pagos_por_identificar = Pago.objects.filter(
+        factura__isnull=True,
+        identificado=False
+    )
+    if empresa_id:
+        pagos_por_identificar = pagos_por_identificar.filter(empresa_id=empresa_id)
+    if fecha_inicio:
+        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__gte=fecha_inicio)
+    if fecha_fin:
+        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__lte=fecha_fin)
+    total_pagos_por_identificar = pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
+
     saldo_final_flujo = None
     total_gastos = 0.0
     gastos_por_grupo = []
@@ -567,6 +591,7 @@ def estado_resultados(request):
                 (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             )
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
+        ingresos_por_origen["Depositos no identificados"] = float(total_pagos_por_identificar)    
         total_ingresos = float(sum(ingresos_por_origen.values()))
 
         # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
@@ -752,6 +777,7 @@ def estado_resultados(request):
         for x in otros:
             tipo = (x["tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
+        ingresos_por_origen["Depositos no identificados"] = float(total_pagos_por_identificar)    
         total_ingresos = float(sum(ingresos_por_origen.values()))
 
         # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
@@ -914,6 +940,7 @@ def estado_resultados(request):
             "meses_unicos": meses_unicos,
             "anios_unicos": anios_unicos,
             "mes_letra": mes_letra,
+            "total_pagos_por_identificar": total_pagos_por_identificar,
         },
     )
 
