@@ -112,17 +112,44 @@ def crear_factura(request):
                         factura.estatus = 'pendiente'
                         
                         if not factura.fecha_emision:
-                            factura.fecha_emision = timezone.now().date()
+                            #factura.fecha_emision = timezone.now().date()
+                            factura.fecha_emision = factura.fecha_vencimiento
                         factura.save()
                         
-                        # Folio único
-                        count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
+                        
+                        # # Folio único
+                        # count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
+                        # if tipo == 'local':
+                        #     factura.folio = f"CM-F{count:05d}"
+                        # elif tipo == 'area_comun':
+                        #     factura.folio = f"AC-F{count:05d}"
+                        # factura.save()
+                        # Folio único por empresa y tipo
                         if tipo == 'local':
-                            factura.folio = f"CM-F{count:05d}"
+                            prefix = "CM-F"
                         elif tipo == 'area_comun':
-                            factura.folio = f"AC-F{count:05d}"
-                        factura.save()
+                            prefix = "AC-F"
+                       
+                        # Busca el último folio para la empresa y tipo
+                        last_folio = (
+                            Factura.objects
+                            .filter(empresa=factura.empresa, folio__startswith=prefix)
+                            .order_by('-folio')
+                            .values_list('folio', flat=True)
+                            .first()
+                        )
 
+                        if last_folio:
+                            try:
+                                last_num = int(last_folio.replace(prefix, ""))
+                            except Exception:
+                                last_num = 0
+                        else:
+                            last_num = 0
+
+                        factura.folio = f"{prefix}{last_num + 1:05d}"
+                        factura.save()
+                        
                         # Asignar cliente a local/área si está vacío o si hay conflicto autorizado
                         if factura.local and (factura.local.cliente is None or request.user.is_superuser or superuser_auth_ok):
                             factura.local.cliente = cliente
@@ -2204,8 +2231,24 @@ def crear_factura_otros_ingresos(request):
             # Asignar empresa según el cliente seleccionado
             factura.empresa = request.user.perfilusuario.empresa
             # Generar folio único
-            count = FacturaOtrosIngresos.objects.filter(fecha_emision__year=now().year).count() + 1
-            factura.folio = f"OI-F{count:05d}"
+            prefix = "OI-F"
+            last_folio = (
+                FacturaOtrosIngresos.objects
+                .filter(empresa=factura.empresa, folio__startswith=prefix)
+                .order_by('-folio')
+                .values_list('folio', flat=True)
+                .first()
+            )
+            if last_folio:
+                try:
+                    last_num = int(last_folio.replace(prefix, ""))
+                except Exception:
+                    last_num = 0
+            else:
+                last_num = 0
+            factura.folio = f"{prefix}{last_num + 1:05d}"
+            # count = FacturaOtrosIngresos.objects.filter(fecha_emision__year=now().year).count() + 1
+            # factura.folio = f"OI-F{count:05d}"
             #validar observaciones
             if factura.observaciones is None:
                 factura.observaciones = ""
