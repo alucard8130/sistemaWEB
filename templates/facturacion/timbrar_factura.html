@@ -13,6 +13,7 @@
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %}
 {% endif %}
+{% include 'loading_overlay.html' %}
 <body>
 <div class="container mt-4">
 <h3>Timbrar Factura {{ factura.folio }}</h3>

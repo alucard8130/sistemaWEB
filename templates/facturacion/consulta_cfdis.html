@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 {% include 'navbar.html' %}
+{% include 'loading_overlay.html' %}
+
 {% if messages %}
   {% for message in messages %}
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>

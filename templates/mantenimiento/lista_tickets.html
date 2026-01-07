@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+    {% include 'loading_overlay.html' %}
     <!-- Block for displaying messages -->
         {% if messages %}
         {% for message in messages %}

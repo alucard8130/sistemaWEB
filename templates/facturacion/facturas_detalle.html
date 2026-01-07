@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+    {% include 'loading_overlay.html' %}
     {% if not es_visitante %}
         {% include 'navbar.html' %}
     {% endif %}

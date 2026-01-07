@@ -10,6 +10,8 @@
 </head>
 <body>
   {% include 'navbar.html' %}
+  {% include 'loading_overlay.html' %}
+  
   <div class="container mt-4">
     <h3>Comprobar vale #{{ vale.id }}</h3>
     <p>Fondo: {{ vale.fondeo.numero_cheque }} — Importe del vale: ${{ vale.importe|floatformat:2|intcomma }}</p>

@@ -52,6 +52,9 @@ window.sentryOnLoad = function() {
     <!-- 🔹 Navbar superior -->
     {% include 'navbar.html' %}
 
+    <!-- 🔹 Loading Overlay -->
+    {% include 'loading_overlay.html' %}
+    <!-- 🔹 Main Content -->
 {% if messages %}
   {% for message in messages %}
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
