@@ -1392,7 +1392,7 @@ def dashboard_pagos(request):
         'anio_seleccionado': anio_seleccionado,
     })
 
-
+#reporte antiguedad saldos
 @login_required
 def cartera_vencida(request):
     hoy = timezone.now().date()

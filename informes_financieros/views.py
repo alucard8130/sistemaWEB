@@ -1410,7 +1410,7 @@ def exportar_estado_resultados_excel(request):
     wb.save(response)
     return response
 
-#reporte detalle cartera
+#reporte detalle saldos
 @login_required
 def cartera_vencida_por_origen(request):
     empresa_id = request.GET.get("empresa")
