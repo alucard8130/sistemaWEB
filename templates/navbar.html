@@ -271,18 +271,3 @@
     </div>
   </div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Selecciona todos los enlaces del navbar que llevan a reportes
-  document.querySelectorAll('a').forEach(function(link) {
-    // Opcional: filtra solo los enlaces de reportes si es necesario
-    link.addEventListener('click', function(e) {
-      // Solo para enlaces internos (no #, ni javascript:)
-      if (link.href && !link.href.startsWith('javascript:') && !link.href.startsWith('#')) {
-        var overlay = document.getElementById('loading-overlay');
-        if (overlay) overlay.style.display = 'flex';
-      }
-    });
-  });
-});
-</script>
