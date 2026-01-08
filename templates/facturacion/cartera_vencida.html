@@ -22,19 +22,17 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    {% include 'navbar.html' %}
-    {% include 'loading_overlay.html' %}
-
-    <div class="container-fluid mt-4">
-        <h2>Reporte Antiguedad de Saldos</h2>
-
-        <!-- Block for displaying messages -->
+            <!-- Block for displaying messages -->
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
 
+    <div class="container-fluid mt-4">
+        <h2>Reporte Antiguedad de Saldos</h2>
         <form method="get" class="row g-2 mb-3">
             {% if request.user.is_superuser %}
             <div class="col-md-2">

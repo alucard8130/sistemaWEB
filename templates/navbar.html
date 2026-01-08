@@ -88,15 +88,15 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'crear_factura' %}">Nueva Factura Cuotas</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_facturas' %}">Registrar Deposito Cuotas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Depositos Cuotas</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Depositos Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'facturar_mes' %}">Generacion Mensual Cuotas</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'facturar_mes' %}">Generacion Mensual Cuotas</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}">Nueva Factura Otros Ingresos</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_facturas_otros_ingresos' %}">Registrar Deposito Otros Ingresos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Depositos Otros Ingresos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Depositos Otros Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'registrar_deposito_por_identificar' %}">Registrar Deposito no identificado</a></li>
                         <li><a class="dropdown-item" href="{% url 'lista_depositos_por_identificar' %}">Asignar Deposito no identificado</a></li>
@@ -115,9 +115,9 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'cartera_vencida' %}">Reporte Antiguedad Saldos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'cartera_vencida_por_origen' %}">Reporte Detalle Saldos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'dashboard_saldos' %}">Dashboard Saldos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida' %}">Reporte Antiguedad Saldos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}">Reporte Detalle Saldos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}">Dashboard Saldos</a></li>
                         <li><hr class="dropdown-divider"></li>                     
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
                     </ul>
@@ -152,10 +152,10 @@
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
                         {% endif %}
-                        <li><a class="dropdown-item" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Gastos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Gastos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Gastos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Gastos</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_retenciones_gastos' %}">Reporte Retencion Impuestos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'reporte_retenciones_gastos' %}">Reporte Retencion Impuestos</a></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
                         {% endif %}
@@ -178,8 +178,8 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Presupuesto</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
                         <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Ingresos</a></li>  
@@ -189,15 +189,15 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Reportes</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'estado_resultados' %}">Estado de Resultados</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}">Estado de Resultados</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'comparativo_anual_total' %}">Comparativo Presupuestos Gtos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_total' %}">Comparativo Presupuestos Gtos</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'comparativo_anual_ingresos' %}">Comparativo Presupuestos Ing</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_ingresos' %}">Comparativo Presupuestos Ing</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos y Gastos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos y Gastos</a></li>
                     </ul>
                 </li>
                 <!-- MENÚ COMUNICACION -->
@@ -271,3 +271,13 @@
     </div>
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>

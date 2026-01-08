@@ -73,7 +73,6 @@
               <th>Depósito</th>
               <th>Giro</th>
               <th>Tipo</th>
-              {% comment %} <th>Cantidad</th> {% endcomment %}
               <th>Fecha Ini</th>
               <th>Fecha Fin</th>
               <th>Status</th>
@@ -105,7 +104,7 @@
               <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
               <td>
                 {% if area.estado_vigencia == "Vencido" %}
-                <span class="badge bg-danger" title="Edita Fechas para Generar Contrato">{{ area.estado_vigencia }}</span>
+                <span class="badge bg-danger" title="Edita Fechas para Renovar Contrato">{{ area.estado_vigencia }}</span>
                 {% else %}
                 <span class="badge bg-success">{{ area.estado_vigencia }}</span>
                 {% endif %}
@@ -125,7 +124,7 @@
                   <i class="bi bi-file-earmark-text"></i>
                 </a>
                 {% else %}
-                <spam class="btn btn-sm btn-secondary m-1 disabled" title="Contrato no disponible">
+                <spam class="btn btn-sm btn-secondary m-1" title="Contrato no disponible">
                   Contrato
                   <i class="bi bi-file-earmark-text"></i>
                 </spam>
