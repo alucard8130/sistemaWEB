@@ -4,7 +4,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
-from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, toggle_activo_visitante, toggle_reporte_visitante
+from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, resetear_empresa, toggle_activo_visitante, toggle_reporte_visitante
 from areas import views
 from caja_chica.views import comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
 from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
@@ -36,6 +36,7 @@ urlpatterns = [
     path('', bienvenida, name='bienvenida'),
     path('empresas/nueva/', empresa_crear, name='empresa_crear'),
     path('empresas/', empresa_lista, name='empresa_lista'),
+    path('empresas/resetear/<int:empresa_id>/', resetear_empresa, name='resetear_empresa'),
     path('empresas/editar/<int:pk>/', empresa_editar, name='empresa_editar'),
     path('empresas/eliminar/<int:pk>/', empresa_eliminar, name='empresa_eliminar'),
     path('locales/', lista_locales, name='lista_locales'),

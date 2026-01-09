@@ -65,7 +65,7 @@
                 </button>
                 <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-clockwise"></i> Limpiar</a>
-                <a href="{% url 'exportar_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success">
+                <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success">
                     <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
                 </a>
             </div>
@@ -106,7 +106,7 @@
                                     {{ pago.gasto.empleado.nombre }}
                                 {% endif %}
                             </td>
-                            <td>{{ pago.gasto.tipo_gasto.nombre }}</td>
+                            <td>{{ pago.gasto.tipo_gasto }}</td>
                             <td>{{ pago.get_forma_pago_display }}</td>
                             {% if pago.referencia %}
                                 <td>{{ pago.referencia }}</td>

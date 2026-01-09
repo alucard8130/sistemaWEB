@@ -16,11 +16,12 @@ urlpatterns = [
     path('detalle/<int:pk>/', views.gasto_detalle, name='gasto_detalle'),
     path('reporte-pagos/', views.reporte_pagos_gastos, name='reporte_pagos_gastos'),
     path('gastos/dashboard-pagos/', views.dashboard_pagos_gastos, name='dashboard_pagos_gastos'),
-    path('gastos/exportar-excel/', views.exportar_pagos_gastos_excel, name='exportar_pagos_gastos_excel'),
     path('subgrupos/', views.subgrupos_gasto_lista, name='subgrupos_gasto_lista'),
     path('subgrupos/<int:pk>/eliminar/', views.subgrupo_gasto_eliminar, name='subgrupo_gasto_eliminar'),
     path('gastos/carga-masiva/', views.carga_masiva_gastos, name='carga_masiva_gastos'),
     path('gastos/descargar-plantilla/', views.descargar_plantilla_gastos, name='descargar_plantilla_gastos'),
     path('exportar_gastos_lista_excel/', views.exportar_gastos_lista_excel, name='exportar_gastos_lista_excel'),
+    path('exportar_reporte_pagos_gastos_excel/', views.exportar_reporte_pagos_gastos_excel, name='exportar_reporte_pagos_gastos_excel'),
+
 
 ]

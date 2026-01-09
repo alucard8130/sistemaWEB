@@ -707,43 +707,43 @@ def dashboard_pagos_gastos(request):
 
 #exportar pagos de gastos a Excel
 @login_required
-def exportar_pagos_gastos_excel(request):
+def exportar_reporte_pagos_gastos_excel(request):
     es_super = request.user.is_superuser
-    anio = request.GET.get('anio')
-    if anio and anio.isdigit():
-        anio = int(anio)
-    else:
-        anio = datetime.now().year
-    empresa_id = request.GET.get('empresa')
-    proveedor_id = request.GET.get('proveedor')
-    empleado_id = request.GET.get('empleado')
-    forma_pago = request.GET.get('forma_pago')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
+    pagos = PagoGasto.objects.select_related(
+        "gasto", "gasto__empresa", "gasto__proveedor", "gasto__empleado"
+    )
 
-    # Filtro de empresa
-    if es_super and empresa_id:
-        gastos = Gasto.objects.filter(empresa_id=empresa_id, fecha__year=anio)
-    else:
-        empresa = request.user.perfilusuario.empresa
-        gastos = Gasto.objects.filter(empresa=empresa, fecha__year=anio)
+    empresa_id = request.GET.get("empresa")
+    proveedor_id = request.GET.get("proveedor")
+    empleado_id = request.GET.get("empleado")
+    forma_pago = request.GET.get("forma_pago")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
 
-    # Otros filtros
+    if not es_super:
+        pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
+    else:
+        if empresa_id:
+            pagos = pagos.filter(gasto__empresa_id=empresa_id)
+
     if proveedor_id and proveedor_id.isdigit():
-        gastos = gastos.filter(proveedor_id=proveedor_id)
+        pagos = pagos.filter(gasto__proveedor_id=proveedor_id)
     if empleado_id and empleado_id.isdigit():
-        gastos = gastos.filter(empleado_id=empleado_id)
-    if fecha_inicio:
-        gastos = gastos.filter(fecha__gte=fecha_inicio)
-    if fecha_fin:
-        gastos = gastos.filter(fecha__lte=fecha_fin)
-
-    # Solo los pagos normales
-    pagos = PagoGasto.objects.filter(gasto__in=gastos)
+        pagos = pagos.filter(gasto__empleado_id=empleado_id)
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
+    if fecha_inicio:
+        pagos = pagos.filter(fecha_pago__gte=parse_date(fecha_inicio))
+    if fecha_fin:
+        pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
 
-    # --- Generar Excel ---
+    pagos_list = list(pagos)
+    for p in pagos_list:
+        p.tipo_pago = 'normal'
+        p.fecha = p.fecha_pago
+
+    pagos_list.sort(key=lambda x: x.fecha, reverse=True)
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Pagos de Gastos"
@@ -752,8 +752,7 @@ def exportar_pagos_gastos_excel(request):
         "Forma de pago", "Monto", "Estatus"
     ])
 
-    # Pagos normales
-    for pago in pagos.select_related('gasto', 'gasto__empresa', 'gasto__proveedor', 'gasto__empleado'):
+    for pago in pagos_list:
         gasto = pago.gasto
         origen = gasto.proveedor.nombre if gasto.proveedor else (
             gasto.empleado.nombre if gasto.empleado else ''
@@ -772,7 +771,7 @@ def exportar_pagos_gastos_excel(request):
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    filename = f"pagos_gastos_{anio}.xlsx"
+    filename = "reporte_pagos_gastos.xlsx"
     response['Content-Disposition'] = f'attachment; filename={filename}'
     wb.save(response)
     return response
