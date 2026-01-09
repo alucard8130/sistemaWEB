@@ -87,6 +87,7 @@ class SeguimientoTicket(models.Model):
 
 # Modulo de acceso para visitantes    
 class VisitanteAcceso(models.Model):
+    nombre=models.CharField(max_length=100, blank=True,null=True, verbose_name="Nombre Completo")
     username = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=128) 
     #empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)

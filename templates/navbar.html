@@ -26,9 +26,9 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Configuración</a>
                     <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Panel Administrador</a></li>
                         <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Usuarios</a></li>
-                        <li><a class="dropdown-item" href="{% url 'usuarios_demo' %}">Usuarios Demo</a></li>
+                        <li><a class="dropdown-item" href="{% url 'anuncios_publicos' %}">Anuncios Institucionales</a></li>
                         <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
                         <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
                         <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
@@ -36,9 +36,10 @@
                         <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
                         <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
                         <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Subir Estado de Cuenta</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_usuarios_normales' %}">Usuarios Normales</a></li>
-                        <li><a class="dropdown-item" href="{% url 'lista_usuarios_visitantes' %}">Usuarios Visitantes</a></li>
-                        <li><a class="dropdown-item" href="{% url 'anuncios_publicos' %}">Anuncios Institucionales</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'usuarios_demo' %}">Usuarios GESAC Demo</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_usuarios_normales' %}">Usuarios GESAC Paga</a></li>
+                        <li><a class="dropdown-item" href="{% url 'lista_usuarios_visitantes' %}">Usuarios Condominos</a></li>
                         </ul>
                 </li>
                 {% endif %}

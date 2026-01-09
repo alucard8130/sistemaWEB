@@ -3,7 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Usuarios lista</title>
+    <title>Usuarios condominos lista</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -15,13 +15,16 @@
 </head>
 <body>
     {% include 'navbar.html' %}
-    <h2>Usuarios Visitantes</h2>
-    <table border="1">
-        <>
+    <div class="mt-4">
+    <h2>Usuarios Condominos</h2>
+    </div>
+    <table border="3" class="table table-striped mt-3">
             <th>ID</th>
             <th>Usuario</th>
             <th>Email</th>
-            <th>Empresa</th>
+            <th>Empresas</th>
+            <th>Locales</th>
+            <th>Areas</th>
             <th>Acceso Reportes</th>
             <th>Activo</th>
             <th>Fecha de registro</th>
@@ -30,8 +33,28 @@
             <td>{{ v.id }}</td>
             <td>{{ v.username }}</td>
             <td>{{ v.email }}</td>
-            <td>{{ v.empresa.nombre }}</td>
             <td>
+                {% for empresa in v.empresas.all %}
+                    {{ empresa.nombre }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    Ninguna
+                {% endfor %}
+            </td>
+            <td>
+                {% for local in v.locales.all %}
+                    {{ local.numero }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    Ninguno
+                {% endfor %}
+            </td>
+            <td>
+                {% for area in v.areas.all %}
+                    {{ area.numero }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    Ninguna
+                {% endfor %}
+            </td>
+<td>
     <form method="post" action="{% url 'toggle_reporte_visitante' v.id %}" style="display:inline;">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm {% if v.acceso_api_reporte %}btn-success{% else %}btn-secondary{% endif %}">

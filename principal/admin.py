@@ -33,33 +33,16 @@ class VisitanteAccesoForm(forms.ModelForm):
         else:
             self.fields['locales'].queryset = LocalComercial.objects.none()
             self.fields['areas'].queryset = AreaComun.objects.none()
-        # if 'empresa' in self.data:
-        #     try:
-        #         empresa_id = int(self.data.get('empresa'))
-        #         self.fields['locales'].queryset = LocalComercial.objects.filter(empresa_id=empresa_id)
-        #         self.fields['areas'].queryset = AreaComun.objects.filter(empresa_id=empresa_id)
-        #     except (ValueError, TypeError):
-        #         pass
-        # elif self.instance.pk:
-        #     empresa = self.instance.empresa
-        #     self.fields['locales'].queryset = LocalComercial.objects.filter(empresa=empresa)
-        #     self.fields['areas'].queryset = AreaComun.objects.filter(empresa=empresa)
-        # else:
-        #     self.fields['locales'].queryset = LocalComercial.objects.none()
-        #     self.fields['areas'].queryset = AreaComun.objects.none()
+
 
 class VisitanteAccesoAdmin(admin.ModelAdmin):
     form = VisitanteAccesoForm
-    list_display = ('username', 'get_empresas', 'acceso_api_reporte', 'get_locales', 'get_areas', 'es_admin')
+    list_display = ('username', 'get_empresas', 'acceso_api_reporte', 'get_locales', 'get_areas', 'es_admin', 'email', 'activo')
     search_fields = ('username', 'empresas__nombre', 'locales__numero', 'areas__nombre', 'es_admin')
     list_filter = ('empresas', 'locales', 'areas', 'es_admin')
-    fields = ('username', 'password', 'es_admin', 'empresas', 'acceso_api_reporte', 'locales', 'areas')
+    fields = ('username', 'password', 'es_admin', 'empresas', 'acceso_api_reporte', 'locales', 'areas','email','activo')
     filter_horizontal = ('empresas', 'locales', 'areas')
-    # list_display = ('username', 'empresa','acceso_api_reporte', 'get_locales', 'get_areas', 'es_admin')
-    # search_fields = ('username', 'empresa__nombre', 'locales__numero', 'areas__nombre', 'es_admin')
-    # list_filter = ('empresa', 'locales', 'areas', 'es_admin')
-    # fields = ('username', 'password', 'es_admin','empresa','acceso_api_reporte', 'locales', 'areas')
-    # filter_horizontal = ('locales', 'areas')
+
 
     def get_empresas(self, obj):
         return ", ".join([str(e) for e in obj.empresas.all()])

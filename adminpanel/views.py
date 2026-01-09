@@ -11,7 +11,7 @@ def lista_usuarios_normales(request):
 
 @staff_member_required
 def lista_usuarios_visitantes(request):
-    visitantes = VisitanteAcceso.objects.select_related("empresa").all().order_by('-id')
+    visitantes = VisitanteAcceso.objects.all().order_by('-id')
     return render(request, "adminpanel/lista_visitantes.html", {"visitantes": visitantes})
 
 @staff_member_required

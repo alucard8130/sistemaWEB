@@ -26,6 +26,7 @@ from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from presupuestos.models import Presupuesto, PresupuestoIngreso
+from principal.admin import VisitanteAccesoForm
 from principal.forms import TemaGeneralForm, VisitanteLoginForm
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
@@ -50,7 +51,7 @@ from django.urls import reverse
 from django.conf import settings
 import requests
 from decimal import Decimal
-from .forms import AvisoForm, CSDUploadForm, EstadoCuentaUploadForm
+from .forms import AvisoForm, CSDUploadForm, EstadoCuentaUploadForm, VisitanteRegistroForm
 import base64
 import io
 import zipfile
@@ -73,6 +74,7 @@ from django.db.models import Case, When, Value, CharField, Q, DecimalField, Expr
 from django.db.models.functions import Coalesce
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models.functions import ExtractMonth, ExtractYear
+from django.contrib.auth.hashers import make_password
 
 
 
@@ -924,6 +926,158 @@ def seleccionar_empresa(request):
 
 # modulo visitantes consulta adeudos y pagos de facturas via WEB
 
+# principal/views.py
+def registro_visitante(request):
+    empresas = Empresa.objects.all()
+    locales = LocalComercial.objects.all()
+    areas = AreaComun.objects.all()
+
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        email = request.POST.get('email')
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        password2 = request.POST.get('password2')
+
+        error = False
+        if password != password2:
+            messages.error(request, "Las contraseñas no coinciden.")
+            error = True
+        if VisitanteAcceso.objects.filter(email=email).exists():
+            messages.error(request, "El correo ya está registrado.")
+            error = True
+        if VisitanteAcceso.objects.filter(username=username).exists():
+            messages.error(request, "El usuario ya está registrado.")
+            error = True
+
+        # Para el JS dinámico
+        empresas_json = [
+            {
+                'id': e.id,
+                'nombre': e.nombre,
+                'locales': [{'id': l.id, 'numero': l.numero} for l in locales.filter(empresa=e)],
+                'areas': [{'id': a.id, 'numero': a.numero} for a in areas.filter(empresa=e)],
+            }
+            for e in empresas
+        ]
+
+        if error:
+            # Renderiza el formulario con los datos ya capturados
+            return render(request, 'visitantes/registro_visitante.html', {
+                'empresas': empresas,
+                'empresas_json': json.dumps(empresas_json),
+                'nombre': nombre,
+                'email': email,
+                'username': username,
+            })
+
+        # Procesar bloques dinámicos
+        bloques = []
+        for key in request.POST:
+            if key.startswith('empresa_'):
+                idx = key.split('_')[1]
+                empresa_id = request.POST.get(f'empresa_{idx}')
+                local_ids = request.POST.getlist(f'locales_{idx}')
+                area_ids = request.POST.getlist(f'areas_{idx}')
+                if empresa_id:
+                    bloques.append({
+                        'empresa': Empresa.objects.get(id=empresa_id),
+                        'locales': LocalComercial.objects.filter(id__in=local_ids),
+                        'areas': AreaComun.objects.filter(id__in=area_ids),
+                    })
+
+        # Crear visitante
+        visitante = VisitanteAcceso.objects.create(
+            nombre=nombre,
+            email=email,
+            username=username,
+            password=make_password(password),
+            activo=False
+        )
+        # Email de confirmación al visitante
+        mensaje_visitante = (
+            f"Hola {nombre},\n\n"
+            "Tu registro ha sido recibido y está pendiente de validación por el administrador. "
+            "Te notificaremos cuando tu cuenta sea activada.\n\n"
+            "Atentamente,\nEl equipo de Softheron.\n\n"
+            "Gracias. \n\n"
+            "Página de Softheron: https://paginaweb-ro9v.onrender.com \n\n"
+            
+        )
+        send_mail(
+            'Registro recibido - Pendiente de validación',
+            mensaje_visitante,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=True,
+        )
+        # Asignar empresas, locales y áreas
+        for bloque in bloques:
+            visitante.empresas.add(bloque['empresa'])
+            visitante.locales.add(*bloque['locales'])
+            visitante.areas.add(*bloque['areas'])
+
+        # Email resumen al admin
+        resumen = f"Nuevo usuario condómino registrado:\nNombre: {nombre}\nEmail: {email}\nUsuario: {username}\n\nEmpresas y asignaciones:\n"
+        for bloque in bloques:
+            resumen += f"- Empresa: {bloque['empresa'].nombre}\n"
+            resumen += f"  Locales: {', '.join([l.numero for l in bloque['locales']]) or 'Ninguno'}\n"
+            resumen += f"  Áreas: {', '.join([a.numero for a in bloque['areas']]) or 'Ninguna'}\n"
+        send_mail(
+            'Nuevo registro de usuario condómino',
+            resumen,
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.EMAIL_HOST_USER],
+            fail_silently=True,
+        )
+        return render(request, 'visitantes/registro_exitoso.html')
+
+    # Para el JS dinámico
+    empresas_json = [
+        {
+            'id': e.id,
+            'nombre': e.nombre,
+            'locales': [{'id': l.id, 'numero': l.numero} for l in locales.filter(empresa=e)],
+            'areas': [{'id': a.id, 'numero': a.numero} for a in areas.filter(empresa=e)],
+        }
+        for e in empresas
+    ]
+
+    return render(request, 'visitantes/registro_visitante.html', {
+        'empresas': empresas,
+        'empresas_json': json.dumps(empresas_json),
+    })
+
+from django.utils.crypto import get_random_string
+
+def visitante_recuperar_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            visitante = VisitanteAcceso.objects.get(email=email)
+            nueva_password = get_random_string(8)
+            visitante.password = make_password(nueva_password)
+            visitante.save()
+            mensaje = (
+                f"Hola {visitante.nombre},\n\n"
+                f"Tu nueva contraseña es: {nueva_password}\n"
+                "Accesa con ella en https://adminsoftheron.onrender.com/visitante/login/ \n\n"
+                "Atentamente,\nEl equipo de Softheron. \n\n"
+                "Pagina de Softheron: https://paginaweb-ro9v.onrender.com \n\n" 
+            )
+            send_mail(
+                'Recuperación de contraseña',
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [visitante.email],
+                fail_silently=True,
+            )
+            messages.success(request, "Se ha enviado una nueva contraseña a tu correo.")
+        except VisitanteAcceso.DoesNotExist:
+            messages.error(request, "No se encontró un usuario con ese correo.")
+    return render(request, 'visitantes/recuperar_password.html')
+
+
 def visitante_login(request):
     if request.method == "POST":
         form = VisitanteLoginForm(request.POST)
@@ -932,6 +1086,9 @@ def visitante_login(request):
             password = form.cleaned_data["password"]
             try:
                 visitante = VisitanteAcceso.objects.get(username=username)
+                if not visitante.activo:
+                    messages.error(request, "Tu cuenta aún no ha sido activada por el administrador.")
+                    return render(request, "visitantes/login.html", {"form": form})
                 if check_password(password, visitante.password):
                     request.session["visitante_id"] = visitante.id
                     return redirect("visitante_seleccionar_empresa")

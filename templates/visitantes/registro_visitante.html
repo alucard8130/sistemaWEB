@@ -1,0 +1,179 @@
+{% load static %}
+{% load tz %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro condominos</title>
+    <!-- Bootstrap base styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS --> 
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        .remove-block { cursor: pointer; color: #dc3545; }
+    </style>
+</head>
+<body>
+{% include 'loading_overlay.html' %}
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+
+<div class="container mt-1">
+    <h2>Registro de Condóminos</h2>
+    <button type="button" class="btn btn-ayuda mb-3" data-bs-toggle="modal" data-bs-target="#ayudaModal" style="color: red;">
+    Ayuda Registro
+</button>
+    <form method="post" id="registroForm">
+        {% csrf_token %}
+        <div class= 'container mt-1' style="max-width: 500px;">
+        <div class="mb-1">
+            <label>Nombre</label>
+            <input type="text" name="nombre" class="form-control" required value="{{ nombre|default:'' }}">
+        </div>
+        <div class="mb-1">
+            <label>Email</label>
+            <input type="email" name="email" class="form-control" required value="{{ email|default:'' }}">
+        </div>
+        <div class="mb-1">
+            <label>Usuario</label>
+            <input type="text" name="username" class="form-control" required value="{{ username|default:'' }}">
+        </div>
+        <div class="mb-1">
+            <label>Contraseña</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+        <div class="mb-1">
+            <label>Confirmar Contraseña</label>
+            <input type="password" name="password2" class="form-control" required>
+        </div>
+        </div>
+        <div class='container-fluid mt-4' style="max-width: 800px;">
+        <h5>Empresas, Locales y Áreas</h5>
+        <div id="bloques-container"></div>
+        <button type="button" class="btn btn-secondary" id="add-bloque">Agregar Empresa</button>
+        <button type="submit" class="btn btn-primary">Registrar</button>
+        <button type="reset" class="btn btn-warning">Limpiar</button>
+        <button type="button" class="btn btn-danger" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
+        </div>
+    </form>
+</div>
+
+<script>
+const empresasData = {{ empresas_json|safe }};
+let bloqueIdx = 0;
+
+function crearBloque(idx) {
+    let empresaOptions = '<option value="">Seleccione empresa</option>';
+    empresasData.forEach(e => {
+        empresaOptions += `<option value="${e.id}">${e.nombre}</option>`;
+    });
+
+    return `
+    <div class="card mb-3 bloque-empresa" data-idx="${idx}">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>Empresa y asignaciones</strong>
+                <span class="remove-block" onclick="removerBloque(${idx})">&times; Quitar</span>
+            </div>
+            <div class="mb-2">
+                <label>Empresa</label>
+                <select name="empresa_${idx}" class="form-select empresa-select" data-idx="${idx}" required>
+                    ${empresaOptions}
+                </select>
+            </div>
+            <div class="mb-2">
+                <label>Locales</label>
+                <select name="locales_${idx}" class="form-select locales-select" data-idx="${idx}" multiple>
+                    <option value="">Seleccione empresa primero</option>
+                </select>
+            </div>
+            <div class="mb-2">
+                <label>Áreas</label>
+                <select name="areas_${idx}" class="form-select areas-select" data-idx="${idx}" multiple>
+                    <option value="">Seleccione empresa primero</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+function actualizarLocalesAreas(idx, empresaId) {
+    const empresa = empresasData.find(e => e.id == empresaId);
+    const localesSelect = document.querySelector(`select[name="locales_${idx}"]`);
+    const areasSelect = document.querySelector(`select[name="areas_${idx}"]`);
+    if (localesSelect && areasSelect) {
+        if (empresa) {
+            localesSelect.innerHTML = empresa.locales.map(l => `<option value="${l.id}">${l.numero}</option>`).join('');
+            areasSelect.innerHTML = empresa.areas.map(a => `<option value="${a.id}">${a.numero}</option>`).join('');
+        } else {
+            localesSelect.innerHTML = '<option value="">Seleccione empresa primero</option>';
+            areasSelect.innerHTML = '<option value="">Seleccione empresa primero</option>';
+        }
+    }
+}
+
+function removerBloque(idx) {
+    document.querySelector(`.bloque-empresa[data-idx="${idx}"]`).remove();
+}
+
+document.getElementById('add-bloque').addEventListener('click', function() {
+    const idx = bloqueIdx;
+    const container = document.getElementById('bloques-container');
+    container.insertAdjacentHTML('beforeend', crearBloque(idx));
+    const empresaSelect = document.querySelector(`select[name="empresa_${idx}"]`);
+    empresaSelect.addEventListener('change', function() {
+        actualizarLocalesAreas(idx, this.value);
+    });
+    bloqueIdx++;
+});
+
+// Al menos un bloque al cargar
+window.onload = function() {
+    document.getElementById('add-bloque').click();
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+<!-- 🔹 Footer -->
+    <footer>
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
+    </footer>
+    <script src="{% static 'js/script.js' %}"></script>
+</html>
+<!-- Modal de ayuda -->
+<div class="modal fade" id="ayudaModal" tabindex="-1" aria-labelledby="ayudaModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ayudaModalLabel">Pasos para el registro</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <ol>
+          <li>Ingresa tu nombre, correo y usuario.</li>
+          <li>Elige una contraseña y confírmala.</li>
+          <li>Si tienes locales y/o areas en mas de una empresa dar clic en botón agregar empresa.</li>
+          <li>Luego selecciona los locales y/o áreas correspondientes a cada empresa seleccionada.</li>
+          <li>Para eliminar una empresa dar clic en la palabra 'x Quitar'.</li>
+          <li>Haz clic en "Registrar".</li>
+          <li>Recibirás un correo de confirmación y el administrador validará tu registro.</li>
+        </ol>
+        <p>Si tienes dudas, contacta al administrador del sistema <a href="mailto:adminsoftheron@gesacadmin.com">aquí</a>.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>

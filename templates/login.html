@@ -42,8 +42,10 @@
         <div class="login-box">
             <div class="text-center mb-4">
                 <h3 class="fw-bold mb-1 login-title border-bottom pb-2 d-inline-block">SISTEMA WEB ADMINISTRATIVO CONDOMINAL</h3>
+                <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="login-logo mt-0 mb-3">
+                <h2 class="fw-bold mb-1 login-title border-bottom pb-2 d-inline-block">Acceso Usuarios Sistema</h2>
             </div>
-            <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="login-logo mt-0 mb-3">
+            
             <form method="post">
                 {% csrf_token %}
                 <div class="mb-3 text-start">
@@ -69,7 +71,7 @@
                 
             </form>
             <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a>
-            <a href="{% url 'visitante_login' %}" class="btn btn-outline-info mt-3">Acceso Visitantes</a>
+            <a href="{% url 'visitante_login' %}" class="btn btn-outline-info mt-3">Acceso Condominos</a>
         </div>
         
     </div>

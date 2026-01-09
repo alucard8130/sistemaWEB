@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -65,6 +66,7 @@
                         <th>Email</th>
                         <th>Banco</th>
                         <th>Número de cuenta</th>
+                        <th>Saldo Inicial</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -79,6 +81,7 @@
                             <td>{{ empresa.email }}</td>
                             <td>{{ empresa.cuenta_bancaria }}</td>
                             <td>{{ empresa.numero_cuenta }}</td>
+                            <td>${{ empresa.saldo_inicial|floatformat:2 |intcomma }}</td>
                             <td>
                                 {% if request.user.is_superuser %}
                                     <a href="{% url 'empresa_editar' empresa.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
