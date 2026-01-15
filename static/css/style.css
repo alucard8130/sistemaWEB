@@ -1161,3 +1161,17 @@ h2 {
     color: #f8f9fa; /* text-light */
     border: 1px solid #6c757d;
 }
+
+@media (max-width: 600px) {
+    .container, .container-fluid {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+    }
+    .card {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    h2, h5 {
+        font-size: 1.2rem;
+    }
+}

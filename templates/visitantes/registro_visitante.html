@@ -4,18 +4,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Registro condominos</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS --> 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
         .remove-block { cursor: pointer; color: #dc3545; }
+        .error-msg { color: #dc3545; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -27,43 +25,56 @@
     {% endfor %}
 {% endif %}
 
-
 <div class="container mt-1">
-    <h2>Registro de Condóminos</h2>
+    <h2 class="mb-3">Registro de Condóminos</h2>
     <button type="button" class="btn btn-ayuda mb-3" data-bs-toggle="modal" data-bs-target="#ayudaModal" style="color: red;">
-    Ayuda Registro
-</button>
+        Ayuda Registro
+    </button>
     <form method="post" id="registroForm">
         {% csrf_token %}
-        <div class= 'container mt-1' style="max-width: 500px;">
-        <div class="mb-1">
-            <label>Nombre</label>
-            <input type="text" name="nombre" class="form-control" required value="{{ nombre|default:'' }}">
+        <!-- Paso 1: Datos del usuario -->
+        <div id="paso1">
+            <div class='container mt-1 p-2' style="max-width: 500px;">
+                <div id="errorPaso1" class="error-msg" style="display:none;"></div>
+                <div class="mb-3">
+                    <label>Nombre</label>
+                    <input type="text" name="nombre" id="nombre" class="form-control w-100" required value="{{ nombre|default:'' }}">
+                </div>
+                <div class="mb-3">
+                    <label>Email</label>
+                    <input type="email" name="email" id="email" class="form-control w-100" required value="{{ email|default:'' }}">
+                </div>
+                <div class="mb-3">
+                    <label>Usuario</label>
+                    <input type="text" name="username" id="username" class="form-control w-100" required value="{{ username|default:'' }}">
+                </div>
+                <div class="mb-3">
+                    <label>Contraseña</label>
+                    <input type="password" name="password" id="password" class="form-control w-100" required>
+                    <small>La contraseña debe tener al menos 8 caracteres.</small>
+                </div>
+                <div class="mb-3">
+                    <label>Confirmar Contraseña</label>
+                    <input type="password" name="password2" id="password2" class="form-control w-100" required>
+                </div>
+                <button type="button" class="btn btn-primary mt-3 w-100" id="continuarBtn">Continuar</button>
+            </div>
         </div>
-        <div class="mb-1">
-            <label>Email</label>
-            <input type="email" name="email" class="form-control" required value="{{ email|default:'' }}">
-        </div>
-        <div class="mb-1">
-            <label>Usuario</label>
-            <input type="text" name="username" class="form-control" required value="{{ username|default:'' }}">
-        </div>
-        <div class="mb-1">
-            <label>Contraseña</label>
-            <input type="password" name="password" class="form-control" required>
-        </div>
-        <div class="mb-1">
-            <label>Confirmar Contraseña</label>
-            <input type="password" name="password2" class="form-control" required>
-        </div>
-        </div>
-        <div class='container-fluid mt-4' style="max-width: 800px;">
-        <h5>Empresas, Locales y Áreas</h5>
-        <div id="bloques-container"></div>
-        <button type="button" class="btn btn-secondary" id="add-bloque">Agregar Empresa</button>
-        <button type="submit" class="btn btn-primary">Registrar</button>
-        <button type="reset" class="btn btn-warning">Limpiar</button>
-        <button type="button" class="btn btn-danger" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
+        <!-- Paso 2: Empresas, Locales y Áreas -->
+        <div id="paso2" style="display:none;">
+            <div class='container-fluid mt-4 p-2' style="max-width: 800px;">
+                <h2>Seleccion de Empresas, Locales y Áreas</h2>
+                <div class="mb-3">
+                    <small>Si tienes locales y/o áreas en más de una empresa, da clic en "Agregar Empresa".</small>
+                <button type="button" class="btn btn-secondary" id="add-bloque">Agregar Empresa</button>
+                <div id="bloques-container"></div>
+                
+                <button type="submit" class="btn btn-primary">Registrar Usuario</button>
+                <button type="button" class="btn btn-outline-dark" id="regresarBtn">Regresar</button>
+                {% comment %} <button type="reset" class="btn btn-warning">Limpiar</button> {% endcomment %}
+                <button type="button" class="btn btn-danger" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
+                
+            </div>
         </div>
     </form>
 </div>
@@ -138,19 +149,58 @@ document.getElementById('add-bloque').addEventListener('click', function() {
     bloqueIdx++;
 });
 
-// Al menos un bloque al cargar
-window.onload = function() {
-    document.getElementById('add-bloque').click();
+// Mostrar paso 2 al dar clic en continuar, validando campos
+document.getElementById('continuarBtn').onclick = function() {
+    const nombre = document.getElementById('nombre').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const password2 = document.getElementById('password2').value;
+    const errorDiv = document.getElementById('errorPaso1');
+    errorDiv.style.display = 'none';
+    errorDiv.innerText = '';
+
+    if (!nombre || !email || !username || !password || !password2) {
+        errorDiv.innerText = 'Por favor llena todos los campos.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    // Validación de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        errorDiv.innerText = 'Por favor ingresa un correo electrónico válido.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (password.length < 8) {
+        errorDiv.innerText = 'La contraseña debe tener al menos 8 caracteres.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (password !== password2) {
+        errorDiv.innerText = 'Las contraseñas no coinciden.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    document.getElementById('paso1').style.display = 'none';
+    document.getElementById('paso2').style.display = 'block';
+    if (bloqueIdx === 0) {
+        document.getElementById('add-bloque').click();
+    }
 };
+
+// Botón regresar
+document.getElementById('regresarBtn').onclick = function() {
+    document.getElementById('paso2').style.display = 'none';
+    document.getElementById('paso1').style.display = 'block';
+};
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
-<!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
-    </footer>
-    <script src="{% static 'js/script.js' %}"></script>
 </html>
+
 <!-- Modal de ayuda -->
 <div class="modal fade" id="ayudaModal" tabindex="-1" aria-labelledby="ayudaModalLabel" aria-hidden="true">
   <div class="modal-dialog">
