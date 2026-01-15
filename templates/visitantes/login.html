@@ -11,6 +11,7 @@
         Description: Login visitantes
     -->
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Acceso Condominos</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -21,6 +22,44 @@
     <!-- Customised CSS --> 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        body { background: #f8f9fa; font-family: 'Rubik', sans-serif; }
+        .login-box {
+            max-width: 400px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 2rem 1.5rem;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .login-logo {
+            max-width: 120px;
+            width: 100%;
+            height: auto;
+        }
+        @media (max-width: 600px) {
+            .login-box {
+                max-width: 98vw;
+                margin: 10px auto;
+                padding: 1rem 0.5rem;
+            }
+            h2, h3 {
+                font-size: 1.1rem;
+            }
+            .navbar {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+            .input-group-text, .form-label {
+                font-size: 0.95rem;
+            }
+            .btn {
+                font-size: 1rem !important;
+                padding: 0.7rem 0.5rem !important;
+            }
+        }
+    </style>
 </head>
 <body style="min-height: 100vh">
     <!-- Dark button -->
@@ -67,11 +106,11 @@
                         <div class="alert alert-danger mt-2">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
-                <button type="submit" class="btn btn-primary w-100">
+                <button type="submit" class="btn btn-primary w-100 mb-2">
                     <i class="bi bi-box-arrow-in-right me-2"></i>Ingresar
                 </button>
                 <div class="mt-3 text-center">
-                <a href="{% url 'registro_visitante' %}" class="btn btn-lg px-4 py-2 shadow-sm animate__animated animate__pulse animate__infinite btn-verde-fuerte" style="font-size: 1.15rem;">
+                <a href="{% url 'registro_visitante' %}" class="btn btn-lg px-4 py-2 shadow-sm animate__animated animate__pulse animate__infinite btn-verde-fuerte w-100" style="font-size: 1.15rem;">
         <i class="bi bi-person-plus-fill me-2"></i> Registrate
     </a>
     </div>

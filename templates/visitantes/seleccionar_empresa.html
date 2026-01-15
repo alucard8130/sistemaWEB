@@ -4,6 +4,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Seleccionar Condominio Visitante</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -14,6 +15,31 @@
     <!-- Customised CSS --> 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+@media (max-width: 600px) {
+    .container {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+    }
+    h1, h3 {
+        font-size: 1.2rem;
+    }
+    .btn-lg, .btn {
+        width: 100% !important;
+        font-size: 1rem !important;
+        padding: 0.7rem 0.5rem !important;
+        margin-bottom: 0.5rem;
+    }
+    .form-select-lg, .form-select {
+        font-size: 1rem !important;
+        padding: 0.7rem 0.5rem !important;
+    }
+    .navbar {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+}
+</style>
 </head>
 <body style="min-height: 100vh">
     <!-- Dark button -->
@@ -26,7 +52,7 @@
     </div>
     <!-- Botón salir arriba a la derecha -->
     <div class="d-flex justify-content-end mt-3 me-3">
-        <a href="{% url 'visitante_logout' %}" class="btn btn-outline-danger btn-lg">
+        <a href="{% url 'visitante_logout' %}" class="btn btn-outline-danger btn-lg w-100">
             <i class="bi bi-box-arrow-right"></i> Salir
         </a>
     </div>
@@ -39,7 +65,7 @@
             <form method="post" class="w-100" style="max-width: 400px;">
                 {% csrf_token %}
                 <div class="mb-4">
-                    <select name="empresa_id" class="form-select form-select-lg" required>
+                    <select name="empresa_id" class="form-select form-select-lg w-100" required>
                         <option value="" disabled selected>Selecciona una empresa...</option>
                         {% for empresa in empresas %}
                             <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
@@ -47,7 +73,7 @@
                     </select>
                 </div>
                 <div class="text-center">
-                    <button type="submit" class="btn btn-primary btn-lg">
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
                         <i class="bi bi-check-circle"></i> Ingresar
                     </button>
                 </div>

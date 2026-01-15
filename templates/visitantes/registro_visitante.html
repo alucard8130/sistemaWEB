@@ -63,17 +63,17 @@
         <!-- Paso 2: Empresas, Locales y Áreas -->
         <div id="paso2" style="display:none;">
             <div class='container-fluid mt-4 p-2' style="max-width: 800px;">
-                <h2>Seleccion de Empresas, Locales y Áreas</h2>
+                <h2 class ="mb-3">Seleccion de Empresas, Locales y Áreas</h2>
                 <div class="mb-3">
                     <small>Si tienes locales y/o áreas en más de una empresa, da clic en "Agregar Empresa".</small>
-                <button type="button" class="btn btn-secondary" id="add-bloque">Agregar Empresa</button>
+                <button type="button" class="btn btn-secondary w-100 mb-2" id="add-bloque">Agregar Empresa</button>
                 <div id="bloques-container"></div>
-                
-                <button type="submit" class="btn btn-primary">Registrar Usuario</button>
-                <button type="button" class="btn btn-outline-dark" id="regresarBtn">Regresar</button>
+                <div class="d-grid gap-2 mt-3">
+                <button type="submit" class="btn btn-primary w-100">Registrar Usuario</button>
+                <button type="button" class="btn btn-outline-dark w-100" id="regresarBtn">Regresar</button>
                 {% comment %} <button type="reset" class="btn btn-warning">Limpiar</button> {% endcomment %}
-                <button type="button" class="btn btn-danger" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
-                
+                <button type="button" class="btn btn-danger w-100" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
+                </div>
             </div>
         </div>
     </form>
@@ -90,27 +90,27 @@ function crearBloque(idx) {
     });
 
     return `
-    <div class="card mb-3 bloque-empresa" data-idx="${idx}">
-        <div class="card-body">
+    <div class="card mb-3 bloque-empresa w-100" data-idx="${idx}">
+        <div class="card-body p-2">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <strong>Empresa y asignaciones</strong>
                 <span class="remove-block" onclick="removerBloque(${idx})">&times; Quitar</span>
             </div>
             <div class="mb-2">
                 <label>Empresa</label>
-                <select name="empresa_${idx}" class="form-select empresa-select" data-idx="${idx}" required>
+                <select name="empresa_${idx}" class="form-select empresa-select w-100" data-idx="${idx}" required>
                     ${empresaOptions}
                 </select>
             </div>
             <div class="mb-2">
                 <label>Locales</label>
-                <select name="locales_${idx}" class="form-select locales-select" data-idx="${idx}" multiple>
+                <select name="locales_${idx}" class="form-select locales-select w-100" data-idx="${idx}" multiple>
                     <option value="">Seleccione empresa primero</option>
                 </select>
             </div>
             <div class="mb-2">
                 <label>Áreas</label>
-                <select name="areas_${idx}" class="form-select areas-select" data-idx="${idx}" multiple>
+                <select name="areas_${idx}" class="form-select areas-select w-100" data-idx="${idx}" multiple>
                     <option value="">Seleccione empresa primero</option>
                 </select>
             </div>

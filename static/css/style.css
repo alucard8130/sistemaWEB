@@ -1170,8 +1170,18 @@ h2 {
     .card {
         margin-left: 0 !important;
         margin-right: 0 !important;
+        width: 100% !important;
     }
     h2, h5 {
         font-size: 1.2rem;
+    }
+    .form-select, .form-control {
+        font-size: 1rem;
+    }
+    .bloque-empresa .card-body {
+        padding: 0.5rem;
+    }
+    .bloque-empresa .card-body label {
+        font-size: 0.95rem;
     }
 }
