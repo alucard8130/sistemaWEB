@@ -51,7 +51,8 @@
                     {% endfor %}
                 </select>
                 {% endif %}
-                <a class="btn btn-outline-success" href="?medicion={{ medicion }}&mes={{ meses.0 }}&excel=1">
+                <a class="btn btn-success btn-sm ms-2"
+                href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion={{ medicion }}{% if medicion == 'mes' %}&mes={{ meses.0 }}{% endif %}&excel=1">
                     <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
                 </a>
             </div>

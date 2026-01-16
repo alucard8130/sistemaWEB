@@ -5,9 +5,44 @@
         Date of modification: 04/09/2025
         Description: Code navbar
     -->
-{% load static %}        
+{% load static %}  
+{% comment %} <style>
+/* Oculta el navbar por defecto */
+.navbar.sticky-top {
+  position: fixed !important;
+  top: -70px;
+  left: 0;
+  width: 100vw;
+  transition: top 0.3s;
+  z-index: 1050;
+}
+
+/* Muestra el navbar al hacer hover en la franja superior */
+#navbar-hover-zone:hover + .navbar.sticky-top,
+.navbar.sticky-top:hover,
+.navbar.sticky-top:focus-within {
+  top: 0;
+}
+
+/* Franja invisible para detectar el hover */
+#navbar-hover-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 18px;
+  z-index: 1060;
+  background: transparent;
+}
+body {
+  padding-top: 70px; /* Para que el contenido no quede oculto bajo el navbar */
+}
+</style> {% endcomment %}
+
+<!-- Franja invisible para mostrar el navbar al pasar el mouse -->
+<div id="navbar-hover-zone"></div>      
 <!-- 🔹 Top Navbar -->
-<nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top py-2 shadow-navbar">
+<nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-2 shadow-navbar">
     <div class="container-fluid">
         <!-- home button-->
         <a href="{% url 'bienvenida' %}" class="btn btn-sm btn-light-shadow">

@@ -1,11 +1,11 @@
 from django.shortcuts import render
-from django.db.models import Sum
+#from django.db.models import Sum
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from gastos.models import Gasto, PagoGasto
 from empresas.models import Empresa
 from collections import OrderedDict
-from django.db.models import Case, When, Value, CharField
+#from django.db.models import Case, When, Value, CharField
 import calendar
 import datetime
 import locale
@@ -15,6 +15,7 @@ from django.http import HttpResponse
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from django.db.models import F, Value, CharField, Sum, Case, When, IntegerField
 
 @login_required
 def reporte_ingresos_vs_gastos(request):
@@ -1415,37 +1416,81 @@ def exportar_estado_resultados_excel(request):
 def cartera_vencida_por_origen(request):
     empresa_id = request.GET.get("empresa")
     hoy = timezone.now().date()
-
+    filtro_origen = request.GET.get("filtro_origen", "")
     if not request.user.is_superuser:
         empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
         empresa_id = request.GET.get("empresa") or ""
 
+    # Facturas de locales y áreas comunes
     facturas = Factura.objects.filter(
         estatus="pendiente",
         fecha_vencimiento__lt=hoy,
         monto__gt=0
-    ).select_related('local', 'area_comun')
+    ).select_related('local', 'area_comun', 'cliente')
+
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+
+    # Agrupación y anotación en BD
+    facturas_qs = facturas.annotate(
+        origen_id=Case(
+            When(local__isnull=False, then=F('local__id')),
+            When(area_comun__isnull=False, then=F('area_comun__id')),
+            default=Value(0),
+            output_field=IntegerField()
+        ),
+        origen_tipo=Case(
+            When(local__isnull=False, then=Value('local')),
+            When(area_comun__isnull=False, then=Value('area')),
+            default=Value('sin_origen'),
+            output_field=CharField()
+        ),
+        origen_nombre=Case(
+            When(local__isnull=False, then=F('local__numero')),
+            When(area_comun__isnull=False, then=F('area_comun__numero')),
+            default=Value('Sin origen'),
+            output_field=CharField()
+        ),
+        # saldo_calc=Case(
+        #     When(saldo__isnull=False, then=F('saldo')),
+        #     default=F('saldo_pendiente'),
+        #     output_field=F('monto').__class__
+        # )
+    ).order_by('origen_tipo', 'origen_nombre', 'fecha_vencimiento')
+
     # Facturas otros ingresos
     facturas_oi = FacturaOtrosIngresos.objects.filter(
         estatus="pendiente",
         fecha_vencimiento__lt=hoy,
         monto__gt=0
-    ).select_related('tipo_ingreso')
+    ).select_related('tipo_ingreso', 'cliente')
 
     if empresa_id:
-        facturas = facturas.filter(empresa_id=empresa_id)
         facturas_oi = facturas_oi.filter(empresa_id=empresa_id)
 
-    # Agrupa por origen (Local o Área Común)
+    facturas_oi_qs = facturas_oi.annotate(
+        origen_id=F('tipo_ingreso__id'),
+        origen_tipo=Value('tipoingreso', output_field=CharField()),
+        origen_nombre=F('tipo_ingreso__nombre'),
+        # saldo_calc=Case(
+        #     When(saldo__isnull=False, then=F('saldo')),
+        #     default=F('monto'),
+        #     output_field=F('monto').__class__
+        # )
+    ).order_by('origen_nombre', 'fecha_vencimiento')
+
+    
+    # Construcción del resultado
     origenes_dict = {}
-    for factura in facturas.order_by('local__numero', 'area_comun__numero', 'fecha_vencimiento'):
-        if factura.local:
-            origen_id = f"local_{factura.local.id}"
-            origen_nombre = f"Local: {factura.local.numero}"
-        elif factura.area_comun:
-            origen_id = f"area_{factura.area_comun.id}"
-            origen_nombre = f"Área Común: {factura.area_comun.numero}"
+
+    for f in facturas_qs:
+        if f.origen_tipo == 'local':
+            origen_id = f"local_{f.origen_id}"
+            origen_nombre = f"Local: {f.origen_nombre}"
+        elif f.origen_tipo == 'area':
+            origen_id = f"area_{f.origen_id}"
+            origen_nombre = f"Área Común: {f.origen_nombre}"
         else:
             origen_id = "sin_origen"
             origen_nombre = "Sin origen"
@@ -1456,55 +1501,63 @@ def cartera_vencida_por_origen(request):
                 "total_vencido": 0,
                 "facturas": []
             }
-        saldo = float(getattr(factura, "saldo", factura.saldo_pendiente))
+        saldo = float(f.saldo_pendiente or 0)
         origenes_dict[origen_id]["facturas"].append({
-            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
-            "factura_id": factura.id,
-            "folio": factura.folio,
-            "fecha_vencimiento": factura.fecha_vencimiento,
-            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
-            "monto": float(factura.monto),
+            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+            "factura_id": f.id,
+            "folio": f.folio,
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+            "monto": float(f.monto),
             "saldo": saldo,
-            "concepto": factura.observaciones,
+            "concepto": f.observaciones,
         })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    # Facturas otros ingresos agrupadas por tipo de ingreso
-    for factura in facturas_oi.order_by('tipo_ingreso__nombre', 'fecha_vencimiento'):
-        origen_id = f"tipoingreso_{factura.tipo_ingreso.id}"
-        origen_nombre = f"Tipo de Ingreso: {factura.tipo_ingreso.nombre}"
-
+    for f in facturas_oi_qs:
+        origen_id = f"tipoingreso_{f.origen_id}"
+        origen_nombre = f"Tipo de Ingreso: {f.origen_nombre}"
         if origen_id not in origenes_dict:
             origenes_dict[origen_id] = {
                 "origen_nombre": origen_nombre,
                 "total_vencido": 0,
                 "facturas": []
             }
-        saldo = float(getattr(factura, "saldo", factura.saldo))
+        saldo = float(f.saldo or 0)
         origenes_dict[origen_id]["facturas"].append({
-            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
-            "factura_id": factura.id,
-            "folio": factura.folio,
-            "fecha_vencimiento": factura.fecha_vencimiento,
-            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
-            "monto": float(factura.monto),
+            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+            "factura_id": f.id,
+            "folio": f.folio,
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+            "monto": float(f.monto),
             "saldo": saldo,
-            "concepto": factura.observaciones,
+            "concepto": f.observaciones,
         })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    resultado = list(origenes_dict.values())
+    if filtro_origen in ("local", "area", "tipoingreso"):
+        resultado = [
+            origen for key, origen in origenes_dict.items()
+            if key.startswith(filtro_origen + "_")
+        ]
+    else:
+        resultado = list(origenes_dict.values())
+
+
+    #resultado = list(origenes_dict.values())
     total_cartera = sum(origen["total_vencido"] for origen in resultado)
     return render(
         request,
         "informes_financieros/cartera_vencida.html",
-        {"cartera_vencida": resultado, "total_cartera": total_cartera}
+        {"cartera_vencida": resultado, "total_cartera": total_cartera,'request': request},
     )
 
 @login_required
 def exportar_cartera_vencida_excel(request):
     empresa_id = request.GET.get("empresa")
     hoy = timezone.now().date()
+    filtro_origen = request.GET.get("filtro_origen", "")
 
     if not request.user.is_superuser:
         empresa_id = str(request.user.perfilusuario.empresa.id)
@@ -1579,7 +1632,16 @@ def exportar_cartera_vencida_excel(request):
         })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    resultado = list(origenes_dict.values())
+    # Aplica el filtro igual que en la vista HTML
+    if filtro_origen in ("local", "area", "tipoingreso"):
+        resultado = [
+            origen for key, origen in origenes_dict.items()
+            if key.startswith(filtro_origen + "_")
+        ]
+    else:
+        resultado = list(origenes_dict.values())
+
+    #resultado = list(origenes_dict.values())
     total_cartera = sum(origen["total_vencido"] for origen in resultado)
 
     # --- Excel ---

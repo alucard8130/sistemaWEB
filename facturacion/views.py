@@ -1446,7 +1446,7 @@ def cartera_vencida(request):
         facturas_otros = facturas_otros.none()
     elif origen == 'otros':
         facturas = facturas.none()
-
+    
     # Agrupar por antigüedad
     rangos = [
         ('0-30 días', 0, 30),

@@ -28,7 +28,31 @@
     
 <div class="container-fluid mt-4">
     <h2>Reporte Detalle Saldos</h2>
-    <a href="{% url 'cartera_vencida_excel' %}" class="btn btn-success mb-3">Exportar a Excel</a>
+    <form method="get" class="mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-auto">
+      <label for="filtro_origen" class="form-label mb-0">Filtrar por:</label>
+      <select name="filtro_origen" id="filtro_origen" class="form-select">
+        <option value="">Todos</option>
+        <option value="local" {% if request.GET.filtro_origen == "local" %}selected{% endif %}>Locales</option>
+        <option value="area" {% if request.GET.filtro_origen == "area" %}selected{% endif %}>Áreas Comunes</option>
+        <option value="tipoingreso" {% if request.GET.filtro_origen == "tipoingreso" %}selected{% endif %}>Otros ingresos</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+      <a href="{% url 'cartera_vencida_excel' %}?{% for key, value in request.GET.items %}{{ key }}={{ value|urlencode }}{% if not forloop.last %}&{% endif %}{% endfor %}" class="btn btn-success">
+  Exportar a Excel
+</a>
+    </div>
+  </div>
+  {% for key, value in request.GET.items %}
+    {% if key != 'filtro_origen' %}
+      <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endif %}
+  {% endfor %}
+</form>
+    <br>
         <div class="row">
             {% for origen in cartera_vencida %}
                 <h5>{{ origen.origen_nombre }} (Total vencido: ${{ origen.total_vencido|floatformat:2|intcomma }})</h5>

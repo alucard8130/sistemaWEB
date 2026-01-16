@@ -13,7 +13,7 @@
       Description:  Budget vs revenue comparison report
     -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reporte comparativo presupuesto vs ingresos</title>
+    <title>Reporte comparativo ingresos vs presupuesto</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap 5 + DataTables -->
@@ -32,7 +32,7 @@
     {% include 'loading_overlay.html' %}
     
     <div class="container-fluid mt-4">
-        <h2>Comparativo Presupuesto vs Ingresos</h2>
+        <h2>Comparativo Ingresos vs Presupuesto</h2>
         <form method="get" class="row mb-3 g-2">
             <div class="col-auto">
                 <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
@@ -47,7 +47,8 @@
                         {% endfor %}
                     </select>
                 {% endif %}
-                <a class="btn btn-outline-success" href="?medicion={{ medicion }}&mes={{ meses.0 }}&excel=1">
+                <a class="btn btn-success btn-sm ms-2"
+                href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion={{ medicion }}{% if medicion == 'mes' %}&mes={{ meses.0 }}{% endif %}&excel=1">
                     <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
                 </a>
             </div>

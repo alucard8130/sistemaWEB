@@ -1,7 +1,9 @@
 # Create your views here.
 from pyexpat.errors import messages
+from urllib import request
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
+from httpx import request
 from django.contrib import messages
 import openpyxl
 from facturacion.models import (
@@ -605,9 +607,7 @@ def reporte_presupuesto_vs_gasto(request):
 
     # Exportar a Excel
     if request.GET.get("excel") == "1":
-        return exportar_comparativo_excel(
-            anio, empresa, meses, meses_nombres, comparativo
-        )
+        return exportar_comparativo_excel(request)
 
     # Calcula los totales generales por mes (presupuesto, real, variación)
     tot_gen_presup = [0] * num_meses
@@ -657,13 +657,140 @@ def reporte_presupuesto_vs_gasto(request):
     )
 
 
-def exportar_comparativo_excel(anio, empresa, meses, meses_nombres, comparativo):
+# Exportar comparativo a Excel
+@login_required
+def exportar_comparativo_excel(request):
+    anio = int(request.GET.get("anio", datetime.now().year))
+    medicion = request.GET.get("medicion", "curso")
+    meses = list(range(1, 13))
+    meses_nombres = [calendar.month_name[m] for m in meses]
 
-    wb = openpyxl.Workbook()
+    # Determina el rango de meses según la medición
+    if medicion == "mes":
+        mes_actual = int(request.GET.get("mes", datetime.now().month))
+        meses = [mes_actual]
+        meses_nombres = [calendar.month_name[mes_actual]]
+    elif medicion == "semestre1":
+        meses = list(range(1, 7))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "semestre2":
+        meses = list(range(7, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "anual":
+        meses = list(range(1, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    else:  # 'curso' o default
+        if anio == datetime.now().year:
+            mes_actual = datetime.now().month
+        else:
+            mes_actual = 12
+        meses = list(range(1, mes_actual + 1))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+
+
+    if request.user.is_superuser:
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else Empresa.objects.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+
+    tipos = (
+        TipoGasto.objects.filter(empresa=empresa)
+        .select_related("subgrupo", "subgrupo__grupo")
+        .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
+    )
+
+    presupuestos = Presupuesto.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = {(p.tipo_gasto_id, p.mes): float(p.monto) for p in presupuestos}
+
+    gastos = (
+        PagoGasto.objects.annotate(
+            anio_pago=ExtractYear("fecha_pago"),
+            mes_pago=ExtractMonth("fecha_pago"),
+            tipo_id=F("gasto__tipo_gasto_id"),
+        )
+        .filter(anio_pago=anio, gasto__empresa=empresa)
+        .values("tipo_id", "mes_pago")
+        .annotate(total=Sum("monto"))
+    )
+    gastos_dict = {(g["tipo_id"], g["mes_pago"]): float(g["total"]) for g in gastos}
+
+    # Sumar importes de caja chica por tipo de gasto y mes
+    gastos_caja_chica = (
+        GastoCajaChica.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
+        .values("tipo_gasto_id", "fecha__month")
+        .annotate(total=Sum("importe"))
+    )
+    for g in gastos_caja_chica:
+        key = (g["tipo_gasto_id"], g["fecha__month"])
+        gastos_dict[key] = gastos_dict.get(key, 0) + float(g["total"])
+
+    # Sumar importes de vales de caja por tipo de gasto y mes
+    vales_caja = (
+        ValeCaja.objects.filter(fondeo__empresa=empresa, fecha__year=anio)
+        .values("tipo_gasto_id", "fecha__month")
+        .annotate(total=Sum("importe"))
+    )
+    for v in vales_caja:
+        key = (v["tipo_gasto_id"], v["fecha__month"])
+        gastos_dict[key] = gastos_dict.get(key, 0) + float(v["total"])
+
+    # Estructura: grupos > subgrupos > tipos > meses
+    grupos_dict = defaultdict(lambda: defaultdict(list))
+    for tipo in tipos:
+        grupos_dict[tipo.subgrupo.grupo][tipo.subgrupo].append(tipo)
+
+    comparativo = []
+    num_meses = len(meses)
+
+    for grupo, subgrupos in grupos_dict.items():
+        grupo_row = {
+            "nombre": grupo.nombre,
+            "subgrupos": [],
+        }
+        for subgrupo, tipos_ in subgrupos.items():
+            subgrupo_row = {
+                "nombre": subgrupo.nombre,
+                "tipos": [],
+            }
+            for tipo in tipos_:
+                row = {"nombre": tipo.nombre, "meses": []}
+                anual_presup = 0
+                anual_gasto = 0
+                anual_var = 0
+
+                for mes in meses:
+                    presupuesto = presup_dict.get((tipo.id, mes), 0)
+                    gasto = gastos_dict.get((tipo.id, mes), 0)
+                    variacion = gasto - presupuesto
+                    row["meses"].append(
+                        {
+                            "presupuesto": presupuesto,
+                            "gasto": gasto,
+                            "variacion": variacion,
+                            "mes": mes,
+                        }
+                    )
+                    anual_presup += presupuesto
+                    anual_gasto += gasto
+                    anual_var += variacion
+
+                row["total_anual_presup"] = anual_presup
+                row["total_anual_gasto"] = anual_gasto
+                row["total_anual_var"] = anual_var
+                row["total_anual_pct"] = (
+                    int(round(anual_var / anual_presup * 100)) if anual_presup else ""
+                )
+
+                subgrupo_row["tipos"].append(row)
+            grupo_row["subgrupos"].append(subgrupo_row)
+        comparativo.append(grupo_row)
+
+    # --- Exportar a Excel ---
+    wb = Workbook()
     ws = wb.active
     ws.title = "Presupuesto vs Gasto"
 
-    # Encabezado principal
     encabezado = ["Grupo", "Subgrupo", "Tipo de Gasto"]
     for m in meses:
         nombre_mes = calendar.month_name[m]
@@ -689,7 +816,6 @@ def exportar_comparativo_excel(anio, empresa, meses, meses_nombres, comparativo)
             for tipo in subgrupo["tipos"]:
                 fila = [grupo["nombre"], subgrupo["nombre"], tipo["nombre"]]
                 for mes_num in meses:
-                    # Busca el mes correcto por su número
                     mes_data = next(
                         (m for m in tipo["meses"] if m.get("mes") == mes_num), None
                     )
@@ -723,16 +849,12 @@ def exportar_comparativo_excel(anio, empresa, meses, meses_nombres, comparativo)
                 pass
         ws.column_dimensions[col_letter].width = max_length + 2
 
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-
     nombre_archivo = f"Comparativo_{empresa}_{anio}.xlsx".replace(" ", "_")
     response = HttpResponse(
-        content=output.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = f"attachment; filename={nombre_archivo}"
+    wb.save(response)
     return response
 
 
@@ -869,119 +991,119 @@ def comparativo_presupuesto_anio(request):
     )
 
 
-@login_required
-def comparativo_presupuesto_vs_gastos(request):
-    # 1. Años disponibles (presupuesto.anio y pago.fecha_pago__year)
-    años_presupuesto = Presupuesto.objects.values_list("anio", flat=True)
-    años_pagos = PagoGasto.objects.annotate(year=ExtractYear("fecha_pago")).values_list(
-        "year", flat=True
-    )
-    años = sorted(set(años_presupuesto) | set(años_pagos))
+# @login_required
+# def comparativo_presupuesto_vs_gastos(request):
+#     # 1. Años disponibles (presupuesto.anio y pago.fecha_pago__year)
+#     años_presupuesto = Presupuesto.objects.values_list("anio", flat=True)
+#     años_pagos = PagoGasto.objects.annotate(year=ExtractYear("fecha_pago")).values_list(
+#         "year", flat=True
+#     )
+#     años = sorted(set(años_presupuesto) | set(años_pagos))
 
-    # 2. Año seleccionado (por GET o último)
-    default_anio = años[-1] if años else date.today().year
-    try:
-        anio = int(request.GET.get("anio", default_anio))
-    except (TypeError, ValueError):
-        anio = default_anio
+#     # 2. Año seleccionado (por GET o último)
+#     default_anio = años[-1] if años else date.today().year
+#     try:
+#         anio = int(request.GET.get("anio", default_anio))
+#     except (TypeError, ValueError):
+#         anio = default_anio
 
-    # 3. Agregaciones de presupuesto por mes y jerarquía
-    qs_pres = (
-        Presupuesto.objects.filter(anio=anio)
-        .values(
-            "grupo__nombre",  # GrupoGasto.nombre
-            "subgrupo__nombre",  # SubgrupoGasto.nombre (puede ser null)
-            "tipo_gasto__nombre",  # TipoGasto.nombre (puede ser null)
-            "mes",  # mes (1–12 o null)
-        )
-        .annotate(presupuesto=Sum("monto"))
-    )
+#     # 3. Agregaciones de presupuesto por mes y jerarquía
+#     qs_pres = (
+#         Presupuesto.objects.filter(anio=anio)
+#         .values(
+#             "grupo__nombre",  # GrupoGasto.nombre
+#             "subgrupo__nombre",  # SubgrupoGasto.nombre (puede ser null)
+#             "tipo_gasto__nombre",  # TipoGasto.nombre (puede ser null)
+#             "mes",  # mes (1–12 o null)
+#         )
+#         .annotate(presupuesto=Sum("monto"))
+#     )
 
-    # 4. Agregaciones de pagos de gasto por mes y jerarquía
-    qs_pagos = (
-        PagoGasto.objects.annotate(
-            year=ExtractYear("fecha_pago"), mes=ExtractMonth("fecha_pago")
-        )
-        .filter(year=anio)
-        .values(
-            "gasto__tipo_gasto__subgrupo__grupo__nombre",  # GrupoGasto.nombre
-            "gasto__tipo_gasto__subgrupo__nombre",  # SubgrupoGasto.nombre
-            "gasto__tipo_gasto__nombre",  # TipoGasto.nombre
-            "mes",  # mes (1–12)
-        )
-        .annotate(gasto=Sum("monto"))
-    )
+#     # 4. Agregaciones de pagos de gasto por mes y jerarquía
+#     qs_pagos = (
+#         PagoGasto.objects.annotate(
+#             year=ExtractYear("fecha_pago"), mes=ExtractMonth("fecha_pago")
+#         )
+#         .filter(year=anio)
+#         .values(
+#             "gasto__tipo_gasto__subgrupo__grupo__nombre",  # GrupoGasto.nombre
+#             "gasto__tipo_gasto__subgrupo__nombre",  # SubgrupoGasto.nombre
+#             "gasto__tipo_gasto__nombre",  # TipoGasto.nombre
+#             "mes",  # mes (1–12)
+#         )
+#         .annotate(gasto=Sum("monto"))
+#     )
 
-    # 5. Construir estructura anidada y acumular montos
-    meses = list(range(1, 13))
-    estructura = {}
-    # Inicializar nodos
-    for rec in list(qs_pres) + list(qs_pagos):
-        if "grupo__nombre" in rec:
-            grp = rec["grupo__nombre"]
-            sub = rec["subgrupo__nombre"]
-            tip = rec["tipo_gasto__nombre"]
-        else:
-            grp = rec["gasto__tipo_gasto__subgrupo__grupo__nombre"]
-            sub = rec["gasto__tipo_gasto__subgrupo__nombre"]
-            tip = rec["gasto__tipo_gasto__nombre"]
-        estructura.setdefault(
-            grp, {"subgrupos": {}, "totales": {"presupuesto": 0, "gasto": 0}}
-        )
-        estructura[grp]["subgrupos"].setdefault(
-            sub, {"tipos": {}, "totales": {"presupuesto": 0, "gasto": 0}}
-        )
-        estructura[grp]["subgrupos"][sub]["tipos"].setdefault(
-            tip, {"presupuesto": {m: 0 for m in meses}, "gasto": {m: 0 for m in meses}}
-        )
+#     # 5. Construir estructura anidada y acumular montos
+#     meses = list(range(1, 13))
+#     estructura = {}
+#     # Inicializar nodos
+#     for rec in list(qs_pres) + list(qs_pagos):
+#         if "grupo__nombre" in rec:
+#             grp = rec["grupo__nombre"]
+#             sub = rec["subgrupo__nombre"]
+#             tip = rec["tipo_gasto__nombre"]
+#         else:
+#             grp = rec["gasto__tipo_gasto__subgrupo__grupo__nombre"]
+#             sub = rec["gasto__tipo_gasto__subgrupo__nombre"]
+#             tip = rec["gasto__tipo_gasto__nombre"]
+#         estructura.setdefault(
+#             grp, {"subgrupos": {}, "totales": {"presupuesto": 0, "gasto": 0}}
+#         )
+#         estructura[grp]["subgrupos"].setdefault(
+#             sub, {"tipos": {}, "totales": {"presupuesto": 0, "gasto": 0}}
+#         )
+#         estructura[grp]["subgrupos"][sub]["tipos"].setdefault(
+#             tip, {"presupuesto": {m: 0 for m in meses}, "gasto": {m: 0 for m in meses}}
+#         )
 
-    # Rellenar valores de presupuesto
-    for item in qs_pres:
-        grp = item["grupo__nombre"]
-        sub = item["subgrupo__nombre"]
-        tip = item["tipo_gasto__nombre"]
-        m = item["mes"] or 0
-        val = item["presupuesto"]
-        estructura[grp]["subgrupos"][sub]["tipos"][tip]["presupuesto"][m] = val
-        estructura[grp]["subgrupos"][sub]["totales"]["presupuesto"] += val
-        estructura[grp]["totales"]["presupuesto"] += val
+#     # Rellenar valores de presupuesto
+#     for item in qs_pres:
+#         grp = item["grupo__nombre"]
+#         sub = item["subgrupo__nombre"]
+#         tip = item["tipo_gasto__nombre"]
+#         m = item["mes"] or 0
+#         val = item["presupuesto"]
+#         estructura[grp]["subgrupos"][sub]["tipos"][tip]["presupuesto"][m] = val
+#         estructura[grp]["subgrupos"][sub]["totales"]["presupuesto"] += val
+#         estructura[grp]["totales"]["presupuesto"] += val
 
-    # Rellenar valores de gasto
-    for item in qs_pagos:
-        grp = item["gasto__tipo_gasto__subgrupo__grupo__nombre"]
-        sub = item["gasto__tipo_gasto__subgrupo__nombre"]
-        tip = item["gasto__tipo_gasto__nombre"]
-        m = item["mes"] or 0
-        val = item["gasto"]
-        estructura[grp]["subgrupos"][sub]["tipos"][tip]["gasto"][m] = val
-        estructura[grp]["subgrupos"][sub]["totales"]["gasto"] += val
-        estructura[grp]["totales"]["gasto"] += val
+#     # Rellenar valores de gasto
+#     for item in qs_pagos:
+#         grp = item["gasto__tipo_gasto__subgrupo__grupo__nombre"]
+#         sub = item["gasto__tipo_gasto__subgrupo__nombre"]
+#         tip = item["gasto__tipo_gasto__nombre"]
+#         m = item["mes"] or 0
+#         val = item["gasto"]
+#         estructura[grp]["subgrupos"][sub]["tipos"][tip]["gasto"][m] = val
+#         estructura[grp]["subgrupos"][sub]["totales"]["gasto"] += val
+#         estructura[grp]["totales"]["gasto"] += val
 
-    # 6. Calcular totales mensuales y anuales
-    totales_meses = {m: {"presupuesto": 0, "gasto": 0} for m in meses}
-    tot_anual = {"presupuesto": 0, "gasto": 0}
-    for grp_obj in estructura.values():
-        for sub_obj in grp_obj["subgrupos"].values():
-            for tipo_vals in sub_obj["tipos"].values():
-                for m in meses:
-                    totales_meses[m]["presupuesto"] += tipo_vals["presupuesto"][m]
-                    totales_meses[m]["gasto"] += tipo_vals["gasto"][m]
-    tot_anual["presupuesto"] = sum(v["presupuesto"] for v in totales_meses.values())
-    tot_anual["gasto"] = sum(v["gasto"] for v in totales_meses.values())
+#     # 6. Calcular totales mensuales y anuales
+#     totales_meses = {m: {"presupuesto": 0, "gasto": 0} for m in meses}
+#     tot_anual = {"presupuesto": 0, "gasto": 0}
+#     for grp_obj in estructura.values():
+#         for sub_obj in grp_obj["subgrupos"].values():
+#             for tipo_vals in sub_obj["tipos"].values():
+#                 for m in meses:
+#                     totales_meses[m]["presupuesto"] += tipo_vals["presupuesto"][m]
+#                     totales_meses[m]["gasto"] += tipo_vals["gasto"][m]
+#     tot_anual["presupuesto"] = sum(v["presupuesto"] for v in totales_meses.values())
+#     tot_anual["gasto"] = sum(v["gasto"] for v in totales_meses.values())
 
-    # 7. Renderizar
-    return render(
-        request,
-        "presupuestos/comparativo_presupuesto_vs_gastos.html",
-        {
-            "estructura": estructura,
-            "meses": meses,
-            "totales_meses": totales_meses,
-            "tot_anual": tot_anual,
-            "anio": anio,
-            "anios_disponibles": años,
-        },
-    )
+#     # 7. Renderizar
+#     return render(
+#         request,
+#         "presupuestos/comparativo_presupuesto_vs_gastos.html",
+#         {
+#             "estructura": estructura,
+#             "meses": meses,
+#             "totales_meses": totales_meses,
+#             "tot_anual": tot_anual,
+#             "anio": anio,
+#             "anios_disponibles": años,
+#         },
+#     )
 
 
 @login_required
@@ -1481,14 +1603,15 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
         ("area", "Áreas comunes"),
         ("otros", "Otros ingresos"),
     ]
-    tipos_otros = FacturaOtrosIngresos.TIPO_INGRESO
+    #tipos_otros = FacturaOtrosIngresos.tipo_ingreso
+    tipos_otros = list(TipoOtroIngreso.objects.filter(empresa=empresa).values_list("id", "nombre"))
 
     # Presupuestos
     presupuestos = PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio)
     presup_dict = defaultdict(lambda: defaultdict(float))
     for p in presupuestos:
         if p.origen == "otros" and p.tipo_otro:
-            presup_dict[(p.origen, p.tipo_otro)][p.mes] = float(p.monto_presupuestado)
+            presup_dict[(p.origen, p.tipo_otro.id)][p.mes] = float(p.monto_presupuestado)
         else:
             presup_dict[(p.origen, None)][p.mes] = float(p.monto_presupuestado)
 
@@ -1561,23 +1684,7 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
         fila += [total_presup, total_real, total_var]
         ws.append(fila)
 
-    # Otros ingresos por tipo
-    for tipo in tipos_otros:
-        tipo_id, tipo_nombre = tipo
-        fila = ["Otros ingresos", tipo_nombre]
-        total_presup = total_real = total_var = 0
-        for mes in meses:
-            presup = presup_dict[("otros", tipo_id)].get(mes, 0)
-            real = reales_dict[("otros", tipo_id)].get(mes, 0)
-            var = real - presup
-            fila += [presup, real, var]
-            total_presup += presup
-            total_real += real
-            total_var += var
-        fila += [total_presup, total_real, total_var]
-        ws.append(fila)
-
-    # Fila total de "Otros ingresos" sumando todos los tipos
+     # Fila total de "Otros ingresos" sumando todos los tipos
     fila_total_otros = ["Otros ingresos (Total)", ""]
     total_presup = total_real = total_var = 0
     for i, mes in enumerate(meses):
@@ -1592,6 +1699,22 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
         total_var += var
     fila_total_otros += [total_presup, total_real, total_var]
     ws.append(fila_total_otros)
+
+
+    # Otros ingresos por tipo
+    for tipo_id, tipo_nombre in tipos_otros:
+        fila = ["Otros ingresos", tipo_nombre]
+        total_presup = total_real = total_var = 0
+        for mes in meses:
+            presup = presup_dict[("otros", tipo_id)].get(mes, 0)
+            real = reales_dict[("otros", tipo_id)].get(mes, 0)
+            var = real - presup
+            fila += [presup, real, var]
+            total_presup += presup
+            total_real += real
+            total_var += var
+        fila += [total_presup, total_real, total_var]
+        ws.append(fila)
 
     # Ajustar ancho de columnas
     for col in ws.columns:

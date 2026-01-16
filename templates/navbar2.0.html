@@ -1,0 +1,345 @@
+    <!-- 
+        Created by: Jaime Estrada
+        Modified by: María Martínez
+        Date of creation: 05/06/2025
+        Date of modification: 04/09/2025
+        Description: Code navbar
+    -->
+{% load static %}
+<style>
+/* Sidebar colapsable al pasar el mouse */
+#sidebarMenu {
+  width: 60px;
+  min-width: 60px !important;
+  max-width: 240px;
+  transition: width 0.3s;
+  overflow-x: hidden;
+  white-space: nowrap;
+}
+#sidebarMenu:hover,
+#sidebarMenu:focus-within {
+  width: 240px;
+  min-width: 240px !important;
+}
+#sidebarMenu .p-3 {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  transition: padding 0.3s;
+}
+#sidebarMenu:hover .p-3,
+#sidebarMenu:focus-within .p-3 {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+#sidebarMenu .nav-link,
+#sidebarMenu .btn,
+#sidebarMenu .collapse,
+#sidebarMenu .mt-4 {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+#sidebarMenu:hover .nav-link,
+#sidebarMenu:hover .btn,
+#sidebarMenu:hover .collapse,
+#sidebarMenu:hover .mt-4,
+#sidebarMenu:focus-within .nav-link,
+#sidebarMenu:focus-within .btn,
+#sidebarMenu:focus-within .collapse,
+#sidebarMenu:focus-within .mt-4 {
+  opacity: 1;
+  pointer-events: auto;
+}
+#sidebarMenu .btn.btn-light-shadow,
+#sidebarMenu .nav-link.fw-bold {
+  opacity: 1;
+  pointer-events: auto;
+}
+#sidebarMenu .nav-link i,
+#sidebarMenu .btn i {
+  margin-right: 0.5rem;
+}
+</style>
+<div class="d-flex">
+  <!-- Sidebar -->
+  <nav id="sidebarMenu" class="bg-white border-end shadow-sm" style="min-width:240px; min-height:100vh; position:fixed; top:0; left:0; z-index:1040;">
+    <div class="p-3">
+      <a href="{% url 'bienvenida' %}" class="btn btn-sm btn-light-shadow w-100 mb-3">
+        <i class="bi bi-house me-1"></i> Inicio
+      </a>
+      <ul class="nav flex-column">
+        {% if request.user.is_staff %}
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#configMenu" role="button" aria-expanded="false">Configuración</a>
+          <div class="collapse" id="configMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'admin:auth_user_add' %}">Panel Administrador</a></li>
+              <li><a class="nav-link" href="{% url 'empresa_lista' %}">Empresas</a></li>
+              {% if empresa %}
+                <li><a class="nav-link" href="{% url 'resetear_empresa' empresa_id=empresa.id %}">Resetear Empresa</a></li>
+              {% endif %}
+              <li><a class="nav-link" href="{% url 'anuncios_publicos' %}">Anuncios Institucionales</a></li>
+              <li><a class="nav-link" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
+              <li><a class="nav-link" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
+              <li><a class="nav-link" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
+              <li><a class="nav-link" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
+              <li><a class="nav-link" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
+              <li><a class="nav-link" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
+              <li><a class="nav-link" href="{% url 'subir_estado_cuenta' %}">Subir Estado de Cuenta</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'usuarios_demo' %}">Usuarios GESAC Demo</a></li>
+              <li><a class="nav-link" href="{% url 'lista_usuarios_normales' %}">Usuarios GESAC Paga</a></li>
+              <li><a class="nav-link" href="{% url 'lista_usuarios_visitantes' %}">Usuarios Condominos</a></li>
+            </ul>
+          </div>
+        </li>
+        {% endif %}
+
+        <!-- Clientes -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#clientesMenu" role="button" aria-expanded="false">Clientes</a>
+          <div class="collapse" id="clientesMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'crear_cliente' %}">Nuevo Cliente</a></li>
+              <li><a class="nav-link" href="{% url 'lista_clientes' %}">Lista Clientes</a></li>
+              <li><a class="nav-link" href="{% url 'clientes_inactivos' %}">Clientes Inactivos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'carga_masiva_clientes' %}">Carga Masiva</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Locales -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#localesMenu" role="button" aria-expanded="false">Locales</a>
+          <div class="collapse" id="localesMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'crear_local' %}">Nuevo Local</a></li>
+              <li><a class="nav-link" href="{% url 'lista_locales' %}">Lista Locales</a></li>
+              <li><a class="nav-link" href="{% url 'locales_inactivos' %}">Locales Inactivos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas Locales</a></li>
+              <li><a class="nav-link" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Áreas Comunes -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#areasMenu" role="button" aria-expanded="false">Áreas Comunes</a>
+          <div class="collapse" id="areasMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'crear_area' %}">Nueva Área común</a></li>
+              <li><a class="nav-link" href="{% url 'lista_areas' %}">Lista Áreas Comunes</a></li>
+              <li><a class="nav-link" href="{% url 'areas_inactivas' %}">Áreas Inactivas</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas Áreas</a></li>
+              <li><a class="nav-link" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Ingresos -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#ingresosMenu" role="button" aria-expanded="false">Ingresos</a>
+          <div class="collapse" id="ingresosMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'crear_factura' %}">Nueva Factura Cuotas</a></li>
+              <li><a class="nav-link" href="{% url 'lista_facturas' %}">Registrar Deposito Cuotas</a></li>
+              <li><a class="nav-link" href="{% url 'pagos_por_origen' %}?tipo=local">Reporte Depositos Cuotas</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'facturar_mes' %}">Generacion Mensual Cuotas</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'crear_factura_otros_ingresos' %}">Nueva Factura Otros Ingresos</a></li>
+              <li><a class="nav-link" href="{% url 'lista_facturas_otros_ingresos' %}">Registrar Deposito Otros Ingresos</a></li>
+              <li><a class="nav-link" href="{% url 'reporte_cobros_otros_ingresos' %}">Reporte Depositos Otros Ingresos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'dashboard_pagos' %}">Dashboard Ingresos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'registrar_deposito_por_identificar' %}">Registrar Deposito no identificado</a></li>
+              <li><a class="nav-link" href="{% url 'lista_depositos_por_identificar' %}">Asignar Deposito no identificado</a></li>
+              <li><hr></li>
+              {% if empresa.es_plus %}
+              <li><a class="nav-link" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>
+              {% else %}
+              <li><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Conciliación Bancaria (Plus)</a></li>
+              {% endif %}
+              {% if request.user.is_superuser %}
+                <li><a class="nav-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
+              {% endif %}
+            </ul>
+          </div>
+        </li>
+        <!-- Cartera Vencida -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#carteraMenu" role="button" aria-expanded="false">Cartera Vencida</a>
+          <div class="collapse" id="carteraMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'cartera_vencida' %}">Reporte Antiguedad Saldos</a></li>
+              <li><a class="nav-link" href="{% url 'cartera_vencida_por_origen' %}">Reporte Detalle Saldos</a></li>
+              <li><a class="nav-link" href="{% url 'dashboard_saldos' %}">Dashboard Saldos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Nomina -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#nominaMenu" role="button" aria-expanded="false">Nomina</a>
+          <div class="collapse" id="nominaMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'empleado_crear' %}">Nuevo Empleado</a></li>
+              <li><a class="nav-link" href="{% url 'empleado_lista' %}">Lista Empleados</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'incidencia_crear' %}">Nueva Incidencia</a></li>
+              <li><a class="nav-link" href="{% url 'incidencias_lista' %}">Lista de Incidencias</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Gastos -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#gastosMenu" role="button" aria-expanded="false">Gastos</a>
+          <div class="collapse" id="gastosMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'proveedor_crear' %}">Nuevo Proveedor</a></li>
+              <li><a class="nav-link" href="{% url 'proveedor_lista' %}">Lista Proveedores</a></li>
+              <li><a class="nav-link" href="{% url 'carga_masiva_proveedores' %}">Carga Masiva</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'tipo_gasto_crear'%}">Nuevo Tipo Gasto</a></li>
+              <li><a class="nav-link" href="{% url 'tipos_gasto_lista'%}">Lista Tipos de Gasto</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'gasto_nuevo' %}">Nueva Solicitud de Gasto</a></li>
+              <li><a class="nav-link" href="{% url 'gastos_lista' %}">Registrar Pago Solicitud de Gasto</a></li>
+              <li><hr></li>
+              {% if request.user.is_superuser %}
+                <li><a class="nav-link" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+              {% endif %}
+              <li><a class="nav-link" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Gastos</a></li>
+              <li><a class="nav-link" href="{% url 'dashboard_pagos_gastos' %}">Dashboard Gastos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'reporte_retenciones_gastos' %}">Reporte Retencion Impuestos</a></li>
+              {% if request.user.is_superuser %}
+                <li><a class="nav-link" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
+              {% endif %}
+            </ul>
+          </div>
+        </li>
+        <!-- Caja Chica -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#cajaMenu" role="button" aria-expanded="false">Caja Chica</a>
+          <div class="collapse" id="cajaMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'fondeo_caja_chica' %}">Nuevo Fondo Caja Chica</a></li>
+              <li><a class="nav-link" href="{% url 'lista_fondeos' %}">Lista Fondos Caja Chica</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'registrar_gasto_caja_chica' %}">Nuevo Gasto Caja Chica</a></li>
+              <li><a class="nav-link" href="{% url 'lista_gastos_caja_chica' %}">Lista Gastos Caja Chica</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'generar_vale_caja' %}">Nuevo Vale Caja Chica</a></li>
+              <li><a class="nav-link" href="{% url 'lista_vales_caja_chica' %}">Lista Vales Caja Chica</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Presupuesto -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#presupuestoMenu" role="button" aria-expanded="false">Presupuesto</a>
+          <div class="collapse" id="presupuestoMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'matriz_presupuesto'%}">Matriz Presupuesto Gastos</a></li>
+              <li><a class="nav-link" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
+              <li><a class="nav-link" href="{% url 'carga_masiva_presupuesto_ingresos' %}">Carga Presupuesto Ingresos</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Reportes -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#reportesMenu" role="button" aria-expanded="false">Reportes</a>
+          <div class="collapse" id="reportesMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'estado_resultados' %}">Estado de Resultados</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
+              <li><a class="nav-link" href="{% url 'comparativo_anual_total' %}">Comparativo Presupuestos Gtos</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
+              <li><a class="nav-link" href="{% url 'comparativo_anual_ingresos' %}">Comparativo Presupuestos Ing</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'reporte_ingresos_vs_gastos' %}">Dashboard Ingresos y Gastos</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Comunicación -->
+        <li class="nav-item">
+          <a class="nav-link fw-bold" data-bs-toggle="collapse" href="#comunicacionMenu" role="button" aria-expanded="false">Comunicación</a>
+          <div class="collapse" id="comunicacionMenu">
+            <ul class="nav flex-column ms-3">
+              <li><a class="nav-link" href="{% url 'crear_tema_y_enviar' %}">Nuevo Asunto General</a></li>
+              <li><a class="nav-link" href="{% url 'lista_temas' %}">Lista Asuntos Generales</a></li>
+              <li><hr></li>
+              <li><a class="nav-link" href="{% url 'aviso_crear' %}">Nuevo Aviso App</a></li>
+              <li><a class="nav-link" href="{% url 'avisos_lista' %}">Lista Avisos App</a></li>
+            </ul>
+          </div>
+        </li>
+        <!-- Salir -->
+        <li class="nav-item mt-3">
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger w-100">
+              <i class="bi bi-box-arrow-right me-1"></i> Salir
+            </button>
+          </form>
+        </li>
+      </ul>
+      <div class="mt-4">
+        <button type="button" class="btn btn-outline-secondary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#modalAyuda">
+          <i class="bi bi-question-circle-fill"></i> Ayuda
+        </button>
+        <button id="toggleDark" class="btn btn-outline-dark w-100">
+          <i class="bi bi-moon-fill"></i> Modo Oscuro
+        </button>
+      </div>
+    </div>
+  </nav>
+</div>
+
+    <!-- Modal Ayuda -->
+<div class="modal fade" id="modalAyuda" tabindex="-1" aria-labelledby="modalAyudaLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAyudaLabel">Ayuda</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body text-center">
+        <h5 class="mb-3">Manual de Operación Sistema GESAC</h5>
+        <a href="{% static 'docs/manual_gesac.pdf' %}" target="_blank" class="btn btn-outline-primary mb-3">
+          <i class="bi bi-file-earmark-pdf"></i> Consultar Manual en PDF
+        </a>
+        <div>
+          <a href="https://www.youtube.com/@Gesac.GestorAdministrativoCond" target="_blank">
+            <p class="mt-3">Videos Tutoriales.</p>
+          </a>
+          <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
+            <p class="mt-2">Visita la página web GESAC.</p>
+          </a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        {% if not es_demo %}
+        <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Suscripción</button>
+        {% endif %}
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
