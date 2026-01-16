@@ -65,7 +65,7 @@
                 {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
                 <select name="mes" class="form-select" style="width:auto;">
                     <option value="">Mes</option>
-                    {% for m in 1|get_range:12 %}
+                    {% for m in 1|get_range:13 %}
                         <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
                             {{ meses|index:m|default:"" }}
                         </option>

@@ -82,11 +82,9 @@
     </div>
 
     <!-- Main content -->
-    <div class="container-fluid mt-4">
-
         <!-- Formulario de filtros (GET) -->
         <form method="get" class="row g-2 mb-3">
-            <h2>Matriz Presupuesto Ingresos año {{ anio }}</h2>
+            <h2>Matriz Presupuesto Ingresos año {{ anio }}. {{ empresa.nombre }}</h2>
             <div class="col-auto">
                 <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
                 <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
@@ -94,6 +92,9 @@
                         <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
                     {% endfor %}
                 </select>
+                <a href="{% url 'exportar_matriz_presupuesto_ingresos_excel' %}?anio={{ anio }}&empresa={{ empresa.id }}" class="btn btn-success btn-sm ms-2">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+                </a>
             </div>
             {% if is_super %}
             <div class="col-auto">
@@ -110,6 +111,8 @@
         <!-- Formulario para clonar presupuesto (POST, separado) -->
         <form method="post" action="{% url 'copiar_presupuesto_ingresos_a_nuevo_anio' %}" class="row g-2 align-items-end mb-3">
             {% csrf_token %}
+            <input type="hidden" name="anio" value="{{ anio }}">
+            <input type="hidden" name="empresa" value="{{ empresa.id }}">
             <div class="col-auto">
                 <label for="tipo_clon" class="form-label mb-0">Clonar:</label>
                 <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm" onchange="document.getElementById('porcentaje_clon').style.display = this.value == 'con' ? 'inline-block' : 'none';">
@@ -131,7 +134,19 @@
             </button>
             </div>
         </form>
-
+        <div class="mb-3">
+        {% if edicion_habilitada %}
+            <form method="post" action="{% url 'borrar_presupuesto_ingresos' %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="anio" value="{{ anio }}">
+                <input type="hidden" name="empresa" value="{{ empresa.id }}">
+                <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('¿Seguro que deseas borrar TODO el presupuesto de ingresos del año {{ anio }} para la empresa {{ empresa.nombre }}?');">
+                    Borrar presupuesto
+                </button>
+            </form>
+        {% endif %}
+        </div>
         <!-- Main budget edit form (POST) -->
         <form method="post">
             {% csrf_token %}

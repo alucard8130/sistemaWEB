@@ -11,7 +11,7 @@ from empleados.views import exportar_incidencias_excel, incidencia_cancelar, inc
 from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
-from presupuestos.views import comparativo_anual_ingresos, comparativo_anual_total
+from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
 from principal.views import actualizar_ticket, agregar_seguimiento, api_areas_por_empresa, api_avisos_empresa, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_reporte_ingresos_vs_gastos, aviso_crear, aviso_eliminar, avisos_lista, consulta_cfdis_facturama, crear_tema_y_enviar, create_payment_intent, descargar_cfdi_facturama, descargar_factura_timbrada, descargar_plantilla_estado_cuenta, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, lista_tickets, crear_ticket, registro_visitante, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
@@ -180,6 +180,9 @@ urlpatterns = [
     path('pagos-por-identificar/registrar/', registrar_deposito_por_identificar, name='registrar_deposito_por_identificar'),
     path('pagos-por-identificar/', lista_depositos_por_identificar, name='lista_depositos_por_identificar'),
     path('pagos/identificar/<int:pago_id>/', identificar_deposito, name='identificar_deposito'),
+    path('presupuestos/borrar_gastos/', borrar_presupuesto_gastos, name='borrar_presupuesto_gastos'),
+    path('presupuestos/borrar_ingresos/', borrar_presupuesto_ingresos, name='borrar_presupuesto_ingresos'),
+    path('presupuestos/exportar_matriz_ingresos_excel/', exportar_matriz_presupuesto_ingresos_excel, name='exportar_matriz_presupuesto_ingresos_excel'),
     
 ]
 

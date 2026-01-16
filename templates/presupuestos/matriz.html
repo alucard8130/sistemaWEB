@@ -83,11 +83,9 @@
     </div>
 
     <!-- Main content -->
-    <div class="container-fluid mt-4">
-
         <!-- Formulario de filtros (GET) -->
         <form method="get" class="row g-2 mb-3">
-            <h2>Matriz Presupuesto Gastos año {{ anio }}</h2>
+            <h2>Matriz Presupuesto Gastos año {{ anio }}. {{ empresa.nombre }}</h2>
             <div class="col-auto">
                 <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
                 <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
@@ -95,10 +93,12 @@
                         <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
                     {% endfor %}
                 </select>
-                <a href="{% url 'exportar_presupuesto_excel' %}?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+                <a href="{% url 'exportar_presupuesto_excel' %}?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}" class="btn btn-success btn-sm ms-2">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
                 </a>
+                
             </div>
+            
             {% if is_super %}
             <div class="col-auto">
                 <label for="empresa" class="form-label">Empresa:</label>
@@ -114,6 +114,8 @@
         <!-- Formulario para clonar presupuesto (POST, separado) -->
         <form method="post" action="{% url 'copiar_presupuesto_gastos_a_nuevo_anio' %}" class="row g-2 align-items-end mb-3">
             {% csrf_token %}
+            <input type="hidden" name="empresa" value="{{ empresa.id }}">
+            <input type="hidden" name="anio" value="{{ anio }}">
             <div class="col-auto">
                 <label for="tipo_clon" class="form-label mb-0">Clonar:</label>
                 <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm"
@@ -135,8 +137,21 @@
                     onmouseout="this.style.backgroundColor='#fff3cd'; this.style.borderColor='#000'; this.style.color='#212529';">
                     <i class="bi bi-arrow-repeat"></i> Clonar presupuesto
                 </button>
-            </div>
+            </div> 
         </form>
+        <div class="mb-3">
+            {% if edicion_habilitada %}
+                <form method="post" action="{% url 'borrar_presupuesto_gastos' %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="anio" value="{{ anio }}">
+                <input type="hidden" name="empresa" value="{{ empresa.id }}">
+                <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('¿Seguro que deseas borrar TODO el presupuesto de gastos del año {{ anio }} para la empresa {{ empresa.nombre }}?');">
+                    Borrar presupuesto
+                </button>
+                </form>
+            {% endif %}
+        </div>
 
         <!-- Main budget edit form (POST) -->
         <form method="post">
@@ -148,85 +163,86 @@
 
             <!-- Budget editing table -->
             <div class="table-responsive rounded-3 border">
-                <table class="table align-middle mb-0 shadow-sm">
-                    <thead>
-                        <tr>
-                            <th>Grupo</th>
-                            <th>Subgrupo</th>
-                            <th>Tipo de Gasto</th>
-                            {% for mes_nombre in meses_nombres %}
-                                <th>{{ mes_nombre }}</th>
-                            {% endfor %}
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for grupo in grupos_lista %}
-                        <!-- Fila de Total Grupo (antes de los subgrupos) -->
-                        <tr class="table-primary">
-                            <td>{{ grupo.nombre }}</td>
-                            <td colspan="2"><strong>Total Grupo</strong></td>
-                            {% for i in "0"|get_range:12 %}
-                                <td>
-                                    {{ subtotales_grupo|dict_index:grupo.grupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}
-                                </td>
-                            {% endfor %}
-                            <td class="fw-bold">
-                                {{ subtotales_grupo|dict_index:grupo.grupo_obj.id|sum_list|floatformat:2|intcomma }}
-                            </td>
-                        </tr>
-                        {% for subgrupo in grupo.subgrupos %}
-                            <!-- Fila de Total Subgrupo (antes de los tipos) -->
-                            <tr class="table-info">
-                                <td></td>
-                                <td>{{ subgrupo.nombre }}</td>
-                                <td><strong>Total Subgrupo</strong></td>
-                                {% for i in "0"|get_range:12 %}
-                                    <td>
-                                        {{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|list_index:forloop.counter0|floatformat:2|intcomma }}
-                                    </td>
-                                {% endfor %}
-                                <td class="fw-bold">
-                                    {{ subtotales_subgrupo|dict_index:subgrupo.subgrupo_obj.id|sum_list|floatformat:2|intcomma }}
-                                </td>
-                            </tr>
-                            {% for tipo in subgrupo.tipos %}
-                                <tr>
-                                    <td></td>
-                                    <td></td>
-                                    <td>{{ tipo.nombre }}</td>
-                                    {% for i in "0"|get_range:12 %}
-                                        <td>
-                                            {% get_presupuesto presup_dict tipo.id i|add:1 as presup %}
-                                            <input type="number" step="0.01" min="0" 
-                                                name="presupuesto_{{ tipo.id }}_{{ i|add:1 }}"
-                                                class="form-control form-control-sm"
-                                                value="{% if presup %}{{ presup.monto|floatformat:2 }}{% else %}0{% endif %}" 
-                                                {% if not edicion_habilitada %}disabled{% endif %}>
-                                        </td>
-                                    {% endfor %}
-                                    <td class="fw-bold">
-                                        {{ subtotales_tipo|dict_index:tipo.id|sum_list|floatformat:2|intcomma }}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        {% endfor %}
+    <table class="table align-middle mb-0 shadow-sm">
+        <thead>
+            <tr>
+                <th>Grupo</th>
+                <th>Subgrupo</th>
+                <th>Tipo de Gasto</th>
+                {% for mes_nombre in meses_nombres %}
+                    <th>{{ mes_nombre }}</th>
+                {% endfor %}
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for grupo in grupos_lista %}
+            <tr class="table-primary">
+                <td>{{ grupo.nombre }}</td>
+                <td colspan="2"><strong>Total Grupo</strong></td>
+                {% for i in "0"|get_range:12 %}
+                    <td>
+                        {{ subtotales_grupo|dict_index:grupo.id|list_index:forloop.counter0|floatformat:2|intcomma }}
+                    </td>
+                {% endfor %}
+                <td class="fw-bold">
+                    {{ subtotales_grupo|dict_index:grupo.id|sum_list|floatformat:2|intcomma }}
+                </td>
+            </tr>
+            {% for subgrupo in grupo.subgrupos %}
+                <tr class="table-info">
+                    <td></td>
+                    <td>{{ subgrupo.nombre }}</td>
+                    <td><strong>Total Subgrupo</strong></td>
+                    {% for i in "0"|get_range:12 %}
+                        <td>
+                            {{ subtotales_subgrupo|dict_index:subgrupo.id|list_index:forloop.counter0|floatformat:2|intcomma }}
+                        </td>
                     {% endfor %}
-                    </tbody>
-                    <tfoot>
-                        <tr class="table-warning">
-                            <td colspan="3" class="text-end"><strong>Total General</strong></td>
-                            {% for total in totales_mes %}
-                                <td><strong>{{ total|floatformat:2|intcomma }}</strong></td>
-                            {% endfor %}
-                            <td><strong>{{ totales_mes|sum_list|floatformat:2|intcomma }}</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                    <td class="fw-bold">
+                        {{ subtotales_subgrupo|dict_index:subgrupo.id|sum_list|floatformat:2|intcomma }}
+                    </td>
+                </tr>
+                {% for tipo in subgrupo.tipos %}
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td>{{ tipo.nombre }}</td>
+                        {% for i in "0"|get_range:12 %}
+                            {% with mes_num=i|add:1 %}
+                                <td>
+                                    <input type="number" step="0.01" min="0" 
+                                        name="presupuesto_{{ tipo.id }}_{{ mes_num }}"
+                                        class="form-control form-control-sm"
+                                        value="{{ tipo.montos|dict_get:mes_num|floatformat:2 }}"
+                                        {% if not edicion_habilitada %}disabled{% endif %}>
+                                </td>
+                            {% endwith %}
+                        {% endfor %}
+                        <td class="fw-bold">
+                            {{ subtotales_tipo|dict_index:tipo.id|sum_list|floatformat:2|intcomma }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="table-warning">
+                <td colspan="3" class="text-end"><strong>Total General</strong></td>
+                {% for total in totales_mes %}
+                    <td><strong>{{ total|floatformat:2|intcomma }}</strong></td>
+                {% endfor %}
+                <td><strong>{{ totales_mes|sum_list|floatformat:2|intcomma }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
             {% if edicion_habilitada %}
                 <div class="mb-3 mt-4 d-flex justify-content-end">
                     <button class="btn btn-primary">Guardar</button>
+                    
                     {% if not bloqueado %}
                         <button type="submit" name="cerrar_presupuesto" 
                             class="btn text-dark ms-2"
@@ -239,9 +255,12 @@
                     {% endif %}
                 </div>
             {% endif %}
+            
         
         </form>
+        
     </div>
+    
 
     <!-- 🔹 Footer -->
     <footer class="mt-4">
