@@ -48,7 +48,13 @@
                 <form method="post" class="p-4 rounded custom-form">
     {% csrf_token %}
     <!-- {{ form.as_p }} -->
-    
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
     <div class="form-group mb-3">
         {{ form.nombre.label_tag }}
         {{ form.nombre }}
@@ -104,6 +110,10 @@
         {{ form.saldo_inicial }}
         {{ form.saldo_inicial.errors }}
     </div>
+    <div class="form-group mb-3">
+        {{ form.saldo_final.label_tag }}
+        {{ form.saldo_final }}
+        {{ form.saldo_final.errors }}
 
 
     <div class="d-flex justify-content-between mt-3">

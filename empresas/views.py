@@ -35,6 +35,7 @@ def empresa_editar(request, pk):
     empresa = Empresa.objects.get(pk=pk)
     if request.method == 'POST':
         form = EmpresaForm(request.POST, instance=empresa)
+        print(form.errors)  # Esto mostrará los errores en la consola
         if form.is_valid():
             form.save()
             return redirect('empresa_lista')
