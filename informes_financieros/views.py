@@ -1,11 +1,13 @@
 from django.shortcuts import render
-#from django.db.models import Sum
+
+# from django.db.models import Sum
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from gastos.models import Gasto, PagoGasto
 from empresas.models import Empresa
 from collections import OrderedDict
-#from django.db.models import Case, When, Value, CharField
+
+# from django.db.models import Case, When, Value, CharField
 import calendar
 import datetime
 import locale
@@ -16,6 +18,7 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.db.models import F, Value, CharField, Sum, Case, When, IntegerField
+
 
 @login_required
 def reporte_ingresos_vs_gastos(request):
@@ -118,8 +121,8 @@ def reporte_ingresos_vs_gastos(request):
 
     # PAGOS POR IDENTIFICAR
     pagos_por_identificar = Pago.objects.filter(
-        factura__isnull=True,
-        identificado=False)
+        factura__isnull=True, identificado=False
+    )
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
@@ -134,7 +137,9 @@ def reporte_ingresos_vs_gastos(request):
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
         vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
-        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__gte=fecha_inicio)
+        pagos_por_identificar = pagos_por_identificar.filter(
+            fecha_pago__gte=fecha_inicio
+        )
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
         pagos_gastos = pagos_gastos.filter(fecha_pago__lte=fecha_fin)
@@ -146,7 +151,9 @@ def reporte_ingresos_vs_gastos(request):
     total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
     total_ingresos_cobrados = total_ingresos + total_otros_ingresos
-    total_pagos_por_identificar = pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
+    total_pagos_por_identificar = (
+        pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
+    )
     total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
     total_gastos_caja_chica = (
         gastos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
@@ -218,14 +225,14 @@ def reporte_ingresos_vs_gastos(request):
     for x in otros_ingresos_qs:
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f" {tipo}"] = float(x["total"])
-    ingresos_por_origen["Depositos no identificados"] = float(total_pagos_por_identificar)
+    ingresos_por_origen["Depositos no identificados"] = float(
+        total_pagos_por_identificar
+    )
 
     gastos_agregados = {}
 
     # Define gastos_qs similar to the commented-out section above
-    gastos_qs = PagoGasto.objects.select_related(
-        "gasto__tipo_gasto__subgrupo__grupo"
-    )
+    gastos_qs = PagoGasto.objects.select_related("gasto__tipo_gasto__subgrupo__grupo")
     if empresa_id:
         gastos_qs = gastos_qs.filter(gasto__empresa_id=empresa_id)
     if fecha_inicio:
@@ -237,10 +244,16 @@ def reporte_ingresos_vs_gastos(request):
     for g in gastos_qs.values(
         "gasto__tipo_gasto__subgrupo__grupo__nombre",
         "gasto__tipo_gasto__subgrupo__nombre",
-        "gasto__tipo_gasto__nombre"
+        "gasto__tipo_gasto__nombre",
     ).annotate(total=Sum("monto")):
-        grupo = (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
-        subgrupo = (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        grupo = (
+            (g["gasto__tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo")
+            .strip()
+            .title()
+        )
+        subgrupo = (
+            (g["gasto__tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
+        )
         tipo = (g["gasto__tipo_gasto__nombre"] or "Sin tipo").strip().title()
         key = (grupo, subgrupo, tipo)
         gastos_agregados[key] = gastos_agregados.get(key, 0) + float(g["total"])
@@ -249,9 +262,11 @@ def reporte_ingresos_vs_gastos(request):
     for g in gastos_caja_chica.values(
         "tipo_gasto__subgrupo__grupo__nombre",
         "tipo_gasto__subgrupo__nombre",
-        "tipo_gasto__nombre"
+        "tipo_gasto__nombre",
     ).annotate(total=Sum("importe")):
-        grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        grupo = (
+            (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        )
         subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
         tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
         key = (grupo, subgrupo, tipo)
@@ -261,9 +276,11 @@ def reporte_ingresos_vs_gastos(request):
     for g in vales_caja_chica.values(
         "tipo_gasto__subgrupo__grupo__nombre",
         "tipo_gasto__subgrupo__nombre",
-        "tipo_gasto__nombre"
+        "tipo_gasto__nombre",
     ).annotate(total=Sum("importe")):
-        grupo = (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        grupo = (
+            (g["tipo_gasto__subgrupo__grupo__nombre"] or "Sin grupo").strip().title()
+        )
         subgrupo = (g["tipo_gasto__subgrupo__nombre"] or "Sin subgrupo").strip().title()
         tipo = (g["tipo_gasto__nombre"] or "Sin tipo").strip().title()
         key = (grupo, subgrupo, tipo)
@@ -276,7 +293,7 @@ def reporte_ingresos_vs_gastos(request):
             estructura_gastos[grupo] = OrderedDict()
         if subgrupo not in estructura_gastos[grupo]:
             estructura_gastos[grupo][subgrupo] = []
-        estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})    
+        estructura_gastos[grupo][subgrupo].append({"tipo": tipo, "total": total})
 
     saldo = total_ingresos_cobrados - total_egresos
 
@@ -375,7 +392,14 @@ def estado_resultados(request):
     meses_unicos = sorted(set(m for m, y in meses_anios_list if m))
     anios_unicos = sorted(set(y for m, y in meses_anios_list if y))
 
-  
+    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    cobros_otros = CobroOtrosIngresos.objects.select_related(
+        "factura", "factura__empresa"
+    )
+    gastos = Gasto.objects.all()
+    gastos_caja_chica = GastoCajaChica.objects.all()
+    vales_caja_chica = ValeCaja.objects.all()
+
 
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
         periodo = "periodo_actual"
@@ -412,9 +436,7 @@ def estado_resultados(request):
     # Convierte a date si es string
     if isinstance(fecha_inicio, str):
         try:
-            fecha_inicio_dt = datetime.strptime(
-                fecha_inicio, "%Y-%m-%d"
-            ).date()
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
         except Exception:
             fecha_inicio_dt = None
     else:
@@ -447,19 +469,19 @@ def estado_resultados(request):
     elif fecha_inicio_dt and fecha_fin_dt:
         mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
-    pagos = Pago.objects.exclude(forma_pago="nota_credito")
-    cobros_otros = CobroOtrosIngresos.objects.select_related(
-        "factura", "factura__empresa"
-    )
-    gastos = Gasto.objects.select_related(
-        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
-    ).all()
-    gastos_caja_chica = GastoCajaChica.objects.select_related(
-        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
-    ).all()
-    vales_caja_chica = ValeCaja.objects.select_related(
-        "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
-    ).all()
+    # pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    # cobros_otros = CobroOtrosIngresos.objects.select_related(
+    #     "factura", "factura__empresa"
+    # )
+    # gastos = Gasto.objects.select_related(
+    #     "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    # ).all()
+    # gastos_caja_chica = GastoCajaChica.objects.select_related(
+    #     "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    # ).all()
+    # vales_caja_chica = ValeCaja.objects.select_related(
+    #     "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    # ).all()
 
     empresa = None
     saldo_inicial = 0
@@ -486,7 +508,6 @@ def estado_resultados(request):
     if fecha_fin:
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
-
 
     # --- Saldo inicial dinámico en modo flujo por mes ---
     if modo == "flujo" and mes and anio and empresa:
@@ -532,10 +553,14 @@ def estado_resultados(request):
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos = gastos.filter(fecha__gte=fecha_inicio)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
+        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos = gastos.filter(fecha__lte=fecha_fin)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
+        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
     # PAGOS POR IDENTIFICAR
     pagos_por_identificar = Pago.objects.filter(
@@ -565,7 +590,7 @@ def estado_resultados(request):
         ingresos_qs = (
             pagos_modo.annotate(
                 origen=Case(
-                    When(factura__local__isnull=False, then=Value("Propiedades")),
+                    When(factura__local__isnull=False, then=Value("Locales")),
                     When(
                         factura__area_comun__isnull=False, then=Value("Áreas Comunes")
                     ),
@@ -739,7 +764,12 @@ def estado_resultados(request):
                 estructura_gastos[grupo][subgrupo] = [
                     {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
                 ]
-        total_gastos = sum([g["total"] for g in gastos_por_tipo])
+        #total_gastos = sum([g["total"] for g in gastos_por_tipo])
+        total_gastos = sum(
+            sum(tipo["total"] for tipo in tipos)
+            for subgrupos in estructura_gastos.values()
+            for tipos in subgrupos.values()
+        )
         saldo_final_flujo = (
             float(saldo_inicial) + float(total_ingresos) - float(total_gastos)
         )
@@ -757,7 +787,7 @@ def estado_resultados(request):
         origenes = (
             facturas_cuotas.annotate(
                 origen=Case(
-                    When(local__isnull=False, then=Value("Propiedades")),
+                    When(local__isnull=False, then=Value("Locales")),
                     When(area_comun__isnull=False, then=Value("Áreas Comunes")),
                     default=Value("Sin origen"),
                     output_field=CharField(),
@@ -1086,6 +1116,26 @@ def exportar_estado_resultados_excel(request):
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
+    # PAGOS POR IDENTIFICAR
+    pagos_por_identificar = Pago.objects.filter(
+        factura__isnull=True, identificado=False
+    )
+    if empresa_id:
+        pagos_por_identificar = pagos_por_identificar.filter(empresa_id=empresa_id)
+    if fecha_inicio:
+        pagos_por_identificar = pagos_por_identificar.filter(
+            fecha_pago__gte=fecha_inicio
+        )
+    if fecha_fin:
+        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__lte=fecha_fin)
+    total_pagos_por_identificar = (
+        pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
+    )
+
+    saldo_final_flujo = None
+    total_gastos = 0.0
+    gastos_por_grupo = []
+
     if modo == "flujo":
         pagos_modo = pagos
         cobros_otros_modo = cobros_otros
@@ -1123,7 +1173,11 @@ def exportar_estado_resultados_excel(request):
                 (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             )
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
+        ingresos_por_origen["Depositos no identificados"] = float(
+            total_pagos_por_identificar
+        )
         total_ingresos = float(sum(ingresos_por_origen.values()))
+        # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
         gastos_por_grupo = (
             gastos_modo.values(
                 "gasto__tipo_gasto__subgrupo__grupo__nombre",
@@ -1411,7 +1465,8 @@ def exportar_estado_resultados_excel(request):
     wb.save(response)
     return response
 
-#reporte detalle saldos
+
+# reporte detalle saldos
 @login_required
 def cartera_vencida_por_origen(request):
     empresa_id = request.GET.get("empresa")
@@ -1435,29 +1490,29 @@ def cartera_vencida_por_origen(request):
     # Agrupación y anotación en BD
     facturas_qs = facturas.annotate(
         origen_id=Case(
-            When(local__isnull=False, then=F('local__id')),
-            When(area_comun__isnull=False, then=F('area_comun__id')),
+            When(local__isnull=False, then=F("local__id")),
+            When(area_comun__isnull=False, then=F("area_comun__id")),
             default=Value(0),
-            output_field=IntegerField()
+            output_field=IntegerField(),
         ),
         origen_tipo=Case(
-            When(local__isnull=False, then=Value('local')),
-            When(area_comun__isnull=False, then=Value('area')),
-            default=Value('sin_origen'),
-            output_field=CharField()
+            When(local__isnull=False, then=Value("local")),
+            When(area_comun__isnull=False, then=Value("area")),
+            default=Value("sin_origen"),
+            output_field=CharField(),
         ),
         origen_nombre=Case(
-            When(local__isnull=False, then=F('local__numero')),
-            When(area_comun__isnull=False, then=F('area_comun__numero')),
-            default=Value('Sin origen'),
-            output_field=CharField()
+            When(local__isnull=False, then=F("local__numero")),
+            When(area_comun__isnull=False, then=F("area_comun__numero")),
+            default=Value("Sin origen"),
+            output_field=CharField(),
         ),
         # saldo_calc=Case(
         #     When(saldo__isnull=False, then=F('saldo')),
         #     default=F('saldo_pendiente'),
         #     output_field=F('monto').__class__
         # )
-    ).order_by('origen_tipo', 'origen_nombre', 'fecha_vencimiento')
+    ).order_by("origen_tipo", "origen_nombre", "fecha_vencimiento")
 
     # Facturas otros ingresos
     facturas_oi = FacturaOtrosIngresos.objects.filter(
@@ -1470,25 +1525,24 @@ def cartera_vencida_por_origen(request):
         facturas_oi = facturas_oi.filter(empresa_id=empresa_id)
 
     facturas_oi_qs = facturas_oi.annotate(
-        origen_id=F('tipo_ingreso__id'),
-        origen_tipo=Value('tipoingreso', output_field=CharField()),
-        origen_nombre=F('tipo_ingreso__nombre'),
+        origen_id=F("tipo_ingreso__id"),
+        origen_tipo=Value("tipoingreso", output_field=CharField()),
+        origen_nombre=F("tipo_ingreso__nombre"),
         # saldo_calc=Case(
         #     When(saldo__isnull=False, then=F('saldo')),
         #     default=F('monto'),
         #     output_field=F('monto').__class__
         # )
-    ).order_by('origen_nombre', 'fecha_vencimiento')
+    ).order_by("origen_nombre", "fecha_vencimiento")
 
-    
     # Construcción del resultado
     origenes_dict = {}
 
     for f in facturas_qs:
-        if f.origen_tipo == 'local':
+        if f.origen_tipo == "local":
             origen_id = f"local_{f.origen_id}"
             origen_nombre = f"Local: {f.origen_nombre}"
-        elif f.origen_tipo == 'area':
+        elif f.origen_tipo == "area":
             origen_id = f"area_{f.origen_id}"
             origen_nombre = f"Área Común: {f.origen_nombre}"
         else:
@@ -1502,16 +1556,18 @@ def cartera_vencida_por_origen(request):
                 "facturas": []
             }
         saldo = float(f.saldo_pendiente or 0)
-        origenes_dict[origen_id]["facturas"].append({
-            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
-            "factura_id": f.id,
-            "folio": f.folio,
-            "fecha_vencimiento": f.fecha_vencimiento,
-            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
-            "monto": float(f.monto),
-            "saldo": saldo,
-            "concepto": f.observaciones,
-        })
+        origenes_dict[origen_id]["facturas"].append(
+            {
+                "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+                "factura_id": f.id,
+                "folio": f.folio,
+                "fecha_vencimiento": f.fecha_vencimiento,
+                "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+                "monto": float(f.monto),
+                "saldo": saldo,
+                "concepto": f.observaciones,
+            }
+        )
         origenes_dict[origen_id]["total_vencido"] += saldo
 
     for f in facturas_oi_qs:
@@ -1524,34 +1580,41 @@ def cartera_vencida_por_origen(request):
                 "facturas": []
             }
         saldo = float(f.saldo or 0)
-        origenes_dict[origen_id]["facturas"].append({
-            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
-            "factura_id": f.id,
-            "folio": f.folio,
-            "fecha_vencimiento": f.fecha_vencimiento,
-            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
-            "monto": float(f.monto),
-            "saldo": saldo,
-            "concepto": f.observaciones,
-        })
+        origenes_dict[origen_id]["facturas"].append(
+            {
+                "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+                "factura_id": f.id,
+                "folio": f.folio,
+                "fecha_vencimiento": f.fecha_vencimiento,
+                "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+                "monto": float(f.monto),
+                "saldo": saldo,
+                "concepto": f.observaciones,
+            }
+        )
         origenes_dict[origen_id]["total_vencido"] += saldo
 
     if filtro_origen in ("local", "area", "tipoingreso"):
         resultado = [
-            origen for key, origen in origenes_dict.items()
+            origen
+            for key, origen in origenes_dict.items()
             if key.startswith(filtro_origen + "_")
         ]
     else:
         resultado = list(origenes_dict.values())
 
-
-    #resultado = list(origenes_dict.values())
+    # resultado = list(origenes_dict.values())
     total_cartera = sum(origen["total_vencido"] for origen in resultado)
     return render(
         request,
         "informes_financieros/cartera_vencida.html",
-        {"cartera_vencida": resultado, "total_cartera": total_cartera,'request': request},
+        {
+            "cartera_vencida": resultado,
+            "total_cartera": total_cartera,
+            "request": request,
+        },
     )
+
 
 @login_required
 def exportar_cartera_vencida_excel(request):
@@ -1565,15 +1628,11 @@ def exportar_cartera_vencida_excel(request):
         empresa_id = request.GET.get("empresa") or ""
 
     facturas = Factura.objects.filter(
-        estatus="pendiente",
-        fecha_vencimiento__lt=hoy,
-        monto__gt=0
-    ).select_related('local', 'area_comun', 'cliente')
+        estatus="pendiente", fecha_vencimiento__lt=hoy, monto__gt=0
+    ).select_related("local", "area_comun", "cliente")
     facturas_oi = FacturaOtrosIngresos.objects.filter(
-        estatus="pendiente",
-        fecha_vencimiento__lt=hoy,
-        monto__gt=0
-    ).select_related('tipo_ingreso', 'cliente')
+        estatus="pendiente", fecha_vencimiento__lt=hoy, monto__gt=0
+    ).select_related("tipo_ingreso", "cliente")
 
     if empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
@@ -1581,7 +1640,9 @@ def exportar_cartera_vencida_excel(request):
 
     # Agrupa igual que la vista HTML
     origenes_dict = {}
-    for factura in facturas.order_by('local__numero', 'area_comun__numero', 'fecha_vencimiento'):
+    for factura in facturas.order_by(
+        "local__numero", "area_comun__numero", "fecha_vencimiento"
+    ):
         if factura.local:
             origen_id = f"local_{factura.local.id}"
             origen_nombre = f"Local: {factura.local.numero}"
@@ -1599,18 +1660,20 @@ def exportar_cartera_vencida_excel(request):
                 "facturas": []
             }
         saldo = float(getattr(factura, "saldo", factura.saldo_pendiente))
-        origenes_dict[origen_id]["facturas"].append({
-            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
-            "folio": factura.folio,
-            "fecha_vencimiento": factura.fecha_vencimiento,
-            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
-            "monto": float(factura.monto),
-            "saldo": saldo,
-            "concepto": factura.observaciones,
-        })
+        origenes_dict[origen_id]["facturas"].append(
+            {
+                "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
+                "folio": factura.folio,
+                "fecha_vencimiento": factura.fecha_vencimiento,
+                "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
+                "monto": float(factura.monto),
+                "saldo": saldo,
+                "concepto": factura.observaciones,
+            }
+        )
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    for factura in facturas_oi.order_by('tipo_ingreso__nombre', 'fecha_vencimiento'):
+    for factura in facturas_oi.order_by("tipo_ingreso__nombre", "fecha_vencimiento"):
         origen_id = f"tipoingreso_{factura.tipo_ingreso.id}"
         origen_nombre = f"Tipo de Ingreso: {factura.tipo_ingreso.nombre}"
 
@@ -1621,27 +1684,30 @@ def exportar_cartera_vencida_excel(request):
                 "facturas": []
             }
         saldo = float(getattr(factura, "saldo", factura.saldo))
-        origenes_dict[origen_id]["facturas"].append({
-            "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
-            "folio": factura.folio,
-            "fecha_vencimiento": factura.fecha_vencimiento,
-            "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
-            "monto": float(factura.monto),
-            "saldo": saldo,
-            "concepto": factura.observaciones,
-        })
+        origenes_dict[origen_id]["facturas"].append(
+            {
+                "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
+                "folio": factura.folio,
+                "fecha_vencimiento": factura.fecha_vencimiento,
+                "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
+                "monto": float(factura.monto),
+                "saldo": saldo,
+                "concepto": factura.observaciones,
+            }
+        )
         origenes_dict[origen_id]["total_vencido"] += saldo
 
     # Aplica el filtro igual que en la vista HTML
     if filtro_origen in ("local", "area", "tipoingreso"):
         resultado = [
-            origen for key, origen in origenes_dict.items()
+            origen
+            for key, origen in origenes_dict.items()
             if key.startswith(filtro_origen + "_")
         ]
     else:
         resultado = list(origenes_dict.values())
 
-    #resultado = list(origenes_dict.values())
+    # resultado = list(origenes_dict.values())
     total_cartera = sum(origen["total_vencido"] for origen in resultado)
 
     # --- Excel ---
@@ -1652,10 +1718,10 @@ def exportar_cartera_vencida_excel(request):
     bold = Font(bold=True)
     header_fill = PatternFill("solid", fgColor="BDD7EE")
     border = Border(
-        left=Side(style='thin', color='000000'),
-        right=Side(style='thin', color='000000'),
-        top=Side(style='thin', color='000000'),
-        bottom=Side(style='thin', color='000000'),
+        left=Side(style="thin", color="000000"),
+        right=Side(style="thin", color="000000"),
+        top=Side(style="thin", color="000000"),
+        bottom=Side(style="thin", color="000000"),
     )
 
     ws.append(["Cartera Vencida por Origen"])
@@ -1665,7 +1731,9 @@ def exportar_cartera_vencida_excel(request):
 
     row = 2
     for origen in resultado:
-        ws.append([origen["origen_nombre"], f"Total vencido: ${origen['total_vencido']:.2f}"])
+        ws.append(
+            [origen["origen_nombre"], f"Total vencido: ${origen['total_vencido']:.2f}"]
+        )
         ws[f"A{row}"].font = bold
         ws[f"A{row}"].fill = header_fill
         ws[f"A{row}"].border = border
@@ -1673,22 +1741,34 @@ def exportar_cartera_vencida_excel(request):
         ws[f"B{row}"].fill = header_fill
         ws[f"B{row}"].border = border
         row += 1
-        ws.append(["Cliente", "Folio", "Fecha Vencimiento", "Días Vencidos", "Monto", "Saldo", "Concepto"])
+        ws.append(
+            [
+                "Cliente",
+                "Folio",
+                "Fecha Vencimiento",
+                "Días Vencidos",
+                "Monto",
+                "Saldo",
+                "Concepto",
+            ]
+        )
         for col in "ABCDEFG"[:7]:
             ws[f"{col}{row}"].font = bold
             ws[f"{col}{row}"].fill = header_fill
             ws[f"{col}{row}"].border = border
         row += 1
         for factura in origen["facturas"]:
-            ws.append([
-                factura["cliente"],
-                factura["folio"],
-                factura["fecha_vencimiento"].strftime("%Y-%m-%d"),
-                factura["dias_vencidos"],
-                factura["monto"],
-                factura["saldo"],
-                factura["concepto"] or "",
-            ])
+            ws.append(
+                [
+                    factura["cliente"],
+                    factura["folio"],
+                    factura["fecha_vencimiento"].strftime("%Y-%m-%d"),
+                    factura["dias_vencidos"],
+                    factura["monto"],
+                    factura["saldo"],
+                    factura["concepto"] or "",
+                ]
+            )
             for col in "ABCDEFG"[:7]:
                 ws[f"{col}{row}"].border = border
             row += 1

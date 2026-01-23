@@ -56,6 +56,7 @@
                         <th>Domicilio Fiscal</th>
                         <th>Código Postal</th>
                         <th>Uso CFDI</th>
+                        <th>Factura Global</th>
                         <th>Email</th>
                         {% if request.user.is_superuser %}
                             <th>Empresa</th> 
@@ -75,6 +76,14 @@
                         <td>{{ cliente.direccion_domicilio }}</td>
                         <td>{{ cliente.codigo_postal }}</td>
                         <td>{{ cliente.uso_cfdi }}</td>
+                        <td>
+                            <form method="post" action="{% url 'actualizar_factura_global' cliente.id %}">
+                            {% csrf_token %}
+                            <input type="checkbox" name="factura_global" value="true"
+                                {% if cliente.factura_global %}checked{% endif %}
+                                onchange="this.form.submit()">
+                            </form>
+                        </td>
                         {% if cliente.email == None or cliente.email == '' %}
                             <td></td>
                         {% else %}

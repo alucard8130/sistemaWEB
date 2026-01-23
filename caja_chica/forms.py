@@ -39,8 +39,8 @@ class GastoCajaChicaForm(forms.ModelForm):
         widgets = {
             "fondeo": forms.Select(attrs={"class": "form-control"}),
             "fecha": forms.DateInput(attrs={"type": "date"}),
-            "proveedor": forms.Select(attrs={"class": "form-control"}),
-            "tipo_gasto": forms.Select(attrs={"class": "form-control"}),
+            "proveedor": forms.Select(attrs={"class": "form-control","required": True}),
+            "tipo_gasto": forms.Select(attrs={"class": "form-control","required": True}),
             "descripcion": forms.Textarea(attrs={"class": "form-control"}),
             "importe": forms.NumberInput(attrs={"class": "form-control"}),
         }
@@ -68,9 +68,9 @@ class ValeCajaForm(forms.ModelForm):
         widgets = {
             "fondeo": forms.Select(attrs={"class": "form-control"}),
             "fecha": forms.DateInput(attrs={"type": "date"}),
-            "recibido_por": forms.Select(attrs={"class": "form-control"}),
-            "autorizado_por": forms.TextInput(attrs={"class": "form-control"}),
-            "tipo_gasto": forms.Select(attrs={"class": "form-control"}),
+            "recibido_por": forms.Select(attrs={"class": "form-control","required": True}),
+            "autorizado_por": forms.TextInput(attrs={"class": "form-control","required": True}),
+            "tipo_gasto": forms.Select(attrs={"class": "form-control","required": True}),
             "descripcion": forms.Textarea(attrs={"class": "form-control"}),
             "importe": forms.NumberInput(attrs={"class": "form-control"}),
             "status": forms.Select(attrs={"class": "form-control"}),

@@ -36,6 +36,7 @@ class Cliente(models.Model):
     activo = models.BooleanField(default=True)
     tipo_contribuyente = models.CharField(max_length=100, choices=CHOISE_TIPO_CONTRIBUYENTE, blank=True, null=True)
     direccion_domicilio = models.TextField(max_length=255, blank=True, null=True)
+    factura_global = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.nombre}"

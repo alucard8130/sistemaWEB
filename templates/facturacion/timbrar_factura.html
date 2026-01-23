@@ -21,7 +21,6 @@
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit" class="btn btn-success">Timbrar</button>
-    {% comment %} <a href="{% url url_cancelar %}" class="btn btn-secondary">Cancelar</a> {% endcomment %}
      <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url url_cancelar %}{% endif %}" class="btn btn-secondary">Cancelar</a>
 </form>
 </div>

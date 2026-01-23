@@ -115,16 +115,7 @@ def crear_factura(request):
                             #factura.fecha_emision = timezone.now().date()
                             factura.fecha_emision = factura.fecha_vencimiento
                         factura.save()
-                        
-                        
-                        # # Folio único
-                        # count = Factura.objects.filter(fecha_emision__year=now().year).count() + 1
-                        # if tipo == 'local':
-                        #     factura.folio = f"CM-F{count:05d}"
-                        # elif tipo == 'area_comun':
-                        #     factura.folio = f"AC-F{count:05d}"
-                        # factura.save()
-                        # Folio único por empresa y tipo
+                        # Generar folio
                         if tipo == 'local':
                             prefix = "CM-F"
                         elif tipo == 'area_comun':
@@ -294,10 +285,51 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             folio__startswith="DG-F"
         ).values_list('empresa_id', 'folio')
     )
-
-    # Locales Mensuales
+    # Locales Anuales (solo enero y solo si no existe para el año)
     max_folio_local = {}
+    locales_anuales_ids = set(local.id for local in locales_anuales)
+    for local in locales_anuales:
+        existe = Factura.objects.filter(
+            cliente=local.cliente,
+            local=local,
+            fecha_emision__year=año,
+            observaciones='cuota anual'
+        ).exists()
+        if not existe and mes == 1:  # Solo facturar anuales en enero
+            empresa_id = local.empresa_id
+            if empresa_id not in max_folio_local:
+                max_folio = Factura.objects.filter(
+                    empresa_id=empresa_id,
+                    folio__startswith="CM-F"
+                ).aggregate(max_f=Max('folio'))['max_f']
+                if max_folio:
+                    try:
+                        last_num = int(max_folio.replace("CM-F", ""))
+                    except Exception:
+                        last_num = 0
+                else:
+                    last_num = 0
+                max_folio_local[empresa_id] = last_num
+            max_folio_local[empresa_id] += 1
+            folio = f"CM-F{max_folio_local[empresa_id]:05d}"
+            facturas_a_crear.append(Factura(
+                empresa=local.empresa,
+                cliente=local.cliente,
+                local=local,
+                folio=folio,
+                fecha_emision=fecha_factura,
+                fecha_vencimiento=fecha_factura,
+                monto=local.cuota * 12,  # Monto anual
+                tipo_cuota='mantenimiento',
+                estatus='pendiente',
+                observaciones='cuota anual'
+            ))
+            facturas_creadas += 1
+
+    # Locales Mensuales (excluye los anuales)
     for local in locales:
+        if local.id in locales_anuales_ids:
+            continue  # Saltar locales con cuota anual
         existe = Factura.objects.filter(
             cliente=local.cliente,
             local=local,
@@ -331,53 +363,135 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 monto=local.cuota,
                 tipo_cuota='mantenimiento',
                 estatus='pendiente',
-                observaciones='emision mensual'
+                observaciones='cuota mensual'
             ))
             facturas_creadas += 1
-    # Locales Anuales
-    for local in locales_anuales:
-        existe = Factura.objects.filter(
-            cliente=local.cliente,
-            local=local,
-            fecha_emision__year=año,
-            fecha_emision__month=1,
-            observaciones='cuota anual'
-        ).exists()
-        if not existe and mes == 1: # Solo facturar anuales en enero
-            empresa_id = local.empresa_id
-            if empresa_id not in max_folio_local:
-                max_folio = Factura.objects.filter(
-                    empresa_id=empresa_id,
-                    folio__startswith="CM-F"
-                ).aggregate(max_f=Max('folio'))['max_f']
-                if max_folio:
-                    try:
-                        last_num = int(max_folio.replace("CM-F", ""))
-                    except Exception:
-                        last_num = 0
-                else:
-                    last_num = 0
-                max_folio_local[empresa_id] = last_num
-            max_folio_local[empresa_id] += 1
-            folio = f"CM-F{max_folio_local[empresa_id]:05d}"
-            facturas_a_crear.append(Factura(
-                empresa=local.empresa,
-                cliente=local.cliente,
-                local=local,
-                folio=folio,
-                fecha_emision=fecha_factura,
-                fecha_vencimiento=fecha_factura,
-                monto=local.cuota * 12,  # Monto anual
-                tipo_cuota='mantenimiento',
-                estatus='pendiente',
-                observaciones='cuota anual'
-            ))
-            facturas_creadas += 1        
+    # # Locales Mensuales
+    # max_folio_local = {}
+    # for local in locales:
+    #     existe = Factura.objects.filter(
+    #         cliente=local.cliente,
+    #         local=local,
+    #         fecha_emision__year=año,
+    #         fecha_emision__month=mes
+    #     ).exists()
+    #     if not existe:
+    #         empresa_id = local.empresa_id
+    #         if empresa_id not in max_folio_local:
+    #             max_folio = Factura.objects.filter(
+    #                 empresa_id=empresa_id,
+    #                 folio__startswith="CM-F"
+    #             ).aggregate(max_f=Max('folio'))['max_f']
+    #             if max_folio:
+    #                 try:
+    #                     last_num = int(max_folio.replace("CM-F", ""))
+    #                 except Exception:
+    #                     last_num = 0
+    #             else:
+    #                 last_num = 0
+    #             max_folio_local[empresa_id] = last_num
+    #         max_folio_local[empresa_id] += 1
+    #         folio = f"CM-F{max_folio_local[empresa_id]:05d}"
+    #         facturas_a_crear.append(Factura(
+    #             empresa=local.empresa,
+    #             cliente=local.cliente,
+    #             local=local,
+    #             folio=folio,
+    #             fecha_emision=fecha_factura,
+    #             fecha_vencimiento=fecha_factura,
+    #             monto=local.cuota,
+    #             tipo_cuota='mantenimiento',
+    #             estatus='pendiente',
+    #             observaciones='emision mensual'
+    #         ))
+    #         facturas_creadas += 1
+    # # Locales Anuales
+    # for local in locales_anuales:
+    #     existe = Factura.objects.filter(
+    #         cliente=local.cliente,
+    #         local=local,
+    #         fecha_emision__year=año,
+    #         fecha_emision__month=1,
+    #         observaciones='cuota anual'
+    #     ).exists()
+    #     if not existe and mes == 1: # Solo facturar anuales en enero
+    #         empresa_id = local.empresa_id
+    #         if empresa_id not in max_folio_local:
+    #             max_folio = Factura.objects.filter(
+    #                 empresa_id=empresa_id,
+    #                 folio__startswith="CM-F"
+    #             ).aggregate(max_f=Max('folio'))['max_f']
+    #             if max_folio:
+    #                 try:
+    #                     last_num = int(max_folio.replace("CM-F", ""))
+    #                 except Exception:
+    #                     last_num = 0
+    #             else:
+    #                 last_num = 0
+    #             max_folio_local[empresa_id] = last_num
+    #         max_folio_local[empresa_id] += 1
+    #         folio = f"CM-F{max_folio_local[empresa_id]:05d}"
+    #         facturas_a_crear.append(Factura(
+    #             empresa=local.empresa,
+    #             cliente=local.cliente,
+    #             local=local,
+    #             folio=folio,
+    #             fecha_emision=fecha_factura,
+    #             fecha_vencimiento=fecha_factura,
+    #             monto=local.cuota * 12,  # Monto anual
+    #             tipo_cuota='mantenimiento',
+    #             estatus='pendiente',
+    #             observaciones='cuota anual'
+    #         ))
+    #         facturas_creadas += 1        
 
     # Áreas
     max_folio_area = {}
     max_folio_deposito = {}
+    # Áreas Anuales (solo enero y solo si no existe para el año)
+    areas_anuales_ids = set(area.id for area in areas_anuales)
+    for area in areas_anuales:
+        existe = Factura.objects.filter(
+            cliente=area.cliente,
+            area_comun=area,
+            fecha_emision__year=año,
+            observaciones='cuota anual'
+        ).exists()
+        if not existe and mes == 1:  # Solo facturar anuales en enero
+            empresa_id = area.empresa_id
+            if empresa_id not in max_folio_area:
+                max_folio = Factura.objects.filter(
+                    empresa_id=empresa_id,
+                    folio__startswith="AC-F"
+                ).aggregate(max_f=Max('folio'))['max_f']
+                if max_folio:
+                    try:
+                        last_num = int(max_folio.replace("AC-F", ""))
+                    except Exception:
+                        last_num = 0
+                else:
+                    last_num = 0
+                max_folio_area[empresa_id] = last_num
+            max_folio_area[empresa_id] += 1
+            folio = f"AC-F{max_folio_area[empresa_id]:05d}"
+            facturas_a_crear.append(Factura(
+                empresa=area.empresa,
+                cliente=area.cliente,
+                area_comun=area,
+                folio=folio,
+                fecha_emision=fecha_factura,
+                fecha_vencimiento=fecha_factura,
+                monto=area.cuota * 12,  # Monto anual
+                tipo_cuota='renta',
+                estatus='pendiente',
+                observaciones='cuota anual'
+            ))
+            facturas_creadas += 1
+
+    # Áreas Mensuales (excluye las anuales)
     for area in areas:
+        if area.id in areas_anuales_ids:
+            continue  # Saltar áreas con cuota anual
         existe = Factura.objects.filter(
             cliente=area.cliente,
             area_comun=area,
@@ -411,48 +525,85 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 monto=area.cuota,
                 tipo_cuota='renta',
                 estatus='pendiente',
-                observaciones='emision mensual'
+                observaciones='cuota mensual'
             ))
             facturas_creadas += 1
-    # Áreas Anuales
-    for area in areas_anuales:
-        existe = Factura.objects.filter(
-            cliente=area.cliente,
-            area_comun=area,
-            fecha_emision__year=año,
-            fecha_emision__month=1,
-            observaciones='cuota anual'
-        ).exists()
-        if not existe and mes == 1: # Solo facturar anuales en enero
-            empresa_id = area.empresa_id
-            if empresa_id not in max_folio_area:
-                max_folio = Factura.objects.filter(
-                    empresa_id=empresa_id,
-                    folio__startswith="AC-F"
-                ).aggregate(max_f=Max('folio'))['max_f']
-                if max_folio:
-                    try:
-                        last_num = int(max_folio.replace("AC-F", ""))
-                    except Exception:
-                        last_num = 0
-                else:
-                    last_num = 0
-                max_folio_area[empresa_id] = last_num
-            max_folio_area[empresa_id] += 1
-            folio = f"AC-F{max_folio_area[empresa_id]:05d}"
-            facturas_a_crear.append(Factura(
-                empresa=area.empresa,
-                cliente=area.cliente,
-                area_comun=area,
-                folio=folio,
-                fecha_emision=fecha_factura,
-                fecha_vencimiento=fecha_factura,
-                monto=area.cuota * 12,  # Monto anual
-                tipo_cuota='renta',
-                estatus='pendiente',
-                observaciones='cuota anual'
-            ))
-            facturas_creadas += 1
+    # for area in areas:
+    #     existe = Factura.objects.filter(
+    #         cliente=area.cliente,
+    #         area_comun=area,
+    #         fecha_emision__year=año,
+    #         fecha_emision__month=mes
+    #     ).exists()
+    #     if not existe:
+    #         empresa_id = area.empresa_id
+    #         if empresa_id not in max_folio_area:
+    #             max_folio = Factura.objects.filter(
+    #                 empresa_id=empresa_id,
+    #                 folio__startswith="AC-F"
+    #             ).aggregate(max_f=Max('folio'))['max_f']
+    #             if max_folio:
+    #                 try:
+    #                     last_num = int(max_folio.replace("AC-F", ""))
+    #                 except Exception:
+    #                     last_num = 0
+    #             else:
+    #                 last_num = 0
+    #             max_folio_area[empresa_id] = last_num
+    #         max_folio_area[empresa_id] += 1
+    #         folio = f"AC-F{max_folio_area[empresa_id]:05d}"
+    #         facturas_a_crear.append(Factura(
+    #             empresa=area.empresa,
+    #             cliente=area.cliente,
+    #             area_comun=area,
+    #             folio=folio,
+    #             fecha_emision=fecha_factura,
+    #             fecha_vencimiento=fecha_factura,
+    #             monto=area.cuota,
+    #             tipo_cuota='renta',
+    #             estatus='pendiente',
+    #             observaciones='emision mensual'
+    #         ))
+    #         facturas_creadas += 1
+    # # Áreas Anuales
+    # for area in areas_anuales:
+    #     existe = Factura.objects.filter(
+    #         cliente=area.cliente,
+    #         area_comun=area,
+    #         fecha_emision__year=año,
+    #         fecha_emision__month=1,
+    #         observaciones='cuota anual'
+    #     ).exists()
+    #     if not existe and mes == 1: # Solo facturar anuales en enero
+    #         empresa_id = area.empresa_id
+    #         if empresa_id not in max_folio_area:
+    #             max_folio = Factura.objects.filter(
+    #                 empresa_id=empresa_id,
+    #                 folio__startswith="AC-F"
+    #             ).aggregate(max_f=Max('folio'))['max_f']
+    #             if max_folio:
+    #                 try:
+    #                     last_num = int(max_folio.replace("AC-F", ""))
+    #                 except Exception:
+    #                     last_num = 0
+    #             else:
+    #                 last_num = 0
+    #             max_folio_area[empresa_id] = last_num
+    #         max_folio_area[empresa_id] += 1
+    #         folio = f"AC-F{max_folio_area[empresa_id]:05d}"
+    #         facturas_a_crear.append(Factura(
+    #             empresa=area.empresa,
+    #             cliente=area.cliente,
+    #             area_comun=area,
+    #             folio=folio,
+    #             fecha_emision=fecha_factura,
+    #             fecha_vencimiento=fecha_factura,
+    #             monto=area.cuota * 12,  # Monto anual
+    #             tipo_cuota='renta',
+    #             estatus='pendiente',
+    #             observaciones='cuota anual'
+    #         ))
+    #         facturas_creadas += 1
 
         # Depósito en garantía por única vez
         if area.deposito and area.deposito > 0:

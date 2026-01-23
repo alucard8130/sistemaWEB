@@ -22,7 +22,7 @@ from areas.views import (
     contrato_formulario, generar_contrato, lista_areas, crear_area, editar_area, eliminar_area,
     areas_inactivas, reactivar_area)
 from clientes.views import (
-    carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
+    actualizar_factura_global, carga_masiva_clientes, clientes_inactivos, lista_clientes, crear_cliente, 
     editar_cliente, eliminar_cliente, plantilla_clientes_excel, reactivar_cliente)
 from proveedores.views import carga_masiva_proveedores, eliminar_proveedor, plantilla_proveedores_excel
 from publicidad.views import anuncios_api, solicitud_publicidad_api
@@ -57,6 +57,7 @@ urlpatterns = [
     path('clientes/eliminar/<int:pk>/', eliminar_cliente, name='eliminar_cliente'),
     path('clientes/carga-masiva/', carga_masiva_clientes, name='carga_masiva_clientes'),
     path('clientes/plantilla-clientes/', plantilla_clientes_excel, name='plantilla_clientes_excel'),
+    path('clientes/<int:cliente_id>/actualizar_factura_global/',actualizar_factura_global, name='actualizar_factura_global'),
     path('facturas/', include('facturacion.urls')),
     path('locales/', include('locales.urls')),
     path('areas/', include('areas.urls')),

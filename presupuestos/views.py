@@ -116,48 +116,67 @@ def matriz_presupuesto(request):
         .order_by("grupo__nombre", "subgrupo__nombre", "tipo_gasto__nombre", "mes")
     )
 
-    grupos_lista = []
-    grupos_dict = {}
+    # --- NUEVO: Construir estructura base con todos los tipos de gasto ---
+    #print("empresa:", empresa, type(empresa))
+    tipos = (
+        TipoGasto.objects.filter(empresa=empresa)
+        .select_related("subgrupo", "subgrupo__grupo")
+        .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
+    )
 
-    for p in presupuestos_qs:
-        grupo_id = p["grupo_id"]
-        grupo_nombre = p["grupo__nombre"]
-        subgrupo_id = p["subgrupo_id"]
-        subgrupo_nombre = p["subgrupo__nombre"]
-        tipo_id = p["tipo_gasto_id"]
-        tipo_nombre = p["tipo_gasto__nombre"]
-        mes = p["mes"]
-        monto = p["monto"]
+    grupos_dict = {}
+    for tipo in tipos:
+        grupo = tipo.subgrupo.grupo
+        subgrupo = tipo.subgrupo
+        tipo_id = tipo.id
+        grupo_id = grupo.id
+        subgrupo_id = subgrupo.id
 
         if grupo_id not in grupos_dict:
             grupos_dict[grupo_id] = {
                 "id": grupo_id,
-                "nombre": grupo_nombre,
+                "nombre": grupo.nombre,
                 "subgrupos": {}
             }
         if subgrupo_id not in grupos_dict[grupo_id]["subgrupos"]:
             grupos_dict[grupo_id]["subgrupos"][subgrupo_id] = {
                 "id": subgrupo_id,
-                "nombre": subgrupo_nombre,
+                "nombre": subgrupo.nombre,
                 "tipos": {}
             }
         if tipo_id not in grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"]:
             grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"][tipo_id] = {
                 "id": tipo_id,
-                "nombre": tipo_nombre,
+                "nombre": tipo.nombre,
                 "montos": {m: 0 for m in meses}
             }
-        grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"][tipo_id]["montos"][mes] = monto
+
+    # Ahora llena los montos reales desde la consulta agregada
+    for p in presupuestos_qs:
+        grupo_id = p["grupo_id"]
+        subgrupo_id = p["subgrupo_id"]
+        tipo_id = p["tipo_gasto_id"]
+        mes = p["mes"]
+        monto = p["monto"]
+        if (
+            grupo_id in grupos_dict
+            and subgrupo_id in grupos_dict[grupo_id]["subgrupos"]
+            and tipo_id in grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"]
+        ):
+            grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"][tipo_id]["montos"][mes] = monto
 
     totales_mes = [0] * 12
     subtotales_grupo = {}
     subtotales_subgrupo = {}
     subtotales_tipo = {}
 
+    grupos_lista = []
     for grupo in grupos_dict.values():
         subtotal_grupo = [0] * 12
+        subgrupos_lista = []
         for subgrupo in grupo["subgrupos"].values():
             subtotal_subgrupo = [0] * 12
+            tipos_lista = []
             for tipo in subgrupo["tipos"].values():
                 subtotal_tipo = []
                 for i, mes in enumerate(meses):
@@ -167,23 +186,18 @@ def matriz_presupuesto(request):
                     subtotal_grupo[i] += valor
                     totales_mes[i] += valor
                 subtotales_tipo[tipo["id"]] = subtotal_tipo
-            subtotales_subgrupo[subgrupo["id"]] = subtotal_subgrupo
-        subtotales_grupo[grupo["id"]] = subtotal_grupo
-
-        subgrupos_lista = []
-        for subgrupo in grupo["subgrupos"].values():
-            tipos_lista = []
-            for tipo in subgrupo["tipos"].values():
                 tipos_lista.append({
                     "id": tipo["id"],
                     "nombre": tipo["nombre"],
                     "montos": tipo["montos"]
                 })
+            subtotales_subgrupo[subgrupo["id"]] = subtotal_subgrupo
             subgrupos_lista.append({
                 "id": subgrupo["id"],
                 "nombre": subgrupo["nombre"],
                 "tipos": tipos_lista
             })
+        subtotales_grupo[grupo["id"]] = subtotal_grupo
         grupos_lista.append({
             "id": grupo["id"],
             "nombre": grupo["nombre"],

@@ -2,6 +2,7 @@
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from unidecode import unidecode
 from empresas.models import Empresa
 from .models import Cliente
@@ -11,6 +12,7 @@ import openpyxl
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.views.decorators.http import require_POST
 
 
 @login_required
@@ -248,3 +250,11 @@ def reactivar_cliente(request, pk):
         return redirect("clientes_inactivos")
 
     return render(request, "clientes/reactivar_confirmacion.html", {"cliente": cliente})
+
+@require_POST
+def actualizar_factura_global(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    factura_global = request.POST.get('factura_global') == 'true'
+    cliente.factura_global = factura_global
+    cliente.save()
+    return redirect(reverse('lista_clientes'))

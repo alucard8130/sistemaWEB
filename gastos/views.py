@@ -748,7 +748,7 @@ def exportar_reporte_pagos_gastos_excel(request):
     ws = wb.active
     ws.title = "Pagos de Gastos"
     ws.append([
-        "Folio", "Fecha pago", "Empresa", "Proveedor/Empleado", "Concepto", 
+        "Folio", "Fecha pago", "Empresa", "Proveedor/Empleado","Tipo gasto", "Concepto", 
         "Forma de pago", "Monto", "Estatus"
     ])
 
@@ -762,6 +762,7 @@ def exportar_reporte_pagos_gastos_excel(request):
             pago.fecha_pago if pago.fecha_pago else '',
             gasto.empresa.nombre if gasto.empresa else '',
             origen,
+            gasto.tipo_gasto.nombre if gasto.tipo_gasto else '',
             gasto.descripcion,
             pago.get_forma_pago_display(),
             float(pago.monto),
