@@ -2270,6 +2270,7 @@ def visitante_registro_api(request):
     empresa_ids = request.data.getlist("empresa_ids[]")
     locales_numeros = request.data.getlist("locales_numeros[]")
     areas_numeros = request.data.getlist("areas_numeros[]")
+    nombre_completo = request.data.get("nombre_completo")
     username = request.data.get("username")
     password = request.data.get("password")
     email = request.data.get("email")
@@ -2287,6 +2288,7 @@ def visitante_registro_api(request):
         return Response({"ok": False, "error": "El usuario ya existe."}, status=400)
 
     visitante = VisitanteAcceso.objects.create(
+        nombre=nombre_completo,
         username=username,
         email=email,
         activo=False,
@@ -2330,6 +2332,7 @@ def visitante_registro_api(request):
     asunto = "Solicitud de registro de visitante"
     mensaje = (
         f"Nuevo visitante solicita acceso:\n\n"
+        f"Nombre: {nombre_completo}\n"
         f"Usuario: {username}\n"
         f"Email: {email}\n"
         f"{detalle_empresas}\n"
