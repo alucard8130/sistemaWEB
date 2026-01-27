@@ -40,13 +40,15 @@ from django.db import models as djmodels
 from django.db.models import Sum, Q
 from django.urls import reverse
 from openpyxl import Workbook
+from django.http import JsonResponse
+
 
 # matriz ppto gastos
 @login_required
 def matriz_presupuesto(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
-    anios = (
+    anios = list(
         Presupuesto.objects.values_list("anio", flat=True).distinct().order_by("anio")
     )
 
@@ -62,9 +64,10 @@ def matriz_presupuesto(request):
     meses = list(range(1, 13))
     meses_nombres = [month_name[m].capitalize() for m in meses]
 
-    # ¿Cerrado?
+    # Cierre y edición
     cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
     bloqueado = cierre.cerrado if cierre else False
+    edicion_habilitada = not bloqueado or request.user.is_superuser
     pedir_superuser = False
 
     if bloqueado and not request.user.is_superuser:
@@ -100,31 +103,24 @@ def matriz_presupuesto(request):
 
     edicion_habilitada = not bloqueado or request.user.is_superuser
 
-    # --- OPTIMIZACIÓN: consulta agregada ---
+    # Consulta agregada
     presupuestos_qs = (
         Presupuesto.objects.filter(empresa=empresa, anio=anio)
-        .values(
-            "grupo_id",
-            "grupo__nombre",
-            "subgrupo_id",
-            "subgrupo__nombre",
-            "tipo_gasto_id",
-            "tipo_gasto__nombre",
-            "mes"
-        )
+        .values("grupo_id", "subgrupo_id", "tipo_gasto_id", "mes")
         .annotate(monto=Sum("monto"))
-        .order_by("grupo__nombre", "subgrupo__nombre", "tipo_gasto__nombre", "mes")
     )
 
-    # --- NUEVO: Construir estructura base con todos los tipos de gasto ---
-    #print("empresa:", empresa, type(empresa))
+    # Estructura base
     tipos = (
         TipoGasto.objects.filter(empresa=empresa)
         .select_related("subgrupo", "subgrupo__grupo")
         .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
     )
 
+    # Build nested structure for tree grid
+    grupos = []
     grupos_dict = {}
+
     for tipo in tipos:
         grupo = tipo.subgrupo.grupo
         subgrupo = tipo.subgrupo
@@ -136,22 +132,28 @@ def matriz_presupuesto(request):
             grupos_dict[grupo_id] = {
                 "id": grupo_id,
                 "nombre": grupo.nombre,
-                "subgrupos": {}
+                "subgrupos": {},
+                "subtotal": [0] * 12,
+                "collapsed": False,
             }
         if subgrupo_id not in grupos_dict[grupo_id]["subgrupos"]:
             grupos_dict[grupo_id]["subgrupos"][subgrupo_id] = {
                 "id": subgrupo_id,
                 "nombre": subgrupo.nombre,
-                "tipos": {}
+                "tipos": {},
+                "subtotal": [0] * 12,
+                "collapsed": False,
             }
         if tipo_id not in grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"]:
             grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"][tipo_id] = {
                 "id": tipo_id,
                 "nombre": tipo.nombre,
-                "montos": {m: 0 for m in meses}
+                "montos": {m: 0 for m in meses},
+                "subtotal": [0] * 12,
+                "visible": True,
             }
 
-    # Ahora llena los montos reales desde la consulta agregada
+    # Fill real amounts
     for p in presupuestos_qs:
         grupo_id = p["grupo_id"]
         subgrupo_id = p["subgrupo_id"]
@@ -163,57 +165,72 @@ def matriz_presupuesto(request):
             and subgrupo_id in grupos_dict[grupo_id]["subgrupos"]
             and tipo_id in grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"]
         ):
-            grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"][tipo_id]["montos"][mes] = monto
+            grupos_dict[grupo_id]["subgrupos"][subgrupo_id]["tipos"][tipo_id]["montos"][
+                mes
+            ] = monto
 
+    # Calculate subtotals and build final list
     totales_mes = [0] * 12
-    subtotales_grupo = {}
-    subtotales_subgrupo = {}
-    subtotales_tipo = {}
-
-    grupos_lista = []
     for grupo in grupos_dict.values():
-        subtotal_grupo = [0] * 12
-        subgrupos_lista = []
         for subgrupo in grupo["subgrupos"].values():
-            subtotal_subgrupo = [0] * 12
-            tipos_lista = []
             for tipo in subgrupo["tipos"].values():
-                subtotal_tipo = []
                 for i, mes in enumerate(meses):
                     valor = tipo["montos"].get(mes, 0) or 0
-                    subtotal_tipo.append(valor)
-                    subtotal_subgrupo[i] += valor
-                    subtotal_grupo[i] += valor
+                    tipo["subtotal"][i] = valor
+                    subgrupo["subtotal"][i] += valor
+                    grupo["subtotal"][i] += valor
                     totales_mes[i] += valor
-                subtotales_tipo[tipo["id"]] = subtotal_tipo
-                tipos_lista.append({
-                    "id": tipo["id"],
-                    "nombre": tipo["nombre"],
-                    "montos": tipo["montos"]
-                })
-            subtotales_subgrupo[subgrupo["id"]] = subtotal_subgrupo
-            subgrupos_lista.append({
-                "id": subgrupo["id"],
-                "nombre": subgrupo["nombre"],
-                "tipos": tipos_lista
-            })
-        subtotales_grupo[grupo["id"]] = subtotal_grupo
-        grupos_lista.append({
-            "id": grupo["id"],
-            "nombre": grupo["nombre"],
-            "subgrupos": subgrupos_lista
-        })
 
-    # --- GUARDADO OPTIMIZADO ---
-    if request.method == "POST" and edicion_habilitada:
+    # Convert to list for frontend
+    for grupo in grupos_dict.values():
+        subgrupos = []
+        for subgrupo in grupo["subgrupos"].values():
+            tipos = list(subgrupo["tipos"].values())
+            subgrupo["tipos"] = tipos
+            subgrupos.append(subgrupo)
+        grupo["subgrupos"] = subgrupos
+        grupos.append(grupo)
+
+    # Detectar AJAX correctamente
+    is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+    # AJAX save endpoint
+    if request.method == "POST" and edicion_habilitada and is_ajax:
+        import json
+
+        data = json.loads(request.body)
+        tipo_id = data.get("tipo_id")
+        mes = data.get("mes")
+        monto = data.get("monto")
+        if tipo_id and mes:
+            obj, created = Presupuesto.objects.get_or_create(
+                empresa=empresa,
+                anio=anio,
+                tipo_gasto_id=tipo_id,
+                mes=mes,
+                defaults={
+                    "grupo_id": TipoGasto.objects.get(pk=tipo_id).subgrupo.grupo.id,
+                    "subgrupo_id": TipoGasto.objects.get(pk=tipo_id).subgrupo.id,
+                    "monto": monto,
+                },
+            )
+            if not created:
+                obj.monto = monto
+                obj.save()
+            return JsonResponse({"success": True, "created": created})
+        return JsonResponse({"success": False, "error": "Missing data"}, status=400)
+
+    # --- GUARDADO OPTIMIZADO (NO AJAX) ---
+    if request.method == "POST" and edicion_habilitada and not is_ajax:
         if not empresa:
             messages.error(
                 request,
                 "No hay empresa seleccionada. No se puede guardar el presupuesto de gastos.",
             )
             return redirect(request.path + f"?anio={anio}")
+
         cambios = []
-        for grupo in grupos_lista:
+        for grupo in grupos:
             for subgrupo in grupo["subgrupos"]:
                 for tipo in subgrupo["tipos"]:
                     tipo_id = tipo["id"]
@@ -225,19 +242,21 @@ def matriz_presupuesto(request):
                                 monto = float(monto or 0)
                             except ValueError:
                                 monto = 0
-                            cambios.append({
-                                "tipo_id": tipo_id,
-                                "grupo_id": grupo["id"],
-                                "subgrupo_id": subgrupo["id"],
-                                "mes": mes,
-                                "monto": monto
-                            })
+                            cambios.append(
+                                {
+                                    "tipo_id": tipo_id,
+                                    "grupo_id": grupo["id"],
+                                    "subgrupo_id": subgrupo["id"],
+                                    "mes": mes,
+                                    "monto": monto,
+                                }
+                            )
 
         existentes = Presupuesto.objects.filter(
             empresa=empresa,
             anio=anio,
             tipo_gasto_id__in=[c["tipo_id"] for c in cambios],
-            mes__in=[c["mes"] for c in cambios]
+            mes__in=[c["mes"] for c in cambios],
         )
         existentes_dict = {(p.tipo_gasto_id, p.mes): p for p in existentes}
 
@@ -251,15 +270,17 @@ def matriz_presupuesto(request):
                     obj.monto = c["monto"]
                     actualizados.append(obj)
             else:
-                nuevos.append(Presupuesto(
-                    empresa=empresa,
-                    grupo_id=c["grupo_id"],
-                    subgrupo_id=c["subgrupo_id"],
-                    tipo_gasto_id=c["tipo_id"],
-                    anio=anio,
-                    mes=c["mes"],
-                    monto=c["monto"]
-                ))
+                nuevos.append(
+                    Presupuesto(
+                        empresa=empresa,
+                        grupo_id=c["grupo_id"],
+                        subgrupo_id=c["subgrupo_id"],
+                        tipo_gasto_id=c["tipo_id"],
+                        anio=anio,
+                        mes=c["mes"],
+                        monto=c["monto"],
+                    )
+                )
 
         if actualizados:
             Presupuesto.objects.bulk_update(actualizados, ["monto"])
@@ -291,11 +312,28 @@ def matriz_presupuesto(request):
             + (f"&empresa={empresa.id}" if empresa else "")
         )
 
+    # AJAX GET, retorna JSON
+    if is_ajax:
+        return JsonResponse(
+            {
+                "grupos": grupos,
+                "meses": meses,
+                "meses_nombres": meses_nombres,
+                "anio": anio,
+                "anios": anios,
+                "empresa": empresa.id if empresa else None,
+                "totales_mes": totales_mes,
+                "edicion_habilitada": edicion_habilitada,
+                "bloqueado": bloqueado,
+            }
+        )
+
+    # Render tradicional
     return render(
         request,
         "presupuestos/matriz.html",
         {
-            "grupos_lista": grupos_lista,
+            "grupos": grupos,
             "meses": meses,
             "meses_nombres": meses_nombres,
             "anio": anio,
@@ -303,19 +341,17 @@ def matriz_presupuesto(request):
             "empresas": empresas,
             "empresa": empresa,
             "totales_mes": totales_mes,
-            "subtotales_grupo": subtotales_grupo,
-            "subtotales_subgrupo": subtotales_subgrupo,
-            "subtotales_tipo": subtotales_tipo,
-            "is_super": request.user.is_superuser,
             "edicion_habilitada": edicion_habilitada,
-            "pedir_superuser": pedir_superuser,
             "bloqueado": bloqueado,
             "cierre": cierre,
+            "pedir_superuser": pedir_superuser,
         },
     )
 
-#borrar matriz gastos
+
+# borrar matriz gastos
 from django.views.decorators.http import require_POST
+
 
 @require_POST
 @login_required
@@ -334,8 +370,12 @@ def borrar_presupuesto_gastos(request):
         return redirect(request.META.get("HTTP_REFERER", "/"))
 
     Presupuesto.objects.filter(empresa=empresa, anio=anio).delete()
-    messages.success(request, f"Presupuesto de gastos del año {anio} para la empresa '{empresa.nombre}' borrado correctamente.")
+    messages.success(
+        request,
+        f"Presupuesto de gastos del año {anio} para la empresa '{empresa.nombre}' borrado correctamente.",
+    )
     return redirect(request.META.get("HTTP_REFERER", "/"))
+
 
 @login_required
 def exportar_presupuesto_excel(request):
@@ -701,10 +741,13 @@ def exportar_comparativo_excel(request):
         meses = list(range(1, mes_actual + 1))
         meses_nombres = [calendar.month_name[m] for m in meses]
 
-
     if request.user.is_superuser:
         empresa_id = request.GET.get("empresa")
-        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else Empresa.objects.first()
+        empresa = (
+            Empresa.objects.get(pk=empresa_id)
+            if empresa_id
+            else Empresa.objects.first()
+        )
     else:
         empresa = request.user.perfilusuario.empresa
 
@@ -1003,121 +1046,6 @@ def comparativo_presupuesto_anio(request):
             "is_super": is_super,
         },
     )
-
-
-# @login_required
-# def comparativo_presupuesto_vs_gastos(request):
-#     # 1. Años disponibles (presupuesto.anio y pago.fecha_pago__year)
-#     años_presupuesto = Presupuesto.objects.values_list("anio", flat=True)
-#     años_pagos = PagoGasto.objects.annotate(year=ExtractYear("fecha_pago")).values_list(
-#         "year", flat=True
-#     )
-#     años = sorted(set(años_presupuesto) | set(años_pagos))
-
-#     # 2. Año seleccionado (por GET o último)
-#     default_anio = años[-1] if años else date.today().year
-#     try:
-#         anio = int(request.GET.get("anio", default_anio))
-#     except (TypeError, ValueError):
-#         anio = default_anio
-
-#     # 3. Agregaciones de presupuesto por mes y jerarquía
-#     qs_pres = (
-#         Presupuesto.objects.filter(anio=anio)
-#         .values(
-#             "grupo__nombre",  # GrupoGasto.nombre
-#             "subgrupo__nombre",  # SubgrupoGasto.nombre (puede ser null)
-#             "tipo_gasto__nombre",  # TipoGasto.nombre (puede ser null)
-#             "mes",  # mes (1–12 o null)
-#         )
-#         .annotate(presupuesto=Sum("monto"))
-#     )
-
-#     # 4. Agregaciones de pagos de gasto por mes y jerarquía
-#     qs_pagos = (
-#         PagoGasto.objects.annotate(
-#             year=ExtractYear("fecha_pago"), mes=ExtractMonth("fecha_pago")
-#         )
-#         .filter(year=anio)
-#         .values(
-#             "gasto__tipo_gasto__subgrupo__grupo__nombre",  # GrupoGasto.nombre
-#             "gasto__tipo_gasto__subgrupo__nombre",  # SubgrupoGasto.nombre
-#             "gasto__tipo_gasto__nombre",  # TipoGasto.nombre
-#             "mes",  # mes (1–12)
-#         )
-#         .annotate(gasto=Sum("monto"))
-#     )
-
-#     # 5. Construir estructura anidada y acumular montos
-#     meses = list(range(1, 13))
-#     estructura = {}
-#     # Inicializar nodos
-#     for rec in list(qs_pres) + list(qs_pagos):
-#         if "grupo__nombre" in rec:
-#             grp = rec["grupo__nombre"]
-#             sub = rec["subgrupo__nombre"]
-#             tip = rec["tipo_gasto__nombre"]
-#         else:
-#             grp = rec["gasto__tipo_gasto__subgrupo__grupo__nombre"]
-#             sub = rec["gasto__tipo_gasto__subgrupo__nombre"]
-#             tip = rec["gasto__tipo_gasto__nombre"]
-#         estructura.setdefault(
-#             grp, {"subgrupos": {}, "totales": {"presupuesto": 0, "gasto": 0}}
-#         )
-#         estructura[grp]["subgrupos"].setdefault(
-#             sub, {"tipos": {}, "totales": {"presupuesto": 0, "gasto": 0}}
-#         )
-#         estructura[grp]["subgrupos"][sub]["tipos"].setdefault(
-#             tip, {"presupuesto": {m: 0 for m in meses}, "gasto": {m: 0 for m in meses}}
-#         )
-
-#     # Rellenar valores de presupuesto
-#     for item in qs_pres:
-#         grp = item["grupo__nombre"]
-#         sub = item["subgrupo__nombre"]
-#         tip = item["tipo_gasto__nombre"]
-#         m = item["mes"] or 0
-#         val = item["presupuesto"]
-#         estructura[grp]["subgrupos"][sub]["tipos"][tip]["presupuesto"][m] = val
-#         estructura[grp]["subgrupos"][sub]["totales"]["presupuesto"] += val
-#         estructura[grp]["totales"]["presupuesto"] += val
-
-#     # Rellenar valores de gasto
-#     for item in qs_pagos:
-#         grp = item["gasto__tipo_gasto__subgrupo__grupo__nombre"]
-#         sub = item["gasto__tipo_gasto__subgrupo__nombre"]
-#         tip = item["gasto__tipo_gasto__nombre"]
-#         m = item["mes"] or 0
-#         val = item["gasto"]
-#         estructura[grp]["subgrupos"][sub]["tipos"][tip]["gasto"][m] = val
-#         estructura[grp]["subgrupos"][sub]["totales"]["gasto"] += val
-#         estructura[grp]["totales"]["gasto"] += val
-
-#     # 6. Calcular totales mensuales y anuales
-#     totales_meses = {m: {"presupuesto": 0, "gasto": 0} for m in meses}
-#     tot_anual = {"presupuesto": 0, "gasto": 0}
-#     for grp_obj in estructura.values():
-#         for sub_obj in grp_obj["subgrupos"].values():
-#             for tipo_vals in sub_obj["tipos"].values():
-#                 for m in meses:
-#                     totales_meses[m]["presupuesto"] += tipo_vals["presupuesto"][m]
-#                     totales_meses[m]["gasto"] += tipo_vals["gasto"][m]
-#     tot_anual["presupuesto"] = sum(v["presupuesto"] for v in totales_meses.values())
-#     tot_anual["gasto"] = sum(v["gasto"] for v in totales_meses.values())
-
-#     # 7. Renderizar
-#     return render(
-#         request,
-#         "presupuestos/comparativo_presupuesto_vs_gastos.html",
-#         {
-#             "estructura": estructura,
-#             "meses": meses,
-#             "totales_meses": totales_meses,
-#             "tot_anual": tot_anual,
-#             "anio": anio,
-#             "anios_disponibles": años,
-#         },
-#     )
 
 
 @login_required
@@ -1617,15 +1545,19 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
         ("area", "Áreas comunes"),
         ("otros", "Otros ingresos"),
     ]
-    #tipos_otros = FacturaOtrosIngresos.tipo_ingreso
-    tipos_otros = list(TipoOtroIngreso.objects.filter(empresa=empresa).values_list("id", "nombre"))
+    # tipos_otros = FacturaOtrosIngresos.tipo_ingreso
+    tipos_otros = list(
+        TipoOtroIngreso.objects.filter(empresa=empresa).values_list("id", "nombre")
+    )
 
     # Presupuestos
     presupuestos = PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio)
     presup_dict = defaultdict(lambda: defaultdict(float))
     for p in presupuestos:
         if p.origen == "otros" and p.tipo_otro:
-            presup_dict[(p.origen, p.tipo_otro.id)][p.mes] = float(p.monto_presupuestado)
+            presup_dict[(p.origen, p.tipo_otro.id)][p.mes] = float(
+                p.monto_presupuestado
+            )
         else:
             presup_dict[(p.origen, None)][p.mes] = float(p.monto_presupuestado)
 
@@ -1698,7 +1630,7 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
         fila += [total_presup, total_real, total_var]
         ws.append(fila)
 
-     # Fila total de "Otros ingresos" sumando todos los tipos
+    # Fila total de "Otros ingresos" sumando todos los tipos
     fila_total_otros = ["Otros ingresos (Total)", ""]
     total_presup = total_real = total_var = 0
     for i, mes in enumerate(meses):
@@ -1713,7 +1645,6 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
         total_var += var
     fila_total_otros += [total_presup, total_real, total_var]
     ws.append(fila_total_otros)
-
 
     # Otros ingresos por tipo
     for tipo_id, tipo_nombre in tipos_otros:
@@ -1754,13 +1685,15 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
     return response
 
 
-#matriz presupuesto ingresos
+# matriz presupuesto ingresos
 @login_required
 def matriz_presupuesto_ingresos(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year
     anios = (
-        PresupuestoIngreso.objects.values_list("anio", flat=True).distinct().order_by("anio")
+        PresupuestoIngreso.objects.values_list("anio", flat=True)
+        .distinct()
+        .order_by("anio")
     )
 
     # Empresa y permisos
@@ -1772,7 +1705,7 @@ def matriz_presupuesto_ingresos(request):
         empresa = request.user.perfilusuario.empresa
         empresas = None
 
-     # Obtén todos los años disponibles para la empresa
+    # Obtén todos los años disponibles para la empresa
     anios = (
         PresupuestoIngreso.objects.filter(empresa=empresa)
         .values_list("anio", flat=True)
@@ -1869,9 +1802,7 @@ def matriz_presupuesto_ingresos(request):
                 for mes in meses
             ]
         else:
-            subtotales_origen[origen] = [
-                presup_dict[origen][mes] for mes in meses
-            ]
+            subtotales_origen[origen] = [presup_dict[origen][mes] for mes in meses]
 
     # Totales por mes
     totales_mes = [
@@ -1899,14 +1830,16 @@ def matriz_presupuesto_ingresos(request):
                             monto = float(monto or 0)
                         except ValueError:
                             monto = 0
-                        cambios.append({
-                            "empresa": empresa,
-                            "anio": anio,
-                            "mes": mes,
-                            "origen": origen,
-                            "tipo_otro": None,
-                            "monto": monto,
-                        })
+                        cambios.append(
+                            {
+                                "empresa": empresa,
+                                "anio": anio,
+                                "mes": mes,
+                                "origen": origen,
+                                "tipo_otro": None,
+                                "monto": monto,
+                            }
+                        )
         # Otros ingresos
         for tipo_id, _ in tipos_otros:
             tipo_otro_instance = TipoOtroIngreso.objects.get(pk=tipo_id)
@@ -1918,21 +1851,23 @@ def matriz_presupuesto_ingresos(request):
                         monto = float(monto or 0)
                     except ValueError:
                         monto = 0
-                    cambios.append({
-                        "empresa": empresa,
-                        "anio": anio,
-                        "mes": mes,
-                        "origen": "otros",
-                        "tipo_otro": tipo_otro_instance,
-                        "monto": monto,
-                    })
+                    cambios.append(
+                        {
+                            "empresa": empresa,
+                            "anio": anio,
+                            "mes": mes,
+                            "origen": "otros",
+                            "tipo_otro": tipo_otro_instance,
+                            "monto": monto,
+                        }
+                    )
 
         # Consulta existente
         existentes = PresupuestoIngreso.objects.filter(
             empresa=empresa,
             anio=anio,
             origen__in=[c["origen"] for c in cambios],
-            mes__in=[c["mes"] for c in cambios]
+            mes__in=[c["mes"] for c in cambios],
         )
         existentes_dict = {}
         for p in existentes:
@@ -1942,24 +1877,36 @@ def matriz_presupuesto_ingresos(request):
         nuevos = []
         actualizados = []
         for c in cambios:
-            key = (c["origen"], c["mes"], c["tipo_otro"].id if c["origen"] == "otros" and c["tipo_otro"] else None)
+            key = (
+                c["origen"],
+                c["mes"],
+                (
+                    c["tipo_otro"].id
+                    if c["origen"] == "otros" and c["tipo_otro"]
+                    else None
+                ),
+            )
             obj = existentes_dict.get(key)
             if obj:
                 if obj.monto_presupuestado != c["monto"]:
                     obj.monto_presupuestado = c["monto"]
                     actualizados.append(obj)
             else:
-                nuevos.append(PresupuestoIngreso(
-                    empresa=c["empresa"],
-                    anio=c["anio"],
-                    mes=c["mes"],
-                    origen=c["origen"],
-                    tipo_otro=c["tipo_otro"],
-                    monto_presupuestado=c["monto"]
-                ))
+                nuevos.append(
+                    PresupuestoIngreso(
+                        empresa=c["empresa"],
+                        anio=c["anio"],
+                        mes=c["mes"],
+                        origen=c["origen"],
+                        tipo_otro=c["tipo_otro"],
+                        monto_presupuestado=c["monto"],
+                    )
+                )
 
         if actualizados:
-            PresupuestoIngreso.objects.bulk_update(actualizados, ["monto_presupuestado"])
+            PresupuestoIngreso.objects.bulk_update(
+                actualizados, ["monto_presupuestado"]
+            )
         if nuevos:
             PresupuestoIngreso.objects.bulk_create(nuevos)
 
@@ -2013,13 +1960,18 @@ def matriz_presupuesto_ingresos(request):
         },
     )
 
-#exportar presupuesto ingresos
+
+# exportar presupuesto ingresos
 @login_required
 def exportar_matriz_presupuesto_ingresos_excel(request):
     anio = int(request.GET.get("anio", now().year))
     if request.user.is_superuser:
         empresa_id = request.GET.get("empresa")
-        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else Empresa.objects.first()
+        empresa = (
+            Empresa.objects.get(pk=empresa_id)
+            if empresa_id
+            else Empresa.objects.first()
+        )
     else:
         empresa = request.user.perfilusuario.empresa
 
@@ -2085,7 +2037,9 @@ def exportar_matriz_presupuesto_ingresos_excel(request):
                 pass
         ws.column_dimensions[col_letter].width = max_length + 2
 
-    nombre_archivo = f"Presupuesto_Ingresos_{empresa.nombre}_{anio}.xlsx".replace(" ", "_")
+    nombre_archivo = f"Presupuesto_Ingresos_{empresa.nombre}_{anio}.xlsx".replace(
+        " ", "_"
+    )
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
@@ -2093,8 +2047,10 @@ def exportar_matriz_presupuesto_ingresos_excel(request):
     wb.save(response)
     return response
 
-#borra matriz presupuesto ingresos
+
+# borra matriz presupuesto ingresos
 from django.views.decorators.http import require_POST
+
 
 @require_POST
 @login_required
@@ -2109,13 +2065,18 @@ def borrar_presupuesto_ingresos(request):
     # Verifica si está cerrado
     cierre = PresupuestoCierre.objects.filter(empresa=empresa, anio=anio).first()
     if cierre and cierre.cerrado:
-        messages.error(request, "No se puede borrar: el presupuesto de ingresos está cerrado.")
+        messages.error(
+            request, "No se puede borrar: el presupuesto de ingresos está cerrado."
+        )
         return redirect(request.META.get("HTTP_REFERER", "/"))
 
     PresupuestoIngreso.objects.filter(empresa=empresa, anio=anio).delete()
-    messages.success(request, f"Presupuesto de ingresos del año {anio} para la empresa '{empresa.nombre}' borrado correctamente.")
-    #return redirect(request.META.get("HTTP_REFERER", "/"))
-     # Si el año borrado era el único, redirige sin año; si hay otros, redirige al año más reciente
+    messages.success(
+        request,
+        f"Presupuesto de ingresos del año {anio} para la empresa '{empresa.nombre}' borrado correctamente.",
+    )
+    # return redirect(request.META.get("HTTP_REFERER", "/"))
+    # Si el año borrado era el único, redirige sin año; si hay otros, redirige al año más reciente
     anios_disp = (
         PresupuestoIngreso.objects.filter(empresa=empresa)
         .values_list("anio", flat=True)
@@ -2123,9 +2084,14 @@ def borrar_presupuesto_ingresos(request):
     )
     anio_disp = anios_disp.first() if anios_disp else None
     if anio_disp:
-        return redirect(f"{reverse('matriz_presupuesto_ingresos')}?anio={anio_disp}&empresa={empresa.id}")
+        return redirect(
+            f"{reverse('matriz_presupuesto_ingresos')}?anio={anio_disp}&empresa={empresa.id}"
+        )
     else:
-        return redirect(f"{reverse('matriz_presupuesto_ingresos')}?empresa={empresa.id}")
+        return redirect(
+            f"{reverse('matriz_presupuesto_ingresos')}?empresa={empresa.id}"
+        )
+
 
 @login_required
 def carga_masiva_presupuesto_ingresos(request):
@@ -2345,8 +2311,8 @@ def descargar_plantilla_matriz_presupuesto_ingresos(request):
     return response
 
 
-
 # clonar ppto gastos
+@login_required
 def copiar_presupuesto_gastos_a_nuevo_anio(request):
     if request.method != "POST":
         return redirect("matriz_presupuesto")
@@ -2367,15 +2333,18 @@ def copiar_presupuesto_gastos_a_nuevo_anio(request):
 
     # Año actual / nuevo (permite override por formulario)
     try:
-        anio_actual = int(request.POST.get("anio") or request.GET.get("anio") or date.today().year)
+        anio_actual = int(
+            request.POST.get("anio") or request.GET.get("anio") or date.today().year
+        )
     except (TypeError, ValueError):
         anio_actual = date.today().year
     anio_nuevo = anio_actual + 1
 
     # comprobar existencia en el año destino SOLO para la empresa seleccionada
     total_nuevo = (
-        Presupuesto.objects.filter(empresa=empresa, anio=anio_nuevo)
-        .aggregate(total=Sum("monto"))["total"]
+        Presupuesto.objects.filter(empresa=empresa, anio=anio_nuevo).aggregate(
+            total=Sum("monto")
+        )["total"]
         or 0
     )
     if total_nuevo > 0:
@@ -2385,13 +2354,25 @@ def copiar_presupuesto_gastos_a_nuevo_anio(request):
         )
         return redirect("matriz_presupuesto")
 
-    # Verifica que haya datos capturados en el año actual para esa empresa
-    presupuestos_actuales = Presupuesto.objects.filter(empresa=empresa, anio=anio_actual)
-    if not presupuestos_actuales.exists():
-        messages.warning(
-            request,
-            f"No hay datos capturados para el año {anio_actual} en {empresa.nombre}. No se puede clonar el presupuesto.",
-        )
+   
+    # Año actual / nuevo
+    try:
+        anio_actual = int(request.POST.get("anio") or request.GET.get("anio") or date.today().year)
+    except (TypeError, ValueError):
+        anio_actual = date.today().year
+    anio_nuevo = anio_actual + 1
+
+    # Verifica existencia en destino
+    if Presupuesto.objects.filter(empresa=empresa, anio=anio_nuevo).exists():
+        messages.warning(request, f"Ya existe presupuesto para el año {anio_nuevo} para {empresa.nombre}.")
+        return redirect("matriz_presupuesto")
+
+    # Verifica datos fuente
+    presupuestos_actuales = Presupuesto.objects.filter(empresa=empresa, anio=anio_actual).values(
+        "grupo_id", "subgrupo_id", "tipo_gasto_id", "mes", "monto"
+    )
+    if not presupuestos_actuales:
+        messages.warning(request, f"No hay datos capturados para el año {anio_actual} en {empresa.nombre}. No se puede clonar el presupuesto.")
         return redirect("matriz_presupuesto")
 
     tipo_clon = request.POST.get("tipo_clon", "sin")
@@ -2403,46 +2384,50 @@ def copiar_presupuesto_gastos_a_nuevo_anio(request):
 
     nuevos = []
 
-    # Forecast helper: tendencia lineal por (tipo_gasto, mes) usando años previos
-    def forecast_next_year(tipo_obj, mes, empresa_obj, target_year, lookback_years=3):
-        qs = (
-            Presupuesto.objects.filter(tipo_gasto=tipo_obj, empresa=empresa_obj)
-            .exclude(anio=anio_actual)
-            .values("anio")
-            .annotate(total=Sum("monto", filter=Q(mes=mes)))
-            .order_by("anio")
-        )
-        data = [(int(item["anio"]), float(item["total"] or 0)) for item in qs]
-        if not data:
-            return None
-        if len(data) > lookback_years:
-            data = data[-lookback_years:]
-        xs = [y for y, _ in data]
-        ys = [v for _, v in data]
-        n = len(xs)
-        if n == 1:
-            return Decimal(str(ys[0]))
-        mean_x = sum(xs) / n
-        mean_y = sum(ys) / n
-        cov = sum((xi - mean_x) * (yi - mean_y) for xi, yi in zip(xs, ys))
-        var_x = sum((xi - mean_x) ** 2 for xi in xs)
-        slope = cov / var_x if var_x else 0.0
-        intercept = mean_y - slope * mean_x
-        y_pred = intercept + slope * target_year
-        return Decimal(str(y_pred))
+    # --- OPTIMIZACIÓN FORECAST ---
+    forecast_cache = {}
+    if tipo_clon == "forecast":
+        tipo_mes_set = {(p["tipo_gasto_id"], p["mes"]) for p in presupuestos_actuales}
+        for tipo_id, mes in tipo_mes_set:
+            tipo_obj = TipoGasto.objects.get(pk=tipo_id)
+            qs = (
+                Presupuesto.objects.filter(tipo_gasto=tipo_obj, empresa=empresa)
+                .exclude(anio=anio_actual)
+                .values("anio")
+                .annotate(total=Sum("monto", filter=Q(mes=mes)))
+                .order_by("anio")
+            )
+            data = [(int(item["anio"]), float(item["total"] or 0)) for item in qs]
+            if not data:
+                forecast_cache[(tipo_id, mes)] = None
+                continue
+            if len(data) > 3:
+                data = data[-3:]
+            xs = [y for y, _ in data]
+            ys = [v for _, v in data]
+            n = len(xs)
+            if n == 1:
+                forecast_cache[(tipo_id, mes)] = Decimal(str(ys[0]))
+                continue
+            mean_x = sum(xs) / n
+            mean_y = sum(ys) / n
+            cov = sum((xi - mean_x) * (yi - mean_y) for xi, yi in zip(xs, ys))
+            var_x = sum((xi - mean_x) ** 2 for xi in xs)
+            slope = cov / var_x if var_x else 0.0
+            intercept = mean_y - slope * mean_x
+            y_pred = intercept + slope * anio_nuevo
+            forecast_cache[(tipo_id, mes)] = Decimal(str(y_pred))
 
+    nuevos = []
     for p in presupuestos_actuales:
-        monto = p.monto
+        monto = p["monto"]
         if tipo_clon == "con" and porcentaje > 0:
             try:
-                monto = (
-                    Decimal(monto)
-                    * (Decimal("1") + porcentaje / Decimal("100"))
-                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                monto = (Decimal(monto) * (Decimal("1") + porcentaje / Decimal("100"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             except Exception:
                 pass
         elif tipo_clon == "forecast":
-            pred = forecast_next_year(p.tipo_gasto, p.mes, p.empresa, anio_nuevo)
+            pred = forecast_cache.get((p["tipo_gasto_id"], p["mes"]))
             if pred is not None:
                 try:
                     pred = pred.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -2452,36 +2437,46 @@ def copiar_presupuesto_gastos_a_nuevo_anio(request):
                     pass
         nuevos.append(
             Presupuesto(
-                grupo=p.grupo,
-                subgrupo=p.subgrupo,
-                tipo_gasto=p.tipo_gasto,
-                mes=p.mes,
+                grupo_id=p["grupo_id"],
+                subgrupo_id=p["subgrupo_id"],
+                tipo_gasto_id=p["tipo_gasto_id"],
+                mes=p["mes"],
                 monto=monto,
                 anio=anio_nuevo,
-                empresa=p.empresa,
+                empresa=empresa,
             )
         )
 
-    Presupuesto.objects.bulk_create(nuevos)
+    Presupuesto.objects.bulk_create(nuevos, batch_size=1000)
 
     # Cerrar presupuesto del año anterior para la empresa afectada
-    cierre, _ = PresupuestoCierre.objects.get_or_create(empresa=empresa, anio=anio_actual)
+    cierre, _ = PresupuestoCierre.objects.get_or_create(
+        empresa=empresa, anio=anio_actual
+    )
     cierre.cerrado = True
     cierre.cerrado_por = request.user
     cierre.fecha_cierre = now()
     cierre.save()
 
     if tipo_clon == "con" and porcentaje > 0:
-        messages.success(
-            request,
-            f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%",
-        )
+        messages.success(request, f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%")
+    elif tipo_clon == "forecast":
+        messages.success(request, f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} usando forecast/tendencia.")
     else:
-        messages.success(
-            request,
-            f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.",
-        )
+        messages.success(request, f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.")
     return redirect("matriz_presupuesto")
+
+    # if tipo_clon == "con" and porcentaje > 0:
+    #     messages.success(
+    #         request,
+    #         f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%",
+    #     )
+    # else:
+    #     messages.success(
+    #         request,
+    #         f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.",
+    #     )
+    # return redirect("matriz_presupuesto")
 
 
 @login_required
@@ -2498,7 +2493,9 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
         # Determinar empresa (multi-empresa)
         if request.user.is_superuser:
             empresa_id = request.POST.get("empresa") or request.GET.get("empresa")
-            empresa = Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
+            empresa = (
+                Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
+            )
             if not empresa:
                 messages.error(request, "Selecciona una empresa válida para clonar.")
                 return redirect("matriz_presupuesto_ingresos")
@@ -2510,18 +2507,24 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
             empresa = perfil.empresa
 
         # Verifica si ya existe presupuesto en el año destino para esa empresa
-        existe = PresupuestoIngreso.objects.filter(anio=anio_nuevo, empresa=empresa).exists()
+        existe = PresupuestoIngreso.objects.filter(
+            anio=anio_nuevo, empresa=empresa
+        ).exists()
         if existe:
             messages.warning(
-                request, f"Ya existe presupuesto de ingresos para el año {anio_nuevo} en {empresa.nombre}."
+                request,
+                f"Ya existe presupuesto de ingresos para el año {anio_nuevo} en {empresa.nombre}.",
             )
             return redirect("matriz_presupuesto_ingresos")
 
         # Verifica que haya datos capturados en el año fuente para esa empresa
-        presupuestos_actuales = PresupuestoIngreso.objects.filter(anio=anio_actual, empresa=empresa)
+        presupuestos_actuales = PresupuestoIngreso.objects.filter(
+            anio=anio_actual, empresa=empresa
+        )
         if not presupuestos_actuales.exists():
             messages.warning(
-                request, f"No hay datos capturados para el año {anio_actual} en {empresa.nombre}. No se puede clonar el presupuesto."
+                request,
+                f"No hay datos capturados para el año {anio_actual} en {empresa.nombre}. No se puede clonar el presupuesto.",
             )
             return redirect("matriz_presupuesto_ingresos")
 
@@ -2572,134 +2575,158 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
             )
     return redirect("matriz_presupuesto_ingresos")
 
+
 @login_required
 def comparativo_anual_total(request):
     try:
         anio = int(request.GET.get("anio", now().year))
     except (TypeError, ValueError):
-            anio = now().year
+        anio = now().year
     anio_ant = anio - 1
 
-        # determinar empresa
+    # determinar empresa
     if request.user.is_superuser:
-            empresa_id = request.GET.get("empresa")
-            empresa = Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
-            if not empresa:
-                messages.error(request, "Selecciona una empresa válida o usa el parámetro ?empresa=<id>.")
-                return redirect("dashboard")
-    else:
-            perfil = getattr(request.user, "perfilusuario", None)
-            if not perfil or not getattr(perfil, "empresa", None):
-                messages.error(request, "No se pudo determinar la empresa del usuario.")
-                return redirect("dashboard")
-            empresa = perfil.empresa
-
-        # consulta: sumar por tipo_gasto relacionando subgrupo y grupo para obtener nombres
-    qs = Presupuesto.objects.filter(empresa=empresa, anio__in=[anio, anio_ant])
-    rows = (
-            qs.values(
-                "tipo_gasto",
-                "tipo_gasto__nombre",
-                "tipo_gasto__subgrupo",
-                "tipo_gasto__subgrupo__nombre",
-                "tipo_gasto__subgrupo__grupo",
-                "tipo_gasto__subgrupo__grupo__nombre",
-                "anio",
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
+        if not empresa:
+            messages.error(
+                request,
+                "Selecciona una empresa válida o usa el parámetro ?empresa=<id>.",
             )
-            .annotate(total=Sum("monto"))
-        )
+            return redirect("dashboard")
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if not perfil or not getattr(perfil, "empresa", None):
+            messages.error(request, "No se pudo determinar la empresa del usuario.")
+            return redirect("dashboard")
+        empresa = perfil.empresa
 
-        # helper porcentaje: si anterior>0 -> porcentaje real; si anterior==0 -> +100/-100/0 según caso
+    # consulta: sumar por tipo_gasto relacionando subgrupo y grupo para obtener nombres
+    qs = Presupuesto.objects.filter(empresa=empresa, anio__in=[anio, anio_ant])
+    rows = qs.values(
+        "tipo_gasto",
+        "tipo_gasto__nombre",
+        "tipo_gasto__subgrupo",
+        "tipo_gasto__subgrupo__nombre",
+        "tipo_gasto__subgrupo__grupo",
+        "tipo_gasto__subgrupo__grupo__nombre",
+        "anio",
+    ).annotate(total=Sum("monto"))
+
+    # helper porcentaje: si anterior>0 -> porcentaje real; si anterior==0 -> +100/-100/0 según caso
     def pct_calc(actual, anterior):
+        try:
+            a = float(actual or 0)
+            b = float(anterior or 0)
+        except Exception:
+            return None
+        if b != 0:
             try:
-                a = float(actual or 0)
-                b = float(anterior or 0)
+                return round(((a - b) / b) * 100, 2)
             except Exception:
                 return None
-            if b != 0:
-                try:
-                    return round(((a - b) / b) * 100, 2)
-                except Exception:
-                    return None
-            # b == 0
-            if a == b:
-                return 0.0
-            return 100.0 if a > b else -100.0
+        # b == 0
+        if a == b:
+            return 0.0
+        return 100.0 if a > b else -100.0
 
-        # construir estructura nested por nombres (grupo -> subgrupo -> tipo)
+    # construir estructura nested por nombres (grupo -> subgrupo -> tipo)
     estructura = {}
     total_anio = {anio: 0, anio_ant: 0}
     for r in rows:
-            g_nombre = r.get("tipo_gasto__subgrupo__grupo__nombre") or (r.get("tipo_gasto__subgrupo__grupo") and str(r.get("tipo_gasto__subgrupo__grupo"))) or "SIN GRUPO"
-            sg_nombre = r.get("tipo_gasto__subgrupo__nombre") or (r.get("tipo_gasto__subgrupo") and str(r.get("tipo_gasto__subgrupo"))) or "SIN SUBGRUPO"
-            tipo_nombre = r.get("tipo_gasto__nombre") or (r.get("tipo_gasto") and str(r.get("tipo_gasto"))) or "SIN TIPO"
-            y = r.get("anio")
-            tot = r.get("total") or 0
+        g_nombre = (
+            r.get("tipo_gasto__subgrupo__grupo__nombre")
+            or (
+                r.get("tipo_gasto__subgrupo__grupo")
+                and str(r.get("tipo_gasto__subgrupo__grupo"))
+            )
+            or "SIN GRUPO"
+        )
+        sg_nombre = (
+            r.get("tipo_gasto__subgrupo__nombre")
+            or (r.get("tipo_gasto__subgrupo") and str(r.get("tipo_gasto__subgrupo")))
+            or "SIN SUBGRUPO"
+        )
+        tipo_nombre = (
+            r.get("tipo_gasto__nombre")
+            or (r.get("tipo_gasto") and str(r.get("tipo_gasto")))
+            or "SIN TIPO"
+        )
+        y = r.get("anio")
+        tot = r.get("total") or 0
 
-            total_anio[y] += tot
+        total_anio[y] += tot
 
-            estructura.setdefault(g_nombre, {})
-            estructura[g_nombre].setdefault(sg_nombre, {})
-            estructura[g_nombre][sg_nombre].setdefault(tipo_nombre, {anio: 0, anio_ant: 0})
-            estructura[g_nombre][sg_nombre][tipo_nombre][y] = estructura[g_nombre][sg_nombre][tipo_nombre].get(y, 0) + tot
+        estructura.setdefault(g_nombre, {})
+        estructura[g_nombre].setdefault(sg_nombre, {})
+        estructura[g_nombre][sg_nombre].setdefault(tipo_nombre, {anio: 0, anio_ant: 0})
+        estructura[g_nombre][sg_nombre][tipo_nombre][y] = (
+            estructura[g_nombre][sg_nombre][tipo_nombre].get(y, 0) + tot
+        )
 
-        # calcular agregados y porcentajes
+    # calcular agregados y porcentajes
     resultado = []
     for grupo, subgrupos in sorted(estructura.items(), key=lambda x: x[0]):
-            grupo_tot = {anio: 0, anio_ant: 0}
-            detalle_subs = []
-            for subgrupo, tipos in sorted(subgrupos.items(), key=lambda x: x[0]):
-                sub_tot = {anio: 0, anio_ant: 0}
-                detalle_tipos = []
-                for tipo, vals in sorted(tipos.items(), key=lambda x: x[0]):
-                    actual = vals.get(anio, 0) or 0
-                    anterior = vals.get(anio_ant, 0) or 0
-                    diff = actual - anterior
-                    pct = pct_calc(actual, anterior)
-                    detalle_tipos.append({
+        grupo_tot = {anio: 0, anio_ant: 0}
+        detalle_subs = []
+        for subgrupo, tipos in sorted(subgrupos.items(), key=lambda x: x[0]):
+            sub_tot = {anio: 0, anio_ant: 0}
+            detalle_tipos = []
+            for tipo, vals in sorted(tipos.items(), key=lambda x: x[0]):
+                actual = vals.get(anio, 0) or 0
+                anterior = vals.get(anio_ant, 0) or 0
+                diff = actual - anterior
+                pct = pct_calc(actual, anterior)
+                detalle_tipos.append(
+                    {
                         "tipo": tipo,
                         "actual": actual,
                         "anterior": anterior,
                         "diferencia": diff,
                         "pct": pct,
-                    })
-                    sub_tot[anio] += actual
-                    sub_tot[anio_ant] += anterior
-                sdiff = sub_tot[anio] - sub_tot[anio_ant]
-                spct = pct_calc(sub_tot[anio], sub_tot[anio_ant])
-                detalle_subs.append({
+                    }
+                )
+                sub_tot[anio] += actual
+                sub_tot[anio_ant] += anterior
+            sdiff = sub_tot[anio] - sub_tot[anio_ant]
+            spct = pct_calc(sub_tot[anio], sub_tot[anio_ant])
+            detalle_subs.append(
+                {
                     "subgrupo": subgrupo,
                     "tot_actual": sub_tot[anio],
                     "tot_anterior": sub_tot[anio_ant],
                     "diferencia": sdiff,
                     "pct": spct,
                     "tipos": detalle_tipos,
-                })
-                grupo_tot[anio] += sub_tot[anio]
-                grupo_tot[anio_ant] += sub_tot[anio_ant]
-            gdiff = grupo_tot[anio] - grupo_tot[anio_ant]
-            gpct = pct_calc(grupo_tot[anio], grupo_tot[anio_ant])
-            resultado.append({
+                }
+            )
+            grupo_tot[anio] += sub_tot[anio]
+            grupo_tot[anio_ant] += sub_tot[anio_ant]
+        gdiff = grupo_tot[anio] - grupo_tot[anio_ant]
+        gpct = pct_calc(grupo_tot[anio], grupo_tot[anio_ant])
+        resultado.append(
+            {
                 "grupo": grupo,
                 "tot_actual": grupo_tot[anio],
                 "tot_anterior": grupo_tot[anio_ant],
                 "diferencia": gdiff,
                 "pct": gpct,
                 "subgrupos": detalle_subs,
-            })
+            }
+        )
 
     diferencia_total = total_anio[anio] - total_anio[anio_ant]
     pct_total = pct_calc(total_anio[anio], total_anio[anio_ant])
 
     contexto = {
-            "empresa": empresa,
-            "anio": anio,
-            "anio_ant": anio_ant,
-            "total_actual": total_anio[anio],
-            "total_anterior": total_anio[anio_ant],
-            "diferencia_total": diferencia_total,
-            "pct_total": pct_total,
-            "grupos": resultado,
+        "empresa": empresa,
+        "anio": anio,
+        "anio_ant": anio_ant,
+        "total_actual": total_anio[anio],
+        "total_anterior": total_anio[anio_ant],
+        "diferencia_total": diferencia_total,
+        "pct_total": pct_total,
+        "grupos": resultado,
     }
     return render(request, "presupuestos/comparativo_anual_total.html", contexto)
 
@@ -2717,7 +2744,10 @@ def comparativo_anual_ingresos(request):
         empresa_id = request.GET.get("empresa")
         empresa = Empresa.objects.filter(pk=empresa_id).first() if empresa_id else None
         if not empresa:
-            messages.error(request, "Selecciona una empresa válida o usa el parámetro ?empresa=<id>.")
+            messages.error(
+                request,
+                "Selecciona una empresa válida o usa el parámetro ?empresa=<id>.",
+            )
             return redirect("dashboard")
     else:
         perfil = getattr(request.user, "perfilusuario", None)
@@ -2728,13 +2758,12 @@ def comparativo_anual_ingresos(request):
 
     # consultar presupuestos de ingresos sumando por origen/tipo_otro y año
     qs = PresupuestoIngreso.objects.filter(empresa=empresa, anio__in=[anio, anio_ant])
-    rows = (
-        qs.values("origen", 
-                    "tipo_otro",
-                      "tipo_otro__nombre",
-                        "anio",)
-        .annotate(total=Sum("monto_presupuestado"))
-    )
+    rows = qs.values(
+        "origen",
+        "tipo_otro",
+        "tipo_otro__nombre",
+        "anio",
+    ).annotate(total=Sum("monto_presupuestado"))
 
     TIPO_CUOTA_MAP = dict(getattr(Factura, "TIPO_CUOTA_CHOICES", []))
 
@@ -2774,7 +2803,9 @@ def comparativo_anual_ingresos(request):
         total_anio[y] += tot
         estructura.setdefault(origen, {})
         estructura[origen].setdefault(tipo_label, {anio: 0, anio_ant: 0})
-        estructura[origen][tipo_label][y] = estructura[origen][tipo_label].get(y, 0) + tot
+        estructura[origen][tipo_label][y] = (
+            estructura[origen][tipo_label].get(y, 0) + tot
+        )
 
     # construir lista ordenada con subtotales y pct
     origenes = []
@@ -2816,9 +2847,8 @@ def comparativo_anual_ingresos(request):
         "otros": "Otros",
         "area_comun": "Areas comunes",
         "local_comercial": "Local",
-    }    
-    
-    
+    }
+
     diferencia_total = total_anio[anio] - total_anio[anio_ant]
     pct_total = pct_calc(total_anio[anio], total_anio[anio_ant])
 
@@ -2832,9 +2862,11 @@ def comparativo_anual_ingresos(request):
         "pct_total": pct_total,
         "origenes": origenes,
     }
-    contexto.update({
-        "origen_labels": ORIGEN_LABELS,
-        "tipo_cuota_map": TIPO_CUOTA_MAP,
-        #"tipo_otro_map": tipo_otro_map,
-    })
+    contexto.update(
+        {
+            "origen_labels": ORIGEN_LABELS,
+            "tipo_cuota_map": TIPO_CUOTA_MAP,
+            # "tipo_otro_map": tipo_otro_map,
+        }
+    )
     return render(request, "presupuestos/comparativo_anual_ingresos.html", contexto)

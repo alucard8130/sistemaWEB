@@ -29,6 +29,27 @@
         .table-info, .table-primary, .table-warning { font-weight: bold; }
         input[disabled] { background-color: #f0f0f0; color: #888; border-color: #ccc; }
     </style>
+    <style>
+.table-responsive {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.table-fixed-header thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 2;
+}
+</style>
+<style>
+.btn-toggle-cruz i {
+    color: #d32f2f !important;
+    font-size: 1.6em !important;
+    font-weight: bold !important;
+    transition: transform 0.2s;
+    vertical-align: middle;
+}
+</style>
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -86,7 +107,10 @@
         <!-- Formulario de filtros (GET) -->
          <div class="container-fluid mt-4">
         <form method="get" class="row g-2 mb-3">
-            <h2>Matriz Presupuesto Gastos año {{ anio }}. {{ empresa.nombre }}</h2>
+            <h2>{{ empresa.nombre }}</h2>
+            <h3>Matriz Presupuesto Gastos - Año {{ anio }}</h3>
+            
+            
             <div class="col-auto">
                 <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
                 <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
@@ -155,113 +179,121 @@
         </div>
 
         <!-- Main budget edit form (POST) -->
-        <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="anio" value="{{ anio }}">
-            {% if empresa %}
-                <input type="hidden" name="empresa" value="{{ empresa.id }}">
-            {% endif %}
+        <form method="post" id="form-matriz">
+    {% csrf_token %}
+    <input type="hidden" name="anio" value="{{ anio }}">
+    {% if empresa %}
+        <input type="hidden" name="empresa" value="{{ empresa.id }}">
+    {% endif %}
 
-            <!-- Budget editing table -->
-            <div class="table-responsive rounded-3 border">
-    <table class="table align-middle mb-0 shadow-sm">
-        <thead>
-            <tr>
-                <th>Grupo</th>
-                <th>Subgrupo</th>
-                <th>Tipo de Gasto</th>
-                {% for mes_nombre in meses_nombres %}
-                    <th>{{ mes_nombre }}</th>
-                {% endfor %}
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for grupo in grupos_lista %}
-            <tr class="table-primary">
-                <td>{{ grupo.nombre }}</td>
-                <td colspan="2"><strong>Total Grupo</strong></td>
-                {% for i in "0"|get_range:12 %}
-                    <td>
-                        {{ subtotales_grupo|dict_index:grupo.id|list_index:forloop.counter0|floatformat:2|intcomma }}
-                    </td>
-                {% endfor %}
-                <td class="fw-bold">
-                    {{ subtotales_grupo|dict_index:grupo.id|sum_list|floatformat:2|intcomma }}
-                </td>
-            </tr>
-            {% for subgrupo in grupo.subgrupos %}
-                <tr class="table-info">
-                    <td></td>
-                    <td>{{ subgrupo.nombre }}</td>
-                    <td><strong>Total Subgrupo</strong></td>
-                    {% for i in "0"|get_range:12 %}
-                        <td>
-                            {{ subtotales_subgrupo|dict_index:subgrupo.id|list_index:forloop.counter0|floatformat:2|intcomma }}
-                        </td>
+    <div class="table-responsive rounded-3 border">
+        <table class="table align-middle mb-0 shadow-sm table-fixed-header" id="matriz-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Grupo</th>
+                    <th>Subgrupo</th>
+                    <th>Tipo de Gasto</th>
+                    {% for mes_nombre in meses_nombres %}
+                        <th>{{ mes_nombre }}</th>
                     {% endfor %}
-                    <td class="fw-bold">
-                        {{ subtotales_subgrupo|dict_index:subgrupo.id|sum_list|floatformat:2|intcomma }}
-                    </td>
+                    <th>Total</th>
                 </tr>
-                {% for tipo in subgrupo.tipos %}
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td>{{ tipo.nombre }}</td>
-                        {% for i in "0"|get_range:12 %}
-                            {% with mes_num=i|add:1 %}
-                                <td>
-                                    <input type="number" step="0.01" min="0" 
-                                        name="presupuesto_{{ tipo.id }}_{{ mes_num }}"
-                                        class="form-control form-control-sm"
-                                        value="{{ tipo.montos|dict_get:mes_num|floatformat:2 }}"
-                                        {% if not edicion_habilitada %}disabled{% endif %}>
-                                </td>
-                            {% endwith %}
-                        {% endfor %}
-                        <td class="fw-bold">
-                            {{ subtotales_tipo|dict_index:tipo.id|sum_list|floatformat:2|intcomma }}
+            </thead>
+            <tbody>
+                {% for grupo in grupos %}
+                    <tr class="table-primary grupo-row" data-grupo="{{ grupo.id }}">
+                        <td>
+                            <button type="button" class="btn btn-sm btn-link btn-toggle-cruz toggle-grupo" data-grupo="{{ grupo.id }}" title="Colapsar/Expandir grupo">
+                                <i class="bi bi-dash-lg icon-abierto"></i>
+                                <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
+                            </button>
                         </td>
+                        <td><strong>{{ grupo.nombre }}</strong></td>
+                        <td colspan="2"><strong>Total Grupo</strong></td>
+                        {% for i in "0"|get_range:12 %}
+                            <td>{{ grupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                        {% endfor %}
+                        <td class="fw-bold">{{ grupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
                     </tr>
+                    {% for subgrupo in grupo.subgrupos %}
+                        <tr class="table-info subgrupo-row" data-grupo="{{ grupo.id }}" data-subgrupo="{{ subgrupo.id }}">
+                            <td style="padding-left:2em;">
+                                <button type="button" class="btn btn-sm btn-link btn-toggle-cruz toggle-subgrupo" data-subgrupo="{{ subgrupo.id }}" title="Colapsar/Expandir subgrupo">
+                                    <i class="bi bi-dash-lg icon-abierto"></i>
+                                    <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
+                                </button>
+                            </td>
+                            <td></td>
+                            <td><strong>{{ subgrupo.nombre }}</strong></td>
+                            <td><strong>Total Subgrupo</strong></td>
+                            {% for i in "0"|get_range:12 %}
+                                <td>{{ subgrupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                            {% endfor %}
+                            <td class="fw-bold">{{ subgrupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                        </tr>
+                        {% for tipo in subgrupo.tipos %}
+                            <tr class="tipo-row" data-grupo="{{ grupo.id }}" data-subgrupo="{{ subgrupo.id }}" data-tipo="{{ tipo.id }}">
+                                <td style="padding-left:3em;">
+                                    <button type="button" class="btn btn-sm btn-link btn-toggle-cruz toggle-tipo" data-tipo="{{ tipo.id }}" title="Colapsar/Expandir tipo">
+                                        <i class="bi bi-dash-lg icon-abierto"></i>
+                                        <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
+                                    </button>
+                                </td>
+                                <td></td>
+                                <td></td>
+                                <td>{{ tipo.nombre }}</td>
+                                {% for i in "0"|get_range:12 %}
+                                    {% with mes_num=i|add:1 %}
+                                    <td>
+                                        <input type="number" step="0.01" min="0"
+                                            name="presupuesto_{{ tipo.id }}_{{ mes_num }}"
+                                            class="form-control form-control-sm presupuesto-input"
+                                            value="{{ tipo.montos|dict_get:mes_num|floatformat:2 }}"
+                                            data-tipo="{{ tipo.id }}" data-mes="{{ mes_num }}"
+                                            {% if not edicion_habilitada or bloqueado %}disabled{% endif %}
+                                            title="Editar monto de {{ tipo.nombre }} en {{ meses_nombres|list_index:i }}"
+                                        >
+                                    </td>
+                                    {% endwith %}
+                                {% endfor %}
+                                <td class="fw-bold">{{ tipo.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
                 {% endfor %}
-            {% endfor %}
-        {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr class="table-warning">
-                <td colspan="3" class="text-end"><strong>Total General</strong></td>
-                {% for total in totales_mes %}
-                    <td><strong>{{ total|floatformat:2|intcomma }}</strong></td>
-                {% endfor %}
-                <td><strong>{{ totales_mes|sum_list|floatformat:2|intcomma }}</strong></td>
-            </tr>
-        </tfoot>
-    </table>
-</div>
-
-            {% if edicion_habilitada %}
-                <div class="mb-3 mt-4 d-flex justify-content-end">
-                    <button class="btn btn-primary">Guardar</button>
-                    
-                    {% if not bloqueado %}
-                        <button type="submit" name="cerrar_presupuesto" 
-                            class="btn text-dark ms-2"
-                            style="background-color: #fff3cd; border: 1px solid #212529;"
-                            onmouseover="this.style.backgroundColor='#ffca2c';"
-                            onmouseout="this.style.backgroundColor='#fff3cd';"
-                            onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')">
-                            <i class="bi bi-file-lock-fill me-1"></i> Cerrar Presupuesto
-                        </button>
-                    {% endif %}
-                </div>
-            {% endif %}
-            
-        
-        </form>
-        
+            </tbody>
+            <tfoot>
+                <tr class="table-warning">
+                    <td colspan="4" class="text-end"><strong>Total General</strong></td>
+                    {% for total in totales_mes %}
+                        <td><strong>{{ total|floatformat:2|intcomma }}</strong></td>
+                    {% endfor %}
+                    <td><strong>{{ totales_mes|sum_list|floatformat:2|intcomma }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
     </div>
-    
+
+    {% if edicion_habilitada %}
+        <div class="mb-3 mt-4 d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary" name="guardar_presupuesto" title="Guardar todos los cambios">
+                <i class="bi bi-save me-1"></i> Guardar
+            </button>
+            {% if not bloqueado %}
+                <button type="submit" name="cerrar_presupuesto"
+                    class="btn text-dark"
+                    style="background-color: #fff3cd; border: 1px solid #212529;"
+                    onmouseover="this.style.backgroundColor='#ffca2c';"
+                    onmouseout="this.style.backgroundColor='#fff3cd';"
+                    onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')"
+                    title="Cerrar presupuesto y bloquear edición">
+                    <i class="bi bi-file-lock-fill me-1"></i> Cerrar Presupuesto
+                </button>
+            {% endif %}
+        </div>
+    {% endif %}
+</form>
 
     <!-- 🔹 Footer -->
     <footer class="mt-4">
@@ -269,6 +301,122 @@
     </footer>
 
     <!-- Scripts -->
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    var anioSelect = document.querySelector('select[name="anio"]');
+    if (anioSelect) {
+        anioSelect.addEventListener('change', function() {
+            var overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
+            // El formulario se enviará automáticamente si tienes onchange="this.form.submit()"
+        });
+    }
+});
+</script>
+<script>
+function toggleIcon(btn, collapsed) {
+    var iconAbierto = btn.querySelector('.icon-abierto');
+    var iconCerrado = btn.querySelector('.icon-cerrado');
+    if (collapsed) {
+        iconAbierto.style.display = 'none';
+        iconCerrado.style.display = '';
+    } else {
+        iconAbierto.style.display = '';
+        iconCerrado.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Grupos
+    document.querySelectorAll('.toggle-grupo').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var grupoId = btn.dataset.grupo;
+            var subgrupoRows = document.querySelectorAll('.subgrupo-row[data-grupo="' + grupoId + '"]');
+            var tipoRows = document.querySelectorAll('.tipo-row[data-grupo="' + grupoId + '"]');
+            var collapsed = btn.classList.toggle('collapsed');
+            subgrupoRows.forEach(function(row) { row.style.display = collapsed ? 'none' : ''; });
+            tipoRows.forEach(function(row) { row.style.display = collapsed ? 'none' : ''; });
+            toggleIcon(btn, collapsed);
+        });
+    });
+    // Subgrupos
+    document.querySelectorAll('.toggle-subgrupo').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var subgrupoId = btn.dataset.subgrupo;
+            var tipoRows = document.querySelectorAll('.tipo-row[data-subgrupo="' + subgrupoId + '"]');
+            var collapsed = btn.classList.toggle('collapsed');
+            tipoRows.forEach(function(row) { row.style.display = collapsed ? 'none' : ''; });
+            toggleIcon(btn, collapsed);
+        });
+    });
+    // Tipos
+    document.querySelectorAll('.toggle-tipo').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tipoId = btn.dataset.tipo;
+            var tipoRow = document.querySelector('.tipo-row[data-tipo="' + tipoId + '"]');
+            var collapsed = btn.classList.toggle('collapsed');
+            tipoRow.style.display = collapsed ? 'none' : '';
+            toggleIcon(btn, collapsed);
+        });
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.presupuesto-input').forEach(function(input) {
+        input.addEventListener('change', function() {
+            if (input.disabled) return;
+            var tipoId = input.dataset.tipo;
+            var mes = input.dataset.mes;
+            var monto = input.value;
+            var oldValue = input.getAttribute('data-old') || input.defaultValue;
+            input.disabled = true;
+            input.classList.remove('is-invalid', 'is-valid');
+            fetch("{% url 'matriz_presupuesto' %}?anio={{ anio }}&empresa={{ empresa.id }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: JSON.stringify({ tipo_id: tipoId, mes: mes, monto: monto }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                input.disabled = false;
+                if (data.success) {
+                    input.classList.add('is-valid');
+                    input.setAttribute('data-old', monto);
+                } else {
+                    input.classList.add('is-invalid');
+                    input.value = oldValue;
+                    alert("Error al guardar: " + (data.error || "Desconocido"));
+                }
+            })
+            .catch(() => {
+                input.disabled = false;
+                input.classList.add('is-invalid');
+                input.value = oldValue;
+                alert("Error de red");
+            });
+        });
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var formClon = document.querySelector('form[action*="copiar_presupuesto_gastos_a_nuevo_anio"]');
+    if (formClon) {
+        formClon.addEventListener('submit', function() {
+            var overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.style.display = 'flex';
+        });
+    }
+});
+</script>
+ <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -285,5 +433,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
 </body>
 </html>

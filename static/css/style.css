@@ -5,7 +5,8 @@
     Date of modification: 12/09/2025
     Description: General styles for the GAC system   
 */
-    
+
+/*opcion original de colores de fondo*/    
 /* === General Styles ===*/
 html, body {
     min-height: 100vh;
@@ -1185,3 +1186,7 @@ h2 {
         font-size: 0.95rem;
     }
 }
+
+.is-valid { border-color: #198754 !important; background-color: #e9fbe5 !important; }
+.is-invalid { border-color: #dc3545 !important; background-color: #fbe9e9 !important; }
+

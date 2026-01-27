@@ -85,7 +85,8 @@
         <!-- Formulario de filtros (GET) -->
          <div class="container-fluid mt-4">
         <form method="get" class="row g-2 mb-3">
-            <h2>Matriz Presupuesto Ingresos año {{ anio }}. {{ empresa.nombre }}</h2>
+            <h2>{{ empresa.nombre }}</h2>
+            <H3>Matriz Presupuesto de Ingresos - Año {{ anio }}</H3>
             <div class="col-auto">
                 <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
                 <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
