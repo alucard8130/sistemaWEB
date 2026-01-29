@@ -27,11 +27,11 @@
 
     <div class="container-fluid mt-4">
         <h2>Lista Proveedores</h2>
-        <a href="{% url 'proveedor_crear' %}" class="btn btn-crear">
+        <a href="{% url 'proveedor_crear' %}" class="btn btn-crear reporte-link mb-3">
             <i class="bi bi-plus-circle me-1"></i> Nuevo proveedor
         </a>
         <!-- clean button -->
-        <a href="{% url 'proveedor_lista' %}" class="btn btn-outline-secondary">
+        <a href="{% url 'proveedor_lista' %}" class="btn btn-outline-secondary reporte-link mb-3">
             <i class="bi bi-arrow-clockwise"></i> Limpiar
         </a>
         <form method="get" class="mb-3">
@@ -98,11 +98,11 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-outline-primary me-1" title="Editar">
+                            <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-outline-primary me-1 reporte-link" title="Editar">
                                 Editar
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                            <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-outline-danger btn-sm reporte-link" title="Eliminar">
                                 <i class="bi bi-trash3"></i>
                                 Eliminar
                             </a>
@@ -111,7 +111,7 @@
                     </tr>
                     {% empty %}
                     <tr class="no-data-row">
-                        <td colspan="6">No hay proveedores registrados.</td>
+                        <td colspan="9">No hay proveedores registrados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -127,5 +127,25 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+     <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body>
 </html>

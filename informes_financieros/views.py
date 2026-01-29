@@ -1607,7 +1607,7 @@ def cartera_vencida_por_origen(request):
     total_cartera = sum(origen["total_vencido"] for origen in resultado)
     return render(
         request,
-        "informes_financieros/cartera_vencida.html",
+        "informes_financieros/cartera_vencida_x_origen.html",
         {
             "cartera_vencida": resultado,
             "total_cartera": total_cartera,

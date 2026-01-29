@@ -42,7 +42,7 @@
                 Registrar Factura otro ingreso
             </a>
           </div>
-    <form method="get" class="row g-2 mb-3">
+    <form id="form-filtros" method="get" class="row g-2 mb-3">
     <div class="col-auto">
         <select name="cliente_id" class="form-select">
             <option value="">Cliente</option>
@@ -64,7 +64,7 @@
                   <i class="bi bi-funnel"></i> 
                       Buscar
               </button>
-                <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-outline-secondary">
+                <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-outline-secondary reporte-link">
                     <i class="bi bi-arrow-clockwise"></i> 
                         Limpiar
             </a>
@@ -128,13 +128,13 @@
         
                           <td class="text-nowrap">
                           {% if factura.saldo > 0 %}
-                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success" title="Registrar Pago">
+                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success reporte-link" title="Registrar Pago">
                                 Reg.Deposito
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
                           {% endif %}
                           {% if not factura.empresa.es_plus %}  
-                            <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Factura">
+                            <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm reporte-link" target="_blank" title="Imprimir Factura">
                               Factura
                               <i class="bi bi-printer"></i>
                             </a>
@@ -164,7 +164,7 @@
                             {% endif %}
                     </td>
                           <td>
-                            <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
+                            <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info reporte-link" title="Ver Historial">
                                 <i class="bi bi-eye me-1"></i>
                             </a>
                           </td>
@@ -206,5 +206,25 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body>
 </html>

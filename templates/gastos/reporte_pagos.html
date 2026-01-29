@@ -17,7 +17,7 @@
     <div class="container-fluid mt-4">
         <h2>Pagos Solicitudes de Gastos</h2>
 
-        <form method="get" class="row g-2 mb-3">
+        <form id="form-filtros" method="get" class="row g-2 mb-3">
             {% if empresas|length > 1 %}
             <div class="col-auto">
                 <label>Empresa:</label>
@@ -63,7 +63,7 @@
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-funnel-fill"></i>Buscar
                 </button>
-                <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary">
+                <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary reporte-link">
                     <i class="bi bi-arrow-clockwise"></i> Limpiar</a>
                 <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success">
                     <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
@@ -148,5 +148,25 @@
     </footer>
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+     <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body>
 </html>

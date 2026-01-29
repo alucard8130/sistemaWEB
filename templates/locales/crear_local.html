@@ -83,7 +83,11 @@
                                 {{ form.superficie_m2 }}
                                 {{ form.superficie_m2.errors }}
                             </div> 
-
+                            <div class="mb-3">
+                                {{ form.tipo_propiedad.label_tag }}
+                                {{ form.tipo_propiedad }}
+                                {{ form.tipo_propiedad.errors }}    
+                            </div>
                             <div class="mb-3">
                                 {{ form.cuota.label_tag }}
                                 {{ form.cuota }}

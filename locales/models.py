@@ -25,6 +25,15 @@ class LocalComercial(models.Model):
     activo = models.BooleanField(default=True)
     observaciones = models.CharField(blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota anual?")
+    TIPO_CHOICES = [
+        ('local', 'Local Comercial'),
+        ('casa', 'Casa'),
+        ('departamento', 'Departamento'),
+        ('oficina', 'Oficina'),
+        ('bodega', 'Bodega'),
+        ('terreno', 'Terreno'),
+    ]
+    tipo_propiedad = models.CharField(max_length=20, choices=TIPO_CHOICES, default='local')
 
 
     def __str__(self):

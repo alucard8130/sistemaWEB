@@ -34,10 +34,15 @@
     <div class="container-fluid mt-4">
         <h2>Lista tipos de gasto</h2>
 
-        <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-crear mb-3">
+        <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-crear mb-3 reporte-link">
             <i class="bi bi-plus-circle me-1"></i> Nuevo tipo de gasto
         </a>
-
+        <form id ="form-filtros" method="get" class="mb-3 d-flex" role="search">
+            <input type="text" name="q" class="form-control me-2" placeholder="Buscar tipo de gasto por nombre o descripción" value="{{ q|default:'' }}">
+            <button type="submit" class="btn btn-outline-primary">Buscar</button>
+            <!--limpiar-->
+            <a href="{% url 'tipos_gasto_lista' %}" class="btn btn-outline-secondary ms-2 reporte-link">Limpiar</a>
+        </form>
         <!-- Expenditure table -->
         <div class="table-responsive rounded-3 border">
             <table class="table align-middle mb-0 shadow-sm">
@@ -64,10 +69,10 @@
                         <td>{{ tipo.nombre }}</td>
                         <td>{{ tipo.descripcion }}</td>
                         <td>
-                            <a href="{% url 'tipo_gasto_editar' tipo.id %}" class="btn btn-outline-primary btn-sm me-1" title="Editar">
+                            <a href="{% url 'tipo_gasto_editar' tipo.id %}" class="btn btn-outline-primary btn-sm me-1 reporte-link" title="Editar">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <a href="{% url 'tipo_gasto_eliminar' tipo.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                            <a href="{% url 'tipo_gasto_eliminar' tipo.id %}" class="btn btn-outline-danger btn-sm reporte-link" title="Eliminar">
                                 <i class="bi bi-trash3"></i>
                             </a>
                         </td>
@@ -84,7 +89,7 @@
             <ul class="pagination">
                 {% if tipos.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ tipos.previous_page_number }}">Anterior</a>
+                    <a class="page-link" href="?q={{ q }}&page={{ tipos.previous_page_number }}">Anterior</a>
                 </li>
                 {% else %}
                 <li class="page-item disabled"><span class="page-link">Anterior</span></li>
@@ -109,5 +114,25 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+     <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body>
 </html>
