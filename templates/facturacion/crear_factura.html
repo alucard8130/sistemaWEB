@@ -24,15 +24,6 @@
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
-
     <!-- Main content -->
     <div class="container mt-5">
         <div class="row justify-content-center">
@@ -148,6 +139,7 @@
         var tipo = document.getElementById("id_tipo_origen").value;
         document.getElementById("campo_local").style.display = tipo === "local" ? "block" : "none";
         document.getElementById("campo_area").style.display = tipo === "area_comun" ? "block" : "none";
+        
     }
     document.addEventListener("DOMContentLoaded", function() {
         mostrarOrigen();

@@ -35,9 +35,9 @@
     {% include 'loading_overlay.html' %}
         <!-- Main content -->
     <div class="container-fluid mt-4">
-        <h2>Comparativo Presupuesto vs Gastos - Año {{ anio }}</h2>
+        <h2>Comparativo Gastos vs Presupuesto - Año {{ anio }}</h2>
 
-        <form method="get" class="row g-2 mb-3">
+        <form id="form-filtros" method="get" class="row g-2 mb-3">
             <div class="col-auto">
                 <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
                     {% for a in anios %}
@@ -57,7 +57,7 @@
                 </a>
             </div>
         </form>
-        <form method="get" class="mb-3 d-flex align-items-center gap-2">
+        <form id="form-filtros" method="get" class="mb-3 d-flex align-items-center gap-2">
             <select name="medicion" class="form-select" style="width:auto;">
                 <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes actual</option>
                 <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo actual</option>
@@ -65,9 +65,9 @@
                 <option value="semestre2" {% if medicion == "semestre2" %}selected{% endif %}>Segundo semestre</option>  
                 <option value="anual" {% if medicion == "anual" %}selected{% endif %}>Año completo</option>
             </select>
-            <button type="submit" class="btn btn-outline-primary">
+            {% comment %} <button type="submit" class="btn btn-outline-primary">
                 <i class="bi bi-search me-1"></i> Consultar
-            </button>
+            </button> {% endcomment %}
         </form>
             
         <div class="mb-3">
@@ -184,7 +184,8 @@
                             </td>
                         </tr>
                         {% for tipo in subgrupo.tipos %}
-                            <tr>
+                            {% if tipo.total_anual_presup != 0 or tipo.total_anual_gasto != 0 %}
+                              <tr>
                                 <td></td>
                                 <td class="col-subgrupo"></td>
                                 <td class="col-tipo">{{ tipo.nombre }}</td>
@@ -222,12 +223,13 @@
                                         </span>
                                     {% endif %}
                                 </td>
-                            </tr>
+                              </tr>
+                            {% endif %}
                         {% endfor %}
                     {% endfor %}
                 {% endfor %}
                 <tr class="table-warning">
-                    <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total general</strong></td>
+                    <td class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total mensual</strong></td>
                     {% for i in meses_idx %}
                         <td class="col-presup text-secondary th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_presup|index:i|floatformat:0|intcomma }}</strong></td>
                         <td class="col-real fw-bold th-mes-{{ forloop.counter0 }}"><strong>{{ tot_gen_real|index:i|floatformat:0|intcomma }}</strong></td>
@@ -287,5 +289,37 @@
         window.mesesCount = {{ meses_nombres|length }};
     </script>
     <script src="{% static 'js/column-toggle.js' %}"></script>
+     <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay y enviar el formulario al cambiar cualquier filtro
+  document.querySelectorAll('#form-filtros select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+      // Espera un pequeño tiempo para mostrar el overlay antes de enviar
+      setTimeout(function() {
+        sel.form.submit();
+      }, 50);
+    });
+  });
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+
+  // También para el submit manual (por si usas botón)
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+});
+</script>
 </body>
 </html>

@@ -12,7 +12,7 @@
         Description: Dashboard of balances by maturity
     -->
     <meta charset="UTF-8">
-    <title>Dashboard saldos / cartera vencida</title>
+    <title>Graficos / Cartera vencida</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -34,7 +34,7 @@
     
     <div class="container-fluid mt-4">
         
-        <h2>Dashboard de saldos / Cartera vencida</h2>
+        <h2>Graficos / Cartera vencida</h2>
         <!-- Resumen de filtros aplicados -->
 <div class="alert alert-info mb-3">
     <strong>Consulta actual:</strong>
@@ -76,7 +76,7 @@
 </span>
 </div>
         <!-- Filtros -->
-        <form method="get" class="row g-2 mb-4">
+<form id="form-filtros" method="get" class="row g-2 mb-4">
             {% if es_super %}
             <div class="col-md-2">
                 <select name="empresa" class="form-select" onchange="this.form.submit()">
@@ -131,9 +131,9 @@
     </div>
     <!-- limpiar-->
     <div class="col-auto">
-        <a href="{% url 'dashboard_saldos' %}" class="btn btn-secondary">Limpiar filtros</a>
+        <a href="{% url 'dashboard_saldos' %}" class="btn btn-secondary reporte-link">Limpiar</a>
     </div>
-        </form>
+</form>
 
         <!-- Gráficos y KPIs -->
         <div class="row mb-4">
@@ -391,5 +391,37 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay y enviar el formulario al cambiar cualquier filtro
+  document.querySelectorAll('#form-filtros select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+      // Espera un pequeño tiempo para mostrar el overlay antes de enviar
+      setTimeout(function() {
+        sel.form.submit();
+      }, 50);
+    });
+  });
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+
+  // También para el submit manual (por si usas botón)
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+});
+</script>
 </body>
 </html>

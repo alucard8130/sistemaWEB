@@ -12,6 +12,7 @@ class LocalComercialForm(forms.ModelForm):
             "propietario",
             "cliente",
             "empresa",
+            "tipo_propiedad",
             "superficie_m2",
             "cuota",
             "giro",
@@ -22,13 +23,14 @@ class LocalComercialForm(forms.ModelForm):
         ]
         widgets = {
             "numero": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Número"}
+                attrs={"class": "form-control", "placeholder": "Número, Codigo o Id."}
             ),
             "propietario": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Propietario"}
             ),
             "cliente": forms.Select(attrs={"class": "form-control"}),
             "empresa": forms.Select(attrs={"class": "form-control"}),
+            "tipo_propiedad": forms.Select(attrs={"class": "form-control"}),
             "superficie_m2": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Superficie_m2"}
             ),
@@ -54,9 +56,10 @@ class LocalComercialForm(forms.ModelForm):
             ),
         }
         labels = {
-            "numero": "Número",
+            "numero": "Número, Codigo o Id.",
             "ubicacion": "Ubicación",
             "status": "Estatus",
+            "cliente": "Arrendatario/Inquilino",
         }
 
     def __init__(self, *args, **kwargs):

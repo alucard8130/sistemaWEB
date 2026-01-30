@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -31,17 +32,17 @@
                 <!-- Card with border and light background -->
                 <div class="card shadow-sm border-light">
                     <div class="card-body text-center">
-                        <h2 class="text-danger">¿Eliminar el gasto?</h2>
+                        <h2 class="text-danger">¿Eliminar Solicitud?</h2>
         
-                        <p>¿Estás seguro de que deseas eliminar <strong>{{ gasto.monto|floatformat:2 }}</strong>?</p>
+                        <p>¿Estás seguro de que deseas eliminar la solicitud numero:<strong>{{ gasto.id }}</strong> por la cantidad <strong>{{ gasto.monto|floatformat:2 |intcomma }}</strong>?</p>
                         
                         <!-- Form -->
-                        <form method="post" class="mt-4 d-inline-block">
+                        <form method="post" class="mt-4 d-inline-block" id="eliminarGastoForm">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-danger me-2">
                                 <i class="bi bi-trash"></i> Sí
                             </button>
-                            <a href="{% url 'gastos_lista' %}" class="btn btn-secondary">Cancelar</a>
+                            <a href="{% url 'gastos_lista' %}" class="btn btn-secondary reporte-link">Cancelar</a>
                         </form>
                     </div>
                 </div>
@@ -57,5 +58,25 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('eliminarGastoForm');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body>
 </html>

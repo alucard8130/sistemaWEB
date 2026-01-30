@@ -6,38 +6,6 @@
         Description: Code navbar
     -->
 {% load static %}  
-{% comment %} <style>
-/* Oculta el navbar por defecto */
-.navbar.sticky-top {
-  position: fixed !important;
-  top: -70px;
-  left: 0;
-  width: 100vw;
-  transition: top 0.3s;
-  z-index: 1050;
-}
-
-/* Muestra el navbar al hacer hover en la franja superior */
-#navbar-hover-zone:hover + .navbar.sticky-top,
-.navbar.sticky-top:hover,
-.navbar.sticky-top:focus-within {
-  top: 0;
-}
-
-/* Franja invisible para detectar el hover */
-#navbar-hover-zone {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 18px;
-  z-index: 1060;
-  background: transparent;
-}
-body {
-  padding-top: 70px; /* Para que el contenido no quede oculto bajo el navbar */
-}
-</style> {% endcomment %}
 
 <!-- Franja invisible para mostrar el navbar al pasar el mouse -->
 <div id="navbar-hover-zone"></div>      
@@ -45,7 +13,7 @@ body {
 <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-2 shadow-navbar">
     <div class="container-fluid">
         <!-- home button-->
-        <a href="{% url 'bienvenida' %}" class="btn btn-sm btn-light-shadow">
+        <a href="{% url 'bienvenida' %}" class="btn btn-sm btn-light-shadow reporte-link">
           <i class="bi bi-house me-1"></i> Inicio
         </a>
 
@@ -96,13 +64,13 @@ body {
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Locales</a>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Propiedades</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nuevo Local</a></li>
-                        <li><a class="dropdown-item reporte-link" href="{% url 'lista_locales' %}">Lista Locales</a></li>
-                        <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Locales Inactivos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'crear_local' %}">Nueva Propiedad</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'lista_locales' %}">Lista Propiedades</a></li>
+                        <li><a class="dropdown-item" href="{% url 'locales_inactivos' %}">Propiedades Inactivas</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas Locales</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
                         
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
                         
@@ -116,7 +84,7 @@ body {
 
                             <li><a class="dropdown-item" href="{% url 'areas_inactivas' %}">Áreas Inactivas</a></li>
                             <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas Áreas</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
                         
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
                         
@@ -154,7 +122,7 @@ body {
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Cartera Vencida</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida' %}">Reporte Antiguedad Saldos</a></li>
+                        <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_saldos_antiguedad' %}">Reporte Antiguedad Saldos</a></li>
                         <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}">Reporte Detalle Saldos</a></li>
                         <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}">Dashboard Saldos</a></li>
                         <li><hr class="dropdown-divider"></li>                     

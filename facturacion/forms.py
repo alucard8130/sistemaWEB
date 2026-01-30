@@ -43,6 +43,9 @@ class FacturaForm(forms.ModelForm):
                 'placeholder': 'Comentario'
                 }),
         }
+        labels = {'cliente': 'Arrendatario/Inquilino',
+                  
+                  }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)

@@ -60,7 +60,7 @@
                             {{ meses|index:mes|default:"" }} {{ anio }}
                         {% endwith %}
                     {% else %}
-                        {% comment %} Periodo actual {% endcomment %}
+
                          <small class="text-muted">Periodo Actual: <strong>{{ mes_letra }}</strong></small>
                     {% endif %}
                 </strong>
@@ -70,12 +70,12 @@
         <div class="d-flex justify-content-center mb-3">
             <div class="btn-group" role="group" aria-label="Modo de informe">
                 <a href="?modo=flujo{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
-                class="btn btn-outline-soft-blue {% if modo == 'flujo' %}active{% endif %}">
+                class="btn btn-outline-soft-blue {% if modo == 'flujo' %}active{% endif %} reporte-link">
                 <i class="bi bi-arrow-repeat"></i>
                     Flujo
                 </a>
                 <a href="?modo=resultados{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
-                class="btn btn-outline-soft-blue {% if modo == 'resultados' or not modo %}active{% endif %}">
+                class="btn btn-outline-soft-blue {% if modo == 'resultados' or not modo %}active{% endif %} reporte-link">
                 <i class="bi bi-bar-chart-line"></i>    
                     Resultados
                 </a>
@@ -93,7 +93,7 @@
         {% endif %}
 
         <!-- Filtros -->
-        <form method="get" class="row g-2 mb-3 align-items-end justify-content-center">
+        <form method="get" class="row g-2 mb-3 align-items-end justify-content-center" id="form-filtros">
         {% if request.user.is_superuser %}
         <div class="col-auto">
             <select name="empresa" class="form-select" style="width:auto;">
@@ -135,7 +135,7 @@
             </select>
         </div>
         <div class="col-auto">
-            <button type="submit" class="btn btn-outline-primary">
+            <button type="submit" class="btn btn-outline-primary reporte-link">
                 <i class="bi bi-funnel-fill me-1"></i>Filtrar
             </button>
             <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
@@ -149,10 +149,6 @@
                     <span>${{ saldo_inicial|floatformat:2|intcomma }}</span>
                 </div>
                 </div>
-    {% comment %} <div class="alert alert-info text-end">
-        <span><strong>Saldo fondeos caja chica:</strong></span>
-        <span>${{ saldo_fondeos_caja_chica|floatformat:2|intcomma }}</span>
-    </div> {% endcomment %}
         {% endif %}
         
                 <div class="card my-4">
@@ -221,10 +217,6 @@
                 <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
             </div>
             </div>
-    {% comment %} <div class="alert alert-info text-end">
-        <span><strong>Saldo fondeos caja chica:</strong></span>
-        <span>${{ saldo_fondeos_caja_chica|floatformat:2|intcomma }}</span>
-    </div> {% endcomment %}
         {% endif %}
     </div>
 
@@ -236,5 +228,25 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body>
 </html>

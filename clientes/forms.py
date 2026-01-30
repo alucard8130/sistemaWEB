@@ -11,7 +11,7 @@ class ClienteForm(forms.ModelForm):
             }),
             'nombre': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Razon Social sin AC, S.A. de C.V.'
+                'placeholder': 'Razon Social sin AC o S.A. de C.V.'
             }),
             'rfc': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -48,6 +48,7 @@ class ClienteForm(forms.ModelForm):
             'telefono': 'Teléfono',
             'codigo_postal': 'Código Postal',
             'regimen_fiscal': 'Régimen Fiscal',
+            "nombre": "Nombre o Razón Social",
         }
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)

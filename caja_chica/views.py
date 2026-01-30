@@ -109,7 +109,7 @@ def registrar_gasto_caja_chica(request):
         if empresa:
             form.fields["proveedor"].queryset = form.fields["proveedor"].queryset.filter(empresa=empresa)
             form.fields["tipo_gasto"].queryset = form.fields["tipo_gasto"].queryset.filter(empresa=empresa)
-            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa,saldo__gt=0)
         if form.is_valid():
             gasto = form.save(commit=False)
             fondeo = gasto.fondeo
@@ -130,7 +130,7 @@ def registrar_gasto_caja_chica(request):
         if empresa:
             form.fields["proveedor"].queryset = form.fields["proveedor"].queryset.filter(empresa=empresa)
             form.fields["tipo_gasto"].queryset = form.fields["tipo_gasto"].queryset.filter(empresa=empresa)
-            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa,saldo__gt=0)
         if fondeo_instance:
             form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(id=fondeo_instance.id)
     return render(request, "caja_chica/registrar_gasto_caja_chica.html", {"form": form})
@@ -146,7 +146,7 @@ def generar_vale_caja(request):
         form = ValeCajaForm(request.POST)
         if empresa:
             form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(empresa=empresa)
-            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa, saldo__gt=0)
             form.fields["recibido_por"].queryset = Empleado.objects.filter(empresa=empresa)
         if form.is_valid():
             vale = form.save(commit=False)
@@ -164,7 +164,7 @@ def generar_vale_caja(request):
         form = ValeCajaForm()
         if empresa:
             form.fields["tipo_gasto"].queryset = TipoGasto.objects.filter(empresa=empresa)
-            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa)
+            form.fields["fondeo"].queryset = FondeoCajaChica.objects.filter(empresa=empresa, saldo__gt=0)
             form.fields["recibido_por"].queryset = Empleado.objects.filter(empresa=empresa)
     return render(request, "caja_chica/generar_vale_caja.html", {"form": form})
 
@@ -177,15 +177,15 @@ def lista_fondeos(request):
     fecha_fin = request.GET.get("fecha_fin")
 
     if request.user.is_superuser and empresa_id:
-        fondeos = FondeoCajaChica.objects.filter(empresa_id=empresa_id)
+        fondeos = FondeoCajaChica.objects.filter(empresa_id=empresa_id).order_by('-fecha')
     elif request.user.is_superuser:
-        fondeos = FondeoCajaChica.objects.all()
+        fondeos = FondeoCajaChica.objects.all().order_by('-fecha')
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
-            fondeos = FondeoCajaChica.objects.filter(empresa=perfil.empresa)
+            fondeos = FondeoCajaChica.objects.filter(empresa=perfil.empresa).order_by('-fecha')
         else:
-            fondeos = FondeoCajaChica.objects.none()
+            fondeos = FondeoCajaChica.objects.none().order_by('-fecha')
 
     # Filtros
     if cheque:
@@ -205,7 +205,7 @@ def lista_fondeos(request):
     total_importe = fondeos.object_list.aggregate(total=Sum('importe_cheque'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('importe_cheque'))['total']
     total_saldo = fondeos.object_list.aggregate(total=Sum('saldo'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('saldo'))['total']
 
-    paginator = Paginator(fondeos, 25)
+    paginator = Paginator(fondeos, 20)
     page_number = request.GET.get("page")
     fondeos = paginator.get_page(page_number)
 
@@ -296,17 +296,17 @@ def lista_gastos_caja_chica(request):
     if request.user.is_superuser and empresa_id:
         gastos = GastoCajaChica.objects.select_related("fondeo").filter(
             fondeo__empresa_id=empresa_id
-        )
+        ).order_by('-fecha')
     elif request.user.is_superuser:
-        gastos = GastoCajaChica.objects.select_related("fondeo").all()
+        gastos = GastoCajaChica.objects.select_related("fondeo").all().order_by('-fecha')
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
             gastos = GastoCajaChica.objects.select_related("fondeo").filter(
                 fondeo__empresa=perfil.empresa
-            )
+            ).order_by('-fecha')
         else:
-            gastos = GastoCajaChica.objects.select_related("fondeo").none()
+            gastos = GastoCajaChica.objects.select_related("fondeo").none().order_by('-fecha')
 
     # Filtros
     if proveedor_id and proveedor_id.isdigit():
@@ -321,10 +321,10 @@ def lista_gastos_caja_chica(request):
     total_gastos = gastos.aggregate(total=Sum('importe'))['total'] or 0
 
     # Para los selects en el template
-    proveedores = Proveedor.objects.filter(activo=True)
+    proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
     tipos_gasto = TipoGasto.objects.all()
 
-    paginator = Paginator(gastos, 25)
+    paginator = Paginator(gastos, 20)
     page_number = request.GET.get("page")
     gastos = paginator.get_page(page_number)
 
@@ -421,17 +421,17 @@ def lista_vales_caja_chica(request):
     if request.user.is_superuser and empresa_id:
         vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
             fondeo__empresa_id=empresa_id
-        )
+        ).order_by('-fecha')
     elif request.user.is_superuser:
-        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").all()
+        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").all().order_by('-fecha')
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
             vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
                 fondeo__empresa=perfil.empresa
-            )
+            ).order_by('-fecha')
         else:
-            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").none()
+            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").none().order_by('-fecha')
 
     # Filtros
     if empleado_id and empleado_id.isdigit():
@@ -452,7 +452,7 @@ def lista_vales_caja_chica(request):
     empleados = Empleado.objects.filter(id__in=vales.values_list('recibido_por_id', flat=True)).order_by('nombre')
     tipos_gasto = TipoGasto.objects.all()
 
-    paginator = Paginator(vales, 25)
+    paginator = Paginator(vales, 20)
     page_number = request.GET.get("page")
     vales = paginator.get_page(page_number)
 

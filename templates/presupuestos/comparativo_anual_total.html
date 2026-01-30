@@ -13,9 +13,9 @@
     
 <div class="container mt-4">
   
-  <h4>Comparativo Presupuestal Gastos — {{ empresa.nombre }}</h4>
+  <h4>Comparativo Presupuestal Gastos — {{ empresa.nombre }} - Año {{ anio }} vs Año {{ anio_ant }}</h4>
 
-  <form method="get" class="row g-2 mb-3">
+  <form id="form-filtros" method="get" class="row g-2 mb-3">
     <div class="col-auto">
       <label class="form-label">Año</label>
       <input type="number" name="anio" value="{{ anio }}" class="form-control" />
@@ -123,6 +123,26 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body>
 
 </html>

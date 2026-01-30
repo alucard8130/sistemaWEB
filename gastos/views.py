@@ -74,12 +74,16 @@ def tipos_gasto_lista(request):
     else:
         empresa = request.user.perfilusuario.empresa
         tipos = TipoGasto.objects.filter(empresa=empresa).select_related('subgrupo__grupo').order_by('subgrupo__grupo__nombre')
-
-    paginator = Paginator(tipos, 25)
+    #filtro buscar
+    q = request.GET.get("q")
+    if q:
+        tipos = tipos.filter(Q(nombre__icontains=q) | Q(descripcion__icontains=q)|Q(subgrupo__nombre__icontains=q)|Q(subgrupo__grupo__nombre__icontains=q))
+    #paginacion
+    paginator = Paginator(tipos, 20)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)    
 
-    return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': tipos, 'page_obj': page_obj})
+    return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': page_obj, 'page_obj': page_obj, 'q': q})
 
 @login_required
 def tipo_gasto_crear(request):
@@ -486,6 +490,7 @@ def dashboard_pagos_gastos(request):
         base_gastos &= Q(tipo_gasto_id=tipo_gasto_id)
     if mes:
         base_gastos &= Q(fecha__month=mes)
+    
 
     # OPTIMIZACIÓN: select_related para evitar N+1 en relaciones ForeignKey
     gastos = (
@@ -516,6 +521,14 @@ def dashboard_pagos_gastos(request):
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
+    
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__range=(fecha_i, fecha_f))
+        except:
+            pass
 
     # Caja chica y vales filtrados por tipo de gasto
     from caja_chica.models import GastoCajaChica, ValeCaja
@@ -554,6 +567,15 @@ def dashboard_pagos_gastos(request):
     if fecha_fin:
         pagos_caja_chica = pagos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
+    
+    if fecha_inicio and fecha_fin:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            pagos_caja_chica = pagos_caja_chica.filter(fecha__range=(fecha_i, fecha_f))
+            vales_caja_chica = vales_caja_chica.filter(fecha__range=(fecha_i, fecha_f))
+        except:
+            pass
 
     # Sumar pagos normales, caja chica y vales por mes
     pagos_mes = (

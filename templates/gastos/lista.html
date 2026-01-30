@@ -30,7 +30,7 @@
     <div class="container-fluid mt-4">
         <h2>Solicitudes de Gastos</h2>
 
-        <a href="{% url 'gasto_nuevo' %}" class="btn btn-crear mb-3">
+        <a href="{% url 'gasto_nuevo' %}" class="btn btn-crear mb-3 reporte-link">
             <i class="bi bi-plus-circle-fill me-1"></i> Nueva solicitud
         </a>
         
@@ -40,7 +40,7 @@
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
-        <form method="get" class="row g-2 mb-3">
+        <form id="form-filtros" method="get" class="row g-2 mb-3">
             <div class="col-auto">
                 <select name="proveedor" class="form-select">
                     <option value="">Proveedores</option>
@@ -66,9 +66,9 @@
                 </select>
             </div>
             <div class="col-auto align-self-end">
-                <button type="submit" class="btn btn-outline-primary">
+                <button type="submit" class="btn btn-outline-primary reporte-link">
                     <i class="bi bi-funnel-fill"></i> Buscar</button>
-                      <a href="{% url 'gastos_lista' %}" class="btn btn-outline-secondary">
+                      <a href="{% url 'gastos_lista' %}" class="btn btn-outline-secondary reporte-link">
             <i class="bi bi-arrow-clockwise"></i> Limpiar
         </a>
                     <a href="{% url 'exportar_gastos_lista_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
@@ -122,7 +122,7 @@
                                 {% endif %}</td>
                             <td class="text-nowrap">
                                 {% if gasto.saldo_restante > 0 %}
-                                    <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success" title="Registrar Pago">
+                                    <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success reporte-link" title="Registrar Pago">
                                         Pagar
                                         <i class="bi bi-cash-coin me-1"></i>
                                     </a>
@@ -134,14 +134,14 @@
                                     <i class="bi bi-printer"></i>
                                         </a>
                                         {% if gasto.estatus == 'pendiente' and gasto.total_pagado == 0 %}
-                                    <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm" title="Eliminar">
+                                    <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm reporte-link" title="Eliminar">
                                         <i class="bi bi-trash3 me-1"></i>
                                     </a>
                                 {% endif %}
                             </td>
         
                             <td>
-                                    <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
+                                    <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm reporte-link" title="Ver Historial">
                                         <i class="bi bi-eye me-1"></i>
                                     </a>
                                                   
@@ -183,5 +183,25 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
 </body> 
 </html>

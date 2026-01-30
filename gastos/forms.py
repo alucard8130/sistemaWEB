@@ -26,6 +26,10 @@ class TipoGastoForm(forms.ModelForm):
     class Meta:
         model = TipoGasto
         fields = ['empresa', 'subgrupo', 'nombre', 'descripcion']
+        labels = {
+            'nombre': 'Tipo de Gasto',
+            'subgrupo': 'Cuenta de Gasto',
+        }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -52,7 +56,7 @@ class TipoGastoForm(forms.ModelForm):
                 elif field_name == 'subgrupo':
                     field.widget.attrs['placeholder'] = 'Selecciona un subgrupo'
                 elif field_name == 'nombre':
-                    field.widget.attrs['placeholder'] = 'Nombre'
+                    field.widget.attrs['placeholder'] = 'Nombre del tipo de gasto'
                 elif field_name == 'descripcion':
                     field.widget.attrs['placeholder'] = 'Descripción'
         # labels con tilde
@@ -82,7 +86,7 @@ class TipoGastoForm(forms.ModelForm):
                     
 #solicitud de gastos
 class GastoForm(forms.ModelForm):
-    origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Proveedor'), ('empleado', 'Empleado')],label="Tipo de origen", required=True,
+    origen_tipo = forms.ChoiceField(choices=[('proveedor', 'Gastos generales'), ('empleado', 'Gastos nómina')],label="Origen del Gasto", required=True,
                 widget=forms.Select(attrs={
                     'class': 'form-select'
                 }))
@@ -127,7 +131,15 @@ class GastoForm(forms.ModelForm):
                 'class': 'form-control'
             }),
         }
-
+        labels = {
+            
+            'descripcion': 'Descripción',
+            'fecha': 'Fecha del Gasto',
+            'monto': 'Monto',
+            'retencion_iva': 'Retención IVA',
+            'retencion_isr': 'Retención ISR',
+        }
+      
       
 
     def __init__(self, *args, **kwargs):
@@ -143,6 +155,8 @@ class GastoForm(forms.ModelForm):
         #self.fields['empresa'].required = False
         self.fields['descripcion'].required = True
         #self.fields['comprobante'].required = True
+        self.fields['observaciones'].widget=forms.HiddenInput()
+
 
         # Por defecto vacíos si no hay empresa
         self.fields['proveedor'].queryset = Proveedor.objects.none()

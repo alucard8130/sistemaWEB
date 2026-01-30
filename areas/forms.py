@@ -26,7 +26,7 @@ class AreaComunForm(forms.ModelForm):
         ]
         widgets = {
             "numero": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Número"}
+                attrs={"class": "form-control", "placeholder": "Número, Codigo o Id."}
             ),
             "cliente": forms.Select(attrs={"class": "form-control"}),
             "empresa": forms.Select(attrs={"class": "form-control"}),
@@ -42,7 +42,7 @@ class AreaComunForm(forms.ModelForm):
                 attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
             ),
             "deposito": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Depósito Garanrtía"}
+                attrs={"class": "form-control", "placeholder": "Importe Depósito Garantía"}
             ),
             "giro": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Giro"}
@@ -66,12 +66,13 @@ class AreaComunForm(forms.ModelForm):
             ),
         }
         labels = {
-            "numero": "Número",
+            "numero": "Número, Codigo o Id.",
             "tipo_area": "Tipo de área",
             "cantidad_areas": "Cantidad de áreas",
-            "deposito": "Depósito",
+            "deposito": "Depósito en garantía",
             "ubicacion": "Ubicación",
             "status": "Estatus",
+            "cliente": "Arrendatario/Inquilino",
         }
 
     def __init__(self, *args, **kwargs):

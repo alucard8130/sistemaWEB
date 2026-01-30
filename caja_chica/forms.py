@@ -1,5 +1,8 @@
 from decimal import Decimal
 from django import forms
+
+from gastos.models import TipoGasto
+from proveedores.models import Proveedor
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
 
 
@@ -41,7 +44,7 @@ class GastoCajaChicaForm(forms.ModelForm):
             "fecha": forms.DateInput(attrs={"type": "date"}),
             "proveedor": forms.Select(attrs={"class": "form-control","required": True}),
             "tipo_gasto": forms.Select(attrs={"class": "form-control","required": True}),
-            "descripcion": forms.Textarea(attrs={"class": "form-control"}),
+            "descripcion": forms.TextInput(attrs={"class": "form-control"}),
             "importe": forms.NumberInput(attrs={"class": "form-control"}),
         }
 
@@ -49,7 +52,6 @@ class GastoCajaChicaForm(forms.ModelForm):
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
     )
 
-    
 
 class ValeCajaForm(forms.ModelForm):
     class Meta:
@@ -71,9 +73,9 @@ class ValeCajaForm(forms.ModelForm):
             "recibido_por": forms.Select(attrs={"class": "form-control","required": True}),
             "autorizado_por": forms.TextInput(attrs={"class": "form-control","required": True}),
             "tipo_gasto": forms.Select(attrs={"class": "form-control","required": True}),
-            "descripcion": forms.Textarea(attrs={"class": "form-control"}),
+            "descripcion": forms.TextInput(attrs={"class": "form-control"}),
             "importe": forms.NumberInput(attrs={"class": "form-control"}),
-            "status": forms.Select(attrs={"class": "form-control"}),
+            "status": forms.Select(attrs={"class": "form-control","hidden": True}),
         }
 
     fecha = forms.DateField(

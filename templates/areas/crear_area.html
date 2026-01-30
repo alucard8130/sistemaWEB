@@ -44,102 +44,114 @@
                     {% endfor %}
                 {% endif %}
                 <!-- Form -->
-                <form method="post" class="p-4 rounded custom-form">
+                <form method="post" class="p-4 rounded custom-form" id="areaForm" novalidate>
                     {% csrf_token %}
-                    <!-- {{ form.as_p }} -->
-                    
-                    <!-- Form fields -->
-                    <div class="mb-3">
-                        {{ form.numero.label_tag }}
-                        {{ form.numero }}
-                        {{ form.numero.errors }}
+                    <!-- Paso 1: Datos generales -->
+                    <div id="step1">
+                        <div class="mb-3">
+                            {{ form.numero.label_tag }}
+                            {{ form.numero }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.numero.errors }}
+                        </div>
+                        <div class="mb-3 select-wrapper">
+                            {{ form.cliente.label_tag }}
+                            {{ form.cliente }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.cliente.errors }}
+                        </div>
+                        {% if request.user.is_superuser %}
+                        <div class="mb-3 select-wrapper">
+                            {{ form.empresa.label_tag }}
+                            {{ form.empresa }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.empresa.errors }}
+                        </div>
+                        {% endif %}
+                        <div class="mb-3">
+                            {{ form.superficie_m2.label_tag }}
+                            {{ form.superficie_m2 }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.superficie_m2.errors }}
+                        </div>
+                        <div class="mb-3 select-wrapper">
+                            {{ form.tipo_area.label_tag }}
+                            {{ form.tipo_area }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.tipo_area.errors }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.cantidad_areas.label_tag }}
+                            {{ form.cantidad_areas }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.cantidad_areas.errors }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.cuota.label_tag }}
+                            {{ form.cuota }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.cuota.errors }}
+                        </div>
+                        <div class="form-check mb-3">
+                            {{ form.es_cuota_anual }}
+                            {{ form.es_cuota_anual.label_tag }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.es_cuota_anual.errors }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.deposito.label_tag }}
+                            {{ form.deposito }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.deposito.errors }}
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="button" class="btn btn-primary" onclick="nextStepArea()">Siguiente</button>
+                        </div>
                     </div>
-
-                    <div class="mb-3 select-wrapper">
-                        {{ form.cliente.label_tag }}
-                        {{ form.cliente }}
-                        {{ form.cliente.errors }}
-                    </div>
-                    {% if request.user.is_superuser %}
-                    <div class="mb-3 select-wrapper">
-                        {{ form.empresa.label_tag }}
-                        {{ form.empresa }}
-                        {{ form.empresa.errors }}
-                    </div>
-                    {% endif %}
-
-                    <div class="mb-3">
-                        {{ form.superficie_m2.label_tag }}
-                        {{ form.superficie_m2 }}
-                        {{ form.superficie_m2.errors }}
-                    </div>
-
-                    <div class="mb-3 select-wrapper">
-                        {{ form.tipo_area.label_tag }}
-                        {{ form.tipo_area }}
-                        {{ form.tipo_area.errors }}
-                    </div>
-
-                    <div class="mb-3">
-                        {{ form.cantidad_areas.label_tag }}
-                        {{ form.cantidad_areas }}
-                        {{ form.cantidad_areas.errors }}
-                    </div>
-                    
-                    <div class="mb-3">
-                        {{ form.cuota.label_tag }}
-                        {{ form.cuota }}
-                        {{ form.cuota.errors }}
-                    </div>
-                    <div class="form-check mb-3">
-                        {{ form.es_cuota_anual }}
-                        {{ form.es_cuota_anual.label_tag }}
-                        {{ form.es_cuota_anual.errors }}
-                    </div>
-                    <div class="mb-3">
-                        {{ form.deposito.label_tag }}
-                        {{ form.deposito }}
-                        {{ form.deposito.errors }}
-                    </div>
-
-                    <div class="mb-3">
-                        {{ form.giro.label_tag }}
-                        {{ form.giro }}
-                        {{ form.giro.errors }}
-                    </div>
-
-                    <div class="mb-3">
-                        {{ form.ubicacion.label_tag }}
-                        {{ form.ubicacion }}
-                        {{ form.ubicacion.errors }}
-                    </div>
-
-                    <div class="mb-3">
-                        {{ form.fecha_inicial.label_tag }}
-                        {{ form.fecha_inicial }}
-                        {{ form.fecha_inicial.errors }}
-                    </div>
-
-                    <div class="mb-3">
-                        {{ form.fecha_fin.label_tag }}
-                        {{ form.fecha_fin }}
-                        {{ form.fecha_fin.errors }}
-                    </div>
-
-                    <div class="mb-3 select-wrapper">
-                        {{ form.status.label_tag }}
-                        {{ form.status }}
-                        {{ form.status.errors }}
-                    </div>
-
-                    <div class="mb-3">
-                        {{ form.observaciones.label_tag }}
-                        {{ form.observaciones }}
-                        {{ form.observaciones.errors }}
-                    </div>
-                    <div class="d-flex justify-content-between mt-3">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                        <a href="{% url 'lista_areas' %}" class="btn btn-secondary">Cancelar</a>
+                    <!-- Paso 2: Datos de uso y estado -->
+                    <div id="step2" style="display:none;">
+                        
+                        <div class="mb-3">
+                            {{ form.giro.label_tag }}
+                            {{ form.giro }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.giro.errors }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.ubicacion.label_tag }}
+                            {{ form.ubicacion }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.ubicacion.errors }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.fecha_inicial.label_tag }}
+                            {{ form.fecha_inicial }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.fecha_inicial.errors }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.fecha_fin.label_tag }}
+                            {{ form.fecha_fin }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.fecha_fin.errors }}
+                        </div>
+                        <div class="mb-3 select-wrapper">
+                            {{ form.status.label_tag }}
+                            {{ form.status }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.status.errors }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.observaciones.label_tag }}
+                            {{ form.observaciones }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.observaciones.errors }}
+                        </div>
+                        <div class="d-flex justify-content-between mt-3">
+                            <button type="button" class="btn btn-secondary" onclick="prevStepArea()">Anterior</button>
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                            <a href="{% url 'lista_areas' %}" class="btn btn-secondary">Cancelar</a>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -154,5 +166,65 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function nextStepArea() {
+            var requiredFields = [
+                document.querySelector('[name="{{ form.numero.html_name }}"]'),
+                document.querySelector('[name="{{ form.cliente.html_name }}"]'),
+                {% if request.user.is_superuser %}
+                document.querySelector('[name="{{ form.empresa.html_name }}"]'),
+                {% endif %}
+                document.querySelector('[name="{{ form.superficie_m2.html_name }}"]'),
+                document.querySelector('[name="{{ form.tipo_area.html_name }}"]'),
+                document.querySelector('[name="{{ form.cantidad_areas.html_name }}"]'),
+                document.querySelector('[name="{{ form.cuota.html_name }}"]'),
+            ];
+            var valid = true;
+            requiredFields.forEach(function(field) {
+                if (field && !field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    valid = false;
+                } else if (field) {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            if (valid) {
+                document.getElementById('step1').style.display = 'none';
+                document.getElementById('step2').style.display = 'block';
+            }
+        }
+        function prevStepArea() {
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step1').style.display = 'block';
+        }
+        document.getElementById('areaForm').addEventListener('submit', function(e) {
+            var requiredFields2 = [                
+                document.querySelector('[name="{{ form.giro.html_name }}"]'),
+                document.querySelector('[name="{{ form.fecha_inicial.html_name }}"]'),
+                document.querySelector('[name="{{ form.fecha_fin.html_name }}"]'),
+                
+            ];
+            var valid2 = true;
+            requiredFields2.forEach(function(field) {
+                if (field && !field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    valid2 = false;
+                } else if (field) {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            // Validar checkbox si es requerido
+            var cuotaAnual = document.querySelector('[name="{{ form.es_cuota_anual.html_name }}"]');
+            if (cuotaAnual && !cuotaAnual.checked && cuotaAnual.required) {
+                cuotaAnual.classList.add('is-invalid');
+                valid2 = false;
+            } else if (cuotaAnual) {
+                cuotaAnual.classList.remove('is-invalid');
+            }
+            if (!valid2) {
+                e.preventDefault();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -28,6 +28,8 @@ class GastoCajaChica(models.Model):
     importe = models.DecimalField(max_digits=10, decimal_places=2)
     fecha = models.DateField()
 
+    
+
     def __str__(self):
         return f"Gasto {self.descripcion} - Importe: {self.importe}"
 
@@ -41,7 +43,6 @@ class ValeCaja(models.Model):
     importe = models.DecimalField(max_digits=10, decimal_places=2)
     fecha = models.DateField()
     recibido_por = models.ForeignKey(Empleado, on_delete=models.SET_NULL, null=True, blank=True)
-    #recibido_por = models.CharField(max_length=100, null=True, blank=True)
     autorizado_por = models.CharField(max_length=100, null=True, blank=True)
     status=models.CharField(
         max_length=20,
@@ -51,6 +52,7 @@ class ValeCaja(models.Model):
         ],
         default="pendiente",
     )
+ 
 
     def __str__(self):
         return f"Vale {self.descripcion} - Importe: {self.importe}"

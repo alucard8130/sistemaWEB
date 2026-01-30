@@ -33,7 +33,7 @@
     
     <div class="container-fluid mt-4">
         <h2>Comparativo Ingresos vs Presupuesto - Año {{ anio }}</h2>
-        <form method="get" class="row mb-3 g-2">
+        <form id="form-filtros" method="get" class="row mb-3 g-2">
             <div class="col-auto">
                 <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
                     {% for a in anios %}
@@ -54,7 +54,7 @@
             </div>
         </form>
 
-        <form method="get" class="mb-3 d-flex align-items-center gap-2">
+        <form id="form-filtros" method="get" class="mb-3 d-flex align-items-center gap-2">
             <select name="medicion" class="form-select" style="width:auto;">
                 <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes actual</option>
                 <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo actual</option>
@@ -62,9 +62,9 @@
                 <option value="semestre2" {% if medicion == "semestre2" %}selected{% endif %}>Segundo semestre</option>  
                 <option value="anual" {% if medicion == "anual" %}selected{% endif %}>Año completo</option>
             </select>
-            <button type="submit" class="btn btn-outline-primary">
+            {% comment %} <button type="submit" class="btn btn-outline-primary reporte-link">
                 <i class="bi bi-search me-1"></i> Consultar
-            </button>
+            </button> {% endcomment %}
         </form>
             
         <div class="table-responsive rounded-3 border" id="table-container-corp" data-meses-count="{{ meses_nombres|length }}">
@@ -91,55 +91,58 @@
                 </thead>
                 <tbody>
                     {% for row in comparativo %}
-                    <tr {% if row.tipo == None and row.nombre == "Otros ingresos (Total)" %}class="table-info fw-bold"{% endif %}>
-                        <td>
-                            {% if row.tipo %}
-                                &nbsp;&nbsp;— {{ row.tipo }}
-                            {% else %}
-                                {{ row.nombre }}
-                            {% endif %}
-                        </td>
-                        {% for mes in row.meses %}
-                        <td class="text-end text-secondary" style="font-size:0.95em;">
-                            {{ mes.presupuesto|floatformat:0|intcomma }}
-                        </td>
-                        <td class="text-end fw-bold">
-                            {{ mes.real|floatformat:0|intcomma }}
-                        </td>
-                        <td class="text-end">
-                            {% if mes.presupuesto %}
-                                {{ mes.real|minus:mes.presupuesto|divide:mes.presupuesto|mul:100|floatformat:0 }}%
-                            {% elif mes.real %}
-                                100%
-                            {% else %}
-                                0%
-                            {% endif %}
-                        </td>
+                        {% if row.total_presup != 0 or row.total_real != 0 %}
+                            <tr {% if row.tipo == None and row.nombre == "Otros ingresos (Total)" %}class="table-info fw-bold"{% endif %}>
+                            <td>
+                                {% if row.tipo %}
+                                    &nbsp;&nbsp;— {{ row.tipo }}
+                                {% else %}
+                                    {{ row.nombre }}
+                                {% endif %}
+                            </td>
+                            {% for mes in row.meses %}
+                            <td class="text-end text-secondary" style="font-size:0.95em;">
+                                {{ mes.presupuesto|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-end fw-bold">
+                                {{ mes.real|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-end">
+                                {% if mes.presupuesto %}
+                                    {{ mes.real|minus:mes.presupuesto|divide:mes.presupuesto|mul:100|floatformat:0 }}%
+                                {% elif mes.real %}
+                                    100%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </td>
                         {% endfor %}
-                        <td class="total-anual-cell text-end text-secondary" style="font-size:0.95em;">
-                            {{ row.total_presup|floatformat:0|intcomma }}
-                        </td>
-                        <td class="total-anual-cell text-end fw-bold">
-                            {{ row.total_real|floatformat:0|intcomma }}
-                        </td>
-                        <td class="total-anual-cell text-end">
-                            {{ row.total_var|floatformat:0|intcomma }}
-                        </td>
-                        <td class="total-anual-cell text-end">
-                            {% if row.total_presup %}
-                                {{ row.total_var|divide:row.total_presup|mul:100|floatformat:0 }}%
-                            {% elif row.total_real %}
-                                100%
-                            {% else %}
-                                0%
-                            {% endif %}
-                        </td>
-                    </tr>
+                            <td class="total-anual-cell text-end text-secondary" style="font-size:0.95em;">
+                                {{ row.total_presup|floatformat:0|intcomma }}
+                            </td>
+                            <td class="total-anual-cell text-end fw-bold">
+                                {{ row.total_real|floatformat:0|intcomma }}
+                            </td>
+                            <td class="total-anual-cell text-end">
+                                {{ row.total_var|floatformat:0|intcomma }}
+                            </td>
+                            <td class="total-anual-cell text-end">
+                                {% if row.total_presup %}
+                                    {{ row.total_var|divide:row.total_presup|mul:100|floatformat:0 }}%
+                                {% elif row.total_real %}
+                                    100%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
                     {% endfor %}
                 </tbody>
                 <tfoot class="table-secondary">
                     <tr class="fw-bold">
-                        <th>Total general</th>
+                        <th class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total mensual</strong></th>
+                        {% comment %} <th>Total mensual</th> {% endcomment %}
                         {% for m in meses %}
                         {% with mes_total=totales_meses|lookup:m %}
                             <td class="text-end text-secondary" style="font-size:0.95em;">
@@ -197,5 +200,49 @@
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/presup_vs_ingresos.js' %}"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay y enviar el formulario al cambiar cualquier filtro
+  document.querySelectorAll('#form-filtros select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+      // Espera un pequeño tiempo para mostrar el overlay antes de enviar
+      setTimeout(function() {
+        sel.form.submit();
+      }, 50);
+    });
+  });
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+
+  // También para el submit manual (por si usas botón)
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+});
+</script>
+<script>
+$(document).ready(function() {
+    $('#table-container-corp').DataTable({
+        fixedHeader: true,
+        paging: false,
+        searching: false,
+        info: false,
+        ordering: false,
+        scrollX: true
+    });
+});
+</script>
 </body>
 </html>
