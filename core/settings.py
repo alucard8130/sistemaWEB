@@ -107,6 +107,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # }
 
 #desarrollo postgres
+<<<<<<< HEAD
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -117,6 +118,18 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
+=======
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
+#         'USER': os.getenv('DB_USER'),         # tu usuario de postgres
+#         'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
+#         'HOST': os.getenv('DB_HOST', 'localhost'),
+#         'PORT': os.getenv('DB_PORT', '5432'),
+#     }
+# }
+>>>>>>> b00c58d266a973ca046e60f09f404681dbaf53a8
 
 #produccion
 # DATABASES = {
