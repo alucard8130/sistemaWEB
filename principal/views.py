@@ -2846,10 +2846,11 @@ def api_reporte_ingresos_vs_gastos(request):
 
     total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
-    total_ingresos_cobrados = total_ingresos + total_otros_ingresos
     total_pagos_por_identificar =  (
         pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
     )
+    total_ingresos_cobrados = total_ingresos + total_otros_ingresos + total_pagos_por_identificar
+    
     total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
     total_gastos_caja_chica = (
         gastos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
