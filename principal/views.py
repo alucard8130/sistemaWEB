@@ -2847,7 +2847,9 @@ def api_reporte_ingresos_vs_gastos(request):
     total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
     total_ingresos_cobrados = total_ingresos + total_otros_ingresos
-    total_por_identificar = pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
+    total_pagos_por_identificar =  (
+        pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
+    )
     total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
     total_gastos_caja_chica = (
         gastos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
@@ -2888,6 +2890,9 @@ def api_reporte_ingresos_vs_gastos(request):
     for x in otros_ingresos_qs:
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f"{tipo}"] = float(x["total"])
+        ingresos_por_origen["Depositos no identificados"] = float(
+        total_pagos_por_identificar
+    )
 
     gastos_agregados = {}
     gastos_qs = PagoGasto.objects.select_related("gasto__tipo_gasto__subgrupo__grupo")
@@ -2954,7 +2959,7 @@ def api_reporte_ingresos_vs_gastos(request):
     resultado = {
         "total_ingresos": total_ingresos_cobrados,
         "total_otros_ingresos": total_otros_ingresos,
-        "total_por_identificar": total_por_identificar,
+        "total_pagos_por_identificar": total_pagos_por_identificar,
         "total_gastos_pagados": total_gastos_pagados,
         "total_gastos_caja_chica": total_gastos_caja_chica,
         "total_vales_caja_chica": total_vales_caja_chica,
@@ -3862,7 +3867,6 @@ def api_estado_resultados(request):
             "meses_unicos": meses_unicos,
             "anios_unicos": anios_unicos,
             "mes_letra": mes_letra,
-            "total_por_identificar": total_por_identificar,
         },
     )
 
