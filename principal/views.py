@@ -2676,14 +2676,27 @@ def visitante_login_api(request):
 @visitante_token_required
 def visitante_facturas_api(request):
     visitante = request.visitante  # El usuario autenticado por token
-    locales = visitante.locales.all()
-    areas = visitante.areas.all()
-    # facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
+    empresa_id = request.GET.get("empresa_id")
+    if not empresa_id:
+        return Response({"error": "Debe seleccionar una empresa"}, status=400)
+    locales = visitante.locales.filter(empresa_id=empresa_id)
+    areas = visitante.areas.filter(empresa_id=empresa_id)
     facturas = Factura.objects.filter(
-        Q(local__in=locales) | Q(area_comun__in=areas)
+        Q(local__in=locales) | Q(area_comun__in=areas),
+        empresa_id=empresa_id,
     ).select_related("cliente", "empresa", "local", "area_comun")
     serializer = FacturaSerializer(facturas, many=True)
     return Response({"facturas": serializer.data})
+# def visitante_facturas_api(request):
+#     visitante = request.visitante  # El usuario autenticado por token
+#     locales = visitante.locales.all()
+#     areas = visitante.areas.all()
+#     # facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas))
+#     facturas = Factura.objects.filter(
+#         Q(local__in=locales) | Q(area_comun__in=areas)
+#     ).select_related("cliente", "empresa", "local", "area_comun")
+#     serializer = FacturaSerializer(facturas, many=True)
+#     return Response({"facturas": serializer.data})
 
 
 # API crear Payment Intent con Stripe
