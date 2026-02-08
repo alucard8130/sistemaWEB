@@ -4,304 +4,413 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 12/09/2025
-      Description: Consulta de facturas por local o área común
-    -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Consulta de Facturas Visitantes</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
-    /* Responsivo para móviles y tablets */
-    @media (max-width: 600px) {
-        .container-fluid, .row, .col-md-6 {
-            padding-left: 5px !important;
-            padding-right: 5px !important;
+        body {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            font-family: 'Rubik', sans-serif;
         }
-        h2, h4, h5 {
-            font-size: 1.1rem;
+        .glass-card {
+            background: rgba(255,255,255,0.85);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.18);
         }
-        .card-title, .card-text {
+        .glass-header {
+            background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%);
+            color: white;
+            border-radius: 18px 18px 0 0;
+            padding: 1.2rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(33,147,176,0.08);
+        }
+        .glass-footer {
+            background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%);
+            color: white;
+            border-radius: 0 0 18px 18px;
+            padding: 0.8rem;
             font-size: 1rem;
+            font-weight: 500;
         }
-        .btn, .form-select, .form-control, .page-link {
-            font-size: 1rem !important;
-            padding: 0.7rem 0.5rem !important;
+        .badge-modern {
+            font-size: 1rem;
+            padding: 0.5em 1em;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%);
+            color: #333;
+            font-weight: 600;
         }
-        .table-responsive {
-            border-radius: 0 !important;
-            border-width: 0 !important;
+        .badge-modern-success {
+            background: linear-gradient(90deg, #56ab2f 0%, #a8e063 100%);
+            color: #fff;
         }
-        .table th, .table td {
-            font-size: 0.95rem;
-            padding: 0.4rem !important;
-            white-space: normal !important;
+        .badge-modern-danger {
+            background: linear-gradient(90deg, #ff5858 0%, #f09819 100%);
+            color: #fff;
         }
-        .table {
-            font-size: 0.95rem;
+        .btn-gradient {
+            background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%);
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            transition: background 0.3s;
         }
-        .navbar {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
+        .btn-gradient:hover {
+            background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%);
+            color: #fff;
         }
-        .login-logo {
-            max-width: 80px;
+        .table-modern th {
+            background: #2193b0;
+            color: #fff;
+            font-weight: 700;
         }
-        .btn-lg, .btn {
-            width: 100% !important;
-            margin-bottom: 0.5rem;
+        .table-modern tr:nth-child(even) {
+            background: #f7fafc;
         }
-        .pagination {
-            flex-wrap: wrap;
+        .table-modern tr:nth-child(odd) {
+            background: #e0eafc;
         }
-    }
+        .icon-lg {
+            font-size: 2.5rem;
+        }
+        .filter-bar {
+            background: rgba(255,255,255,0.7);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(33,147,176,0.08);
+        }
+    </style>
+    <style>
+  .appstore-badge-rect {
+    display: inline-block;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(33,147,176,0.15);
+    transition: transform 0.2s;
+    border: 3px solid #2193b0;
+    background: #fff;
+    padding: 0;
+    width: 180px;
+    height: 60px;
+  }
+  .appstore-badge-rect:hover {
+    transform: scale(1.07) rotate(-2deg);
+    box-shadow: 0 8px 32px rgba(33,147,176,0.25);
+    border-color: #6dd5ed;
+  }
+  .appstore-badge-rect img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+</style>
+<style>
+  .store-badge-rect {
+    display: inline-block;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(33,147,176,0.15);
+    transition: transform 0.2s;
+    border: 3px solid #2193b0;
+    background: #fff;
+    padding: 0;
+    width: 180px;
+    height: 60px;
+    margin-left: 8px;
+  }
+  .store-badge-rect:hover {
+    transform: scale(1.07) rotate(-2deg);
+    box-shadow: 0 8px 32px rgba(33,147,176,0.25);
+    border-color: #6dd5ed;
+  }
+  .store-badge-rect img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
 </style>
 </head>
-<div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-    <div class="d-flex align-items-center ms-auto">  
-        <button id="toggleDark" class="toggle-switch">
-            <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-        </button>
-    </div>
-</div>
 <body>
-    <!-- Botón salir arriba a la derecha -->
-<div class="d-flex justify-content-end mt-3 me-3">
-    <a href="{% url 'visitante_logout' %}" class="btn btn-outline-danger btn-lg w-100">
-        <i class="bi bi-box-arrow-right"></i> Salir
-    </a>
-</div>
-<div class="d-flex justify-content-end mt-3 me-3">
-<a href="{% url 'visitante_seleccionar_empresa' %}" class="btn btn-warning btn-lg w-100 mb-2">
-        <i class="bi bi-arrow-repeat"></i> Cambiar empresa
-    </a>
-</div>
-{% include 'loading_overlay.html' %}
-    {% if not es_visitante %}
-        {% include 'navbar.html' %}
-    {% endif %}
-    <!-- Block for displaying messages -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-       {% if mensaje_pago %}
-    <div class="alert alert-success">
-        {{ mensaje_pago }}
+    <!-- mensaje floating pago -->
+    {% if mensaje_pago %}
+  <div id="pago-exito-float" class="floating-card">
+    <div class="card shadow-lg border-0 text-center p-4" style="background:rgba(255,255,255,0.97); border-radius:18px;">
+      <div class="mb-2">
+        <i class="bi bi-check-circle-fill text-success" style="font-size:2.5rem;"></i>
+      </div>
+      <div class="fs-5" style="font-weight:600;">
+        {{ mensaje_pago|safe }}
+      </div>
     </div>
+  </div>
+  <!-- Custom CSS for floating card and animation -->
+  <style>
+    .floating-card {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      background: rgba(33,147,176,0.10);
+      animation: fadeIn 0.20s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  </style>
+  <script>
+    setTimeout(function() {
+      var card = document.getElementById('pago-exito-float');
+      if(card) card.style.display = 'none';
+    }, 5000);
+  </script>
 {% endif %}
-    <!-- Main content -->
-    <div class="container-fluid mt-4">
-        <div class="d-flex align-items-center justify-content-between">
-                {% if facturas|length > 0 %}
-        <h2 class="mb-3">{{ facturas.0.empresa.nombre }}</h2>
-    {% else %}
-        <h2 class="mb-3"> <span>No hay facturas disponibles</span></h2>
-    {% endif %}
-   
-</div>
-        <h4>Estado de Cuenta</h4>
-        <div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card border-warning shadow-sm mb-2">
-            <div class="card-body">
-                <h5 class="card-title mb-2"><i class="bi bi-exclamation-circle text-warning"></i> Total pendiente</h5>
-                <p class="card-text fs-4 text-warning">${{ total_pendiente|floatformat:2|intcomma }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card border-success shadow-sm mb-2">
-            <div class="card-body">
-                <h5 class="card-title mb-2"><i class="bi bi-cash-stack text-success"></i> Total cobrado</h5>
-                <p class="card-text fs-4 text-success">${{ total_cobrado|floatformat:2|intcomma }}</p>
-            </div>
-        </div>
-    </div>
-    <p>Si existe algun pago no registrado, contacte al administrador del condominio.</p>
-    <p>LOS ADEUDOS SOLO SE PUEDEN PAGAR DEL MÁS ANTIGUO AL MÁS RECIENTE.</p>
-</div>
-        <form method="get" class="row g-2 mb-3">
-            <div class="col-12 col-md-auto mb-2 mb-md-0">
-                <select name="local_id" id="local_id" class="form-select w-100">
-                    <option value="">Locales</option>
-                    {% for local in locales %}
-                        <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
-                            {{ local }}
-                        </option>
+    <!-- Block for displaying messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
                     {% endfor %}
-                </select>
-            </div>
-            <div class="col-12 col-md-auto mb-2 mb-md-0">
-                <select name="area_id" id="area_id" class="form-select w-100">
-                    <option value="">Áreas</option>
-                    {% for area in areas %}
-                        <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
-                            {{ area }}
-                        </option>
+                {% endif %}
+                <!-- Block for displaying messages -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
                     {% endfor %}
-                </select>
-            </div>
-            <div class="col-12 col-md-auto mb-2 mb-md-0">
-                <select name="anio" class="form-select w-100">
-                    <option value="">Años</option>
-                    {% for y in anios_unicos %}
-                        <option value="{{ y }}" {% if anio == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-12 col-md-auto mb-2 mb-md-0">
-                <button type="submit" class="btn btn-outline-primary w-100">
-                    <i class="bi bi-funnel"></i> 
-                        Filtrar
-                </button>
-                <a href="{% if es_visitante %}{% url 'visitante_consulta_facturas' %}{% else %}{% url 'consulta_facturas' %}{% endif %}" class="btn btn-outline-secondary w-100">
-                    <i class="bi bi-arrow-clockwise"></i> 
-                                Limpiar
-                        </a>
-            </div>
-        </form>
-        <div class="table-responsive rounded-3 border">
-            <table class="table align-middle mb-0 shadow-sm">
-                <thead>
-                    <tr>
-                        <th>Folio</th>
-                        {% comment %} <th>Empresa</th> {% endcomment %}
-                        <th>Cliente</th>
-                        <th>Local/Área</th>
-                        <th>Importe</th>
-                        <th>Saldo</th>
-                        <th>Tipo Cuota</th>
-                        <th>Periodo</th>
-                        <th>Descripción</th>
-                        <th>Estatus</th>
-                        <th>Acciones</th>
-                        <th>CFDI</th>
-                        <th>Historial</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for factura in facturas %}
-                        <tr>
-                            <td>{{ factura.folio }}</td>
-                            {% comment %} <td>{{ factura.empresa.nombre }}</td> {% endcomment %}
-                            <td>{{ factura.cliente.nombre }}</td>
-                            <td>
-                                {% if factura.local %}
-                                    {{ factura.local.numero }}
-                                {% elif factura.area_comun %}
-                                    {{ factura.area_comun.numero }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                            <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
-                            <td>{{ factura.tipo_cuota }}</td>
-                            <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
-                    
-                            {% if factura.observaciones == None or factura.observaciones == '' %}
-                                <td></td>
-                            {% else %}
-                                <td>{{ factura.observaciones }}</td>
-                            {% endif %}
-                            <td>
-                                {% if factura.estatus == 'cobrada' %} 
-                                    <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
-                                {% elif factura.estatus == 'pendiente' %} 
-                                    <span class="badge bg-warning">{{ factura.get_estatus_display }}</span>
-                                {% elif factura.estatus == 'cancelada' %} 
-                                    <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
-                                {% endif %}
-                            </td>
-                    <td>
-                    {% if factura.estatus == 'pendiente' and factura.id == factura_pendiente_id and es_visitante %}
-                        <a href="{% url 'visitante_stripe_checkout' factura.id %}" class="btn btn-sm btn-outline-success" title="Pagar factura">
-                            Pagar
-                            <i class="bi bi-credit-card"></i> 
-                        </a>
-                    {% endif %}
-                    {% if factura.estatus == 'cobrada' %}
-                        {% if not factura.uuid %}
-                            <a href="{% url 'visitante_timbrar_factura' factura.pk %}" class="btn btn-outline-success btn-sm" title="Timbrar factura">
-                                Timbrar
-                                <i class="bi bi-file-earmark-check"></i>
-                            </a>
-                        {% else %}
-                            <span class="badge bg-dark">Timbrada</span>
-                        {% endif %}
-                    {% endif %}
-                </td>
-                <td>
-                    {% if factura.facturama_id %}
-            <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" class="btn btn-success btn-sm" title="Descargar CFDI PDF/XML">
-                <i class="bi bi-download"></i>
+                    </div>
+                {% endif %}
+                
+    
+    <div class="container-fluid py-4" style="max-width: 1800px; margin: 0 auto;">
+        <div class="d-flex justify-content-end mb-1">
+        <a href="{% url 'visitante_seleccionar_empresa' %}" class="btn btn-gradient btn-lg">
+            <i class="bi bi-arrow-repeat"></i> Cambiar condominio
+        </a>
+    </div>            
+        <div class="glass-header mb-4 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-building icon-lg me-2"></i> {{ facturas.0.empresa.nombre|default:"Condómino" }}</span>
+            <a href="{% url 'visitante_logout' %}" class="btn btn-gradient btn-lg">
+                <i class="bi bi-box-arrow-right"></i> Salir
             </a>
-        {% else %}
-            <span class="text-muted"></span>
-        {% endif %}
-                </td>
-                <td>
-
-                    {% if es_visitante %}
-                        <a href="{% url 'visitante_factura_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
-                            <i class="bi bi-eye me-1"></i> 
-                        </a>
-                    {% else %}
-                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-sm btn-outline-info" title="Ver Historial">
-                            <i class="bi bi-eye me-1"></i> 
-                        </a>
-                    {% endif %}
-                </td>
-                        </tr>
-                    {% empty %}
-                        <tr class="no-data-row">
-                            <td colspan="11">No hay facturas registradas.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            
         </div>
-        <nav aria-label="Paginación">
-            <ul class="pagination">
-            {% if facturas.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-            {% endif %}
-            <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
-            {% if facturas.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ facturas.next_page_number }}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-            {% endif %}
-            </ul>
-        </nav>
+        <div class="glass-card p-4 mb-2">
+            <h2 class="mb-3 text-primary"><i class="bi bi-person-badge"></i> Estado de Cuenta - {{ nombre_cliente }}</h2>
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <div class="glass-card p-3 text-center border-0">
+                        <h5 class="mb-2 text-warning"><i class="bi bi-exclamation-circle icon-lg"></i> Total pendiente sin intereses</h5>
+                        <p class="fs-2 text-warning">${{ total_pendiente|floatformat:2|intcomma }}</p>
+                    </div>
+                </div>
+                {% comment %} <div class="col-md-6 mb-3">
+                    <div class="glass-card p-3 text-center border-0">
+                        <h5 class="mb-2 text-success"><i class="bi bi-cash-stack icon-lg"></i> Total cobrado</h5>
+                        <p class="fs-2 text-success">${{ total_cobrado|floatformat:2|intcomma }}</p>
+                    </div>
+                </div> {% endcomment %}
+            </div>
+            <div class="filter-bar mb-4">
+                <form method="get" class="row g-2">
+                    <div class="col-12 col-md-auto">
+                        <select name="local_id" id="local_id" class="form-select">
+                            <option value="">Locales</option>
+                            {% for local in locales %}
+                                <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>{{ local }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-auto">
+                        <select name="area_id" id="area_id" class="form-select">
+                            <option value="">Áreas</option>
+                            {% for area in areas %}
+                                <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>{{ area }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-auto">
+                        <select name="anio" class="form-select">
+                            <option value="">Años</option>
+                            {% for y in anios_unicos %}
+                                <option value="{{ y }}" {% if anio == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-auto">
+                        <button type="submit" class="btn btn-gradient">
+                            <i class="bi bi-funnel"></i> Filtrar
+                        </button>
+                        <a href="{% if es_visitante %}{% url 'visitante_consulta_facturas' %}{% else %}{% url 'consulta_facturas' %}{% endif %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> Limpiar
+                        </a>
+                        <a href="{% url 'descargar_estado_cuenta_pdf' %}?{% if local_id %}local_id={{ local_id }}&{% endif %}{% if area_id %}area_id={{ area_id }}&{% endif %}{% if anio %}anio={{ anio }}&{% endif %}" 
+                            class="btn btn-danger" target="_blank">
+                            <i class="bi bi-file-earmark-pdf"></i> Estado de Cuenta (PDF)
+                        </a>
+ 
+                    </div>
+                    
+                </form>
+            </div>
+  
+            <div class="table-responsive rounded-3 border">
+                <table class="table table-modern align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            {% comment %} <th>Cliente</th> {% endcomment %}
+                            <th>Local/Área</th>
+                            <th>Importe Cuota</th>
+                            <th>Saldo</th>
+                            <th>Interés Mora 6%</th>
+                            <th>Tipo Cuota</th>
+                            <th>Periodo</th>
+                            <th>Descripción</th>
+                            <th>Estatus</th>
+                            <th>Acciones</th>
+                            <th>CFDI</th>
+                            <th>Historial</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for factura in facturas %}
+                            
+                            <tr>
+                                <td>{{ factura.folio }}</td>
+                                {% comment %} <td>{{ factura.cliente.nombre }}</td> {% endcomment %}
+                                <td>
+                                    {% if factura.local %}
+                                        {{ factura.local.numero }}
+                                    {% elif factura.area_comun %}
+                                        {{ factura.area_comun.numero }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>${{ factura.monto|floatformat:2|intcomma }}</td>
+                                <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
+                                <td>
+                                {% if factura.estatus == "pendiente" and factura.interes_mora > 0 %}
+                                    ${{ factura.interes_mora|floatformat:2 |intcomma }}
+                                {% else %}
+                                    $0.00
+                                {% endif %}
+                                </td>
+                                <td>{{ factura.tipo_cuota }}</td>
+                                <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
+                                <td>{{ factura.observaciones|default:"-" }}</td>
+                                <td>
+                                    {% if factura.estatus == 'cobrada' %}
+                                        <span class="badge badge-modern-success">{{ factura.get_estatus_display }}</span>
+                                    {% elif factura.estatus == 'pendiente' %}
+                                        <span class="badge badge-modern">{{ factura.get_estatus_display }}</span>
+                                    {% elif factura.estatus == 'cancelada' %}
+                                        <span class="badge badge-modern-danger">{{ factura.get_estatus_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if factura.estatus == 'pendiente' and factura.id == factura_pendiente_id and es_visitante %}
+                                        <a href="{% url 'visitante_stripe_checkout' factura.id %}" class="btn btn-gradient btn-sm" title="Pagar factura">
+                                            <i class="bi bi-credit-card"></i> Pagar
+                                        </a>
+                                    {% endif %}
+                                    {% if visitante.membresia_tipo == "plus" or visitante.membresia_tipo == "premium" %}
+                                        {% if factura.estatus == 'cobrada' %}
+                                            {% if not factura.uuid %}
+                                                <a href="{% url 'visitante_timbrar_factura' factura.pk %}" class="btn btn-outline-primary btn-sm" title="Timbrar factura">
+                                                    <i class="bi bi-file-earmark-check"></i> Timbrar
+                                                </a>
+                                            {% else %}
+                                                <span class="badge bg-dark">Timbrada</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                        <a href="{% url 'visitante_membresia_pago' %}" class="btn btn-secondary btn-sm">Timbrar</a>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if factura.facturama_id %}
+                                        <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" class="btn btn-success btn-sm" title="Descargar CFDI PDF/XML">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted"></span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if es_visitante %}
+                                        <a href="{% url 'visitante_factura_detalle' factura.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
+                                            <i class="bi bi-eye me-1"></i> Ver
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'facturas_detalle' factura.id %}" class="btn btn-outline-info btn-sm" title="Ver Historial">
+                                            <i class="bi bi-eye me-1"></i> Ver
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr class="no-data-row">
+                                <td colspan="12">No hay facturas registradas.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3">
+                
+                <span class="badge badge-modern mb-2">Nota: Las facturas se pagan de la mas antigua a la mas reciente. Si no reconoce el ADEUDO, puede levantar un reclamo en la Aplicacion GESAC condomominos</span><br>
+                <span class="badge badge-modern mb-2">Nota: El monto de los intereses es informativo</span><br>
+                {% comment %} <span class="badge badge-modern mb-2">Nota: Los pagos no incluyen intereses</span> {% endcomment %}
+                {% if visitante.membresia_tipo == "plus" or visitante.membresia_tipo == "premium" %}
+                <div class="mb-4 text-end">
+                    <a href="https://apps.apple.com/app/id6756532273" target="_blank" class="appstore-badge-rect" title="Descargar en App Store">
+                        <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Descargar en App Store">
+                    </a>
+                    <!-- Google Play -->
+                    {% comment %} <a href="https://play.google.com/apps/testing/com.jaimeestrada.condominosapp" target="_blank" class="store-badge-rect" title="Descargar en Google Play">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Descargar en Google Play">
+                    </a>{% endcomment %}    
+                </div> 
+                {% endif %}
+            </div>
+            <nav aria-label="Paginación" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if facturas.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
+                    {% if facturas.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ facturas.next_page_number }}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        <div class="glass-footer mt-4 text-center">
+            © {% now "Y" %} <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">GESAC</a>. Created By JMEB Todos los derechos reservados.
+        </div>
     </div>
-
-    <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
-        
-    </footer>
-
-    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>

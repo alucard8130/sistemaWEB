@@ -189,7 +189,10 @@ class FacturaEditForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        empresa= kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['cliente'].queryset = Cliente.objects.filter(empresa=empresa)
         self.fields['estatus'].disabled = True
         self.fields['area_comun'].disabled = True
         self.fields['local'].disabled = True

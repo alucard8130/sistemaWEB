@@ -99,6 +99,7 @@ class VisitanteAcceso(models.Model):
     fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de registro",blank=True, null=True)
     activo= models.BooleanField(default=True, verbose_name="Activo")
     es_admin= models.BooleanField(default=False, verbose_name="Es administrador")
+    membresia_tipo=models.CharField(max_length=20,choices=[('basica','Básica'),('plus','Plus'),('premium','Premium')], default='basica', verbose_name="Tipo de membresía")
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)

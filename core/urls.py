@@ -6,13 +6,18 @@ from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, resetear_empresa, toggle_activo_visitante, toggle_reporte_visitante
 from areas import views
-from caja_chica.views import comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica
-from empleados.views import exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista
-from facturacion.views import consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos
+from caja_chica.views import (comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, 
+                              fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica)
+from empleados.views import (exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista)
+from facturacion.views import (consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
 from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
-from principal.views import actualizar_ticket, agregar_seguimiento, api_areas_por_empresa, api_avisos_empresa, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_reporte_ingresos_vs_gastos, aviso_crear, aviso_eliminar, avisos_lista, consulta_cfdis_facturama, crear_tema_y_enviar, create_payment_intent, descargar_cfdi_facturama, descargar_factura_timbrada, descargar_plantilla_estado_cuenta, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, lista_tickets, crear_ticket, registro_visitante, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo
+from principal.views import (actualizar_ticket, agregar_seguimiento, api_areas_por_empresa, api_avisos_empresa, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_reporte_ingresos_vs_gastos, aviso_crear, aviso_eliminar, 
+                             avisos_lista, consulta_cfdis_facturama, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_tema_y_enviar, create_payment_intent, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, descargar_plantilla_estado_cuenta, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, membresia_pago_exitoso, 
+                             lista_tickets, crear_ticket, registro_visitante, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama, subir_estado_cuenta,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
+                             eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
+                               visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
@@ -115,11 +120,18 @@ urlpatterns = [
     path('visitante/login/', visitante_login, name='visitante_login'),
     path('visitante/recuperar-password/', visitante_recuperar_password, name='visitante_recuperar_password'),
     path('visitante/consulta/', visitante_consulta_facturas, name='visitante_consulta_facturas'),
+    path('facturacion/estado-cuenta/pdf/', descargar_estado_cuenta_pdf, name='descargar_estado_cuenta_pdf'),
     path('visitante/logout/', visitante_logout, name='visitante_logout'),
     path('visitante/factura/<int:factura_id>/detalle/',visitante_factura_detalle, name='visitante_factura_detalle'),
     path('visitante/factura/<int:factura_id>/stripe/', stripe_checkout_visitante, name='visitante_stripe_checkout'),
     path('visitante/stripe/webhook/', stripe_webhook_visitante, name='stripe_webhook_visitante'),
+    path('visitante/stripe/webhook_membresia/', stripe_webhook_membresia, name='stripe_webhook_membresia'),
+    #path('visitante/stripe/webhook_membresia_premium/', stripe_webhook_membresia_premium, name='stripe_webhook_membresia_premium'),
     path('visitante/seleccionar-empresa/', visitante_seleccionar_empresa, name='visitante_seleccionar_empresa'),
+    path('visitante/membresia/pago/', visitante_membresia_pago, name='visitante_membresia_pago'),
+    path('visitante/membresia/checkout_plus/', crear_sesion_pago_membresia_plus, name='pago_membresia_plus'),
+    path('visitante/membresia/checkout_premium/', crear_sesion_pago_membresia_premium, name='pago_membresia_premium'),
+    path('visitante/membresia/success/', membresia_pago_exitoso, name='membresia_pago_exitoso'),
     path('votar/<str:token>/<str:respuesta>/', votar_tema_correo, name='votar_tema_correo'),
     path('votaciones/', lista_temas, name='lista_temas'),
     path('votaciones/resultados/<int:tema_id>/', resultados_votacion, name='resultados_votacion'),

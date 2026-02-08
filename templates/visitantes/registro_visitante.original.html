@@ -8,97 +8,33 @@
     <title>Registro condominos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
-        body {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
-            font-family: 'Rubik', sans-serif;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-        }
-        .glass-register {
-            background: rgba(255,255,255,0.90);
-            border-radius: 22px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-            backdrop-filter: blur(6px);
-            border: 1px solid rgba(255,255,255,0.18);
-            padding: 2.5rem 2rem 2rem 2rem;
-            max-width: 600px;
-            width: 100%;
-            margin-top: 2rem;
-        }
-        .glass-register h2 {
-            font-weight: 700;
-            color: #2193b0;
-            margin-bottom: 1.5rem;
-        }
-        .form-control, .btn, .form-select {
-            border-radius: 12px;
-        }
-        .btn-gradient {
-            background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%);
-            color: #fff;
-            border: none;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-        .btn-gradient:hover {
-            background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%);
-            color: #fff;
-        }
-        .glass-register .form-label, .glass-register label {
-            color: #2193b0;
-            font-weight: 500;
-        }
-        .alert {
-            border-radius: 12px;
-        }
         .remove-block { cursor: pointer; color: #dc3545; }
         .error-msg { color: #dc3545; margin-bottom: 10px; }
-        .glass-card {
-            background: rgba(255,255,255,0.85);
-            border-radius: 18px;
-            box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.10);
-            border: 1px solid rgba(255,255,255,0.18);
-            margin-bottom: 1rem;
-        }
-        .btn-ayuda {
-            background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%);
-            color: #fff;
-            font-weight: 600;
-            border: none;
-        }
-        .btn-ayuda:hover {
-            background: linear-gradient(90deg, #ffd200 0%, #f7971e 100%);
-            color: #fff;
-        }
     </style>
 </head>
 <body>
 {% include 'loading_overlay.html' %}
 
-<div class="glass-register mx-auto">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
 
-    <h2 class="mb-3 text-center"><i class="bi bi-person-plus"></i> Registro de Condóminos</h2>
-    <div class="text-center mb-3">
-        <button type="button" class="btn btn-ayuda" data-bs-toggle="modal" data-bs-target="#ayudaModal">
-            <i class="bi bi-question-circle"></i> Ayuda Registro
-        </button>
-    </div>
+<div class="container mt-1">
+    <h2 class="mb-3">Registro de Condóminos</h2>
+    <button type="button" class="btn btn-ayuda mb-3" data-bs-toggle="modal" data-bs-target="#ayudaModal" style="color: red;">
+        Ayuda Registro
+    </button>
     <form method="post" id="registroForm">
         {% csrf_token %}
         <!-- Paso 1: Datos del usuario -->
         <div id="paso1">
-            <div class="glass-card p-3 mx-auto" style="max-width: 500px;">
+            <div class='container mt-1 p-2' style="max-width: 500px;">
                 <div id="errorPaso1" class="error-msg" style="display:none;"></div>
                 <div class="mb-3">
                     <label>Nombre</label>
@@ -121,25 +57,22 @@
                     <label>Confirmar Contraseña</label>
                     <input type="password" name="password2" id="password2" class="form-control w-100" required>
                 </div>
-                <button type="button" class="btn btn-gradient mt-3 w-100" id="continuarBtn">Continuar</button>
-                <button type="button" class="btn btn-danger w-100" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
+                <button type="button" class="btn btn-primary mt-3 w-100" id="continuarBtn">Continuar</button>
             </div>
         </div>
         <!-- Paso 2: Empresas, Locales y Áreas -->
         <div id="paso2" style="display:none;">
-            <div class="glass-card p-3 mx-auto" style="max-width: 800px;">
-                <h2 class="mb-3 text-center"><i class="bi bi-buildings"></i> Selección de Empresas, Locales y Áreas</h2>
+            <div class='container-fluid mt-4 p-2' style="max-width: 800px;">
+                <h2 class ="mb-3">Seleccion de Empresas, Locales y Áreas</h2>
                 <div class="mb-3">
                     <small>Si tienes locales y/o áreas en más de una empresa, da clic en "Agregar Empresa".</small>
-                    <button type="button" class="btn btn-secondary w-100 mb-2" id="add-bloque">
-                        <i class="bi bi-plus-circle"></i> Agregar Empresa
-                    </button>
-                    <div id="bloques-container"></div>
-                    <div class="d-grid gap-2 mt-3">
-                        <button type="submit" class="btn btn-gradient w-100">Registrar Usuario</button>
-                        <button type="button" class="btn btn-outline-dark w-100" id="regresarBtn">Regresar</button>
-                        <button type="button" class="btn btn-danger w-100" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
-                    </div>
+                <button type="button" class="btn btn-secondary w-100 mb-2" id="add-bloque">Agregar Empresa</button>
+                <div id="bloques-container"></div>
+                <div class="d-grid gap-2 mt-3">
+                <button type="submit" class="btn btn-primary w-100">Registrar Usuario</button>
+                <button type="button" class="btn btn-outline-dark w-100" id="regresarBtn">Regresar</button>
+                {% comment %} <button type="reset" class="btn btn-warning">Limpiar</button> {% endcomment %}
+                <button type="button" class="btn btn-danger w-100" onclick="window.location.href='{% url 'visitante_logout' %}'">Salir</button>
                 </div>
             </div>
         </div>
@@ -264,6 +197,7 @@ document.getElementById('regresarBtn').onclick = function() {
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>
 
@@ -279,9 +213,9 @@ document.getElementById('regresarBtn').onclick = function() {
         <ol>
           <li>Ingresa tu nombre, correo y usuario.</li>
           <li>Elige una contraseña y confírmala.</li>
-          <li>Si tienes locales y/o áreas en más de una empresa da clic en "Agregar Empresa".</li>
+          <li>Si tienes locales y/o areas en mas de una empresa dar clic en botón agregar empresa.</li>
           <li>Luego selecciona los locales y/o áreas correspondientes a cada empresa seleccionada.</li>
-          <li>Para eliminar una empresa da clic en la palabra 'x Quitar'.</li>
+          <li>Para eliminar una empresa dar clic en la palabra 'x Quitar'.</li>
           <li>Haz clic en "Registrar".</li>
           <li>Recibirás un correo de confirmación y el administrador validará tu registro.</li>
         </ol>

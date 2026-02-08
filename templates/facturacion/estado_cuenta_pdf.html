@@ -1,0 +1,64 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Estado de Cuenta PDF</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px;}
+    th, td { border: 1px solid #888; padding: 6px; text-align: left;}
+    th { background: #2193b0; color: #fff; }
+    .totales { font-weight: bold; background: #e0eafc; }
+  </style>
+</head>
+<body>
+  <h2>{{ empresa.nombre }}</h2>
+  <h3>Estado de Cuenta - Cliente: {{ nombre_cliente }}</h3>
+  {% if anio == null%}
+    <h4>Periodo: Todos los años</h4>
+  {% else %}
+  <h4>Periodo: {{ anio }}</h4>
+  {% endif %}
+  <table>
+    <thead>
+      <tr>
+        <th>Folio</th>
+        <th>Local/Área</th>
+        <th>Importe</th>
+        <th>Saldo</th>
+        <th>Interés Mora</th>
+        <th>Periodo</th>
+        <th>Estatus</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for factura in facturas %}
+      <tr>
+        <td>{{ factura.folio }}</td>
+        <td>
+          {% if factura.local %}{{ factura.local.numero }}
+          {% elif factura.area_comun %}{{ factura.area_comun.numero }}
+          {% else %}-{% endif %}
+        </td>
+        <td>${{ factura.monto|floatformat:2|intcomma }}</td>
+        <td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td>
+        <td>${{ factura.interes_mora|floatformat:2|intcomma }}</td>
+        <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
+        <td>{{ factura.get_estatus_display }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">No hay facturas registradas.</td></tr>
+      {% endfor %}
+      <tr class="totales">
+        <td colspan="3">Totales:</td>
+        <td>${{ total_saldo|floatformat:2|intcomma }}</td>
+        <td>${{ total_interes|floatformat:2|intcomma }}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Fecha de generación: {{ fecha_generacion|date:"d M Y H:i" }}</p>
+  <p>Estado de Cuenta Informativo, si tiene dudas favor de contactar a administración.</p>
+</body>
+</html>

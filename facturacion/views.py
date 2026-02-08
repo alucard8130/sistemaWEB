@@ -1975,14 +1975,14 @@ def plantilla_facturas_excel(request):
 @login_required
 def editar_factura(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
-    
+    empresa = factura.empresa
      # Bloqueo si la factura está pagada
     if factura.estatus == 'pagada':
         messages.warning(request, "Esta factura ya está pagada y no puede ser editada.")
         return redirect('lista_facturas')    
 
     if request.method == 'POST':
-        form = FacturaEditForm(request.POST, instance=factura)
+        form = FacturaEditForm(request.POST, instance=factura, empresa=empresa)
         if form.is_valid():
             factura_original = Factura.objects.get(pk=factura_id)
             factura_modificada = form.save(commit=False)
@@ -2010,7 +2010,7 @@ def editar_factura(request, factura_id):
             
             return redirect('lista_facturas')
     else:
-        form = FacturaEditForm(instance=factura)
+        form = FacturaEditForm(instance=factura, empresa=empresa)
     return render(request, 'facturacion/editar_factura.html', {
         'form': form,
         'factura': factura,

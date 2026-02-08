@@ -185,10 +185,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/login/"
 
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 
-if os.getenv("DEBUG", "False") == "True":
+if os.getenv("DEBUG", "True") == "False":
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY_TEST")
     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET_TEST")
@@ -226,3 +225,4 @@ sentry_sdk.init(
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")
 
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

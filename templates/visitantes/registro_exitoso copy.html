@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Seleccionar Empresa</title>
+    <title>Registro Exitoso</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
@@ -17,8 +17,8 @@
             align-items: center;
             justify-content: center;
         }
-        .glass-select {
-            background: rgba(255,255,255,0.85);
+        .glass-success {
+            background: rgba(255,255,255,0.92);
             border-radius: 22px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
             backdrop-filter: blur(6px);
@@ -26,61 +26,47 @@
             padding: 2.5rem 2rem 2rem 2rem;
             max-width: 420px;
             width: 100%;
+            text-align: center;
         }
-        .glass-select h2 {
+        .glass-success h2 {
             font-weight: 700;
             color: #2193b0;
             margin-bottom: 1.5rem;
         }
-        .form-select, .btn {
-            border-radius: 12px;
+        .icon-success {
+            font-size: 3rem;
+            color: #56ab2f;
+            margin-bottom: 1rem;
         }
         .btn-gradient {
             background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%);
             color: #fff;
             border: none;
             font-weight: 600;
+            border-radius: 12px;
             transition: background 0.3s;
         }
         .btn-gradient:hover {
             background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%);
             color: #fff;
         }
-        .glass-select .form-label {
-            color: #2193b0;
-            font-weight: 500;
-        }
-        .alert {
-            border-radius: 12px;
-        }
     </style>
 </head>
 <body>
-    <div class="glass-select mx-auto">
-        <div class="text-center mb-4">
-            <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" style="width: 70px;">
-            <h2><i class="bi bi-buildings"></i> Selecciona tu Condominio</h2>
+    <div class="glass-success mx-auto">
+        <div class="icon-success">
+            <i class="bi bi-check-circle-fill"></i>
         </div>
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} mt-2">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-        <form method="post" autocomplete="off">
-            {% csrf_token %}
-            <div class="mb-4">
-                <label for="empresa_id" class="form-label">Condominio</label>
-                <select class="form-select" id="empresa_id" name="empresa_id" required>
-                    <option value="">Selecciona una opción</option>
-                    {% for empresa in empresas %}
-                        <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="d-grid">
-                <button type="submit" class="btn btn-gradient btn-lg">Entrar</button>
-            </div>
-        </form>
+        <h2>¡Registro exitoso!</h2>
+        <p class="mb-4">Tu registro ha sido recibido y está pendiente de validación por el administrador.<br>
+        Pronto recibirás un correo de confirmación.</p>
+        <a href="{% url 'visitante_login' %}" class="btn btn-gradient btn-lg w-100 mb-2">
+            <i class="bi bi-person-circle"></i> Iniciar sesión
+        </a>
+        <a href="mailto:adminsoftheron@gesacadmin.com" class="btn btn-outline-success w-100">
+            <i class="bi bi-envelope"></i> Contactar administrador
+        </a>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
