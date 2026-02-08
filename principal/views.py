@@ -2978,16 +2978,6 @@ def api_reporte_ingresos_vs_gastos(request):
 @api_view(["GET"])
 @visitante_token_required
 def api_dashboard_saldos_visitante(request):
-    # visitante = request.visitante
-    # if not getattr(visitante, "acceso_api_reporte", False):
-    #     return Response({"error": "Acceso denegado"}, status=403)
-
-    # #visitante = request.visitante
-    # empresa = None
-    # if visitante.locales.exists():
-    #     empresa = visitante.locales.first().empresa
-    # elif visitante.areas.exists():
-    #     empresa = visitante.areas.first().empresa
     visitante = request.visitante
     if not getattr(visitante, "acceso_api_reporte", False):
         return Response({"error": "Acceso denegado"}, status=403)
@@ -3001,11 +2991,11 @@ def api_dashboard_saldos_visitante(request):
             return Response({"error": "Empresa no encontrada"}, status=404)
     else:
         empresa = None
-        if visitante.locales.exists():
-            empresa = visitante.locales.first().empresa
-        elif visitante.areas.exists():
-            empresa = visitante.areas.first().empresa
-
+        if visitante.locales.filter(empresa_id=empresa_id).exists():
+            empresa = visitante.locales.filter(empresa_id=empresa_id).first().empresa
+        elif visitante.areas.filter(empresa_id=empresa_id).exists():
+            empresa = visitante.areas.filter(empresa_id=empresa_id).first().empresa
+            
     hoy = timezone.now().date()
     cliente_id = request.GET.get("cliente")
     origen = request.GET.get("origen", "todos")
