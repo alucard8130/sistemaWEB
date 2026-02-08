@@ -3229,7 +3229,7 @@ def api_estado_resultados(request):
     if not getattr(visitante, "acceso_api_reporte", False):
         return Response({"error": "Acceso denegado"}, status=403)
 
-    if getattr(visitante, "es_admin", False):
+    if getattr(visitante, "es_admin", False)or request.GET.get("empresa_id"):
         empresa_id = request.GET.get("empresa_id")
         if not empresa_id:
             return Response({"error": "Debe seleccionar una empresa"}, status=400)
@@ -3864,18 +3864,23 @@ def api_estado_resultados(request):
 @visitante_token_required
 def api_avisos_empresa(request):
     visitante = request.visitante
+    empresa_id=request.GET.get("empresa_id")
     empresa = None
-    if visitante.locales.exists():
-        empresa = visitante.locales.first().empresa
-    elif visitante.areas.exists():
-        empresa = visitante.areas.first().empresa
+    if empresa_id:
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+    else:
+        if visitante.locales.exists():
+            empresa = visitante.locales.first().empresa
+        elif visitante.areas.exists():
+            empresa = visitante.areas.first().empresa
+            
 
     if not empresa:
         return Response(
             {"error": "No se encontró empresa asociada al visitante."}, status=400
         )
 
-    avisos = Aviso.objects.filter(usuario__perfilusuario__empresa=empresa).order_by(
+    avisos = Aviso.objects.filter(empresa=empresa).order_by(
         "-fecha_creacion"
     )
     data = [
