@@ -2729,7 +2729,7 @@ def api_reporte_ingresos_vs_gastos(request):
     if not getattr(visitante, "acceso_api_reporte", False):
         return Response({"error": "Acceso denegado"}, status=403)
 
-    if getattr(visitante, "es_admin", False):
+    if getattr(visitante, "es_admin", False) or request.GET.get("empresa_id"):
         empresa_id = request.GET.get("empresa_id")
         if not empresa_id:
             return Response({"error": "Debe seleccionar una empresa"}, status=400)
@@ -2991,11 +2991,11 @@ def api_dashboard_saldos_visitante(request):
             return Response({"error": "Empresa no encontrada"}, status=404)
     else:
         empresa = None
-        if visitante.locales.filter(empresa_id=empresa_id).exists():
-            empresa = visitante.locales.filter(empresa_id=empresa_id).first().empresa
-        elif visitante.areas.filter(empresa_id=empresa_id).exists():
-            empresa = visitante.areas.filter(empresa_id=empresa_id).first().empresa
-            
+        if visitante.locales.exists():
+            empresa = visitante.locales.first().empresa
+        elif visitante.areas.exists():
+            empresa = visitante.areas.first().empresa
+
     hoy = timezone.now().date()
     cliente_id = request.GET.get("cliente")
     origen = request.GET.get("origen", "todos")
