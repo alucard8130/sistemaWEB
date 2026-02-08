@@ -2982,7 +2982,7 @@ def api_dashboard_saldos_visitante(request):
     if not getattr(visitante, "acceso_api_reporte", False):
         return Response({"error": "Acceso denegado"}, status=403)
 
-    if getattr(visitante, "es_admin", False):
+    if getattr(visitante, "es_admin", False) or request.GET.get("empresa_id"):
         empresa_id = request.GET.get("empresa_id")
         if not empresa_id:
             return Response({"error": "Debe seleccionar una empresa"}, status=400)
