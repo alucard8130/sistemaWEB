@@ -74,11 +74,11 @@
                 <i class="bi bi-arrow-repeat"></i>
                     Flujo
                 </a>
-                <a href="?modo=resultados{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
+                {% comment %} <a href="?modo=resultados{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
                 class="btn btn-outline-soft-blue {% if modo == 'resultados' or not modo %}active{% endif %} reporte-link">
                 <i class="bi bi-bar-chart-line"></i>    
                     Resultados
-                </a>
+                </a> {% endcomment %}
             </div>
         </div>
 

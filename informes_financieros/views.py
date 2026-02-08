@@ -469,20 +469,6 @@ def estado_resultados(request):
     elif fecha_inicio_dt and fecha_fin_dt:
         mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
-    # pagos = Pago.objects.exclude(forma_pago="nota_credito")
-    # cobros_otros = CobroOtrosIngresos.objects.select_related(
-    #     "factura", "factura__empresa"
-    # )
-    # gastos = Gasto.objects.select_related(
-    #     "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
-    # ).all()
-    # gastos_caja_chica = GastoCajaChica.objects.select_related(
-    #     "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
-    # ).all()
-    # vales_caja_chica = ValeCaja.objects.select_related(
-    #     "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
-    # ).all()
-
     empresa = None
     saldo_inicial = 0
     saldo_final = 0
