@@ -2826,7 +2826,7 @@ def api_reporte_ingresos_vs_gastos(request):
     # PAGOS POR IDENTIFICAR
     pagos_por_identificar = Pago.objects.filter(
         factura__isnull=True, identificado=False
-    ).filter(factura__empresa=empresa)
+    )
 
     # Aplica filtros de fecha
     if fecha_inicio:
