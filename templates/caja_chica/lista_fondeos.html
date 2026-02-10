@@ -79,7 +79,7 @@
     <h4><strong>Saldo Fondeos:</strong> ${{ total_saldo|floatformat:2|intcomma }}</h4>
 </div>
 </form>
-    <div class="table-responsive rounded-3 border">        
+    <div class="table-responsive rounded-3 border" style='font-size: 0.9rem;'>        
     <table class="table align-middle mb-0 shadow-sm">
     <thead>        
   <tr>
@@ -96,7 +96,7 @@
   {% for fondeo in fondeos %}
   <tr>
     <td>{{ fondeo.numero_cheque }}</td>
-    <td>{{ fondeo.fecha |date:"d/b/y"|upper }}</td>
+    <td>{{ fondeo.fecha |date:"d/M/y"|upper }}</td>
     <td>${{ fondeo.importe_cheque|floatformat:2|intcomma }}</td>
     <td>{{ fondeo.empleado_asignado }}</td>
     <td>${{ fondeo.saldo|floatformat:2|intcomma }}</td>

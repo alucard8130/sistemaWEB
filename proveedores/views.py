@@ -38,12 +38,12 @@ def proveedor_lista(request):
     if request.user.is_superuser:
         empresa_id = request.session.get("empresa_id")
         if empresa_id:
-            proveedores = Proveedor.objects.filter(empresa_id=empresa_id, activo=True)
+            proveedores = Proveedor.objects.filter(empresa_id=empresa_id, activo=True).order_by('nombre')
         else:
-            proveedores = Proveedor.objects.filter(activo=True)
+            proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
-        proveedores = Proveedor.objects.filter(empresa=empresa, activo=True)
+        proveedores = Proveedor.objects.filter(empresa=empresa, activo=True).order_by('nombre')
     
     if proveedor_nombre:
         proveedores = proveedores.filter(nombre__icontains=proveedor_nombre)

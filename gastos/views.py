@@ -19,9 +19,9 @@ from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
 from datetime import datetime
 from django.utils.timezone import localtime
 from django.db.models.functions import TruncMonth
-from django.db.models import Sum, Q, F, Value
+from django.db.models import F, Value
 import calendar
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count, Case, When, FloatField
 from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -179,55 +179,21 @@ def tipo_gasto_eliminar(request, pk):
 @login_required
 def gastos_lista(request):
     empresa_id = request.session.get("empresa_id")
-    if request.user.is_superuser and empresa_id:
-        gastos = (
-            Gasto.objects.filter(empresa_id=empresa_id)
-            .select_related(
-                "empresa",
-                "proveedor",
-                "empleado",
-                "tipo_gasto",
-                "tipo_gasto__subgrupo",
-                "tipo_gasto__subgrupo__grupo",
-            )
-            .prefetch_related("pagos")
-            .order_by("-fecha")
-        )
+    user = request.user
+
+    if user.is_superuser and empresa_id:
+        gastos_base = Gasto.objects.filter(empresa_id=empresa_id)
         proveedores = Proveedor.objects.filter(activo=True, empresa_id=empresa_id).order_by('nombre')
         empleados = Empleado.objects.filter(activo=True, empresa_id=empresa_id).order_by('nombre')
         tipos_gasto = TipoGasto.objects.filter(empresa_id=empresa_id).order_by('nombre')
-    elif request.user.is_superuser:
-        gastos = (
-            Gasto.objects.all()
-            .select_related(
-                "empresa",
-                "proveedor",
-                "empleado",
-                "tipo_gasto",
-                "tipo_gasto__subgrupo",
-                "tipo_gasto__subgrupo__grupo",
-            )
-            .prefetch_related("pagos")
-            .order_by("-fecha")
-        )
+    elif user.is_superuser:
+        gastos_base = Gasto.objects.all()
         proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
         empleados = Empleado.objects.filter(activo=True).order_by('nombre')
         tipos_gasto = TipoGasto.objects.all().order_by('nombre')
     else:
-        empresa = request.user.perfilusuario.empresa
-        gastos = (
-            Gasto.objects.filter(empresa=empresa)
-            .select_related(
-                "empresa",
-                "proveedor",
-                "empleado",
-                "tipo_gasto",
-                "tipo_gasto__subgrupo",
-                "tipo_gasto__subgrupo__grupo",
-            )
-            .prefetch_related("pagos")
-            .order_by("-fecha")
-        )
+        empresa = user.perfilusuario.empresa
+        gastos_base = Gasto.objects.filter(empresa=empresa)
         proveedores = Proveedor.objects.filter(activo=True, empresa=empresa).order_by('nombre')
         empleados = Empleado.objects.filter(activo=True, empresa=empresa).order_by('nombre')
         tipos_gasto = TipoGasto.objects.filter(empresa=empresa).order_by('nombre')
@@ -237,40 +203,46 @@ def gastos_lista(request):
     tipo_gasto = request.GET.get("tipo_gasto")
 
     if proveedor_id:
-            gastos = gastos.filter(proveedor_id=proveedor_id)
+        gastos_base = gastos_base.filter(proveedor_id=proveedor_id)
     if empleado_id:
-            gastos = gastos.filter(empleado_id=empleado_id)
+        gastos_base = gastos_base.filter(empleado_id=empleado_id)
     if tipo_gasto:
-            gastos = gastos.filter(tipo_gasto=tipo_gasto)
+        gastos_base = gastos_base.filter(tipo_gasto=tipo_gasto)
 
-    # Convierte el queryset a lista para evitar múltiples queries
-    gastos_list = list(gastos)
+    # KPIs y totales usando agregaciones
+    kpi = gastos_base.aggregate(
+        num_pagadas=Count('id', filter=Q(estatus='pagada')),
+        num_pendientes=Count('id', filter=Q(estatus='pendiente')),
+        monto_pagadas=Sum(Case(When(estatus='pagada', then=F('monto')), default=Value(0), output_field=FloatField())),
+        monto_pendientes=Sum(Case(When(estatus='pendiente', then=F('monto')), default=Value(0), output_field=FloatField())),
+        total_solicitudes=Count('id')
+    )
 
-    # KPIs de estatus
-    pagadas = [g for g in gastos_list if g.estatus == 'pagada']
-    pendientes = [g for g in gastos_list if g.estatus == 'pendiente']
+    num_pagadas = kpi['num_pagadas'] or 0
+    num_pendientes = kpi['num_pendientes'] or 0
+    monto_pagadas = kpi['monto_pagadas'] or 0
+    monto_pendientes = kpi['monto_pendientes'] or 0
+    total_solicitudes = kpi['total_solicitudes'] or 0
 
-    num_pagadas = len(pagadas)
-    num_pendientes = len(pendientes)
-    monto_pagadas = sum(float(g.monto) for g in pagadas)
-    monto_pendientes = sum(float(g.monto) for g in pendientes)
-
-    total_solicitudes = num_pagadas + num_pendientes
     porc_pagadas = (num_pagadas / total_solicitudes * 100) if total_solicitudes else 0
     porc_pendientes = (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
 
-    proveedor_counter = Counter()
-    for g in gastos_list:
-        if g.proveedor:
-            proveedor_counter[g.proveedor.nombre] += 1
+    # Top 10 proveedores (solo nombre y cantidad)
+    top_proveedores_qs = (
+        gastos_base
+        .exclude(proveedor__isnull=True)
+        .values('proveedor__nombre')
+        .annotate(cantidad=Count('id'))
+        .order_by('-cantidad')[:10]
+    )
+    top_proveedores = [(item['proveedor__nombre'], item['cantidad']) for item in top_proveedores_qs]
+    top_prov_labels = [item['proveedor__nombre'] for item in top_proveedores_qs]
+    top_prov_data = [item['cantidad'] for item in top_proveedores_qs]
 
-    top_proveedores = proveedor_counter.most_common(10)
-    # top_proveedores es una lista de tuplas: [(nombre, cantidad), ...]
-    top_prov_labels = [nombre for nombre, cantidad in top_proveedores]
-    top_prov_data = [cantidad for nombre, cantidad in top_proveedores]
-
-
-    # paginacion
+    # Paginación y optimización de consultas
+    gastos = gastos_base.select_related(
+        "empresa", "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
+    ).prefetch_related("pagos").order_by("-fecha")
     paginator = Paginator(gastos, 15)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -477,52 +449,61 @@ def reporte_pagos_gastos(request):
         pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
 
     # Solo pagos de solicitudes de gastos
-    pagos_list = list(pagos)
-    for p in pagos_list:
-        p.tipo_pago = 'normal'
-        p.fecha = p.fecha_pago
+    # pagos_list = list(pagos)
+    # for p in pagos_list:
+    #     p.tipo_pago = 'normal'
+    #     p.fecha = p.fecha_pago
 
-    pagos_list.sort(key=lambda x: x.fecha, reverse=True)
+    #pagos_list.sort(key=lambda x: x.fecha, reverse=True)
 
     hoy = datetime.now().date()
     anio_actual = hoy.year
     anio_anterior = anio_actual - 1
-    
-    total_pagos_acumulado = sum(p.monto for p in pagos_list)
-
-    pagos_anio_actual = sum(p.monto for p in pagos_list if p.fecha.year == anio_actual)
-    pagos_anio_anterior = sum(p.monto for p in pagos_list if p.fecha.year == anio_anterior)
-
     mes_actual = hoy.month
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
     anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
 
-    pagos_mes_actual = sum(p.monto for p in pagos_list if p.fecha.year == anio_actual and p.fecha.month == mes_actual)
-    pagos_mes_anterior = sum(p.monto for p in pagos_list if p.fecha.year == anio_mes_anterior and p.fecha.month == mes_anterior)
+    total_pagos_acumulado = pagos.aggregate(total=Sum('monto'))['total'] or 0
 
-     # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)
-    tipo_dict = defaultdict(float)
-    for p in pagos_list:
-        if p.gasto and p.gasto.tipo_gasto:
-            tipo_gasto = p.gasto.tipo_gasto
-            subgrupo = tipo_gasto.subgrupo.nombre if tipo_gasto.subgrupo else ""
-            etiqueta = f"{subgrupo} - {tipo_gasto.nombre}" if subgrupo else tipo_gasto.nombre
-            tipo_dict[etiqueta] += float(p.monto)
+    pagos_anio_actual = pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_anio_anterior = pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
 
-    # Ordena y toma el top 10
-    top_tipos = sorted(tipo_dict.items(), key=lambda x: x[1], reverse=True)[:10]
+    pagos_mes_actual = pagos.filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_mes_anterior = pagos.filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
+
+      # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)
+    tipo_dict = (
+        pagos
+        .values('gasto__tipo_gasto__subgrupo__nombre', 'gasto__tipo_gasto__nombre')
+        .annotate(total=Sum('monto'))
+        .order_by('-total')
+    )
+    top_tipos = []
+    for t in tipo_dict:
+        subgrupo = t['gasto__tipo_gasto__subgrupo__nombre'] or ""
+        tipo = t['gasto__tipo_gasto__nombre'] or ""
+        etiqueta = f"{subgrupo} - {tipo}" if subgrupo else tipo
+        top_tipos.append((etiqueta, t['total']))
+    top_tipos = top_tipos[:10]
     tipo_labels = [k for k, v in top_tipos]
     tipo_data = [v for k, v in top_tipos]
     pagos_por_tipo = [{"nombre": k, "total": v} for k, v in top_tipos]
 
     # KPIs por forma de pago
-    forma_dict = defaultdict(float)
-    for p in pagos_list:
-        if p.forma_pago:
-            forma_dict[p.get_forma_pago_display()] += float(p.monto)
-    pagos_por_forma = [{"nombre": k, "total": v} for k, v in forma_dict.items()]
-    forma_labels = list(forma_dict.keys())
-    forma_data = list(forma_dict.values())
+    forma_dict = (
+        pagos
+        .values('forma_pago')
+        .annotate(total=Sum('monto'))
+        .order_by('-total')
+    )
+    pagos_por_forma = []
+    forma_labels = []
+    forma_data = []
+    for f in forma_dict:
+        display = dict(PagoGasto._meta.get_field("forma_pago").choices).get(f['forma_pago'], f['forma_pago'])
+        pagos_por_forma.append({"nombre": display, "total": f['total']})
+        forma_labels.append(display)
+        forma_data.append(f['total'])
 
     def variacion(actual, anterior):
         if anterior == 0:
@@ -534,7 +515,8 @@ def reporte_pagos_gastos(request):
 
     FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
 
-    paginator = Paginator(pagos_list, 15)
+    pagos = pagos.order_by('-fecha_pago')
+    paginator = Paginator(pagos, 15)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 

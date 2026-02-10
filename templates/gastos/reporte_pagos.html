@@ -82,14 +82,18 @@
     </div>
   </div>
 </div>
+{{ tipo_labels|json_script:"tipo-labels" }}
+{{ tipo_data|json_script:"tipo-data" }}
+{{ forma_labels|json_script:"forma-labels" }}
+{{ forma_data|json_script:"forma-data" }}
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Pagos por tipo de gasto (barras horizontales)
-  const tipoLabels = {{ tipo_labels|safe }};
-  const tipoData = {{ tipo_data|safe }};
+  const tipoLabels = JSON.parse(document.getElementById('tipo-labels').textContent);
+  const tipoData = JSON.parse(document.getElementById('tipo-data').textContent);
   new Chart(document.getElementById('kpiTipoChart').getContext('2d'), {
     type: 'bar',
     data: {
@@ -140,8 +144,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Pagos por forma de pago (barras horizontales)
-  const formaLabels = {{ forma_labels|safe }};
-  const formaData = {{ forma_data|safe }};
+  const formaLabels = JSON.parse(document.getElementById('forma-labels').textContent);
+  const formaData = JSON.parse(document.getElementById('forma-data').textContent);
   new Chart(document.getElementById('kpiFormaChart').getContext('2d'), {
     type: 'bar',
     data: {
@@ -196,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if empresas|length > 1 %}
             <div class="col-auto">
                 <label>Empresa:</label>
-                <select name="empresa" class="form-select">
+                <select name="empresa" class="form-select-sm">
                     <option value="">Todas</option>
                     {% for emp in empresas %}
                         <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
@@ -205,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             {% endif %}
             <div class="col-auto">
-               <select name="proveedor" class="form-select">
+               <select name="proveedor" class="form-select-sm">
                 <option value="">Proveedores</option>
                 {% for p in proveedores %}
                     <option value="{{ p.id }}" {% if p.id|stringformat:"s" == proveedor_id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
@@ -213,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </select>
             </div>
             <div class="col-auto">
-              <select name="empleado" class="form-select">
+              <select name="empleado" class="form-select-sm">
                     <option value="">Empleados</option>
                     {% for empleado in empleados %}
                         <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
@@ -221,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </select>
             </div>
             <div class="col-auto">
-                <select name="forma_pago" class="form-select">
+                <select name="forma_pago" class="form-select-sm">
                     <option value="">Forma de Pago</option>
                     {% for val, label in formas_pago %}
                         <option value="{{ val }}" {% if val == forma_pago_actual %}selected{% endif %}>{{ label }}</option>
@@ -229,10 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </select>
             </div>
             <div class="col-auto">
-                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control">
+                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control form-control-sm">
             </div>
             <div class="col-auto">
-                <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
+                <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control form-control-sm">
             </div>
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-outline-primary">
