@@ -327,7 +327,7 @@
                                             <i class="bi bi-credit-card"></i> Pagar
                                         </a>
                                     {% endif %}
-                                    {% if visitante.membresia_tipo == "plus" or visitante.membresia_tipo == "premium" %}
+                                    {% comment %} {% if visitante.membresia_tipo == "plus" or visitante.membresia_tipo == "premium" %}
                                         {% if factura.estatus == 'cobrada' %}
                                             {% if not factura.uuid %}
                                                 <a href="{% url 'visitante_timbrar_factura' factura.pk %}" class="btn btn-outline-primary btn-sm" title="Timbrar factura">
@@ -339,7 +339,7 @@
                                         {% endif %}
                                     {% else %}
                                         <a href="{% url 'visitante_membresia_pago' %}" class="btn btn-secondary btn-sm">Timbrar</a>
-                                    {% endif %}
+                                    {% endif %} {% endcomment %}
                                 </td>
                                 <td>
                                     {% if factura.facturama_id %}
