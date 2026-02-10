@@ -37,12 +37,12 @@
 
       <h2>Facturas Otros Ingresos y registro de depositos</h2>
           <div class="col-auto">
-            <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
+            {% comment %} <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
               <i class="bi bi-plus-circle me-1"></i> 
-                Registrar Factura otro ingreso
-            </a>
+                Nueva Factura otro ingreso
+            </a> {% endcomment %}
           </div>
-    <form id="form-filtros" method="get" class="row g-2 mb-3">
+    <form id="form-filtros" method="get" class="row g-2">
     <div class="col-auto">
         <select name="cliente_id" class="form-select">
             <option value="">Cliente</option>
@@ -72,10 +72,14 @@
                 <i class="bi bi-file-earmark-excel-fill"></i> 
                   Exportar a Excel
             </a>
+            <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear">
+              <i class="bi bi-plus-circle me-1"></i> 
+                Nueva Factura otro ingreso
+            </a>
           </div>
       </form>
         <!-- Invoices table -->     
-        <div class="table-responsive rounded-3 border"> 
+        <div class="table-responsive rounded-3 border" style='font-size:0.9rem;'> 
           <table class="table align-middle mb-0 shadow-sm">
               <thead>
                   <tr>

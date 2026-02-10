@@ -38,6 +38,9 @@ from django.http import JsonResponse
 from django.db.models import Max,Min
 from decimal import Decimal, ROUND_HALF_UP
 from django.db.models import Sum
+from collections import OrderedDict
+from calendar import monthrange
+
 
 @login_required
 def crear_factura(request):
@@ -216,9 +219,72 @@ def lista_facturas(request):
     paginator = Paginator(facturas, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
+    
     anios_disponibles = Factura.objects.dates('fecha_vencimiento', 'year').distinct()
     total_saldo = sum(f.saldo_pendiente for f in facturas)
+
+    # --- KPIs de adeudo ---
+    hoy = date.today()
+    anio_actual = hoy.year
+    anio_anterior = anio_actual - 1
+    mes_actual = hoy.month
+    mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
+    anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
+
+    # Convierte el queryset a lista para iterar varias veces sin volver a la BD
+    facturas_list = list(facturas)
+
+    # Último día del mes actual y anterior
+    ultimo_dia_mes_actual = date(anio_actual, mes_actual, monthrange(anio_actual, mes_actual)[1])
+    ultimo_dia_mes_anterior = date(anio_mes_anterior, mes_anterior, monthrange(anio_mes_anterior, mes_anterior)[1])
+
+    # Último día del mes actual pero del año anterior
+    ultimo_dia_mes_actual_anio_anterior = date(anio_anterior, mes_actual, monthrange(anio_anterior, mes_actual)[1])
+
+    # Acumulado hasta el mes actual
+    adeudo_acumulado_mes_actual = sum(
+        f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_actual
+    )
+    print(f"[DEBUG] Adeudo acumulado mes actual: {adeudo_acumulado_mes_actual}")
+
+    # Acumulado hasta el mes anterior
+    adeudo_acumulado_mes_anterior = sum(
+        f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_anterior
+    )
+    print(f"[DEBUG] Adeudo acumulado mes anterior: {adeudo_acumulado_mes_anterior}")
+
+      # Acumulado hasta el mes actual del año anterior
+    adeudo_acumulado_mes_actual_anio_anterior = sum(    
+        f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_actual_anio_anterior
+    )
+    print(f"[DEBUG] Adeudo acumulado mes actual anio anterior: {adeudo_acumulado_mes_actual_anio_anterior}")        
+
+    # Variación acumulada
+    def variacion(actual, anterior):
+        if actual == 0:
+            return 100 if anterior > 0 else 0
+        return ((actual - anterior) / actual) * 100
+
+    var_acumulado_mes = variacion(adeudo_acumulado_mes_actual, adeudo_acumulado_mes_anterior)
+    var_acumulado_mes_actual_anio_anterior = variacion(adeudo_acumulado_mes_actual, adeudo_acumulado_mes_actual_anio_anterior)
+
+
+    # --- Tendencia mensual de adeudo (últimos 12 meses) ---
+    trend_dict = OrderedDict()
+    for i in range(11, -1, -1):
+        y = anio_actual if mes_actual - i > 0 else anio_actual - 1
+        m = (mes_actual - i - 1) % 12 + 1
+        key = f"{y}-{m:02d}"
+        trend_dict[key] = 0
+
+    for f in facturas_list:
+        key = f"{f.fecha_vencimiento.year}-{f.fecha_vencimiento.month:02d}"
+        if key in trend_dict:
+            trend_dict[key] += f.saldo_pendiente
+
+    trend_labels = [DateFormat(date(int(k.split('-')[0]), int(k.split('-')[1]), 1)).format('M Y') for k in trend_dict]
+    trend_data = list(trend_dict.values())
+    
 
     return render(request, 'facturacion/lista_facturas.html', {
         'facturas': page_obj,
@@ -234,6 +300,13 @@ def lista_facturas(request):
         'anios_disponibles': anios_disponibles,
         'anio_seleccionado': int(anio) if anio else None,
         'total_saldo': total_saldo,
+        'trend_labels': trend_labels,
+        'trend_data': trend_data,
+        'adeudo_acumulado_mes_actual': adeudo_acumulado_mes_actual,
+        'adeudo_acumulado_mes_actual_anio_anterior': adeudo_acumulado_mes_actual_anio_anterior,
+        'adeudo_acumulado_mes_anterior': adeudo_acumulado_mes_anterior,
+        'var_acumulado_mes': var_acumulado_mes,
+        'var_acumulado_mes_actual_anio_anterior': var_acumulado_mes_actual_anio_anterior, 
     })
 
 @login_required
@@ -900,7 +973,7 @@ def lista_depositos_por_identificar(request):
 
 
 #pagos_por_origen.html
-#reporte depositos
+#reporte depositos cuotas
 @login_required
 def pagos_por_origen(request):
     empresa_id = request.GET.get('empresa')
@@ -909,6 +982,7 @@ def pagos_por_origen(request):
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
     tipo_cuota= request.GET.get('tipo_cuota')
+    forma_pago = request.GET.get('forma_pago')
     
     if request.user.is_superuser:
         pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all().order_by('-fecha_pago')
@@ -939,12 +1013,66 @@ def pagos_por_origen(request):
             pass
     if tipo_cuota:
         pagos = pagos.filter(factura__tipo_cuota=tipo_cuota).order_by('fecha_pago')
+    if forma_pago:
+        pagos = pagos.filter(forma_pago=forma_pago).order_by('fecha_pago')
 
     pagos_validos = pagos.exclude(forma_pago='nota_credito')
     total_pagos = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
+    pagos_por_tipo = pagos.values('factura__tipo_cuota').annotate(total=Sum('monto'))
+    pagos_por_forma = pagos.values('forma_pago').annotate(total=Sum('monto'))
+   
+    # Fechas
+    hoy = date.today()
+    anio_actual = hoy.year
+    anio_anterior = anio_actual - 1
+    mes_actual = hoy.month
+    mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
+    anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
+
+    #ingresos acumulados de todo el tiempo
+    ingresos_acumulados = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
+
+    # ingresos año actual y anterior
+    pagos_anio_actual = pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_anio_anterior = pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
+
+    # ingresos mes actual y anterior
+    pagos_mes_actual = pagos.filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_mes_anterior = pagos.filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
+
+    # Variaciones
+    def variacion(actual, anterior):
+        if anterior == 0:
+            return 100 if actual > 0 else 0
+        return ((actual - anterior) / anterior) * 100
+
+    var_anio = variacion(pagos_anio_actual, pagos_anio_anterior)
+    var_mes = variacion(pagos_mes_actual, pagos_mes_anterior)
+
+    # Agrupa por tipo_cuota (clave) y suma montos
+    tipo_dict = defaultdict(float)
+    for p in pagos:
+        if p.factura and p.factura.tipo_cuota:
+            tipo_dict[p.factura.tipo_cuota] += float(p.monto)
+
+    # Usa el display para las etiquetas
+    tipo_labels = []
+    tipo_data = []
+    tipo_display = dict(Factura.TIPO_CUOTA_CHOICES)
+    for key in tipo_dict:
+        tipo_labels.append(tipo_display.get(key, key))
+        tipo_data.append(tipo_dict[key])
+
+    # Agrupa por forma de pago
+    forma_dict = defaultdict(float)
+    for p in pagos:
+        if p.forma_pago:
+            forma_dict[p.get_forma_pago_display()] += float(p.monto)
+    forma_labels = list(forma_dict.keys())
+    forma_data = list(forma_dict.values())
 
     #paginacion
-    paginator = Paginator(pagos, 25)
+    paginator = Paginator(pagos, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -961,7 +1089,21 @@ def pagos_por_origen(request):
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
         'tipo_cuota': tipo_cuota,
+        'forma_pago': forma_pago,
         'TIPO_CUOTA_CHOICES': Factura.TIPO_CUOTA_CHOICES,
+        'pagos_por_tipo': list(pagos_por_tipo),
+        'pagos_por_forma': list(pagos_por_forma),
+        'tipo_labels': tipo_labels,
+        'tipo_data': tipo_data,
+        'forma_labels': forma_labels,
+        'forma_data': forma_data,
+        'pagos_anio_actual': pagos_anio_actual,
+        'pagos_mes_actual': pagos_mes_actual,
+        'pagos_anio_anterior': pagos_anio_anterior,
+        'pagos_mes_anterior': pagos_mes_anterior,
+        'var_anio': var_anio,
+        'var_mes': var_mes,
+        'ingresos_acumulados': ingresos_acumulados,
     })
 
 #saldos.html
@@ -2458,7 +2600,7 @@ def lista_facturas_otros_ingresos(request):
     tipos_ingreso = FacturaOtrosIngresos.objects.values_list('tipo_ingreso__nombre', flat=True).distinct()
     
     # Paginación
-    paginator = Paginator(facturas, 25)  
+    paginator = Paginator(facturas, 15)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -2603,8 +2745,45 @@ def reporte_cobros_otros_ingresos(request):
 
     total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
 
+    # Cobros por tipo de ingreso
+    tipo_dict = defaultdict(float)
+    for c in cobros:
+        tipo = c.factura.tipo_ingreso.nombre if c.factura and c.factura.tipo_ingreso else 'Otro'
+        tipo_dict[tipo] += float(c.monto)
+    tipo_labels = list(tipo_dict.keys())
+    tipo_data = list(tipo_dict.values())
+
+    # Cobros por forma de cobro
+    forma_dict = defaultdict(float)
+    for c in cobros:
+        forma = c.get_forma_cobro_display() if hasattr(c, 'get_forma_cobro_display') else c.forma_cobro
+        forma_dict[forma] += float(c.monto)
+    forma_labels = list(forma_dict.keys())
+    forma_data = list(forma_dict.values())
+
+    # KPIs comparativos año/mes actual vs anterior
+    hoy = date.today()
+    anio_actual = hoy.year
+    anio_anterior = anio_actual - 1
+    mes_actual = hoy.month
+    mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
+    anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
+
+    cobros_anio_actual = cobros.filter(fecha_cobro__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
+    cobros_anio_anterior = cobros.filter(fecha_cobro__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
+    cobros_mes_actual = cobros.filter(fecha_cobro__year=anio_actual, fecha_cobro__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
+    cobros_mes_anterior = cobros.filter(fecha_cobro__year=anio_mes_anterior, fecha_cobro__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
+
+    def variacion(actual, anterior):
+        if anterior == 0:
+            return 100 if actual == 0 else 0
+        return ((actual - anterior) / anterior) * 100
+
+    var_anio = variacion(cobros_anio_actual, cobros_anio_anterior)
+    var_mes = variacion(cobros_mes_actual, cobros_mes_anterior)
+
     # Paginación
-    paginator = Paginator(cobros.order_by('-fecha_cobro'), 25)
+    paginator = Paginator(cobros.order_by('-fecha_cobro'), 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -2623,6 +2802,16 @@ def reporte_cobros_otros_ingresos(request):
         'total_cobrado': total_cobrado,
         'tipo_ingreso_id': tipo_ingreso_id,
         'tipos_ingreso': tipos_ingreso,
+        'tipo_labels': tipo_labels,
+        'tipo_data': tipo_data,
+        'forma_labels': forma_labels,
+        'forma_data': forma_data,
+        'var_anio': var_anio,
+        'var_mes': var_mes,
+        'cobros_anio_actual': cobros_anio_actual,
+        'cobros_anio_anterior': cobros_anio_anterior,
+        'cobros_mes_actual': cobros_mes_actual,
+        'cobros_mes_anterior': cobros_mes_anterior,
     })
 
 

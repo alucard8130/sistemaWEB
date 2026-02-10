@@ -15,8 +15,183 @@
     {% include 'loading_overlay.html' %}
     
     <div class="container-fluid mt-4">
-        <h2>Pagos Solicitudes de Gastos</h2>
+       <!-- Dashboard KPIs -->
+<!-- Dashboard KPIs -->
+<div class="row mb-4 justify-content-center">
+  <div class="col-12 col-md-4 mb-2 d-flex align-items-stretch justify-content-center">
+    <div class="card text-center shadow-sm p-3" style="width:63%; min-width:480px; max-width:350px; margin:auto; font-size:0.85rem;">
+      <div class="card-body p-2">
+        <h6 class="card-title mb-1" style="font-size:0.9rem;">Pagos acumulados</h6>
+        <h2 class="mb-0" style="font-size:1.5rem; color:#28a745;">${{total_pagos_acumulados|floatformat:2|intcomma }}</h2>
+        <hr>
+        <div class="row">
+          <div class="col-6 text-start">
+            <small>Año actual</small><br>
+            <span style="font-size:0.95rem;">${{ pagos_anio_actual|floatformat:0|intcomma }}</span>
+            <span style="font-size:0.95rem;">
+              {% if var_anio > 0 %}
+                <span style="color:green;">&#9650; {{ var_anio|floatformat:1 }}%</span>
+              {% elif var_anio < 0 %}
+                <span style="color:red;">&#9660; {{ var_anio|floatformat:1 }}%</span>
+              {% else %}
+                <span style="color:gray;">0%</span>
+              {% endif %}
+            </span>
+          </div>
+          <div class="col-6 text-start">
+            <small>Mes actual</small><br>
+            <span style="font-size:0.95rem;">${{ pagos_mes_actual|floatformat:0|intcomma }}</span>
+            <span style="font-size:0.95rem;">
+              {% if var_mes > 0 %}
+                <span style="color:green;">&#9650; {{ var_mes|floatformat:1 }}%</span>
+              {% elif var_mes < 0 %}
+                <span style="color:red;">&#9660; {{ var_mes|floatformat:1 }}%</span>
+              {% else %}
+                <span style="color:gray;">0%</span>
+              {% endif %}
+            </span>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-6 text-start">
+            <small>Año anterior</small><br>
+            <span style="font-size:0.85rem; color:#888;">${{ pagos_anio_anterior|floatformat:0|intcomma }}</span>
+          </div>
+          <div class="col-6 text-start">
+            <small>Mes anterior</small><br>
+            <span style="font-size:0.85rem; color:#888;">${{ pagos_mes_anterior|floatformat:0|intcomma }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
+    <div class="card text-center shadow-sm p-3 w-100" style="min-width:420px; max-width:320px; margin:auto;">
+      <div class="card-body p-2">
+        <h6 class="card-title mb-2" style="font-size:0.9rem;">Pagos por tipo de gasto</h6>
+        <canvas id="kpiTipoChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
+    <div class="card text-center shadow-sm p-3 w-100" style="max-width:400px; margin:auto;">
+      <div class="card-body p-2">
+        <h6 class="card-title mb-2" style="font-size:0.9rem;">Pagos por forma de pago</h6>
+        <canvas id="kpiFormaChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Pagos por tipo de gasto (barras horizontales)
+  const tipoLabels = {{ tipo_labels|safe }};
+  const tipoData = {{ tipo_data|safe }};
+  new Chart(document.getElementById('kpiTipoChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: tipoLabels,
+      datasets: [{
+        label: '',
+        data: tipoData,
+        backgroundColor: '#28a745',
+        borderRadius: 8,
+        barThickness: 18
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'right',
+          color: '#fff',
+          font: { size: 10 },
+          formatter: function(value) {
+            return '$' + value.toLocaleString();
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: false,
+          grid: { display: false, drawBorder: false }
+        },
+        y: {
+          display: true,
+          grid: { display: false, drawBorder: false },
+          ticks: {
+            color: '#222',
+            font: { size: 10 }
+          }
+        }
+      },
+      layout: {
+        padding: { left: 0, right: 0, top: 0, bottom: 0 }
+      },
+      barPercentage: 0.4,
+      categoryPercentage: 0.4
+    },
+    plugins: [ChartDataLabels]
+  });
 
+  // Pagos por forma de pago (barras horizontales)
+  const formaLabels = {{ forma_labels|safe }};
+  const formaData = {{ forma_data|safe }};
+  new Chart(document.getElementById('kpiFormaChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: formaLabels,
+      datasets: [{
+        label: '',
+        data: formaData,
+        backgroundColor: '#007bff',
+        borderRadius: 8,
+        barThickness: 18
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'right',
+          color: '#fff',
+          font: { size: 10 },
+          formatter: function(value) {
+            return '$' + value.toLocaleString();
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: false,
+          grid: { display: false, drawBorder: false }
+        },
+        y: {
+          display: true,
+          grid: { display: false, drawBorder: false },
+          ticks: {
+            color: '#222',
+            font: { size: 10 }
+          }
+        }
+      },
+      layout: {
+        padding: { left: 0, right: 0, top: 0, bottom: 0 }
+      },
+      barPercentage: 0.4,
+      categoryPercentage: 0.4
+    },
+    plugins: [ChartDataLabels]
+  });
+});
+</script>
         <form id="form-filtros" method="get" class="row g-2 mb-3">
             {% if empresas|length > 1 %}
             <div class="col-auto">
@@ -70,22 +245,21 @@
                 </a>
             </div>
         </form>
-        <div class="alert alert-info">
+        {% comment %} <div class="alert alert-info">
             <h4><strong>Total Pagado:</strong> ${{ total|floatformat:2|intcomma }}</h4>
-        </div>
-
-        <div class="table-responsive rounded-3 border">
+        </div> {% endcomment %}
+        <div class="table-responsive rounded-3 border" style='font-size: 0.9rem;'>
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
                         <th>Folio</th>
                         <th>Fecha Pago</th>
-                        <th>Monto</th>
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
                         {% endif %}
                         <th>Proveedor/Empleado</th>
                         <th>Tipo Gasto</th>
+                        <th>Monto Pagado</th>
                         <th>Forma de Pago</th>
                         <th>Comentarios</th>
                     </tr>
@@ -95,7 +269,6 @@
                         <tr>
                             <td>{{ pago.gasto.id}}</td>
                             <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td>
-                            <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                             {% if request.user.is_superuser %}
                             <td>{{ pago.gasto.empresa.nombre }}</td>
                             {% endif %}
@@ -107,6 +280,7 @@
                                 {% endif %}
                             </td>
                             <td>{{ pago.gasto.tipo_gasto }}</td>
+                            <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                             <td>{{ pago.get_forma_pago_display }}</td>
                             {% if pago.referencia %}
                                 <td>{{ pago.referencia }}</td>

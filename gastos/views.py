@@ -1,4 +1,5 @@
 
+from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 import unicodedata
@@ -29,6 +30,7 @@ from django.db.models.functions import ExtractMonth
 from caja_chica.models import GastoCajaChica, ValeCaja
 from num2words import num2words
 from django.utils import timezone
+from django.db.models import Count
 
 @login_required
 def subgrupo_gasto_crear(request):
@@ -78,12 +80,42 @@ def tipos_gasto_lista(request):
     q = request.GET.get("q")
     if q:
         tipos = tipos.filter(Q(nombre__icontains=q) | Q(descripcion__icontains=q)|Q(subgrupo__nombre__icontains=q)|Q(subgrupo__grupo__nombre__icontains=q))
+
+    # Annotate usage count
+    tipos_con_uso = tipos.annotate(num_gastos=Count('gasto'))
+
+    # Total types
+    total_tipos = tipos.count()
+
+    # Most used
+    tipos_mas_usados = tipos_con_uso.order_by('-num_gastos')[:3]
+
+    # Least used (including never used)
+    tipos_menos_usados = tipos_con_uso.order_by('num_gastos')[:3]
+    tipos_sin_uso = tipos_con_uso.filter(num_gastos=0)
+
+    # Detect possible duplicates (simple normalization)
+    nombre_normalizado = {}
+    for t in tipos_con_uso:
+        norm = unidecode(t.nombre).lower()
+        nombre_normalizado.setdefault(norm, []).append(t)
+    tipos_duplicados = [v for v in nombre_normalizado.values() if len(v) > 1]
+
     #paginacion
-    paginator = Paginator(tipos, 20)
+    paginator = Paginator(tipos, 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)    
 
-    return render(request, 'gastos/tipos_gasto_lista.html', {'tipos': page_obj, 'page_obj': page_obj, 'q': q})
+    return render(request, 'gastos/tipos_gasto_lista.html',
+                   {'tipos': page_obj, 
+                    'page_obj': page_obj, 
+                    'q': q,
+                    'total_tipos': total_tipos,
+                    'tipos_mas_usados': tipos_mas_usados,
+                    'tipos_menos_usados': tipos_menos_usados,
+                    'tipos_sin_uso': tipos_sin_uso,
+                    'tipos_duplicados': tipos_duplicados,
+                    })
 
 @login_required
 def tipo_gasto_crear(request):
@@ -142,6 +174,8 @@ def tipo_gasto_eliminar(request, pk):
             return redirect('tipos_gasto_lista')
     return render(request, 'gastos/tipo_gasto_confirmar_eliminar.html', {'tipo': tipo})
 
+#solicitudes de gasto
+#template/gastos/lista.html
 @login_required
 def gastos_lista(request):
     empresa_id = request.session.get("empresa_id")
@@ -209,8 +243,35 @@ def gastos_lista(request):
     if tipo_gasto:
             gastos = gastos.filter(tipo_gasto=tipo_gasto)
 
+    # Convierte el queryset a lista para evitar múltiples queries
+    gastos_list = list(gastos)
+
+    # KPIs de estatus
+    pagadas = [g for g in gastos_list if g.estatus == 'pagada']
+    pendientes = [g for g in gastos_list if g.estatus == 'pendiente']
+
+    num_pagadas = len(pagadas)
+    num_pendientes = len(pendientes)
+    monto_pagadas = sum(float(g.monto) for g in pagadas)
+    monto_pendientes = sum(float(g.monto) for g in pendientes)
+
+    total_solicitudes = num_pagadas + num_pendientes
+    porc_pagadas = (num_pagadas / total_solicitudes * 100) if total_solicitudes else 0
+    porc_pendientes = (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
+
+    proveedor_counter = Counter()
+    for g in gastos_list:
+        if g.proveedor:
+            proveedor_counter[g.proveedor.nombre] += 1
+
+    top_proveedores = proveedor_counter.most_common(10)
+    # top_proveedores es una lista de tuplas: [(nombre, cantidad), ...]
+    top_prov_labels = [nombre for nombre, cantidad in top_proveedores]
+    top_prov_data = [cantidad for nombre, cantidad in top_proveedores]
+
+
     # paginacion
-    paginator = Paginator(gastos, 25)
+    paginator = Paginator(gastos, 15)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
@@ -225,11 +286,21 @@ def gastos_lista(request):
             "proveedor_id": proveedor_id,
             "empleado_id": empleado_id,
             "tipo_gasto_sel": tipo_gasto,
+            "num_pagadas": num_pagadas,
+            "num_pendientes": num_pendientes,
+            "monto_pagadas": monto_pagadas,
+            "monto_pendientes": monto_pendientes,
+            "porc_pagadas": porc_pagadas,
+            "porc_pendientes": porc_pendientes,
+            "top_proveedores": top_proveedores,
+            "top_prov_labels": top_prov_labels,
+            "top_prov_data": top_prov_data,
+            'total_solicitudes': total_solicitudes,
         },
     )
 
 @login_required
-#solicitudes de pago
+#nueva solicitud pago
 def gasto_nuevo(request):
     if request.method == 'POST':
         form = GastoForm(request.POST or None, request.FILES, user=request.user)
@@ -357,8 +428,9 @@ def reversa_pago_gasto(request, pago_id, gasto_id):
         "next": next_url,
     })
 
-#reporte_pagos.html
+
 @login_required
+#template/gastos/reporte_pagos.html
 def reporte_pagos_gastos(request):
     es_super = request.user.is_superuser
     pagos = PagoGasto.objects.select_related(
@@ -412,13 +484,59 @@ def reporte_pagos_gastos(request):
 
     pagos_list.sort(key=lambda x: x.fecha, reverse=True)
 
-    paginator = Paginator(pagos_list, 25)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    hoy = datetime.now().date()
+    anio_actual = hoy.year
+    anio_anterior = anio_actual - 1
+    
+    total_pagos_acumulado = sum(p.monto for p in pagos_list)
 
-    total_regular = sum(p.monto for p in pagos_list)
+    pagos_anio_actual = sum(p.monto for p in pagos_list if p.fecha.year == anio_actual)
+    pagos_anio_anterior = sum(p.monto for p in pagos_list if p.fecha.year == anio_anterior)
+
+    mes_actual = hoy.month
+    mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
+    anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
+
+    pagos_mes_actual = sum(p.monto for p in pagos_list if p.fecha.year == anio_actual and p.fecha.month == mes_actual)
+    pagos_mes_anterior = sum(p.monto for p in pagos_list if p.fecha.year == anio_mes_anterior and p.fecha.month == mes_anterior)
+
+     # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)
+    tipo_dict = defaultdict(float)
+    for p in pagos_list:
+        if p.gasto and p.gasto.tipo_gasto:
+            tipo_gasto = p.gasto.tipo_gasto
+            subgrupo = tipo_gasto.subgrupo.nombre if tipo_gasto.subgrupo else ""
+            etiqueta = f"{subgrupo} - {tipo_gasto.nombre}" if subgrupo else tipo_gasto.nombre
+            tipo_dict[etiqueta] += float(p.monto)
+
+    # Ordena y toma el top 10
+    top_tipos = sorted(tipo_dict.items(), key=lambda x: x[1], reverse=True)[:10]
+    tipo_labels = [k for k, v in top_tipos]
+    tipo_data = [v for k, v in top_tipos]
+    pagos_por_tipo = [{"nombre": k, "total": v} for k, v in top_tipos]
+
+    # KPIs por forma de pago
+    forma_dict = defaultdict(float)
+    for p in pagos_list:
+        if p.forma_pago:
+            forma_dict[p.get_forma_pago_display()] += float(p.monto)
+    pagos_por_forma = [{"nombre": k, "total": v} for k, v in forma_dict.items()]
+    forma_labels = list(forma_dict.keys())
+    forma_data = list(forma_dict.values())
+
+    def variacion(actual, anterior):
+        if anterior == 0:
+            return 100 if actual > 0 else 0
+        return ((actual - anterior) / anterior) * 100
+
+    var_anio = variacion(pagos_anio_actual, pagos_anio_anterior)
+    var_mes = variacion(pagos_mes_actual, pagos_mes_anterior)
 
     FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
+
+    paginator = Paginator(pagos_list, 15)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
     return render(
         request,
@@ -430,12 +548,24 @@ def reporte_pagos_gastos(request):
             "proveedores": proveedores,
             "empleados": empleados,
             "forma_pago_actual": forma_pago,
-            "total": total_regular,
+            "total_pagos_acumulados": total_pagos_acumulado,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
             "proveedor_id": proveedor_id,
             "empleado_id": empleado_id,
             "formas_pago": FORMAS_PAGO,
+                "pagos_anio_actual": pagos_anio_actual,
+                "pagos_anio_anterior": pagos_anio_anterior,
+                "pagos_mes_actual": pagos_mes_actual,
+                "pagos_mes_anterior": pagos_mes_anterior,
+                "pagos_por_tipo": pagos_por_tipo,
+                "pagos_por_forma": pagos_por_forma,
+                "var_anio": var_anio,
+                "var_mes": var_mes,
+                "tipo_labels": tipo_labels,
+                "tipo_data": tipo_data,
+                "forma_labels": forma_labels,
+                "forma_data": forma_data,
         },
     )
 

@@ -75,7 +75,8 @@
                 </p><br><br>
                 <h3 class="mb-2 text-success">$119.90 MXN <span class="fs-6">/Mensual</span></h3>
                 <h3 class="mb-4 text-success">$499.90 MXN <span class="fs-6">/Anual</span></h3>
-                <br><br><br><br>
+                <br>
+                <h2 class="mb-3 text-primary">¡Ahorra con el plan anual! <strong>65%</strong></h2>
                 <form action="{% url 'pago_membresia_plus' %}" method="post" class="d-flex flex-column gap-2">
                     {% csrf_token %}
                     <button name="plan" value="mensual" class="btn btn-primary btn-lg">Elegir Plus Mensual</button>
@@ -97,10 +98,11 @@
                     ✔ Avisos, comunicación vía Aplicación<br>
                     ✔ Acceso a publicidad<br>
                     ✔ Funciones exclusivas Premium
-                </p><br><br>
+                </p><br>
                 <h3 class="mb-2 text-success">$199.90 MXN <span class="fs-6">/Mensual</span></h3>
                 <h3 class="mb-4 text-success">$999.90 MXN <span class="fs-6">/Anual</span></h3>
-                <br><br>
+                <br>
+                <h2 class="mb-3 text-primary">¡Ahorra con el plan anual! <strong>60%</strong></h2>
                 <form action="{% url 'pago_membresia_premium' %}" method="post" class="d-flex flex-column gap-2">
                     {% csrf_token %}
                     <button name="plan" value="mensual" class="btn btn-warning btn-lg">Elegir Premium Mensual</button>

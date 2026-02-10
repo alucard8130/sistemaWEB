@@ -32,19 +32,98 @@
 
     <!-- Main content -->
     <div class="container-fluid mt-4">
-        <h2>Lista tipos de gasto</h2>
-
-        <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-crear mb-3 reporte-link">
-            <i class="bi bi-plus-circle me-1"></i> Nuevo tipo de gasto
-        </a>
+       <!-- KPIs Dashboard -->
+<div class="row mb-4" style="display: flex;">
+    <!-- Total tipos de gasto -->
+    <div class="col-md-3 mb-2 d-flex">
+        <div class="card shadow-sm border-primary flex-fill" style="min-height: 160px; max-height: 160px;">
+            <div class="card-body text-center d-flex flex-column justify-content-center h-100">
+                <h5><i class="bi bi-list-task text-primary mb-2" style="font-size: 1.5rem;">Cuentas de Gastos</i></h5>
+                <h6 class="card-title text-primary">Total</h6>
+                <span class="display-6 fw-bold">{{ total_tipos }}</span>
+            </div>
+        </div>
+    </div>
+    <!-- Más usados -->
+    <div class="col-md-3 mb-2 d-flex">
+        <div class="card shadow-sm border-success flex-fill" style="min-height: 160px; max-height: 160px;">
+            <div class="card-body h-100">
+                <h6 class="card-title text-success">Más usadas</h6>
+                <div style="max-height: 90px; overflow-y: auto;">
+                    {% for tipo in tipos_mas_usados %}
+                        <div>
+                            <span class="fw-bold">{{ tipo.subgrupo.nombre }} - {{ tipo.nombre }}</span>
+                            <span class="badge bg-success ms-2">{{ tipo.num_gastos }}</span>
+                        </div>
+                    {% empty %}
+                        <div>No hay datos</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Menos usados -->
+    <div class="col-md-3 mb-2 d-flex">
+        <div class="card shadow-sm border-warning flex-fill" style="min-height: 160px; max-height: 160px;">
+            <div class="card-body h-100">
+                <h6 class="card-title text-warning">Menos usadas</h6>
+                <div style="max-height: 90px; overflow-y: auto;">
+                    {% for tipo in tipos_menos_usados %}
+                        <div>
+                            <span class="fw-bold">{{ tipo.subgrupo.nombre }} - {{ tipo.nombre }}</span>
+                            <span class="badge bg-warning text-dark ms-2">{{ tipo.num_gastos }}</span>
+                        </div>
+                    {% empty %}
+                        <div>No hay datos</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Tipos sin uso -->
+    <div class="col-md-3 mb-2 d-flex">
+        <div class="card shadow-sm border-secondary flex-fill" style="min-height: 160px; max-height: 160px;">
+            <div class="card-body h-100">
+                <h6 class="card-title text-secondary">Sin uso</h6>
+                <div style="max-height: 90px; overflow-y: auto;">
+                    {% for tipo in tipos_sin_uso %}
+                        <div>
+                            <span class="fw-bold">{{ tipo.subgrupo.nombre }} - {{ tipo.nombre }}</span>
+                        </div>
+                    {% empty %}
+                        <div>No hay tipos sin uso</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Posibles duplicados -->
+{% comment %} {% if tipos_duplicados %}
+<div class="alert alert-warning mb-3">
+    <strong>Posibles duplicados:</strong>
+    <ul class="mb-0">
+        {% for grupo in tipos_duplicados %}
+            <li>
+                {% for tipo in grupo %}
+                    <span class="fw-bold">{{ tipo.nombre }}</span>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %} {% endcomment %}
         <form id ="form-filtros" method="get" class="mb-3 d-flex" role="search">
-            <input type="text" name="q" class="form-control me-2" placeholder="Buscar tipo de gasto por nombre o descripción" value="{{ q|default:'' }}">
+            <input type="text" name="q" class="form-control " placeholder="Buscar tipo de gasto por nombre o descripción" value="{{ q|default:'' }}">
             <button type="submit" class="btn btn-outline-primary">Buscar</button>
             <!--limpiar-->
-            <a href="{% url 'tipos_gasto_lista' %}" class="btn btn-outline-secondary ms-2 reporte-link">Limpiar</a>
+            <a href="{% url 'tipos_gasto_lista' %}" class="btn btn-outline-secondary reporte-link">Limpiar</a>
+            <a href="{% url 'tipo_gasto_crear' %}" class="btn btn-crear  reporte-link">
+            <i class="bi bi-plus-circle me-1"></i> Nueva cuenta de gasto
+        </a>
         </form>
         <!-- Expenditure table -->
-        <div class="table-responsive rounded-3 border">
+        <div class="table-responsive rounded-3 border" style='font-size: 0.9rem;'>
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>

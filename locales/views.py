@@ -15,6 +15,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from unidecode import unidecode
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.db.models import Sum, Avg
 
 
 @login_required
@@ -37,14 +38,30 @@ def lista_locales(request):
         )
 
     locales = locales.order_by('numero')
-
+    locales_totales_activos =locales.count()  
+    total_superficie = locales.aggregate(Sum('superficie_m2'))['superficie_m2__sum'] or 0
+    superficie_ocupada = locales.filter(status='ocupado').aggregate(Sum('superficie_m2'))['superficie_m2__sum'] or 0
+    superficie_disponible = total_superficie - superficie_ocupada   
+    total_cuotas = locales.aggregate(Sum('cuota'))['cuota__sum'] or 0
+    promedio_cuotas = locales.aggregate(Avg('cuota'))['cuota__avg'] or 0
+    promedio_precio_m2 = total_superficie > 0 and (total_cuotas / total_superficie) or 0
+    porcentaje_ocupacion = (superficie_ocupada / total_superficie * 100) if total_superficie > 0 else 0
+    
     # Paginación
     paginator = Paginator(locales, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'locales/lista_locales.html', {'locales': page_obj, 'q': query})
-
+    return render(request, 'locales/lista_locales.html', {'locales': page_obj, 'q': query, 
+                                                          'locales_totales_activos': locales_totales_activos,
+                                                          'total_superficie': total_superficie,
+                                                          'superficie_ocupada': superficie_ocupada,
+                                                          'superficie_disponible': superficie_disponible,
+                                                          'total_cuotas': total_cuotas,
+                                                          'promedio_cuotas': promedio_cuotas,
+                                                          'promedio_precio_m2': promedio_precio_m2,
+                                                          'porcentaje_ocupacion': porcentaje_ocupacion,
+                                                          })
 
 @login_required
 def crear_local(request):

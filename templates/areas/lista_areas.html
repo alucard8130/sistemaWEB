@@ -32,20 +32,72 @@
   <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    <!-- Main content -->
-    <div class="container-fluid mt-4">
-      <h2>Áreas Comunes</h2>
-
-      <!-- Block for displaying messages -->
+    <!-- Block for displaying messages -->
       {% if messages %} {% for message in messages %}
       <div class="alert alert-{{ message.tags }}">{{ message }}</div>
       {% endfor %} {% endif %}
       {% if error %}
           <div class="alert alert-danger text-center">{{ error }}</div>
       {% endif %}
-      <a href="{% url 'crear_area' %}" class="btn btn-crear mb-3 reporte-link">
-        <i class="bi bi-plus-circle me-1"></i> Nueva área
-      </a>
+
+    <!-- Main content -->
+    <div class="container-fluid mt-2">
+<!-- Tarjeta informativa fija arriba de la tabla, centrada y con ancho limitado -->
+<div class="mb-2 d-flex justify-content-left mt-2" style="gap: 15px; flex-wrap: wrap;">
+  <div class="card shadow-lg border-primary" style="max-width: 410px; width: 100%; max-height: 200px; font-size: 13px;">
+    <div class="card-header bg-primary text-white">
+      <i class="bi bi-bar-chart-fill me-2"></i>Indicadores KPIs 
+    </div>
+    <div class="card-body"> 
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Areas Comunes:</span>
+          <strong>{{ total_areas }}</strong>
+        </li>   
+        <li class="list-group-item d-flex justify-content-between">
+          <span> Total Cuotas mensuales:</span>
+          <strong>${{ total_cuotas|floatformat:2|intcomma }}</strong>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Promedio Cuotas:</span>
+          <strong>${{ promedio_cuotas|floatformat:2|intcomma }}</strong>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Promedio Precio x m²:</span>
+          <strong>${{ promedio_precio_m2|floatformat:2|intcomma }}</strong>
+        </li>
+      </ul>
+    </div>
+  </div>
+{% comment %} </div> {% endcomment %}
+{% comment %} <div class="mb-1 d-flex justify-content-left"> {% endcomment %}
+  <div class="card shadow-lg border-primary" style="max-width: 410px; width: 100%; max-height: 200px; font-size: 13px;">
+    <div class="card-header bg-primary text-white">
+      <i class="bi bi-bar-chart-fill me-2"></i>KPIs Superficie 
+    </div>
+    <div class="card-body">
+      <ul class="list-group list-group-flush">
+      
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Total Superficie (GLA):</span>
+          <strong>{{ superficie_total|floatformat:2|intcomma }} m²</strong>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span> Contratos Vigentes:</span>
+          <strong>{{ status_vigente}}</strong>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Contratos Vencidos:</span>
+          <strong>{{ status_vencido}}</strong>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Porcentaje Vencido:</span>
+          <strong>{{ porcentaje_vencido|floatformat:0|intcomma }}%</strong>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
       <form id="form-filtros" method="get" class="mb-3 d-flex" role="search">
         <input
           type="text"
@@ -57,7 +109,7 @@
         <button type="submit" class="btn btn-outline-primary">Buscar</button>
       </form>
       <!-- Area table -->
-      <div class="table-responsive rounded-3 border">
+      <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
         <table class="table align-middle mb-0 shadow-sm">
           <thead>
             <tr>
@@ -67,7 +119,7 @@
               <th>Empresa</th>
               {% endif %}
               <th>Superficie</th>
-              <th>Ubicación</th>
+              {% comment %} <th>Ubicación</th> {% endcomment %}
               <th>Cuota</th>
               <th>Anual</th>
               <th>Depósito</th>
@@ -75,7 +127,7 @@
               <th>Tipo</th>
               <th>Fecha Ini</th>
               <th>Fecha Fin</th>
-              <th>Status</th>
+              <th>Vigencia</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -88,7 +140,7 @@
               <td>{{ area.empresa.nombre }}</td>
               {% endif %}
               <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
-              <td>{% if area.ubicacion %}{{ area.ubicacion }}{% endif %}</td>
+              {% comment %} <td>{% if area.ubicacion %}{{ area.ubicacion }}{% endif %}</td> {% endcomment %}
               <td>${{ area.cuota|floatformat:2|intcomma }}</td>
               <td>
                   {% if area.es_cuota_anual %}

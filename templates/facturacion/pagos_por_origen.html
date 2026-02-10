@@ -25,17 +25,193 @@
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-
-    <div class="container-fluid mt-4" >
-        <h2>Reporte Depositos Cuotas</h2>
-        
-        <!-- Block for displaying messages -->
+    <!-- Block for displaying messages -->
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
 
+    <div class="container-fluid mt-4" >
+        <!-- Dashboard KPIs -->
+<div class="row mb-4 justify-content-center">
+  <div class="col-12 col-md-4 mb-2 d-flex align-items-stretch justify-content-center">
+    <div class="card text-center shadow-sm p-3" style="width:63%; min-width:480px; max-width:350px; margin:auto; font-size:0.85rem;">
+      <div class="card-body p-2">
+        <h5><i class="bi bi-cash-coin"></i>Cuotas Mantenimiento y Areas comunes</h5>
+        <h6 class="card-title mb-1" style="font-size:0.9rem;">Ingresos acumulados</h6>
+        <h2 class="mb-0" style="font-size:1.5rem; color:#28a745;">${{ ingresos_acumulados|floatformat:2|intcomma }}</h2>
+        <hr>
+        <div class="row">
+          <div class="col-6 text-start">
+            <small>Año actual</small><br>
+            <span style="font-size:0.95rem;">${{ pagos_anio_actual|floatformat:0|intcomma }}</span>
+            <span style="font-size:0.95rem;">
+              {% if var_anio > 0 %}
+                <span style="color:green;">&#9650; {{ var_anio|floatformat:1 }}%</span>
+              {% elif var_anio < 0 %}
+                <span style="color:red;">&#9660; {{ var_anio|floatformat:1 }}%</span>
+              {% else %}
+                <span style="color:gray;">0%</span>
+              {% endif %}
+            </span>
+          </div>
+          <div class="col-6 text-start">
+            <small>Mes actual</small><br>
+            <span style="font-size:0.95rem;">${{ pagos_mes_actual|floatformat:0|intcomma }}</span>
+            <span style="font-size:0.95rem;">
+              {% if var_mes > 0 %}
+                <span style="color:green;">&#9650; {{ var_mes|floatformat:1 }}%</span>
+              {% elif var_mes < 0 %}
+                <span style="color:red;">&#9660; {{ var_mes|floatformat:1 }}%</span>
+              {% else %}
+                <span style="color:gray;">0%</span>
+              {% endif %}
+            </span>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-6 text-start">
+            <small>Año anterior</small><br>
+            <span style="font-size:0.85rem; color:#888;">${{ pagos_anio_anterior|floatformat:0|intcomma }}</span>
+          </div>
+          <div class="col-6 text-start">
+            <small>Mes anterior</small><br>
+            <span style="font-size:0.85rem; color:#888;">${{ pagos_mes_anterior|floatformat:0|intcomma }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
+    <div class="card text-center shadow-sm p-3 w-100" style="max-width:300px; margin:auto;">
+      <div class="card-body p-2">
+        <h6 class="card-title mb-2" style="font-size:0.9rem;">Ingresos Tipo de Cuota</h6>
+        <canvas id="kpiTipoChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
+    <div class="card text-center shadow-sm p-3 w-100" style="max-width:300px; margin:auto;">
+      <div class="card-body p-2">
+        <h6 class="card-title mb-2" style="font-size:0.9rem;">Ingresos Forma de Pago</h6>
+        <canvas id="kpiFormaChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Ingresos por tipo de cuota (barras horizontales, solo valor sobre la barra)
+  const tipoLabels = {{ tipo_labels|safe }};
+  const tipoData = {{ tipo_data|safe }};
+  new Chart(document.getElementById('kpiTipoChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: tipoLabels,
+      datasets: [{
+        label: '',
+        data: tipoData,
+        backgroundColor: '#28a745',
+        borderRadius: 8,
+        barThickness: 18
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'right',
+          color: '#fff',
+          font: { size: 10 },
+          formatter: function(value) {
+            return '$' + value.toLocaleString();
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: false,
+          grid: { display: false, drawBorder: false }
+        },
+        y: {
+          display: true,
+          grid: { display: false, drawBorder: false },
+          ticks: {
+            color: '#222',
+            font: { size: 10 }
+          }
+        }
+      },
+      layout: {
+        padding: { left: 0, right: 0, top: 0, bottom: 0 }
+      },
+      // Agrega estas dos líneas para juntar las barras
+  barPercentage: 0.2,
+  categoryPercentage: 0.2
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // Pagos por forma de pago (barras horizontales, solo valor sobre la barra)
+  const formaLabels = {{ forma_labels|safe }};
+  const formaData = {{ forma_data|safe }};
+  new Chart(document.getElementById('kpiFormaChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: formaLabels,
+      datasets: [{
+        label: '',
+        data: formaData,
+        backgroundColor: '#007bff',
+        borderRadius: 8,
+        barThickness: 18
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'right',
+          color: '#fff',
+          font: { size: 10 },
+          formatter: function(value) {
+            return '$' + value.toLocaleString();
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: false,
+          grid: { display: false, drawBorder: false }
+        },
+        y: {
+          display: true,
+          grid: { display: false, drawBorder: false },
+          ticks: {
+            color: '#222',
+            font: { size: 10 }
+          }
+        }
+      },
+      layout: {
+        padding: { left: 0, right: 0, top: 0, bottom: 0 }
+      },
+      // Agrega estas dos líneas para juntar las barras
+  barPercentage: 0.2,
+  categoryPercentage: 0.2
+    },
+    plugins: [ChartDataLabels]
+  });
+});
+</script>
         <form id="form-filtros" method="get" class="row g-2 mb-3">
             {% if request.user.is_superuser %}
             <div class="col-auto">
@@ -61,7 +237,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+           
             <div class="col-auto">
                 <!-- <label for="area_id">Área común:</label> -->
                 <select name="area_id" id="area_id" class="form-select">
@@ -81,7 +257,15 @@
             {% endfor %}
         </select>
     </div>
-            <div class="col-auto">
+    <div class="col-auto">
+        <select name="forma_pago" id="forma_pago" class="form-select">
+            <option value="">Forma de pago</option>
+            {% for val, display in FORMAS_PAGO %}
+                <option value="{{ val }}" {% if forma_pago == val %}selected{% endif %}>{{ display }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
         <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
     </div>
     <div class="col-auto">
@@ -100,13 +284,8 @@
                     <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
                 </a>
             </div>
-        </form>        
-        <div class="alert alert-info">
-            <h4><strong>Total depositado:</strong>
-            ${{ total_pagos|floatformat:2|intcomma }}</h4>
-        </div>
-        
-        <div class="table-responsive rounded-3 border">
+        </form>                
+        <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
@@ -118,8 +297,8 @@
                         <th>Cliente</th>
                         <th>Tipo Cuota</th>
                         <th>Monto</th>
-                        <th>Forma de deposito</th>
-                        <th>Fecha Deposito</th>
+                        <th>Forma de pago</th>
+                        <th>Fecha de pago</th>
                         <th>Comentarios</th>
                         <th>Acciones</th>
                     </tr>
@@ -144,7 +323,7 @@
                             <td>{{ pago.factura.get_tipo_cuota_display }}</td>
                             <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                             <td>{{ pago.forma_pago|title }}</td>
-                            <td>{{ pago.fecha_pago|date:"d/b/y"|upper }}</td> 
+                            <td>{{ pago.fecha_pago|date:"d/m/Y"|upper }}</td> 
                             {% if pago.observaciones == None or pago.observaciones == "" %}
                             <td></td>
                             {% else %}
@@ -158,7 +337,7 @@
                         </td> 
                     {% empty %}
                         <tr class="no-data-row">
-                            <td colspan="6">No hay ingresos registrados.</td>
+                            <td colspan="10">No hay ingresos registrados.</td>
                         </tr>
                     {% endfor %}
                 </tbody>

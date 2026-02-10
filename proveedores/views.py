@@ -11,6 +11,7 @@ from django import forms
 from django.utils.safestring import mark_safe
 from decimal import Decimal
 from datetime import date
+from django.core.paginator import Paginator
 
 
 @login_required
@@ -46,9 +47,14 @@ def proveedor_lista(request):
     
     if proveedor_nombre:
         proveedores = proveedores.filter(nombre__icontains=proveedor_nombre)
+    #paginación
+    
+    paginator = Paginator(proveedores, 10)  # Mostrar 10 proveedores por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     context={
-        'proveedores': proveedores,
+        'proveedores': page_obj,
         'today': date.today(),
         'proveedor_nombre': proveedor_nombre,
     }    

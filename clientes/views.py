@@ -11,7 +11,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 import openpyxl
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Count, Sum, Avg
 from django.views.decorators.http import require_POST
 
 
@@ -33,6 +33,11 @@ def lista_clientes(request):
         )
 
     clientes = clientes.order_by('nombre')
+    total_clientes = clientes.count()
+    contribuyente_persona_fisica = clientes.filter(tipo_contribuyente='Fisica').count()
+    contribuyente_persona_moral = clientes.filter(tipo_contribuyente='Moral').count()
+    contribuyente_sin_clasificacion = clientes.filter(tipo_contribuyente=None).count()
+
 
     # paginacion
     paginator = Paginator(clientes, 20)
@@ -42,7 +47,11 @@ def lista_clientes(request):
     return render(
         request,
         "clientes/lista_clientes.html",
-        {"clientes": page_obj, "q": query},
+        {"clientes": page_obj, "q": query, 
+         "total_clientes": total_clientes, 
+         "contribuyente_persona_fisica": contribuyente_persona_fisica,
+           "contribuyente_persona_moral": contribuyente_persona_moral,
+             "contribuyente_sin_clasificacion": contribuyente_sin_clasificacion},
     )
 
 

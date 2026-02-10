@@ -41,7 +41,7 @@
             </div>
         </form>
         <!-- Suppliers table -->
-        <div class="table-responsive rounded-3 border">
+        <div class="table-responsive rounded-3 border" style='font-size:0.9rem;'>
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
@@ -118,6 +118,19 @@
             </table>
         </div>
     </div>
+    {% if proveedores.has_other_pages %}
+        <nav>
+            <ul class="pagination">
+                {% if proveedores.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ proveedores.previous_page_number }}">Anterior</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Página {{ proveedores.number }} de {{ proveedores.paginator.num_pages }}</span></li>
+                {% if proveedores.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ proveedores.next_page_number }}">Siguiente</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
 
     <!-- 🔹 Footer -->
 <footer class="mt-4">

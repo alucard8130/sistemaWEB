@@ -1,3 +1,4 @@
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from django.contrib import messages
@@ -14,7 +15,7 @@ from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm, 
 from unidecode import unidecode
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Sum, Avg
 from django.template.loader import render_to_string
 
 
@@ -38,12 +39,31 @@ def lista_areas(request):
         )
 
     areas = areas.order_by('numero')
-
+    total_areas = areas.count()
+    total_cuotas = areas.aggregate(total=Sum('cuota'))['total'] or 0
+    promedio_cuotas = areas.aggregate(promedio=Avg('cuota'))['promedio'] or 0
+    superficie_total = areas.aggregate(total=Sum('superficie_m2'))['total'] or 0
+    promedio_precio_m2 = total_cuotas / superficie_total if superficie_total > 0 else 0
+    status_vencido = areas.filter(fecha_fin__lt=datetime.now()).count()
+    status_vigente = areas.filter(fecha_fin__gte=datetime.now()).count()
+    porcentaje_vencido = (status_vencido / total_areas * 100)
+     
+    
     paginator = Paginator(areas, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'areas/lista_areas.html', {'areas': page_obj, 'q': query})
+    return render(request, 'areas/lista_areas.html', {'areas': page_obj, 
+                                                      'q': query, 
+                                                      'total_areas': total_areas, 
+                                                      'total_cuotas': total_cuotas,
+                                                        'promedio_cuotas': promedio_cuotas, 
+                                                        'superficie_total': superficie_total,
+                                                          'promedio_precio_m2': promedio_precio_m2,
+                                                          'status_vencido': status_vencido,
+                                                          'status_vigente': status_vigente,
+                                                            'porcentaje_vencido': porcentaje_vencido,
+                                                      })
 
 @login_required
 def crear_area(request):
