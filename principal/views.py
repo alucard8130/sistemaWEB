@@ -1206,16 +1206,16 @@ def visitante_consulta_facturas(request):
     if local_id:
         facturas = Factura.objects.filter(
             local_id=local_id, local__in=locales, empresa=empresa, monto__gt=0  # Solo mostrar facturas con monto mayor a 0
-        )
+        ).order_by("fecha_vencimiento")
     elif area_id:
         facturas = Factura.objects.filter(
             area_comun_id=area_id, area_comun__in=areas, empresa=empresa, monto__gt=0  # Solo mostrar facturas con monto mayor a 0
-        )
+        ).order_by("fecha_vencimiento")
     else:
         facturas = Factura.objects.filter(
             Q(local__in=locales) | Q(area_comun__in=areas), empresa=empresa,
             monto__gt=0  # Solo mostrar facturas con monto mayor a 0
-        )
+        ).order_by("fecha_vencimiento")
 
     # Obtén los años únicos de las facturas
     anios_unicos = (
