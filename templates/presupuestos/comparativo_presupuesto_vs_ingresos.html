@@ -68,7 +68,7 @@
         </form>
             
         <div class="table-responsive rounded-3 border" id="table-container-corp" data-meses-count="{{ meses_nombres|length }}">
-            <table class="table align-middle mb-0 shadow-sm">
+            <table id="tabla-comparativa" class="table align-middle mb-0 shadow-sm">
                 <thead class="encabezado-claro">
                     <tr>
                         <th rowspan="2">Origen/Tipo</th>
@@ -232,9 +232,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-<script>
+{% comment %} <script>
 $(document).ready(function() {
-    $('#table-container-corp').DataTable({
+    $('#tabla-comparativa').DataTable({
         fixedHeader: true,
         paging: false,
         searching: false,
@@ -243,6 +243,6 @@ $(document).ready(function() {
         scrollX: true
     });
 });
-</script>
+</script> {% endcomment %}
 </body>
 </html>

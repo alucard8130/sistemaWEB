@@ -108,11 +108,11 @@
                         <li><a class="dropdown-item" href="{% url 'registrar_deposito_por_identificar' %}">Registrar Deposito no identificado</a></li>
                         <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}">Asignar Deposito no identificado</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        {% if empresa.es_plus %}
+                        {% comment %} {% if empresa.es_plus %}
                         <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>
                         {% else %}
                         <spam><li><a class="dropdown-item disabled" href="#" tabindex="-1" aria-disabled="true">Conciliación Bancaria (Plus)</a></li></spam>
-                        {% endif %}
+                        {% endif %} {% endcomment %}
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
                         {% endif %}
@@ -261,7 +261,7 @@
           <i class="bi bi-file-earmark-pdf"></i> Consultar Manual en PDF
         </a>
         <div>
-          <a href="https://www.youtube.com/@Gesac.GestorAdministrativoCond" target="_blank">
+          <a href="https://youtube.com/@jaimeestradab?si=uuDbhuhkBUVe4tj8" target="_blank">
             <p class="mt-3">Videos Tutoriales.</p>
           </a>
           <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">

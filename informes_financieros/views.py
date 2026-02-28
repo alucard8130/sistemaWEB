@@ -931,7 +931,20 @@ def estado_resultados(request):
                 ]
         total_gastos = sum([g["total"] for g in gastos_por_tipo])
         saldo_final_flujo = None
+    # Filtros por empresa y fechas
+    filtros_fondeo = {}
+    if empresa_id:
+        filtros_fondeo["empresa_id"] = empresa_id
+    if fecha_inicio:
+        filtros_fondeo["fecha__gte"] = fecha_inicio
+    if fecha_fin:
+        filtros_fondeo["fecha__lte"] = fecha_fin
 
+    # Suma de fondeos de caja chica
+    saldo_caja_chica = FondeoCajaChica.objects.filter(**filtros_fondeo).aggregate(suma=Sum("saldo"))["suma"] or 0    
+    # Saldo final bancos menos caja chica
+    saldo_final_bancos_menos_caja = float(saldo_final_flujo) - float(saldo_caja_chica)
+    #resultado
     saldo = float(total_ingresos) - float(total_gastos)
 
     return render(
@@ -959,6 +972,8 @@ def estado_resultados(request):
             "anios_unicos": anios_unicos,
             "mes_letra": mes_letra,
             "total_pagos_por_identificar": total_pagos_por_identificar,
+            "saldo_caja_chica": saldo_caja_chica,
+            "saldo_final_bancos_menos_caja": saldo_final_bancos_menos_caja,
         },
     )
 

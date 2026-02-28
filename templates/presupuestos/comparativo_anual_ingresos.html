@@ -60,7 +60,7 @@
 
       {% for o in origenes %}
         <tr class="table-primary">
-          <td><strong>ORIGEN</strong></td>
+          <td><strong>CUENTA</strong></td>
           <td><strong>{{ origen_labels|lookup:o.origen|default:o.origen|capfirst }}</strong></td>
           <td class="text-end">${{ o.tot_anterior|floatformat:0|intcomma }}</td>
           <td class="text-end"><strong>${{ o.tot_actual|floatformat:0|intcomma }}</strong></td>
@@ -77,7 +77,7 @@
         {% for t in o.tipos %}
           {% with tipo_display=tipo_cuota_map|lookup:t.tipo|default:t.tipo %}
           <tr class="table-light">
-            <td style="padding-left:20px;">TIPO</td>
+            <td style="padding-left:20px;">SUB-CUENTA</td>
             <td style="padding-left:20px;">{{ tipo_display }}</td>
             <td class="text-end">${{ t.anterior|floatformat:0|intcomma }}</td>
             <td class="text-end">${{ t.actual|floatformat:0|intcomma }}</td>

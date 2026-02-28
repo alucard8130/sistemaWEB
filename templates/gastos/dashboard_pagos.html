@@ -55,7 +55,7 @@
         </div>
         <div class="col-md-2 align-self-end">
             <select name="subgrupo" class="form-select">
-                <option value="">Subgrupos</option>
+                <option value="">Subcuentas</option>
                 {% for sg in subgrupos %}
                     <option value="{{ sg.id }}" {% if sg.id|stringformat:"s" == subgrupo_id|stringformat:"s" %}selected{% endif %}>{{ sg.nombre }}</option>
                 {% endfor %}
@@ -63,7 +63,7 @@
         </div>
         <div class="col-md-2 align-self-end">
             <select name="tipo_gasto" class="form-select">
-                <option value="">Tipo de Gastos</option>
+                <option value="">Cuenta de Gasto</option>
                 {% for tg in tipos_gasto %}
                     <option value="{{ tg.id }}" {% if tg.id|stringformat:"s" == tipo_gasto_id|stringformat:"s" %}selected{% endif %}>{{ tg.nombre }}</option>
                 {% endfor %}

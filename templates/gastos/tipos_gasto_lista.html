@@ -7,10 +7,10 @@
         Modified by: María Martínez
         Date of creation: 05/06/2025
         Date of modification: 28/08/2025
-        Description: List expenditure types
+        Description: List expenditure accounts
     -->
     <meta charset="UTF-8">
-    <title>Lista tipos de gasto</title>
+    <title>Lista cuentas de gasto</title>
         <!-- Bloque para mostrar mensajes -->
     {% if messages %}
         {% for message in messages %}
@@ -130,9 +130,9 @@
                         {% comment %} {% if request.user.is_superuser %}
                             <th>Empresa</th>
                         {% endif %} {% endcomment %}
-                        <th>Grupo</th>
-                        <th>Subgrupo</th>
-                        <th>Tipo de Gasto</th>
+                        <th>Depto.</th>
+                        <th>Cuenta Gasto</th>
+                        <th>Sub-Cuenta Gasto</th>
                         <th>Descripción</th>
                         <th>Acciones</th>
                     </tr>
@@ -158,7 +158,7 @@
                     </tr>
                 {% empty %}
                     <tr class="no-data-row">
-                        <td colspan="5">No hay tipos de gasto registrados.</td>
+                        <td colspan="5">No hay cuentas de gasto registradas.</td>
                     </tr>
                 {% endfor %}
                 </tbody>

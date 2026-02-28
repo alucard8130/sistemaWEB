@@ -43,12 +43,7 @@ class CSDUploadForm(forms.Form):
     cer_file = forms.FileField(label="Certificado (.cer)")
     key_file = forms.FileField(label="Llave privada (.key)")
     key_password = forms.CharField(label="Contraseña de la llave", widget=forms.PasswordInput)
-
-
-#modulo conciliacion bancaria
-class EstadoCuentaUploadForm(forms.Form):
-    archivo = forms.FileField(label="Estado de cuenta bancario (.csv)")
-
+    
 
 #Modulo avisos y recordatorios
 class AvisoForm(forms.ModelForm):

@@ -21,6 +21,8 @@ import empresas
 from empresas.models import Empresa
 from clientes.models import Cliente
 from facturacion.forms import TimbrarFacturaForm
+from facturacion.utils import debe_mostrar_recordatorio_facturacion
+from facturacion.utils import debe_mostrar_recordatorio_facturacion
 from gastos.models import Gasto
 from locales.models import LocalComercial
 from areas.models import AreaComun
@@ -62,7 +64,6 @@ from decimal import Decimal
 from .forms import (
     AvisoForm,
     CSDUploadForm,
-    EstadoCuentaUploadForm,
     VisitanteRegistroForm,
 )
 import base64
@@ -137,6 +138,10 @@ def bienvenida(request):
                 eventos = Evento.objects.all().order_by("fecha")
         else:
             eventos = Evento.objects.all().order_by("fecha")
+
+        # --- Recordatorio de facturación mensual ---
+    mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
+
     return render(
         request,
         "bienvenida.html",
@@ -147,6 +152,7 @@ def bienvenida(request):
             "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
             "mostrar_wizard": mostrar_wizard,
             "mensaje_pago": mensaje_pago,
+            "mostrar_recordatorio": mostrar_recordatorio,
         },
     )
 
@@ -2988,15 +2994,15 @@ def api_dashboard_saldos_visitante(request):
     if not getattr(visitante, "acceso_api_reporte", False):
         return Response({"error": "Acceso denegado"}, status=403)
 
+    empresa_id = request.GET.get("empresa_id")
+    empresa = None
     if getattr(visitante, "es_admin", False) or request.GET.get("empresa_id"):
-        empresa_id = request.GET.get("empresa_id")
         if not empresa_id:
             return Response({"error": "Debe seleccionar una empresa"}, status=400)
         empresa = Empresa.objects.filter(id=empresa_id).first()
         if not empresa:
             return Response({"error": "Empresa no encontrada"}, status=404)
     else:
-        empresa = None
         if visitante.locales.exists():
             empresa = visitante.locales.first().empresa
         elif visitante.areas.exists():
@@ -3907,220 +3913,6 @@ def api_avisos_empresa(request):
     ]
     return Response(data)
 
-
-# conciliación bancaria
-@login_required
-def subir_estado_cuenta(request):
-    conciliados_cargos = []
-    conciliados_abonos = []
-    no_conciliados_cargos = []
-    no_conciliados_abonos = []
-    periodo = None
-    error = None
-
-    if request.method == "POST":
-        form = EstadoCuentaUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            archivo = request.FILES.get("archivo")
-            if not archivo:
-                error = "No se recibió ningún archivo."
-            else:
-                movimientos_banco = []
-                try:
-                    text = archivo.read().decode("utf-8", errors="ignore")
-                    reader = csv.DictReader(io.StringIO(text))
-                    for row in reader:
-                        try:
-                            fecha = datetime.strptime(row["fecha"], "%d/%m/%Y").date()
-                        except ValueError:
-                            fecha = datetime.strptime(row["fecha"], "%Y-%m-%d").date()
-                        cargo = float(row.get("cargo", 0) or 0)
-                        abono = float(row.get("abono", 0) or 0)
-                        descripcion = row.get("descripcion", "")
-                        movimientos_banco.append(
-                            {
-                                "fecha": fecha,
-                                "cargo": cargo,
-                                "abono": abono,
-                                "descripcion": descripcion,
-                                "usado": False,
-                            }
-                        )
-                except Exception as e:
-                    error = f"Error al leer el archivo: {e}"
-
-                if movimientos_banco:
-                    fecha_min = min(m["fecha"] for m in movimientos_banco)
-                    fecha_max = max(m["fecha"] for m in movimientos_banco)
-                    periodo = f"{fecha_min.strftime('%d/%m/%Y')} al {fecha_max.strftime('%d/%m/%Y')}"
-                    empresa = request.user.perfilusuario.empresa
-
-                    # 1. Movimientos del sistema en el periodo
-                    pagos_cuotas = list(
-                        Pago.objects.filter(
-                            factura__empresa=empresa,
-                            fecha_pago__gte=fecha_min,
-                            fecha_pago__lte=fecha_max,
-                        )
-                    )
-                    pagos_otros = list(
-                        CobroOtrosIngresos.objects.filter(
-                            factura__empresa=empresa,
-                            fecha_cobro__gte=fecha_min,
-                            fecha_cobro__lte=fecha_max,
-                        )
-                    )
-                    pagos_gastos = list(
-                        PagoGasto.objects.filter(
-                            gasto__empresa=empresa,
-                            fecha_pago__gte=fecha_min,
-                            fecha_pago__lte=fecha_max,
-                        )
-                    )
-                    fondeos = list(
-                        FondeoCajaChica.objects.filter(
-                            empresa=empresa, fecha__gte=fecha_min, fecha__lte=fecha_max
-                        )
-                    )
-
-                    # 2. Conciliación de abonos (cuotas y otros ingresos)
-                    for pago in pagos_cuotas:
-                        encontrado = next(
-                            (
-                                b
-                                for b in movimientos_banco
-                                if not b["usado"]
-                                and b["abono"] == pago.monto
-                                and b["fecha"] == pago.fecha_pago
-                            ),
-                            None,
-                        )
-                        mov = {
-                            "fecha": pago.fecha_pago,
-                            "abono": pago.monto,
-                            "cargo": 0,
-                            "descripcion": f'Pago cuota {getattr(pago.factura, "folio", "")}',
-                            "tipo": "Pago cuota",
-                        }
-                        if encontrado:
-                            conciliados_abonos.append(mov)
-                            encontrado["usado"] = True
-                        else:
-                            no_conciliados_abonos.append(mov)
-
-                    for cobro in pagos_otros:
-                        encontrado = next(
-                            (
-                                b
-                                for b in movimientos_banco
-                                if not b["usado"]
-                                and b["abono"] == cobro.monto
-                                and b["fecha"] == cobro.fecha_cobro
-                            ),
-                            None,
-                        )
-                        mov = {
-                            "fecha": cobro.fecha_cobro,
-                            "abono": cobro.monto,
-                            "cargo": 0,
-                            "descripcion": f'Pago otros ingresos {getattr(cobro.factura, "folio", "")}',
-                            "tipo": "Pago otros ingresos",
-                        }
-                        if encontrado:
-                            conciliados_abonos.append(mov)
-                            encontrado["usado"] = True
-                        else:
-                            no_conciliados_abonos.append(mov)
-
-                    # 3. Conciliación de cargos (gastos y fondeos)
-                    for gasto in pagos_gastos:
-                        encontrado = next(
-                            (
-                                b
-                                for b in movimientos_banco
-                                if not b["usado"]
-                                and b["cargo"] == gasto.monto
-                                and b["fecha"] == gasto.fecha_pago
-                            ),
-                            None,
-                        )
-                        mov = {
-                            "fecha": gasto.fecha_pago,
-                            "cargo": gasto.monto,
-                            "abono": 0,
-                            "descripcion": f'Pago gasto {getattr(gasto.gasto, "referencia", "")}',
-                            "tipo": "Pago gasto",
-                        }
-                        if encontrado:
-                            conciliados_cargos.append(mov)
-                            encontrado["usado"] = True
-                        else:
-                            no_conciliados_cargos.append(mov)
-
-                    for fondeo in fondeos:
-                        encontrado = next(
-                            (
-                                b
-                                for b in movimientos_banco
-                                if not b["usado"]
-                                and b["cargo"] == fondeo.importe_cheque
-                                and b["fecha"] == fondeo.fecha
-                            ),
-                            None,
-                        )
-                        mov = {
-                            "fecha": fondeo.fecha,
-                            "cargo": fondeo.importe_cheque,
-                            "abono": 0,
-                            "descripcion": "Fondeo caja chica",
-                            "tipo": "Fondeo caja chica",
-                        }
-                        if encontrado:
-                            conciliados_cargos.append(mov)
-                            encontrado["usado"] = True
-                        else:
-                            no_conciliados_cargos.append(mov)
-
-    else:
-        form = EstadoCuentaUploadForm()
-
-    # Totales
-    total_conciliado_cargos = sum(mov["cargo"] for mov in conciliados_cargos)
-    total_conciliado_abonos = sum(mov["abono"] for mov in conciliados_abonos)
-    total_no_conciliado_cargos = sum(mov["cargo"] for mov in no_conciliados_cargos)
-    total_no_conciliado_abonos = sum(mov["abono"] for mov in no_conciliados_abonos)
-
-    return render(
-        request,
-        "conciliacion/estado_cuenta_vista.html",
-        {
-            "form": form,
-            "periodo": periodo,
-            "error": error,
-            "conciliados_cargos": conciliados_cargos,
-            "conciliados_abonos": conciliados_abonos,
-            "no_conciliados_cargos": no_conciliados_cargos,
-            "no_conciliados_abonos": no_conciliados_abonos,
-            "total_conciliado_cargos": total_conciliado_cargos,
-            "total_conciliado_abonos": total_conciliado_abonos,
-            "total_no_conciliado_cargos": total_no_conciliado_cargos,
-            "total_no_conciliado_abonos": total_no_conciliado_abonos,
-        },
-    )
-
-
-@login_required
-def descargar_plantilla_estado_cuenta(request):
-    contenido = (
-        "fecha,cargo,abono,descripcion\n"
-        "01/10/2025,0,1500.00,Pago cuota octubre\n"
-        "02/10/2025,500.00,0,Pago gasto limpieza\n"
-        "03/10/2025,0,2000.00,Fondeo caja chica\n"
-        "04/10/2025,0,1200.00,Pago otros ingresos\n"
-    )
-    response = HttpResponse(contenido, content_type="text/csv")
-    response["Content-Disposition"] = "attachment; filename=plantilla_estado_cuenta.csv"
-    return response
 
 
 # recordatorios morosidad

@@ -212,11 +212,18 @@
         <span class="ms-2">${{ saldo|floatformat:2|intcomma }}</span>
     </div>
         {% if modo == 'flujo' %}
-            <div class="alert alert-info text-end">
+            {% comment %} <div class="alert alert-info text-end">
                 <span><strong>Saldo final bancos:</strong></span>
-                <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span>
+                <span>${{saldo_final_flujo|floatformat:2|intcomma }}</span> {% endcomment %}
             </div>
-            </div>
+            <div class="alert alert-warning text-end">
+        <span><strong>Saldo caja:</strong></span>
+        <span>${{ saldo_caja_chica|floatformat:2|intcomma }}</span>
+    </div>
+            <div class="alert alert-success text-end">
+        <span><strong>Saldo final bancos:</strong></span>
+        <span>${{ saldo_final_bancos_menos_caja|floatformat:2|intcomma }}</span>
+    </div>
         {% endif %}
     </div>
 

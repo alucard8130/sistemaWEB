@@ -10,7 +10,7 @@
         Description: Register charges
     -->
     <meta charset="UTF-8">
-    <title>Nuevo tipo de gasto</title>
+    <title>Alta sub-cuenta de gasto</title>
     <!-- Block for displaying messages -->
     {% if messages %}
         {% for message in messages %}
@@ -35,7 +35,7 @@
             <div class="col-md-4 col-sm-6 mx-auto">
             
             <!-- Styled title with the same width as the form -->
-            <h2 class="form-title text-center mb-0">{% if modo == 'crear' %}Alta{% else %}Editar{% endif %} tipo de gasto</h2>
+            <h2 class="form-title text-center mb-0">{% if modo == 'crear' %}Alta{% else %}Editar{% endif %} Sub-cuenta de gasto</h2>
             <form method="post" class="p-4 rounded custom-form">
                 {% csrf_token %}
                 {% for field in form %}

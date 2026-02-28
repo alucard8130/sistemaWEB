@@ -63,7 +63,7 @@
 
         {% for g in grupos %}
           <tr class="table-primary">
-            <td><strong>GRUPO</strong></td>
+            <td><strong>DEPTO.</strong></td>
             <td><strong>{{ g.grupo }}</strong></td>
             <td class="text-end">${{ g.tot_anterior|floatformat:0 | intcomma }}</td>
             <td class="text-end"><strong>${{ g.tot_actual|floatformat:0 | intcomma }}</strong></td>
@@ -79,7 +79,7 @@
 
           {% for s in g.subgrupos %}
             <tr class="table-light">
-              <td style="padding-left:20px;">SUBGRUPO</td>
+              <td style="padding-left:20px;">CUENTA</td>
               <td style="padding-left:20px;">{{ s.subgrupo }}</td>
               <td class="text-end">${{ s.tot_anterior|floatformat:0 | intcomma }}</td>
               <td class="text-end">${{ s.tot_actual|floatformat:0 | intcomma }}</td>
@@ -95,7 +95,7 @@
 
             {% for t in s.tipos %}
               <tr>
-                <td style="padding-left:40px;">TIPO</td>
+                <td style="padding-left:40px;">SUB-CUENTA</td>
                 <td style="padding-left:40px;">{{ t.tipo }}</td>
                 <td class="text-end">${{ t.anterior|default:0|floatformat:0 | intcomma }}</td>
                 <td class="text-end">${{ t.actual|floatformat:0 | intcomma }}</td>

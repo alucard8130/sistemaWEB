@@ -27,7 +27,7 @@ class TipoGastoForm(forms.ModelForm):
         model = TipoGasto
         fields = ['empresa', 'subgrupo', 'nombre', 'descripcion']
         labels = {
-            'nombre': 'Tipo de Gasto',
+            'nombre': 'Sub-Cuenta de Gasto',
             'subgrupo': 'Cuenta de Gasto',
         }
 
@@ -56,12 +56,12 @@ class TipoGastoForm(forms.ModelForm):
                 elif field_name == 'subgrupo':
                     field.widget.attrs['placeholder'] = 'Selecciona un subgrupo'
                 elif field_name == 'nombre':
-                    field.widget.attrs['placeholder'] = 'Nombre del tipo de gasto'
+                    field.widget.attrs['placeholder'] = 'Nombre de la sub-cuenta de gasto'
                 elif field_name == 'descripcion':
                     field.widget.attrs['placeholder'] = 'Descripción'
         # labels con tilde
         self.fields['descripcion'].label = 'Descripción'
-
+    
 
     def clean_nombre(self):
         nombre = self.cleaned_data['nombre']

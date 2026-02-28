@@ -74,10 +74,10 @@
             <label class="form-label fw-semibold">Mostrar/ocultar columnas:</label>
             <div class="d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="subgrupo">
-                    <i class="bi bi-eye-slash me-1"></i> Subgrupo
+                    <i class="bi bi-eye-slash me-1"></i> Cuenta
                 </button>
                 <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="tipo">
-                    <i class="bi bi-eye-slash me-1"></i> Tipo
+                    <i class="bi bi-eye-slash me-1"></i> Sub-Cuenta
                 </button>
                 <button type="button" class="btn btn-outline-secondary btn-sm toggle-col" data-col="presup">
                     <i class="bi bi-eye-slash me-1"></i> Presup.
@@ -97,9 +97,9 @@
             <table id="reporte-comparativo" class="table align-middle mb-0 shadow-sm">
                 <thead class="encabezado-claro">
                     <tr>
-                        <th rowspan="2">Grupo</th>
-                        <th rowspan="2" class="col-subgrupo">Subgrupo</th>
-                        <th rowspan="2" class="col-tipo">Tipo de gasto</th>
+                        <th rowspan="2">Depto.</th>
+                        <th rowspan="2" class="col-subgrupo">Cuenta</th>
+                        <th rowspan="2" class="col-tipo">Sub-Cuenta</th>
                         {% for mes_nombre in meses_nombres %}
                             <th class="th-mes th-mes-{{ forloop.counter0 }}" colspan="4">{{ mes_nombre|capfirst }}</th>
                         {% endfor %}

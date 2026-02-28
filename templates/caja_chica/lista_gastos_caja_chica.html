@@ -50,7 +50,7 @@
             </div>
             <div class="col-auto">
                 <select name="tipo_gasto" class="form-select">
-                    <option value="">Tipo de Gasto</option>
+                    <option value="">Cuenta de Gasto</option>
                     {% for tg in tipos_gasto %}
                         <option value="{{ tg.id }}" {% if tipo_gasto_id == tg.id|stringformat:"s" %}selected{% endif %}>{{ tg.nombre }}</option>
                     {% endfor %}
@@ -83,7 +83,7 @@
                     <tr>
                         <th>Fondo</th>
                         <th>Proveedor</th>
-                        <th>Tipo de Gasto</th>
+                        <th>Cuenta de Gasto</th>
                         <th>Descripción</th>
                         <th>Importe</th>
                         <th>Fecha</th>
