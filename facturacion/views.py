@@ -171,6 +171,54 @@ def crear_factura(request):
     })
 
 @login_required
+def eliminar_factura(request, factura_id):
+    factura = get_object_or_404(Factura, pk=factura_id)
+
+    # Solo permitir si está pendiente y no tiene pagos parciales
+    pagos_validos = factura.pagos.exclude(forma_pago='nota_credito')
+    tiene_pagos = pagos_validos.exists()
+    puede_eliminar = factura.estatus == 'pendiente' and not tiene_pagos
+
+    if not puede_eliminar:
+        messages.error(request, "Solo puedes eliminar facturas pendientes y sin pagos registrados.")
+        next_url = request.GET.get('next')
+        if next_url:
+            return redirect(next_url)
+        return redirect("lista_facturas")
+
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo')
+        if not motivo:
+            messages.error(request, "Debe proporcionar un motivo para eliminar la factura.")
+            #return redirect('lista_facturas')
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
+            return redirect("lista_facturas")
+
+
+        # Registrar auditoría
+        # AuditoriaCambio.objects.create(
+        #     usuario=request.user,
+        #     accion='eliminar',
+        #     modelo='Factura',
+        #     objeto_id=factura.id,
+        #     descripcion=f"Factura {factura.folio} eliminada. Motivo: {motivo}"
+        # )
+
+        factura.delete()
+        messages.success(request, "Factura eliminada exitosamente.")
+        next_url = request.GET.get('next')
+        if next_url:
+            return redirect(next_url)
+        return redirect("lista_facturas")
+
+    return render(request, 'facturacion/eliminar_factura.html', {
+        'factura': factura
+    })
+
+@login_required
 def lista_facturas(request):
     empresa_id = request.GET.get('empresa')
     local_id = request.GET.get('local_id')
@@ -246,19 +294,19 @@ def lista_facturas(request):
     adeudo_acumulado_mes_actual = sum(
         f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_actual
     )
-    print(f"[DEBUG] Adeudo acumulado mes actual: {adeudo_acumulado_mes_actual}")
+    #print(f"[DEBUG] Adeudo acumulado mes actual: {adeudo_acumulado_mes_actual}")
 
     # Acumulado hasta el mes anterior
     adeudo_acumulado_mes_anterior = sum(
         f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_anterior
     )
-    print(f"[DEBUG] Adeudo acumulado mes anterior: {adeudo_acumulado_mes_anterior}")
+    #print(f"[DEBUG] Adeudo acumulado mes anterior: {adeudo_acumulado_mes_anterior}")
 
       # Acumulado hasta el mes actual del año anterior
     adeudo_acumulado_mes_actual_anio_anterior = sum(    
         f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_actual_anio_anterior
     )
-    print(f"[DEBUG] Adeudo acumulado mes actual anio anterior: {adeudo_acumulado_mes_actual_anio_anterior}")        
+    #print(f"[DEBUG] Adeudo acumulado mes actual anio anterior: {adeudo_acumulado_mes_actual_anio_anterior}")        
 
     # Variación acumulada
     def variacion(actual, anterior):

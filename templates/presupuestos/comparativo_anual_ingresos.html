@@ -17,7 +17,7 @@
 
   <form id="form-filtros" method="get" class="row g-2 mb-3">
     <div class="col-auto">
-      <label class="form-label">Año</label>
+      <label class="form-label">Selecionar Año</label>
       <input type="number" name="anio" value="{{ anio }}" class="form-control" />
     </div>
     {% if request.user.is_superuser %}
@@ -27,7 +27,7 @@
     </div>
     {% endif %}
     <div class="col-auto align-self-end">
-      <button class="btn btn-primary">Actualizar</button>
+      <button class="btn btn-primary">Mostrar</button>
       {% comment %} <a class="btn btn-outline-secondary" href="?anio={{ anio }}&export=excel">Exportar Excel</a> {% endcomment %}
     </div>
   </form>

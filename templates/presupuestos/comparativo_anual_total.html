@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>comparativo ppto gastos vs gastos</title>
+    <title>Comparativo Presupuestal Gastos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
@@ -12,12 +12,11 @@
     {% include 'loading_overlay.html' %}
     
 <div class="container mt-4">
-  
   <h4>Comparativo Presupuestal Gastos — {{ empresa.nombre }} - Año {{ anio }} vs Año {{ anio_ant }}</h4>
 
   <form id="form-filtros" method="get" class="row g-2 mb-3">
     <div class="col-auto">
-      <label class="form-label">Año</label>
+      <label class="form-label">Seleccionar año</label>
       <input type="number" name="anio" value="{{ anio }}" class="form-control" />
     </div>
     {% if request.user.is_superuser %}
@@ -27,21 +26,22 @@
     </div>
     {% endif %}
     <div class="col-auto align-self-end">
-      <button class="btn btn-primary">Actualizar</button>
-      {% comment %} <a class="btn btn-outline-secondary" href="?anio={{ anio }}&export=excel">Exportar Excel</a> {% endcomment %}
+      <button class="btn btn-primary">Mostrar</button>
     </div>
   </form>
-
   <div class="mb-3">
     <table class="table table-sm table-striped">
       <thead class="table-dark">
-        <tr>
+        <tr> 
           <th>Nivel</th>
           <th>Descripción</th>
-          <th class="text-end">Total {{ anio_ant }}</th>
-          <th class="text-end">Total {{ anio }}</th>
-          <th class="text-end">Diferencia</th>
-          <th class="text-end">% Variación</th>
+          <th class="text-end">Ppto {{ anio_ant }}</th>
+          <th class="text-end">Gasto {{ anio_ant }}</th>
+          <th class="text-end">Ppto {{ anio }}</th>
+          <th class="text-end">$Pp-{{ anio }} vs Pp-{{ anio_ant }}</th>
+          <th class="text-end">%Var</th>
+          <th class="text-end">$Pp-{{ anio }} vs Gto-{{ anio_ant }}</th>
+          <th class="text-end">%Var</th>
         </tr>
       </thead>
       <tbody>
@@ -49,31 +49,41 @@
         <tr class="table-secondary">
           <td><strong>GLOBAL</strong></td>
           <td><strong>Total anual</strong></td>
-          <td class="text-end">${{ total_anterior|floatformat:0 | intcomma }}</td>
-          <td class="text-end"><strong>${{ total_actual|floatformat:0 | intcomma }}</strong></td>
-          <td class="text-end">${{ diferencia_total|floatformat:0 | intcomma }}</td>
+          <td class="text-end">${{ ppto_anterior|floatformat:0|intcomma }}</td>
+          <td class="text-end">${{ real_anterior|floatformat:0|intcomma }}</td>
+          <td class="text-end"><strong>${{ ppto_actual|floatformat:0|intcomma }}</strong></td>
+          <td class="text-end">${{ dif_ppto_global|floatformat:0|intcomma }}</td>
           <td class="text-end">
-            {% if pct_total is not None %}
-                {% if pct_total > 0 %}+{% endif %}{{ pct_total|floatformat:0|intcomma }} %
-              {% else %}
-                N/A
-              {% endif %}
-            </td>
-          </tr>
+            {% if pct_ppto_global is not None %}
+              {% if pct_ppto_global > 0 %}+{% endif %}{{ pct_ppto_global|floatformat:0|intcomma }} %
+            {% else %}N/A{% endif %}
+          </td>
+          <td class="text-end">${{ dif_real_global|floatformat:0|intcomma }}</td>
+          <td class="text-end">
+            {% if pct_ejec_global is not None %}
+              {% if pct_ejec_global > 0 %}+{% endif %}{{ pct_ejec_global|floatformat:0|intcomma }} %
+            {% else %}N/A{% endif %}
+          </td>
+        </tr>
 
         {% for g in grupos %}
           <tr class="table-primary">
             <td><strong>DEPTO.</strong></td>
             <td><strong>{{ g.grupo }}</strong></td>
-            <td class="text-end">${{ g.tot_anterior|floatformat:0 | intcomma }}</td>
-            <td class="text-end"><strong>${{ g.tot_actual|floatformat:0 | intcomma }}</strong></td>
-            <td class="text-end">${{ g.diferencia|floatformat:0 | intcomma }}</td>
+            <td class="text-end">${{ g.ppto_anterior|floatformat:0|intcomma }}</td>
+            <td class="text-end">${{ g.real_anterior|floatformat:0|intcomma }}</td>
+            <td class="text-end"><strong>${{ g.ppto_actual|floatformat:0|intcomma }}</strong></td>
+            <td class="text-end">${{ g.dif_ppto|floatformat:0|intcomma }}</td>
             <td class="text-end">
-              {% if g.pct is not None %}
-                {% if g.pct > 0 %}+{% endif %}{{ g.pct|floatformat:0|intcomma }} %
-              {% else %}
-                N/A
-              {% endif %}
+              {% if g.pct_ppto is not None %}
+                {% if g.pct_ppto > 0 %}+{% endif %}{{ g.pct_ppto|floatformat:0|intcomma }} %
+              {% else %}N/A{% endif %}
+            </td>
+            <td class="text-end">${{ g.dif_real|floatformat:0|intcomma }}</td>
+            <td class="text-end">
+              {% if g.pct_ejec is not None %}
+                {% if g.pct_ejec > 0 %}+{% endif %}{{ g.pct_ejec|floatformat:0|intcomma }} %
+              {% else %}N/A{% endif %}
             </td>
           </tr>
 
@@ -81,15 +91,20 @@
             <tr class="table-light">
               <td style="padding-left:20px;">CUENTA</td>
               <td style="padding-left:20px;">{{ s.subgrupo }}</td>
-              <td class="text-end">${{ s.tot_anterior|floatformat:0 | intcomma }}</td>
-              <td class="text-end">${{ s.tot_actual|floatformat:0 | intcomma }}</td>
-              <td class="text-end">${{ s.diferencia|floatformat:0 | intcomma }}</td>
+              <td class="text-end">${{ s.ppto_anterior|floatformat:0|intcomma }}</td>
+              <td class="text-end">${{ s.real_anterior|floatformat:0|intcomma }}</td>
+              <td class="text-end">${{ s.ppto_actual|floatformat:0|intcomma }}</td>
+              <td class="text-end">${{ s.dif_ppto|floatformat:0|intcomma }}</td>
               <td class="text-end">
-                {% if s.pct is not None %}
-                  {% if s.pct > 0 %}+{% endif %}{{ s.pct|floatformat:0|intcomma }} %
-                {% else %}
-                  N/A
-                {% endif %}
+                {% if s.pct_ppto is not None %}
+                  {% if s.pct_ppto > 0 %}+{% endif %}{{ s.pct_ppto|floatformat:0|intcomma }} %
+                {% else %}N/A{% endif %}
+              </td>
+              <td class="text-end">${{ s.dif_real|floatformat:0|intcomma }}</td>
+              <td class="text-end">
+                {% if s.pct_ejec is not None %}
+                  {% if s.pct_ejec > 0 %}+{% endif %}{{ s.pct_ejec|floatformat:0|intcomma }} %
+                {% else %}N/A{% endif %}
               </td>
             </tr>
 
@@ -97,15 +112,20 @@
               <tr>
                 <td style="padding-left:40px;">SUB-CUENTA</td>
                 <td style="padding-left:40px;">{{ t.tipo }}</td>
-                <td class="text-end">${{ t.anterior|default:0|floatformat:0 | intcomma }}</td>
-                <td class="text-end">${{ t.actual|floatformat:0 | intcomma }}</td>
-                <td class="text-end">${{ t.diferencia|floatformat:0 | intcomma }}</td>
+                <td class="text-end">${{ t.ppto_anterior|floatformat:0|intcomma }}</td>
+                <td class="text-end">${{ t.real_anterior|floatformat:0|intcomma }}</td>
+                <td class="text-end">${{ t.ppto_actual|floatformat:0|intcomma }}</td>
+                <td class="text-end">${{ t.dif_ppto|floatformat:0|intcomma }}</td>
                 <td class="text-end">
-                  {% if t.pct is not None %}
-                    {% if t.pct > 0 %}+{% endif %}{{ t.pct|floatformat:0|intcomma }} %
-                  {% else %}
-                    N/A
-                  {% endif %}
+                  {% if t.pct_ppto is not None %}
+                    {% if t.pct_ppto > 0 %}+{% endif %}{{ t.pct_ppto|floatformat:0|intcomma }} %
+                  {% else %}N/A{% endif %}
+                </td>
+                <td class="text-end">${{ t.dif_real|floatformat:0|intcomma }}</td>
+                <td class="text-end">
+                  {% if t.pct_ejec is not None %}
+                    {% if t.pct_ejec > 0 %}+{% endif %}{{ t.pct_ejec|floatformat:0|intcomma }} %
+                  {% else %}N/A{% endif %}
                 </td>
               </tr>
             {% endfor %}
@@ -144,5 +164,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 </body>
-
 </html>

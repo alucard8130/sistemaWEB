@@ -2576,6 +2576,8 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
     return redirect("matriz_presupuesto_ingresos")
 
 
+#comparativa presupuestal gastos vs real
+#comparativo_anual_total.html
 @login_required
 def comparativo_anual_total(request):
     try:
@@ -2601,7 +2603,7 @@ def comparativo_anual_total(request):
             return redirect("dashboard")
         empresa = perfil.empresa
 
-    # consulta: sumar por tipo_gasto relacionando subgrupo y grupo para obtener nombres
+    # Presupuesto (dos años)
     qs = Presupuesto.objects.filter(empresa=empresa, anio__in=[anio, anio_ant])
     rows = qs.values(
         "tipo_gasto",
@@ -2613,7 +2615,21 @@ def comparativo_anual_total(request):
         "anio",
     ).annotate(total=Sum("monto"))
 
-    # helper porcentaje: si anterior>0 -> porcentaje real; si anterior==0 -> +100/-100/0 según caso
+    # Gasto real (solo año anterior)
+    gastos_qs = Gasto.objects.filter(
+        empresa=empresa,
+        fecha__year=anio_ant
+    )
+    gastos_rows = gastos_qs.values(
+        "tipo_gasto",
+        "tipo_gasto__nombre",
+        "tipo_gasto__subgrupo",
+        "tipo_gasto__subgrupo__nombre",
+        "tipo_gasto__subgrupo__grupo",
+        "tipo_gasto__subgrupo__grupo__nombre",
+        "fecha__year",
+    ).annotate(total=Sum("monto"))
+
     def pct_calc(actual, anterior):
         try:
             a = float(actual or 0)
@@ -2625,14 +2641,16 @@ def comparativo_anual_total(request):
                 return round(((a - b) / b) * 100, 2)
             except Exception:
                 return None
-        # b == 0
         if a == b:
             return 0.0
         return 100.0 if a > b else -100.0
 
-    # construir estructura nested por nombres (grupo -> subgrupo -> tipo)
+    # Estructura: grupo > subgrupo > tipo > año
     estructura = {}
-    total_anio = {anio: 0, anio_ant: 0}
+    total_ppto = {anio: 0, anio_ant: 0}
+    total_real = {anio_ant: 0}
+
+    # Presupuesto
     for r in rows:
         g_nombre = (
             r.get("tipo_gasto__subgrupo__grupo__nombre")
@@ -2655,77 +2673,118 @@ def comparativo_anual_total(request):
         y = r.get("anio")
         tot = r.get("total") or 0
 
-        total_anio[y] += tot
+        total_ppto[y] += tot
 
         estructura.setdefault(g_nombre, {})
         estructura[g_nombre].setdefault(sg_nombre, {})
-        estructura[g_nombre][sg_nombre].setdefault(tipo_nombre, {anio: 0, anio_ant: 0})
-        estructura[g_nombre][sg_nombre][tipo_nombre][y] = (
-            estructura[g_nombre][sg_nombre][tipo_nombre].get(y, 0) + tot
-        )
+        estructura[g_nombre][sg_nombre].setdefault(tipo_nombre, {})
+        estructura[g_nombre][sg_nombre][tipo_nombre].setdefault(y, {'presupuesto': 0, 'real': 0})
+        estructura[g_nombre][sg_nombre][tipo_nombre][y]['presupuesto'] += tot
 
-    # calcular agregados y porcentajes
+    # Real (solo año anterior)
+    for r in gastos_rows:
+        g_nombre = r.get("tipo_gasto__subgrupo__grupo__nombre") or "SIN GRUPO"
+        sg_nombre = r.get("tipo_gasto__subgrupo__nombre") or "SIN SUBGRUPO"
+        tipo_nombre = r.get("tipo_gasto__nombre") or "SIN TIPO"
+        y = r.get("fecha__year")  # solo anio_ant
+        tot = r.get("total") or 0
+
+        total_real[y] += tot
+
+        estructura.setdefault(g_nombre, {})
+        estructura[g_nombre].setdefault(sg_nombre, {})
+        estructura[g_nombre][sg_nombre].setdefault(tipo_nombre, {})
+        estructura[g_nombre][sg_nombre][tipo_nombre].setdefault(y, {'presupuesto': 0, 'real': 0})
+        estructura[g_nombre][sg_nombre][tipo_nombre][y]['real'] += tot
+
+    # Calcular agregados y porcentajes
     resultado = []
+    total_real_anterior = total_real.get(anio_ant, 0)
+    total_ppto_anterior = total_ppto.get(anio_ant, 0)
+    total_ppto_actual = total_ppto.get(anio, 0)
+    dif_ppto_global = total_ppto_actual - total_ppto_anterior
+    pct_ppto_global = pct_calc(total_ppto_actual, total_ppto_anterior)
+    dif_real_global = total_ppto_actual - total_real_anterior
+    pct_ejec_global = pct_calc(total_ppto_actual, total_real_anterior)
+
     for grupo, subgrupos in sorted(estructura.items(), key=lambda x: x[0]):
-        grupo_tot = {anio: 0, anio_ant: 0}
+        grupo_ppto = {anio: 0, anio_ant: 0}
+        grupo_real = {anio_ant: 0}
         detalle_subs = []
         for subgrupo, tipos in sorted(subgrupos.items(), key=lambda x: x[0]):
-            sub_tot = {anio: 0, anio_ant: 0}
+            sub_ppto = {anio: 0, anio_ant: 0}
+            sub_real = {anio_ant: 0}
             detalle_tipos = []
             for tipo, vals in sorted(tipos.items(), key=lambda x: x[0]):
-                actual = vals.get(anio, 0) or 0
-                anterior = vals.get(anio_ant, 0) or 0
-                diff = actual - anterior
-                pct = pct_calc(actual, anterior)
-                detalle_tipos.append(
-                    {
-                        "tipo": tipo,
-                        "actual": actual,
-                        "anterior": anterior,
-                        "diferencia": diff,
-                        "pct": pct,
-                    }
-                )
-                sub_tot[anio] += actual
-                sub_tot[anio_ant] += anterior
-            sdiff = sub_tot[anio] - sub_tot[anio_ant]
-            spct = pct_calc(sub_tot[anio], sub_tot[anio_ant])
-            detalle_subs.append(
-                {
-                    "subgrupo": subgrupo,
-                    "tot_actual": sub_tot[anio],
-                    "tot_anterior": sub_tot[anio_ant],
-                    "diferencia": sdiff,
-                    "pct": spct,
-                    "tipos": detalle_tipos,
-                }
-            )
-            grupo_tot[anio] += sub_tot[anio]
-            grupo_tot[anio_ant] += sub_tot[anio_ant]
-        gdiff = grupo_tot[anio] - grupo_tot[anio_ant]
-        gpct = pct_calc(grupo_tot[anio], grupo_tot[anio_ant])
-        resultado.append(
-            {
-                "grupo": grupo,
-                "tot_actual": grupo_tot[anio],
-                "tot_anterior": grupo_tot[anio_ant],
-                "diferencia": gdiff,
-                "pct": gpct,
-                "subgrupos": detalle_subs,
-            }
-        )
+                v_actual = vals.get(anio, {'presupuesto': 0, 'real': 0})
+                v_anterior = vals.get(anio_ant, {'presupuesto': 0, 'real': 0})
+                ppto_actual = v_actual.get('presupuesto', 0)
+                ppto_anterior = v_anterior.get('presupuesto', 0)
+                real_anterior = v_anterior.get('real', 0)
 
-    diferencia_total = total_anio[anio] - total_anio[anio_ant]
-    pct_total = pct_calc(total_anio[anio], total_anio[anio_ant])
+                dif_ppto = ppto_actual - ppto_anterior
+                pct_ppto = pct_calc(ppto_actual, ppto_anterior)
+                dif_real = ppto_actual - real_anterior
+                pct_ejec = pct_calc(ppto_actual, real_anterior)
+
+                detalle_tipos.append({
+                    "tipo": tipo,
+                    "ppto_anterior": ppto_anterior,
+                    "real_anterior": real_anterior,
+                    "ppto_actual": ppto_actual,
+                    "dif_ppto": dif_ppto,
+                    "pct_ppto": pct_ppto,
+                    "dif_real": dif_real,
+                    "pct_ejec": pct_ejec,
+                })
+                sub_ppto[anio] += ppto_actual
+                sub_ppto[anio_ant] += ppto_anterior
+                sub_real[anio_ant] += real_anterior
+            s_dif_ppto = sub_ppto[anio] - sub_ppto[anio_ant]
+            s_pct_ppto = pct_calc(sub_ppto[anio], sub_ppto[anio_ant])
+            s_dif_real = sub_ppto[anio] - sub_real[anio_ant]
+            s_pct_ejec = pct_calc(sub_ppto[anio], sub_real[anio_ant])
+            detalle_subs.append({
+                "subgrupo": subgrupo,
+                "ppto_anterior": sub_ppto[anio_ant],
+                "real_anterior": sub_real[anio_ant],
+                "ppto_actual": sub_ppto[anio],
+                "dif_ppto": s_dif_ppto,
+                "pct_ppto": s_pct_ppto,
+                "dif_real": s_dif_real,
+                "pct_ejec": s_pct_ejec,
+                "tipos": detalle_tipos,
+            })
+            grupo_ppto[anio] += sub_ppto[anio]
+            grupo_ppto[anio_ant] += sub_ppto[anio_ant]
+            grupo_real[anio_ant] += sub_real[anio_ant]
+        g_dif_ppto = grupo_ppto[anio] - grupo_ppto[anio_ant]
+        g_pct_ppto = pct_calc(grupo_ppto[anio], grupo_ppto[anio_ant])
+        g_dif_real = grupo_ppto[anio] - grupo_real[anio_ant]
+        g_pct_ejec = pct_calc(grupo_ppto[anio], grupo_real[anio_ant])
+        resultado.append({
+            "grupo": grupo,
+            "ppto_anterior": grupo_ppto[anio_ant],
+            "real_anterior": grupo_real[anio_ant],
+            "ppto_actual": grupo_ppto[anio],
+            "dif_ppto": g_dif_ppto,
+            "pct_ppto": g_pct_ppto,
+            "dif_real": g_dif_real,
+            "pct_ejec": g_pct_ejec,
+            "subgrupos": detalle_subs,
+        })
 
     contexto = {
         "empresa": empresa,
         "anio": anio,
         "anio_ant": anio_ant,
-        "total_actual": total_anio[anio],
-        "total_anterior": total_anio[anio_ant],
-        "diferencia_total": diferencia_total,
-        "pct_total": pct_total,
+        "ppto_actual": total_ppto_actual,
+        "ppto_anterior": total_ppto_anterior,
+        "real_anterior": total_real_anterior,
+        "dif_ppto_global": dif_ppto_global,
+        "pct_ppto_global": pct_ppto_global,
+        "dif_real_global": dif_real_global,
+        "pct_ejec_global": pct_ejec_global,
         "grupos": resultado,
     }
     return render(request, "presupuestos/comparativo_anual_total.html", contexto)
