@@ -31,6 +31,7 @@ urlpatterns = [
     path('tipos-otro-ingreso-json/', views.tipos_otro_ingreso_json, name='tipos_otro_ingreso_json'),
     path('usuarios-demo/', usuarios_demo, name='usuarios_demo'),
     path('facturas/eliminar/<int:factura_id>/', views.eliminar_factura, name='eliminar_factura'),
+    path('facturas-otros-ingresos/eliminar/<int:factura_id>/', views.eliminar_factura_otros_ingresos, name='eliminar_factura_otros_ingresos'),
 
     
 ]

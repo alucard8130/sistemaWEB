@@ -198,17 +198,8 @@ def eliminar_factura(request, factura_id):
             return redirect("lista_facturas")
 
 
-        # Registrar auditoría
-        # AuditoriaCambio.objects.create(
-        #     usuario=request.user,
-        #     accion='eliminar',
-        #     modelo='Factura',
-        #     objeto_id=factura.id,
-        #     descripcion=f"Factura {factura.folio} eliminada. Motivo: {motivo}"
-        # )
-
         factura.delete()
-        messages.success(request, "Factura eliminada exitosamente.")
+        messages.success(request, f"Factura {factura.folio} eliminada exitosamente.")
         next_url = request.GET.get('next')
         if next_url:
             return redirect(next_url)
@@ -2472,6 +2463,44 @@ def crear_factura_otros_ingresos(request):
         tipos_ingreso = []
 
     return render(request, 'otros_ingresos/crear_factura.html', {'form': form, 'tipos_ingreso': tipos_ingreso})
+
+@login_required
+def eliminar_factura_otros_ingresos(request, factura_id):
+    factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+
+    # Solo permitir si está pendiente y no tiene cobros registrados
+    cobros_validos = factura.cobros.exclude(forma_cobro='nota_credito')
+    tiene_cobros = cobros_validos.exists()
+    puede_eliminar = factura.estatus == 'pendiente' and not tiene_cobros 
+
+    if not puede_eliminar:
+        messages.error(request, "Solo puedes eliminar facturas de otros ingresos pendientes y sin cobros registrados.")
+        next_url = request.GET.get('next')
+        if next_url:
+            return redirect(next_url)
+        return redirect('lista_facturas_otros_ingresos')
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo')
+        if not motivo:
+            messages.error(request, "Debe proporcionar un motivo para eliminar la factura.")
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
+            return redirect('lista_facturas_otros_ingresos')
+
+
+        factura.delete()
+        messages.success(request, f"Factura {factura.folio} de otros ingresos eliminada exitosamente.")
+        next_url = request.GET.get('next')
+        if next_url:
+            return redirect(next_url)
+        return redirect('lista_facturas_otros_ingresos')
+
+    return render(request, 'otros_ingresos/eliminar_factura_otros_ingresos.html', {
+        'factura': factura
+    })
+    
 
 @login_required
 def lista_facturas_otros_ingresos(request):

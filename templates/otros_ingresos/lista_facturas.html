@@ -136,6 +136,9 @@
                                 Reg.Deposito
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
+                              <a href="{% url 'eliminar_factura_otros_ingresos' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger reporte-link" title="Eliminar">
+                                <i class="bi bi-trash me-1"></i>
+                            </a>
                           {% endif %}
                           {% if not factura.empresa.es_plus %}  
                             <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm reporte-link" target="_blank" title="Imprimir Factura">
