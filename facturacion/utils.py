@@ -4,7 +4,7 @@ from .models import Factura
 
 def debe_mostrar_recordatorio_facturacion(empresa):
     hoy = date.today()
-    if hoy.day > 10 and empresa:
+    if hoy.day > 2 and empresa:
         existe = Factura.objects.filter(
             empresa=empresa,
             fecha_emision__year=hoy.year,
