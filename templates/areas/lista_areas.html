@@ -128,6 +128,8 @@
               <th>Fecha Ini</th>
               <th>Fecha Fin</th>
               <th>Vigencia</th>
+              <th>Facturas</th>
+              <th>Contrato</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -161,38 +163,41 @@
                 <span class="badge bg-success">{{ area.estado_vigencia }}</span>
                 {% endif %}
               </td>
-              <td style="white-space: nowrap">
-                 <a
+              <td><a
                   href="{% url 'lista_facturas' %}?area_id={{ area.id }}"
                   class="btn btn-outline-primary btn-sm reporte-link"
-                  title="Registrar pagos"
+                  title="Facturas"
                 >
-                  Adeudos
+                  Ver
                   <i class="bi bi-receipt"></i>
                 </a>
+              </td>
+              <td>
                 {% if area.estado_vigencia == "Vigente" %}
-                 <a href="{% url 'contrato_formulario' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="ver Contrato">  
-                Contrato
+                 <a href="{% url 'contrato_formulario' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="Contrato">  
+                Crear
                   <i class="bi bi-file-earmark-text"></i>
                 </a>
                 {% else %}
-                <spam class="btn btn-sm btn-secondary m-1" title="Contrato no disponible">
-                  Contrato
+                <spam class="btn btn-sm btn-secondary m-1" title="Contrato vencido">
+                  Crear
                   <i class="bi bi-file-earmark-text"></i>
                 </spam>
                 {% endif %}
+              </td>
+              <td style="white-space: nowrap">
                 <a
                   href="{% url 'editar_area' area.pk %}"
                   class="btn btn-sm btn-outline-primary me-1 reporte-link"
                   title="Editar"
-                >
+                >Editar
                   <i class="bi bi-pencil-square"></i>
                 </a>
                 <a
                   href="{% url 'eliminar_area' area.pk %}"
                   class="btn btn-sm btn-outline-danger reporte-link"
                   title="Inactivar"
-                >
+                >Inactivar
                   <i class="bi bi-slash-circle"></i>
               </a>
                 <!-- Button to assign client if area is available -->

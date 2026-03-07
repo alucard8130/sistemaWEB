@@ -170,8 +170,8 @@ class DatosContratoForm(forms.Form):
         self.fields["escritura_numero_arrendador"] = forms.CharField(
             label="Número Escritura Arrendador", max_length=50
         )
-        self.fields["escritura_fecha_arrendador"] = forms.CharField(
-            label="Fecha Escritura Arrendador", max_length=50
+        self.fields["escritura_fecha_arrendador"] = forms.DateField(
+            label="Fecha Escritura Arrendador", widget=forms.DateInput(attrs={"type": "date"})
         )
         self.fields["notario_nombre_arrendador"] = forms.CharField(
             label="Nombre Notario Arrendador", max_length=100
@@ -191,8 +191,8 @@ class DatosContratoForm(forms.Form):
         self.fields["apoderado_numero_escritura_arrendador"] = forms.CharField(
             label="Número Escritura Apoderado", max_length=50
         )
-        self.fields["apoderado_escritura_fecha_arrendador"] = forms.CharField(
-            label="Fecha Escritura del Apoderado", max_length=50
+        self.fields["apoderado_escritura_fecha_arrendador"] = forms.DateField(
+            label="Fecha Escritura del Apoderado", widget=forms.DateInput(attrs={"type": "date"})
         )
         self.fields["apoderado_notario_nombre_arrendador"] = forms.CharField(
             label="Nombre Notario del Apoderado", max_length=100
@@ -203,8 +203,8 @@ class DatosContratoForm(forms.Form):
         self.fields["apoderado_notario_ciudad_arrendador"] = forms.CharField(
             label="Ciudad Notario del Apoderado", max_length=100
         )
-        self.fields["fecha_firma_contrato_arrendador"] = forms.CharField(
-            label="Fecha de Firma del Contrato", max_length=50
+        self.fields["fecha_firma_contrato_arrendador"] = forms.DateField(
+            label="Fecha de Firma del Contrato", widget=forms.DateInput(attrs={"type": "date"})
         )
 
         # Si es persona moral, agrega los campos extra
@@ -212,8 +212,8 @@ class DatosContratoForm(forms.Form):
             self.fields["escritura_numero_arrendatario"] = forms.CharField(
                 label="Número Escritura Arrendatario", max_length=50
             )
-            self.fields["escritura_fecha_arrendatario"] = forms.CharField(
-                label="Fecha Escritura Arrendatario", max_length=50
+            self.fields["escritura_fecha_arrendatario"] = forms.DateField(
+                label="Fecha Escritura Arrendatario", widget=forms.DateInput(attrs={"type": "date"})
             )
             self.fields["notario_nombre_arrendatario"] = forms.CharField(
                 label="Nombre Notario Arrendatario", max_length=100

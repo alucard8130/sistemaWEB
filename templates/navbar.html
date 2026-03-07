@@ -108,11 +108,8 @@
                         <li><a class="dropdown-item" href="{% url 'registrar_deposito_por_identificar' %}">Registrar Deposito no identificado</a></li>
                         <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}">Asignar Deposito no identificado</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        {% comment %} {% if empresa.es_plus %}
-                        <li><a class="dropdown-item" href="{% url 'subir_estado_cuenta' %}">Conciliación Bancaria</a></li>
-                        {% else %}
-                        <spam><li><a class="dropdown-item disabled" href="#" tabindex="-1" aria-disabled="true">Conciliación Bancaria (Plus)</a></li></spam>
-                        {% endif %} {% endcomment %}
+                        <li><a class="dropdown-item" href="{% url 'conciliaciones:cargar_estado_cuenta' %}">Cargar Edo.Cta</a></li>
+                        <li><a class="dropdown-item" href="{% url 'conciliaciones:lista_movimientos' estado_id=1 %}">Movimientos</a></li>
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
                         {% endif %}

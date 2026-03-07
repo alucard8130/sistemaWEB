@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tipo de contribuyente requerido</title>
+    <script>
+        window.onload = function() {
+            if (window.opener) {
+                window.opener.alert("{{ mensaje }}");
+                window.close();
+            } else {
+                alert("{{ mensaje }}");
+                window.close();
+            }
+        }
+    </script>
+</head>
+<body>
+    <p style="text-align:center; margin-top:40px; color:#b94a48; font-size:1.2rem;">
+        {{ mensaje }}
+    </p>
+</body>
+</html>

@@ -8,7 +8,6 @@ from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes,
 from areas import views
 from caja_chica.views import (comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, 
                               fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica)
-from conciliaciones.views import descargar_plantilla_estado_cuenta, subir_estado_cuenta
 from empleados.views import (exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista)
 from facturacion.views import (consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
@@ -74,6 +73,7 @@ urlpatterns = [
     path('empleados/', include('empleados.urls')),
     path('gastos/', include('gastos.urls')),
     path('presupuestos/', include('presupuestos.urls')),
+    path('conciliaciones/', include('conciliaciones.urls')),
     path('clientes/inactivos/', clientes_inactivos, name='clientes_inactivos'),
     path('clientes/reactivar/<int:pk>/', reactivar_cliente, name='reactivar_cliente'),
     path('informes/', include('informes_financieros.urls')),
@@ -138,7 +138,7 @@ urlpatterns = [
     path('votaciones/resultados/<int:tema_id>/', resultados_votacion, name='resultados_votacion'),
     path('votaciones/crear/', crear_tema_y_enviar, name='crear_tema_y_enviar'),
     path('votaciones/eliminar/<int:tema_id>/', eliminar_tema, name='eliminar_tema'),
-    path('conciliacion/subir/', subir_estado_cuenta, name='subir_estado_cuenta'),
+    #path('conciliacion/subir/', subir_estado_cuenta, name='subir_estado_cuenta'),
     path('factura/timbrar/<int:pk>/', timbrar_factura, name='timbrar_factura'),
     path('factura/descargar-timbrada/<int:pk>/', descargar_factura_timbrada, name='descargar_factura_timbrada'),
     path('facturacion/subir-csd/', subir_csd_facturama, name='subir_csd_facturama'),
@@ -155,8 +155,8 @@ urlpatterns = [
     path("gastos_caja_chica/<int:gasto_id>/eliminar/",eliminar_gasto_caja, name="eliminar_gasto_caja"),
     path("fondeos/<int:fondeo_id>/eliminar/", eliminar_fondeo, name="eliminar_fondeo"),
     path("vales/<int:vale_id>/comprobar/", comprobar_vale, name="comprobar_vale"),
-    path('estado-cuenta/', subir_estado_cuenta, name='subir_estado_cuenta'),
-    path('estado-cuenta/descargar-plantilla/', descargar_plantilla_estado_cuenta, name='descargar_plantilla_estado_cuenta'),
+    #path('estado-cuenta/', subir_estado_cuenta, name='subir_estado_cuenta'),
+    #path('estado-cuenta/descargar-plantilla/', descargar_plantilla_estado_cuenta, name='descargar_plantilla_estado_cuenta'),
     path('api/empresas/', api_empresas_lista, name='api_empresas_lista'),
     path('api/locales/<int:empresa_id>/', api_locales_por_empresa, name='api_locales_por_empresa'),
     path('api/areas/<int:empresa_id>/', api_areas_por_empresa, name='api_areas_por_empresa'),
@@ -197,6 +197,7 @@ urlpatterns = [
     path('presupuestos/borrar_gastos/', borrar_presupuesto_gastos, name='borrar_presupuesto_gastos'),
     path('presupuestos/borrar_ingresos/', borrar_presupuesto_ingresos, name='borrar_presupuesto_ingresos'),
     path('presupuestos/exportar_matriz_ingresos_excel/', exportar_matriz_presupuesto_ingresos_excel, name='exportar_matriz_presupuesto_ingresos_excel'),
+
     
 ]
 

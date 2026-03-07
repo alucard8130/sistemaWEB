@@ -34,7 +34,12 @@
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
-
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Atención:</strong>
+            <p>Este proceso incrementará las cuotas de mantenimiento de las áreas comunes en el porcentaje que indiques. Asegúrate de revisar los importes antes de confirmar.</p>
+            <p>Tambien puedes incrementar las cuotas de forma individual desde la sección de <a href="{% url 'lista_areas' %}">Áreas Comunes--> Editar</a>.</p>
+        </div>
         <!-- Centered form only -->
         <div class="d-flex align-items-center justify-content-center min-vh-50">
             <form method="post" class="p-4 custom-form" style="width: 100%; max-width: 400px;">

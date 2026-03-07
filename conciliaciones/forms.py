@@ -1,7 +1,8 @@
 
-#modulo conciliacion bancaria
 from django import forms
+from .models import EstadoCuenta
 
-
-# class EstadoCuentaUploadForm(forms.Form):
-#     archivo = forms.FileField(label="Estado de cuenta bancario (.csv)")
+class EstadoCuentaForm(forms.ModelForm):
+    class Meta:
+        model = EstadoCuenta
+        fields = ['periodo', 'archivo']

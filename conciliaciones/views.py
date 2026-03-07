@@ -1,44 +1,45 @@
-from pyexpat.errors import messages
-from django.http import HttpResponse
-from django.shortcuts import redirect, render
-from django.contrib.auth.decorators import login_required
-from django import forms
-from .models import EstadoCuentaBancario
+from django.shortcuts import render, redirect
+from .forms import EstadoCuentaForm
+from .models import EstadoCuenta, MovimientoBancario
+import csv
+import io
+from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_POST
+# Si quieres procesar PDF, instala pdfplumber y agrégalo aquí
 
-
-# Create your views here.
-# conciliación bancaria
-@login_required
-
-class EstadoCuentaUploadForm(forms.ModelForm):
-    class Meta:
-        model = EstadoCuentaBancario
-        fields = ['empresa', 'archivo']
-
-def subir_estado_cuenta(request):
+def cargar_estado_cuenta(request):
     if request.method == 'POST':
-        form = EstadoCuentaUploadForm(request.POST, request.FILES)
+        form = EstadoCuentaForm(request.POST, request.FILES)
         if form.is_valid():
-            estado_cuenta = form.save(commit=False)
-            # El procesamiento y llenado de datos se hará después
-            estado_cuenta.save()
-            messages.success(request, "Archivo subido correctamente. Procesando datos...")
-            # Redirige a la vista de procesamiento
-            return redirect('procesar_estado_cuenta', estado_cuenta_id=estado_cuenta.id)
+            estado = form.save(commit=False)
+            estado.empresa = request.user.empresa  # Toma la empresa del usuario firmado
+            estado.save()
+            archivo = request.FILES['archivo']
+            if archivo.name.endswith('.csv'):
+                data = archivo.read().decode('utf-8')
+                reader = csv.DictReader(io.StringIO(data))
+                for row in reader:
+                    MovimientoBancario.objects.create(
+                        estado_cuenta=estado,
+                        fecha=row['fecha'],
+                        descripcion=row['descripcion'],
+                        importe=row['importe'],
+                        tipo=row['tipo'].lower(),  # 'cargo' o 'abono'
+                    )
+            # Aquí puedes agregar lógica para PDF
+            return redirect('conciliacion:lista_movimientos', estado_id=estado.id)
     else:
-        form = EstadoCuentaUploadForm(request.GET)
-    return render(request, 'conciliaciones/subir_estado_cuenta.html', {'form': form})
+        form = EstadoCuentaForm()
+    return render(request, 'conciliacion/cargar_estado_cuenta.html', {'form': form})
 
+def lista_movimientos(request, estado_id):
+    estado = get_object_or_404(EstadoCuenta, id=estado_id)
+    movimientos = estado.movimientos.all()
+    return render(request, 'conciliacion/lista_movimientos.html', {'estado': estado, 'movimientos': movimientos})
 
-@login_required
-def descargar_plantilla_estado_cuenta(request):
-    contenido = (
-        "fecha,cargo,abono,descripcion\n"
-        "01/10/2025,0,1500.00,Pago cuota octubre\n"
-        "02/10/2025,500.00,0,Pago gasto limpieza\n"
-        "03/10/2025,0,2000.00,Fondeo caja chica\n"
-        "04/10/2025,0,1200.00,Pago otros ingresos\n"
-    )
-    response = HttpResponse(contenido, content_type="text/csv")
-    response["Content-Disposition"] = "attachment; filename=plantilla_estado_cuenta.csv"
-    return response
+@require_POST
+def no_identificar(request, mov_id):
+    mov = get_object_or_404(MovimientoBancario, id=mov_id)
+    mov.deposito_por_identificar = True
+    mov.save()
+    return redirect('conciliaciones:lista_movimientos', estado_id=mov.estado_cuenta.id)

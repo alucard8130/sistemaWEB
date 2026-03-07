@@ -34,8 +34,8 @@
     </div> -->
 
     <!-- Main content -->
-    <div class="container py-4">
-        <h2>Incrementar cuotas</h2>
+    <div class="container py-4">    
+        <h2>Incrementar cuotas mantenimiento propiedades</h2>
         
         <!-- Block for displaying messages -->
         {% if messages %}
@@ -43,6 +43,12 @@
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Atención:</strong>
+            <p>Este proceso incrementará las cuotas de mantenimiento de los locales comerciales en el porcentaje que indiques. Asegúrate de revisar los importes antes de confirmar.</p>
+            <p>Tambien puedes incrementar las cuotas de forma individual desde la sección de <a href="{% url 'lista_locales' %}">Propiedades--> Editar</a>.</p>
+        </div>
 
         <!-- Centered form only -->
         <div class="d-flex align-items-center justify-content-center min-vh-50">

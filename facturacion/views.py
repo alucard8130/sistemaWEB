@@ -621,11 +621,13 @@ def confirmar_facturacion(request):
 
     # FILTRAR locales y áreas activos con cliente
     if request.user.is_superuser:
-        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False)
-        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False)
+        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False,es_cuota_anual=False)
+        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False,es_cuota_anual=False)
+        filtro_facturas = Q()
     else:
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False,es_cuota_anual=False)
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False,es_cuota_anual=False)
+        filtro_facturas = Q(empresa=empresa)
 
     # CONTAR locales no facturados aún este mes
     total_locales = sum(
@@ -640,16 +642,73 @@ def confirmar_facturacion(request):
         for a in areas
     )
 
+    # --- Validación de secuencia de meses/años ---
+    anios_a_revisar = [año - 1, año]
+    meses_emitidos_por_anio = defaultdict(set)
+    facturas_emitidas = Factura.objects.filter(
+        filtro_facturas,
+        fecha_emision__year__in=anios_a_revisar
+    ).values_list('fecha_emision__year', 'fecha_emision__month')
+
+    for anio_f, mes_f in facturas_emitidas:
+        meses_emitidos_por_anio[anio_f].add(mes_f)
+
+    meses_faltantes_por_anio = {}
+    for anio_r in anios_a_revisar:
+        max_mes = 12 if anio_r < año else mes
+        meses_faltantes = [m for m in range(1, max_mes + 1) if m not in meses_emitidos_por_anio[anio_r]]
+        if meses_faltantes:
+            meses_faltantes_por_anio[anio_r] = meses_faltantes
+
+    # Determina el mes/año más antiguo faltante
+    if meses_faltantes_por_anio:
+        anio_permitido = min(meses_faltantes_por_anio.keys())
+        mes_permitido = min(meses_faltantes_por_anio[anio_permitido])
+    else:
+        anio_permitido = año
+        mes_permitido = mes
+
+    # Prepara mensaje de periodos faltantes
+    nombres_meses = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    faltantes_mensaje = []
+    for anio_f, meses_f in sorted(meses_faltantes_por_anio.items()):
+        meses_nombres = ", ".join([nombres_meses[m-1] for m in meses_f])
+        faltantes_mensaje.append(f"{anio_f}: {meses_nombres}")
+
+    # if faltantes_mensaje:
+    #     messages.error(
+    #         request,
+    #         "Faltan por emitir cuotas de los siguientes periodos:<br>" +
+    #         "<br>".join(faltantes_mensaje)
+    #     )
+
     if request.method == 'POST':
+        anio = int(request.POST.get('anio', anio_permitido))
+        mes_post = int(request.POST.get('mes', mes_permitido))
         facturar_locales = 'locales' in request.POST
         facturar_areas = 'areas' in request.POST
+
+        # Solo permite facturar el periodo más antiguo faltante
+        if (anio, mes_post) != (anio_permitido, mes_permitido):
+            messages.error(request, "Solo puedes facturar el periodo más antiguo pendiente.")
+            return redirect('facturacion:confirmar_facturacion')
+
+        request.POST = request.POST.copy()
+        request.POST['anio'] = anio
+        request.POST['mes'] = mes_post
         return facturar_mes_actual(request, facturar_locales, facturar_areas)
 
     return render(request, 'facturacion/confirmar_facturacion.html', {
         'total_locales': total_locales,
         'total_areas': total_areas,
-        'año': año,
-        'mes': mes
+        'año': anio_permitido,
+        'mes': mes_permitido,
+        'anio_permitido': anio_permitido,
+        'mes_permitido': mes_permitido,
+        'faltantes_mensaje': faltantes_mensaje,
     })
 
 @login_required

@@ -413,7 +413,13 @@ def contrato_formulario(request, area_id):
         messages.error(request, "La Generación de contratos solo está disponible en la versión PLUS")
         return redirect('lista_areas')
     
+    #tipo_contribuyente = getattr(area.cliente, 'tipo_contribuyente', None)
+    # Validar tipo_contribuyente
     tipo_contribuyente = getattr(area.cliente, 'tipo_contribuyente', None)
+    if not tipo_contribuyente:
+        return render(request, 'areas/cerrar_ventana_tipo_contribuyente.html', {
+            'mensaje': "Debes asignar el tipo de contribuyente al cliente antes de generar el contrato. Edita el cliente y captura la información necesaria, luego regresa aquí para generar el contrato."
+    })
 
     if request.method == 'POST':
         form = DatosContratoForm(request.POST, tipo_contribuyente=tipo_contribuyente)

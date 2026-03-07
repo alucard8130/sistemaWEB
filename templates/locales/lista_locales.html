@@ -115,6 +115,7 @@
                         <th>Anual</th>
                         <th>Giro</th>
                         <th>Status</th>
+                        <th>Facturas</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -143,15 +144,19 @@
                                 <td>{{ local.giro }}</td>
                             {% endif %}
                             <td> {{ local.get_status_display }}</td> 
-                            <td style="white-space: nowrap;">
-                                   <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Registrar pagos">
-                                    Adeudos
+                            <td><a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Registrar pagos">
+                                    Ver
                                     <i class="bi bi-receipt"></i> 
                                 </a>
+                            </td>
+                            <td style="white-space: nowrap;">
+                                   
                                 <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar">
+                                  Editar
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
                                 <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar">
+                                    Inactivar 
                                     <i class="bi bi-slash-circle"></i>
                                 </a>
                             </td>
