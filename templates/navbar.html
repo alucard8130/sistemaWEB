@@ -108,8 +108,8 @@
                         <li><a class="dropdown-item" href="{% url 'registrar_deposito_por_identificar' %}">Registrar Deposito no identificado</a></li>
                         <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}">Asignar Deposito no identificado</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'conciliaciones:cargar_estado_cuenta' %}">Cargar Edo.Cta</a></li>
-                        <li><a class="dropdown-item" href="{% url 'conciliaciones:lista_movimientos' estado_id=1 %}">Movimientos</a></li>
+                        {% comment %} <li><a class="dropdown-item" href="{% url 'conciliaciones:cargar_estado_cuenta' %}">Cargar Edo.Cta</a></li>
+                        <li><a class="dropdown-item" href="{% url 'conciliaciones:lista_movimientos' estado_id=1 %}">Movimientos</a></li> {% endcomment %}
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
                         {% endif %}
