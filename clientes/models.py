@@ -1,5 +1,7 @@
 
 # Create your models here.
+import uuid
+
 from django.db import models
 from empresas.models import Empresa
 
@@ -37,10 +39,17 @@ class Cliente(models.Model):
     tipo_contribuyente = models.CharField(max_length=100, choices=CHOISE_TIPO_CONTRIBUYENTE, blank=True, null=True)
     direccion_domicilio = models.TextField(max_length=255, blank=True, null=True)
     factura_global = models.BooleanField(default=False)
+    referencia_pago= models.CharField(max_length=16, unique=True, blank=True, null=True)
 
     def __str__(self):
         return f"{self.nombre}"
         #return f"{self.nombre} {self.rfc} ({self.empresa.nombre})"
+        
+    def save(self, *args, **kwargs):
+        if not self.referencia_pago:
+            # Genera una referencia única, por ejemplo: CL-XXXXXX
+            self.referencia_pago = f"CL-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ('empresa', 'rfc')

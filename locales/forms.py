@@ -1,4 +1,5 @@
 from django import forms
+from jmespath import Options
 from clientes.models import Cliente
 from .models import LocalComercial
 from empresas.models import Empresa
@@ -59,7 +60,7 @@ class LocalComercialForm(forms.ModelForm):
             "numero": "Número, Codigo o Id.",
             "ubicacion": "Ubicación",
             "status": "Estatus",
-            "cliente": "Arrendatario/Inquilino",
+            "cliente": "Arrendatario/Inquilino/Cliente",
         }
 
     def __init__(self, *args, **kwargs):

@@ -33,7 +33,7 @@ class LocalComercial(models.Model):
         ('bodega', 'Bodega'),
         ('terreno', 'Terreno'),
     ]
-    tipo_propiedad = models.CharField(max_length=20, choices=TIPO_CHOICES, default='local')
+    tipo_propiedad = models.CharField(max_length=20, choices=TIPO_CHOICES)
 
 
     def __str__(self):

@@ -68,27 +68,30 @@
         <div class="table-responsive rounded-3 border" style="font-size:0.9rem;"> 
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
-                    <tr>
+                    <tr>  
+                        {% if request.user.is_superuser %}
+                            <th>Empresa</th> 
+                        {% endif %}
                         <th>Id</th>
                         <th>Nombre</th>
                         <th>RFC</th>
                         <th>Tipo Contribuyente</th>
                         <th>Régimen Fiscal</th>
-                        <th>Domicilio Fiscal</th>
+                        {% comment %} <th>Domicilio Fiscal</th> {% endcomment %}
                         <th>Código Postal</th>
                         <th>Uso CFDI</th>
-                        <th>Factura Global</th>
                         <th>Email</th>
-                        {% if request.user.is_superuser %}
-                            <th>Empresa</th> 
-                        {% endif %}
-                        <th>Activo</th>
+                        <th>Factura Global</th>                        
                         <th>Acciones</th>
+                        <th>Referencia Pago</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for cliente in clientes %}
                     <tr>
+                        {% if request.user.is_superuser %}
+                            <td>{{ cliente.empresa.nombre }}</td>
+                        {% endif %}
                         <td>{{ cliente.id }}</td>
                         <td>{{ cliente.nombre }}</td>
                         <td>{{ cliente.rfc }}</td>
@@ -98,32 +101,34 @@
                             <td>{{ cliente.tipo_contribuyente }}</td>
                         {% endif %}
                         <td>{{ cliente.regimen_fiscal }}</td>
-                        <td>{{ cliente.direccion_domicilio }}</td>
+                        {% comment %} <td>{{ cliente.direccion_domicilio }}</td> {% endcomment %}
                         <td>{{ cliente.codigo_postal }}</td>
                         <td>{{ cliente.uso_cfdi }}</td>
+                         {% if cliente.email == None or cliente.email == '' %}
+                            <td></td>
+                        {% else %}
+                            <td>{{ cliente.email }}</td>
+                        {% endif %}                
                         <td>
                             <form method="post" action="{% url 'actualizar_factura_global' cliente.id %}">
                             {% csrf_token %}
                             <input type="checkbox" name="factura_global" value="true"
                                 {% if cliente.factura_global %}checked{% endif %}
-                                onchange="this.form.submit()">
+                                onchange="this.form.submit()" title="Marque para activar factura global, desmarque para desactivar">
                             </form>
-                        </td>
-                        {% if cliente.email == None or cliente.email == '' %}
-                            <td></td>
-                        {% else %}
-                            <td>{{ cliente.email }}</td>
-                        {% endif %}
-                        {% if request.user.is_superuser %}
-                            <td>{{ cliente.empresa.nombre }}</td>
-                        {% endif %}
-                        <td>{{ cliente.activo }}</td>
+                        </td>        
                         <td class="text-nowrap">
                             <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                             <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar">
                                 <i class="bi bi-slash-circle"></i>
+                            </a>
+                           
+                        </td>
+                        <td class="text-nowrap">
+                         <a href="{% url 'instrucciones_pago_pdf' cliente.pk %}" class="btn btn-sm btn-outline-secondary" title="Instrucciones de Pago">
+                                <i class="bi bi-file-earmark-pdf"></i>
                             </a>
                         </td>
                     </tr>

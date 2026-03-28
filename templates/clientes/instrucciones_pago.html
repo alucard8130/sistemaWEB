@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Instrucciones de Pago</title>
+    <style>
+        body { font-family: 'Rubik', Arial, sans-serif; background: #f8f9fa; color: #222; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #0001; padding: 32px; }
+        .empresa-header { text-align: center; margin-bottom: 24px; }
+        .empresa-nombre { font-size: 2em; color: #1a237e; font-weight: 700; letter-spacing: 1px; }
+        .section-title { color: #6b4c4c; margin-top: 24px; margin-bottom: 12px; }
+        .referencia-box { background: #e3f2fd; border-left: 5px solid #1976d2; padding: 18px 20px; border-radius: 8px; margin-bottom: 18px; text-align: center; }
+        .referencia-label { font-size: 1.1em; color: #1976d2; }
+        .referencia { font-size: 1.7em; color: #222; font-weight: bold; letter-spacing: 2px; }
+        .barras { margin: 12px 0 0 0; }
+        ul.datos-bancarios { list-style: none; padding: 0; margin: 0 0 18px 0; }
+        ul.datos-bancarios li { margin-bottom: 6px; font-size: 1.1em; }
+        .footer { text-align: center; color: #888; font-size: 0.95em; margin-top: 32px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="empresa-header">
+            <div class="empresa-nombre">{{ datos_empresa.nombre }}</div>
+            <div style="font-size:1.1em; color:#555;">Instrucciones para Pago de Cuotas</div>
+        </div>
+
+        <div class="referencia-box">
+            <div class="referencia-label">Referencia de pago para transferencias o depósitos:</div>
+            <div class="referencia">{{ cliente.referencia_pago }}</div>
+            <div class="barras">
+                <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text={{ cliente.referencia_pago }}&scale=2&includetext" alt="Código de barras de la referencia" style="margin-top:8px;max-width:100%;height:60px;">
+            </div>
+        </div>
+
+        <div>
+            <span class="section-title">Cliente:</span> <strong>{{ cliente.nombre }}</strong>
+        </div>
+
+        <div>
+            <span class="section-title">Datos Bancarios</span>
+            <ul class="datos-bancarios">
+                <li><strong>Banco:</strong> {{ datos_bancarios.banco }}</li>
+                <li><strong>Cuenta:</strong> {{ datos_bancarios.cuenta }}</li>
+                <li><strong>CLABE:</strong> {{ datos_bancarios.clabe }}</li>
+                <li><strong>Titular:</strong> {{ datos_bancarios.titular }}</li>
+            </ul>
+        </div>
+
+        <div style="margin-top:18px;">
+            <p>Por favor, al realizar su depósito o transferencia, indique la <strong>referencia de pago</strong> y el monto correspondiente para identificar su abono correctamente.</p>
+        </div>
+
+        <div class="footer">
+            © {% now "Y" %} {{ empresa.nombre }}. Todos los derechos reservados.
+        </div>
+    </div>
+</body>
+</html>

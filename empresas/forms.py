@@ -11,6 +11,7 @@ class EmpresaForm(forms.ModelForm):
             'codigo_postal',
             'cuenta_bancaria',
             'numero_cuenta',
+            'clabe',
             'saldo_inicial',
             'saldo_final',
             'direccion',
@@ -54,6 +55,10 @@ class EmpresaForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Número de Cuenta'
             }),
+            'clabe': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'CLABE'
+            }),
             'saldo_inicial': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Saldo Inicial'
@@ -75,6 +80,7 @@ class EmpresaForm(forms.ModelForm):
             'numero_cuenta': 'Número de Cuenta',
             'saldo_inicial': 'Saldo Inicial',
             'saldo_final': 'Saldo Final',
+            'clabe': 'CLABE interbancaria',
         }
 
         

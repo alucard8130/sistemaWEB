@@ -4,7 +4,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from unidecode import unidecode
+from weasyprint import HTML
 from empresas.models import Empresa
+from facturacion.models import Factura
 from .models import Cliente
 from .forms import ClienteCargaMasivaForm, ClienteForm
 from django.contrib.admin.views.decorators import staff_member_required
@@ -13,6 +15,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum, Avg
 from django.views.decorators.http import require_POST
+from django.template.loader import render_to_string
 
 
 @login_required
@@ -267,3 +270,28 @@ def actualizar_factura_global(request, cliente_id):
     cliente.factura_global = factura_global
     cliente.save()
     return redirect(reverse('lista_clientes'))
+
+def instrucciones_pago_pdf(request, cliente_id):
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    # filtrar la primera factura
+    factura=Factura.objects.filter(cliente=cliente).order_by('fecha_emision').latest('fecha_emision')
+    local_num = factura.local if factura.local else "N/A"
+    area_num = factura.area_comun if factura.area_comun else "N/A"
+
+    datos_bancarios = {
+        'banco': cliente.empresa.cuenta_bancaria if hasattr(cliente.empresa, 'cuenta_bancaria') else 'Banco Ejemplo',
+        'cuenta':cliente.empresa.numero_cuenta if hasattr(cliente.empresa, 'numero_cuenta') else '1234567890',
+        'clabe': cliente.empresa.clabe if hasattr(cliente.empresa, 'clabe') else '012345678901234567',
+        'titular': cliente.empresa.nombre if hasattr(cliente.empresa, 'nombre') else 'Empresa Ejemplo',
+    }
+    contexto = {
+        'cliente': cliente,
+        'datos_bancarios': datos_bancarios,
+        'local_num': local_num,
+        'area_num': area_num,
+    }
+    html_string = render_to_string('clientes/instrucciones_pago.html', contexto)
+    pdf = HTML(string=html_string).write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="instrucciones_pago_{cliente.referencia_pago}.pdf"'
+    return response

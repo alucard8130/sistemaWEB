@@ -66,6 +66,7 @@
                         <th>Email</th>
                         <th>Banco</th>
                         <th>Número de cuenta</th>
+                        <th>CLABE</th>
                         <th>Saldo Inicial</th>
                         <th>Acciones</th>
                     </tr>
@@ -81,6 +82,7 @@
                             <td>{{ empresa.email }}</td>
                             <td>{{ empresa.cuenta_bancaria }}</td>
                             <td>{{ empresa.numero_cuenta }}</td>
+                            <td>{{ empresa.clabe }}</td>
                             <td>${{ empresa.saldo_inicial|floatformat:2 |intcomma }}</td>
                             <td>
                                 {% if request.user.is_superuser %}
@@ -97,7 +99,7 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted">No hay empresas registradas.</td>
+                            <td colspan="11" class="text-center text-muted">No hay empresas registradas.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
