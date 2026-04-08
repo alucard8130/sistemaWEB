@@ -564,7 +564,7 @@ def registro_usuario(request):
             return redirect("login")
     return render(request, "registro.html", {"mensaje": mensaje})
 
-
+#lista usurios demo
 @staff_member_required
 @login_required
 def usuarios_demo(request):
