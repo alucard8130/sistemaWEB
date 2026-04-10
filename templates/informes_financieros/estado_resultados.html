@@ -50,7 +50,7 @@
             </h2>
 
             <h4 class="text-primary fw-semibold mb-2">
-                <i class="bi bi-bar-chart-line"></i> Estado de resultados
+                <i class="bi bi-bar-chart-line"></i>Reporte de Resultados
             </h4>
             
             <div class="text-muted fs-5">
@@ -61,26 +61,26 @@
                         {% endwith %}
                     {% else %}
 
-                         <small class="text-muted">Periodo Actual: <strong>{{ mes_letra }}</strong></small>
+                         <small class="text-muted">Periodo: <strong>{{ mes_letra }}</strong></small>
                     {% endif %}
                 </strong>
             </div>
         </div>
 
-        <div class="d-flex justify-content-center mb-3">
+        {% comment %} <div class="d-flex justify-content-center mb-3">
             <div class="btn-group" role="group" aria-label="Modo de informe">
-                <a href="?modo=flujo{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
+                {% comment %} <a href="?modo=flujo{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
                 class="btn btn-outline-soft-blue {% if modo == 'flujo' %}active{% endif %} reporte-link">
                 <i class="bi bi-arrow-repeat"></i>
                     Flujo
-                </a>
+                </a> {% endcomment %}
                 {% comment %} <a href="?modo=resultados{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}{% if anio %}&anio={{ anio }}{% endif %}"
                 class="btn btn-outline-soft-blue {% if modo == 'resultados' or not modo %}active{% endif %} reporte-link">
                 <i class="bi bi-bar-chart-line"></i>    
                     Resultados
-                </a> {% endcomment %}
+                </a> 
             </div>
-        </div>
+        </div> {% endcomment %}
 
         {% if modo == 'resultados' or not modo %}
             <div class="alert alert-blue-soft mb-2 text-center">
@@ -88,7 +88,7 @@
             </div>
         {% elif modo == 'flujo' %}
             <div class="alert alert-blue-soft mb-2 text-center">
-                Modo: <strong>Flujo</strong> (solo ingresos cobrados y gastos pagados)
+                Modo: <strong>Flujo Efectivo</strong> (solo ingresos cobrados y gastos pagados)
             </div>
         {% endif %}
 
