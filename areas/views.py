@@ -46,7 +46,7 @@ def lista_areas(request):
     promedio_precio_m2 = total_cuotas / superficie_total if superficie_total > 0 else 0
     status_vencido = areas.filter(fecha_fin__lt=datetime.now()).count()
     status_vigente = areas.filter(fecha_fin__gte=datetime.now()).count()
-    porcentaje_vencido = (status_vencido / total_areas * 100)
+    porcentaje_vencido = (status_vencido / total_areas * 100) if total_areas > 0 else 0
      
     
     paginator = Paginator(areas, 25)
