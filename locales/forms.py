@@ -30,8 +30,11 @@ class LocalComercialForm(forms.ModelForm):
                 attrs={"class": "form-control", "placeholder": "Propietario"}
             ),
             "cliente": forms.Select(attrs={"class": "form-control"}),
+
             "empresa": forms.Select(attrs={"class": "form-control"}),
+
             "tipo_propiedad": forms.Select(attrs={"class": "form-control"}),
+            
             "superficie_m2": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Superficie_m2"}
             ),

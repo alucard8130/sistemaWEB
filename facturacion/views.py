@@ -643,7 +643,10 @@ def confirmar_facturacion(request):
     )
 
     # --- Validación de secuencia de meses/años ---
-    anios_a_revisar = [año - 1, año]
+    #revisa el ano actual y un ano anterior para permitir facturar meses anteriores del mismo año, pero no del año pasado. Si se quiere permitir facturar meses del año pasado, se debe revisar el año pasado y el actual, pero eso permitiría facturar meses anteriores del año pasado aunque no se hayan facturado meses posteriores del mismo año pasado
+    #anios_a_revisar = [año - 1, año]
+    #revisa solo el anio actual para permitir facturar meses anteriores del mismo año, pero no del año pasado
+    anios_a_revisar = [año]
     meses_emitidos_por_anio = defaultdict(set)
     facturas_emitidas = Factura.objects.filter(
         filtro_facturas,

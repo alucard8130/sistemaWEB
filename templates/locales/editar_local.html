@@ -62,6 +62,9 @@
             <div class="mb-3">
               {{ form.cliente.label_tag }} {{ form.cliente }} {{ form.cliente.errors }}
             </div>
+            <div class="mb-3">
+              {{ form.tipo_propiedad.label_tag }} {{ form.tipo_propiedad }} {{ form.tipo_propiedad.errors }}
+            </div>
             {% if request.user.is_superuser %}
             <div class="mb-3 select-wrapper">
               {{ form.empresa.label_tag }} {{ form.empresa }} {{ form.empresa.errors }}
