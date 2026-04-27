@@ -4064,3 +4064,8 @@ def enviar_recordatorio_morosidad(request):
             "Debes seleccionar un local o un área común antes de enviar el recordatorio.",
         )
         return redirect(next_url or "lista_facturas")
+
+
+
+
+
