@@ -108,8 +108,11 @@
             </script>
             <div class="d-flex justify-content-between mt-3">
               <button type="submit" class="btn btn-success">Pagar</button>
+              <a href="{% url 'cuenta_bancaria_crear' %}" class="btn btn-sm btn-outline-primary mt-2" title="Agregar nueva cuenta bancaria">
+              <i class="bi bi-plus-circle"></i> 
+              </a>
               <a href="{% url 'gastos_lista' %}" class="btn btn-secondary"
-                >Cancelar</a
+                >Salir</a
               >
             </div>
           </form>

@@ -49,7 +49,7 @@
         <div class="col-md-4 col-sm-6 mx-auto">
           <!-- Styled title with the same width as the form -->
           <h2 class="form-title text-center mb-0">
-            Registro deposito cuotas- Folio {{ factura.folio }}
+            Registro deposito- Folio {{ factura.folio }}
           </h2>
 
           <form
@@ -91,10 +91,13 @@
               </div>
             </div>
             {{ form.as_p }}
-            <div class="d-flex justify-content-between mt-3">
-              <button type="submit" class="btn btn-success">Guardar</button>
-              <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'lista_facturas' %}{% endif %}" class="btn btn-secondary"
-                >Cancelar</a
+            <div class="d-flex justify-content-between mt-3" style="width: 100%; display: inline-block;">
+              <button type="submit" class="btn btn-success mt-2">Guardar</button>
+              <a href="{% url 'cuenta_bancaria_crear' %}" class="btn btn-sm btn-outline-primary mt-2" title="Agregar nueva cuenta bancaria">
+              <i class="bi bi-plus-circle"></i> 
+              </a>
+              <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'lista_facturas' %}{% endif %}" class="btn btn-sm btn-secondary mt-2"
+                ><i class="bi bi-x-circle"></i> Salir</a
               >
             </div>
             <script>
