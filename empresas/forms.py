@@ -136,11 +136,11 @@ class CuentaBancariaForm(forms.ModelForm):
             # 'saldo_final': 'Saldo Final',
         }        
 
-    def clean_saldo_inicial(self):
-        saldo = self.cleaned_data.get('saldo_inicial')
-        if saldo is None or saldo <= 0:
-            raise forms.ValidationError("El saldo inicial debe ser mayor a cero.")
-        return saldo
+    # def clean_saldo_inicial(self):
+    #     saldo = self.cleaned_data.get('saldo_inicial')
+    #     if saldo is None or saldo < 0:
+    #         raise forms.ValidationError("El saldo inicial debe ser mayor a cero.")
+    #     return saldo
 
     def clean_clabe(self):
         clabe = self.cleaned_data.get('clabe')

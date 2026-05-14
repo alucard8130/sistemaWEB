@@ -57,9 +57,7 @@ def empresa_eliminar(request, pk):
 # Vistas para cuentas bancarias
 @login_required
 def cuenta_bancaria_crear(request):
-    #empresa = Empresa.objects.get(pk=empresa_pk)
     empresa = request.user.perfilusuario.empresa  # Ajusta según tu modelo de perfil
-    #empresa = get_object_or_404(Empresa, id=empresa_id)
     if request.method == 'POST':
         form = CuentaBancariaForm(request.POST)
         if form.is_valid():
@@ -76,18 +74,6 @@ def cuentas_bancarias_lista(request):
     empresa = request.user.perfilusuario.empresa  # Ajusta según tu modelo de perfil
     cuentas = CuentaBancaria.objects.filter(empresa=empresa)
     return render(request, 'empresas/cuentas_bancarias_lista.html', {'cuentas': cuentas, 'empresa': empresa})
-
-@login_required
-# def cuenta_bancaria_editar(request, pk):
-#     cuenta = get_object_or_404(CuentaBancaria, pk=pk)
-#     if request.method == 'POST':
-#         form = CuentaBancariaForm(request.POST, instance=cuenta)
-#         if form.is_valid():
-#             form.save()
-#             return redirect('cuentas_bancarias_lista')
-#     else:
-#         form = CuentaBancariaForm(instance=cuenta)
-#     return render(request, 'empresas/cuenta_bancaria_editar.html', {'form': form, 'cuenta': cuenta})
 
 @login_required
 def cuenta_bancaria_eliminar(request, pk):
