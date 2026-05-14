@@ -1,0 +1,149 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Grafico Gastos Anual</title>
+    <!-- Bootstrap base styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class='container-fluid mt-4' align="center">
+    <h3>Grafico Comparativo Anual de Gastos</h3>
+    </div>
+    <div class="mb-3">
+    <button id="btnDescargar" class="btn btn-success">Descargar imagen</button>
+    <button id="btnImprimir" class="btn btn-primary">Imprimir gráfico</button>
+</div>
+    <canvas id="gastosAnualChart"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+const years = {{ years|safe }};
+const pagosData = {{ pagos_data|safe }};
+const gastosCajaData = {{ gastos_caja_data|safe }};
+const valesCajaData = {{ vales_caja_data|safe }};
+const presupuestosData = {{ presupuestos_data|safe }};
+const totalesAnio = {{ totales_anio|safe }};
+
+const ctx = document.getElementById('gastosAnualChart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: years,
+        datasets: [
+            {
+                label: 'Pagos solicitudes',
+                data: pagosData,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                stack: 'gastos'
+            },
+            {
+                label: 'Gastos caja chica',
+                data: gastosCajaData,
+                backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                stack: 'gastos'
+            },
+            {
+                label: 'Vales caja',
+                data: valesCajaData,
+                backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                stack: 'gastos',
+                datalabels: {
+                    anchor: 'end',
+                    align: 'bottom',
+                    color: '#222',
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    borderColor: '#222',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    font: {
+                        size: 18,
+                        weight: 'bold',
+                        family: 'Arial'
+                    },
+                    padding: {
+                        top: 6,
+                        bottom: 6,
+                        left: 10,
+                        right: 10
+                    },
+                    formatter: function(value, context) {
+                        // Formato moneda
+                        return '$' + totalesAnio[context.dataIndex].toLocaleString('es-MX', {minimumFractionDigits: 2});
+                    }
+                }
+            },
+            {
+                label: 'Presupuesto',
+                        data: presupuestosData,
+                        type: 'line',
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 5,
+                        borderDash: [5, 5],
+                        yAxisID: 'y',
+                        order: 0,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'red',
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Comparativo anual de gastos' },
+            legend: { position: 'top' },
+            datalabels: {
+                display: function(context) {
+                    // Solo mostrar en el último dataset de barra (Vales caja)
+                    return context.dataset.label === 'Vales caja';
+                }
+            }
+        },
+        scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true }
+        }
+    },
+    plugins: [ChartDataLabels]
+});
+document.getElementById('btnDescargar').addEventListener('click', function() {
+    const link = document.createElement('a');
+    link.download = 'grafico_gastos_anual.png';
+    link.href = document.getElementById('gastosAnualChart').toDataURL('image/png');
+    link.click();
+});
+
+document.getElementById('btnImprimir').addEventListener('click', function() {
+    const canvas = document.getElementById('gastosAnualChart');
+    const dataUrl = canvas.toDataURL('image/png');
+    const windowContent = `
+        <html>
+        <head><title>Imprimir gráfico</title></head>
+        <body style="margin:0; padding:0;">
+            <img src="${dataUrl}" style="width:100%;"/>
+        </body>
+        </html>`;
+    const printWin = window.open('', '', 'width=900,height=700');
+    printWin.document.open();
+    printWin.document.write(windowContent);
+    printWin.document.close();
+    printWin.focus();
+    printWin.print();
+});
+</script>
+</body>
+</html>

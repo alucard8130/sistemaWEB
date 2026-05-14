@@ -166,46 +166,50 @@
               <td><a
                   href="{% url 'lista_facturas' %}?area_id={{ area.id }}"
                   class="btn btn-outline-primary btn-sm reporte-link"
-                  title="Facturas"
+                  title="Muestra las facturas relacionadas a esta área y registrar nuevos pagos"
                 >
-                  Ver
                   <i class="bi bi-receipt"></i>
                 </a>
               </td>
               <td>
                 {% if area.estado_vigencia == "Vigente" %}
-                 <a href="{% url 'contrato_formulario' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="Contrato">  
-                Crear
+                 <a href="{% url 'contrato_formulario' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="Descargar contrato">  
+                
                   <i class="bi bi-file-earmark-text"></i>
                 </a>
                 {% else %}
-                <spam class="btn btn-sm btn-secondary m-1" title="Contrato vencido">
-                  Crear
+                <spam class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
+                
                   <i class="bi bi-file-earmark-text"></i>
                 </spam>
                 {% endif %}
               </td>
               <td style="white-space: nowrap">
+                <!-- registrar nueva area-->
+               <a href="{% url 'crear_area' %}" class="btn btn-sm btn-outline-success me-1 reporte-link" title="Registrar nueva área">
+                  <i class="bi bi-plus-circle"></i>
+                </a>
                 <a
                   href="{% url 'editar_area' area.pk %}"
                   class="btn btn-sm btn-outline-primary me-1 reporte-link"
-                  title="Editar"
-                >Editar
+                  title="Editar area"
+                >
                   <i class="bi bi-pencil-square"></i>
                 </a>
                 <a
                   href="{% url 'eliminar_area' area.pk %}"
                   class="btn btn-sm btn-outline-danger reporte-link"
-                  title="Inactivar"
-                >Inactivar
+                  title="Inactivar area"
+                >
                   <i class="bi bi-slash-circle"></i>
               </a>
+              
                 <!-- Button to assign client if area is available -->
                 {% if area.status == 'disponible' %}
                 <a
                   href="{% url 'asignar_cliente' area.pk %}"
                   class="btn btn-outline-success btn-sm reporte-link"
-                  title="Asignar cliente"
+                  title="Asignar cliente a área"
                 >
                   <i class="bi bi-person-plus"></i>
                 </a>

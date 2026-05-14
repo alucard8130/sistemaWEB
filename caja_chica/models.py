@@ -1,5 +1,7 @@
 from django.db import models
 from empleados.models import Empleado
+from empresas.models import CuentaBancaria
+
 
 
 class FondeoCajaChica(models.Model):
@@ -11,7 +13,12 @@ class FondeoCajaChica(models.Model):
     empleado_asignado = models.ForeignKey(Empleado, on_delete=models.CASCADE)
     fecha = models.DateField()
     saldo = models.DecimalField(max_digits=10, decimal_places=2)
-
+    cuenta_bancaria = models.ForeignKey(
+        CuentaBancaria,
+        on_delete=models.PROTECT,
+        related_name='fondeos_caja_chica',null=True, blank=True
+    )
+ 
     def __str__(self):
         return f"Cheque {self.numero_cheque} - Saldo: {self.saldo}"
 
@@ -27,6 +34,7 @@ class GastoCajaChica(models.Model):
     descripcion = models.TextField()
     importe = models.DecimalField(max_digits=10, decimal_places=2)
     fecha = models.DateField()
+   
 
     
 

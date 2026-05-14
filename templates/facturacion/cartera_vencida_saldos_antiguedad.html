@@ -33,6 +33,8 @@
 
     <div class="container-fluid mt-4">
         <h2>Reporte Antiguedad de Saldos</h2>
+        <div class="card shadow-sm mb-1">
+    <div class="card-body">
         <form id="form-filtros" method="get" class="row g-2 mb-3">
             {% if request.user.is_superuser %}
             <div class="col-md-2">
@@ -46,8 +48,9 @@
             {% endif %}
 
            <div class="col-md-2">
+            <label for="origen" class="form-label">Origen:</label>
                 <select name="origen" id="origen" class="form-select">
-                    <option value="">Tipo de Ingreso</option>
+                    <option value="">selecciona una opcion</option>
                     <option value="local" {% if request.GET.origen == 'local' %}selected{% endif %}>Local Comercial</option>
                     <option value="area" {% if request.GET.origen == 'area' %}selected{% endif %}>Área Común</option>
                     <option value="otros" {% if request.GET.origen == 'otros' %}selected{% endif %}>Otros ingresos</option>
@@ -55,8 +58,9 @@
             </div>
 
             <div class="col-md-2">
+                <label for="cliente" class="form-label">Cliente:</label>
                 <select name="cliente" id="cliente" class="form-select">
-                    <option value="">Clientes</option>
+                    <option value="">selecciona una opcion</option>
                     {% for cliente in clientes %}
                         <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == request.GET.cliente %}selected{% endif %}>
                             {{ cliente.nombre }}
@@ -66,27 +70,32 @@
             </div>
                 
             <div class="col-auto">
+                <label for="tipo_cuota" class="form-label">Tipo de Cuota:</label>
     <select name="tipo_cuota" class="form-select">
-        <option value="">Tipos de Cuotas</option>
+        <option value="">seleciona una opcion</option>
         {% for cuota in tipos_cuota %}
             <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
         {% endfor %}
     </select>
 </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-funnel-fill"></i> Filtrar
+                <div class="col-auto">
+            <label for="anio" class="form-label">Opciones:</label>            
+                <div class="col-auto mb-3">
+                <button type="submit" class="btn btn-outline-primary reporte-link" title="Buscar">
+                    <i class="bi bi-funnel-fill"></i>
                 </button>
-                <a href="{% url 'cartera_vencida_saldos_antiguedad' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+                <a href="{% url 'cartera_vencida_saldos_antiguedad' %}" class="btn btn-outline-secondary reporte-link" title="Limpiar filtros">
+                    <i class="bi bi-arrow-counterclockwise"></i> 
                 </a>
            
-            <a href="{% url 'exportar_cartera_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel</a>
+            <a href="{% url 'exportar_cartera_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success" title="Exportar a Excel">
+                <i class="bi bi-file-earmark-excel-fill"></i></a>
             </div>
         </form>
+        </div>
+        </div>
+        </div>
        <div class="container-fluid mt-4">
-
     {% for grupo in agrupado %}
     <div class="mt-4">
         <h4 class="text-primary">{{ grupo.rango }} 

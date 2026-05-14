@@ -1,7 +1,7 @@
 from django import forms
 from .models import AreaComun
 from clientes.models import Cliente
-from empresas.models import Empresa
+#from empresas.models import Empresa
 
 
 class AreaComunForm(forms.ModelForm):
@@ -72,7 +72,7 @@ class AreaComunForm(forms.ModelForm):
             "deposito": "Depósito en garantía",
             "ubicacion": "Ubicación",
             "status": "Estatus",
-            "cliente": "Arrendatario/Inquilino",
+            "cliente": "Cliente",
         }
 
     def __init__(self, *args, **kwargs):
@@ -158,7 +158,7 @@ class AreaComunCargaMasivaForm(forms.Form):
     archivo = forms.FileField(label="Archivo Excel (.xlsx)")
 
 
-from django import forms
+#from django import forms
 
 
 class DatosContratoForm(forms.Form):

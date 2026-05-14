@@ -16,6 +16,8 @@ class Empresa(models.Model):
         ('AFIRME', 'Afirme'),
         ('BAJIO', 'Bajío'),
         ('MULTIVA', 'Multiva'),
+        ('BANREGIO', 'Banregio'),
+        ('BANJERCITO', 'Banjército'),
         ('OTRO', 'Otro'),
     ]
     REGIMEN_CHOICES = [
@@ -44,3 +46,49 @@ class Empresa(models.Model):
 
     def __str__(self):
         return self.nombre
+    
+class CuentaBancaria(models.Model):
+    BANCOS_CHOICES = [
+        ('BANAMEX', 'Banamex'),
+        ('SANTANDER', 'Santander'),
+        ('HSBC', 'HSBC'),
+        ('BBVA', 'BBVA'),
+        ('IXE', 'Ixe'),
+        ('SCOTIABANK', 'Scotiabank'),
+        ('BANORTE', 'Banorte'),
+        ('INBURSA', 'Inbursa'),
+        ('BANCOPPEL', 'Bancoppel'),
+        ('AFIRME', 'Afirme'),
+        ('BAJIO', 'Bajío'),
+        ('MULTIVA', 'Multiva'),
+        ('BANREGIO', 'Banregio'),
+        ('BANJERCITO', 'Banjército'),
+        ('OTRO', 'Otro'),
+    ]
+    TIPO_CUENTA= [
+        ('INVERSION', 'Inversión'),
+        ('CORRIENTE', 'Corriente'),
+        ('NOMINA', 'Nómina'),
+        ('EMPRESARIAL', 'Empresarial'),
+        ('OTRO', 'Otro'),
+    ]
+    TIPO_MONEDA = [
+        ('MXN', 'Peso Mexicano'),
+        ('USD', 'Dólar Estadounidense'),
+        ('EUR', 'Euro'),
+        ('GBP', 'Libra Esterlina'),
+        ('JPY', 'Yen Japonés'),
+        ('OTRO', 'Otro'),   ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='cuentas_bancarias')
+    banco = models.CharField(max_length=100, choices=BANCOS_CHOICES)
+    numero_cuenta = models.CharField(max_length=50)
+    clabe = models.CharField(max_length=18, blank=True, null=True)
+    moneda = models.CharField(max_length=10, choices=TIPO_MONEDA, blank=True, null=True)
+    tipo_cuenta = models.CharField(max_length=100, choices=TIPO_CUENTA, blank=True, null=True)
+    saldo_inicial = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    saldo_final = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    activa = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.banco} - {self.numero_cuenta}"

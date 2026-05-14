@@ -1,7 +1,7 @@
-
-from collections import Counter, defaultdict
+# from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+import json
 import unicodedata
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
@@ -9,16 +9,26 @@ from django.http import HttpResponse
 from openpyxl import Workbook
 import openpyxl
 from unidecode import unidecode
+from caja_chica.models import GastoCajaChica, ValeCaja
 from empleados.models import Empleado
-from empresas.models import Empresa
-from facturacion.models import Pago
-from presupuestos.models import Presupuesto
+from empresas.models import CuentaBancaria, Empresa
+
+# from facturacion.models import Pago
+from presupuestos.models import Presupuesto, PresupuestoIngreso
 from proveedores.models import Proveedor
-from .forms import GastoForm, GastosCargaMasivaForm, MotivoReversaPagoForm, PagoGastoForm, SubgrupoGastoForm, TipoGastoForm
+from .forms import (
+    GastoForm,
+    GastosCargaMasivaForm,
+    MotivoReversaPagoForm,
+    PagoGastoForm,
+    SubgrupoGastoForm,
+    TipoGastoForm,
+)
 from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
 from datetime import datetime
-from django.utils.timezone import localtime
-from django.db.models.functions import TruncMonth
+
+# from django.utils.timezone import localtime
+# from django.db.models.functions import TruncMonth
 from django.db.models import F, Value
 import calendar
 from django.db.models import Q, Sum, Count, Case, When, FloatField
@@ -26,72 +36,103 @@ from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
-from django.db.models.functions import ExtractMonth
-from caja_chica.models import GastoCajaChica, ValeCaja
+from django.db.models.functions import ExtractMonth, ExtractYear, TruncMonth, TruncYear
+
+# from caja_chica.models import GastoCajaChica, ValeCaja
 from num2words import num2words
-from django.utils import timezone
-from django.db.models import Count
+# from django.utils import timezone
+# from django.db.models import Count
+from django.utils.dateformat import DateFormat
+
 
 @login_required
 def subgrupo_gasto_crear(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = SubgrupoGastoForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('subgrupos_gasto_lista')
+            return redirect("subgrupos_gasto_lista")
     else:
         form = SubgrupoGastoForm()
-    return render(request, 'gastos/subgrupo_crear.html', {'form': form})
+    return render(request, "gastos/subgrupo_crear.html", {"form": form})
 
 
 @login_required
 def subgrupo_gasto_eliminar(request, pk):
     subgrupo = get_object_or_404(SubgrupoGasto, pk=pk)
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             subgrupo.delete()
             messages.success(request, "Subgrupo de gasto eliminado correctamente.")
-            return redirect('subgrupos_gasto_lista')
+            return redirect("subgrupos_gasto_lista")
         except ProtectedError:
-            messages.error(request, "No se puede eliminar este subgrupo porque tiene Tipos de Gasto o Presupuestos relacionados. Elimina o reasigna esos registros primero.")
-            return redirect('subgrupos_gasto_lista')
-    return render(request, 'gastos/subgrupo_gasto_confirmar_eliminar.html', {'subgrupo': subgrupo})
+            messages.error(
+                request,
+                "No se puede eliminar este subgrupo porque tiene Tipos de Gasto o Presupuestos relacionados. Elimina o reasigna esos registros primero.",
+            )
+            return redirect("subgrupos_gasto_lista")
+    return render(
+        request, "gastos/subgrupo_gasto_confirmar_eliminar.html", {"subgrupo": subgrupo}
+    )
+
 
 @login_required
 def subgrupos_gasto_lista(request):
     if request.user.is_superuser:
-        subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
+        subgrupos = SubgrupoGasto.objects.select_related("grupo").order_by(
+            "grupo__nombre", "nombre"
+        )
     else:
-        subgrupos = SubgrupoGasto.objects.select_related('grupo').order_by('grupo__nombre', 'nombre')
-    return render(request, 'gastos/subgrupos_lista.html', {'subgrupos': subgrupos})
+        subgrupos = SubgrupoGasto.objects.select_related("grupo").order_by(
+            "grupo__nombre", "nombre"
+        )
+    return render(request, "gastos/subgrupos_lista.html", {"subgrupos": subgrupos})
+
 
 @login_required
 def tipos_gasto_lista(request):
     if request.user.is_superuser:
         empresa_id = request.session.get("empresa_id")
         if empresa_id:
-            tipos = TipoGasto.objects.filter(empresa_id=empresa_id).select_related('subgrupo__grupo').order_by('subgrupo__grupo__nombre')
+            tipos = (
+                TipoGasto.objects.filter(empresa_id=empresa_id)
+                .select_related("subgrupo__grupo")
+                .order_by("subgrupo__grupo__nombre")
+            )
         else:
-            tipos = TipoGasto.objects.select_related('subgrupo__grupo').all().order_by('subgrupo__grupo__nombre')
+            tipos = (
+                TipoGasto.objects.select_related("subgrupo__grupo")
+                .all()
+                .order_by("subgrupo__grupo__nombre")
+            )
     else:
         empresa = request.user.perfilusuario.empresa
-        tipos = TipoGasto.objects.filter(empresa=empresa).select_related('subgrupo__grupo').order_by('subgrupo__grupo__nombre')
-    #filtro buscar
+        tipos = (
+            TipoGasto.objects.filter(empresa=empresa)
+            .select_related("subgrupo__grupo")
+            .order_by("subgrupo__grupo__nombre")
+        )
+    # filtro buscar
     q = request.GET.get("q")
     if q:
-        tipos = tipos.filter(Q(nombre__icontains=q) | Q(descripcion__icontains=q)|Q(subgrupo__nombre__icontains=q)|Q(subgrupo__grupo__nombre__icontains=q))
+        tipos = tipos.filter(
+            Q(nombre__icontains=q)
+            | Q(descripcion__icontains=q)
+            | Q(subgrupo__nombre__icontains=q)
+            | Q(subgrupo__grupo__nombre__icontains=q)
+        )
 
     # Annotate usage count
-    tipos_con_uso = tipos.annotate(num_gastos=Count('gasto'))
+    tipos_con_uso = tipos.annotate(num_gastos=Count("gasto"))
 
     # Total types
     total_tipos = tipos.count()
 
     # Most used
-    tipos_mas_usados = tipos_con_uso.order_by('-num_gastos')[:3]
+    tipos_mas_usados = tipos_con_uso.order_by("-num_gastos")[:3]
 
     # Least used (including never used)
-    tipos_menos_usados = tipos_con_uso.order_by('num_gastos')[:3]
+    tipos_menos_usados = tipos_con_uso.order_by("num_gastos")[:3]
     tipos_sin_uso = tipos_con_uso.filter(num_gastos=0)
 
     # Detect possible duplicates (simple normalization)
@@ -101,81 +142,95 @@ def tipos_gasto_lista(request):
         nombre_normalizado.setdefault(norm, []).append(t)
     tipos_duplicados = [v for v in nombre_normalizado.values() if len(v) > 1]
 
-    #paginacion
+    # paginacion
     paginator = Paginator(tipos, 10)
     page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)    
+    page_obj = paginator.get_page(page_number)
 
-    return render(request, 'gastos/tipos_gasto_lista.html',
-                   {'tipos': page_obj, 
-                    'page_obj': page_obj, 
-                    'q': q,
-                    'total_tipos': total_tipos,
-                    'tipos_mas_usados': tipos_mas_usados,
-                    'tipos_menos_usados': tipos_menos_usados,
-                    'tipos_sin_uso': tipos_sin_uso,
-                    'tipos_duplicados': tipos_duplicados,
-                    })
+    return render(
+        request,
+        "gastos/tipos_gasto_lista.html",
+        {
+            "tipos": page_obj,
+            "page_obj": page_obj,
+            "q": q,
+            "total_tipos": total_tipos,
+            "tipos_mas_usados": tipos_mas_usados,
+            "tipos_menos_usados": tipos_menos_usados,
+            "tipos_sin_uso": tipos_sin_uso,
+            "tipos_duplicados": tipos_duplicados,
+        },
+    )
+
 
 @login_required
 def tipo_gasto_crear(request):
     user = request.user
-    perfil = getattr(user, 'perfilusuario', None)
-    if request.method == 'POST':
+    perfil = getattr(user, "perfilusuario", None)
+    if request.method == "POST":
         post = request.POST.copy()
         if not user.is_superuser and perfil and perfil.empresa:
-            post['empresa'] = perfil.empresa.pk
+            post["empresa"] = perfil.empresa.pk
         form = TipoGastoForm(post, user=user)
         if form.is_valid():
             tipo_gasto = form.save(commit=False)
             if not user.is_superuser and perfil and perfil.empresa:
                 tipo_gasto.empresa = perfil.empresa
             tipo_gasto.save()
-            return redirect('tipos_gasto_lista')
+            return redirect("tipos_gasto_lista")
     else:
         form = TipoGastoForm(user=user)
-    return render(request, 'gastos/tipo_gasto_form.html', {'form': form, 'modo': 'crear'})
+    return render(
+        request, "gastos/tipo_gasto_form.html", {"form": form, "modo": "crear"}
+    )
+
 
 @login_required
 def tipo_gasto_editar(request, pk):
     tipo = get_object_or_404(TipoGasto, pk=pk)
     user = request.user
-    perfil = getattr(user, 'perfilusuario', None)
-    if request.method == 'POST':
+    perfil = getattr(user, "perfilusuario", None)
+    if request.method == "POST":
         post = request.POST.copy()
         if not user.is_superuser and perfil and perfil.empresa:
-            post['empresa'] = perfil.empresa.pk
+            post["empresa"] = perfil.empresa.pk
         form = TipoGastoForm(post, instance=tipo, user=user)
         if form.is_valid():
             tipo_gasto = form.save(commit=False)
             if not user.is_superuser and perfil and perfil.empresa:
                 tipo_gasto.empresa = perfil.empresa
             tipo_gasto.save()
-            return redirect('tipos_gasto_lista')
+            return redirect("tipos_gasto_lista")
     else:
         form = TipoGastoForm(instance=tipo, user=user)
-    return render(request, 'gastos/tipo_gasto_form.html', {'form': form, 'modo': 'editar', 'tipo': tipo})
+    return render(
+        request,
+        "gastos/tipo_gasto_form.html",
+        {"form": form, "modo": "editar", "tipo": tipo},
+    )
+
 
 @login_required
 @login_required
 def tipo_gasto_eliminar(request, pk):
     tipo = get_object_or_404(TipoGasto, pk=pk)
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             tipo.delete()
             messages.success(request, "Tipo de gasto eliminado correctamente.")
-            return redirect('tipos_gasto_lista')
+            return redirect("tipos_gasto_lista")
         except ProtectedError:
             messages.error(
                 request,
                 "No se puede eliminar este tipo de gasto porque tiene registros relacionados (por ejemplo, presupuestos o movimientos). "
-                "Elimina o reasigna esos registros primero."
+                "Elimina o reasigna esos registros primero.",
             )
-            return redirect('tipos_gasto_lista')
-    return render(request, 'gastos/tipo_gasto_confirmar_eliminar.html', {'tipo': tipo})
+            return redirect("tipos_gasto_lista")
+    return render(request, "gastos/tipo_gasto_confirmar_eliminar.html", {"tipo": tipo})
 
-#solicitudes de gasto
-#template/gastos/lista.html
+
+# solicitudes de gasto
+# template/gastos/lista.html
 @login_required
 def gastos_lista(request):
     empresa_id = request.session.get("empresa_id")
@@ -183,20 +238,28 @@ def gastos_lista(request):
 
     if user.is_superuser and empresa_id:
         gastos_base = Gasto.objects.filter(empresa_id=empresa_id)
-        proveedores = Proveedor.objects.filter(activo=True, empresa_id=empresa_id).order_by('nombre')
-        empleados = Empleado.objects.filter(activo=True, empresa_id=empresa_id).order_by('nombre')
-        tipos_gasto = TipoGasto.objects.filter(empresa_id=empresa_id).order_by('nombre')
+        proveedores = Proveedor.objects.filter(
+            activo=True, empresa_id=empresa_id
+        ).order_by("nombre")
+        empleados = Empleado.objects.filter(
+            activo=True, empresa_id=empresa_id
+        ).order_by("nombre")
+        tipos_gasto = TipoGasto.objects.filter(empresa_id=empresa_id).order_by("nombre")
     elif user.is_superuser:
         gastos_base = Gasto.objects.all()
-        proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
-        empleados = Empleado.objects.filter(activo=True).order_by('nombre')
-        tipos_gasto = TipoGasto.objects.all().order_by('nombre')
+        proveedores = Proveedor.objects.filter(activo=True).order_by("nombre")
+        empleados = Empleado.objects.filter(activo=True).order_by("nombre")
+        tipos_gasto = TipoGasto.objects.all().order_by("nombre")
     else:
         empresa = user.perfilusuario.empresa
         gastos_base = Gasto.objects.filter(empresa=empresa)
-        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa).order_by('nombre')
-        empleados = Empleado.objects.filter(activo=True, empresa=empresa).order_by('nombre')
-        tipos_gasto = TipoGasto.objects.filter(empresa=empresa).order_by('nombre')
+        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa).order_by(
+            "nombre"
+        )
+        empleados = Empleado.objects.filter(activo=True, empresa=empresa).order_by(
+            "nombre"
+        )
+        tipos_gasto = TipoGasto.objects.filter(empresa=empresa).order_by("nombre")
 
     proveedor_id = request.GET.get("proveedor")
     empleado_id = request.GET.get("empleado")
@@ -211,38 +274,62 @@ def gastos_lista(request):
 
     # KPIs y totales usando agregaciones
     kpi = gastos_base.aggregate(
-        num_pagadas=Count('id', filter=Q(estatus='pagada')),
-        num_pendientes=Count('id', filter=Q(estatus='pendiente')),
-        monto_pagadas=Sum(Case(When(estatus='pagada', then=F('monto')), default=Value(0), output_field=FloatField())),
-        monto_pendientes=Sum(Case(When(estatus='pendiente', then=F('monto')), default=Value(0), output_field=FloatField())),
-        total_solicitudes=Count('id')
+        num_pagadas=Count("id", filter=Q(estatus="pagada")),
+        num_pendientes=Count("id", filter=Q(estatus="pendiente")),
+        monto_pagadas=Sum(
+            Case(
+                When(estatus="pagada", then=F("monto")),
+                default=Value(0),
+                output_field=FloatField(),
+            )
+        ),
+        monto_pendientes=Sum(
+            Case(
+                When(estatus="pendiente", then=F("monto")),
+                default=Value(0),
+                output_field=FloatField(),
+            )
+        ),
+        total_solicitudes=Count("id"),
     )
 
-    num_pagadas = kpi['num_pagadas'] or 0
-    num_pendientes = kpi['num_pendientes'] or 0
-    monto_pagadas = kpi['monto_pagadas'] or 0
-    monto_pendientes = kpi['monto_pendientes'] or 0
-    total_solicitudes = kpi['total_solicitudes'] or 0
+    num_pagadas = kpi["num_pagadas"] or 0
+    num_pendientes = kpi["num_pendientes"] or 0
+    monto_pagadas = kpi["monto_pagadas"] or 0
+    monto_pendientes = kpi["monto_pendientes"] or 0
+    total_solicitudes = kpi["total_solicitudes"] or 0
 
     porc_pagadas = (num_pagadas / total_solicitudes * 100) if total_solicitudes else 0
-    porc_pendientes = (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
+    porc_pendientes = (
+        (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
+    )
 
     # Top 10 proveedores (solo nombre y cantidad)
     top_proveedores_qs = (
-        gastos_base
-        .exclude(proveedor__isnull=True)
-        .values('proveedor__nombre')
-        .annotate(cantidad=Count('id'))
-        .order_by('-cantidad')[:10]
+        gastos_base.exclude(proveedor__isnull=True)
+        .values("proveedor__nombre")
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad")[:10]
     )
-    top_proveedores = [(item['proveedor__nombre'], item['cantidad']) for item in top_proveedores_qs]
-    top_prov_labels = [item['proveedor__nombre'] for item in top_proveedores_qs]
-    top_prov_data = [item['cantidad'] for item in top_proveedores_qs]
+    top_proveedores = [
+        (item["proveedor__nombre"], item["cantidad"]) for item in top_proveedores_qs
+    ]
+    top_prov_labels = [item["proveedor__nombre"] for item in top_proveedores_qs]
+    top_prov_data = [item["cantidad"] for item in top_proveedores_qs]
 
     # Paginación y optimización de consultas
-    gastos = gastos_base.select_related(
-        "empresa", "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo"
-    ).prefetch_related("pagos").order_by("-fecha")
+    gastos = (
+        gastos_base.select_related(
+            "empresa",
+            "proveedor",
+            "empleado",
+            "tipo_gasto",
+            "tipo_gasto__subgrupo",
+            "tipo_gasto__subgrupo__grupo",
+        )
+        .prefetch_related("pagos")
+        .order_by("-fecha")
+    )
     paginator = Paginator(gastos, 15)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -267,48 +354,64 @@ def gastos_lista(request):
             "top_proveedores": top_proveedores,
             "top_prov_labels": top_prov_labels,
             "top_prov_data": top_prov_data,
-            'total_solicitudes': total_solicitudes,
+            "total_solicitudes": total_solicitudes,
         },
     )
 
+
 @login_required
-#nueva solicitud pago
+# nueva solicitud pago
 def gasto_nuevo(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = GastoForm(request.POST or None, request.FILES, user=request.user)
         if form.is_valid():
             gasto = form.save(commit=False)
-            origen = form.cleaned_data['origen_tipo']
-            if origen == 'proveedor':
+            origen = form.cleaned_data["origen_tipo"]
+            if origen == "proveedor":
                 gasto.empleado = None
-            elif origen == 'empleado':
+            elif origen == "empleado":
                 gasto.proveedor = None
 
             if not request.user.is_superuser:
                 gasto.empresa = request.user.perfilusuario.empresa
-                
-            gasto.estatus = 'pendiente'    
+
+            gasto.estatus = "pendiente"
             gasto.save()
-            return redirect('gastos_lista')
+            return redirect("gastos_lista")
     else:
-        form = GastoForm(user=request.user,)
+        form = GastoForm(
+            user=request.user,
+        )
         if not request.user.is_superuser:
-            form.fields['empresa'].initial = request.user.perfilusuario.empresa
-    return render(request, 'gastos/form.html', {'form': form, 'modo': 'crear'})
+            form.fields["empresa"].initial = request.user.perfilusuario.empresa
+    return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
+
 
 @login_required
 def gasto_editar(request, pk):
     gasto = get_object_or_404(Gasto, pk=pk)
-    if not request.user.is_superuser and gasto.empresa != request.user.perfilusuario.empresa:
-        return redirect('gastos_lista')
-    if request.method == 'POST':
-        form = GastoForm(request.POST or None, request.FILES, instance=gasto, user=request.user, modo='editar')
+    if (
+        not request.user.is_superuser
+        and gasto.empresa != request.user.perfilusuario.empresa
+    ):
+        return redirect("gastos_lista")
+    if request.method == "POST":
+        form = GastoForm(
+            request.POST or None,
+            request.FILES,
+            instance=gasto,
+            user=request.user,
+            modo="editar",
+        )
         if form.is_valid():
             form.save()
-            return redirect('gastos_lista')
+            return redirect("gastos_lista")
     else:
-        form = GastoForm(instance=gasto, user=request.user, modo='editar')
-    return render(request, 'gastos/form.html', {'form': form, 'modo': 'editar', 'gasto': gasto})
+        form = GastoForm(instance=gasto, user=request.user, modo="editar")
+    return render(
+        request, "gastos/form.html", {"form": form, "modo": "editar", "gasto": gasto}
+    )
+
 
 @login_required
 def gasto_eliminar(request, pk):
@@ -318,60 +421,85 @@ def gasto_eliminar(request, pk):
         return redirect("gastos_lista")
     return render(request, "gastos/confirmar_eliminar.html", {"gasto": gasto})
 
+
 @login_required
 def registrar_pago_gasto(request, gasto_id):
     gasto = get_object_or_404(Gasto, pk=gasto_id)
     pagos = gasto.pagos.all()
     saldo_restante = gasto.monto - sum([p.monto for p in pagos])
+    empresa = gasto.empresa
 
-    if request.method == 'POST':
-        form = PagoGastoForm(request.POST,request.FILES)
+    if gasto.estatus == "pagada":
+        messages.info(
+            request, "Este gasto ya está pagado. No se pueden registrar más pagos."
+        )
+        return redirect("gastos_lista")
+
+    if request.method == "POST":
+        form = PagoGastoForm(request.POST, request.FILES, empresa=empresa)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.gasto = gasto
             pago.registrado_por = request.user
             if pago.monto > saldo_restante:
-                form.add_error('monto', f"El monto excede el saldo pendiente (${saldo_restante:.2f})")
+                form.add_error(
+                    "monto",
+                    f"El monto excede el saldo pendiente (${saldo_restante:.2f})",
+                )
             else:
                 pago.save()
                 gasto.actualizar_estatus()
-                messages.success(request, f"Pago registrado. Saldo restante: ${gasto.saldo_restante:.2f}")
-                return redirect('gastos_lista')
+                messages.success(
+                    request,
+                    f"Pago registrado a la solicitud: {gasto.id}. Saldo restante: ${gasto.saldo_restante:.2f}",
+                )
+                return redirect("gastos_lista")
     else:
-        form = PagoGastoForm()
+        form = PagoGastoForm(empresa=empresa)
 
-    return render(request, 'gastos/registrar_pago.html', {
-        'form': form,
-        'gasto': gasto,
-        'saldo_restante': saldo_restante
-    })
+    return render(
+        request,
+        "gastos/registrar_pago.html",
+        {"form": form, "gasto": gasto, "saldo_restante": saldo_restante},
+    )
 
 
 @login_required
 def gasto_detalle(request, pk):
     gasto = get_object_or_404(Gasto, pk=pk)
-    pagos = gasto.pagos.all().order_by('fecha_pago')
+    pagos = gasto.pagos.all().order_by("fecha_pago")
     reversados_ids = set()
     for pago in pagos:
-        if pago.monto < 0 and pago.referencia and "Reverso de pago ID" in pago.referencia:
+        if (
+            pago.monto < 0
+            and pago.referencia
+            and "Reverso de pago ID" in pago.referencia
+        ):
             # Extrae el ID del pago original
             try:
-                id_original = int(pago.referencia.split("Reverso de pago ID")[1].split(".")[0].strip())
+                id_original = int(
+                    pago.referencia.split("Reverso de pago ID")[1].split(".")[0].strip()
+                )
                 reversados_ids.add(id_original)
             except Exception:
                 pass
-    return render(request, 'gastos/gasto_detalle.html', {
-        'gasto': gasto,
-        'pagos': pagos,
-        'reversados_ids': reversados_ids,
-    })
+    return render(
+        request,
+        "gastos/gasto_detalle.html",
+        {
+            "gasto": gasto,
+            "pagos": pagos,
+            "reversados_ids": reversados_ids,
+        },
+    )
 
-#reversa pago gastos
+
+# reversa pago gastos
 @login_required
 def reversa_pago_gasto(request, pago_id, gasto_id):
     pago = get_object_or_404(PagoGasto, id=pago_id)
     gasto = get_object_or_404(Gasto, id=gasto_id)
-    next_url = request.GET.get('next')
+    next_url = request.GET.get("next")
 
     if request.method == "POST":
         form = MotivoReversaPagoForm(request.POST)
@@ -384,25 +512,29 @@ def reversa_pago_gasto(request, pago_id, gasto_id):
                 forma_pago=pago.forma_pago,
                 fecha_pago=pago.fecha_pago,
                 referencia=f"Reverso de pago ID {pago.id}. Motivo: {motivo_display}",
-                registrado_por=request.user
+                registrado_por=request.user,
             )
             gasto.actualizar_estatus()
             gasto.save()
             messages.success(request, "Pago de gasto reversado correctamente.")
-            return redirect(next_url or 'gasto_detalle', pk=gasto.id)
+            return redirect(next_url or "gasto_detalle", pk=gasto.id)
     else:
         form = MotivoReversaPagoForm()
 
-    return render(request, "gastos/reversa_pago_gasto.html", {
-        "form": form,
-        "pago": pago,
-        "gasto": gasto,
-        "next": next_url,
-    })
+    return render(
+        request,
+        "gastos/reversa_pago_gasto.html",
+        {
+            "form": form,
+            "pago": pago,
+            "gasto": gasto,
+            "next": next_url,
+        },
+    )
 
 
 @login_required
-#template/gastos/reporte_pagos.html
+# template/gastos/reporte_pagos.html
 def reporte_pagos_gastos(request):
     es_super = request.user.is_superuser
     pagos = PagoGasto.objects.select_related(
@@ -420,21 +552,39 @@ def reporte_pagos_gastos(request):
     forma_pago = request.GET.get("forma_pago")
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
+    cuenta_bancaria = request.GET.get("cuenta_bancaria")
+
+    # Cuentas bancarias filtradas por empresa
+    if not es_super:
+        cuentas_bancarias = CuentaBancaria.objects.filter(
+            empresa=request.user.perfilusuario.empresa
+        )
+    else:
+        if empresa_id:
+            cuentas_bancarias = CuentaBancaria.objects.filter(empresa_id=empresa_id)
+        else:
+            cuentas_bancarias = CuentaBancaria.objects.all()
 
     if not es_super:
         pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
         proveedores = Proveedor.objects.filter(
             empresa=request.user.perfilusuario.empresa
-        ).order_by('nombre')
-        empleados = Empleado.objects.filter(empresa=request.user.perfilusuario.empresa).order_by('nombre')
+        ).order_by("nombre")
+        empleados = Empleado.objects.filter(
+            empresa=request.user.perfilusuario.empresa
+        ).order_by("nombre")
     else:
         if empresa_id:
             pagos = pagos.filter(gasto__empresa_id=empresa_id)
-            proveedores = Proveedor.objects.filter(empresa_id=empresa_id).order_by('nombre')
-            empleados = Empleado.objects.filter(empresa_id=empresa_id).order_by('nombre')
+            proveedores = Proveedor.objects.filter(empresa_id=empresa_id).order_by(
+                "nombre"
+            )
+            empleados = Empleado.objects.filter(empresa_id=empresa_id).order_by(
+                "nombre"
+            )
         else:
-            proveedores = Proveedor.objects.all().order_by('nombre')
-            empleados = Empleado.objects.all().order_by('nombre')
+            proveedores = Proveedor.objects.all().order_by("nombre")
+            empleados = Empleado.objects.all().order_by("nombre")
 
     # Solo aplica el filtro si el parámetro es numérico
     if proveedor_id and proveedor_id.isdigit():
@@ -448,13 +598,9 @@ def reporte_pagos_gastos(request):
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
 
-    # Solo pagos de solicitudes de gastos
-    # pagos_list = list(pagos)
-    # for p in pagos_list:
-    #     p.tipo_pago = 'normal'
-    #     p.fecha = p.fecha_pago
-
-    #pagos_list.sort(key=lambda x: x.fecha, reverse=True)
+    # Filtro de cuenta bancaria
+    if cuenta_bancaria and cuenta_bancaria.isdigit():
+        pagos = pagos.filter(cuenta_bancaria_id=cuenta_bancaria)
 
     hoy = datetime.now().date()
     anio_actual = hoy.year
@@ -463,27 +609,46 @@ def reporte_pagos_gastos(request):
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
     anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
 
-    total_pagos_acumulado = pagos.aggregate(total=Sum('monto'))['total'] or 0
+    total_pagos_acumulado = pagos.aggregate(total=Sum("monto"))["total"] or 0
 
-    pagos_anio_actual = pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_anio_anterior = pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_anio_actual = (
+        pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum("monto"))[
+            "total"
+        ]
+        or 0
+    )
+    pagos_anio_anterior = (
+        pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum("monto"))[
+            "total"
+        ]
+        or 0
+    )
 
-    pagos_mes_actual = pagos.filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_mes_anterior = pagos.filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_mes_actual = (
+        pagos.filter(
+            fecha_pago__year=anio_actual, fecha_pago__month=mes_actual
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
+    pagos_mes_anterior = (
+        pagos.filter(
+            fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
-      # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)
+    # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)
     tipo_dict = (
-        pagos
-        .values('gasto__tipo_gasto__subgrupo__nombre', 'gasto__tipo_gasto__nombre')
-        .annotate(total=Sum('monto'))
-        .order_by('-total')
+        pagos.values("gasto__tipo_gasto__subgrupo__nombre", "gasto__tipo_gasto__nombre")
+        .annotate(total=Sum("monto"))
+        .order_by("-total")
     )
     top_tipos = []
     for t in tipo_dict:
-        subgrupo = t['gasto__tipo_gasto__subgrupo__nombre'] or ""
-        tipo = t['gasto__tipo_gasto__nombre'] or ""
+        subgrupo = t["gasto__tipo_gasto__subgrupo__nombre"] or ""
+        tipo = t["gasto__tipo_gasto__nombre"] or ""
         etiqueta = f"{subgrupo} - {tipo}" if subgrupo else tipo
-        top_tipos.append((etiqueta, t['total']))
+        top_tipos.append((etiqueta, t["total"]))
     top_tipos = top_tipos[:10]
     tipo_labels = [k for k, v in top_tipos]
     tipo_data = [v for k, v in top_tipos]
@@ -491,19 +656,18 @@ def reporte_pagos_gastos(request):
 
     # KPIs por forma de pago
     forma_dict = (
-        pagos
-        .values('forma_pago')
-        .annotate(total=Sum('monto'))
-        .order_by('-total')
+        pagos.values("forma_pago").annotate(total=Sum("monto")).order_by("-total")
     )
     pagos_por_forma = []
     forma_labels = []
     forma_data = []
     for f in forma_dict:
-        display = dict(PagoGasto._meta.get_field("forma_pago").choices).get(f['forma_pago'], f['forma_pago'])
-        pagos_por_forma.append({"nombre": display, "total": f['total']})
+        display = dict(PagoGasto._meta.get_field("forma_pago").choices).get(
+            f["forma_pago"], f["forma_pago"]
+        )
+        pagos_por_forma.append({"nombre": display, "total": f["total"]})
         forma_labels.append(display)
-        forma_data.append(f['total'])
+        forma_data.append(f["total"])
 
     def variacion(actual, anterior):
         if anterior == 0:
@@ -515,7 +679,7 @@ def reporte_pagos_gastos(request):
 
     FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
 
-    pagos = pagos.order_by('-fecha_pago')
+    pagos = pagos.order_by("-fecha_pago")
     paginator = Paginator(pagos, 15)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -536,310 +700,24 @@ def reporte_pagos_gastos(request):
             "proveedor_id": proveedor_id,
             "empleado_id": empleado_id,
             "formas_pago": FORMAS_PAGO,
-                "pagos_anio_actual": pagos_anio_actual,
-                "pagos_anio_anterior": pagos_anio_anterior,
-                "pagos_mes_actual": pagos_mes_actual,
-                "pagos_mes_anterior": pagos_mes_anterior,
-                "pagos_por_tipo": pagos_por_tipo,
-                "pagos_por_forma": pagos_por_forma,
-                "var_anio": var_anio,
-                "var_mes": var_mes,
-                "tipo_labels": tipo_labels,
-                "tipo_data": tipo_data,
-                "forma_labels": forma_labels,
-                "forma_data": forma_data,
+            "pagos_anio_actual": pagos_anio_actual,
+            "pagos_anio_anterior": pagos_anio_anterior,
+            "pagos_mes_actual": pagos_mes_actual,
+            "pagos_mes_anterior": pagos_mes_anterior,
+            "pagos_por_tipo": pagos_por_tipo,
+            "pagos_por_forma": pagos_por_forma,
+            "var_anio": var_anio,
+            "var_mes": var_mes,
+            "tipo_labels": tipo_labels,
+            "tipo_data": tipo_data,
+            "forma_labels": forma_labels,
+            "forma_data": forma_data,
+            "cuentas_bancarias": cuentas_bancarias,
+            "cuenta_bancaria_id": cuenta_bancaria,
         },
     )
 
-
-@login_required
-#dasboard_pagos.html
-def dashboard_pagos_gastos(request):
-    es_super = request.user.is_superuser
-    anio_actual = datetime.now().year
-    mes_actual = datetime.now().month
-    anio = int(request.GET.get("anio", anio_actual))
-    mes = request.GET.get("mes")
-
-    empresas = (
-        Empresa.objects.all()
-        if es_super
-        else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
-    )
-    empresa_id = request.GET.get("empresa")
-    proveedor_id = request.GET.get("proveedor")
-    empleado_id = request.GET.get("empleado")
-    forma_pago = request.GET.get("forma_pago")
-    fecha_inicio = request.GET.get("fecha_inicio")
-    fecha_fin = request.GET.get("fecha_fin")
-
-    # NUEVOS FILTROS
-    grupo_id = request.GET.get("grupo")
-    subgrupo_id = request.GET.get("subgrupo")
-    tipo_gasto_id = request.GET.get("tipo_gasto")
-
-    if es_super:
-        tipos_gasto = TipoGasto.objects.all()
-    else:
-        empresa = request.user.perfilusuario.empresa
-        tipos_gasto = TipoGasto.objects.filter(empresa=empresa)
-
-    # --- FILTROS BÁSICOS ---
-    base_gastos = Q(fecha__year=anio)
-    if es_super and empresa_id:
-        base_gastos &= Q(empresa_id=empresa_id)
-    elif not es_super:
-        base_gastos &= Q(empresa=request.user.perfilusuario.empresa)
-    if proveedor_id:
-        base_gastos &= Q(proveedor_id=proveedor_id)
-    if empleado_id:
-        base_gastos &= Q(empleado_id=empleado_id)
-    if grupo_id:
-        base_gastos &= Q(tipo_gasto__subgrupo__grupo_id=grupo_id)
-    if subgrupo_id:
-        base_gastos &= Q(tipo_gasto__subgrupo_id=subgrupo_id)
-    if tipo_gasto_id:
-        base_gastos &= Q(tipo_gasto_id=tipo_gasto_id)
-    if mes:
-        base_gastos &= Q(fecha__month=mes)
-    
-
-    # OPTIMIZACIÓN: select_related para evitar N+1 en relaciones ForeignKey
-    gastos = (
-        Gasto.objects.filter(base_gastos)
-        .select_related(
-            "empresa",
-            "proveedor",
-            "empleado",
-            "tipo_gasto",
-            "tipo_gasto__subgrupo",
-            "tipo_gasto__subgrupo__grupo",
-        )
-        .prefetch_related("pagos")
-    )
-
-    # PAGOS
-    pagos = PagoGasto.objects.filter(gasto__in=gastos).select_related(
-        "gasto",
-        "gasto__empresa",
-        "gasto__proveedor",
-        "gasto__empleado",
-        "gasto__tipo_gasto",
-    )
-
-    if forma_pago:
-        pagos = pagos.filter(forma_pago=forma_pago)
-    if fecha_inicio:
-        pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
-    if fecha_fin:
-        pagos = pagos.filter(fecha_pago__lte=fecha_fin)
-    
-    if fecha_inicio and fecha_fin:
-        try:
-            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
-            pagos = pagos.filter(fecha_pago__range=(fecha_i, fecha_f))
-        except:
-            pass
-
-    # Caja chica y vales filtrados por tipo de gasto
-    from caja_chica.models import GastoCajaChica, ValeCaja
-
-    pagos_caja_chica = GastoCajaChica.objects.all()
-    vales_caja_chica = ValeCaja.objects.all()
-    if not es_super:
-        pagos_caja_chica = pagos_caja_chica.filter(
-            fondeo__empresa=request.user.perfilusuario.empresa
-        )
-        vales_caja_chica = vales_caja_chica.filter(
-            fondeo__empresa=request.user.perfilusuario.empresa
-        )
-    elif es_super and empresa_id:
-        pagos_caja_chica = pagos_caja_chica.filter(fondeo__empresa_id=empresa_id)
-        vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
-    if proveedor_id:
-        pagos_caja_chica = pagos_caja_chica.filter(proveedor_id=proveedor_id)
-    if tipo_gasto_id:
-        pagos_caja_chica = pagos_caja_chica.filter(tipo_gasto_id=tipo_gasto_id)
-        vales_caja_chica = vales_caja_chica.filter(tipo_gasto_id=tipo_gasto_id)
-    if empleado_id:
-        vales_caja_chica = (
-            vales_caja_chica.filter(
-                recibido_por=Empleado.objects.filter(pk=empleado_id).first().nombre
-            )
-            if Empleado.objects.filter(pk=empleado_id).exists()
-            else vales_caja_chica
-        )
-    if mes:
-        pagos_caja_chica = pagos_caja_chica.filter(fecha__month=mes)
-        vales_caja_chica = vales_caja_chica.filter(fecha__month=mes)
-    if fecha_inicio:
-        pagos_caja_chica = pagos_caja_chica.filter(fecha__gte=fecha_inicio)
-        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
-    if fecha_fin:
-        pagos_caja_chica = pagos_caja_chica.filter(fecha__lte=fecha_fin)
-        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
-    
-    if fecha_inicio and fecha_fin:
-        try:
-            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
-            pagos_caja_chica = pagos_caja_chica.filter(fecha__range=(fecha_i, fecha_f))
-            vales_caja_chica = vales_caja_chica.filter(fecha__range=(fecha_i, fecha_f))
-        except:
-            pass
-
-    # Sumar pagos normales, caja chica y vales por mes
-    pagos_mes = (
-        pagos.annotate(mes=ExtractMonth("fecha_pago"))
-        .values("mes")
-        .annotate(total=Sum("monto"))
-        .order_by("mes")
-    )
-    pagos_mensuales = [0] * 12
-    for p in pagos_mes:
-        mes_idx = p["mes"] - 1
-        pagos_mensuales[mes_idx] = float(p["total"])
-
-    # Sumar gastos de caja chica por mes
-    caja_chica_mes = (
-        pagos_caja_chica.annotate(mes=ExtractMonth("fecha"))
-        .values("mes")
-        .annotate(total=Sum("importe"))
-        .order_by("mes")
-    )
-    for c in caja_chica_mes:
-        mes_idx = c["mes"] - 1
-        pagos_mensuales[mes_idx] += float(c["total"])
-
-    # Sumar vales por mes
-    vales_mes = (
-        vales_caja_chica.annotate(mes=ExtractMonth("fecha"))
-        .values("mes")
-        .annotate(total=Sum("importe"))
-        .order_by("mes")
-    )
-    for v in vales_mes:
-        mes_idx = v["mes"] - 1
-        pagos_mensuales[mes_idx] += float(v["total"])
-
-    # GASTOS POR MES (optimizado)
-    gastos_por_mes = (
-        gastos.annotate(mes=ExtractMonth("fecha"))
-        .values("mes")
-        .annotate(total=Sum("monto"))
-        .order_by("mes")
-    )
-    gastos_mensuales_dict = {g["mes"]: float(g["total"]) for g in gastos_por_mes}
-
-    # PAGOS POR MES (optimizado)
-    pagos_gastos_por_mes = (
-        pagos.annotate(mes=ExtractMonth("gasto__fecha"))
-        .values("mes")
-        .annotate(total=Sum("monto"))
-        .order_by("mes")
-    )
-    pagos_gastos_mensuales_dict = {
-        p["mes"]: float(p["total"]) for p in pagos_gastos_por_mes
-    }
-
-    # OPTIMIZACIÓN: calcular saldos pendientes por mes directamente
-    # SALDOS PENDIENTES (por mes) - solo 2 queries
-    saldos_mes = []
-    for m in range(1, 13):
-        monto_gastos_mes = gastos_mensuales_dict.get(m, 0)
-        pagos_gastos_mes = pagos_gastos_mensuales_dict.get(m, 0)
-        saldo = monto_gastos_mes - pagos_gastos_mes
-        saldos_mes.append(saldo)
-
-    # PRESUPUESTO POR MES (optimizado, solo 1 query)
-    presupuestos_qs = Presupuesto.objects.filter(empresa__in=empresas, anio=anio)
-    if grupo_id:
-        presupuestos_qs = presupuestos_qs.filter(
-            tipo_gasto__subgrupo__grupo_id=grupo_id
-        )
-    if subgrupo_id:
-        presupuestos_qs = presupuestos_qs.filter(tipo_gasto__subgrupo_id=subgrupo_id)
-    if tipo_gasto_id:
-        presupuestos_qs = presupuestos_qs.filter(tipo_gasto_id=tipo_gasto_id)
-
-    presupuestos_por_mes = (
-        presupuestos_qs.values("mes").annotate(total=Sum("monto")).order_by("mes")
-    )
-    presupuesto_mes_dict = {p["mes"]: float(p["total"]) for p in presupuestos_por_mes}
-    presupuesto_mes = [presupuesto_mes_dict.get(m, 0.0) for m in range(1, 13)]
-
-    # --- FILTRAR SOLO MESES TRANSCURRIDOS O EL MES SELECCIONADO ---
-    if mes:
-        # Si hay filtro de mes, solo muestra ese mes
-        mes_int = int(mes)
-        meses = [calendar.month_abbr[mes_int]]
-        pagos_mensuales = [pagos_mensuales[mes_int - 1]]
-        saldos_mes = [saldos_mes[mes_int - 1]]
-        presupuesto_mes = [presupuesto_mes[mes_int - 1]]
-        meses_mostrar = 1
-    else:
-        if anio == anio_actual:
-            meses_mostrar = mes_actual
-        else:
-            meses_mostrar = 12
-
-        meses = [calendar.month_name[m] for m in range(1, meses_mostrar + 1)]
-        pagos_mensuales = pagos_mensuales[:meses_mostrar]
-        saldos_mes = saldos_mes[:meses_mostrar]
-        presupuesto_mes = presupuesto_mes[:meses_mostrar]
-
-    # KPI totales
-    total_pagado = sum(pagos_mensuales)
-    total_pendiente = sum(saldos_mes)
-    total_presupuesto = sum(presupuesto_mes)
-
-    # Catálogos
-    proveedores = Proveedor.objects.all()
-    empleados = Empleado.objects.all()
-    FORMAS_PAGO = PagoGasto._meta.get_field("forma_pago").choices
-    grupos = GrupoGasto.objects.all()
-    subgrupos = SubgrupoGasto.objects.all()
-
-    return render(
-        request,
-        "gastos/dashboard_pagos.html",
-        {
-            "empresas": empresas,
-            "empresa_id": empresa_id,
-            "anio": anio,
-            "total_pagado": total_pagado,
-            "total_pendiente": total_pendiente,
-            "total_presupuesto": total_presupuesto,
-            "meses": meses,
-            "pagos_mensuales": pagos_mensuales,
-            "saldos_mes": saldos_mes,
-            "presupuesto_mes": presupuesto_mes,
-            "proveedores": proveedores,
-            "empleados": empleados,
-            "proveedor_id": proveedor_id,
-            "empleado_id": empleado_id,
-            "formas_pago": FORMAS_PAGO,
-            "forma_pago_actual": forma_pago,
-            "fecha_inicio": fecha_inicio,
-            "fecha_fin": fecha_fin,
-            "es_super": es_super,
-            "grupos": grupos,
-            "subgrupos": subgrupos,
-            "tipos_gasto": tipos_gasto,
-            "grupo_id": grupo_id,
-            "subgrupo_id": subgrupo_id,
-            "tipo_gasto_id": tipo_gasto_id,
-            "mes": mes,
-            "anio_actual": anio_actual,
-            "mes_actual": mes_actual,
-            "anio_seleccionado": anio,
-            "mes_seleccionado": mes,
-            "meses_mostrar": meses_mostrar,
-        },
-    )
-
-#exportar pagos de gastos a Excel
+# exportar pagos de gastos a Excel
 @login_required
 def exportar_reporte_pagos_gastos_excel(request):
     es_super = request.user.is_superuser
@@ -853,6 +731,7 @@ def exportar_reporte_pagos_gastos_excel(request):
     forma_pago = request.GET.get("forma_pago")
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
+    cuenta_bancaria = request.GET.get("cuenta_bancaria")
 
     if not es_super:
         pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
@@ -871,9 +750,12 @@ def exportar_reporte_pagos_gastos_excel(request):
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
 
+    if cuenta_bancaria and cuenta_bancaria.isdigit():
+        pagos = pagos.filter(cuenta_bancaria_id=cuenta_bancaria)
+
     pagos_list = list(pagos)
     for p in pagos_list:
-        p.tipo_pago = 'normal'
+        p.tipo_pago = "normal"
         p.fecha = p.fecha_pago
 
     pagos_list.sort(key=lambda x: x.fecha, reverse=True)
@@ -881,74 +763,284 @@ def exportar_reporte_pagos_gastos_excel(request):
     wb = Workbook()
     ws = wb.active
     ws.title = "Pagos de Gastos"
-    ws.append([
-        "Folio", "Fecha pago", "Empresa", "Proveedor/Empleado","Tipo gasto", "Concepto", 
-        "Forma de pago", "Monto", "Estatus"
-    ])
+    ws.append(
+        [
+            "Folio",
+            "Fecha pago",
+            "Empresa",
+            "Proveedor/Empleado",
+            "Tipo gasto",
+            "Concepto",
+            "Forma de pago",
+            "Monto",
+            "Cuenta Bancaria",
+            "Numero Cta",
+            "Estatus",
+        ]
+    )
 
     for pago in pagos_list:
         gasto = pago.gasto
-        origen = gasto.proveedor.nombre if gasto.proveedor else (
-            gasto.empleado.nombre if gasto.empleado else ''
+        origen = (
+            gasto.proveedor.nombre
+            if gasto.proveedor
+            else (gasto.empleado.nombre if gasto.empleado else "")
         )
-        ws.append([
-            gasto.id,
-            pago.fecha_pago if pago.fecha_pago else '',
-            gasto.empresa.nombre if gasto.empresa else '',
-            origen,
-            gasto.tipo_gasto.nombre if gasto.tipo_gasto else '',
-            gasto.descripcion,
-            pago.get_forma_pago_display(),
-            float(pago.monto),
-            gasto.estatus
-        ])
+        ws.append(
+            [
+                gasto.id,
+                pago.fecha_pago if pago.fecha_pago else "",
+                gasto.empresa.nombre if gasto.empresa else "",
+                origen,
+                gasto.tipo_gasto.nombre if gasto.tipo_gasto else "",
+                gasto.descripcion,
+                pago.get_forma_pago_display(),
+                float(pago.monto),
+                pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
+                pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
+                gasto.estatus,
+            ]
+        )
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     filename = "reporte_pagos_gastos.xlsx"
-    response['Content-Disposition'] = f'attachment; filename={filename}'
+    response["Content-Disposition"] = f"attachment; filename={filename}"
     wb.save(response)
     return response
 
+@login_required
+#egresos 
+def grafico_gastos_mensual(request):
+    anio = int(request.GET.get('anio', datetime.now().year))
+    mes = request.GET.get('mes')
+    mes_int = int(mes) if mes and str(mes).isdigit() else None
+    es_super = request.user.is_superuser
+    tipo_gasto=request.GET.get('tipo_gasto','todos')
 
-def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
+    # Filtro por empresa si no es superusuario
+    if es_super:
+        pagos = PagoGasto.objects.all()
+        gastos_caja_chica = GastoCajaChica.objects.all()
+        vales_caja_chica = ValeCaja.objects.all()
+        presup_qs = Presupuesto.objects.filter(anio=anio)
+    else:
+        empresa = request.user.perfilusuario.empresa
+        pagos = PagoGasto.objects.filter(gasto__empresa=empresa)
+        gastos_caja_chica = GastoCajaChica.objects.filter(fondeo__empresa=empresa)
+        vales_caja_chica = ValeCaja.objects.filter(fondeo__empresa=empresa)
+        presup_qs = Presupuesto.objects.filter(anio=anio, empresa=empresa)
+
+    # Aplica el filtro por tipo de gasto
+    if tipo_gasto == 'pagos':
+        gastos_caja_chica = GastoCajaChica.objects.none()
+        vales_caja_chica = ValeCaja.objects.none()
+    elif tipo_gasto == 'caja':
+        pagos = PagoGasto.objects.none()
+        vales_caja_chica = ValeCaja.objects.none()
+    elif tipo_gasto == 'vales':
+        pagos = PagoGasto.objects.none()
+        gastos_caja_chica = GastoCajaChica.objects.none()
+
+    # Presupuesto mensual del año seleccionado
+    presup_dict = {}
+    for p in presup_qs:
+        mes_p = int(p.mes)
+        presup_dict[mes_p] = presup_dict.get(mes_p, 0.0) + float(p.monto or 0)
+
+    # Filtro por año y mes
+    pagos = pagos.filter(fecha_pago__year=anio)
+    gastos_caja_chica = gastos_caja_chica.filter(fecha__year=anio)
+    vales_caja_chica = vales_caja_chica.filter(fecha__year=anio)
+
+    if mes_int:
+        pagos = pagos.filter(fecha_pago__month=mes_int)
+        gastos_caja_chica = gastos_caja_chica.filter(fecha__month=mes_int)
+        vales_caja_chica = vales_caja_chica.filter(fecha__month=mes_int)
+
+    # Agrupa por mes
+    pagos_por_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    gastos_caja_chica_por_mes = gastos_caja_chica.annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('importe')).order_by('mes')
+    vales_caja_chica_por_mes = vales_caja_chica.annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('importe')).order_by('mes')
+
+    # Etiquetas y datos para el gráfico
+    todos_los_meses = sorted(
+    set(
+        [x['mes'] for x in pagos_por_mes if x['mes'] is not None] +
+        [x['mes'] for x in gastos_caja_chica_por_mes if x['mes'] is not None] +
+        [x['mes'] for x in vales_caja_chica_por_mes if x['mes'] is not None]
+    )
+)
+    labels_meses = [DateFormat(m).format('F Y') for m in todos_los_meses]
+
+    #dict para acceso rápido a totales por mes
+    pagos_dict = {x["mes"]: float(x["total"] or 0) for x in pagos_por_mes if x["mes"] is not None}
+    caja_dict = {x["mes"]: float(x["total"] or 0) for x in gastos_caja_chica_por_mes if x["mes"] is not None}
+    vales_dict = {x["mes"]: float(x["total"] or 0) for x in vales_caja_chica_por_mes if x["mes"] is not None}
+
+   
+    data_gastos = [pagos_dict.get(m, 0.0) for m in todos_los_meses]
+    data_caja = [caja_dict.get(m, 0.0) for m in todos_los_meses]
+    data_vales = [vales_dict.get(m, 0.0) for m in todos_los_meses]
+    data_presupuesto = [float(presup_dict.get(m.month, 0.0)) for m in todos_los_meses]
+
+    # Suma total de egresos por mes (pagos + caja + vales)
+    totales_mes = [data_gastos[i] + data_caja[i] + data_vales[i] for i in range(len(data_gastos))]
+
+    if not data_presupuesto:
+        data_presupuesto = [0 for _ in labels_meses]
+
+    # Si no hay datos, muestra un mes vacío
+    if not labels_meses:
+        labels_meses = ["Sin datos"]
+        data_gastos = [0.0]
+        data_caja = [0.0]
+        data_vales = [0.0]    
+        data_presupuesto = [0.0]
+
+    meses_lista = [
+    {'num': 1, 'nombre': 'Enero'},
+    {'num': 2, 'nombre': 'Febrero'},
+    {'num': 3, 'nombre': 'Marzo'},
+    {'num': 4, 'nombre': 'Abril'},
+    {'num': 5, 'nombre': 'Mayo'},
+    {'num': 6, 'nombre': 'Junio'},
+    {'num': 7, 'nombre': 'Julio'},
+    {'num': 8, 'nombre': 'Agosto'},
+    {'num': 9, 'nombre': 'Septiembre'},
+    {'num': 10, 'nombre': 'Octubre'},
+    {'num': 11, 'nombre': 'Noviembre'},
+    {'num': 12, 'nombre': 'Diciembre'},
+]
+    return render(request, 'gastos/grafico_gastos_mensual.html', {
+        'labels_meses': json.dumps(labels_meses),
+        #'data_total_egresos': json.dumps(data_total_egresos),
+        'data_gastos': json.dumps(data_gastos),
+        'data_caja': json.dumps(data_caja),
+        'data_vales': json.dumps(data_vales),
+        'data_presupuesto': json.dumps(data_presupuesto),
+        'anio': anio,
+        'mes': mes,
+        'meses_lista': meses_lista, 
+        'totales_mes': json.dumps(totales_mes),
+        'tipo_gasto': tipo_gasto,
+    })
+
+@login_required
+#grafico gastos comparativo anual
+def grafico_gastos_anual(request):
+    empresa = request.user.perfilusuario.empresa
+    pagos = (
+        PagoGasto.objects.filter(gasto__empresa=empresa)
+        .annotate(year=TruncYear('fecha_pago'))
+        .values('year')
+        .annotate(total=Sum('monto'))
+        .order_by('year')
+    )
+
+    # Gastos caja chica agrupados por año
+    gastos_caja = (
+        GastoCajaChica.objects.filter(fondeo__empresa=empresa)
+        .annotate(year=TruncYear('fecha'))
+        .values('year')
+        .annotate(total=Sum('importe'))
+        .order_by('year')
+    )
+
+    # Vales caja agrupados por año
+    vales_caja = (
+        ValeCaja.objects.filter(fondeo__empresa=empresa)
+        .annotate(year=TruncYear('fecha'))
+        .values('year')
+        .annotate(total=Sum('importe'))
+        .order_by('year')
+    )
+
+    # Presupuesto agrupado por año
+    presupuestos = (
+        Presupuesto.objects.filter(empresa=empresa)
+        .values('anio')
+        .annotate(total=Sum('monto'))
+        .order_by('anio')
+    )
+
+    # Unificar años
+    years = sorted(
+        set(
+            [p['year'].year for p in pagos] +
+            [g['year'].year for g in gastos_caja] +
+            [v['year'].year for v in vales_caja] +
+            [b['anio'] for b in presupuestos]
+        )
+    )
+
+    pagos_dict = {p['year'].year: float(p['total']) for p in pagos}
+    gastos_caja_dict = {g['year'].year: float(g['total']) for g in gastos_caja}
+    vales_caja_dict = {v['year'].year: float(v['total']) for v in vales_caja}
+    presupuestos_dict = {b['anio']: float(b['total']) for b in presupuestos}
+
+    pagos_data = [pagos_dict.get(y, 0) for y in years]
+    gastos_caja_data = [gastos_caja_dict.get(y, 0) for y in years]
+    vales_caja_data = [vales_caja_dict.get(y, 0) for y in years]
+    presupuestos_data = [presupuestos_dict.get(y, 0) for y in years]
+
+    totales_anio = [pagos_data[i] + gastos_caja_data[i] + vales_caja_data[i] for i in range(len(years))]
+    
+    context = {
+        'years': json.dumps(years),
+        'pagos_data': json.dumps(pagos_data),
+        'gastos_caja_data': json.dumps(gastos_caja_data),
+        'vales_caja_data': json.dumps(vales_caja_data),
+        'presupuestos_data': json.dumps(presupuestos_data),
+        'totales_anio': json.dumps(totales_anio),
+}
+    return render(request, 'gastos/grafico_gastos_anual.html', context)
+
+
+def buscar_por_id_o_nombre(modelo, valor, campo="nombre"):
     """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas). Reporta conflicto si hay varias."""
     if not valor:
         return None
-    val = str(valor).strip().replace(',', '')
+    val = str(valor).strip().replace(",", "")
     try:
         return modelo.objects.get(pk=int(val))
     except (ValueError, modelo.DoesNotExist):
         todos = modelo.objects.all()
         # Lista de coincidencias insensibles a acentos y mayúsculas
         candidatos = [
-            obj for obj in todos
+            obj
+            for obj in todos
             if unidecode(val).lower() in unidecode(str(getattr(obj, campo))).lower()
         ]
         if len(candidatos) == 1:
             return candidatos[0]
         elif len(candidatos) > 1:
-            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos])
-            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
+            conflicto = "; ".join(
+                [f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos]
+            )
+            raise Exception(
+                f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}"
+            )
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
 
 
 def normaliza_texto(texto):
     if not texto:
         return ""
-    #texto = texto.upper()
+    # texto = texto.upper()
     texto = texto
-    texto = unicodedata.normalize('NFKD', texto)
-    texto = ''.join([c for c in texto if not unicodedata.combining(c)])
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join([c for c in texto if not unicodedata.combining(c)])
     return texto
+
 
 @login_required
 def carga_masiva_gastos(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = GastosCargaMasivaForm(request.POST, request.FILES)
         if form.is_valid():
-            archivo = request.FILES['archivo']
+            archivo = request.FILES["archivo"]
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
@@ -958,37 +1050,55 @@ def carga_masiva_gastos(request):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
-                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    errores.append(
+                        f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})"
+                    )
                     continue
-                empresa_val, proveedor_val, empleado_val, rfc_empleado, grupo_val, subgrupo_val, tipo_gasto_val, monto, descripcion, fecha, observaciones, retencion_iva, retencion_isr = row
+                (
+                    empresa_val,
+                    proveedor_val,
+                    empleado_val,
+                    rfc_empleado,
+                    grupo_val,
+                    subgrupo_val,
+                    tipo_gasto_val,
+                    monto,
+                    descripcion,
+                    fecha,
+                    observaciones,
+                    retencion_iva,
+                    retencion_isr,
+                ) = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     if not empresa:
-                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        errores.append(
+                            f"Fila {i}: No se encontró la empresa '{empresa_val}'"
+                        )
                         continue
 
                     proveedor = None
                     if proveedor_val:
                         proveedor, _ = Proveedor.objects.get_or_create(
-                            nombre=proveedor_val,
-                            empresa=empresa
+                            nombre=proveedor_val, empresa=empresa
                         )
 
                     empleado = None
                     if rfc_empleado:
                         empleado, _ = Empleado.objects.get_or_create(
                             rfc=rfc_empleado,
-                            defaults={'nombre': empleado_val, 'empresa': empresa}
+                            defaults={"nombre": empleado_val, "empresa": empresa},
                         )
                     elif empleado_val:
                         empleado, _ = Empleado.objects.get_or_create(
-                            nombre=empleado_val,
-                            empresa=empresa
+                            nombre=empleado_val, empresa=empresa
                         )
 
                     # Validar que al menos uno esté presente
                     if not proveedor and not empleado:
-                        errores.append(f"Fila {i}: Debe especificar proveedor o empleado.")
+                        errores.append(
+                            f"Fila {i}: Debe especificar proveedor o empleado."
+                        )
                         continue
 
                     # Validar que el grupo existe
@@ -998,7 +1108,9 @@ def carga_masiva_gastos(request):
                         try:
                             grupo_inst = GrupoGasto.objects.get(nombre=grupo_nombre)
                         except GrupoGasto.DoesNotExist:
-                            errores.append(f"Fila {i}: El grupo '{grupo_nombre}' no existe en el catálogo.")
+                            errores.append(
+                                f"Fila {i}: El grupo '{grupo_nombre}' no existe en el catálogo."
+                            )
                             continue
                     else:
                         errores.append(f"Fila {i}: El grupo es obligatorio.")
@@ -1009,9 +1121,13 @@ def carga_masiva_gastos(request):
                     if subgrupo_val:
                         subgrupo_nombre = normaliza_texto(subgrupo_val)
                         try:
-                            subgrupo_inst = SubgrupoGasto.objects.get(nombre=subgrupo_nombre, grupo=grupo_inst)
+                            subgrupo_inst = SubgrupoGasto.objects.get(
+                                nombre=subgrupo_nombre, grupo=grupo_inst
+                            )
                         except SubgrupoGasto.DoesNotExist:
-                            errores.append(f"Fila {i}: El subgrupo '{subgrupo_nombre}' no existe en el grupo '{grupo_nombre}'.")
+                            errores.append(
+                                f"Fila {i}: El subgrupo '{subgrupo_nombre}' no existe en el grupo '{grupo_nombre}'."
+                            )
                             continue
                     else:
                         errores.append(f"Fila {i}: El subgrupo es obligatorio.")
@@ -1022,11 +1138,15 @@ def carga_masiva_gastos(request):
                     if tipo_gasto_val:
                         tipo_gasto_nombre = normaliza_texto(tipo_gasto_val)
                         tipo_gasto_inst = TipoGasto.objects.filter(
-                            nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa
+                            nombre=tipo_gasto_nombre,
+                            subgrupo=subgrupo_inst,
+                            empresa=empresa,
                         ).first()
                         if not tipo_gasto_inst:
                             tipo_gasto_inst = TipoGasto.objects.create(
-                                nombre=tipo_gasto_nombre, subgrupo=subgrupo_inst, empresa=empresa
+                                nombre=tipo_gasto_nombre,
+                                subgrupo=subgrupo_inst,
+                                empresa=empresa,
                             )
                     else:
                         errores.append(f"Fila {i}: El tipo de gasto es obligatorio.")
@@ -1035,28 +1155,41 @@ def carga_masiva_gastos(request):
                     try:
                         monto_decimal = Decimal(monto)
                     except (InvalidOperation, TypeError, ValueError):
-                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
+                        errores.append(
+                            f"Fila {i}: El valor de monto '{monto}' no es válido."
+                        )
                         continue
 
                     try:
-                        retencion_iva_decimal = Decimal(retencion_iva) if retencion_iva else 0
+                        retencion_iva_decimal = (
+                            Decimal(retencion_iva) if retencion_iva else 0
+                        )
                     except (InvalidOperation, TypeError, ValueError):
-                        errores.append(f"Fila {i}: El valor de retención IVA '{retencion_iva}' no es válido.")
+                        errores.append(
+                            f"Fila {i}: El valor de retención IVA '{retencion_iva}' no es válido."
+                        )
                         continue
 
                     try:
-                        retencion_isr_decimal = Decimal(retencion_isr) if retencion_isr else 0
+                        retencion_isr_decimal = (
+                            Decimal(retencion_isr) if retencion_isr else 0
+                        )
                     except (InvalidOperation, TypeError, ValueError):
-                        errores.append(f"Fila {i}: El valor de retención ISR '{retencion_isr}' no es válido.")
+                        errores.append(
+                            f"Fila {i}: El valor de retención ISR '{retencion_isr}' no es válido."
+                        )
                         continue
 
                     # Conversión de fecha si es string
                     from datetime import datetime
+
                     if isinstance(fecha, str):
                         try:
                             fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
                         except Exception:
-                            errores.append(f"Fila {i}: El formato de fecha '{fecha}' no es válido (debe ser YYYY-MM-DD).")
+                            errores.append(
+                                f"Fila {i}: El formato de fecha '{fecha}' no es válido (debe ser YYYY-MM-DD)."
+                            )
                             continue
 
                     gasto = Gasto.objects.create(
@@ -1070,7 +1203,7 @@ def carga_masiva_gastos(request):
                         observaciones=observaciones or "",
                         retencion_iva=retencion_iva_decimal,
                         retencion_isr=retencion_isr_decimal,
-                        estatus='pagada',
+                        estatus="pagada",
                     )
 
                     # Registrar el pago automáticamente
@@ -1078,24 +1211,32 @@ def carga_masiva_gastos(request):
                         gasto=gasto,
                         fecha_pago=fecha,
                         monto=monto_decimal,
-                        forma_pago='transferencia',
-                        referencia='Carga masiva',
-                        registrado_por=request.user if request.user.is_authenticated else None
+                        forma_pago="transferencia",
+                        referencia="Carga masiva",
+                        registrado_por=request.user
+                        if request.user.is_authenticated
+                        else None,
                     )
 
                     exitos += 1
                 except Exception as e:
                     import traceback
-                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+
+                    errores.append(
+                        f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}"
+                    )
 
             if exitos:
                 messages.success(request, f"¡{exitos} gastos cargados exitosamente!")
             if errores:
-                messages.error(request, "Algunos gastos no se cargaron:<br>" + "<br>".join(errores))
-            return redirect('carga_masiva_gastos')
+                messages.error(
+                    request, "Algunos gastos no se cargaron:<br>" + "<br>".join(errores)
+                )
+            return redirect("carga_masiva_gastos")
     else:
         form = GastosCargaMasivaForm()
-    return render(request, 'gastos/carga_masiva_gastos.html', {'form': form})
+    return render(request, "gastos/carga_masiva_gastos.html", {"form": form})
+
 
 def descargar_plantilla_gastos(request):
     wb = Workbook()
@@ -1104,16 +1245,40 @@ def descargar_plantilla_gastos(request):
 
     # Encabezados según el formato de carga masiva
     encabezados = [
-        'empresa', 'proveedor', 'empleado', 'rfc_empleado', 'grupo', 'subgrupo',
-        'tipo_gasto', 'monto', 'descripcion', 'fecha', 'observaciones', 'retencion_iva', 'retencion_isr'
+        "empresa",
+        "proveedor",
+        "empleado",
+        "rfc_empleado",
+        "grupo",
+        "subgrupo",
+        "tipo_gasto",
+        "monto",
+        "descripcion",
+        "fecha",
+        "observaciones",
+        "retencion_iva",
+        "retencion_isr",
     ]
     ws.append(encabezados)
 
     # Fila de ejemplo
-    ws.append([
-        'EMPRESA A.C.', 'Proveedor Ejemplo', '', '', 'Gastos Administracion', 'Papelería',
-        'Copias', '1200.50', 'Compra de hojas', '2025-06-19', 'Carga inicial', '0.00', '0.00'
-    ])
+    ws.append(
+        [
+            "EMPRESA A.C.",
+            "Proveedor Ejemplo",
+            "",
+            "",
+            "Gastos Administracion",
+            "Papelería",
+            "Copias",
+            "1200.50",
+            "Compra de hojas",
+            "2025-06-19",
+            "Carga inicial",
+            "0.00",
+            "0.00",
+        ]
+    )
 
     output = BytesIO()
     wb.save(output)
@@ -1121,21 +1286,28 @@ def descargar_plantilla_gastos(request):
 
     response = HttpResponse(
         output.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response['Content-Disposition'] = 'attachment; filename=plantilla_gastos.xlsx'
+    response["Content-Disposition"] = "attachment; filename=plantilla_gastos.xlsx"
     return response
+
 
 @login_required
 def exportar_gastos_lista_excel(request):
-    proveedor_id = request.GET.get('proveedor')
-    empleado_id = request.GET.get('empleado')
-    tipo_gasto = request.GET.get('tipo_gasto')
+    proveedor_id = request.GET.get("proveedor")
+    empleado_id = request.GET.get("empleado")
+    tipo_gasto = request.GET.get("tipo_gasto")
 
     if request.user.is_superuser:
-        gastos = Gasto.objects.all().select_related('empresa', 'proveedor', 'empleado', 'tipo_gasto').order_by('-fecha')
+        gastos = (
+            Gasto.objects.all()
+            .select_related("empresa", "proveedor", "empleado", "tipo_gasto")
+            .order_by("-fecha")
+        )
     else:
-        gastos = Gasto.objects.filter(empresa=request.user.perfilusuario.empresa).order_by('-fecha')
+        gastos = Gasto.objects.filter(
+            empresa=request.user.perfilusuario.empresa
+        ).order_by("-fecha")
 
     if proveedor_id:
         gastos = gastos.filter(proveedor_id=proveedor_id)
@@ -1148,37 +1320,55 @@ def exportar_gastos_lista_excel(request):
     ws = wb.active
     ws.title = "Gastos"
 
-    ws.append([
-        "Folio", "Fecha", "Empresa", "Proveedor", "Empleado", "Tipo de Gasto",
-        "Monto","Saldo", "Descripción", "Estatus", "Observaciones"
-    ])
+    ws.append(
+        [
+            "Folio",
+            "Fecha",
+            "Empresa",
+            "Proveedor",
+            "Empleado",
+            "Tipo de Gasto",
+            "Monto",
+            "Saldo",
+            "Descripción",
+            "Estatus",
+            "Observaciones",
+        ]
+    )
 
     for gasto in gastos:
-        ws.append([
-            gasto.id,
-            gasto.fecha if gasto.fecha else '',
-            gasto.empresa.nombre if gasto.empresa else '',
-            gasto.proveedor.nombre if gasto.proveedor else '',
-            gasto.empleado.nombre if gasto.empleado else '',
-            gasto.tipo_gasto.nombre if gasto.tipo_gasto else '',
-            float(gasto.monto),
-            float(gasto.saldo_restante) if gasto.saldo_restante is not None else 0.0,
-            gasto.descripcion or '',
-            gasto.estatus,
-            gasto.observaciones or ''
-        ])
+        ws.append(
+            [
+                gasto.id,
+                gasto.fecha if gasto.fecha else "",
+                gasto.empresa.nombre if gasto.empresa else "",
+                gasto.proveedor.nombre if gasto.proveedor else "",
+                gasto.empleado.nombre if gasto.empleado else "",
+                gasto.tipo_gasto.nombre if gasto.tipo_gasto else "",
+                float(gasto.monto),
+                float(gasto.saldo_restante)
+                if gasto.saldo_restante is not None
+                else 0.0,
+                gasto.descripcion or "",
+                gasto.estatus,
+                gasto.observaciones or "",
+            ]
+        )
 
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename=gastos_lista.xlsx'
+    response["Content-Disposition"] = "attachment; filename=gastos_lista.xlsx"
     wb.save(response)
     return response
+
 
 @login_required
 def recibo_gasto(request, gasto_id):
     gasto = get_object_or_404(Gasto, pk=gasto_id)
-    monto_letra = num2words(gasto.monto, lang='es', to='currency', currency='MXN').capitalize()
+    monto_letra = num2words(
+        gasto.monto, lang="es", to="currency", currency="MXN"
+    ).capitalize()
     proveedor = gasto.proveedor
     empleado = gasto.empleado
     empresa = gasto.empresa
@@ -1194,7 +1384,8 @@ def recibo_gasto(request, gasto_id):
         },
     )
 
-#consulta retenciones de gastos
+
+# consulta retenciones de gastos
 @login_required
 def reporte_retenciones_gastos(request):
     fecha_inicio = request.GET.get("fecha_inicio")
@@ -1204,12 +1395,16 @@ def reporte_retenciones_gastos(request):
     perfil = getattr(request.user, "perfilusuario", None)
     empresa = perfil.empresa if perfil else None
     if not empresa:
-        return render(request, "gastos/reporte_retenciones.html", {
-            "gastos": [],
-            "fecha_inicio": fecha_inicio or "",
-            "fecha_fin": fecha_fin or "",
-            "error": "No se pudo determinar la empresa del usuario."
-        })
+        return render(
+            request,
+            "gastos/reporte_retenciones.html",
+            {
+                "gastos": [],
+                "fecha_inicio": fecha_inicio or "",
+                "fecha_fin": fecha_fin or "",
+                "error": "No se pudo determinar la empresa del usuario.",
+            },
+        )
 
     gastos = Gasto.objects.select_related(
         "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo"
@@ -1220,7 +1415,9 @@ def reporte_retenciones_gastos(request):
     if fecha_fin:
         gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
 
-    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by("-fecha")
+    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by(
+        "-fecha"
+    )
 
     data = []
     for g in gastos:
@@ -1230,23 +1427,32 @@ def reporte_retenciones_gastos(request):
             nombre = g.empleado.nombre
         else:
             nombre = ""
-        data.append({
-            "persona": nombre,
-            "subgrupo": g.tipo_gasto.subgrupo.nombre if g.tipo_gasto and g.tipo_gasto.subgrupo else "",
-            "tipo": g.tipo_gasto.nombre if g.tipo_gasto else "",
-            "fecha": g.fecha,
-            "retencion_isr": getattr(g, "retencion_isr", 0),
-            "retencion_iva": getattr(g, "retencion_iva", 0),
-        })
+        data.append(
+            {
+                "persona": nombre,
+                "subgrupo": g.tipo_gasto.subgrupo.nombre
+                if g.tipo_gasto and g.tipo_gasto.subgrupo
+                else "",
+                "tipo": g.tipo_gasto.nombre if g.tipo_gasto else "",
+                "fecha": g.fecha,
+                "retencion_isr": getattr(g, "retencion_isr", 0),
+                "retencion_iva": getattr(g, "retencion_iva", 0),
+            }
+        )
 
-    return render(request, "gastos/reporte_retenciones.html", {
-        "gastos": data,
-        "fecha_inicio": fecha_inicio or "",
-        "fecha_fin": fecha_fin or "",
-        "error": None,
-    })
+    return render(
+        request,
+        "gastos/reporte_retenciones.html",
+        {
+            "gastos": data,
+            "fecha_inicio": fecha_inicio or "",
+            "fecha_fin": fecha_fin or "",
+            "error": None,
+        },
+    )
 
-#descagar reporte de retenciones de gastos en Excel
+
+# descagar reporte de retenciones de gastos en Excel
 @login_required
 def descargar_reporte_retenciones_gastos(request):
     fecha_inicio = request.GET.get("fecha_inicio")
@@ -1263,7 +1469,9 @@ def descargar_reporte_retenciones_gastos(request):
         gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
 
     # Solo los que tengan retención ISR o IVA mayor a cero
-    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by("-fecha")
+    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by(
+        "-fecha"
+    )
 
     # Crear el archivo Excel
     wb = Workbook()
@@ -1271,10 +1479,16 @@ def descargar_reporte_retenciones_gastos(request):
     ws.title = "Reporte Retenciones Gastos"
 
     # Encabezados
-    ws.append([
-        "Persona", "Subgrupo", "Tipo de Gasto", "Fecha",
-        "Retención ISR", "Retención IVA"
-    ])
+    ws.append(
+        [
+            "Persona",
+            "Subgrupo",
+            "Tipo de Gasto",
+            "Fecha",
+            "Retención ISR",
+            "Retención IVA",
+        ]
+    )
 
     for g in gastos:
         if g.proveedor:
@@ -1283,19 +1497,23 @@ def descargar_reporte_retenciones_gastos(request):
             nombre = g.empleado.nombre
         else:
             nombre = ""
-        ws.append([
-            nombre,
-            g.tipo_gasto.subgrupo.nombre if g.tipo_gasto and g.tipo_gasto.subgrupo else "",
-            g.tipo_gasto.nombre if g.tipo_gasto else "",
-            g.fecha if g.fecha else '',
-            float(getattr(g, "retencion_isr", 0)),
-            float(getattr(g, "retencion_iva", 0)),
-        ])
+        ws.append(
+            [
+                nombre,
+                g.tipo_gasto.subgrupo.nombre
+                if g.tipo_gasto and g.tipo_gasto.subgrupo
+                else "",
+                g.tipo_gasto.nombre if g.tipo_gasto else "",
+                g.fecha if g.fecha else "",
+                float(getattr(g, "retencion_isr", 0)),
+                float(getattr(g, "retencion_iva", 0)),
+            ]
+        )
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     filename = "reporte_retenciones_gastos.xlsx"
-    response['Content-Disposition'] = f'attachment; filename={filename}'
+    response["Content-Disposition"] = f"attachment; filename={filename}"
     wb.save(response)
-    return response     
+    return response

@@ -118,16 +118,19 @@
                             </form>
                         </td>        
                         <td class="text-nowrap">
-                            <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar">
+                            <a href="{% url 'crear_cliente' %}" class="btn btn-sm btn-outline-success reporte-link" title="Nuevo Cliente">
+                                <i class="bi bi-plus-lg"></i>
+                            </a>
+                            <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar cliente">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar">
+                            <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar cliente">
                                 <i class="bi bi-slash-circle"></i>
                             </a>
                            
                         </td>
                         <td class="text-nowrap">
-                         <a href="{% url 'instrucciones_pago_pdf' cliente.pk %}" class="btn btn-sm btn-outline-secondary" title="Instrucciones de Pago">
+                         <a href="{% url 'instrucciones_pago_pdf' cliente.pk %}" class="btn btn-sm btn-outline-secondary" title="Descargar Instrucciones de Pago">
                                 <i class="bi bi-file-earmark-pdf"></i>
                             </a>
                         </td>

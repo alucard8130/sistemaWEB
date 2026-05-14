@@ -33,8 +33,8 @@
     <div class="card text-center shadow-sm p-3" style="width:63%; min-width:480px; max-width:350px; margin:auto; font-size:0.85rem;">
       <div class="card-body p-2">
         <h5><i class="bi bi-cash-coin"></i> Otros Ingresos</h5>
-        <h6 class="card-title mb-1" style="font-size:0.9rem;">Ingresos acumulados</h6>
-        <h2 class="mb-0" style="font-size:1.5rem; color:#28a745;">${{ total_cobrado|floatformat:2|intcomma }}</h2>
+        <h6 class="card-title mb-1" style="font-size:0.9rem;">Ingresos año actual</h6>
+        <h2 class="mb-0" style="font-size:1.5rem; color:#28a745;">${{ cobros_anio_actual|floatformat:2|intcomma }}</h2>
         <hr>
         <div class="row">
           <div class="col-6 text-start">
@@ -206,7 +206,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-
+      <div class="card shadow-sm mb-1">
+    <div class="card-body">
         <form method="get" class="row g-2 mb-3">
             <div class="col-auto">
             {% if request.user.is_superuser %}
@@ -219,41 +220,59 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endif %}
             </div>
             <div class="col-auto">
+              <label for="tipo_ingreso" class="form-label mb-0">Tipo de ingreso:</label>
         <select name="tipo_ingreso" id="tipo_ingreso" class="form-select">
-            <option value="">Tipo ingreso</option>
+            <option value="">selecciona una opcion</option>
             {% for tipo in tipos_ingreso %}
                 <option value="{{ tipo.id }}" {% if tipo_ingreso_id == tipo.id|stringformat:"s" %}selected{% endif %}>{{ tipo.nombre }}</option>
             {% endfor %}
         </select>
     </div>
             <div class="col-auto">
-                <select name="cliente" class="form-select">
-                    <option value="">Clientes</option>
+                <label for="cliente" class="form-label mb-0">Cliente:</label>
+                <select name="cliente" id="cliente" class="form-select">
+                    <option value="">selecciona una opcion</option>
                     {% for cliente in clientes %}
                         <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == cliente_id %}selected{% endif %}>{{ cliente.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
-            
             <div class="col-auto">
-                <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+                <label for="cuenta_bancaria" class="form-label mb-0">Cuenta bancaria:</label>
+                <select name="cuenta_bancaria" id="cuenta_bancaria" class="form-select">
+                    <option value="">selecciona una opcion</option>
+                    {% for cuenta in cuentas_bancarias %}
+                        <option value="{{ cuenta.id }}" {% if cuenta.id|stringformat:"s" == cuenta_bancaria %}selected{% endif %}>
+                            {{ cuenta.get_banco_display }} - {{ cuenta.numero_cuenta }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="col-auto">
-                <input type="date" name="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+                <label for="fecha_inicio" class="form-label mb-0">Desde:</label>
+                <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+            </div>
+            <div class="col-auto">
+                <label for="fecha_fin" class="form-label mb-0">Hasta:</label>
+                <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin }}">
             </div>
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-funnel-fill"></i> Filtrar
+                    <i class="bi bi-funnel-fill" title="Buscar"></i>
                 </button>
                 <a href="{% url 'reporte_cobros_otros_ingresos' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-clockwise"></i> Limpiar
+                    <i class="bi bi-arrow-clockwise" title="Limpiar filtros"></i>
                 </a>
-                <a href="{% url 'exportar_cobros_otros_ingresos_excel' %}?empresa={{ empresa_id }}&cliente={{ cliente_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&tipo_ingreso={{ tipo_ingreso_id }}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+                {% comment %} <a href="{% url 'exportar_cobros_otros_ingresos_excel' %}?empresa={{ empresa_id }}&cliente={{ cliente_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}&tipo_ingreso={{ tipo_ingreso_id }}" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-excel-fill" title="Exportar a Excel"></i>
+                </a> {% endcomment %}
+                <a href="{% url 'exportar_cobros_otros_ingresos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-excel-fill" title="Exportar a Excel"></i>
                 </a>
             </div>
         </form>
-        
+        </div>
+    </div>
         {% comment %} <div class="alert alert-info">
             <h4><strong>Total depositado:</strong>
             ${{ total_cobrado|floatformat:2|intcomma }}</h4>
@@ -270,6 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Cliente</th>
                         <th>Tipo Ingreso</th>
                         <th>Monto</th>
+                        <th>Cuenta deposito</th>
                         <th>Forma cobro</th>
                         <th>Fecha cobro</th>   
                         <th>Comentario</th>
@@ -287,6 +307,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>{{ cobro.factura.cliente.nombre }}</td>
                         <td>{{ cobro.factura.tipo_ingreso.nombre }}</td>
                         <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
+                        {% if cobro.cuenta_bancaria %}
+                        <td>{{ cobro.cuenta_bancaria }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
                         <td>{{ cobro.get_forma_cobro_display }}</td>
                         <td>{{ cobro.fecha_cobro|date:"d/b/y"|upper}}</td>
                         {% if cobro.observaciones == None or cobro.observaciones == "" %}

@@ -1,6 +1,7 @@
 from django import forms
 
 from empleados.models import Empleado
+from empresas.models import CuentaBancaria
 from proveedores.models import Proveedor
 from .models import Gasto, GrupoGasto, SubgrupoGasto, TipoGasto
 from django import forms
@@ -130,6 +131,9 @@ class GastoForm(forms.ModelForm):
                 'rows':2,
                 'class': 'form-control'
             }),
+            'cuenta_bancaria': forms.Select(attrs={
+                'class': 'form-select'
+            }),
         }
         labels = {
             
@@ -146,8 +150,6 @@ class GastoForm(forms.ModelForm):
         modo = kwargs.pop('modo', None)
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-
-        # self.fields['comprobante'].disabled = True  
 
         if not user or not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
@@ -225,7 +227,7 @@ class GastoForm(forms.ModelForm):
 class PagoGastoForm(forms.ModelForm):
     class Meta:
         model = PagoGasto
-        fields = ['fecha_pago', 'monto', 'forma_pago', 'referencia']
+        fields = ['fecha_pago', 'monto','cuenta_bancaria', 'forma_pago', 'referencia']
         labels = {'referencia': 'Comentario'}
         widgets = {
             'fecha_pago': forms.DateInput(attrs={
@@ -236,6 +238,9 @@ class PagoGastoForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Monto'
             }),
+                'cuenta_bancaria': forms.Select(attrs={
+                'class': 'form-select'
+            }),
             'forma_pago': forms.Select(attrs={
                 'class': 'form-select'
             }),
@@ -245,7 +250,10 @@ class PagoGastoForm(forms.ModelForm):
             }),
         }
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['cuenta_bancaria'].queryset = CuentaBancaria.objects.filter(empresa=empresa)
     
         # self.fields['comprobante'].disabled = True
 

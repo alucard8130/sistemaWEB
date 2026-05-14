@@ -3,7 +3,7 @@
 from django.db import models
 from django.db.models import Sum
 from empleados.models import Empleado
-from empresas.models import Empresa
+from empresas.models import CuentaBancaria, Empresa
 from proveedores.models import Proveedor
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -90,6 +90,8 @@ class PagoGasto(models.Model):
     referencia = models.CharField(max_length=100, blank=True, null=True)
     comprobante = models.FileField(upload_to='comprobante_gastos/', blank=True, null=True)
     registrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    #cuenta_bancaria = models.ForeignKey('bancos.CuentaBancaria', on_delete=models.SET_NULL, null=True, blank=True)
+    cuenta_bancaria = models.ForeignKey(CuentaBancaria, on_delete=models.PROTECT, related_name='pagos_gastos', default=None, null=True, blank=True)
 
     class Meta:
         ordering = ['-fecha_pago']

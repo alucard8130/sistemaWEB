@@ -1,5 +1,5 @@
 {% load static %}
-{% load archivo_existe %}
+{% comment %} {% load archivo_existe %} {% endcomment %}
 {% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
@@ -33,51 +33,54 @@
     {% endif %}
 
     <!-- Main content -->
-    <div class="container-fluid mt-4">
-
-      <h2>Facturas Otros Ingresos y registro de depositos</h2>
-          <div class="col-auto">
-            {% comment %} <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear mb-3">
-              <i class="bi bi-plus-circle me-1"></i> 
-                Nueva Factura otro ingreso
-            </a> {% endcomment %}
-          </div>
+    <div class="container-fluid mt-2" align="center">
+            <div class="card shadow-sm">
+                <div class="card-body">      
+      <h3 class="mb-0">Facturas Otros Ingresos</h3>
+            </div>
+            </div>
+    </div>
+    <div class="card shadow-sm mb-1">
+    <div class="card-body">
     <form id="form-filtros" method="get" class="row g-2">
     <div class="col-auto">
+        <label for="cliente_id" class='form-label'>Cliente</label>
         <select name="cliente_id" class="form-select">
-            <option value="">Cliente</option>
+            <option value="">selecciona un cliente</option>
             {% for cliente in clientes %}
                 <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == cliente_id %}selected{% endif %}>{{ cliente.nombre }}</option>
             {% endfor %}
         </select>
     </div>
     <div class="col-auto">
+        <label for="tipo_ingreso" class='form-label'>Tipo de ingreso</label>
         <select name="tipo_ingreso" class="form-select">
-            <option value="">Tipo de ingreso</option>
+            <option value="">selecciona una opcion</option>
             {% for tipo in tipos_ingreso %}
                 <option value="{{ tipo }}" {% if tipo == tipo_ingreso_seleccionada %}selected{% endif %}>{{ tipo }}</option>
             {% endfor %}
         </select>
     </div>
-          <div class="col-auto mb-3">
-              <button type="submit" class="btn btn-outline-primary">
-                  <i class="bi bi-funnel"></i> 
-                      Buscar
+    <div class="col-auto"> 
+        <label for="estatus" class='form-label'>Opciones</label>
+      <div class="col-auto mb-3">
+              <button type="submit" class="btn btn-outline-primary reporte-link">
+                  <i class="bi bi-funnel" title='Buscar'></i> 
+                      
               </button>
                 <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-clockwise"></i> 
-                        Limpiar
+                    <i class="bi bi-arrow-clockwise" title='Limpiar'></i> 
+                
             </a>
             <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-excel-fill"></i> 
-                  Exportar a Excel
-            </a>
-            <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear">
-              <i class="bi bi-plus-circle me-1"></i> 
-                Nueva Factura otro ingreso
+                <i class="bi bi-file-earmark-excel-fill" title='Exportar a Excel'></i> 
+                
             </a>
           </div>
       </form>
+      </div>
+        </div>
+        </div>
         <!-- Invoices table -->     
         <div class="table-responsive rounded-3 border" style='font-size:0.9rem;'> 
           <table class="table align-middle mb-0 shadow-sm">
@@ -132,17 +135,21 @@
         
                           <td class="text-nowrap">
                           {% if factura.saldo > 0 %}
-                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success reporte-link" title="Registrar Pago">
-                                Reg.Deposito
+                              <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success reporte-link" title="Registrar deposito">
+                              
                                   <i class="bi bi-cash-coin me-1"></i>
                               </a>
-                              <a href="{% url 'eliminar_factura_otros_ingresos' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger reporte-link" title="Eliminar">
+                              {% comment %} <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear reporte-link btn-sm" title="Nueva factura otros ingresos">
+                                <i class="bi bi-plus-circle me-1"></i> 
+                                  
+                                </a> {% endcomment %}
+                              <a href="{% url 'eliminar_factura_otros_ingresos' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger reporte-link" title="Eliminar factura">
                                 <i class="bi bi-trash me-1"></i>
                             </a>
+                        
                           {% endif %}
                           {% if not factura.empresa.es_plus %}  
                             <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm reporte-link" target="_blank" title="Imprimir Factura">
-                              Factura
                               <i class="bi bi-printer"></i>
                             </a>
                           {% else %}
@@ -150,10 +157,13 @@
                           {% endif %}
                           {% if factura.estatus == 'cancelada' %}
                               <span class="text-muted"></span>
-                          {% else %}    
+                          {% else %}   
+                            <a href="{% url 'crear_factura_otros_ingresos' %}?cliente={{ factura.cliente.id }}" class="btn btn-crear reporte-link btn-sm" title="Nueva factura otros ingresos">
+                                <i class="bi bi-plus-circle me-1"></i> 
+                            </a>   
                           {% if not factura.uuid %}
-                                <a href="{% url 'timbrar_factura_otros_ingresos' factura.pk %}" class="btn btn-outline-success btn-sm" title="Timbrar factura">
-                                    Timbrar
+                                <a href="{% url 'timbrar_factura_otros_ingresos' factura.pk %}" class="btn btn-outline-success reporte-link btn-sm" title="Timbrar factura">
+
                                     <i class="bi bi-file-earmark-check"></i>
                                 </a>
                             {% else %}
@@ -171,7 +181,7 @@
                             {% endif %}
                     </td>
                           <td>
-                            <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info reporte-link" title="Ver Historial">
+                            <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info reporte-link" title="Ver Historial">Ver
                                 <i class="bi bi-eye me-1"></i>
                             </a>
                           </td>

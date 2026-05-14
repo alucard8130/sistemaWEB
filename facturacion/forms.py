@@ -3,7 +3,7 @@ from django import forms
 from clientes.models import Cliente
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from django.db import models
-from empresas.models import Empresa
+from empresas.models import CuentaBancaria, Empresa
 
 class FacturaForm(forms.ModelForm):
     TIPO_ORIGEN_CHOICES = [
@@ -84,8 +84,8 @@ class FacturaForm(forms.ModelForm):
 class PagoForm(forms.ModelForm):
     class Meta:
         model = Pago
-        fields = ['fecha_pago', 'monto', 'forma_pago', 'observaciones']
-        labels = {'observaciones': 'Comentario','forma_pago': 'Forma de depósito','fecha_pago': 'Fecha de depósito','monto': 'Monto depositado'}
+        fields = ['fecha_pago', 'monto','cuenta_bancaria', 'forma_pago', 'observaciones']
+        labels = {'observaciones': 'Comentario','forma_pago': 'Forma de depósito','fecha_pago': 'Fecha de depósito','monto': 'Monto depositado','cuenta_bancaria': 'Cuenta Bancaria'}
         widgets = {
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
@@ -94,7 +94,11 @@ class PagoForm(forms.ModelForm):
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Importe'
-            }),
+            }), 
+            'cuenta_bancaria': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }), 
             'forma_pago': forms.Select(attrs={
                 'class': 'form-select'
             }),
@@ -106,8 +110,13 @@ class PagoForm(forms.ModelForm):
                 
         }
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
+
         self.fields['monto'].required = False
+
+        if empresa:
+            self.fields['cuenta_bancaria'].queryset = CuentaBancaria.objects.filter(empresa=empresa)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -132,12 +141,14 @@ class PagoPorIdentificarForm(forms.ModelForm):
         model=Pago
         fields=[
             'monto',
+            'cuenta_bancaria',
             'fecha_pago',
             'forma_pago',
             'observaciones'
         ]
-        labesls={
-            'monto': 'monto depositado',
+        labels={
+            'monto': 'Importe depositado',
+            'cuenta_bancaria': 'Cuenta Bancaria',
             'fecha_pago': 'Fecha de deposito',
             'forma_pago': 'Forma de deposito',}
         
@@ -146,6 +157,11 @@ class PagoPorIdentificarForm(forms.ModelForm):
                 'type': 'date'}),
         }
 
+    def __init__(self, *args, **kwargs): 
+        empresa = kwargs.pop('empresa', None)
+        super().__init__(*args, **kwargs)        
+        if empresa:
+            self.fields['cuenta_bancaria'].queryset = CuentaBancaria.objects.filter(empresa=empresa)
 
 class FacturaCargaMasivaForm(forms.Form):
     archivo = forms.FileField(label='Archivo Excel (.xlsx)')
@@ -246,7 +262,7 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
 class CobroForm(forms.ModelForm):
     class Meta:
         model = CobroOtrosIngresos
-        fields = ['fecha_cobro', 'monto', 'forma_cobro', 'observaciones']
+        fields = ['fecha_cobro', 'monto', 'cuenta_bancaria','forma_cobro', 'observaciones']
         labels = {'observaciones': 'Comentario','monto': 'Monto depositado','fecha_cobro': 'Fecha de deposito','forma_cobro': 'Forma de deposito'}
         widgets = {
             'fecha_cobro': forms.DateInput(attrs={
@@ -256,6 +272,9 @@ class CobroForm(forms.ModelForm):
             'monto': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Monto'
+            }),
+            'cuenta_bancaria': forms.Select(attrs={
+                'class': 'form-select'
             }),
             'forma_cobro': forms.Select(attrs={
                 'class': 'form-select'
@@ -268,9 +287,13 @@ class CobroForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
         # Monto no requerido desde el principio (el clean lo maneja)
         self.fields['monto'].required = False
+        if empresa:
+            self.fields['cuenta_bancaria'].queryset = CuentaBancaria.objects.filter(empresa=empresa)
+            
 
 
     def clean(self):
@@ -283,7 +306,8 @@ class CobroForm(forms.ModelForm):
 
         if forma_cobro == 'nota_credito':
             cleaned_data['monto'] = 0  # Si es nota de crédito, pone monto a cero
-        return cleaned_data    
+        return cleaned_data   
+     
 
 class TipoOtroIngresoForm(forms.ModelForm):
     class Meta:

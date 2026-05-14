@@ -212,12 +212,14 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-        <form id="form-filtros" method="get" class="row g-2 mb-3">
+<div class="card shadow-sm mb-1">
+    <div class="card-body">
+        <form id="form-filtros" method="get" class="row g-2">
             {% if request.user.is_superuser %}
             <div class="col-auto">
-                <!-- <label for="empresa">Empresa:</label> -->
+                <label for="empresa" class="form-label mb-0">Empresa:</label>
                 <select name="empresa" id="empresa" class="form-select">
-                    <option value="">Todas las empresas</option>
+                    <option value="">selecciona una opcion</option>
                     {% for empresa in empresas %}
                         <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
                             {{ empresa.nombre }}
@@ -227,9 +229,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             {% endif %}
             <div class="col-auto">
-                <!-- <label for="local_id">Local:</label> -->
+              <label for="local_id" class="form-label mb-0">Propiedades:</label>
                 <select name="local_id" id="local_id" class="form-select">
-                    <option value="">Todos los locales</option>
+                    <option value="">selecciona una opcion</option>
                     {% for local in locales %}
                         <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
                             {{ local }}
@@ -239,9 +241,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
            
             <div class="col-auto">
-                <!-- <label for="area_id">Área común:</label> -->
+             <label for="area_id" class="form-label mb-0">Áreas:</label>
                 <select name="area_id" id="area_id" class="form-select">
-                    <option value="">Todas las áreas</option>
+                    <option value="">selecciona una opcion</option>
                     {% for area in areas %}
                         <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
                             {{ area }}
@@ -250,41 +252,56 @@ document.addEventListener('DOMContentLoaded', function() {
                 </select>
             </div>
             <div class="col-auto">
+        <label for="tipo_cuota" class="form-label mb-0">Tipo cuota:</label>
         <select name="tipo_cuota" id="tipo_cuota" class="form-select">
-            <option value="">Tipo cuota</option>
+            <option value="">selecciona una opcion</option>
             {% for val, display in TIPO_CUOTA_CHOICES %}
                 <option value="{{ val }}" {% if tipo_cuota == val %}selected{% endif %}>{{ display }}</option>
             {% endfor %}
         </select>
     </div>
     <div class="col-auto">
+      <label for="forma_pago" class="form-label mb-0">Forma de pago:</label>
         <select name="forma_pago" id="forma_pago" class="form-select">
-            <option value="">Forma de pago</option>
+            <option value="">selecciona una opcion</option>
             {% for val, display in FORMAS_PAGO %}
                 <option value="{{ val }}" {% if forma_pago == val %}selected{% endif %}>{{ display }}</option>
             {% endfor %}
         </select>
     </div>
     <div class="col-auto">
+        <label for="cuenta_bancaria" class="form-label mb-0">Cuenta bancaria:</label>
+        <select name="cuenta_bancaria" id="cuenta_bancaria" class="form-select">
+            <option value="">selecciona una opcion</option>
+            {% for cuenta in cuentas_bancarias %}
+                <option value="{{ cuenta.id }}" {% if cuenta.id|stringformat:"s" == cuenta_bancaria %}selected{% endif %}>
+                    {{ cuenta }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+      <label for="fecha_inicio" class="form-label mb-0">Desde:</label>
         <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
     </div>
     <div class="col-auto">
+        <label for="fecha_fin" class="form-label mb-0">Hasta:</label>
         <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin }}">
     </div>
-    
-
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-funnel-fill"></i> Filtrar
+                    <i class="bi bi-funnel-fill" title="Buscar"></i>
                 </button>
                 <a href="{% url 'pagos_por_origen' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-clockwise"></i> Limpiar
+                    <i class="bi bi-arrow-clockwise" title="Limpiar filtros"></i>
                 </a>
                 <a href="{% url 'exportar_pagos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+                    <i class="bi bi-file-earmark-excel-fill" title="Exportar a Excel"></i>
                 </a>
             </div>
-        </form>                
+        </form>     
+        </div>
+    </div>           
         <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
@@ -297,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Cliente</th>
                         <th>Tipo Cuota</th>
                         <th>Monto</th>
+                        <th>Cuenta deposito</th>
                         <th>Forma de pago</th>
                         <th>Fecha de pago</th>
                         <th>Comentarios</th>
@@ -322,6 +340,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>{{ pago.factura.cliente.nombre }}</td>
                             <td>{{ pago.factura.get_tipo_cuota_display }}</td>
                             <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                            {% if pago.cuenta_bancaria %}
+                            <td>{{ pago.cuenta_bancaria }}</td>
+                            {% else %}
+                            <td></td>
+                            {% endif %}
                             <td>{{ pago.forma_pago|title }}</td>
                             <td>{{ pago.fecha_pago|date:"d/m/Y"|upper }}</td> 
                             {% if pago.observaciones == None or pago.observaciones == "" %}

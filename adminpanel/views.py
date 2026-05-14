@@ -7,6 +7,18 @@ from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from principal.models import AuditoriaCambio, Aviso, Evento, SeguimientoTicket, TemaGeneral, TicketMantenimiento, VisitanteAcceso
 from django.shortcuts import redirect, get_object_or_404
 from django.core.mail import send_mail
+from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib import messages
+from empresas.models import Empresa
+from locales.models import LocalComercial
+from areas.models import AreaComun
+from clientes.models import Cliente
+from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from gastos.models import Gasto, PagoGasto
+from presupuestos.models import Presupuesto, PresupuestoIngreso
+from empleados.models import Empleado
+from proveedores.models import Proveedor
 
 @staff_member_required
 def lista_usuarios_normales(request):
@@ -53,18 +65,7 @@ def toggle_reporte_visitante(request, visitante_id):
     visitante.save()
     return redirect('lista_usuarios_visitantes')
 
-from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib import messages
-from empresas.models import Empresa
-from locales.models import LocalComercial
-from areas.models import AreaComun
-from clientes.models import Cliente
-from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
-from gastos.models import Gasto, PagoGasto
-from presupuestos.models import Presupuesto, PresupuestoIngreso
-from empleados.models import Empleado
-from proveedores.models import Proveedor
+
 
 @user_passes_test(lambda u: u.is_superuser)
 def resetear_empresa(request, empresa_id):

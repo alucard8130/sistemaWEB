@@ -12,7 +12,7 @@
         Description: Displays cost claims
     -->
     <meta charset="UTF-8">
-    <title>Lista solicitudes de gasto</title>
+    <title>Solicitudes de gasto</title>
     <!-- Bootstrap base styles -->  
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -32,148 +32,61 @@
             {% endfor %}
         {% endif %}
     <!-- Main content -->
-    <div class="container-fluid mt-4">
-        <div class="row mb-4 justify-content-center">
-  <!-- Tarjeta de Solicitudes -->
-  <div class="col-12 col-md-5 mb-2 d-flex align-items-stretch justify-content-center">
-    <div class="card shadow-sm p-3" style="width:100%; min-width:320px; max-width:420px; margin:auto; font-size:0.95rem; border-radius:16px;">
-      <div class="card-body p-2">
-        <div class="mb-1" style="font-size:1.1rem; color:#666;">Total Solicitudes</div>
-        <div class="fw-bold mb-2" style="font-size:2rem; color:#1a3;">{{total_solicitudes}}</div>
-        <hr class="my-2">
-        <div class="row" style="font-size:0.98rem;">
-          <div class="col-6 text-start">
-            <div>Solicitudes pagadas</div>
-            <div>
-              {{ num_pagadas}}
-              {% comment %} <span style="font-size:0.95rem;">
-                {% if var_anio > 0 %}
-                  <span style="color:green;">&#9650; {{ var_anio|floatformat:1 }}%</span>
-                {% elif var_anio < 0 %}
-                  <span style="color:red;">&#9660; {{ var_anio|floatformat:1 }}%</span>
-                {% else %}
-                  <span style="color:gray;">0%</span>
-                {% endif %}
-              </span> {% endcomment %}
-            </div>
-            <div class="mt-2" style="color:#888; font-size:0.95rem;">Solicitudes pendientes<br>{{ num_pendientes}}</div>
-          </div>
-          <div class="col-6 text-start">
-            <div>Importe pagadas</div>
-            <div>
-              ${{ monto_pagadas|floatformat:2|intcomma }}
-              {% comment %} <span style="font-size:0.95rem;">
-                {% if var_mes > 0 %}
-                  <span style="color:green;">&#9650; {{ var_mes|floatformat:1 }}%</span>
-                {% elif var_mes < 0 %}
-                  <span style="color:red;">&#9660; {{ var_mes|floatformat:1 }}%</span>
-                {% else %}
-                  <span style="color:gray;">0%</span>
-                {% endif %}
-              </span> {% endcomment %}
-            </div>
-            <div class="mt-2" style="color:#888; font-size:0.95rem;">Importe pendientes<br>${{monto_pendientes|floatformat:2|intcomma}}</div>
-          </div>
-        </div>
-      </div>
+<div class="container-fluid mt-2" align="center">
+            <div class="card shadow-sm">
+                <div class="card-body">      
+                    <h2 class="mb-0">Solicitudes de Gasto</h2>
     </div>
-  </div>
-  <!-- Tarjeta de gráfica de pagos por tipo de gasto -->
-  {% comment %} <div class="col-12 col-md-5 mb-2 d-flex align-items-stretch justify-content-center">
-    <div class="card shadow-sm p-3" style="width:100%; min-width:320px; max-width:420px; margin:auto; border-radius:16px;">
-      <div class="card-body p-2">
-        <div class="mb-2" style="font-size:1.1rem; color:#1a3;">Pagos por tipo de gasto</div>
-        <canvas id="kpiTipoChart" height="180"></canvas>
-      </div>
-    </div>
-  </div> {% endcomment %}
 </div>
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const tipoLabels = {{ tipo_labels|safe }};
-  const tipoData = {{ tipo_data|safe }};
-  new Chart(document.getElementById('kpiTipoChart').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: tipoLabels,
-      datasets: [{
-        label: '',
-        data: tipoData,
-        backgroundColor: '#28a745',
-        borderRadius: 8,
-        barThickness: 16
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        x: {
-          display: false,
-          grid: { display: false, drawBorder: false }
-        },
-        y: {
-          display: true,
-          grid: { display: false, drawBorder: false },
-          ticks: {
-            color: '#222',
-            font: { size: 12 }
-          }
-        }
-      },
-      layout: {
-        padding: { left: 0, right: 0, top: 0, bottom: 0 }
-      },
-      barPercentage: 0.5,
-      categoryPercentage: 0.5
-    }
-  });
-});
-</script>
+</div>
+
+<div class="card shadow-sm mb-1">
+    <div class="card-body">
         <form id="form-filtros" method="get" class="row g-2 mb-3">
             <div class="col-auto">
+              <label for="proveedor" class="form-label">Proveedor:</label>
                 <select name="proveedor" class="form-select" style="min-width: 100px;">
-                    <option value="">Proveedores</option>
+                    <option value=""></option>
                     {% for proveedor in proveedores %}
                         <option value="{{ proveedor.id }}" {% if proveedor_id == proveedor.id|stringformat:"s" %}selected{% endif %}>{{ proveedor.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-auto">
+                <label for="empleado" class="form-label">Empleado:</label>
                 <select name="empleado" class="form-select">
-                    <option value="">Empleados</option>
+                    <option value=""></option>
                     {% for empleado in empleados %}
                         <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-auto">
+                <label for="tipo_gasto" class="form-label">Cuenta gasto:</label>
                 <select name="tipo_gasto" class="form-select">
-                    <option value="">Tipos de Gasto</option>
+                    <option value=""></option>
                     {% for tipo in tipos_gasto %}
                         <option value="{{ tipo.id }}" {% if tipo_gasto_sel == tipo.id %}selected{% endif %}>{{ tipo }}</option>
                     {% endfor %}
                 </select>
             </div>
+            <div class="col-auto">
+        <label for="estatus" class='form-label'>Opciones</label>
             <div class="col-auto align-self-end">
                 <button type="submit" class="btn btn-outline-primary reporte-link">
-                    <i class="bi bi-funnel-fill"></i> Buscar</button>
+                    <i class="bi bi-funnel-fill"></i></button>
                       <a href="{% url 'gastos_lista' %}" class="btn btn-outline-secondary reporte-link">
-            <i class="bi bi-arrow-clockwise"></i> Limpiar
+            <i class="bi bi-arrow-clockwise"></i>
         </a>
                     <a href="{% url 'exportar_gastos_lista_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
-            <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
+            <i class="bi bi-file-earmark-excel-fill"></i>
         </a>
-        <a href="{% url 'gasto_nuevo' %}" class="btn btn-crear reporte-link">
-            <i class="bi bi-plus-circle-fill me-1"></i> Nueva solicitud
-        </a>
+     
             </div>
         </form>
-    
+    </div>
+</div>
+</div>
         
         <div class="table-responsive rounded-3 border" style='font-size: 0.9rem;'> 
             <table class="table align-middle mb-0 shadow-sm">
@@ -220,26 +133,27 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td class="text-nowrap">
                                 {% if gasto.saldo_restante > 0 %}
                                     <a href="{% url 'registrar_pago_gasto' gasto.id %}" class="btn btn-sm btn-outline-success reporte-link" title="Registrar Pago">
-                                        Pagar
                                         <i class="bi bi-cash-coin me-1"></i>
                                     </a>
                                 {% else %}
                                     <span class="text-muted"></span>
                                 {% endif %}
                                <a href="{% url 'recibo_gasto' gasto.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Solicitud Pago">
-                                Solicitud
-                                    <i class="bi bi-printer"></i>
+                                    <i class="bi bi-printer me-1" title="Imprimir Solicitud Pago"></i>
                                         </a>
                                         {% if gasto.estatus == 'pendiente' and gasto.total_pagado == 0 %}
-                                    <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm reporte-link" title="Eliminar">
-                                        <i class="bi bi-trash3 me-1"></i>
+                                    <a href="{% url 'gasto_eliminar' gasto.id %}" class="btn btn-outline-danger btn-sm reporte-link" title="Eliminar solicitud pago">
+                                        <i class="bi bi-trash3 me-1" title="Eliminar solicitud pago"></i>
                                     </a>
                                 {% endif %}
+                                   <a href="{% url 'gasto_nuevo' %}" class="btn btn-sm btn-crear reporte-link">
+                                        <i class="bi bi-plus-circle me-1 sm" title="Nueva Solicitud"></i>
+                                    </a>
                             </td>
         
                             <td>
-                                    <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm reporte-link" title="Ver Historial">
-                                        <i class="bi bi-eye me-1"></i>
+                                    <a href="{% url 'gasto_detalle' gasto.id %}" class="btn btn-outline-info btn-sm reporte-link" title="Ver Historial">Ver
+                                        <i class="bi bi-eye me-1" title="Ver Historial"></i>
                                     </a>
                                                   
                                 </td>

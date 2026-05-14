@@ -30,7 +30,7 @@
             <div class="col-md-4 col-sm-6 mx-auto">
                 
                 <!-- Styled title with the same width as the form -->
-                <h2 class="form-title text-center mb-0">Registrar Factura (cuota)</h2>
+                <h2 class="form-title text-center mb-0">Factura cuotas</h2>
                     <!-- Block for displaying messages -->
                 {% if messages %}
                     {% for message in messages %}
@@ -126,8 +126,8 @@
                     </div>
                     {% endif %}
                     <div class="d-flex justify-content-between mt-3">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                        <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'lista_facturas' %}{% endif %}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary reporte-link">Guardar</button>
+                <a href="{{ next }}" class="btn btn-secondary reporte-link">Cancelar</a>
                     </div>
                 </form>
             </div>

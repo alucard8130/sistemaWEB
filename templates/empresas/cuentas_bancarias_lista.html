@@ -1,0 +1,100 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- 
+        Created by: Jaime Estrada
+        Modified by: Jaime Estrada
+        Date of creation: 06/05/2026
+        Date of modification: 24/06/2026
+        Description: Registers a new bank account for an enterprise
+    -->
+    <meta charset="UTF-8">
+    <title>Registrar cuenta bancaria</title>
+    <!-- Bootstrap base styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS --> 
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">Cuentas bancarias de {{ empresa.nombre }}</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                Aquí puedes consultar y administrar las cuentas bancarias registradas para tu empresa.
+            </p>
+            <div class="mb-3">
+                <a href="{% url 'cuenta_bancaria_crear' %}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Agregar nueva cuenta
+                </a>
+                <a href="{% url 'bienvenida' %}" class="btn btn-outline-secondary ms-2">
+                    <i class="fas fa-home"></i> Salir al inicio
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Banco</th>
+                            <th>Número de cuenta</th>
+                            <th>Moneda</th>
+                            <th>CLABE</th>
+                            <th>Tipo de cuenta</th>
+                            <th>Saldo inicial</th>
+                            <th>Activa</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cuenta in cuentas %}
+                        <tr>
+                            <td>{{ cuenta.get_banco_display }}</td>
+                            <td>{{ cuenta.numero_cuenta }}</td>
+                            <td>{{ cuenta.moneda }}</td>
+                            <td>{{ cuenta.clabe }}</td>
+                            <td>{{ cuenta.get_tipo_cuenta_display }}</td>
+                            <td>${{ cuenta.saldo_inicial|floatformat:2|intcomma }}</td>
+                            <td>
+                                {% if cuenta.activa %}
+                                    <span class="badge bg-success">Sí</span>
+                                {% else %}
+                                    <span class="badge bg-danger">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {# <a href="{% url 'cuenta_bancaria_editar' cuenta.pk %}" class="btn btn-sm btn-warning">Editar</a> #}
+                                <a href="{% url 'cuenta_bancaria_eliminar' cuenta.pk %}" class="btn btn-sm btn-danger" title="Eliminar cuenta" onclick="return confirm('¿Estás seguro de eliminar esta cuenta bancaria?');">
+                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">No hay cuentas bancarias registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 🔹 Footer -->
+    <footer>
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

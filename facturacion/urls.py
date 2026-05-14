@@ -32,6 +32,8 @@ urlpatterns = [
     path('usuarios-demo/', usuarios_demo, name='usuarios_demo'),
     path('facturas/eliminar/<int:factura_id>/', views.eliminar_factura, name='eliminar_factura'),
     path('facturas-otros-ingresos/eliminar/<int:factura_id>/', views.eliminar_factura_otros_ingresos, name='eliminar_factura_otros_ingresos'),
+    path('ingresos-mensuales/', views.grafico_ingresos_mensuales, name='grafico_ingresos_mensual'),
+    path('ingresos-anuales/', views.grafico_ingresos_anual, name='grafico_ingresos_anual'),
 
     
 ]

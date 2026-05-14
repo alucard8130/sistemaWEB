@@ -15,13 +15,14 @@ urlpatterns = [
     path('gastos/<int:gasto_id>/pago/', views.registrar_pago_gasto, name='registrar_pago_gasto'),
     path('detalle/<int:pk>/', views.gasto_detalle, name='gasto_detalle'),
     path('reporte-pagos/', views.reporte_pagos_gastos, name='reporte_pagos_gastos'),
-    path('gastos/dashboard-pagos/', views.dashboard_pagos_gastos, name='dashboard_pagos_gastos'),
+    path('gastos/grafico-pagos/', views.grafico_gastos_mensual, name='grafico_gastos_mensual'),
     path('subgrupos/', views.subgrupos_gasto_lista, name='subgrupos_gasto_lista'),
     path('subgrupos/<int:pk>/eliminar/', views.subgrupo_gasto_eliminar, name='subgrupo_gasto_eliminar'),
     path('gastos/carga-masiva/', views.carga_masiva_gastos, name='carga_masiva_gastos'),
     path('gastos/descargar-plantilla/', views.descargar_plantilla_gastos, name='descargar_plantilla_gastos'),
     path('exportar_gastos_lista_excel/', views.exportar_gastos_lista_excel, name='exportar_gastos_lista_excel'),
     path('exportar_reporte_pagos_gastos_excel/', views.exportar_reporte_pagos_gastos_excel, name='exportar_reporte_pagos_gastos_excel'),
+    path('gastos/grafico-gastos-anual/', views.grafico_gastos_anual, name='grafico_gastos_anual'),
 
 
 ]

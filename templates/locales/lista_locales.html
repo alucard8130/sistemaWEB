@@ -8,10 +8,10 @@
         Modified by: María Martínez
         Date of creation: 05/06/2025
         Date of modification: 19/08/2025
-        Description: list of business premises
+        Description: list of properties
     -->
     <meta charset="UTF-8">
-    <title>Lista Locales</title>
+    <title>Lista Propiedades</title>
     <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap icons -->
@@ -112,7 +112,7 @@
                         <th> Tipo Inmueble</th>
                         <th>Superficie (m²)</th>
                         <th>Cuota</th>
-                        <th>Anual</th>
+                        <th>Fact Anual</th>
                         <th>Giro</th>
                         <th>Status</th>
                         <th>Facturas</th>
@@ -133,9 +133,9 @@
                             <td>${{ local.cuota|floatformat:2|intcomma }}</td>
                             <td>
                                 {% if local.es_cuota_anual %}
-                                    <span class="badge bg-info">Si</span>
+                                    <span class="badge bg-info" title="Cuota Anual">Si</span>
                                 {% else %}
-                                    <span class="badge bg-success"></span>
+                                    <span class="badge bg-success" title="Cuota Anual">No</span>
                                 {% endif %}   
                             </td>
                             {% if local.giro == None or local.giro == '' %}
@@ -144,21 +144,23 @@
                                 <td>{{ local.giro }}</td>
                             {% endif %}
                             <td> {{ local.get_status_display }}</td> 
-                            <td><a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Registrar pagos">
-                                    Ver
+                            <td><a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas asociadas a esta propiedad y registra nuevos pagos">
+                                    
                                     <i class="bi bi-receipt"></i> 
                                 </a>
                             </td>
                             <td style="white-space: nowrap;">
-                                   
-                                <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar">
-                                  Editar
+                                   <a href="{% url 'crear_local' %}?cliente_id={{ local.cliente.id }}" class="btn btn-sm btn-outline-success ms-1 reporte-link" title="Registrar nueva propiedad">
+                                    <i class="bi bi-plus-circle"></i>
+                                </a>
+                                <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar propiedad">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
-                                <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar">
-                                    Inactivar 
+                                <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar propiedad">
+                                    
                                     <i class="bi bi-slash-circle"></i>
                                 </a>
+                                
                             </td>
                         </tr>
                     {% empty %}

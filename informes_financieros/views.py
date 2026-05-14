@@ -2,6 +2,7 @@ from django.shortcuts import render
 
 # from django.db.models import Sum
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
+from clientes.models import Cliente
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from gastos.models import Gasto, PagoGasto
 from empresas.models import Empresa
@@ -1474,10 +1475,24 @@ def cartera_vencida_por_origen(request):
     empresa_id = request.GET.get("empresa")
     hoy = timezone.now().date()
     filtro_origen = request.GET.get("filtro_origen", "")
+    cliente_id = request.GET.get("cliente")
+
+    # Determina la empresa activa
     if not request.user.is_superuser:
-        empresa_id = str(request.user.perfilusuario.empresa.id)
+        empresa = request.user.perfilusuario.empresa
+        empresa_id = str(empresa.id)
     else:
-        empresa_id = request.GET.get("empresa") or ""
+        empresa = None
+        if empresa_id:
+            try:
+                empresa = Empresa.objects.get(id=empresa_id)
+            except Empresa.DoesNotExist:
+                empresa = None
+     # Filtra los clientes por empresa
+    if empresa:
+        clientes = Cliente.objects.filter(empresa=empresa)
+    else:
+        clientes = Cliente.objects.all()
 
     # Facturas de locales y áreas comunes
     facturas = Factura.objects.filter(
@@ -1488,6 +1503,8 @@ def cartera_vencida_por_origen(request):
 
     if empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
+    if cliente_id and cliente_id.isdigit():
+        facturas = facturas.filter(cliente_id=cliente_id)    
 
     # Agrupación y anotación en BD
     facturas_qs = facturas.annotate(
@@ -1525,6 +1542,8 @@ def cartera_vencida_por_origen(request):
 
     if empresa_id:
         facturas_oi = facturas_oi.filter(empresa_id=empresa_id)
+    if cliente_id and cliente_id.isdigit():
+        facturas_oi = facturas_oi.filter(cliente_id=cliente_id)
 
     facturas_oi_qs = facturas_oi.annotate(
         origen_id=F("tipo_ingreso__id"),
@@ -1614,6 +1633,8 @@ def cartera_vencida_por_origen(request):
             "cartera_vencida": resultado,
             "total_cartera": total_cartera,
             "request": request,
+            "cliente_id": cliente_id,
+            'clientes':clientes,
         },
     )
 

@@ -13,6 +13,7 @@ class FondeoCajaChicaForm(forms.ModelForm):
         fields = [
             "numero_cheque",
             "importe_cheque",
+            "cuenta_bancaria",
             "empleado_asignado",
             "fecha",
         ]
@@ -21,6 +22,7 @@ class FondeoCajaChicaForm(forms.ModelForm):
             "empleado_asignado": forms.Select(attrs={"class": "form-control"}),
             "numero_cheque": forms.TextInput(attrs={"class": "form-control"}),
             "importe_cheque": forms.NumberInput(attrs={"class": "form-control"}),
+            "cuenta_bancaria": forms.Select(attrs={"class": "form-control"}),
         }
 
     fecha = forms.DateField(
@@ -51,7 +53,6 @@ class GastoCajaChicaForm(forms.ModelForm):
     fecha = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
     )
-
 
 class ValeCajaForm(forms.ModelForm):
     class Meta:

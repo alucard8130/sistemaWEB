@@ -9,6 +9,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from locales.models import LocalComercial
 from django import forms
+from django.db import models
+from django.contrib.auth.models import User
 
 #perfil de usuario extendido
 class PerfilUsuario(models.Model):
@@ -23,6 +25,7 @@ class PerfilUsuario(models.Model):
     stripe_customer_id = models.CharField(max_length=100, blank=True, null=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True, null=True)
     mostrar_wizard = models.BooleanField(default=False)
+    ultima_visita_changelog= models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
        return f"{self.usuario.username} → {self.empresa.nombre if self.empresa else 'Sin empresa'}"
@@ -151,9 +154,6 @@ class VotacionCorreo(models.Model):
     
     
 #Modulo de Avisos y recordatorios
-from django.db import models
-from django.contrib.auth.models import User
-
 class Aviso(models.Model):
     empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     titulo = models.CharField(max_length=200)
@@ -167,3 +167,17 @@ class Aviso(models.Model):
 
 class CapturarEmailForm(forms.Form):
     email = forms.EmailField(label="Email del cliente", required=True)
+
+
+#changelog y mejoras del sistema
+# class MejoraSistema(models.Model):
+#     fecha = models.DateField(auto_now_add=True)
+#     titulo = models.CharField(max_length=200)
+#     descripcion = models.TextField()
+#     visible = models.BooleanField(default=True)  # Para ocultar si es necesario
+
+#     class Meta:
+#         ordering = ['-fecha']
+
+#     def __str__(self):
+#         return f"{self.fecha} - {self.titulo}"    

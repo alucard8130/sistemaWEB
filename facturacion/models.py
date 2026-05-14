@@ -2,7 +2,7 @@
 # Create your models here.
 from django.db import models
 from django.conf import settings
-from empresas.models import Empresa
+from empresas.models import CuentaBancaria, Empresa
 from clientes.models import Cliente
 from locales.models import LocalComercial
 from areas.models import AreaComun
@@ -77,6 +77,7 @@ class Factura(models.Model):
         self.save()
 
 class Pago(models.Model):
+
     FORMAS_PAGO = [
         ('transferencia', 'Transferencia'),
         ('cheque', 'Cheque'),
@@ -96,6 +97,7 @@ class Pago(models.Model):
     observaciones = models.CharField(max_length=255, blank=True, null=True)
     identificado= models.BooleanField(default=False)
     empresa = models.ForeignKey(Empresa, on_delete=models.SET_NULL, null=True, blank=True)
+    cuenta_bancaria = models.ForeignKey(CuentaBancaria, on_delete=models.PROTECT, related_name='pagos', default=None, null=True, blank=True)
 
     def __str__(self):
         if self.factura:
@@ -104,6 +106,7 @@ class Pago(models.Model):
     
 
  #modulo otros ingresos   
+
 class FacturaOtrosIngresos(models.Model):
     empresa= models.ForeignKey(Empresa, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT)
@@ -114,7 +117,7 @@ class FacturaOtrosIngresos(models.Model):
     fecha_vencimiento = models.DateField()
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     estatus = models.CharField(max_length=20, choices=[('pendiente','Pendiente'),('cobrada','Cobrada'),('cancelada','Cancelada')], default='pendiente')
-    observaciones = models.CharField(blank=True, null=True)
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
     activo = models.BooleanField(default=True)
     facturama_id = models.CharField(max_length=100, blank=True, null=True)  # Nuevo campo para almacenar el ID de Facturama
 
@@ -165,6 +168,7 @@ class CobroOtrosIngresos(models.Model):
     comprobante = models.FileField(upload_to='comprobantes_oi/', blank=True, null=True)
     registrado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     observaciones = models.CharField(max_length=255, blank=True, null=True)
+    cuenta_bancaria = models.ForeignKey(CuentaBancaria, on_delete=models.PROTECT, related_name='cobros_oi',default=None, null=True, blank=True)
 
     def __str__(self):
         return f"Cobro de ${self.monto} para {self.factura.folio} el {self.fecha_cobro}"

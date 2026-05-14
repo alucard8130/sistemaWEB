@@ -1,0 +1,11 @@
+<h2>Mejoras y Actualizaciones del Sistema</h2>
+<ul class="list-group">
+    {% for mejora in mejoras %}
+    <li class="list-group-item">
+        <strong>{{ mejora.fecha|date:"d/m/Y" }} - {{ mejora.titulo }}</strong><br>
+        {{ mejora.descripcion|linebreaks }}
+    </li>
+    {% empty %}
+    <li class="list-group-item">No hay mejoras registradas.</li>
+    {% endfor %}
+</ul>

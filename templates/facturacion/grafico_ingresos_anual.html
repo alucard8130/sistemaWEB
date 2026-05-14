@@ -1,0 +1,145 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Grafico Ingresos Anual</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body>
+<div class="container">
+    <div class='container-fluid mt-4' align="center">
+    <h3>Grafico Comparativo Anual de Ingresos</h3>
+    </div>
+    <div class="mb-3">
+    <button id="btnDescargar" class="btn btn-success">Descargar imagen</button>
+    <button id="btnImprimir" class="btn btn-primary">Imprimir gráfico</button>
+</div>
+    <canvas id="ingresosAnualChart"></canvas>
+</div>
+<script>
+const anios = {{ anios|safe }}.map(String);  // Asegura que sean strings
+const dataLocal = {{ data_local|safe }};
+const dataArea = {{ data_area|safe }};
+const dataOtros = {{ data_otros|safe }};
+const dataPresupuesto = {{ data_presupuesto_anio|safe }};
+const totalesAnio = {{ totales_anio|safe }};
+
+const ctx = document.getElementById('ingresosAnualChart').getContext('2d');
+Chart.register(window.ChartDataLabels);
+
+const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: anios,
+        datasets: [
+            {
+                label: 'Cuotas mantenimiento',
+                data: dataLocal,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                stack: 'ingresos'
+            },
+            {
+                label: 'Áreas comunes',
+                data: dataArea,
+                backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                stack: 'ingresos'
+            },
+            {
+                label: 'Otros ingresos',
+                data: dataOtros,
+                backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                stack: 'ingresos',
+                datalabels: {
+                    anchor: 'end',
+                    align: 'bottom',
+                    color: '#222',
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    borderColor: '#222',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    font: {
+                        size: 18,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 6,
+                        bottom: 6,
+                        left: 10,
+                        right: 10
+                    },
+                    formatter: function(value, context) {
+                        return '$' + totalesAnio[context.dataIndex].toLocaleString('es-MX', {minimumFractionDigits: 2});
+                    }
+                }
+            },
+            {
+                label: 'Presupuesto',
+                        data: dataPresupuesto,
+                        type: 'line',
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 5,
+                        borderDash: [5, 5],
+                        yAxisID: 'y',
+                        order: 0,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'red',
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Comparativo anual de ingresos' },
+            legend: { position: 'top' },
+            datalabels: {
+                display: function(context) {
+                    // Solo mostrar en el último dataset de barra
+                    return context.dataset.label === 'Otros ingresos';
+                }
+            }
+        },
+        scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true }
+        }
+    },
+    plugins: [ChartDataLabels]
+});
+document.getElementById('btnDescargar').addEventListener('click', function() {
+    const link = document.createElement('a');
+    link.download = 'grafico_ingresos_anual.png';
+    link.href = document.getElementById('ingresosAnualChart').toDataURL('image/png');
+    link.click();
+});
+
+document.getElementById('btnImprimir').addEventListener('click', function() {
+    const canvas = document.getElementById('ingresosAnualChart');
+    const dataUrl = canvas.toDataURL('image/png');
+    const windowContent = `
+        <html>
+        <head><title>Imprimir gráfico</title></head>
+        <body style="margin:0; padding:0;">
+            <img src="${dataUrl}" style="width:100%;"/>
+        </body>
+        </html>
+    `;
+    const printWindow = window.open('', '', 'width=800,height=600');
+    printWindow.document.write(windowContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+});
+</script>
+</body>
+</html>

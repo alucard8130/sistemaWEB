@@ -5,11 +5,11 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, resetear_empresa, toggle_activo_visitante, toggle_reporte_visitante
-from areas import views
+#from areas import views
 from caja_chica.views import (comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, 
                               fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica)
 from empleados.views import (exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista)
-from facturacion.views import (consulta_facturas, exportar_consulta_facturas_excel, facturas_detalle, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
+from facturacion.views import (consulta_facturas, exportar_consulta_facturas_excel, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
 from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
@@ -19,7 +19,7 @@ from principal.views import (actualizar_ticket, agregar_seguimiento, api_areas_p
                              eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
                                visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
 from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
-from empresas.views import empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
+from empresas.views import cuenta_bancaria_crear, cuenta_bancaria_eliminar, cuentas_bancarias_lista, empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
     crear_local, editar_local, eliminar_local, lista_locales, 
     locales_inactivos, reactivar_local)
@@ -44,6 +44,12 @@ urlpatterns = [
     path('empresas/resetear/<int:empresa_id>/', resetear_empresa, name='resetear_empresa'),
     path('empresas/editar/<int:pk>/', empresa_editar, name='empresa_editar'),
     path('empresas/eliminar/<int:pk>/', empresa_eliminar, name='empresa_eliminar'),
+    #path('empresas/<int:empresa_id>/cuenta-bancaria/crear/', cuenta_bancaria_crear, name='cuenta_bancaria_crear'),
+    path('cuenta-bancaria/crear/', cuenta_bancaria_crear, name='cuenta_bancaria_crear'),
+    path('cuentas-bancarias/', cuentas_bancarias_lista, name='cuentas_bancarias_lista'),
+    #path('cuentas-bancarias/editar/<int:pk>/', cuenta_bancaria_editar, name='cuenta_bancaria_editar'),
+    path('cuentas-bancarias/eliminar/<int:pk>/', cuenta_bancaria_eliminar, name='cuenta_bancaria_eliminar'),
+    #path('empresas/<int:empresa_id>/cuentas-bancarias/', cuentas_lista, name='cuentas_lista'),
     path('locales/', lista_locales, name='lista_locales'),
     path('locales/crear/', crear_local, name='crear_local'),
     path('locales/editar/<int:pk>/', editar_local, name='editar_local'),
@@ -198,8 +204,6 @@ urlpatterns = [
     path('presupuestos/borrar_gastos/', borrar_presupuesto_gastos, name='borrar_presupuesto_gastos'),
     path('presupuestos/borrar_ingresos/', borrar_presupuesto_ingresos, name='borrar_presupuesto_ingresos'),
     path('presupuestos/exportar_matriz_ingresos_excel/', exportar_matriz_presupuesto_ingresos_excel, name='exportar_matriz_presupuesto_ingresos_excel'),
-
-    
 ]
 
     

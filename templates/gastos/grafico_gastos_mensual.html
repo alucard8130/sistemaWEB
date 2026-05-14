@@ -1,0 +1,214 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- 
+        Created by: Jaime Estrada
+        Modified by: María Martínez
+        Date of creation: 05/06/2025
+        Date of modification: 25/07/2025
+        Description: Accounts payable dashboard
+    -->
+    <meta charset="UTF-8">
+    <title>Gráfico egresos</title>
+    <!-- Bootstrap base styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+<div class="container-fluid mt-4" align="center">
+    <h3>Gráfico de Gastos - Año {{ anio }}</h3>
+    <br>
+    </div>
+    <div class="container-fluid">
+    <form id="form-filtros" method="get" class="row g-2 mb-4">
+        {% if empresas|length > 1 %}
+        <div class="col-md-2">
+            <select name="empresa" class="form-select">
+                <option value="">Empresas</option>
+                {% for emp in empresas %}
+                    <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-md-2">
+        <label>Tipo de gasto:</label>
+        <select name="tipo_gasto" class="form-select" onchange="this.form.submit()">
+            <option value="todos" {% if tipo_gasto == 'todos' %}selected{% endif %}>Todos</option>
+            <option value="pagos" {% if tipo_gasto == 'pagos' %}selected{% endif %}>Gastos generales</option>
+            <option value="caja" {% if tipo_gasto == 'caja' %}selected{% endif %}>Caja chica</option>
+            <option value="vales" {% if tipo_gasto == 'vales' %}selected{% endif %}>Vales de caja</option>
+        </select>
+    </div>
+           <div class="col-md-2">
+        <label>Año:</label>
+        <input type="number" name="anio" min="2023" value="{{ anio }}" class="form-control">
+    </div>
+    <div class="col-md-2">
+        <label>Mes:</label>
+        <select name="mes" class="form-select">
+            <option value="">Meses</option>
+            {% for m in meses_lista %}
+                <option value="{{ m.num }}" {% if mes == m.num|stringformat:"s" %}selected{% endif %}>{{ m.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-funnel-fill"></i> Filtrar
+            </button>
+            <a href="{% url 'grafico_gastos_mensual' %}" class="btn btn-outline-secondary reporte-link">
+                <i class="bi bi-arrow-clockwise"></i> Limpiar
+            </a>
+        </div>
+    </form>
+    <div class='col-md-12'>
+        <!-- boton para mostrar Gráfico comparativo anual de gastos -->
+        <a href="{% url 'grafico_gastos_anual' %}?empresa={{ empresa_id }}&anio={{ anio }}" class="btn btn-outline-info mb-3" target="_blank">
+            <i class="bi bi-bar-chart-fill"></i> Ver comparativo anual de gastos
+        </a>
+    </div>
+    
+<div class="card mb-4 p-3 shadow-sm">
+    <canvas id="graficoPagos" style="height: 450px"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+const totalesMes = {{ totales_mes|safe }};
+const ctx = document.getElementById('graficoPagos').getContext('2d');
+new Chart(ctx, {
+    data: {
+        labels: {{ labels_meses|safe }},
+        datasets: [
+            {
+                label: 'Gastos generales',
+                data: {{ data_gastos|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                type: 'bar'
+            },
+            {
+                label: 'Gastos Caja Chica',
+                data: {{ data_caja|safe }},
+                backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                type: 'bar'
+            },
+            {
+                label: 'Gastos Vales de Caja',
+                data: {{ data_vales|safe }},
+                backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                type: 'bar',
+                datalabels: {
+                    anchor: 'end',
+                    align: 'bottom',
+                    color: '#222',
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    borderColor: '#222',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    font: {
+                        size: 14,
+                        weight: 'bold'
+                },
+                padding: {
+                    top: 3,
+                    bottom: 3,
+                    left: 10,
+                    right: 10
+                },
+                formatter: function(value, context) {
+                    // Formato moneda
+                    return '$' + totalesMes[context.dataIndex].toLocaleString('es-MX', {minimumFractionDigits: 2});
+                }
+                }
+            },
+            {
+                label: 'Presupuesto',
+                data: {{ data_presupuesto|safe }},
+                type: 'line',
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 5,
+                        borderDash: [5, 5],
+                        yAxisID: 'y',
+                        order: 0,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'red',
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true }
+        },
+        plugins: {
+            datalabels: {
+                display: function(context) {
+                    // Solo mostrar en el último dataset de barra (Gastos Vales de Caja)
+                    return context.dataset.label === 'Gastos Vales de Caja';
+                }
+            },
+            legend: { display: true },
+            title: {
+                display: true,
+                text: 'Egresos mensuales por tipo',
+                font: { size: 18, weight: 'bold' }
+            }
+        }
+    },
+    plugins: [ChartDataLabels]
+});
+</script>
+</div>
+</div>
+   
+
+    <!-- 🔹 Footer -->
+<footer class="mt-4">
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
+</body>
+</html>

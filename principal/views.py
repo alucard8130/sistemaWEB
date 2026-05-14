@@ -3939,7 +3939,7 @@ def enviar_recordatorio_morosidad(request):
         if not facturas:
             messages.warning(
                 request,
-                f"No hay adeudos pendientes para el local {facturas[0].local.numero}.",
+                f"No hay adeudos pendientes para el local seleccionado.",
             )
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
@@ -4001,7 +4001,7 @@ def enviar_recordatorio_morosidad(request):
         if not facturas:
             messages.warning(
                 request,
-                f"No hay adeudos pendientes para esta área común {facturas[0].area_comun.numero}.",
+                f"No hay adeudos pendientes para el área común seleccionada.",
             )
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
@@ -4066,6 +4066,19 @@ def enviar_recordatorio_morosidad(request):
         return redirect(next_url or "lista_facturas")
 
 
+#changelog
 
+# def changelog(request):
+#     mejoras = MejoraSistema.objects.filter(visible=True).order_by('-fecha')
+#     if request.user.is_authenticated:
+#         perfil = request.user.perfilusuario
+#         perfil.ultima_visita_changelog = timezone.now()
+#         perfil.save()
+#     return render(request, 'log_mejoras/changelog.html', {'mejoras': mejoras})
 
-
+# def hay_mejoras_nuevas(request):
+#     if not request.user.is_authenticated:
+#         return False
+#     perfil = request.user.perfilusuario
+#     ultima_visita = perfil.ultima_visita_changelog or timezone.datetime(2000, 1, 1, tzinfo=timezone.utc)
+#     return MejoraSistema.objects.filter(fecha__gt=ultima_visita, visible=True).exists()

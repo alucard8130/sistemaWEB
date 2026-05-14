@@ -3,6 +3,7 @@ from django import forms
 from areas.models import AreaComun
 from empresas.models import Empresa
 from locales.models import LocalComercial
+from .models import Aviso, TemaGeneral, VisitanteAcceso
 
 
 
@@ -10,7 +11,6 @@ class VisitanteLoginForm(forms.Form):
     username = forms.CharField(label="Usuario")
     password = forms.CharField(label="Contraseña", widget=forms.PasswordInput)
 
-from .models import Aviso, TemaGeneral, VisitanteAcceso
 
 class TemaGeneralForm(forms.ModelForm):
     correos = forms.CharField(

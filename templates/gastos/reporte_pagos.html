@@ -4,7 +4,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reporte pagos egresos</title>
+    <title>Reporte pagos gastos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
@@ -21,8 +21,9 @@
   <div class="col-12 col-md-4 mb-2 d-flex align-items-stretch justify-content-center">
     <div class="card text-center shadow-sm p-3" style="width:63%; min-width:480px; max-width:350px; margin:auto; font-size:0.85rem;">
       <div class="card-body p-2">
-        <h6 class="card-title mb-1" style="font-size:0.9rem;">Pagos acumulados</h6>
-        <h2 class="mb-0" style="font-size:1.5rem; color:#28a745;">${{total_pagos_acumulados|floatformat:2|intcomma }}</h2>
+        <h5><i class="bi bi-cash-coin"></i>Gastos</h5>
+        <h6 class="card-title mb-1" style="font-size:0.9rem;">Egresos año actual</h6>
+        <h2 class="mb-0" style="font-size:1.5rem; color:#28a745;">${{ pagos_anio_actual|floatformat:2|intcomma }}</h2>
         <hr>
         <div class="row">
           <div class="col-6 text-start">
@@ -68,7 +69,7 @@
   <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
     <div class="card text-center shadow-sm p-3 w-100" style="min-width:420px; max-width:320px; margin:auto;">
       <div class="card-body p-2">
-        <h6 class="card-title mb-2" style="font-size:0.9rem;">Pagos por cuenta de gasto</h6>
+        <h6 class="card-title mb-2" style="font-size:0.9rem;">Egresos por cuenta de gasto</h6>
         <canvas id="kpiTipoChart" height="180"></canvas>
       </div>
     </div>
@@ -76,7 +77,7 @@
   <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
     <div class="card text-center shadow-sm p-3 w-100" style="max-width:400px; margin:auto;">
       <div class="card-body p-2">
-        <h6 class="card-title mb-2" style="font-size:0.9rem;">Pagos por forma de pago</h6>
+        <h6 class="card-title mb-2" style="font-size:0.9rem;">Egresos por forma de pago</h6>
         <canvas id="kpiFormaChart" height="180"></canvas>
       </div>
     </div>
@@ -196,11 +197,13 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-        <form id="form-filtros" method="get" class="row g-2 mb-3">
+<div class="card shadow-sm mb-1">
+    <div class="card-body">
+          <form id="form-filtros" method="get" class="row g-2">
             {% if empresas|length > 1 %}
             <div class="col-auto">
                 <label>Empresa:</label>
-                <select name="empresa" class="form-select-sm">
+                <select name="empresa" class="form-select">
                     <option value="">Todas</option>
                     {% for emp in empresas %}
                         <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
@@ -209,49 +212,73 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             {% endif %}
             <div class="col-auto">
-               <select name="proveedor" class="form-select-sm">
-                <option value="">Proveedores</option>
+              <label for="proveedor" class="form-label mb-0">Proveedor</label>
+               <select name="proveedor" class="form-select" style="width: 300px;">
+                <option value="">Seleccione una opción</option>
                 {% for p in proveedores %}
                     <option value="{{ p.id }}" {% if p.id|stringformat:"s" == proveedor_id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
                 {% endfor %}
             </select>
             </div>
             <div class="col-auto">
-              <select name="empleado" class="form-select-sm">
-                    <option value="">Empleados</option>
+              <label for="empleado" class="form-label mb-0">Empleado</label>
+              <select name="empleado" class="form-select">
+                    <option value="">Seleccione una opción</option>
                     {% for empleado in empleados %}
                         <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-auto">
-                <select name="forma_pago" class="form-select-sm">
-                    <option value="">Forma de Pago</option>
+              <label for="forma_pago" class="form-label mb-0">Forma de pago:</label>
+                <select name="forma_pago" class="form-select">
+                    <option value="">Seleccione una opción</option>
                     {% for val, label in formas_pago %}
                         <option value="{{ val }}" {% if val == forma_pago_actual %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-auto">
-                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control form-control-sm">
+              <label for="cuenta_bancaria" class="form-label mb-0">Cuenta bancaria:</label>
+                <select name="cuenta_bancaria" class="form-select">
+                    <option value="">Seleccione una opción</option>
+                    {% for cuenta in cuentas_bancarias %}
+                        <option value="{{ cuenta.id }}" {% if cuenta.id|stringformat:"s" == cuenta_bancaria|stringformat:"s" %}selected{% endif %}>
+                          {{ cuenta.banco }} - {{ cuenta.numero_cuenta }}
+                      </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-auto">
+              <label for="fecha_inicio" class="form-label mb-0">Desde:</label>
+                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control form-control">
             </div>
             <div class="col-auto">
-                <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control form-control-sm">
+              <label for="fecha_fin" class="form-label mb-0">Hasta:</label>
+                <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control form-control">
             </div>
+            
             <div class="col-auto align-self-end">
-                <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-funnel-fill"></i>Buscar
+                <button type="submit" class="btn btn-outline-primary reporte-link" title="Buscar">
+                    <i class="bi bi-funnel-fill"></i>
                 </button>
-                <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-clockwise"></i> Limpiar</a>
-                <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
-                </a>
+                <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary reporte-link" title="Limpiar">
+                    <i class="bi bi-arrow-clockwise"></i></a>
+                {% comment %} <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if cuenta_bancaria %}&cuenta_bancaria={{ cuenta_bancaria }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success" title="Exportar Excel">
+                    <i class="bi bi-file-earmark-excel-fill"></i>
+                </a> {% endcomment %}
+               <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if cuenta_bancaria %}&cuenta_bancaria={{ cuenta_bancaria }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success" title="Exportar Excel">
+    <i class="bi bi-file-earmark-excel-fill"></i>
+</a> 
+{% comment %} <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-excel-fill" title="Exportar a Excel"></i>
+                </a> {% endcomment %}
+
             </div>
         </form>
-        {% comment %} <div class="alert alert-info">
-            <h4><strong>Total Pagado:</strong> ${{ total|floatformat:2|intcomma }}</h4>
-        </div> {% endcomment %}
+        </div>
+      </div>
         <div class="table-responsive rounded-3 border" style='font-size: 0.9rem;'>
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
@@ -264,8 +291,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Proveedor/Empleado</th>
                         <th>Cuenta de Gasto</th>
                         <th>Monto Pagado</th>
+                        <th>Cuenta Bancaria</th>
                         <th>Forma de Pago</th>
-                        <th>Comentarios</th>
+                        <th>Concepto Gasto</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -285,6 +313,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             </td>
                             <td>{{ pago.gasto.tipo_gasto }}</td>
                             <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                            {% if pago.cuenta_bancaria %}
+                            <td>{{ pago.cuenta_bancaria }}</td>
+                            {% else %}
+                            <td></td>
+                            {% endif %}
                             <td>{{ pago.get_forma_pago_display }}</td>
                             {% if pago.referencia %}
                                 <td>{{ pago.referencia }}</td>
@@ -294,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </tr>
                     {% empty %}
                         <tr class="no-data-row">
-                            <td colspan="7">No hay pagos registrados con los filtros seleccionados.</td>
+                            <td colspan="11">No hay pagos registrados con los filtros seleccionados.</td>
                         </tr>
                     {% endfor %}
                 </tbody>

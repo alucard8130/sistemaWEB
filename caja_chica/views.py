@@ -15,6 +15,7 @@ from django.db.models import Sum
 from caja_chica import models
 from openpyxl import Workbook
 from django.core.paginator import Paginator
+from datetime import datetime
 
 def imprimir_vale_caja(request, vale_id):
     vale = get_object_or_404(ValeCaja, id=vale_id)
@@ -95,10 +96,12 @@ def fondeo_caja_chica(request):
 def registrar_gasto_caja_chica(request):
     empresa = None
     perfil = getattr(request.user, "perfilusuario", None)
+    
     if perfil:
         empresa = getattr(perfil, "empresa", None)
     fondeo_id = request.GET.get("fondeo_id")
     fondeo_instance = None
+
     if fondeo_id:
         try:
             fondeo_instance = FondeoCajaChica.objects.get(id=fondeo_id)
@@ -297,16 +300,24 @@ def lista_gastos_caja_chica(request):
         gastos = GastoCajaChica.objects.select_related("fondeo").filter(
             fondeo__empresa_id=empresa_id
         ).order_by('-fecha')
+        proveedores = Proveedor.objects.filter(empresa_id=empresa_id, activo=True).order_by('nombre')
+        tipos_gasto = TipoGasto.objects.filter(empresa_id=empresa_id).order_by('nombre')
     elif request.user.is_superuser:
         gastos = GastoCajaChica.objects.select_related("fondeo").all().order_by('-fecha')
+        proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
+        tipos_gasto = TipoGasto.objects.all().order_by('nombre')
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
             gastos = GastoCajaChica.objects.select_related("fondeo").filter(
                 fondeo__empresa=perfil.empresa
             ).order_by('-fecha')
+            proveedores = Proveedor.objects.filter(empresa=perfil.empresa, activo=True).order_by('nombre')
+            tipos_gasto = TipoGasto.objects.filter(empresa=perfil.empresa).order_by('nombre')
         else:
             gastos = GastoCajaChica.objects.select_related("fondeo").none().order_by('-fecha')
+            proveedores = Proveedor.objects.none().order_by('nombre')
+            tipos_gasto = TipoGasto.objects.none().order_by('nombre')
 
     # Filtros
     if proveedor_id and proveedor_id.isdigit():
@@ -321,8 +332,8 @@ def lista_gastos_caja_chica(request):
     total_gastos = gastos.aggregate(total=Sum('importe'))['total'] or 0
 
     # Para los selects en el template
-    proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
-    tipos_gasto = TipoGasto.objects.all()
+    # proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
+    # tipos_gasto = TipoGasto.objects.all()
 
     paginator = Paginator(gastos, 20)
     page_number = request.GET.get("page")
@@ -341,7 +352,7 @@ def lista_gastos_caja_chica(request):
         }
     )
 
-from datetime import datetime
+
 
 @login_required
 def exportar_gastos_caja_chica_excel(request):

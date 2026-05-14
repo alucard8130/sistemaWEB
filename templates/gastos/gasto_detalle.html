@@ -57,6 +57,7 @@
                 <tr>
                     <th>Fecha de Pago</th>
                     <th>Monto</th>
+                    <th>Cuenta Bancaria
                     <th>Forma de Pago</th>
                     <th>Registrado por</th>
                     <th>Comentario</th>
@@ -68,6 +69,11 @@
                 <tr>
                     <td>{{ pago.fecha_pago }}</td>
                     <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                    {% if pago.cuenta_bancaria %}
+                    <td>{{ pago.cuenta_bancaria }}</td>
+                    {% else %}
+                    <td></td>
+                    {% endif %}
                     <td>{{ pago.get_forma_pago_display }}</td>
                     <td>{{ pago.registrado_por }}</td>
                     {% if pago.referencia == None or pago.referencia == "" %}

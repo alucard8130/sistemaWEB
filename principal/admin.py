@@ -70,3 +70,5 @@ class VisitanteAccesoAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 admin.site.register(VisitanteAcceso, VisitanteAccesoAdmin)
+
+

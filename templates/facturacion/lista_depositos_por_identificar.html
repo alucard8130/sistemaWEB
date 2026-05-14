@@ -46,7 +46,7 @@
         <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ fecha_fin }}">
     </div>
     <div class="col-auto align-self-end">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <button type="submit" class="btn btn-primary">Buscar</button>
         <a href="{% url 'lista_depositos_por_identificar' %}" class="btn btn-secondary">Limpiar</a>
     </div>
 </form>
@@ -57,6 +57,7 @@
         <thead>
             <tr>
                 <th>Monto Depositado</th>
+                <th>Cuenta Bancaria</th>
                 <th>Fecha de Deposito</th>
                 <th>Forma de Deposito</th>
                 <th>Observaciones</th>
@@ -67,6 +68,11 @@
             {% for pago in pagos %}
             <tr>
                 <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                {% if pago.cuenta_bancaria %}
+                     <td>{{ pago.cuenta_bancaria }}</td>
+                {% else %}
+                    <td>No especificada</td>
+                {% endif %}
                 <td>{{ pago.fecha_pago }}</td>
                 <td>{{ pago.get_forma_pago_display }}</td>
                 {% if pago.observaciones %}

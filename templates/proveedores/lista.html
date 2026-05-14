@@ -25,21 +25,24 @@
     {% include 'loading_overlay.html' %}
     <!-- Main content -->
 
-    <div class="container-fluid mt-4">
-        <h2>Lista Proveedores</h2>
-        <a href="{% url 'proveedor_crear' %}" class="btn btn-crear reporte-link mb-3">
-            <i class="bi bi-plus-circle me-1"></i> Nuevo proveedor
-        </a>
-        <!-- clean button -->
-        <a href="{% url 'proveedor_lista' %}" class="btn btn-outline-secondary reporte-link mb-3">
-            <i class="bi bi-arrow-clockwise"></i> Limpiar
-        </a>
+    <div class="container-fluid mt-2" align="center">
+            <div class="card shadow-sm">
+                <div class="card-body">  
+        <h3>Proveedores</h3>
+        
+        </div>
+        </div>
+        <div class="card shadow-sm mb-1">
+            <div class="card-body">
         <form method="get" class="mb-3">
             <div class="input-group">
                 <input type="text" name="proveedor" class="form-control" placeholder="Buscar proveedor..." value="{{ proveedor_nombre }}">
                 <button type="submit" class="btn btn-primary">Buscar</button>
             </div>
         </form>
+        </div>
+        </div>
+
         <!-- Suppliers table -->
         <div class="table-responsive rounded-3 border" style='font-size:0.9rem;'>
             <table class="table align-middle mb-0 shadow-sm">
@@ -98,13 +101,16 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-outline-primary me-1 reporte-link" title="Editar">
-                                Editar
+                            <a href="{% url 'proveedor_crear' %}" class="btn btn-crear reporte-link "title="Registra Nuevo proveedor">
+            <i class="bi bi-plus-circle me-1"></i> 
+        </a>
+                            <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-outline-primary  reporte-link" title="Editar Proveedor">
+               
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-outline-danger btn-sm reporte-link" title="Eliminar">
+                            <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-outline-danger  reporte-link" title="Eliminar Proveedor">
                                 <i class="bi bi-trash3"></i>
-                                Eliminar
+       
                             </a>
 
                         </td>
