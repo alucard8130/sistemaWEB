@@ -78,8 +78,8 @@ class EmpresaForm(forms.ModelForm):
             'email': 'Email',
             'cuenta_bancaria': 'Banco',
             'numero_cuenta': 'Número de Cuenta',
-            'saldo_inicial': 'Saldo Inicial',
-            'saldo_final': 'Saldo Final',
+            #'saldo_inicial': 'Saldo Inicial',
+            #'saldo_final': 'Saldo Final',
             'clabe': 'CLABE interbancaria',
         }
 
@@ -92,7 +92,7 @@ class CuentaBancariaForm(forms.ModelForm):
             'clabe',
             'moneda',
             'tipo_cuenta',
-            'saldo_inicial',
+            #'saldo_inicial',
             # 'saldo_final'
         ]
         widgets = {
@@ -111,16 +111,15 @@ class CuentaBancariaForm(forms.ModelForm):
             'moneda': forms.Select(attrs={
                 'class': 'form-control',
                 'required': True
-            }),
+            }), 
             'tipo_cuenta': forms.Select(attrs={
                 'class': 'form-control',
                 'required': True
             }),
-            'saldo_inicial': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Saldo',
-                'required': True
-            }),
+            # 'saldo_inicial': forms.NumberInput(attrs={
+            #     'class': 'form-control',
+            #     'placeholder': 'Saldo',
+            # }),
             # 'saldo_final': forms.NumberInput(attrs={
             #     'class': 'form-control',
             #     'placeholder': 'Saldo Final'
@@ -132,7 +131,7 @@ class CuentaBancariaForm(forms.ModelForm):
             'clabe': 'CLABE interbancaria',
             'moneda': 'Moneda',
             'tipo_cuenta': 'Tipo de Cuenta',
-            'saldo_inicial': 'Saldo',
+            # 'saldo_inicial': 'Saldo',
             # 'saldo_final': 'Saldo Final',
         }        
 

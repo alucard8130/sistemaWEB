@@ -28,6 +28,11 @@
         <div class="card-header bg-danger text-white">
             <h3 class="mb-0">Eliminar cuenta bancaria</h3>
         </div>
+        {% comment %} {% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} mt-2">{{ message }}</div>
+  {% endfor %}
+{% endif %} {% endcomment %}
         <div class="card-body">
             <p class="lead">
                 <strong>¿Estás seguro de que deseas eliminar la cuenta bancaria?</strong>

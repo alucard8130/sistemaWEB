@@ -23,6 +23,11 @@
 </head>
 <body>
     {% include 'navbar.html' %}
+            {% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} mt-2">{{ message }}</div>
+  {% endfor %}
+{% endif %}
 <div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
@@ -34,10 +39,10 @@
             </p>
             <div class="mb-3">
                 <a href="{% url 'cuenta_bancaria_crear' %}" class="btn btn-success">
-                    <i class="fas fa-plus"></i> Agregar nueva cuenta
+                    <i class="fas fa-plus"></i> Nueva cuenta bancaria
                 </a>
-                <a href="{% url 'bienvenida' %}" class="btn btn-outline-secondary ms-2">
-                    <i class="fas fa-home"></i> Salir al inicio
+                <a href="{% url 'bienvenida' %}" class="btn btn-outline-secondary ms-2" title="Regresar al panel principal">
+                    <i class="fas fa-arrow-left"></i> Regresar
                 </a>
             </div>
             <div class="table-responsive">

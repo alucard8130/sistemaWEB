@@ -1,10 +1,13 @@
 
+#from pyexpat.errors import messages
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
-from .models import CuentaBancaria, CuentaBancaria, Empresa
+from .models import CuentaBancaria,  Empresa
 from .forms import CuentaBancariaForm, EmpresaForm
 from django.contrib.auth.decorators import user_passes_test
-
+from django.db.models import ProtectedError
+from django.contrib import messages
 
 # Create your views here.
 #@login_required
@@ -79,6 +82,11 @@ def cuentas_bancarias_lista(request):
 def cuenta_bancaria_eliminar(request, pk):
     cuenta = get_object_or_404(CuentaBancaria, pk=pk)
     if request.method == 'POST':
-        cuenta.delete()
+        try:
+            cuenta.delete()
+            messages.success(request, "Cuenta bancaria eliminada correctamente.")
+        except ProtectedError:
+            messages.error(request, "No se puede eliminar esta cuenta bancaria, tiene registros asociados.")
+
         return redirect('cuentas_bancarias_lista')
     return render(request, 'empresas/cuenta_bancaria_eliminar.html', {'cuenta': cuenta})
