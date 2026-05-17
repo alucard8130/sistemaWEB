@@ -111,7 +111,7 @@
                         
                         <td>${{ gasto.importe|floatformat:2|intcomma }}</td>
                         {% if gasto.fondeo.cuenta_bancaria %}
-                        <td>{{ gasto.fondeo.cuenta_bancaria.banco }}-{{ gasto.fondeo.cuenta_bancaria.numero_cuenta }}</td>
+                        <td>{{ gasto.fondeo.cuenta_bancaria.banco }}-{{ gasto.fondeo.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
                         {% else %}
                         <td></td>
                         {% endif %}

@@ -138,11 +138,11 @@
                         {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_pagos' %}" title="Dashboard de Ingresos Consolidados">Graficos Ingresos</a></li> {% endcomment %}
                         <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales">Grafico de Ingresos</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item reporte-link" href="{% url 'registrar_deposito_por_identificar' %}" title="Registrar Deposito no identificado">Registrar Deposito no identificado</a></li>
-                        <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado">Asignar Deposito no identificado</a></li>
+                        {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'registrar_deposito_por_identificar' %}" title="Registrar Deposito no identificado">Registrar Deposito no identificado</a></li> {% endcomment %}
+                        <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado">Depositos no identificados</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        {% comment %} <li><a class="dropdown-item" href="{% url 'conciliaciones:cargar_estado_cuenta' %}">Cargar Edo.Cta</a></li>
-                        <li><a class="dropdown-item" href="{% url 'conciliaciones:lista_movimientos' estado_id=1 %}">Movimientos</a></li> {% endcomment %}
+                        {% comment %} <li><a class="dropdown-item" href="{% url 'conciliaciones:cargar_estado' %}">Conciliar Edo.Cta</a></li> {% endcomment %}
+                        {% comment %} <li><a class="dropdown-item" href="{% url 'conciliaciones:resultado' estado_id=1 %}">Resultado Conciliación</a></li> {% endcomment %}
                         {% if request.user.is_superuser %}
                             <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
                         {% endif %}

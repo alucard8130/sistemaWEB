@@ -25,13 +25,13 @@ from .forms import (
     TipoGastoForm,
 )
 from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # from django.utils.timezone import localtime
 # from django.db.models.functions import TruncMonth
-from django.db.models import F, Value
-import calendar
-from django.db.models import Q, Sum, Count, Case, When, FloatField
+from django.db.models import F, Max, Value
+#import calendar
+from django.db.models import Q, Sum, Count, Case, When, FloatField,Max
 from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -553,6 +553,26 @@ def reporte_pagos_gastos(request):
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     cuenta_bancaria = request.GET.get("cuenta_bancaria")
+
+     # Detectar si hay filtros aplicados
+    filtros_aplicados = any([
+        empresa_id,
+        proveedor_id,
+        empleado_id,
+        forma_pago,
+        fecha_inicio,
+        fecha_fin,
+        cuenta_bancaria,
+    ])
+
+    # Si no hay filtros, limitar a los últimos 12 meses
+    if not filtros_aplicados:
+        ultima_fecha = pagos.aggregate(ultima_fecha=Max("fecha_pago"))["ultima_fecha"]
+        if ultima_fecha:
+            fecha_fin_dt = ultima_fecha
+            fecha_inicio_dt = fecha_fin_dt - timedelta(days=365)
+            fecha_inicio = fecha_inicio_dt.strftime("%Y-%m-%d")
+            fecha_fin = fecha_fin_dt.strftime("%Y-%m-%d")
 
     # Cuentas bancarias filtradas por empresa
     if not es_super:

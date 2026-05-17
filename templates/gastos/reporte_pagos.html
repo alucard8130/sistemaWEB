@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>{{ pago.gasto.tipo_gasto }}</td>
                             <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                             {% if pago.cuenta_bancaria %}
-                            <td>{{ pago.cuenta_bancaria }}</td>
+                            <td>{{ pago.cuenta_bancaria.banco }}-{{ pago.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
                             {% else %}
                             <td></td>
                             {% endif %}

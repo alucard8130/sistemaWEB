@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>{{ cobro.factura.tipo_ingreso.nombre }}</td>
                         <td>${{ cobro.monto|floatformat:2|intcomma }}</td>
                         {% if cobro.cuenta_bancaria %}
-                        <td>{{ cobro.cuenta_bancaria }}</td>
+                        <td>{{ cobro.cuenta_bancaria.banco }}-{{ cobro.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
                         {% else %}
                         <td></td>
                         {% endif %}

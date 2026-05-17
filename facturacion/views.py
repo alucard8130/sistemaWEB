@@ -45,6 +45,7 @@ from collections import OrderedDict
 from calendar import monthrange
 
 
+
 @login_required
 def crear_factura(request):
     conflicto = False
@@ -950,16 +951,39 @@ def pagos_por_origen(request):
     cuenta_bancaria = request.GET.get('cuenta_bancaria')    
     
     if request.user.is_superuser:
-        pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all().order_by('-fecha_pago')
+        pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente','cuenta_bancaria').all().order_by('-fecha_pago')
         empresas = Empresa.objects.all()
         locales = LocalComercial.objects.filter(activo=True).order_by('numero')
         areas = AreaComun.objects.filter(activo=True).order_by('numero')
     else:
         empresa = request.user.perfilusuario.empresa
-        pagos = Pago.objects.select_related('factura').filter(factura__empresa=empresa).order_by('-fecha_pago')
+        pagos = Pago.objects.select_related('factura','cuenta_bancaria').filter(factura__empresa=empresa).order_by('-fecha_pago')
         empresas = None
         locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
         areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+
+    filtros_aplicados = any(
+        [
+            empresa_id,
+            local_id,
+            area_id,
+            fecha_inicio,
+            fecha_fin,
+            tipo_cuota,
+            forma_pago,
+            cuenta_bancaria,
+        ]
+    )
+
+    # Primera carga: mostrar solo el último año con registros
+    if not filtros_aplicados:
+        ultima_fecha = pagos.aggregate(ultima_fecha=Max("fecha_pago"))["ultima_fecha"]
+        if ultima_fecha:
+            fecha_fin_dt = ultima_fecha
+            fecha_inicio_dt = fecha_fin_dt - timedelta(days=365)
+            fecha_inicio = fecha_inicio_dt.strftime("%Y-%m-%d")
+            fecha_fin = fecha_fin_dt.strftime("%Y-%m-%d")
+
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id).order_by('fecha_pago')
@@ -970,12 +994,12 @@ def pagos_por_origen(request):
 
     if fecha_inicio and fecha_fin:
         try:
-            from datetime import datetime
             fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
             fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
             pagos = pagos.filter(fecha_pago__range=[fecha_i, fecha_f])
         except Exception:
             pass
+
     if tipo_cuota:
         pagos = pagos.filter(factura__tipo_cuota=tipo_cuota).order_by('fecha_pago')
     if forma_pago:
@@ -1058,7 +1082,7 @@ def pagos_por_origen(request):
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'facturacion/pagos_por_origen.html', {
-        'pagos': pagos,
+        'pagos': page_obj,
         'total_pagos': total_pagos,
         'empresas': empresas,
         'empresa_seleccionada': int(empresa_id) if empresa_id else None,
@@ -1066,7 +1090,7 @@ def pagos_por_origen(request):
         'areas': areas,
         'local_id': local_id,
         'area_id': area_id,
-        'pagos': page_obj,
+        #'pagos': page_obj,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
         'tipo_cuota': tipo_cuota,

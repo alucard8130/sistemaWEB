@@ -4,8 +4,7 @@ from . import views
 app_name = 'conciliaciones'
 
 urlpatterns = [
-    path('cargar/', views.cargar_estado_cuenta, name='cargar_estado_cuenta'),
-    path('movimientos/<int:estado_id>/', views.lista_movimientos, name='lista_movimientos'),
-    path('no_identificar/<int:mov_id>/', views.no_identificar, name='no_identificar'),
-    # Agrega aquí la url para identificar con modal/AJAX
+    path('cargar/', views.cargar_estado_cuenta, name='cargar_estado'),
+    path('conciliar/<int:estado_id>/', views.conciliar_estado_cuenta, name='conciliar'),
+    path('resultado/<int:estado_id>/', views.resultado_conciliacion, name='resultado'),
 ]

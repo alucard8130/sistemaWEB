@@ -49,6 +49,7 @@
                 <table class="table table-striped align-middle">
                     <thead class="table-light">
                         <tr>
+                            <th>id</th>
                             <th>Banco</th>
                             <th>Número de cuenta</th>
                             <th>Moneda</th>
@@ -62,6 +63,7 @@
                     <tbody>
                         {% for cuenta in cuentas %}
                         <tr>
+                            <td>{{ cuenta.id }}</td>
                             <td>{{ cuenta.get_banco_display }}</td>
                             <td>{{ cuenta.numero_cuenta }}</td>
                             <td>{{ cuenta.moneda }}</td>

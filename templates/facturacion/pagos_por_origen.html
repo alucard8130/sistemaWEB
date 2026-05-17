@@ -340,13 +340,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>{{ pago.factura.cliente.nombre }}</td>
                             <td>{{ pago.factura.get_tipo_cuota_display }}</td>
                             <td>${{ pago.monto|floatformat:2|intcomma }}</td>
-                            {% if pago.cuenta_bancaria %}
-                            <td>{{ pago.cuenta_bancaria }}</td>
+                            {% if pago.cuenta_bancaria.numero_cuenta %}
+                            <td>{{ pago.cuenta_bancaria.banco }}-{{ pago.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
                             {% else %}
                             <td></td>
                             {% endif %}
                             <td>{{ pago.forma_pago|title }}</td>
-                            <td>{{ pago.fecha_pago|date:"d/m/Y"|upper }}</td> 
+                            <td>{{ pago.fecha_pago|date:"d/m/Y"|upper }}</td>   
                             {% if pago.observaciones == None or pago.observaciones == "" %}
                             <td></td>
                             {% else %}

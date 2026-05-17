@@ -53,11 +53,7 @@ window.sentryOnLoad = function() {
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
     <!-- 🔹 Main Content -->
-{% if messages %}
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-  {% endfor %}
-{% endif %}
+
 {% if mensaje_pago %}
   <div class="alert alert-success">
     {{ mensaje_pago }}

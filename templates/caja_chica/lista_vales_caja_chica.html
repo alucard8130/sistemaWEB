@@ -101,6 +101,7 @@
     <th>Cuenta de Gasto</th>
     <th>Descripción</th>
     <th>Importe</th>
+    <th>Cuenta Bancaria</th>
     <th>Fecha</th>
     <th>Estado</th>
     <th>Acciones</th>
@@ -114,6 +115,11 @@
     <td>{{ vale.tipo_gasto }}</td>
     <td>{{ vale.descripcion }}</td>
     <td>${{ vale.importe|floatformat:2|intcomma }}</td>
+    {% if vale.fondeo.cuenta_bancaria %}
+    <td>{{ vale.fondeo.cuenta_bancaria.banco }}-{{ vale.fondeo.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
+    {% else %}
+    <td></td>
+    {% endif %}
     <td>{{ vale.fecha|date:"d/b/y"|upper }}</td>
     {% if vale.status == "pendiente" %}
     <td><span class="badge bg-warning text-dark">Pendiente</span></td>

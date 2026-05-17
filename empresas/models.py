@@ -1,5 +1,6 @@
 from django.db import models
 
+
 # Create your models here.
 class Empresa(models.Model):
     BANCOS_CHOICES = [
@@ -92,3 +93,4 @@ class CuentaBancaria(models.Model):
 
     def __str__(self):
         return f"{self.banco} - {self.numero_cuenta}"
+

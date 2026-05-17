@@ -9,6 +9,9 @@ from django.contrib.auth.decorators import user_passes_test
 from django.db.models import ProtectedError
 from django.contrib import messages
 
+
+
+
 # Create your views here.
 #@login_required
 @user_passes_test(lambda u: u.is_superuser)
@@ -90,3 +93,7 @@ def cuenta_bancaria_eliminar(request, pk):
 
         return redirect('cuentas_bancarias_lista')
     return render(request, 'empresas/cuenta_bancaria_eliminar.html', {'cuenta': cuenta})
+
+
+
+

@@ -117,7 +117,7 @@
     <td>{{ fondeo.fecha |date:"d/M/y"|upper }}</td>
     <td>${{ fondeo.importe_cheque|floatformat:2|intcomma }}</td>
     {% if fondeo.cuenta_bancaria %}
-    <td>{{ fondeo.cuenta_bancaria }}</td>
+    <td>{{ fondeo.cuenta_bancaria.banco }}-{{ fondeo.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
     {% else %}
     <td></td>
     {% endif %}

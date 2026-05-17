@@ -53,6 +53,9 @@
 <div class="mb-2">
     <h2><strong>Total depósitos no identificados:</strong> ${{ total_depositos|floatformat:2 |intcomma}}</h2>
 </div>
+<a href="{% url 'registrar_deposito_por_identificar' %}" class="btn btn-success mb-3">
+    <i class="bi bi-plus-circle me-1"></i>Registrar depósito no identificado
+</a>
     <table class="table table-striped mt-3">
         <thead>
             <tr>
@@ -69,7 +72,7 @@
             <tr>
                 <td>${{ pago.monto|floatformat:2|intcomma }}</td>
                 {% if pago.cuenta_bancaria %}
-                     <td>{{ pago.cuenta_bancaria }}</td>
+                     <td>{{ pago.cuenta_bancaria.banco }}-{{ pago.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
                 {% else %}
                     <td>No especificada</td>
                 {% endif %}

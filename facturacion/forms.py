@@ -2,8 +2,8 @@ from django import forms
 
 from clientes.models import Cliente
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
-from django.db import models
-from empresas.models import CuentaBancaria, Empresa
+#from django.db import models
+from empresas.models import CuentaBancaria
 
 class FacturaForm(forms.ModelForm):
     TIPO_ORIGEN_CHOICES = [

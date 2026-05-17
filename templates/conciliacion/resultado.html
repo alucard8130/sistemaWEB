@@ -1,0 +1,178 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resultado de Conciliación</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    <div class="container-fluid mt-4 text-center">
+<h2>Resultado de Conciliacion</h2>
+
+  {% if mensaje %}
+    <div class="alert alert-warning mt-3">
+      {{ mensaje }}
+    </div>
+  {% else %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Datos del estado de cuenta</h5>
+        <div><strong>Archivo:</strong> {{ estado.nombre_original }}</div>
+        <div><strong>Cuenta bancaria:</strong> {{ estado.cuenta_bancaria }}</div>
+        <div><strong>Periodo:</strong> {{ estado.fecha_inicio }} al {{ estado.fecha_fin }}</div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Resumen</h5>
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr>
+              <th>Partidas conciliadas</th>
+              <td class="text-end">{{ resumen.totales.conciliadas|default:0 }}</td>
+            </tr>
+            <tr>
+              <th>No conciliadas en banco</th>
+              <td class="text-end">{{ resumen.totales.no_conciliadas_banco|default:0 }}</td>
+            </tr>
+            <tr>
+              <th>No conciliadas en sistema</th>
+              <td class="text-end">{{ resumen.totales.no_conciliadas_sistema|default:0 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h4 class="mb-3">Partidas conciliadas</h4>
+    {% if resumen.conciliadas %}
+      <div class="table-responsive mb-5">
+        <table class="table table-bordered table-striped table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Fecha banco</th>
+              <th>Descripcion banco</th>
+              <th>Monto banco</th>
+              <th>Fecha sistema</th>
+              <th>Descripcion sistema</th>
+              <th>Monto sistema</th>
+              <th>Origen</th>
+              <th>Coincidencia</th>
+              <th>Diferencia monto</th>
+              <th>Diferencia dias</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for partida in resumen.conciliadas %}
+              <tr>
+                <td>{{ partida.banco.tipo|title }}</td>
+                <td>{{ partida.banco.fecha }}</td>
+                <td>{{ partida.banco.descripcion }}</td>
+                <td class="text-end">${{ partida.banco.monto|floatformat:2|intcomma }}</td>
+                <td>{{ partida.sistema.fecha }}</td>
+                <td>{{ partida.sistema.descripcion }}</td>
+                <td class="text-end">${{ partida.sistema.monto|floatformat:2|intcomma }}</td>
+                <td>{{ partida.sistema.origen|default:"-" }}</td>
+                <td>{{ partida.regla_coincidencia|default:"Exacta" }}</td>
+                <td class="text-end">${{ partida.diferencia_monto|floatformat:2|intcomma|default:"0.00" }}</td>
+                <td class="text-end">{{ partida.diferencia_dias|default:"0" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info mb-5">
+        No hay partidas conciliadas.
+      </div>
+    {% endif %}
+
+    <h4 class="mb-3">No conciliadas en banco</h4>
+    {% if resumen.no_conciliadas_banco %}
+      <div class="table-responsive mb-5">
+        <table class="table table-bordered table-striped table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Fecha</th>
+              <th>Descripcion</th>
+              <th>Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for partida in resumen.no_conciliadas_banco %}
+              <tr>
+                <td>{{ partida.tipo|title }}</td>
+                <td>{{ partida.fecha }}</td>
+                <td>{{ partida.descripcion }}</td>
+                <td class="text-end">${{ partida.monto|floatformat:2|intcomma }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info mb-5">
+        No hay partidas pendientes en el estado de cuenta.
+      </div>
+    {% endif %}
+
+    <h4 class="mb-3">No conciliadas en sistema</h4>
+    {% if resumen.no_conciliadas_sistema %}
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Fecha</th>
+              <th>Descripcion</th>
+              <th>Monto</th>
+              <th>Origen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for partida in resumen.no_conciliadas_sistema %}
+              <tr>
+                <td>{{ partida.tipo|title }}</td>
+                <td>{{ partida.fecha }}</td>
+                <td>{{ partida.descripcion }}</td>
+                <td class="text-end">${{ partida.monto|floatformat:2|intcomma }}</td>
+                <td>{{ partida.origen|default:"-" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">
+        No hay partidas pendientes en el sistema.
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+<!-- 🔹 Footer -->
+    <footer>
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br />
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
