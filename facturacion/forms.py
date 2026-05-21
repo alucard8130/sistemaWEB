@@ -4,6 +4,8 @@ from clientes.models import Cliente
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 #from django.db import models
 from empresas.models import CuentaBancaria
+from locales.models import LocalComercial
+from areas.models import AreaComun
 
 class FacturaForm(forms.ModelForm):
     TIPO_ORIGEN_CHOICES = [
@@ -165,6 +167,14 @@ class PagoPorIdentificarForm(forms.ModelForm):
 
 class FacturaCargaMasivaForm(forms.Form):
     archivo = forms.FileField(label='Archivo Excel (.xlsx)')
+
+#filtros para la lista de facturas en la vista identificar depositos por identificar
+class FiltroFacturaForm(forms.Form):
+    cliente = forms.ModelChoiceField(queryset=Cliente.objects.all(), required=False, label="Cliente")
+    local = forms.ModelChoiceField(queryset=LocalComercial.objects.all(), required=False, label="Local")
+    area = forms.ModelChoiceField(queryset=AreaComun.objects.all(), required=False, label="Área")    
+
+
 
 class FacturaEditForm(forms.ModelForm):
     class Meta:

@@ -9,7 +9,7 @@ from clientes.models import Cliente
 from empresas.models import CuentaBancaria, Empresa
 #from facturacion.utils import debe_mostrar_recordatorio_facturacion
 from locales.models import LocalComercial
-from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, PagoPorIdentificarForm, TipoOtroIngresoForm
+from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, FiltroFacturaForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, PagoPorIdentificarForm, TipoOtroIngresoForm
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from principal.models import AuditoriaCambio #PerfilUsuario
 from django.utils.timezone import now
@@ -871,16 +871,43 @@ def registrar_deposito_por_identificar(request):
         form = PagoPorIdentificarForm(empresa=empresa)
     return render(request, 'facturacion/registrar_deposito_por_identificar.html', {'form': form})    
 
+
 @login_required
 def identificar_deposito(request, pago_id):
     pago = get_object_or_404(Pago, id=pago_id, factura__isnull=True, identificado=False)
-    if request.method == 'POST':
+
+    # Siempre carga todos los clientes, locales y áreas de la empresa
+    clientes = Cliente.objects.filter(empresa=pago.empresa).only('id', 'nombre')
+    locales = LocalComercial.objects.filter(empresa=pago.empresa).only('id', 'numero')
+    areas = AreaComun.objects.filter(empresa=pago.empresa).only('id', 'numero')
+
+    # Obtén los filtros seleccionados
+    cliente_id = request.GET.get('cliente')
+    local_id = request.GET.get('local')
+    area_id = request.GET.get('area')
+
+    # Carga todas las facturas pendientes de la empresa
+    #facturas = Factura.objects.filter(empresa=pago.empresa, estatus='pendiente')
+    facturas = Factura.objects.none()  # Por defecto, no mostrar nada
+
+    # Solo filtra y muestra si al menos un filtro está seleccionado
+    if cliente_id or local_id or area_id:
+        facturas = Factura.objects.filter(empresa=pago.empresa, estatus='pendiente')
+        if cliente_id:
+            facturas = facturas.filter(cliente_id=cliente_id)
+        if local_id:
+            facturas = facturas.filter(local_id=local_id)
+        if area_id:
+            facturas = facturas.filter(area_comun_id=area_id)
+        facturas = facturas.order_by('cliente__nombre', 'fecha_vencimiento')
+
+    # Asignación de depósito a factura
+    if request.method == 'POST' and 'factura_id' in request.POST:
         factura_id = request.POST.get('factura_id')
         factura = get_object_or_404(Factura, id=factura_id)
         saldo_pendiente = Decimal(str(factura.saldo_pendiente))
 
         if pago.monto > saldo_pendiente:
-            # Asignación parcial: descuenta del depósito y crea un nuevo pago para la factura
             pago.monto -= saldo_pendiente
             pago.observaciones = (pago.observaciones or '') + f'Deposito parcialmente asignado a {factura.folio} el {timezone.now().date()}'
             pago.save()
@@ -893,11 +920,9 @@ def identificar_deposito(request, pago_id):
                 registrado_por=pago.registrado_por,
                 identificado=True,
                 empresa=pago.empresa,
-                #comprobante=pago.comprobante
             )
             messages.success(request, f'Se asignaron ${saldo_pendiente:.2f} a la factura {factura.folio}. El depósito sigue con saldo disponible.')
         else:
-            # Asignación total
             pago.factura = factura
             pago.identificado = True
             pago.observaciones = (pago.observaciones or '') + f'Deposito identificado el {timezone.now().date()}'
@@ -905,9 +930,14 @@ def identificar_deposito(request, pago_id):
             messages.success(request, f'El depósito fue asignado completamente a la factura {factura.folio}.')
         factura.actualizar_estatus()
         return redirect('lista_depositos_por_identificar')
-    facturas = Factura.objects.filter(empresa=pago.empresa, estatus='pendiente').order_by('cliente__nombre', 'fecha_vencimiento')
-    return render(request, 'facturacion/identificar_deposito.html', {'pago': pago, 'facturas': facturas})
 
+    return render(request, 'facturacion/identificar_deposito.html', {
+        'pago': pago,
+        'facturas': facturas,
+        'clientes': clientes,
+        'locales': locales,
+        'areas': areas,
+    })
 
 @login_required
 def lista_depositos_por_identificar(request):
