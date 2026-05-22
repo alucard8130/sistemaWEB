@@ -491,16 +491,6 @@ body:not(.dark-mode) .card-header-pastel {
     color: #fff;  
 }
 
-footer {
-    text-align: center;
-    padding: 12px;
-    font-size: 0.85rem;
-    color: #aaa;
-    background-color: #f8f9fa;
-    margin-top: auto;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Sombra gris suave */
-}
-
 .card {
   background-color: #fff;
   border-radius: 10px;
@@ -1189,4 +1179,16 @@ h2 {
 
 .is-valid { border-color: #198754 !important; background-color: #e9fbe5 !important; }
 .is-invalid { border-color: #dc3545 !important; background-color: #fbe9e9 !important; }
+
+body {
+  margin-bottom: 60px; /* Espacio para el footer */
+}
+.footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 1030;
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
+}
 

@@ -27,7 +27,7 @@
 
 <!--Sentry-->
   <script src="https://js.sentry-cdn.com/37c184247998e374a152288e9bf3b578.min.js" crossorigin="anonymous"></script>
-<script>
+{% comment %} <script>
 window.sentryOnLoad = function() {
   Sentry.init({
     // Puedes agregar más configuración aquí
@@ -45,7 +45,7 @@ window.sentryOnLoad = function() {
       // Si ocurre un error de red, User Feedback no se habilita
     });
 };
-</script>
+</script> {% endcomment %}
 </head>
 
 <body>
@@ -62,7 +62,7 @@ window.sentryOnLoad = function() {
 {% if es_demo %}
 <div style="
     position: fixed;
-    bottom: 30px;
+    bottom: 60px;
     right: 30px;
     z-index: 9999;
     background: #fff3cd;
@@ -122,14 +122,14 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
 {% endif %}
 </div>
       <!-- Bienvenida-->
-      <div class="row justify-content-center mb-4 mt-4">
-          <div class="col-lg-4">
-            <div class="welcome-box d-flex align-items-center py-2 px-2" style="gap: 1rem;">
+       {% comment %} <div class="row justify-content-center mb-4 mt-4">  {% endcomment %}
+           {% comment %} <div class="col-lg-4">  {% endcomment %}
+            {% comment %} <div class="welcome-box d-flex align-items-center py-2 px-2" style="gap: 1rem;"> {% endcomment %}
               <!-- Logo a la izquierda -->
-              <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
+              {% comment %} <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
                 <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="welcome-logo" style="max-width:60px;">
-              </a>
-              <!-- Texto a la derecha -->
+              </a> {% endcomment %}
+              {% comment %} <!-- Texto a la derecha -->
               <div>
                 <h3 class="welcome-title mb-3 fs-5">Sistema Web Administrativo Condominal</h3>
                 
@@ -138,12 +138,12 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
                 {% else %}
                     <p class="text-muted">Administrador General</p>
                 {% endif %}
-                <p class="mb-2 text-muted">Usuario:  <strong>{{ request.user.get_full_name|default:request.user.username }}</strong></p>
-              </div>     
-            </div>
-          </div>
+                <p class="mb-2 text-muted">Usuario:  <strong>{{ request.user.get_full_name|default:request.user.username }}</strong></p>{% endcomment %}
+              {% comment %} </div>     
+             </div>  {% endcomment %}
+          {% comment %} </div> {% endcomment %}
           <!-- Tarjeta pequeña de videos tutoriales alineada a la izquierda -->
-          <div class="col-lg-3 col-md-4">
+          {% comment %} <div class="col-lg-3 col-md-4">
             <div class="card shadow-sm border-0 rounded-1" style="font-size: 0.60rem;">
               <div class="card-header bg-primary text-white py-2 px-3">
                 <h6 class="mb-0" style="font-size: .70rem;">
@@ -199,8 +199,8 @@ document.getElementById('cancelar-suscripcion-btn').onclick = function() {
         </div>
       </div>  
         </div>
-    </div>
-</div>
+    </div>{% endcomment %}
+{% comment %} </div> {% endcomment %}
     </main>
       <!-- Calendar and upcoming events side by side -->
       <!-- blackboard calendar  -->
@@ -412,12 +412,6 @@ function nextStep(step) {
             {% endfor %}
         ];
     </script>
-
-    <!-- 🔹 Footer -->
-<footer class="mt-4">
-        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
-    </footer>
-
     <!-- Scripts -->
     <script>
       const urlCrearEvento = "{% url 'crear_evento' %}";
@@ -480,5 +474,7 @@ function cerrarModal() {
 }
 </script>
 {% endif %}
+{% include 'tool_bar.html' %}
 </body>
+
 </html>

@@ -80,9 +80,6 @@
             </div>
         </div>
     </div>
-    <footer class="mt-4 text-center">
-        © {% now "Y" %} GESAC. Created By JMEB. Todos los derechos reservados.
-    </footer>
     <script>
         // Chart.js config
         const labels = {{ labels|safe }};
@@ -196,5 +193,6 @@
             });
         });
     </script>
+    {% include 'tool_bar.html' %}
 </body>
 </html>
