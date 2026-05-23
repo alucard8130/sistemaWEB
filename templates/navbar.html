@@ -10,7 +10,7 @@
 <!-- Franja invisible para mostrar el navbar al pasar el mouse -->
 <div id="navbar-hover-zone"></div>      
 <!-- 🔹 Top Navbar -->
-<nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-2 shadow-navbar">
+<nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-0 shadow-navbar">
     <div class="container-fluid">      
         <!-- Logo GESAC a la izquierda -->
         <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
@@ -20,7 +20,8 @@
         </div>
     <div class="container-fluid">
         <!-- home button-->
-        <a href="{% url 'bienvenida' %}" class="btn btn-sm btn-light-shadow reporte-link">
+        <a href="{% url 'dashboard_inicio' %}" class="btn btn-sm btn-light-shadow reporte-link">
+            {% comment %} <a href="{% url 'bienvenida' %}" class="btn btn-sm btn-light-shadow reporte-link"> {% endcomment %}
           <i class="bi bi-house me-1" title="Inicio"></i>
         </a>
         </div>

@@ -41,7 +41,8 @@
                 <a href="{% url 'cuenta_bancaria_crear' %}" class="btn btn-success">
                     <i class="fas fa-plus"></i> Nueva cuenta bancaria
                 </a>
-                <a href="{% url 'bienvenida' %}" class="btn btn-outline-secondary ms-2" title="Regresar al panel principal">
+                {% comment %} <a href="{% url 'bienvenida' %}" class="btn btn-outline-secondary ms-2" title="Regresar al panel principal"> {% endcomment %}
+                    <a href="{% url 'dashboard_inicio' %}" class="btn btn-outline-secondary ms-2" title="Regresar al panel principal">
                     <i class="fas fa-arrow-left"></i> Regresar
                 </a>
             </div>

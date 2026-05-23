@@ -1,0 +1,279 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Agrega esto en el <head> -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Bienvenida</title>
+    <!-- Bootstrap base styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Font Rubik -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Customised CSS --> 
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <!-- 🔹 Navbar superior -->
+    {% include 'navbar.html' %}
+    {% comment %} {% include 'loading_overlay.html' %} {% endcomment %}
+    <!-- 🔹 Main Content -->
+
+{% if mensaje_pago %}
+  <div class="alert alert-success">
+    {{ mensaje_pago }}
+  </div>
+{% endif %}
+{% if es_demo %}
+<div style="
+    position: fixed;
+    bottom: 60px;
+    right: 30px;
+    z-index: 9999;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 20px 30px;
+    max-width: 350px;
+    font-size: 1rem;
+">
+    <strong>¡Bienvenido a tu cuenta demo!</strong><br>
+    Acceso demo es válido por 30 días.<br>
+    <hr>
+    <button id="stripe-checkout-btn" class="btn btn-success btn-sm w-100">
+      <a href="https://buy.stripe.com/bJe6oJ5Lw1ha9562YV2B203" class="text-white text-decoration-none">
+        <i class="bi bi-credit-card"></i> Suscribete ahora !!
+      </a>
+    </button>
+</div>
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.getElementById('stripe-checkout-btn').onclick = function() {
+    fetch("{% url 'crear_sesion_pago' %}")
+      .then(response => response.json())
+      .then(data => {
+        var stripe = Stripe("{{ STRIPE_PUBLIC_KEY }}"); 
+        stripe.redirectToCheckout({ sessionId: data.id });
+      });
+};
+</script>
+{% endif %}
+
+{% if not es_demo %}
+<div class="container-fluid px-4 py-3 wide=100px">
+<script>
+document.getElementById('cancelar-suscripcion-btn').onclick = function() {
+    fetch("{% url 'cancelar_suscripcion' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.status === 'cancelada'
+            ? 'Suscripción cancelada correctamente.'
+            : 'No se pudo cancelar la suscripción: ' + (data.detail || data.status));
+        // Opcional: recarga la página o actualiza el estado en el frontend
+        if (data.status === 'cancelada') {
+            location.reload();
+        }
+    });
+};
+</script>
+{% endif %}
+<div class="container mt-1">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0"> Condominio: <strong>{{ request.user.perfilusuario.empresa }}</strong></h5>
+    </div>
+    {% comment %} <div class="card-body">
+      <p>
+        Este es tu panel de control financiero. Aquí podrás monitorear el estado de tus finanzas, revisar tus cuentas bancarias, gestionar tus facturas y mucho más.
+      </p>
+      <p>
+        Utiliza el menú superior para navegar por las diferentes secciones y aprovechar al máximo las funcionalidades que GESAC tiene para ofrecerte.
+      </p>
+    </div> {% endcomment %}
+  </div>
+</div>
+<div class="container mt-1">
+  <div class="row mb-4">
+    <!-- KPIs -->
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>Ingresos del mes</h5>
+          <h2>${{ ingresos_mes_total|floatformat:2|intcomma }}</h2>
+          <small>vs mes anterior: {{ variacion_ingresos|floatformat:2|intcomma }}%</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>Gastos del mes</h5>
+          <h2>${{ gastos_mes|floatformat:2|intcomma }}</h2>
+          <small>vs mes anterior: {{ variacion_gastos|floatformat:2|intcomma }}%</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>Cartera vencida</h5>
+          <h2>${{ cartera_vencida|floatformat:2|intcomma }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5>Facturas pendientes de cobro</h5>
+          <h2>{{ facturas_pendientes }}</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Gráficos -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Ingresos y Gastos (últimos 6 meses)</h5>
+    <canvas id="graficoIngresosGastos"></canvas>
+  </div>
+</div>
+    </div>
+    <div class="col-md-4">
+      <div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Cartera vencida por rango de días</h5>
+    <canvas id="graficoCartera"></canvas>
+  </div>
+</div>
+    </div>
+  </div>
+  <!-- Top deudores y alertas -->
+  {% comment %} <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <h5>Top deudores</h5>
+          <!-- Lista de top deudores -->
+           <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Saldo pendiente</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cliente, saldo in top_deudores %}
+        <tr>
+          <td>{{ cliente }}</td>
+          <td class="text-end">${{ saldo|floatformat:2|intcomma }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="2">No hay deudores pendientes.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <h5>Alertas</h5>
+          <!-- Lista de alertas -->
+          <ul class="list-group list-group-flush">
+            {% for alerta in alertas %}
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+              <div class="ms-2 me-auto">
+                <div class="fw-bold">{{ alerta.titulo }}</div>
+                {{ alerta.descripcion }}
+              </div>
+              <span class="badge bg-danger rounded-pill">{{ alerta.tipo }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div> {% endcomment %}
+</div>
+<!-- Scripts para gráficos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const labels = {{ labels|safe }};
+const ingresosData = {{ ingresos_data|safe }};
+const gastosData = {{ gastos_data|safe }};
+
+const ctx = document.getElementById('graficoIngresosGastos').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Ingresos',
+                data: ingresosData,
+                borderColor: 'rgba(54, 162, 235, 0.7)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                fill: false,
+                tension: 0.3
+            },
+            {
+                label: 'Gastos',
+                data: gastosData,
+                borderColor: 'rgba(255, 99, 132, 0.7)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                fill: false,
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' }
+        }
+    }
+});
+</script>
+<script>
+const carteraRangos = {{ cartera_rangos|safe }};
+const labelsCartera = ['0-30 días', '31-60 días', '61-90 días', '91-180 días', '181+ días'];
+
+const ctxCartera = document.getElementById('graficoCartera').getContext('2d');
+new Chart(ctxCartera, {
+    type: 'pie',
+    data: {
+        labels: labelsCartera,
+        datasets: [{
+            data: carteraRangos,
+            backgroundColor: [
+                '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' }
+        }
+    }
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% include 'tool_bar.html' %}

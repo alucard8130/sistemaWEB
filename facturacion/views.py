@@ -1745,13 +1745,13 @@ def grafico_ingresos_mensuales(request):
 
     # Pagos de cuotas de mantenimiento (locales)
     pagos_local = Pago.objects.filter(
-        factura__tipo_cuota='mantenimiento',
+        factura__tipo_cuota__in=['mantenimiento','extraordinaria'],
         factura__activo=True,
         fecha_pago__year=anio
     )
     # Pagos de cuotas de área común
     pagos_area = Pago.objects.filter(
-        factura__tipo_cuota='renta',
+        factura__tipo_cuota__in=['renta','deposito'],
         factura__activo=True,
         fecha_pago__year=anio
     )
@@ -1865,11 +1865,11 @@ def grafico_ingresos_anual(request):
 
     # Pagos de cuotas de mantenimiento (locales)
     pagos_local = Pago.objects.filter(
-        factura__tipo_cuota='mantenimiento',
+        factura__tipo_cuota__in=['mantenimiento','extraordinaria'],
         factura__activo=True
     )
     pagos_area = Pago.objects.filter(
-        factura__tipo_cuota='renta',
+        factura__tipo_cuota__in=['renta','deposito'],
         factura__activo=True
     )
     cobros_otros = CobroOtrosIngresos.objects.filter(
