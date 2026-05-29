@@ -656,10 +656,11 @@ def reporte_pagos_gastos(request):
         ).aggregate(total=Sum("monto"))["total"]
         or 0
     )
+    pagos_gastos_chart = pagos.filter(fecha_pago__year=anio_actual)
 
     # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)
     tipo_dict = (
-        pagos.values("gasto__tipo_gasto__subgrupo__nombre", "gasto__tipo_gasto__nombre")
+        pagos_gastos_chart.values("gasto__tipo_gasto__subgrupo__nombre", "gasto__tipo_gasto__nombre")
         .annotate(total=Sum("monto"))
         .order_by("-total")
     )
@@ -676,7 +677,7 @@ def reporte_pagos_gastos(request):
 
     # KPIs por forma de pago
     forma_dict = (
-        pagos.values("forma_pago").annotate(total=Sum("monto")).order_by("-total")
+        pagos_gastos_chart.values("forma_pago").annotate(total=Sum("monto")).order_by("-total")
     )
     pagos_por_forma = []
     forma_labels = []

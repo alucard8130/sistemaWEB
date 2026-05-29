@@ -1071,9 +1071,12 @@ def pagos_por_origen(request):
     var_anio = variacion(pagos_anio_actual, pagos_anio_anterior)
     var_mes = variacion(pagos_mes_actual, pagos_mes_anterior)
 
+    anio_actual = date.today().year
+    pagos_chart = pagos.filter(fecha_pago__year=anio_actual)
+
     # Agrupa por tipo_cuota (clave) y suma montos
     tipo_dict = defaultdict(float)
-    for p in pagos:
+    for p in pagos_chart:
         if p.factura and p.factura.tipo_cuota:
             tipo_dict[p.factura.tipo_cuota] += float(p.monto)
 
@@ -1087,19 +1090,19 @@ def pagos_por_origen(request):
 
     # Agrupa por forma de pago
     forma_dict = defaultdict(float)
-    for p in pagos:
+    for p in pagos_chart:
         if p.forma_pago:
             forma_dict[p.get_forma_pago_display()] += float(p.monto)
     forma_labels = list(forma_dict.keys())
     forma_data = list(forma_dict.values())
 
     #agrupar por cuenta bancaria
-    cuenta_dict = defaultdict(float)
-    for p in pagos:
-        if p.cuenta_bancaria:
-            cuenta_dict[p.cuenta_bancaria] += float(p.monto)
-    cuenta_labels = list(cuenta_dict.keys())
-    cuenta_data = list(cuenta_dict.values())
+    # cuenta_dict = defaultdict(float)
+    # for p in pagos_chart:
+    #     if p.cuenta_bancaria:
+    #         cuenta_dict[p.cuenta_bancaria] += float(p.monto)
+    # cuenta_labels = list(cuenta_dict.keys())
+    # cuenta_data = list(cuenta_dict.values())
 
     if request.user.is_superuser:
         cuentas_bancarias = CuentaBancaria.objects.all()
@@ -1142,8 +1145,8 @@ def pagos_por_origen(request):
         'ingresos_acumulados': ingresos_acumulados,
         'pagos_por_cuenta': list(pagos_por_cuenta),
         'FORMAS_PAGO': Pago.FORMAS_PAGO,
-        'cuenta_labels': cuenta_labels,
-        'cuenta_data': cuenta_data,
+        #'cuenta_labels': cuenta_labels,
+        #'cuenta_data': cuenta_data,
         'cuentas_bancarias': cuentas_bancarias,
 
     })
@@ -3050,29 +3053,32 @@ def reporte_cobros_otros_ingresos(request):
 
     total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
 
+    anio_actual = date.today().year
+    cobros_chart = cobros.filter(fecha_cobro__year=anio_actual)
+
     # Cobros por tipo de ingreso
     tipo_dict = defaultdict(float)
-    for c in cobros:
+    for c in cobros_chart:
         tipo = c.factura.tipo_ingreso.nombre if c.factura and c.factura.tipo_ingreso else 'Otro'
-        tipo_dict[tipo] += float(c.monto)
+        tipo_dict[tipo] += float(c.monto)   
     tipo_labels = list(tipo_dict.keys())
     tipo_data = list(tipo_dict.values())
 
     # Cobros por forma de cobro
     forma_dict = defaultdict(float)
-    for c in cobros:
+    for c in cobros_chart:
         forma = c.get_forma_cobro_display() if hasattr(c, 'get_forma_cobro_display') else c.forma_cobro
         forma_dict[forma] += float(c.monto)
     forma_labels = list(forma_dict.keys())
     forma_data = list(forma_dict.values())
 
     #cobros por cuenta bancaria
-    cuenta_dict = defaultdict(float)
-    for c in cobros:
-        cuenta = c.cuenta_bancaria.banco if c.cuenta_bancaria else 'Sin cuenta'
-        cuenta_dict[cuenta] += float(c.monto)
-    cuenta_labels = list(cuenta_dict.keys())
-    cuenta_data = list(cuenta_dict.values())
+    # cuenta_dict = defaultdict(float)
+    # for c in cobros_chart:
+    #     cuenta = c.cuenta_bancaria.banco if c.cuenta_bancaria else 'Sin cuenta'
+    #     cuenta_dict[cuenta] += float(c.monto)
+    # cuenta_labels = list(cuenta_dict.keys())
+    # cuenta_data = list(cuenta_dict.values())
 
 
     # KPIs comparativos año/mes actual vs anterior
