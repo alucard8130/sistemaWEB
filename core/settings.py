@@ -20,10 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 #SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = os.getenv("DEBUG", "False") == "True"
-DEBUG = True
-#ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com,gesacadmin.com").split(",")
-ALLOWED_HOSTS = ["192.168.0.159", '*']  # For development purposes, change this in production
+DEBUG = os.getenv("DEBUG", "False") == "True"
+#DEBUG = True
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "adminsoftheron.onrender.com,gesacadmin.com").split(",")
+#ALLOWED_HOSTS = ["192.168.0.159", '*']  # For development purposes, change this in production
 
 # Application definition
 
@@ -109,23 +109,23 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # }
 
 #desarrollo postgres
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
-        'USER': os.getenv('DB_USER'),         # tu usuario de postgres
-        'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
+#         'USER': os.getenv('DB_USER'),         # tu usuario de postgres
+#         'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
+#         'HOST': os.getenv('DB_HOST', 'localhost'),
+#         'PORT': os.getenv('DB_PORT', '5432'),
+#     }
+# }
 
 #produccion
-# DATABASES = {
-#     "default": dj_database_url.config(
-#         default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
-#     )
-# }
+DATABASES = {
+    "default": dj_database_url.config(
+        default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
+    )
+}
 
 
 
