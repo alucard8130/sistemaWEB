@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}" />
   </head>
   <body>
-    {% include 'navbar.html' %}
+    {% comment %} {% include 'navbar.html' %} {% endcomment %}
     {% include 'loading_overlay.html' %}
 
     {% if messages %}
@@ -125,8 +125,5 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 </script>
-    <footer class="mt-4">
-        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
-    </footer>
   </body>
 </html>

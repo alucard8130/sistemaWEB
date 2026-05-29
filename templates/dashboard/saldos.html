@@ -29,7 +29,7 @@
     <div class="alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %}
 {% endif %}
-    {% include 'navbar.html' %}
+    {% comment %} {% include 'navbar.html' %} {% endcomment %}
     {% include 'loading_overlay.html' %}
     
     <div class="container-fluid mt-4">
@@ -132,6 +132,8 @@
     <!-- limpiar-->
     <div class="col-auto">
         <a href="{% url 'dashboard_saldos' %}" class="btn btn-secondary reporte-link">Limpiar</a>
+        <!--boton salir-->
+        <a href="{% url 'dashboard_inicio' %}" class="btn btn-outline-primary reporte-link">Salir</a>
     </div>
 </form>
 
