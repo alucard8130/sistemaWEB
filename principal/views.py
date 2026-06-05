@@ -4064,7 +4064,7 @@ def enviar_recordatorio_morosidad(request):
         )
         return redirect(next_url or "lista_facturas")
 
-
+#pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 @login_required
 def dashboard_inicio(request):
     empresa = request.user.perfilusuario.empresa
@@ -4130,17 +4130,24 @@ def dashboard_inicio(request):
         if gastos_mes_anterior else 0
     )
 
-    # Facturas pendientes y vencidas
+    # Facturas pendientes y vencidas cuotas y áreas comunes
     facturas_pendientes = Factura.objects.filter(
         empresa=empresa,
         estatus='pendiente'
     ).select_related('cliente').prefetch_related('pagos')
 
-    facturas_vencidas = facturas_pendientes.filter(fecha_vencimiento__lt=hoy)
-    cartera_vencida = sum(f.saldo_pendiente for f in facturas_vencidas)
+    #facturas pendientes otros ingresos
+    facturas_pendientes_otros = FacturaOtrosIngresos.objects.filter(    
+        empresa=empresa,
+        estatus='pendiente'
+    ).select_related('tipo_ingreso').prefetch_related('cobros')
+
+    facturas_vencidas_cuotas = facturas_pendientes.filter(fecha_vencimiento__lt=hoy)
+    facturas_vencidas_otros = facturas_pendientes_otros.filter(fecha_vencimiento__lt=hoy)
+    cartera_vencida = sum(f.saldo_pendiente for f in facturas_vencidas_cuotas) + sum(f.saldo for f in facturas_vencidas_otros)
 
     # Cantidad de facturas pendientes
-    cantidad_facturas_pendientes = facturas_pendientes.count()
+    cantidad_facturas_pendientes = facturas_pendientes.count() + facturas_pendientes_otros.count()
 
     # Pagos recibidos hoy
     pagos_hoy = Pago.objects.filter(
@@ -4149,10 +4156,10 @@ def dashboard_inicio(request):
     ).aggregate(total=Sum('monto'))['total'] or 0
 
     # Top deudores
-    deudores = defaultdict(float)
-    for f in facturas_pendientes:
-        deudores[f.cliente.nombre] += f.saldo_pendiente
-    top_deudores = sorted(deudores.items(), key=lambda x: x[1], reverse=True)[:5]
+    # deudores = defaultdict(float)
+    # for f in facturas_pendientes:
+    #     deudores[f.cliente.nombre] += f.saldo_pendiente
+    # top_deudores = sorted(deudores.items(), key=lambda x: x[1], reverse=True)[:5]
 
     # Datos para gráficos (últimos 6 meses)
     # Pagos (ingresos)
@@ -4168,7 +4175,7 @@ def dashboard_inicio(request):
         .order_by('mes')
 )
 
-    # Pagos de gastos
+    # Pagos de gastos generales por mes
     gastos_por_mes = (
         PagoGasto.objects.filter(
             gasto__empresa=empresa,
@@ -4180,6 +4187,30 @@ def dashboard_inicio(request):
         .annotate(total=Sum('monto'))
         .order_by('mes')
     )
+    #gastos y vales caja chica por mes
+    gastos_caja_por_mes = (
+        GastoCajaChica.objects.filter(
+            fondeo__empresa=empresa,
+            fecha__gte=meses[0],
+            fecha__lte=hoy
+        )
+        .annotate(mes=TruncMonth('fecha'))
+        .values('mes')
+        .annotate(total=Sum('importe'))
+        .order_by('mes')
+    )
+    vales_caja_por_mes = (
+        ValeCaja.objects.filter(
+            fondeo__empresa=empresa,
+            fecha__gte=meses[0],
+            fecha__lte=hoy
+        )
+        .annotate(mes=TruncMonth('fecha'))
+        .values('mes')
+        .annotate(total=Sum('importe'))
+        .order_by('mes')
+    )
+
     # Convierte los resultados a diccionarios {mes: total}
     pagos_dict = {}
     for p in pagos_por_mes:
@@ -4228,7 +4259,7 @@ def dashboard_inicio(request):
         'cartera_vencida': cartera_vencida,
         'facturas_pendientes': cantidad_facturas_pendientes,
         'pagos_hoy': pagos_hoy,
-        'top_deudores': top_deudores,
+        #'top_deudores': top_deudores,
         'pagos_por_mes': list(pagos_por_mes),
         'gastos_por_mes': list(gastos_por_mes),
         'cartera_rangos': cartera_rangos,

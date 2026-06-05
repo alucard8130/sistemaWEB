@@ -613,10 +613,18 @@ def reporte_pagos_gastos(request):
         pagos = pagos.filter(gasto__empleado_id=empleado_id)
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
+    # if fecha_inicio:
+    #     pagos = pagos.filter(fecha_pago__gte=parse_date(fecha_inicio))
+    # if fecha_fin:
+    #     pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
     if fecha_inicio:
-        pagos = pagos.filter(fecha_pago__gte=parse_date(fecha_inicio))
+        fecha_inicio_dt = parse_date(fecha_inicio)
+    if fecha_inicio_dt:
+        pagos = pagos.filter(fecha_pago__gte=fecha_inicio_dt)
     if fecha_fin:
-        pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
+         fecha_fin_dt = parse_date(fecha_fin)
+    if fecha_fin_dt:
+        pagos = pagos.filter(fecha_pago__lte=fecha_fin_dt)
 
     # Filtro de cuenta bancaria
     if cuenta_bancaria and cuenta_bancaria.isdigit():

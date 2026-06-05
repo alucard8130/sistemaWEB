@@ -265,16 +265,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
                 <a href="{% url 'reporte_pagos_gastos' %}" class="btn btn-outline-secondary reporte-link" title="Limpiar">
                     <i class="bi bi-arrow-clockwise"></i></a>
-                {% comment %} <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if cuenta_bancaria %}&cuenta_bancaria={{ cuenta_bancaria }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success" title="Exportar Excel">
-                    <i class="bi bi-file-earmark-excel-fill"></i>
-                </a> {% endcomment %}
                <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?anio={{ anio }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if forma_pago_actual %}&forma_pago={{ forma_pago_actual }}{% endif %}{% if cuenta_bancaria %}&cuenta_bancaria={{ cuenta_bancaria }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" class="btn btn-outline-success" title="Exportar Excel">
     <i class="bi bi-file-earmark-excel-fill"></i>
 </a> 
-{% comment %} <a href="{% url 'exportar_reporte_pagos_gastos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill" title="Exportar a Excel"></i>
-                </a> {% endcomment %}
-
             </div>
         </form>
         </div>
