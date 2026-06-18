@@ -269,20 +269,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="text-muted"></span>
                         {% endif %}
 
-                        {% if not factura.empresa.es_plus %}
-                         <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Factura">
-                        
-                            <i class="bi bi-printer"></i>
-                        </a>
+                        {% if factura.empresa.es_demo or factura.empresa.es_plus %}
+                            <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Recibo">
+                                <i class="bi bi-printer"></i>
+                            </a>
                         {% else %}
                             <span></span>
                         {% endif %}
+                        
+                        
                             {% if factura.estatus == 'cancelada' %}
                                 <span class="text-muted"></span>
                             {% else %}
-                          <a href="{% url 'crear_factura' %}?cliente={{ factura.cliente.id }}{% if factura.local %}&local={{ factura.local.id }}&tipo_origen=local{% endif %}{% if factura.area_comun %}&area_comun={{ factura.area_comun.id }}&tipo_origen=area_comun{% endif %}&tipo_cuota={{ factura.tipo_cuota }}&next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success reporte-link" title="Nueva factura">
-                                <i class="bi bi-plus-circle me-1 sm" title="Nueva factura"></i>
-                            </a>
+                                <a href="{% url 'crear_factura' %}?cliente={{ factura.cliente.id }}{% if factura.local %}&local={{ factura.local.id }}&tipo_origen=local{% endif %}{% if factura.area_comun %}&area_comun={{ factura.area_comun.id }}&tipo_origen=area_comun{% endif %}&tipo_cuota={{ factura.tipo_cuota }}&next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success reporte-link" title="Nueva factura">
+                                    <i class="bi bi-plus-circle me-1 sm" title="Nueva factura"></i>
+                                </a>
+                                {% endif %}
+                        {% if factura.empresa.es_premium %}        
                                 {% if not factura.uuid %}
                                     <a href="{% url 'timbrar_factura' factura.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-success btn-sm reporte-link" title="Timbrar factura">
                                         <i class="bi bi-file-earmark-check"></i>
@@ -290,13 +293,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 {% else %}
                                     <span class="badge bg-dark">Timbrada</span>
                                 {% endif %}
-                            {% endif %}
-
-                            {% comment %} <a href="{% url 'crear_factura' %}?cliente={{ factura.cliente.id }}{% if factura.local %}&local={{ factura.local.id }}&tipo_origen=local{% endif %}{% if factura.area_comun %}&area_comun={{ factura.area_comun.id }}&tipo_origen=area_comun{% endif %}&tipo_cuota={{ factura.tipo_cuota }}" class="btn btn-sm btn-success">
-                                <i class="bi bi-plus-circle me-1" title="Nueva factura"></i>
-                            </a> {% endcomment %}
-
+                    
+                        {% else %}
+                             <a href="#" class="btn btn-outline-success btn-sm" title=" Timbrar solo PREMIUM">
+                                        <i class="bi bi-file-earmark-check"></i>
+                                    </a>
+                        {% endif %}
                     </td>
+
                     <td>
                     {% if factura.facturama_id %}
                                 <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" class="btn btn-success btn-sm " title="Descargar CFDI PDF/XML">

@@ -303,6 +303,8 @@ def dashboard_inicio(request):
 
     # es_demo=False    
     es_demo = request.user.perfilusuario.tipo_usuario == "demo"
+    es_plus= request.user.perfilusuario.tipo_usuario == "plus"
+    es_premium = request.user.perfilusuario.tipo_usuario == "premium"
 
     context = {
         'ingresos_mes': ingresos_mes,
@@ -330,54 +332,11 @@ def dashboard_inicio(request):
         'mensaje_pago': mensaje_pago,
         'mostrar_recordatorio': mostrar_recordatorio,
         'mostrar_wizard': mostrar_wizard,
+        'es_plus': es_plus,
+        'es_premium': es_premium,
     }
     return render(request, 'pantalla_inicio.html', context)
 
-
-
-# @login_required
-# def bienvenida(request):
-#     empresa = None
-#     es_demo = False
-#     perfil = request.user.perfilusuario
-#     mostrar_wizard = perfil.mostrar_wizard
-
-#     mensaje_pago = None
-#     if request.GET.get("pago") == "ok":
-#         mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
-
-#     if not request.user.is_superuser:
-#         empresa = request.user.perfilusuario.empresa
-#         eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
-#         es_demo = request.user.perfilusuario.tipo_usuario == "demo"
-#     else:
-#         empresa_id = request.session.get("empresa_id")
-#         if empresa_id:
-#             try:
-#                 empresa = Empresa.objects.get(id=empresa_id)
-#                 eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
-#             except Empresa.DoesNotExist:
-#                 empresa = None
-#                 eventos = Evento.objects.all().order_by("fecha")
-#         else:
-#             eventos = Evento.objects.all().order_by("fecha")
-
-#         # --- Recordatorio de facturación mensual ---
-#     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
-
-#     return render(
-#         request,
-#         "bienvenida.html",
-#         {
-#             "empresa": empresa,
-#             "eventos": eventos,
-#             "es_demo": es_demo,
-#             # "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
-#             "mostrar_wizard": mostrar_wizard,
-#             "mensaje_pago": mensaje_pago,
-#             "mostrar_recordatorio": mostrar_recordatorio,
-#         },
-#     )
 
 
 # Configuración del sistema
@@ -822,9 +781,85 @@ def usuarios_demo(request):
     return render(request, "usuarios_demo.html", {"usuarios": usuarios_info})
 
 
+# --- Helpers membresias Stripe ---
+def _sync_membership_state(perfil):
+    """
+    Regla de negocio:
+    - premium activo -> tipo premium
+    - plus activo (sin premium) -> tipo plus
+    - sin subs -> demo
+    """
+    tiene_plus = bool(perfil.stripe_plus_subscription_id)
+    tiene_premium = bool(perfil.stripe_premium_subscription_id)
+
+    if tiene_premium:
+        perfil.tipo_usuario = "premium"
+    elif tiene_plus:
+        perfil.tipo_usuario = "plus"
+    else:
+        perfil.tipo_usuario = "demo"
+
+    if perfil.empresa:
+        # premium implica acceso plus tambien
+        perfil.empresa.es_premium = tiene_premium
+        perfil.empresa.es_plus = tiene_plus or tiene_premium
+        perfil.empresa.save(update_fields=["es_plus", "es_premium"])
+
+
+def _find_perfil_from_checkout_session(session):
+    customer_id = session.get("customer")
+    email = session.get("customer_details", {}).get("email")
+    client_ref = session.get("client_reference_id")
+
+    perfil = None
+
+    if customer_id:
+        perfil = PerfilUsuario.objects.filter(stripe_customer_id=customer_id).first()
+
+    if not perfil and email:
+        user = User.objects.filter(email=email).first()
+        if user:
+            perfil = PerfilUsuario.objects.filter(usuario=user).first()
+
+    if not perfil and client_ref:
+        try:
+            user = User.objects.filter(id=int(client_ref)).first()
+            if user:
+                perfil = PerfilUsuario.objects.filter(usuario=user).first()
+        except Exception:
+            pass
+
+    return perfil
+
+
+def _extract_price_id_from_session(session_id):
+    try:
+        line_items = stripe.checkout.Session.list_line_items(session_id)
+        if line_items.data:
+            return line_items.data[0].price.id
+    except Exception as e:
+        print("Error al obtener line items:", e)
+    return None
+
+
+def _safe_cancel_subscription(subscription_id):
+    """
+    Cancela en Stripe; si ya no existe, no rompe el flujo local.
+    """
+    if not subscription_id:
+        return
+    try:
+        stripe.Subscription.delete(subscription_id)
+    except Exception as e:
+        if "No such subscription" not in str(e):
+            raise
+
+
 # Webhook de Stripe pago sistema de suscripciones GESAC
 @csrf_exempt
 def stripe_webhook(request):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
     payload = request.body
     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
     endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
@@ -835,55 +870,121 @@ def stripe_webhook(request):
         print("Error Stripe:", e)
         return HttpResponse(status=400)
 
-    # Activación inicial de suscripción
+    plus_prices = {
+        "price_1TjRnLPYnlfwKZQHwFHQDTjx",  # produccion plus
+        #"price_1RnT1IPW7xPgzk0myWccMWtW",  # pruebas plus
+    }
+    premium_prices = {
+        "price_1TjV1JPYnlfwKZQHyh773EsU",  # produccion premium
+        #"price_1RnSzMPW7xPgzk0mLslR8vT5",  # pruebas premium
+    }
+
+    # Alta inicial o upgrade por Checkout
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        customer_id = session.get("customer")
         subscription_id = session.get("subscription")
-        email = session.get("customer_details", {}).get("email")
-        if customer_id:
-            try:
-                perfil = PerfilUsuario.objects.get(stripe_customer_id=customer_id)
-                user = perfil.usuario
-                user.is_active = True
-                perfil.tipo_usuario = "pago"
-                # Solo mostrar el wizard si nunca ha tenido suscripción
-                if not perfil.stripe_subscription_id:
-                    perfil.mostrar_wizard = True
-                if subscription_id:
-                    perfil.stripe_subscription_id = subscription_id
-                perfil.save()
-                user.save()
-            except PerfilUsuario.DoesNotExist:
-                if email:
-                    try:
-                        user = User.objects.get(email=email)
-                        perfil = PerfilUsuario.objects.get(usuario=user)
-                        perfil.stripe_customer_id = customer_id
-                        perfil.tipo_usuario = "pago"
-                        # Solo mostrar el wizard si nunca ha tenido suscripción
-                        if not perfil.stripe_subscription_id:
-                            perfil.mostrar_wizard = True
-                        if subscription_id:
-                            perfil.stripe_subscription_id = subscription_id
-                        perfil.save()
-                        user.is_active = True
-                        user.save()
-                    except (User.DoesNotExist, PerfilUsuario.DoesNotExist):
-                        print("No se pudo encontrar el usuario asociado al pago.")
+        customer_id = session.get("customer")
+        price_id = _extract_price_id_from_session(session.get("id"))
 
-    # Renovación automática de suscripción
+        perfil = _find_perfil_from_checkout_session(session)
+        if not perfil:
+            print("No se encontró PerfilUsuario para checkout.session.completed")
+            return HttpResponse(status=200)
+
+        tenia_suscripcion = bool(
+            perfil.stripe_plus_subscription_id or perfil.stripe_premium_subscription_id
+        )
+
+        # persist customer
+        if customer_id and not perfil.stripe_customer_id:
+            perfil.stripe_customer_id = customer_id
+
+        if not subscription_id:
+            print("Session completada sin subscription_id")
+            perfil.save(update_fields=["stripe_customer_id"])
+            return HttpResponse(status=200)
+
+        if price_id in plus_prices:
+            perfil.stripe_plus_subscription_id = subscription_id
+            # legacy/fallback temporal
+            perfil.stripe_subscription_id = subscription_id
+
+        elif price_id in premium_prices:
+            # regla: premium solo si ya existe plus
+            if not perfil.stripe_plus_subscription_id:
+                print("Intento premium sin plus previo. Se revierte.")
+                try:
+                    _safe_cancel_subscription(subscription_id)
+                except Exception as e:
+                    print("No se pudo revertir premium invalido:", e)
+                return HttpResponse(status=200)
+
+            perfil.stripe_premium_subscription_id = subscription_id
+            # legacy/fallback temporal
+            perfil.stripe_subscription_id = subscription_id
+
+        else:
+            print("Price ID no reconocido:", price_id)
+            return HttpResponse(status=200)
+
+        # if not tenia_suscripcion:
+        #     perfil.mostrar_wizard = True
+
+        _sync_membership_state(perfil)
+        perfil.save()
+
+        if perfil.usuario and not perfil.usuario.is_active:
+            perfil.usuario.is_active = True
+            perfil.usuario.save(update_fields=["is_active"])
+
+    # Renovaciones recurrentes
     if event["type"] == "invoice.payment_succeeded":
         invoice = event["data"]["object"]
         customer_id = invoice.get("customer")
-        if customer_id:
+        subscription_id = invoice.get("subscription")
+
+        if not customer_id:
+            return HttpResponse(status=200)
+
+        perfil = PerfilUsuario.objects.filter(stripe_customer_id=customer_id).first()
+        if not perfil:
+            print("No se encontró perfil para invoice.payment_succeeded")
+            return HttpResponse(status=200)
+
+        price_id = None
+        if subscription_id:
             try:
-                perfil = PerfilUsuario.objects.get(stripe_customer_id=customer_id)
-                perfil.tipo_usuario = "pago"
-                perfil.save()
-                print("Renovación automática: acceso renovado.")
-            except PerfilUsuario.DoesNotExist:
-                print("No se encontró perfil para renovar acceso.")
+                sub = stripe.Subscription.retrieve(
+                    subscription_id,
+                    expand=["items.data.price"]
+                )
+                items = sub.get("items", {}).get("data", [])
+                if items and items[0].get("price"):
+                    price_id = items[0]["price"]["id"]
+            except Exception as e:
+                print("No se pudo leer subscription en invoice.payment_succeeded:", e)
+
+        if price_id in plus_prices:
+            perfil.stripe_plus_subscription_id = subscription_id
+            if not perfil.stripe_subscription_id:
+                perfil.stripe_subscription_id = subscription_id
+
+        elif price_id in premium_prices:
+            perfil.stripe_premium_subscription_id = subscription_id
+            perfil.stripe_subscription_id = subscription_id
+
+        else:
+            # fallback por coincidencia con ids guardados
+            if subscription_id == perfil.stripe_plus_subscription_id:
+                pass
+            elif subscription_id == perfil.stripe_premium_subscription_id:
+                pass
+            else:
+                print("invoice.payment_succeeded con subscription no reconocida:", subscription_id)
+
+        _sync_membership_state(perfil)
+        perfil.save()
+        print("Renovación automática procesada correctamente.")
 
     return HttpResponse(status=200)
 
@@ -891,34 +992,146 @@ def stripe_webhook(request):
 @login_required
 def crear_sesion_pago(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
-    success = request.build_absolute_uri(reverse('dashboard_inicio') + '?pago=ok')
-    cancel = request.build_absolute_uri(reverse('dashboard_inicio'))
-    session = stripe.checkout.Session.create(
-    payment_method_types=["card"],
-    line_items=[{"price": "price_1TjRnLPYnlfwKZQHwFHQDTjx","quantity": 1}],
-    mode="subscription",
-    success_url=success,
-    cancel_url=cancel,
-    client_reference_id=str(request.user.id),
-    customer_email=request.user.email,
-    )
+    perfil = request.user.perfilusuario
+
+    # Si ya tiene plus (o premium, que depende de plus), no duplicar plus
+    if perfil.stripe_plus_subscription_id:
+        return JsonResponse(
+            {"status": "error", "detail": "Ya tienes membresía PLUS activa."},
+            status=400
+        )
+
+    success = request.build_absolute_uri(reverse("dashboard_inicio") + "?pago=ok")
+    cancel = request.build_absolute_uri(reverse("dashboard_inicio"))
+
+    session_kwargs = {
+        "payment_method_types": ["card"],
+        "line_items": [{"price": "price_1TjRnLPYnlfwKZQHwFHQDTjx", "quantity": 1}], #produccion
+        #"line_items": [{"price": "price_1RnT1IPW7xPgzk0myWccMWtW", "quantity": 1}], #desarrollo
+        "mode": "subscription",
+        "success_url": success,
+        "cancel_url": cancel,
+        "client_reference_id": str(request.user.id),
+        "metadata": {"plan": "plus", "user_id": str(request.user.id)},
+    }
+
+    if perfil.stripe_customer_id:
+        session_kwargs["customer"] = perfil.stripe_customer_id
+    else:
+        session_kwargs["customer_email"] = request.user.email
+
+    session = stripe.checkout.Session.create(**session_kwargs)
     return JsonResponse({"id": session.id})
 
 
 @login_required
-def cancelar_suscripcion(request):
+def crear_sesion_pago_premium(request):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
     perfil = request.user.perfilusuario
-    subscription_id = perfil.stripe_subscription_id
-    if subscription_id:
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        try:
-            stripe.Subscription.delete(subscription_id)
-            perfil.tipo_usuario = "demo"  # O el estado que corresponda
-            perfil.save()
-            return JsonResponse({"status": "cancelada"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "detail": str(e)}, status=400)
-    return JsonResponse({"status": "no encontrada"}, status=404)
+
+    # Regla: premium solo si ya es plus
+    if not perfil.stripe_plus_subscription_id:
+        return JsonResponse(
+            {"status": "error", "detail": "Debes activar PLUS antes de contratar PREMIUM."},
+            status=400
+        )
+
+    if perfil.stripe_premium_subscription_id:
+        return JsonResponse(
+            {"status": "error", "detail": "Ya tienes membresía PREMIUM activa."},
+            status=400
+        )
+
+    success = request.build_absolute_uri(reverse("dashboard_inicio") + "?pago=ok")
+    cancel = request.build_absolute_uri(reverse("dashboard_inicio"))
+
+    session_kwargs = {
+        "payment_method_types": ["card"],
+        "line_items": [{"price": "price_1TjV1JPYnlfwKZQHyh773EsU", "quantity": 1}], #produccion
+        #"line_items": [{"price": "price_1RnSzMPW7xPgzk0mLslR8vT5", "quantity": 1}], #desarrollo
+        "mode": "subscription",
+        "success_url": success,
+        "cancel_url": cancel,
+        "client_reference_id": str(request.user.id),
+        "metadata": {"plan": "premium", "user_id": str(request.user.id)},
+    }
+
+    if perfil.stripe_customer_id:
+        session_kwargs["customer"] = perfil.stripe_customer_id
+    else:
+        session_kwargs["customer_email"] = request.user.email
+
+    session = stripe.checkout.Session.create(**session_kwargs)
+    return JsonResponse({"id": session.id})
+
+
+@require_POST
+@login_required
+def cancelar_suscripcion(request):
+    """
+    Cancela PLUS.
+    Regla: si premium está activo, primero debe cancelarse premium.
+    """
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    perfil = request.user.perfilusuario
+
+    if perfil.stripe_premium_subscription_id:
+        return JsonResponse(
+            {"status": "error", "detail": "Primero cancela la membresía PREMIUM."},
+            status=400
+        )
+
+    plus_subscription_id = perfil.stripe_plus_subscription_id or perfil.stripe_subscription_id
+    if not plus_subscription_id:
+        return JsonResponse({"status": "no encontrada"}, status=404)
+
+    try:
+        _safe_cancel_subscription(plus_subscription_id)
+
+        perfil.stripe_plus_subscription_id = None
+        if perfil.stripe_subscription_id == plus_subscription_id:
+            perfil.stripe_subscription_id = None
+
+        _sync_membership_state(perfil)
+        perfil.save()
+
+        return JsonResponse({"status": "cancelada"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "detail": str(e)}, status=400)
+
+
+@require_POST
+@login_required
+def cancelar_suscripcion_premium(request):
+    """
+    Cancela PREMIUM y vuelve a PLUS (si plus sigue activo).
+    """
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    perfil = request.user.perfilusuario
+
+    premium_subscription_id = perfil.stripe_premium_subscription_id
+    if not premium_subscription_id and perfil.tipo_usuario == "premium":
+        # fallback legacy
+        premium_subscription_id = perfil.stripe_subscription_id
+
+    if not premium_subscription_id:
+        return JsonResponse({"status": "no encontrada"}, status=404)
+
+    try:
+        _safe_cancel_subscription(premium_subscription_id)
+
+        perfil.stripe_premium_subscription_id = None
+
+        # legacy: si el id legacy era el premium cancelado, volverlo al plus (si existe)
+        if perfil.stripe_subscription_id == premium_subscription_id:
+            perfil.stripe_subscription_id = perfil.stripe_plus_subscription_id
+
+        _sync_membership_state(perfil)
+        perfil.save()
+
+        return JsonResponse({"status": "cancelada"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "detail": str(e)}, status=400)
 
 
 @require_POST
@@ -2256,10 +2469,10 @@ def timbrar_factura(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     empresa = factura.empresa
     next_url = request.GET.get("next") or request.POST.get("next")
-    # Solo permite timbrar si la empresa es PLUS
-    if not empresa.es_plus:
+    # Solo permite timbrar si la empresa es PREMIUM
+    if not empresa.es_premium:
         messages.error(
-            request, "El timbrado solo está disponible en la versión PLUS del sistema."
+            request, "El timbrado solo está disponible en la versión PREMIUM del sistema."
         )
         return redirect("lista_facturas")
 

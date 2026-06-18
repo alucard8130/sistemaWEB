@@ -391,8 +391,8 @@ except Exception:
 def generar_contrato(request, area_id):
     area = get_object_or_404(AreaComun, pk=area_id)
 
-    if not getattr(area.empresa, 'es_plus', False):
-        messages.error(request, "La Generación de contratos solo está disponible en la versión PLUS")
+    if not getattr(area.empresa, 'es_premium', False):
+        messages.error(request, "La Generación de contratos solo está disponible en la versión PREMIUM")
         return redirect('lista_areas')
       
     contexto = {'area': area, 'empresa': area.empresa}
@@ -416,8 +416,8 @@ def contrato_formulario(request, area_id):
     area = get_object_or_404(AreaComun, pk=area_id)
     empresa = area.empresa
 
-    if not getattr(area.empresa, 'es_plus', False):
-        messages.error(request, "La Generación de contratos solo está disponible en la versión PLUS")
+    if not getattr(area.empresa, 'es_premium', False):
+        messages.error(request, "La Generación de contratos solo está disponible en la versión PREMIUM")
         return redirect('lista_areas')
     
     #tipo_contribuyente = getattr(area.cliente, 'tipo_contribuyente', None)

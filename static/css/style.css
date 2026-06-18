@@ -1191,7 +1191,16 @@ body {
   z-index: 1030;
   box-shadow: 0 -1px 4px rgba(0,0,0,0.04);
 }
+.dropdown-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #6c757d;
+}
 
+.dropdown-item.disabled:hover {
+  background-color: transparent;
+  color: #6c757d;
+}
 /* Estilos para navbar en sidebar */
 /* body.has-global-sidebar {
   overflow-x: hidden;

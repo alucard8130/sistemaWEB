@@ -172,16 +172,23 @@
                 </a>
               </td>
               <td>
-                {% if area.estado_vigencia == "Vigente" %}
-                 <a href="{% url 'contrato_formulario' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="Descargar contrato">  
-                
-                  <i class="bi bi-file-earmark-text"></i>
-                </a>
+                {% if area.empresa.es_premium %}        
+                  {% if area.estado_vigencia == "Vigente" %}
+                  <a href="{% url 'contrato_formulario' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="Descargar contrato">  
+                  
+                    <i class="bi bi-file-earmark-text"></i>
+                  </a>
+                  {% else %}
+                  <spam class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
+                  
+                    <i class="bi bi-file-earmark-text"></i>
+                  </spam>
+                  {% endif %}
                 {% else %}
-                <spam class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
-                
-                  <i class="bi bi-file-earmark-text"></i>
-                </spam>
+                  <a href="#" class="btn btn-sm btn-primary m-1" title=" Contrato solo PREMIUM">
+                    
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </a>
                 {% endif %}
               </td>
               <td style="white-space: nowrap">

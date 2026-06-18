@@ -42,7 +42,8 @@ class Empresa(models.Model):
     stripe_public_key = models.CharField(max_length=255, blank=True, null=True)
     stripe_secret_key = models.CharField(max_length=255, blank=True, null=True)
     stripe_webhook_secret = models.CharField(max_length=255, blank=True, null=True)
-    es_plus = models.BooleanField(default=False)  # True = versión plus, False = básica
+    es_plus = models.BooleanField(default=False)  # True = versión plus, False = demo
+    es_premium = models.BooleanField(default=False)  # True = versión premium, False = Plus
     clabe=models.CharField(max_length=18, blank=True, null=True)
 
     def __str__(self):

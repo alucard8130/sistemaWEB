@@ -20,54 +20,116 @@
     </div>
     {% endif %}
 
-    {% if es_demo %}
-    <div style="
-        position: fixed;
-        bottom: 60px;
-        right: 30px;
-        z-index: 9999;
-        background: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeeba;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        padding: 20px 30px;
-        max-width: 350px;
-        font-size: 1rem;
-    ">
-        <strong>¡Bienvenido a tu cuenta demo!</strong><br>
-        Acceso demo es válido por 30 días.<br>
-        <hr>
-        <button id="stripe-checkout-btn" type="button" class="btn btn-success btn-sm w-100">
-            <i class="bi bi-credit-card"></i> Suscribete ahora !!
-        </button>
-    </div>
-
+    <!-- Cargar Stripe UNA SOLA VEZ al inicio -->
     <script src="https://js.stripe.com/v3/"></script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const stripeBtn = document.getElementById('stripe-checkout-btn');
-        if (!stripeBtn) return;
 
-        stripeBtn.addEventListener('click', function () {
+    {% if es_demo %}
+<div style="
+    position: fixed;
+    bottom: 20px;
+    right: 10px;
+    z-index: 9999;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 10px 10px;
+    max-width: 300px;
+    font-size: 0.875rem;
+">
+    <strong>¡Bienvenido a tu cuenta demo!</strong><br>
+    <hr>
+    <button id="stripe-checkout-demo-btn" type="button" class="btn btn-success btn-sm w-100">
+        <i class="bi bi-credit-card"></i> Obten los beneficios de la membresia PLUS !!
+    </button>
+</div>
+{% endif %}
+
+{% if es_plus %}
+<div style="
+    position: fixed;
+    bottom: 20px;
+    right: 10px;
+    z-index: 9999;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 10px 10px;
+    max-width: 250px;
+    font-size: 0.875rem;
+">
+    <button id="stripe-checkout-premium-btn" type="button" class="btn btn-success btn-sm w-100">
+        <i class="bi bi-credit-card"></i> Quiero ser PREMIUM !!
+    </button>
+    <a href="#"
+   class="btn btn-secondary btn-sm w-100 mt-2"
+   data-bs-toggle="modal"
+   data-bs-target="#modalInfoPremium">
+  <i class="bi bi-info-circle"></i> ¿Qué es PREMIUM?
+</a>
+</div>
+{% endif %}
+
+<!-- Scripts centralizados (sin duplicados) -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    
+    // ========== DEMO → PLUS ==========
+    const demoPlusBtn = document.getElementById('stripe-checkout-demo-btn');
+    if (demoPlusBtn) {
+        demoPlusBtn.addEventListener('click', function () {
             fetch("{% url 'crear_sesion_pago' %}")
                 .then(response => response.json())
                 .then(data => {
                     const stripe = Stripe("{{ STRIPE_PUBLIC_KEY|escapejs }}");
                     stripe.redirectToCheckout({ sessionId: data.id });
+                })
+                .catch(error => {
+                    alert('Error al crear la sesión de pago: ' + error);
                 });
         });
+    }
+    
+    // ========== PLUS → PREMIUM ==========
+    const premiumBtn = document.getElementById('stripe-checkout-premium-btn');
+if (premiumBtn) {
+    premiumBtn.addEventListener('click', async function () {
+        try {
+            const response = await fetch("{% url 'crear_sesion_pago_premium' %}");
+            const data = await response.json();
+
+            if (!response.ok || !data.id) {
+                throw new Error(data.detail || data.status || 'No se pudo crear la sesión premium.');
+            }
+
+            const stripe = Stripe("{{ STRIPE_PUBLIC_KEY|escapejs }}");
+            await stripe.redirectToCheckout({ sessionId: data.id });
+        } catch (error) {
+            alert('Error al crear la sesión de pago: ' + error.message);
+        }
     });
-    </script>
-    {% endif %}
+}
+    // ========== CTA MODAL PREMIUM ==========
+    const premiumCtaModal = document.getElementById('premium-cta-modal');
+    if (premiumCtaModal && premiumBtn) {
+        premiumCtaModal.addEventListener('click', function () {
+            premiumBtn.click();
+        });
+    }
 
-    {% if not es_demo %}
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const cancelarBtn = document.getElementById('cancelar-suscripcion-btn');
-        if (!cancelarBtn) return;
-
-        cancelarBtn.addEventListener('click', function () {
+    // ========== CANCELAR PLUS ==========
+    const cancelPlusBtn = document.getElementById('cancelar-suscripcion-btn');
+    if (cancelPlusBtn && "{{ es_plus }}" === "True") {
+        cancelPlusBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            
+            if (!confirm('¿Estás seguro de que deseas cancelar tu suscripción PLUS?')) {
+                return;
+            }
+            
             fetch("{% url 'cancelar_suscripcion' %}", {
                 method: 'POST',
                 headers: {
@@ -77,19 +139,54 @@
             })
             .then(response => response.json())
             .then(data => {
-                alert(
-                    data.status === 'cancelada'
-                        ? 'Suscripción cancelada correctamente.'
-                        : 'No se pudo cancelar la suscripción: ' + (data.detail || data.status)
-                );
                 if (data.status === 'cancelada') {
-                    location.reload();
+                    alert('Suscripción PLUS cancelada correctamente. Serás redirigido...');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    alert('Error: ' + (data.detail || data.status));
                 }
+            })
+            .catch(error => {
+                alert('Error en la solicitud: ' + error);
             });
         });
-    });
-    </script>
-    {% endif %}
+    }
+    
+    // ========== CANCELAR PREMIUM ==========
+    const cancelPremiumBtn = document.getElementById('cancelar-suscripcion-btn');
+    if (cancelPremiumBtn && "{{ es_premium }}" === "True") {
+        cancelPremiumBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            
+            if (!confirm('¿Estás seguro de que deseas cancelar tu suscripción PREMIUM?')) {
+                return;
+            }
+            
+            fetch("{% url 'cancelar_suscripcion_premium' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'cancelada') {
+                    alert('Suscripción PREMIUM cancelada correctamente. Serás redirigido...');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    alert('Error: ' + (data.detail || data.status));
+                }
+            })
+            .catch(error => {
+                alert('Error en la solicitud: ' + error);
+            });
+        });
+    }
+    
+});
+</script>
+
 <!-- Contenido principal -->
     <main class="pb-5">
         <div class="container mt-3">
@@ -98,8 +195,6 @@
                     <h5 class="mb-0">Condominio: <strong>{{ request.user.perfilusuario.empresa }}</strong></h5>
                 </div>
             </div>
-        </div>
-
         <div class="container mt-3">
             <div class="row mb-4">
                 <div class="col-md-3">
@@ -303,6 +398,199 @@ function cerrarModal() {
 }
 </script>
 {% endif %}
+
+<!-- Modal Información Premium -->
+<div class="modal fade" id="modalInfoPremium" tabindex="-1" aria-labelledby="modalInfoPremiumLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable premium-modal-dialog">
+    <div class="modal-content premium-modal">
+      <div class="premium-hero">
+        <div class="premium-hero-copy">
+          <span class="premium-badge">PLAN PREMIUM</span>
+          <h2 id="modalInfoPremiumLabel">Escala la administración de tu condominio</h2>
+          <p>Automatiza cobros, factura en línea y controla la operación con herramientas avanzadas.</p>
+
+          <div class="premium-price-wrap">
+            <div class="premium-price-card">
+              <small>Mensual</small>
+              <strong>$999 MXN</strong>
+            </div>
+            <div class="premium-price-card premium-price-card-alt">
+              <small>Anual</small>
+              <strong>$10,989 MXN</strong>
+            </div>
+          </div>
+
+          <p class="premium-note">Precios más IVA · 36 meses de resguardo de base de datos</p>
+        </div>
+
+        <div class="premium-hero-panel">
+          <h5>Incluye</h5>
+          <p>2 usuarios administrador</p>
+          <p>3 usuarios consulta + pago en línea</p>
+          <hr>
+          <p>Soporte VIP prioritario</p>
+        </div>
+      </div>
+
+      <div class="modal-body premium-body">
+        <div class="premium-feature-grid">
+          <div class="premium-feature">Todo lo del Plan Básico</div>
+          <div class="premium-feature">Cobro en línea de adeudos vía Stripe</div>
+          <div class="premium-feature">Facturación electrónica y timbrado</div>
+          <div class="premium-feature">Contratos de áreas comunes</div>
+          <div class="premium-feature">Conciliación bancaria</div>
+          <div class="premium-feature">Acceso APP móvil</div>
+          <div class="premium-feature">Publicidad institucional</div>
+          <div class="premium-feature">36 meses de resguardo de base de datos</div>
+          <div class="premium-feature">Soporte VIP</div>
+        </div>
+      </div>
+
+      <div class="modal-footer premium-footer">
+        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-warning premium-cta" id="premium-cta-modal">
+          <i class="bi bi-stars"></i> Quiero Premium
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.premium-modal-dialog {
+  --bs-modal-width: min(980px, 95vw);
+}
+
+.premium-modal {
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #0f1b2a 0%, #182d47 45%, #244a6e 100%);
+  color: #f7fbff;
+  box-shadow: 0 24px 60px rgba(4, 12, 24, 0.45);
+}
+
+.premium-hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.2rem;
+  padding: 1.5rem 1.5rem 1rem;
+}
+
+.premium-badge {
+  display: inline-block;
+  background: #ffcc00;
+  color: #1f2a37;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border-radius: 999px;
+  padding: .3rem .7rem;
+  margin-bottom: .8rem;
+  font-size: .75rem;
+}
+
+.premium-hero-copy h2 {
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: .6rem;
+}
+
+.premium-hero-copy p {
+  margin-bottom: .7rem;
+  color: #d8e7f6;
+}
+
+.premium-price-wrap {
+  display: flex;
+  gap: .8rem;
+  margin: .9rem 0 .6rem;
+}
+
+.premium-price-card {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: .7rem .9rem;
+  min-width: 150px;
+}
+
+.premium-price-card small {
+  display: block;
+  color: #d7e6f5;
+  margin-bottom: .15rem;
+}
+
+.premium-price-card strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.premium-price-card-alt {
+  background: rgba(255, 204, 0, 0.18);
+  border-color: rgba(255, 214, 80, 0.55);
+}
+
+.premium-note {
+  font-size: .85rem;
+  color: #c4d9ef;
+  margin-bottom: 0;
+}
+
+.premium-hero-panel {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 14px;
+  padding: 1rem;
+  align-self: stretch;
+}
+
+.premium-hero-panel h5 {
+  margin-bottom: .7rem;
+  font-weight: 700;
+}
+
+.premium-hero-panel p {
+  margin-bottom: .45rem;
+}
+
+.premium-body {
+  padding-top: .4rem;
+}
+
+.premium-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .7rem;
+}
+
+.premium-feature {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 10px;
+  padding: .7rem .8rem;
+  font-size: .95rem;
+}
+
+.premium-footer {
+  border-top: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.15);
+}
+
+.premium-cta {
+  font-weight: 700;
+  border: 0;
+  border-radius: 10px;
+  padding: .55rem 1rem;
+}
+
+@media (max-width: 768px) {
+  .premium-hero {
+    grid-template-columns: 1fr;
+  }
+  .premium-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
     {% include 'tool_bar.html' %}
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

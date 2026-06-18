@@ -154,7 +154,12 @@
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'registrar_deposito_por_identificar' %}" title="Registrar Deposito no identificado">Registrar Deposito no identificado</a></li>{% endcomment %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado">Depositos no identificados</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:cargar_estado' %}">Conciliar Edo.Cta</a></li>
+              {% if request.user.perfilusuario.empresa.es_premium %}
+                <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:cargar_estado' %}">Conciliar Edo.Cta</a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#">Conciliar Edo.Cta (PREMIUM)</a></li>
+              {% endif %}  
+
               {% comment %}<li><a class="dropdown-item" href="{% url 'conciliaciones:resultado' estado_id=1 %}">Resultado Conciliación</a></li>{% endcomment %}
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
@@ -273,7 +278,11 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_temas' %}">Asuntos Generales</a></li>
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'aviso_crear' %}">Nuevo Aviso App</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'avisos_lista' %}">Avisos App GESAC</a></li>
+               {% if request.user.perfilusuario.empresa.es_premium %}
+                <li><a class="dropdown-item reporte-link" href="{% url 'avisos_lista' %}">Avisos App GESAC</a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#">Avisos App GESAC (PREMIUM)</a></li>  
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
             </ul>
           </li>
@@ -330,8 +339,10 @@
         </div>
       </div>
       <div class="modal-footer">
-        {% if not es_demo %}
-        <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Suscripción</button>
+        {% if request.user.perfilusuario.empresa.es_premium %}
+          <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PREMIUM</button>
+        {% elif request.user.perfilusuario.empresa.es_plus %}
+          <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PLUS</button>
         {% endif %}
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
       </div>

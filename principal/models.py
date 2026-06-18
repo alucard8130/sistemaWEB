@@ -16,7 +16,8 @@ from django.contrib.auth.models import User
 class PerfilUsuario(models.Model):
     TIPO_USUARIOS = [
         ('demo', 'Demo'),
-        ('pago', 'Pago'),
+        ('plus', 'Plus'),
+        ('premium', 'Premium'),
         ('gratis', 'Gratis'),
     ]
     usuario = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -24,6 +25,8 @@ class PerfilUsuario(models.Model):
     tipo_usuario = models.CharField(max_length=20, choices=TIPO_USUARIOS, default='demo')
     stripe_customer_id = models.CharField(max_length=100, blank=True, null=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True, null=True)
+    stripe_plus_subscription_id = models.CharField(max_length=100, blank=True, null=True)
+    stripe_premium_subscription_id = models.CharField(max_length=100, blank=True, null=True)
     mostrar_wizard = models.BooleanField(default=False)
     ultima_visita_changelog= models.DateTimeField(null=True, blank=True)
     

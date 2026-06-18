@@ -14,7 +14,7 @@ from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, rep
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
 from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
 from principal.views import (actualizar_ticket, agregar_seguimiento, api_areas_por_empresa, api_avisos_empresa, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_reporte_ingresos_vs_gastos, aviso_crear, aviso_eliminar, 
-                             avisos_lista, consulta_cfdis_facturama, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, membresia_pago_exitoso, 
+                             avisos_lista, cancelar_suscripcion_premium, consulta_cfdis_facturama, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_sesion_pago_premium,  crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, membresia_pago_exitoso, 
                              lista_tickets, crear_ticket, registro_visitante, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
                              eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
                                visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
@@ -86,9 +86,13 @@ urlpatterns = [
     path('evento/eliminar/<int:evento_id>/', eliminar_evento, name='eliminar_evento'),
     path('evento/enviar_correo/<int:evento_id>/', enviar_correo_evento, name='enviar_correo_evento'),
     path('registro/', registro_usuario, name='registro_usuario'),
-    path('stripe/webhook/', stripe_webhook, name='stripe_webhook'),    
+    path('stripe/webhook/', stripe_webhook, name='stripe_webhook'),
+    #path('stripe/webhook-premium/', stripe_webhook_premium, name='stripe_webhook_premium'),
     path('stripe/crear-sesion/', crear_sesion_pago, name='crear_sesion_pago'),
+    path('stripe/crear-sesion-premium/', crear_sesion_pago_premium, name='crear_sesion_pago_premium'),
+    #path('premium/', info_premium, name='info_premium'),
     path('stripe/cancelar-suscripcion/', cancelar_suscripcion, name='cancelar_suscripcion'),
+    path('stripe/cancelar-suscripcion-premium/', cancelar_suscripcion_premium, name='cancelar_suscripcion_premium'),
     path('guardar-datos-empresa/', guardar_datos_empresa, name='guardar_datos_empresa'),
     path('password_reset/', auth_views.PasswordResetView.as_view(template_name='registration/password_reset_form.html'), name='password_reset'),
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'), name='password_reset_done'),
