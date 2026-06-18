@@ -419,7 +419,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             cliente=local.cliente,
             local=local,
             fecha_emision__year=año,
-            observaciones='cuota anual'
+            observaciones='Cuota anual'
         ).exists()
         if not existe and mes == 1:  # Solo facturar anuales en enero
             empresa_id = local.empresa_id
@@ -448,7 +448,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 monto=local.cuota * 12,  # Monto anual
                 tipo_cuota='mantenimiento',
                 estatus='pendiente',
-                observaciones='cuota anual'
+                observaciones='Cuota anual'
             ))
             facturas_creadas += 1
 
@@ -489,7 +489,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 monto=local.cuota,
                 tipo_cuota='mantenimiento',
                 estatus='pendiente',
-                observaciones='cuota mensual'
+                observaciones='Cuota mensual'
             ))
             facturas_creadas += 1
 
@@ -503,7 +503,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
             cliente=area.cliente,
             area_comun=area,
             fecha_emision__year=año,
-            observaciones='cuota anual'
+            observaciones='Cuota anual'
         ).exists()
         if not existe and mes == 1:  # Solo facturar anuales en enero
             empresa_id = area.empresa_id
@@ -532,7 +532,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 monto=area.cuota * 12,  # Monto anual
                 tipo_cuota='renta',
                 estatus='pendiente',
-                observaciones='cuota anual'
+                observaciones='Cuota anual'
             ))
             facturas_creadas += 1
 
@@ -573,7 +573,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 monto=area.cuota,
                 tipo_cuota='renta',
                 estatus='pendiente',
-                observaciones='cuota mensual'
+                observaciones='Cuota mensual'
             ))
             facturas_creadas += 1
     

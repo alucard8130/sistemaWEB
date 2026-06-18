@@ -121,6 +121,32 @@
                                 <div class="invalid-feedback">Este campo es obligatorio.</div>
                                 {{ form.status.errors }}
                             </div>
+                            <!-- Adeudo opcional -->
+                            <fieldset class="border p-3 mb-3">
+                                <legend class="small mb-2">Adeudo (opcional)</legend>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="id_tiene_adeudo" name="tiene_adeudo">
+                                    <label class="form-check-label" for="id_tiene_adeudo">Tiene adeudo</label>
+                                </div>
+                                <div id="adeudo_fields" style="display:none;">
+                                    <div class="mb-2">
+                                        <label for="adeudo_inicio" class="form-label">Periodo inicio</label>
+                                        <input class="form-control" type="month" id="adeudo_inicio" name="adeudo_inicio" placeholder="YYYY-MM">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="adeudo_fin" class="form-label">Periodo fin (opcional)</label>
+                                        <input class="form-control" type="month" id="adeudo_fin" name="adeudo_fin" placeholder="YYYY-MM">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="adeudo_importe" class="form-label">Importe</label>
+                                        <input class="form-control" type="number" step="0.01" id="adeudo_importe" name="adeudo_importe" placeholder="0.00">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="adeudo_descripcion" class="form-label">Descripción (opcional)</label>
+                                        <textarea class="form-control" id="adeudo_descripcion" name="adeudo_descripcion" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </fieldset>
                             <div class="mb-3">
                                 {{ form.observaciones.label_tag }}
                                 {{ form.observaciones }}
@@ -188,6 +214,25 @@
                     field.classList.remove('is-invalid');
                 }
             });
+            // Validar adeudo si está marcado
+            var tieneAdeudo = document.getElementById('id_tiene_adeudo');
+            if (tieneAdeudo && tieneAdeudo.checked) {
+                var importe = document.getElementById('adeudo_importe');
+                var inicio = document.getElementById('adeudo_inicio');
+                if (!importe || !importe.value || isNaN(parseFloat(importe.value))) {
+                    if (importe) importe.classList.add('is-invalid');
+                    valid2 = false;
+                    if (!importe) alert('Falta el importe del adeudo.');
+                } else if (importe) {
+                    importe.classList.remove('is-invalid');
+                }
+                if (!inicio || !inicio.value) {
+                    if (inicio) inicio.classList.add('is-invalid');
+                    valid2 = false;
+                } else if (inicio) {
+                    inicio.classList.remove('is-invalid');
+                }
+            }
             // Validar checkbox si es requerido
             var cuotaAnual = document.querySelector('[name="{{ form.es_cuota_anual.html_name }}"]');
             if (cuotaAnual && !cuotaAnual.checked && cuotaAnual.required) {
@@ -219,6 +264,17 @@ document.addEventListener('DOMContentLoaded', function() {
       if (overlay) overlay.style.display = 'flex';
     });
   });
+// Toggle campos de adeudo
+  var chk = document.getElementById('id_tiene_adeudo');
+  var adeudoFields = document.getElementById('adeudo_fields');
+  function toggleAdeudo() {
+    if (!chk) return;
+    adeudoFields.style.display = chk.checked ? 'block' : 'none';
+  }
+  if (chk) {
+    chk.addEventListener('change', toggleAdeudo);
+    toggleAdeudo();
+  }
 });
 </script>
 </body>

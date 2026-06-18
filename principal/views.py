@@ -1,23 +1,23 @@
-import csv
+#import csv
 from decimal import ROUND_HALF_UP
 import locale
 import os
 from typing_extensions import OrderedDict
-from urllib import response
+#from urllib import response
 from uuid import uuid4
-import uuid
+#import uuid
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.db import transaction
-from openai import base_url
+#from openai import base_url
 import openpyxl
-from areas import models
+#from areas import models
 from core import settings
 from empleados.models import Empleado
-import empresas
+#import empresas
 from empresas.models import Empresa
 from clientes.models import Cliente
 from facturacion.forms import TimbrarFacturaForm
@@ -27,7 +27,7 @@ from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from presupuestos.models import Presupuesto, PresupuestoIngreso
-from principal.admin import VisitanteAccesoForm
+#from principal.admin import VisitanteAccesoForm
 from principal.forms import TemaGeneralForm, VisitanteLoginForm
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
@@ -52,18 +52,17 @@ from django.contrib.auth.models import User
 from datetime import date, datetime, timedelta
 import stripe
 from .models import TicketMantenimiento
-from django.contrib.auth import get_user_model
+#from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import  SeguimientoTicket
 from django.contrib.auth.hashers import check_password
 from django.urls import reverse
-from django.conf import settings
+#from django.conf import settings
 import requests
 from decimal import Decimal
 from .forms import (
     AvisoForm,
     CSDUploadForm,
-    VisitanteRegistroForm,
 )
 import base64
 import io
@@ -107,53 +106,278 @@ import weasyprint
 from babel.dates import format_date
 import pytz 
 from django.db.models.functions import TruncMonth
-import calendar
-from collections import defaultdict
+#import calendar
+#from collections import defaultdict
 
-# Vista de bienvenida / dashboard
+
+#pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 @login_required
-def bienvenida(request):
-    empresa = None
-    es_demo = False
+def dashboard_inicio(request):
+    empresa = request.user.perfilusuario.empresa
     perfil = request.user.perfilusuario
     mostrar_wizard = perfil.mostrar_wizard
 
-    mensaje_pago = None
-    if request.GET.get("pago") == "ok":
-        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
+    hoy = date.today()
+    primer_dia_mes = hoy.replace(day=1)
+    primer_dia_mes_anterior = (primer_dia_mes - timedelta(days=1)).replace(day=1)
+    ultimo_dia_mes_anterior = primer_dia_mes - timedelta(days=1)
+    meses = []
+    for i in range(5, -1, -1):
+        y = primer_dia_mes.year if primer_dia_mes.month - i > 0 else primer_dia_mes.year - 1
+        m = (primer_dia_mes.month - i - 1) % 12 + 1
+        meses.append(date(y, m, 1))
 
-    if not request.user.is_superuser:
-        empresa = request.user.perfilusuario.empresa
-        eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
-        es_demo = request.user.perfilusuario.tipo_usuario == "demo"
-    else:
-        empresa_id = request.session.get("empresa_id")
-        if empresa_id:
-            try:
-                empresa = Empresa.objects.get(id=empresa_id)
-                eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
-            except Empresa.DoesNotExist:
-                empresa = None
-                eventos = Evento.objects.all().order_by("fecha")
-        else:
-            eventos = Evento.objects.all().order_by("fecha")
+    # Ingresos del mes actual y anterior
+    ingresos_mes = Pago.objects.filter(
+        factura__empresa=empresa,
+        fecha_pago__gte=primer_dia_mes,
+        fecha_pago__lte=hoy
+    ).aggregate(total=Sum('monto'))['total'] or 0
 
-        # --- Recordatorio de facturación mensual ---
+    ingresos_mes_otros = CobroOtrosIngresos.objects.filter(
+        factura__empresa=empresa,
+        fecha_cobro__gte=primer_dia_mes,
+        fecha_cobro__lte=hoy
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    ingresos_mes_total = ingresos_mes + ingresos_mes_otros
+    
+    ingresos_mes_anterior = Pago.objects.filter(
+        factura__empresa=empresa,
+        fecha_pago__gte=primer_dia_mes_anterior,
+        fecha_pago__lte=ultimo_dia_mes_anterior
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    ingresos_mes_anterior_otros = CobroOtrosIngresos.objects.filter(
+        factura__empresa=empresa,
+        fecha_cobro__gte=primer_dia_mes_anterior,
+        fecha_cobro__lte=ultimo_dia_mes_anterior
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    ingresos_mes_anterior_total = ingresos_mes_anterior + ingresos_mes_anterior_otros
+    
+    variacion_ingresos = (
+        ((ingresos_mes_total - ingresos_mes_anterior_total) / ingresos_mes_anterior_total) * 100
+        if ingresos_mes_anterior_total else 0
+    )
+
+    # Gastos del mes actual y anterior
+    gastos_mes = PagoGasto.objects.filter(
+        gasto__empresa=empresa,
+        fecha_pago__gte=primer_dia_mes,
+        fecha_pago__lte=hoy
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    gastos_mes_anterior = PagoGasto.objects.filter(
+        gasto__empresa=empresa,
+        fecha_pago__gte=primer_dia_mes_anterior,
+        fecha_pago__lte=ultimo_dia_mes_anterior
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    variacion_gastos = (
+        ((gastos_mes - gastos_mes_anterior) / gastos_mes_anterior) * 100
+        if gastos_mes_anterior else 0
+    )
+
+    # Facturas pendientes y vencidas cuotas y áreas comunes
+    facturas_pendientes = Factura.objects.filter(
+        empresa=empresa,
+        estatus='pendiente'
+    ).select_related('cliente').prefetch_related('pagos')
+
+    #facturas pendientes otros ingresos
+    facturas_pendientes_otros = FacturaOtrosIngresos.objects.filter(    
+        empresa=empresa,
+        estatus='pendiente'
+    ).select_related('tipo_ingreso').prefetch_related('cobros')
+
+    facturas_vencidas_cuotas = facturas_pendientes.filter(fecha_vencimiento__lt=hoy)
+    facturas_vencidas_otros = facturas_pendientes_otros.filter(fecha_vencimiento__lt=hoy)
+    cartera_vencida = sum(f.saldo_pendiente for f in facturas_vencidas_cuotas) + sum(f.saldo for f in facturas_vencidas_otros)
+
+    # Cantidad de facturas pendientes
+    cantidad_facturas_pendientes = facturas_pendientes.count() + facturas_pendientes_otros.count()
+
+    # Pagos recibidos hoy
+    pagos_hoy = Pago.objects.filter(
+        empresa=empresa,
+        fecha_pago=hoy
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    # Top deudores
+    # deudores = defaultdict(float)
+    # for f in facturas_pendientes:
+    #     deudores[f.cliente.nombre] += f.saldo_pendiente
+    # top_deudores = sorted(deudores.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    # Datos para gráficos (últimos 6 meses)
+    # Pagos (ingresos)
+    pagos_por_mes = (
+        Pago.objects.filter(
+            factura__empresa=empresa,
+            fecha_pago__gte=meses[0],
+            fecha_pago__lte=hoy
+        )
+        .annotate(mes=TruncMonth('fecha_pago'))
+        .values('mes')
+        .annotate(total=Sum('monto'))
+        .order_by('mes')
+)
+
+    # Pagos de gastos generales por mes
+    gastos_por_mes = (
+        PagoGasto.objects.filter(
+            gasto__empresa=empresa,
+            fecha_pago__gte=meses[0],
+            fecha_pago__lte=hoy
+        )
+        .annotate(mes=TruncMonth('fecha_pago'))
+        .values('mes')
+        .annotate(total=Sum('monto'))
+        .order_by('mes')
+    )
+    #gastos y vales caja chica por mes
+    gastos_caja_por_mes = (
+        GastoCajaChica.objects.filter(
+            fondeo__empresa=empresa,
+            fecha__gte=meses[0],
+            fecha__lte=hoy
+        )
+        .annotate(mes=TruncMonth('fecha'))
+        .values('mes')
+        .annotate(total=Sum('importe'))
+        .order_by('mes')
+    )
+    vales_caja_por_mes = (
+        ValeCaja.objects.filter(
+            fondeo__empresa=empresa,
+            fecha__gte=meses[0],
+            fecha__lte=hoy
+        )
+        .annotate(mes=TruncMonth('fecha'))
+        .values('mes')
+        .annotate(total=Sum('importe'))
+        .order_by('mes')
+    )
+
+    # Convierte los resultados a diccionarios {mes: total}
+    pagos_dict = {}
+    for p in pagos_por_mes:
+        if p['mes']:
+            pagos_dict[p['mes'].strftime('%Y-%m')] = float(p['total'])
+
+    pagosgasto_dict = {}
+    for p in gastos_por_mes:
+        if p['mes']:
+            pagosgasto_dict[p['mes'].strftime('%Y-%m')] = float(p['total'])
+
+    labels = [m.strftime('%b %Y') for m in meses]
+    labels_keys = [m.strftime('%Y-%m') for m in meses]
+    ingresos_data = [pagos_dict.get(k, 0) for k in labels_keys]
+    gastos_data = [pagosgasto_dict.get(k, 0) for k in labels_keys]
+    
+    # Cartera vencida por rango de días
+    rangos = [
+        (0, 30),
+        (31, 60),
+        (61, 90),
+        (91, 180),
+        (181, 10000),
+    ]
+    cartera_rangos = []
+    for inicio, fin in rangos:
+        facturas_rango = facturas_pendientes.filter(
+            fecha_vencimiento__lt=hoy - timedelta(days=inicio),
+            fecha_vencimiento__gte=hoy - timedelta(days=fin)
+        )
+        total = sum(f.saldo_pendiente for f in facturas_rango)
+        cartera_rangos.append(total)
+
+    
+    # --- Recordatorio de facturación mensual ---
     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
 
-    return render(
-        request,
-        "bienvenida.html",
-        {
-            "empresa": empresa,
-            "eventos": eventos,
-            "es_demo": es_demo,
-            "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
-            "mostrar_wizard": mostrar_wizard,
-            "mensaje_pago": mensaje_pago,
-            "mostrar_recordatorio": mostrar_recordatorio,
-        },
-    )
+    mensaje_pago = None
+    if request.GET.get("pago") == "ok":
+        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."    
+
+    # es_demo=False    
+    es_demo = request.user.perfilusuario.tipo_usuario == "demo"
+
+    context = {
+        'ingresos_mes': ingresos_mes,
+        'ingresos_mes_otros': ingresos_mes_otros,
+        'ingresos_mes_total': ingresos_mes_total,
+        'ingresos_mes_anterior': ingresos_mes_anterior,
+        'ingresos_mes_anterior_otros': ingresos_mes_anterior_otros,
+        'ingresos_mes_anterior_total': ingresos_mes_anterior_total,
+        'variacion_ingresos': variacion_ingresos,
+        'gastos_mes': gastos_mes,
+        'gastos_mes_anterior': gastos_mes_anterior,
+        'variacion_gastos': variacion_gastos,
+        'cartera_vencida': cartera_vencida,
+        'facturas_pendientes': cantidad_facturas_pendientes,
+        'pagos_hoy': pagos_hoy,
+        #'top_deudores': top_deudores,
+        'pagos_por_mes': list(pagos_por_mes),
+        'gastos_por_mes': list(gastos_por_mes),
+        'cartera_rangos': cartera_rangos,
+        'labels': labels,
+        'ingresos_data': ingresos_data,
+        'gastos_data': gastos_data,
+        'es_demo': es_demo,
+        'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY,
+        'mensaje_pago': mensaje_pago,
+        'mostrar_recordatorio': mostrar_recordatorio,
+        'mostrar_wizard': mostrar_wizard,
+    }
+    return render(request, 'pantalla_inicio.html', context)
+
+
+
+# @login_required
+# def bienvenida(request):
+#     empresa = None
+#     es_demo = False
+#     perfil = request.user.perfilusuario
+#     mostrar_wizard = perfil.mostrar_wizard
+
+#     mensaje_pago = None
+#     if request.GET.get("pago") == "ok":
+#         mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
+
+#     if not request.user.is_superuser:
+#         empresa = request.user.perfilusuario.empresa
+#         eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
+#         es_demo = request.user.perfilusuario.tipo_usuario == "demo"
+#     else:
+#         empresa_id = request.session.get("empresa_id")
+#         if empresa_id:
+#             try:
+#                 empresa = Empresa.objects.get(id=empresa_id)
+#                 eventos = Evento.objects.filter(empresa=empresa).order_by("fecha")
+#             except Empresa.DoesNotExist:
+#                 empresa = None
+#                 eventos = Evento.objects.all().order_by("fecha")
+#         else:
+#             eventos = Evento.objects.all().order_by("fecha")
+
+#         # --- Recordatorio de facturación mensual ---
+#     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
+
+#     return render(
+#         request,
+#         "bienvenida.html",
+#         {
+#             "empresa": empresa,
+#             "eventos": eventos,
+#             "es_demo": es_demo,
+#             # "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
+#             "mostrar_wizard": mostrar_wizard,
+#             "mensaje_pago": mensaje_pago,
+#             "mostrar_recordatorio": mostrar_recordatorio,
+#         },
+#     )
 
 
 # Configuración del sistema
@@ -560,6 +784,7 @@ def registro_usuario(request):
             if not user.is_superuser:
                 perfil.tipo_usuario = "demo"
             perfil.save()
+            messages.success(request, "¡Registro exitoso! Por favor inicia sesión con tus credenciales.")
             return redirect("login")
     return render(request, "registro.html", {"mensaje": mensaje})
 
@@ -665,20 +890,17 @@ def stripe_webhook(request):
 
 @login_required
 def crear_sesion_pago(request):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    success = request.build_absolute_uri(reverse('dashboard_inicio') + '?pago=ok')
+    cancel = request.build_absolute_uri(reverse('dashboard_inicio'))
     session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        line_items=[
-            {
-                "price": "price_1RqexnPYnlfwKZQHILP9tgW5",
-                # "price": "price_1RxsU7PYnlfwKZQH4u5DJ7aH",
-                "quantity": 1,
-            }
-        ],
-        mode="subscription",
-        success_url=request.build_absolute_uri("/bienvenida/?pago=ok"),
-        cancel_url=request.build_absolute_uri("/bienvenida/"),
-        client_reference_id=str(request.user.id),  # Para identificar al usuario
-        customer_email=request.user.email,
+    payment_method_types=["card"],
+    line_items=[{"price": "price_1TjRnLPYnlfwKZQHwFHQDTjx","quantity": 1}],
+    mode="subscription",
+    success_url=success,
+    cancel_url=cancel,
+    client_reference_id=str(request.user.id),
+    customer_email=request.user.email,
     )
     return JsonResponse({"id": session.id})
 
@@ -708,7 +930,7 @@ def guardar_datos_empresa(request):
 
     if Empresa.objects.filter(rfc=nuevo_rfc).exclude(id=empresa.id).exists():
         messages.error(request, "El RFC ingresado ya está registrado en otra empresa.")
-        return redirect("bienvenida")
+        return redirect("pantalla_inicio")
 
     empresa.nombre = request.POST.get("nombre_empresa", "")
     empresa.rfc = nuevo_rfc
@@ -725,7 +947,7 @@ def guardar_datos_empresa(request):
     perfil.mostrar_wizard = False
     perfil.save()
     messages.success(request, "¡Datos de empresa actualizados correctamente!")
-    return redirect("bienvenida")
+    return redirect("pantalla_inicio")
 
 
 # MODULO DE TICKETS DE MANTENIMIENTO-->
@@ -4064,210 +4286,7 @@ def enviar_recordatorio_morosidad(request):
         )
         return redirect(next_url or "lista_facturas")
 
-#pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
-@login_required
-def dashboard_inicio(request):
-    empresa = request.user.perfilusuario.empresa
-    hoy = date.today()
-    primer_dia_mes = hoy.replace(day=1)
-    primer_dia_mes_anterior = (primer_dia_mes - timedelta(days=1)).replace(day=1)
-    ultimo_dia_mes_anterior = primer_dia_mes - timedelta(days=1)
-    meses = []
-    for i in range(5, -1, -1):
-        y = primer_dia_mes.year if primer_dia_mes.month - i > 0 else primer_dia_mes.year - 1
-        m = (primer_dia_mes.month - i - 1) % 12 + 1
-        meses.append(date(y, m, 1))
 
-    # Ingresos del mes actual y anterior
-    ingresos_mes = Pago.objects.filter(
-        factura__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes,
-        fecha_pago__lte=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
-
-    ingresos_mes_otros = CobroOtrosIngresos.objects.filter(
-        factura__empresa=empresa,
-        fecha_cobro__gte=primer_dia_mes,
-        fecha_cobro__lte=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
-
-    ingresos_mes_total = ingresos_mes + ingresos_mes_otros
-    
-    ingresos_mes_anterior = Pago.objects.filter(
-        factura__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes_anterior,
-        fecha_pago__lte=ultimo_dia_mes_anterior
-    ).aggregate(total=Sum('monto'))['total'] or 0
-
-    ingresos_mes_anterior_otros = CobroOtrosIngresos.objects.filter(
-        factura__empresa=empresa,
-        fecha_cobro__gte=primer_dia_mes_anterior,
-        fecha_cobro__lte=ultimo_dia_mes_anterior
-    ).aggregate(total=Sum('monto'))['total'] or 0
-
-    ingresos_mes_anterior_total = ingresos_mes_anterior + ingresos_mes_anterior_otros
-    
-    variacion_ingresos = (
-        ((ingresos_mes_total - ingresos_mes_anterior_total) / ingresos_mes_anterior_total) * 100
-        if ingresos_mes_anterior_total else 0
-    )
-
-    # Gastos del mes actual y anterior
-    gastos_mes = PagoGasto.objects.filter(
-        gasto__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes,
-        fecha_pago__lte=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
-
-    gastos_mes_anterior = PagoGasto.objects.filter(
-        gasto__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes_anterior,
-        fecha_pago__lte=ultimo_dia_mes_anterior
-    ).aggregate(total=Sum('monto'))['total'] or 0
-
-    variacion_gastos = (
-        ((gastos_mes - gastos_mes_anterior) / gastos_mes_anterior) * 100
-        if gastos_mes_anterior else 0
-    )
-
-    # Facturas pendientes y vencidas cuotas y áreas comunes
-    facturas_pendientes = Factura.objects.filter(
-        empresa=empresa,
-        estatus='pendiente'
-    ).select_related('cliente').prefetch_related('pagos')
-
-    #facturas pendientes otros ingresos
-    facturas_pendientes_otros = FacturaOtrosIngresos.objects.filter(    
-        empresa=empresa,
-        estatus='pendiente'
-    ).select_related('tipo_ingreso').prefetch_related('cobros')
-
-    facturas_vencidas_cuotas = facturas_pendientes.filter(fecha_vencimiento__lt=hoy)
-    facturas_vencidas_otros = facturas_pendientes_otros.filter(fecha_vencimiento__lt=hoy)
-    cartera_vencida = sum(f.saldo_pendiente for f in facturas_vencidas_cuotas) + sum(f.saldo for f in facturas_vencidas_otros)
-
-    # Cantidad de facturas pendientes
-    cantidad_facturas_pendientes = facturas_pendientes.count() + facturas_pendientes_otros.count()
-
-    # Pagos recibidos hoy
-    pagos_hoy = Pago.objects.filter(
-        empresa=empresa,
-        fecha_pago=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
-
-    # Top deudores
-    # deudores = defaultdict(float)
-    # for f in facturas_pendientes:
-    #     deudores[f.cliente.nombre] += f.saldo_pendiente
-    # top_deudores = sorted(deudores.items(), key=lambda x: x[1], reverse=True)[:5]
-
-    # Datos para gráficos (últimos 6 meses)
-    # Pagos (ingresos)
-    pagos_por_mes = (
-        Pago.objects.filter(
-            factura__empresa=empresa,
-            fecha_pago__gte=meses[0],
-            fecha_pago__lte=hoy
-        )
-        .annotate(mes=TruncMonth('fecha_pago'))
-        .values('mes')
-        .annotate(total=Sum('monto'))
-        .order_by('mes')
-)
-
-    # Pagos de gastos generales por mes
-    gastos_por_mes = (
-        PagoGasto.objects.filter(
-            gasto__empresa=empresa,
-            fecha_pago__gte=meses[0],
-            fecha_pago__lte=hoy
-        )
-        .annotate(mes=TruncMonth('fecha_pago'))
-        .values('mes')
-        .annotate(total=Sum('monto'))
-        .order_by('mes')
-    )
-    #gastos y vales caja chica por mes
-    gastos_caja_por_mes = (
-        GastoCajaChica.objects.filter(
-            fondeo__empresa=empresa,
-            fecha__gte=meses[0],
-            fecha__lte=hoy
-        )
-        .annotate(mes=TruncMonth('fecha'))
-        .values('mes')
-        .annotate(total=Sum('importe'))
-        .order_by('mes')
-    )
-    vales_caja_por_mes = (
-        ValeCaja.objects.filter(
-            fondeo__empresa=empresa,
-            fecha__gte=meses[0],
-            fecha__lte=hoy
-        )
-        .annotate(mes=TruncMonth('fecha'))
-        .values('mes')
-        .annotate(total=Sum('importe'))
-        .order_by('mes')
-    )
-
-    # Convierte los resultados a diccionarios {mes: total}
-    pagos_dict = {}
-    for p in pagos_por_mes:
-        if p['mes']:
-            pagos_dict[p['mes'].strftime('%Y-%m')] = float(p['total'])
-
-    pagosgasto_dict = {}
-    for p in gastos_por_mes:
-        if p['mes']:
-            pagosgasto_dict[p['mes'].strftime('%Y-%m')] = float(p['total'])
-
-    labels = [m.strftime('%b %Y') for m in meses]
-    labels_keys = [m.strftime('%Y-%m') for m in meses]
-    ingresos_data = [pagos_dict.get(k, 0) for k in labels_keys]
-    gastos_data = [pagosgasto_dict.get(k, 0) for k in labels_keys]
-    
-    # Cartera vencida por rango de días
-    rangos = [
-        (0, 30),
-        (31, 60),
-        (61, 90),
-        (91, 180),
-        (181, 10000),
-    ]
-    cartera_rangos = []
-    for inicio, fin in rangos:
-        facturas_rango = facturas_pendientes.filter(
-            fecha_vencimiento__lt=hoy - timedelta(days=inicio),
-            fecha_vencimiento__gte=hoy - timedelta(days=fin)
-        )
-        total = sum(f.saldo_pendiente for f in facturas_rango)
-        cartera_rangos.append(total)
-
-
-    context = {
-        'ingresos_mes': ingresos_mes,
-        'ingresos_mes_otros': ingresos_mes_otros,
-        'ingresos_mes_total': ingresos_mes_total,
-        'ingresos_mes_anterior': ingresos_mes_anterior,
-        'ingresos_mes_anterior_otros': ingresos_mes_anterior_otros,
-        'ingresos_mes_anterior_total': ingresos_mes_anterior_total,
-        'variacion_ingresos': variacion_ingresos,
-        'gastos_mes': gastos_mes,
-        'gastos_mes_anterior': gastos_mes_anterior,
-        'variacion_gastos': variacion_gastos,
-        'cartera_vencida': cartera_vencida,
-        'facturas_pendientes': cantidad_facturas_pendientes,
-        'pagos_hoy': pagos_hoy,
-        #'top_deudores': top_deudores,
-        'pagos_por_mes': list(pagos_por_mes),
-        'gastos_por_mes': list(gastos_por_mes),
-        'cartera_rangos': cartera_rangos,
-        'labels': labels,
-        'ingresos_data': ingresos_data,
-        'gastos_data': gastos_data,
-    }
-    return render(request, 'pantalla_inicio.html', context)
 
 
 #changelog

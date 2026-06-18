@@ -4,19 +4,22 @@ from decimal import Decimal
 from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 import openpyxl
+from areas.utility import generar_facturas_area
 from clientes.models import Cliente
 from empresas.models import Empresa
-from locales.forms import LocalComercialForm
+#from facturacion.views import crear_factura
+#from locales.forms import LocalComercialForm
 from principal.models import AuditoriaCambio
 from .models import AreaComun
 from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm, DatosContratoForm
 from unidecode import unidecode
-from django.contrib.admin.views.decorators import staff_member_required
+#from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum, Avg
 from django.template.loader import render_to_string
+from django.db import transaction
 
 
 
@@ -69,6 +72,7 @@ def lista_areas(request):
 def crear_area(request):
     user = request.user
     perfil = getattr(user, 'perfilusuario', None)
+    
 
     if request.method == 'POST':
         post = request.POST.copy()
@@ -79,7 +83,10 @@ def crear_area(request):
             area = form.save(commit=False)
             if not user.is_superuser and perfil and perfil.empresa:
                 area.empresa = perfil.empresa
-            area.save()
+            with transaction.atomic():
+                area.save()
+                generar_facturas_area(area)
+            
             messages.success(request, "Área común creada correctamente.")
             return redirect('lista_areas')
         else:

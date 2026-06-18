@@ -18,7 +18,7 @@ from principal.views import (actualizar_ticket, agregar_seguimiento, api_areas_p
                              lista_tickets, crear_ticket, registro_visitante, resultados_votacion, seleccionar_empresa, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
                              eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
                                visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
-from principal.views import bienvenida, reiniciar_sistema, respaldo_empresa_excel
+from principal.views import reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import cuenta_bancaria_crear, cuenta_bancaria_eliminar, cuentas_bancarias_lista, empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
     crear_local, editar_local, eliminar_local, lista_locales, 

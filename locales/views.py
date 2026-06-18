@@ -1,13 +1,16 @@
 
 from decimal import Decimal, InvalidOperation
+from threading import local
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from httpcore import request
 import openpyxl
 from clientes.models import Cliente
 from empresas.models import Empresa
 import locales
+from locales.utils import generar_facturas_local
 from principal.models import AuditoriaCambio
 from .models import LocalComercial
 from .forms import LocalCargaMasivaForm, LocalComercialForm
@@ -16,6 +19,7 @@ from unidecode import unidecode
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models import Sum, Avg
+from django.db import transaction
 
 
 @login_required
@@ -76,6 +80,31 @@ def crear_local(request):
             if not user.is_superuser and perfil and perfil.empresa:
                 local.empresa = perfil.empresa
             local.save()
+            # leer datos de adeudo desde POST (ejemplo: campos 'tiene_adeudo', 'adeudo_inicio', 'adeudo_fin', 'adeudo_importe', 'adeudo_descripcion')
+            tiene_adeudo = request.POST.get('tiene_adeudo') == 'on'
+            with transaction.atomic():
+                if tiene_adeudo:
+                    inicio = request.POST.get('adeudo_inicio')  # acepta 'YYYY-MM' o 'YYYY-MM-DD'
+                    fin = request.POST.get('adeudo_fin') or None
+                    importe = request.POST.get('adeudo_importe')
+                    observaciones = request.POST.get('adeudo_descripcion', '')
+                    try:
+                        importe_dec = Decimal(str(importe))
+                    except:
+                        importe_dec = None
+                    if importe_dec is None:
+                        messages.error(request, "Importe de adeudo inválido; se omitió la factura de adeudo.")
+                        generar_facturas_local(local)  # generar la factura del mes en su defecto
+                    else:
+                        generar_facturas_local(local, adeudo={
+                            'inicio': inicio,
+                            'fin': fin,
+                            'importe': importe_dec,
+                            'descripcion': observaciones
+                        })
+                else:
+                    generar_facturas_local(local)
+        
             messages.success(request, "Local creado correctamente.")
             return redirect('lista_locales')
         else:
