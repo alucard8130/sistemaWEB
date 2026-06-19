@@ -802,7 +802,7 @@ def _sync_membership_state(perfil):
     if perfil.empresa:
         # premium implica acceso plus tambien
         perfil.empresa.es_premium = tiene_premium
-        perfil.empresa.es_plus = tiene_plus or tiene_premium
+        perfil.empresa.es_plus = tiene_plus
         perfil.empresa.save(update_fields=["es_plus", "es_premium"])
 
 
@@ -876,8 +876,9 @@ def stripe_webhook(request):
     }
     premium_prices = {
         "price_1TjV1JPYnlfwKZQHyh773EsU",  # produccion premium
-        #"price_1RnSzMPW7xPgzk0mLslR8vT5",  # pruebas premium
+        #"price_1RnSzMPW7xPgzk0mLslR8vT5", # pruebas premium
     }
+
 
     # Alta inicial o upgrade por Checkout
     if event["type"] == "checkout.session.completed":
@@ -911,13 +912,13 @@ def stripe_webhook(request):
 
         elif price_id in premium_prices:
             # regla: premium solo si ya existe plus
-            if not perfil.stripe_plus_subscription_id:
-                print("Intento premium sin plus previo. Se revierte.")
-                try:
-                    _safe_cancel_subscription(subscription_id)
-                except Exception as e:
-                    print("No se pudo revertir premium invalido:", e)
-                return HttpResponse(status=200)
+            # if not perfil.stripe_plus_subscription_id:
+            #     print("Intento premium sin plus previo. Se revierte.")
+            #     try:
+            #         _safe_cancel_subscription(subscription_id)
+            #     except Exception as e:
+            #         print("No se pudo revertir premium invalido:", e)
+            #     return HttpResponse(status=200)
 
             perfil.stripe_premium_subscription_id = subscription_id
             # legacy/fallback temporal
@@ -1030,11 +1031,11 @@ def crear_sesion_pago_premium(request):
     perfil = request.user.perfilusuario
 
     # Regla: premium solo si ya es plus
-    if not perfil.stripe_plus_subscription_id:
-        return JsonResponse(
-            {"status": "error", "detail": "Debes activar PLUS antes de contratar PREMIUM."},
-            status=400
-        )
+    # if not perfil.stripe_plus_subscription_id:
+    #     return JsonResponse(
+    #         {"status": "error", "detail": "Debes activar PLUS antes de contratar PREMIUM."},
+    #         status=400
+    #     )
 
     if perfil.stripe_premium_subscription_id:
         return JsonResponse(
@@ -1082,8 +1083,8 @@ def cancelar_suscripcion(request):
         )
 
     plus_subscription_id = perfil.stripe_plus_subscription_id or perfil.stripe_subscription_id
-    if not plus_subscription_id:
-        return JsonResponse({"status": "no encontrada"}, status=404)
+    # if not plus_subscription_id:
+    #     return JsonResponse({"status": "no encontrada"}, status=404)
 
     try:
         _safe_cancel_subscription(plus_subscription_id)
@@ -1122,9 +1123,12 @@ def cancelar_suscripcion_premium(request):
 
         perfil.stripe_premium_subscription_id = None
 
-        # legacy: si el id legacy era el premium cancelado, volverlo al plus (si existe)
+        # legacy: si el id legacy era el premium cancelado, volverlo al plus (si existe), si no existe que sea None y que el tipo_usuario se ajuste a plus
+
         if perfil.stripe_subscription_id == premium_subscription_id:
             perfil.stripe_subscription_id = perfil.stripe_plus_subscription_id
+            if not perfil.stripe_subscription_id:
+                perfil.tipo_usuario = "plus"
 
         _sync_membership_state(perfil)
         perfil.save()
