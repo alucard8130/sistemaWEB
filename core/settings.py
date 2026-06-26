@@ -25,6 +25,11 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,gesacadmin.com").split(",")
 #ALLOWED_HOSTS = ["192.168.0.159", '*']  # For development purposes, change this in production
 
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS",
+    "https://gesac.up.railway.app,https://adminsoftheron.onrender.com,https://gesacadmin.com,https://www.gesacadmin.com"
+).split(",")
+
 # Application definition
 
 INSTALLED_APPS = [
