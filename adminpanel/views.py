@@ -20,6 +20,7 @@ from presupuestos.models import Presupuesto, PresupuestoIngreso
 from empleados.models import Empleado
 from proveedores.models import Proveedor
 
+
 @staff_member_required
 def lista_usuarios_normales(request):
     usuarios = User.objects.filter(is_superuser=False).order_by('-date_joined')

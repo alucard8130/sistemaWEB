@@ -515,7 +515,48 @@ def respaldo_empresa_excel(request):
                 str(g.fecha),
             ]
         )
-
+    #CAJA CHICA - FONDEOS
+    ws = wb.create_sheet("Fondeos Caja Chica")
+    ws.append(["id", "empresa", "monto", "fecha", "registrado_por"])
+    for f in FondeoCajaChica.objects.filter(empresa=empresa):
+        ws.append(
+            [
+                f.id,
+                f.empresa.nombre if f.empresa else "",
+                float(f.monto),
+                str(f.fecha),
+                f.registrado_por.get_full_name() if f.registrado_por else "",
+            ]
+        )
+    # CAJA CHICA - GASTOS
+    ws = wb.create_sheet("Gastos Caja Chica")
+    ws.append(["id", "fondeo", "descripcion", "importe", "fecha", "registrado_por"])
+    for g in GastoCajaChica.objects.filter(fondeo__empresa=empresa):
+        ws.append(
+            [
+                g.id,
+                g.fondeo.id if g.fondeo else "",
+                g.descripcion,
+                float(g.importe),
+                str(g.fecha),
+                g.registrado_por.get_full_name() if g.registrado_por else "",
+            ]
+        )
+    #CAJA CHICA - VALES
+    ws = wb.create_sheet("Vales Caja Chica")
+    ws.append(["id", "fondeo", "beneficiario", "importe", "fecha", "registrado_por"])
+    for v in ValeCaja.objects.filter(fondeo__empresa=empresa):
+        ws.append(
+            [
+                v.id,
+                v.fondeo.id if v.fondeo else "",
+                v.beneficiario,
+                float(v.importe),
+                str(v.fecha),
+                v.registrado_por.get_full_name() if v.registrado_por else "",
+            ]
+        )
+        
     # PAGOS GASTOS
     ws = wb.create_sheet("Pagos Gastos")
     ws.append(["id", "referencia", "fecha_pago", "monto", "registrado_por"])
@@ -616,7 +657,7 @@ def respaldo_empresa_excel(request):
             [
                 p.id,
                 p.factura.folio if p.factura else "",
-                str(p.fecha_pago),
+                str(p.fecha_cobro),
                 float(p.monto),
                 p.registrado_por.get_full_name() if p.registrado_por else "",
             ]
