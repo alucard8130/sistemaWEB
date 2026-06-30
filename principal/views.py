@@ -22,7 +22,7 @@ from empresas.models import Empresa
 from clientes.models import Cliente
 from facturacion.forms import TimbrarFacturaForm
 from facturacion.utils import debe_mostrar_recordatorio_facturacion
-from gastos.models import Gasto
+from gastos.models import Gasto, TipoGasto
 from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
@@ -339,34 +339,71 @@ def dashboard_inicio(request):
 
 
 
-# Configuración del sistema
 @staff_member_required
 @login_required
 def reiniciar_sistema(request):
     if request.method == "POST":
+        empresa_id = request.POST.get("empresa_id") or request.session.get("empresa_id")
+        if not empresa_id:
+            messages.error(request, "Debes seleccionar una empresa.")
+            return redirect("reiniciar_sistema")
+
+        try:
+            empresa = Empresa.objects.get(pk=empresa_id)
+        except Empresa.DoesNotExist:
+            messages.error(request, "Empresa no encontrada.")
+            return redirect("reiniciar_sistema")
+
         try:
             with transaction.atomic():
-                # Orden: pagos > facturas > locales/areas > clientes > empresas etc...
+                # 1) Romper bloqueos PROTECT por cliente
+                AreaComun.objects.filter(empresa=empresa).update(cliente=None)
+                LocalComercial.objects.filter(empresa=empresa).update(cliente=None)
 
-                Factura.objects.all().delete()
-                LocalComercial.objects.all().delete()
-                AreaComun.objects.all().delete()
-                Cliente.objects.all().delete()
-                # Empresa.objects.all().delete()
-                Proveedor.objects.all().delete()
-                Empleado.objects.all().delete()
-                Gasto.objects.all().delete()
-                Presupuesto.objects.all().delete()
-                AuditoriaCambio.objects.all().delete()
-                Evento.objects.all().delete()
-                Pago.objects.all().delete()
+                # 2) Facturacion otros ingresos (tiene cliente PROTECT)
+                CobroOtrosIngresos.objects.filter(factura__empresa=empresa).delete()
+                FacturaOtrosIngresos.objects.filter(empresa=empresa).delete()
 
-            messages.success(request, "¡El sistema fue reiniciado exitosamente!")
+                # 3) Pagos por identificar (sin factura) de la empresa
+                Pago.objects.filter(empresa=empresa, factura__isnull=True).delete()
+
+                # 4) Facturas y pagos ligados a facturas
+                Factura.objects.filter(empresa=empresa).delete()
+
+                # 5) Caja chica
+                FondeoCajaChica.objects.filter(empresa=empresa).delete()  # cascada a gastos/vales
+
+                # 6) Gastos
+                Gasto.objects.filter(empresa=empresa).delete()
+                PagoGasto.objects.filter(gasto__empresa=empresa).delete()
+                TipoGasto.objects.filter(empresa=empresa).delete()
+
+                # 7) Catalogos y maestros por empresa
+                Presupuesto.objects.filter(empresa=empresa).delete()
+                PresupuestoIngreso.objects.filter(empresa=empresa).delete()
+                Proveedor.objects.filter(empresa=empresa).delete()
+                Empleado.objects.filter(empresa=empresa).delete()
+                Cliente.objects.filter(empresa=empresa).delete()
+                LocalComercial.objects.filter(empresa=empresa).delete()
+                AreaComun.objects.filter(empresa=empresa).delete()
+                Evento.objects.filter(empresa=empresa).delete()
+                TemaGeneral.objects.filter(empresa=empresa).delete()
+                Aviso.objects.filter(empresa=empresa).delete()
+
+                # 8) Dejar saldos en cero (empresa sigue activa)
+                empresa.saldo_inicial = 0
+                empresa.saldo_final = 0
+                empresa.save(update_fields=["saldo_inicial", "saldo_final"])
+
+            messages.success(request, f"Empresa {empresa.nombre} reiniciada en cero correctamente.")
         except Exception as e:
-            messages.error(request, f"Error al reiniciar: {e}")
-        return redirect("bienvenida")
-    return render(request, "reiniciar_sistema.html")
+            messages.error(request, f"Error al reiniciar empresa: {e}")
 
+        return redirect("reiniciar_sistema")
+
+    empresas = Empresa.objects.all().order_by("nombre")
+    empresa_id = request.session.get("empresa_id")
+    return render(request, "reiniciar_sistema.html", {"empresas": empresas, "empresa_id": empresa_id})
 
 @staff_member_required
 def respaldo_empresa_excel(request):

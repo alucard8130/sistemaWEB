@@ -42,13 +42,10 @@
               <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Panel Administrador</a></li>
               <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
               <li><a class="dropdown-item" href="{% url 'cuenta_bancaria_crear' %}">Agregar Cuenta Bancaria</a></li>
-              {% if empresa %}
-              <li><a class="dropdown-item" href="{% url 'resetear_empresa' empresa_id=empresa.id %}">Resetear Empresa</a></li>
-              {% endif %}
               <li><a class="dropdown-item" href="{% url 'anuncios_publicos' %}">Anuncios Institucionales</a></li>
               <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
               <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
-              <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Sistema</a></li>
+              <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Empresa</a></li>
               <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li>
               <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
               <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>

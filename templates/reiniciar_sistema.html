@@ -6,52 +6,68 @@
         Created by: Jaime Estrada
         Modified by: María Martínez
         Date of creation: 05/06/2025
-        Date of modification: 26/06/2025
-        Description: Restarts the system
+        Date of modification: 30/06/2026
+        Description: Reinicia una empresa seleccionada (solo datos operativos)
     -->
     <meta charset="UTF-8">
-    <title>Reiniciar sistema</title>
-    <!-- Bootstrap base styles -->
+    <title>Reiniciar Empresa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
     {% include 'navbar.html' %}
 
-    <!-- Dark button -->
-    <!-- <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
-            <button id="toggleDark" class="toggle-switch">
-                <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-            </button>
-        </div>
-    </div> -->
-
-    <!-- Main content --> 
     <div class="container py-4">
-        <!-- Centered form only -->
+        {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
         <div class="d-flex align-items-center justify-content-center min-vh-50">
-            <div class="alert border border-danger border-light p-4 rounded shadow-lg">
+            <div class="alert border border-danger p-4 rounded shadow-lg w-100" style="max-width: 720px;">
                 <h4 class="text-danger text-center mb-3">
-                    ⚠️ ¡ATENCIÓN!
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> ¡ATENCION!
                 </h4>
+
                 <p class="mb-2">
-                    Esta acción <strong>borrará TODA la información del sistema</strong> 
-                    <span class="text-muted">(excepto usuarios y configuraciones).</span>
+                    Esta accion <strong>borrara toda la informacion operativa de la empresa seleccionada</strong>
+                    <span class="text-muted">(facturas, pagos, gastos, locales, areas, clientes, etc.).</span>
                 </p>
-                <p class="fw-bold">¿Estás seguro que deseas continuar?</p>
-                
-                <!-- Form -->
-                <form method="post" class="p-4 custom-form">
+                <p class="mb-3">La empresa seguira existiendo, pero quedara en cero.</p>
+                <p class="fw-bold">¿Estas seguro que deseas continuar?</p>
+
+                <form method="post" class="p-0">
                     {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Empresa a reiniciar</label>
+                        <select name="empresa_id" class="form-select" required>
+                            <option value="">Selecciona una empresa</option>
+                            {% for e in empresas %}
+                                <option value="{{ e.id }}" {% if empresa_id and empresa_id|stringformat:"s" == e.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ e.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirmacion" class="form-label fw-bold">
+                            Escribe <span class="text-danger">REINICIAR</span> para confirmar
+                        </label>
+                        <input id="confirmacion" type="text" class="form-control" autocomplete="off" required>
+                    </div>
+
                     <div class="d-flex justify-content-center gap-3">
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="bi bi-trash me-1"></i> Sí
+                        <button id="btnReiniciar" type="submit" class="btn btn-outline-danger" disabled>
+                            <i class="bi bi-trash me-1"></i> Reiniciar empresa
                         </button>
                         <a href="{% url 'dashboard_inicio' %}" class="btn btn-outline-secondary">Cancelar</a>
                     </div>
@@ -60,13 +76,24 @@
         </div>
     </div>
 
-    <!-- 🔹 Footer -->
- <footer class="mt-4">
-        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
+    <footer class="mt-4 text-center">
+        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados.
     </footer>
-    
-    <!-- Scripts -->
+
     <script src="{% static 'js/script.js' %}"></script>
+    <script>
+        (function () {
+            const input = document.getElementById("confirmacion");
+            const btn = document.getElementById("btnReiniciar");
+
+            function validar() {
+                btn.disabled = input.value.trim().toUpperCase() !== "REINICIAR";
+            }
+
+            input.addEventListener("input", validar);
+            validar();
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
