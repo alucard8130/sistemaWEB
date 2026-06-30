@@ -96,6 +96,10 @@
             <input type="text" name="q" class="form-control me-2" placeholder="Buscar propiedad por número, o cliente" value="{{ q|default:'' }}">
             <button type="submit" class="btn btn-outline-primary">Buscar</button>
         </form>
+     
+                <a href="{% url 'crear_local' %}" class="btn btn-outline-success" align="right" title="Nueva Propiedad">
+                    <i class="bi bi-plus-lg"></i> Nueva Propiedad
+                </a> 
 
         <!-- Propiedad table -->
         <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
