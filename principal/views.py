@@ -110,6 +110,7 @@ from django.db.models.functions import TruncMonth
 #from collections import defaultdict
 
 
+
 #pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 @login_required
 def dashboard_inicio(request):
@@ -4432,7 +4433,7 @@ def api_avisos_empresa(request):
     return Response(data)
 
 
-
+####################################RECORDATORIOS MOROSIDAD DEUDORES#######################################################3
 # recordatorios morosidad
 @login_required
 def enviar_recordatorio_morosidad(request):
@@ -4448,15 +4449,144 @@ def enviar_recordatorio_morosidad(request):
         messages.error(request, "ID de área común inválido.")
         return redirect(next_url or "lista_facturas")
 
+    def formato_importe(importe):
+        return "${:,.2f}".format(round(importe, 2))
+
+    def construir_correo_html(cliente, facturas, empresa_nombre, email_empresa, tipo="local"):
+        total = sum(f.saldo_pendiente for f in facturas)
+        tipo_label = "cuotas de local comercial" if tipo == "local" else "cuotas de área común"
+
+        filas_facturas = ""
+        for factura in facturas:
+            if tipo == "local":
+                ubicacion = f"Local: {factura.local.numero}" if factura.local else "Sin ubicación"
+            else:
+                ubicacion = f"Área común: {factura.area_comun.numero}" if factura.area_comun else "Sin ubicación"
+
+            filas_facturas += f"""
+            <tr>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{factura.folio}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{ubicacion}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{factura.fecha_vencimiento}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #c0392b; font-weight: bold; text-align: right;">{formato_importe(factura.saldo_pendiente)}</td>
+            </tr>
+            """
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0; padding:0; background:#f4f6f8; font-family: Arial, sans-serif;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding: 32px 0;">
+                <tr><td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+
+                        <!-- Header -->
+                        <tr>
+                            <td style="background: #152A52; padding: 28px 32px; text-align: center;">
+                                <h1 style="margin:0; color:#ffffff; font-size:22px; letter-spacing:1px;">{empresa_nombre}</h1>
+                                <p style="margin:6px 0 0 0; color:#AFC0DC; font-size:13px;">Aviso de adeudo pendiente</p>
+                            </td>
+                        </tr>
+
+                        <!-- Saludo -->
+                        <tr>
+                            <td style="padding: 28px 32px 16px 32px;">
+                                <p style="margin:0; color:#333; font-size:15px;">Estimado(a) <strong>{cliente.nombre}</strong>,</p>
+                                <p style="margin:12px 0 0 0; color:#555; font-size:14px; line-height:1.6;">
+                                    Le informamos que tiene <strong>adeudos pendientes</strong> correspondientes a {tipo_label}.
+                                    Le pedimos atender este aviso a la brevedad posible para evitar cargos adicionales.
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Tabla de adeudos -->
+                        <tr>
+                            <td style="padding: 0 32px 24px 32px;">
+                                <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e0e0e0; border-radius:6px; overflow:hidden;">
+                                    <tr style="background:#f0f4f8;">
+                                        <th style="padding: 10px 12px; text-align:left; color:#152A52; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Folio</th>
+                                        <th style="padding: 10px 12px; text-align:left; color:#152A52; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Ubicación</th>
+                                        <th style="padding: 10px 12px; text-align:left; color:#152A52; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Vencimiento</th>
+                                        <th style="padding: 10px 12px; text-align:right; color:#152A52; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Saldo</th>
+                                    </tr>
+                                    {filas_facturas}
+                                    <tr style="background:#fdf3f3;">
+                                        <td colspan="3" style="padding: 12px; text-align:right; font-weight:bold; color:#333;">Total pendiente:</td>
+                                        <td style="padding: 12px; text-align:right; font-weight:bold; color:#c0392b; font-size:16px;">{formato_importe(total)}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+
+                        <!-- Botón pago en línea -->
+                        <tr>
+                            <td style="padding: 0 32px 24px 32px; text-align:center;">
+                                <p style="margin:0 0 16px 0; color:#555; font-size:14px;">Puede realizar su pago de forma rápida y segura:</p>
+                                <a href="{settings.PORTAL_PAGOS_URL}"
+                                   style="display:inline-block; background:#152A52; color:#ffffff; text-decoration:none; padding:14px 32px; border-radius:6px; font-size:15px; font-weight:bold; letter-spacing:0.5px;">
+                                   💳 Pagar en línea
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Descarga de la app -->
+                        <tr>
+                            <td style="padding: 0 32px 28px 32px;">
+                                <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8; border-radius:8px; padding:20px;">
+                                    <tr>
+                                        <td style="padding:16px; text-align:center;">
+                                            <p style="margin:0 0 12px 0; color:#152A52; font-weight:bold; font-size:14px;">📱 También puede pagar desde nuestra app</p>
+                                            <p style="margin:0 0 16px 0; color:#555; font-size:13px;">Descárguela gratis y consulte su saldo, pague sus cuotas y envíe comprobantes desde su celular.</p>
+                                            <a href="https://apps.apple.com/us/app/gesac-condominos/id6756532273"
+                                               style="display:inline-block; background:#000000; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:bold; margin: 0 6px;">
+                                                🍎 App Store
+                                            </a>
+                                            <a href="https://paginaweb-ro9v.onrender.com/beta"
+                                               style="display:inline-block; background:#2d7a27; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:bold; margin: 0 6px; opacity:0.7;">
+                                                🤖 Google Play (testers)
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+
+                        <!-- Comprobante -->
+                        <tr>
+                            <td style="padding: 0 32px 28px 32px;">
+                                <p style="margin:0; color:#555; font-size:13px; line-height:1.6; background:#fff8e1; border-left:4px solid #f9a825; padding:12px 16px; border-radius:4px;">
+                                    ¿Ya realizó su pago? Envíe su comprobante a
+                                    <a href="mailto:{email_empresa}" style="color:#152A52; font-weight:bold;">{email_empresa}</a>
+                                    o súbalo directamente desde la app.
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background:#f0f4f8; padding:18px 32px; text-align:center; border-top:1px solid #e0e0e0;">
+                                <p style="margin:0; color:#888; font-size:12px;">
+                                    Este es un mensaje automático de <strong>{empresa_nombre}</strong>.<br>
+                                    Por favor no responda directamente a este correo.
+                                </p>
+                            </td>
+                        </tr>
+
+                    </table>
+                </td></tr>
+            </table>
+        </body>
+        </html>
+        """
+        return html, formato_importe(total)
+
     if local_id:
         local_id = int(local_id)
         facturas = Factura.objects.filter(local_id=local_id, estatus="pendiente")
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
-            messages.warning(
-                request,
-                f"No hay adeudos pendientes para el local seleccionado.",
-            )
+            messages.warning(request, "No hay adeudos pendientes para el local seleccionado.")
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
         email = cliente.email
@@ -4471,43 +4601,24 @@ def enviar_recordatorio_morosidad(request):
                         cliente.email = email
                         cliente.save()
                 else:
-                    return render(
-                        request,
-                        "facturacion/capturar_email.html",
-                        {"form": form, "cliente": cliente, "next": next_url},
-                    )
+                    return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
             else:
                 form = CapturarEmailForm()
-                return render(
-                    request,
-                    "facturacion/capturar_email.html",
-                    {"form": form, "cliente": cliente, "next": next_url},
-                )
+                return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
-        mensaje = f"{empresa_nombre}\n\nEstimado cliente {cliente.nombre}, tiene los siguientes adeudos en cuotas:\n\n"
-        total = 0
+        html_message, total_str = construir_correo_html(cliente, facturas, empresa_nombre, email_empresa, tipo="local")
+        texto_plano = f"{empresa_nombre}\n\nEstimado {cliente.nombre}, tiene adeudos pendientes por un total de {total_str}.\n\nPague en línea: {settings.PORTAL_PAGOS_URL}/\nDescargue la app: https://apps.apple.com/us/app/gesac-condominos/id6756532273"
 
-        def formato_importe(importe):
-            return "${:,.2f}".format(round(importe, 2))
-
-        for factura in facturas:
-            ubicacion = (
-                f"Local: {factura.local.numero}" if factura.local else "Sin ubicación"
-            )
-            mensaje += f"- Folio: {factura.folio},{ubicacion}, Monto pendiente: {formato_importe(factura.saldo_pendiente)}\n"
-            total += factura.saldo_pendiente
-        mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible. \n\n Si ya realizo su pago envie su comprobante al correo: {email_empresa}"
         send_mail(
-            subject="Recordatorio de cuotas pendientes de pago (Locales)",
-            message=mensaje,
+            subject=f"⚠️ Recordatorio de adeudo pendiente — {empresa_nombre}",
+            message=texto_plano,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
+            html_message=html_message,
             fail_silently=True,
         )
-        messages.success(
-            request,
-            f"Recordatorio enviado correctamente al cliente {cliente.nombre}\ndel local {factura.local.numero}",
-        )
+        messages.success(request, f"Recordatorio enviado correctamente al cliente {cliente.nombre} del local {facturas[0].local.numero if facturas[0].local else ''}.")
         return redirect(next_url or "lista_facturas")
 
     elif area_id:
@@ -4515,13 +4626,11 @@ def enviar_recordatorio_morosidad(request):
         facturas = Factura.objects.filter(area_comun_id=area_id, estatus="pendiente")
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
-            messages.warning(
-                request,
-                f"No hay adeudos pendientes para el área común seleccionada.",
-            )
+            messages.warning(request, "No hay adeudos pendientes para el área común seleccionada.")
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
         email = cliente.email
+        email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
         if not email:
             if request.method == "POST":
                 form = CapturarEmailForm(request.POST)
@@ -4532,71 +4641,28 @@ def enviar_recordatorio_morosidad(request):
                         cliente.email = email
                         cliente.save()
                 else:
-                    return render(
-                        request,
-                        "facturacion/capturar_email.html",
-                        {"form": form, "cliente": cliente, "next": next_url},
-                    )
+                    return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
             else:
                 form = CapturarEmailForm()
-                return render(
-                    request,
-                    "facturacion/capturar_email.html",
-                    {"form": form, "cliente": cliente, "next": next_url},
-                )
+                return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
-        email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
-        mensaje = f"{empresa_nombre}\n\nEstimado cliente {cliente.nombre}, tiene los siguientes adeudos en cuotas de área común:\n\n"
-        total = 0
+        html_message, total_str = construir_correo_html(cliente, facturas, empresa_nombre, email_empresa, tipo="area")
+        texto_plano = f"{empresa_nombre}\n\nEstimado {cliente.nombre}, tiene adeudos pendientes por un total de {total_str}.\n\nPague en línea: {settings.PORTAL_PAGOS_URL}/\nDescargue la app: https://apps.apple.com/us/app/gesac-condominos/id6756532273"
 
-        def formato_importe(importe):
-            return "${:,.2f}".format(round(importe, 2))
-
-        for factura in facturas:
-            ubicacion = (
-                f"Área común: {factura.area_comun.numero}"
-                if factura.area_comun
-                else "Sin ubicación"
-            )
-            mensaje += f"- Folio: {factura.folio},{ubicacion}, Monto pendiente: {formato_importe(factura.saldo_pendiente)}\n"
-            total += factura.saldo_pendiente
-        mensaje += f"\nTotal pendiente: {formato_importe(total)}\nPor favor realice su pago lo antes posible.\n\n Si ya realizo su pago envie su comprobante al correo: {email_empresa}"
         send_mail(
-            subject="Recordatorio de cuotas pendientes de pago (Área común)",
-            message=mensaje,
+            subject=f"⚠️ Recordatorio de adeudo pendiente — {empresa_nombre}",
+            message=texto_plano,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
+            html_message=html_message,
             fail_silently=True,
         )
-        messages.success(
-            request,
-            f"Recordatorio enviado correctamente al cliente {cliente.nombre}\ndel área común {factura.area_comun.numero}.",
-        )
+        messages.success(request, f"Recordatorio enviado correctamente al cliente {cliente.nombre} del área común {facturas[0].area_comun.numero if facturas[0].area_comun else ''}.")
         return redirect(next_url or "lista_facturas")
 
     else:
-        messages.error(
-            request,
-            "Debes seleccionar un local o un área común antes de enviar el recordatorio.",
-        )
+        messages.error(request, "Debes seleccionar un local o un área común antes de enviar el recordatorio.")
         return redirect(next_url or "lista_facturas")
 
 
-
-
-#changelog
-
-# def changelog(request):
-#     mejoras = MejoraSistema.objects.filter(visible=True).order_by('-fecha')
-#     if request.user.is_authenticated:
-#         perfil = request.user.perfilusuario
-#         perfil.ultima_visita_changelog = timezone.now()
-#         perfil.save()
-#     return render(request, 'log_mejoras/changelog.html', {'mejoras': mejoras})
-
-# def hay_mejoras_nuevas(request):
-#     if not request.user.is_authenticated:
-#         return False
-#     perfil = request.user.perfilusuario
-#     ultima_visita = perfil.ultima_visita_changelog or timezone.datetime(2000, 1, 1, tzinfo=timezone.utc)
-#     return MejoraSistema.objects.filter(fecha__gt=ultima_visita, visible=True).exists()

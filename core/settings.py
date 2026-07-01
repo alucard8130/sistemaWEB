@@ -240,4 +240,8 @@ sentry_sdk.init(
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")
 
+
+PORTAL_PAGOS_URL = os.getenv("PORTAL_PAGOS_URL", "https://adminsoftheron.onrender.com/visitante/login/")
+
+
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
