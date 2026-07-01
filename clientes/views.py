@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from unidecode import unidecode
 from weasyprint import HTML
-from empresas.models import Empresa
+from empresas.models import CuentaBancaria, Empresa
 from facturacion.models import Factura
 from .models import Cliente
 from .forms import ClienteCargaMasivaForm, ClienteForm
@@ -16,7 +16,12 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum, Avg
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
-
+import random
+import string
+import barcode
+from barcode.writer import ImageWriter
+import base64
+from io import BytesIO
 
 @login_required
 def lista_clientes(request):
@@ -57,6 +62,16 @@ def lista_clientes(request):
              "contribuyente_sin_clasificacion": contribuyente_sin_clasificacion},
     )
 
+def generar_referencia_pago(cliente_id):
+    """
+    Genera una referencia única con formato: RF-00042-X7K3M9
+    - RF: prefijo fijo (2)
+    - 00042: id del cliente con ceros a la izquierda, 5 dígitos (5)
+    - X7K3M9: sufijo aleatorio alfanumérico de 6 caracteres (6)
+    Total: 16 caracteres exactos
+    """
+    sufijo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return f"RF-{cliente_id:05d}-{sufijo}"
 
 @login_required
 def crear_cliente(request):
@@ -68,6 +83,7 @@ def crear_cliente(request):
             cliente = form.save(commit=False)
             rfc = cliente.rfc.strip() if cliente.rfc else None
             empresa = cliente.empresa if request.user.is_superuser else perfil.empresa
+
             if (
                 rfc
                 and Cliente.objects.filter(
@@ -78,11 +94,28 @@ def crear_cliente(request):
                     request, "Ya existe un cliente con ese RFC en la empresa."
                 )
                 return render(request, "clientes/crear_cliente.html", {"form": form})
-            else:
-                if not request.user.is_superuser and perfil:
-                    cliente.empresa = perfil.empresa
-                cliente.save()
-                return redirect("lista_clientes")
+
+            if not request.user.is_superuser and perfil:
+                cliente.empresa = perfil.empresa
+
+            # Guardar primero para obtener el id autogenerado
+            cliente.save()
+
+            # Generar referencia única usando el id ya asignado
+            # Verificar que no exista ya (colisión improbable pero posible)
+            referencia = generar_referencia_pago(cliente.id)
+            while Cliente.objects.filter(referencia_pago=referencia).exists():
+                referencia = generar_referencia_pago(cliente.id)
+
+            cliente.referencia_pago = referencia
+            cliente.save(update_fields=['referencia_pago'])
+
+            messages.success(
+                request,
+                f"Cliente '{cliente.nombre}' creado correctamente. "
+                f"Referencia de pago asignada: {referencia}"
+            )
+            return redirect("lista_clientes")
         else:
             messages.error(
                 request,
@@ -271,27 +304,55 @@ def actualizar_factura_global(request, cliente_id):
     cliente.save()
     return redirect(reverse('lista_clientes'))
 
+
+
 def instrucciones_pago_pdf(request, cliente_id):
     cliente = get_object_or_404(Cliente, pk=cliente_id)
-    # filtrar la primera factura
-    factura=Factura.objects.filter(cliente=cliente).order_by('fecha_emision').latest('fecha_emision')
-    local_num = factura.local if factura.local else "N/A"
-    area_num = factura.area_comun if factura.area_comun else "N/A"
+
+    if not cliente.referencia_pago:
+        messages.warning(
+            request,
+            f"El cliente '{cliente.nombre}' aún no tiene referencia de pago asignada."
+        )
+        return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
+
+    # Generar barcode Code128 en memoria como PNG base64
+    buffer = BytesIO()
+    CODE128 = barcode.get_barcode_class('code128')
+    codigo = CODE128(cliente.referencia_pago, writer=ImageWriter())
+    codigo.write(buffer, options={
+        'module_height': 8.0,
+        'module_width': 0.3,
+        'quiet_zone': 2.0,
+        'font_size': 6,
+        'text_distance': 2.0,
+        'write_text': True,
+        'dpi': 150,
+    })
+    barcode_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    # Cuenta bancaria activa de la empresa
+    cuenta = CuentaBancaria.objects.filter(
+        empresa=cliente.empresa, activa=True
+    ).first()
 
     datos_bancarios = {
-        'banco': cliente.empresa.cuenta_bancaria if hasattr(cliente.empresa, 'cuenta_bancaria') else 'Banco Ejemplo',
-        'cuenta':cliente.empresa.numero_cuenta if hasattr(cliente.empresa, 'numero_cuenta') else '1234567890',
-        'clabe': cliente.empresa.clabe if hasattr(cliente.empresa, 'clabe') else '012345678901234567',
-        'titular': cliente.empresa.nombre if hasattr(cliente.empresa, 'nombre') else 'Empresa Ejemplo',
+        'banco': cuenta.banco if cuenta else 'No configurado',
+        'cuenta': cuenta.numero_cuenta if cuenta else 'No configurado',
+        'clabe': cuenta.clabe if cuenta else 'No configurado',
+        'titular': cliente.empresa.nombre,
     }
+
     contexto = {
         'cliente': cliente,
         'datos_bancarios': datos_bancarios,
-        'local_num': local_num,
-        'area_num': area_num,
+        'barcode_base64': barcode_base64,
     }
+
     html_string = render_to_string('clientes/instrucciones_pago.html', contexto)
     pdf = HTML(string=html_string).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="instrucciones_pago_{cliente.referencia_pago}.pdf"'
+    response['Content-Disposition'] = (
+        f'attachment; filename="referencia_pago_{cliente.referencia_pago}.pdf"'
+    )
     return response
