@@ -50,14 +50,16 @@
         <div class="referencia-box">
             <div class="referencia-label">Referencia de pago para transferencias o depósitos:</div>
             <div class="referencia">{{ cliente.referencia_pago }}</div>
-            <div style="margin-top: 12px;">
+            <div style="margin-top: 12px; text-align: center;">
         <img 
             src="data:image/png;base64,{{ barcode_base64 }}" 
-            alt="Código de barras {{ cliente.referencia_pago }}"
-            style="max-width: 100%; height: 70px;"
+            alt="QR {{ cliente.referencia_pago }}"
+            style="width: 120px; height: 120px;"
         >
-    </div>
+        <div style="font-size: 0.85em; color: #555; margin-top: 4px;">
+            Escanea para ver tu referencia
         </div>
+    </div>
 
         <div>
             <span class="section-title">Cliente:</span>

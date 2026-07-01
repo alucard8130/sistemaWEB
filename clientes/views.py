@@ -304,40 +304,23 @@ def actualizar_factura_global(request, cliente_id):
 
 
 def instrucciones_pago_pdf(request, cliente_id):
-    import barcode
-    from barcode.writer import ImageWriter
-    import base64
+    import segno
     from io import BytesIO
-    
+    import base64
+
     cliente = get_object_or_404(Cliente, pk=cliente_id)
 
     if not cliente.referencia_pago:
-        messages.warning(
-            request,
-            f"El cliente '{cliente.nombre}' aún no tiene referencia de pago asignada."
-        )
+        messages.warning(request, f"El cliente '{cliente.nombre}' aún no tiene referencia de pago asignada.")
         return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
 
-    # Generar barcode Code128 en memoria como PNG base64
+    # Generar QR en memoria como PNG base64
     buffer = BytesIO()
-    CODE128 = barcode.get_barcode_class('code128')
-    codigo = CODE128(cliente.referencia_pago, writer=ImageWriter())
-    codigo.write(buffer, options={
-        'module_height': 8.0,
-        'module_width': 0.3,
-        'quiet_zone': 2.0,
-        'font_size': 6,
-        'text_distance': 2.0,
-        'write_text': True,
-        'dpi': 150,
-    })
+    qr = segno.make_qr(cliente.referencia_pago)
+    qr.save(buffer, kind='png', scale=4, border=2)
     barcode_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
-    # Cuenta bancaria activa de la empresa
-    cuenta = CuentaBancaria.objects.filter(
-        empresa=cliente.empresa, activa=True
-    ).first()
-
+    cuenta = CuentaBancaria.objects.filter(empresa=cliente.empresa, activa=True).first()
     datos_bancarios = {
         'banco': cuenta.banco if cuenta else 'No configurado',
         'cuenta': cuenta.numero_cuenta if cuenta else 'No configurado',
