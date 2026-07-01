@@ -18,10 +18,7 @@ from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
 import random
 import string
-import barcode
-from barcode.writer import ImageWriter
-import base64
-from io import BytesIO
+
 
 @login_required
 def lista_clientes(request):
@@ -307,6 +304,11 @@ def actualizar_factura_global(request, cliente_id):
 
 
 def instrucciones_pago_pdf(request, cliente_id):
+    import barcode
+    from barcode.writer import ImageWriter
+    import base64
+    from io import BytesIO
+    
     cliente = get_object_or_404(Cliente, pk=cliente_id)
 
     if not cliente.referencia_pago:
