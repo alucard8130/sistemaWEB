@@ -311,27 +311,41 @@ def instrucciones_pago_pdf(request, cliente_id):
     cliente = get_object_or_404(Cliente, pk=cliente_id)
 
     if not cliente.referencia_pago:
-        messages.warning(request, f"El cliente '{cliente.nombre}' aún no tiene referencia de pago asignada.")
+        messages.warning(
+            request,
+            f"El cliente '{cliente.nombre}' aún no tiene referencia de pago asignada."
+        )
         return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
 
-    # Generar QR en memoria como PNG base64
-    buffer = BytesIO()
-    qr = segno.make_qr(cliente.referencia_pago)
-    qr.save(buffer, kind='png', scale=4, border=2)
-    barcode_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    # Traer todas las cuentas activas de la empresa
+    cuentas = CuentaBancaria.objects.filter(empresa=cliente.empresa, activa=True)
 
-    cuenta = CuentaBancaria.objects.filter(empresa=cliente.empresa, activa=True).first()
-    datos_bancarios = {
-        'banco': cuenta.banco if cuenta else 'No configurado',
-        'cuenta': cuenta.numero_cuenta if cuenta else 'No configurado',
-        'clabe': cuenta.clabe if cuenta else 'No configurado',
-        'titular': cliente.empresa.nombre,
-    }
+    # Generar un QR SPEI por cada cuenta
+    cuentas_con_qr = []
+    for cuenta in cuentas:
+        buffer = BytesIO()
+        contenido_qr = (
+            f"SPEI|"
+            f"{cuenta.clabe or ''}|"
+            f"{cliente.empresa.nombre}|"
+            f"|"
+            f"{cliente.referencia_pago}|"
+            f"Pago de cuotas {cliente.nombre}"
+        )
+        qr = segno.make_qr(contenido_qr, error='H')
+        qr.save(buffer, kind='png', scale=4, border=2)
+        qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        cuentas_con_qr.append({
+            'banco': cuenta.banco,
+            'numero_cuenta': cuenta.numero_cuenta,
+            'clabe': cuenta.clabe or 'No configurado',
+            'tipo_cuenta': cuenta.tipo_cuenta or '',
+            'qr_base64': qr_base64,
+        })
 
     contexto = {
         'cliente': cliente,
-        'datos_bancarios': datos_bancarios,
-        'barcode_base64': barcode_base64,
+        'cuentas_con_qr': cuentas_con_qr,
     }
 
     html_string = render_to_string('clientes/instrucciones_pago.html', contexto)
