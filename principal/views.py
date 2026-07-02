@@ -18,7 +18,7 @@ import openpyxl
 from core import settings
 from empleados.models import Empleado
 #import empresas
-from empresas.models import Empresa
+from empresas.models import CuentaBancaria, Empresa
 from clientes.models import Cliente
 from facturacion.forms import TimbrarFacturaForm
 from facturacion.utils import debe_mostrar_recordatorio_facturacion
@@ -307,6 +307,8 @@ def dashboard_inicio(request):
     es_plus= request.user.perfilusuario.tipo_usuario == "plus"
     es_premium = request.user.perfilusuario.tipo_usuario == "premium"
 
+    
+
     context = {
         'ingresos_mes': ingresos_mes,
         'ingresos_mes_otros': ingresos_mes_otros,
@@ -392,9 +394,9 @@ def reiniciar_sistema(request):
                 Aviso.objects.filter(empresa=empresa).delete()
 
                 # 8) Dejar saldos en cero (empresa sigue activa)
-                empresa.saldo_inicial = 0
-                empresa.saldo_final = 0
-                empresa.save(update_fields=["saldo_inicial", "saldo_final"])
+                #empresa.saldo_inicial = 0
+                #empresa.saldo_final = 0
+                #empresa.save(update_fields=["saldo_inicial", "saldo_final"])
 
             messages.success(request, f"Empresa {empresa.nombre} reiniciada en cero correctamente.")
         except Exception as e:
@@ -1228,18 +1230,14 @@ def guardar_datos_empresa(request):
         messages.error(request, "El RFC ingresado ya está registrado en otra empresa.")
         return redirect("pantalla_inicio")
 
+    # Solo campos que pertenecen al modelo Empresa
     empresa.nombre = request.POST.get("nombre_empresa", "")
     empresa.rfc = nuevo_rfc
     empresa.direccion = request.POST.get("direccion_empresa", "")
     empresa.email = request.POST.get("email_empresa", "")
     empresa.telefono = request.POST.get("telefono_empresa", "")
-    empresa.cuenta_bancaria = request.POST.get("cuenta_bancaria", "")
-    empresa.numero_cuenta = request.POST.get("numero_cuenta", "")
-    try:
-        empresa.saldo_inicial = float(request.POST.get("saldo_inicial", 0.00))
-    except ValueError:
-        empresa.saldo_inicial = 0.00
     empresa.save()
+
     perfil.mostrar_wizard = False
     perfil.save()
     messages.success(request, "¡Datos de empresa actualizados correctamente!")
@@ -3253,28 +3251,29 @@ def api_reporte_ingresos_vs_gastos(request):
             return Response({"error": "Empresa no encontrada"}, status=404)
     else:
         empresa = None
+        empresa_id = None
         if visitante.locales.exists():
             empresa = visitante.locales.first().empresa
+            empresa_id = str(empresa.id) if empresa else None
         elif visitante.areas.exists():
             empresa = visitante.areas.first().empresa
+            empresa_id = str(empresa.id) if empresa else None
 
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     mes = request.GET.get("mes")
     anio = request.GET.get("anio")
     periodo = request.GET.get("periodo")
+    hoy = date.today()
 
     # Si no hay ningún filtro, mostrar periodo actual por default
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
         periodo = "periodo_actual"
 
-    hoy = date.today()
     # Prioridad: periodo > mes/año > fechas manuales
     if periodo == "mes_actual":
         fecha_inicio = hoy.replace(day=1)
-        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(
-            day=1
-        ) - timedelta(days=1)
+        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         mes = hoy.month
         anio = hoy.year
     elif periodo == "periodo_actual":
@@ -3287,10 +3286,11 @@ def api_reporte_ingresos_vs_gastos(request):
             mes = int(mes)
             anio = int(anio)
             fecha_inicio = date(anio, mes, 1)
-            if mes == 12:
-                fecha_fin = date(anio, 12, 31)
-            else:
-                fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
+            # if mes == 12:
+            #     fecha_fin = date(anio, 12, 31)
+            # else:
+            #     fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
+            fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1) if mes < 12 else date(anio, 12, 31)    
         except Exception:
             fecha_inicio = None
             fecha_fin = None
@@ -3304,19 +3304,21 @@ def api_reporte_ingresos_vs_gastos(request):
     # Convierte a date si es string
     if isinstance(fecha_inicio, str):
         try:
-            fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            #fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_inicio = date.fromisoformat(fecha_inicio)
         except Exception:
-            fecha_inicio_dt = None
-    else:
-        fecha_inicio_dt = fecha_inicio
+            fecha_inicio = None
+    # else:
+    #     fecha_inicio_dt = fecha_inicio
 
     if isinstance(fecha_fin, str):
         try:
-            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            #fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            fecha_fin = date.fromisoformat(fecha_fin)
         except Exception:
-            fecha_fin_dt = None
-    else:
-        fecha_fin_dt = fecha_fin
+            fecha_fin = None
+    # else:
+    #     fecha_fin_dt = fecha_fin
 
     # Para mostrar el mes y año en letras
     try:
@@ -3327,15 +3329,24 @@ def api_reporte_ingresos_vs_gastos(request):
         except locale.Error:
             locale.setlocale(locale.LC_TIME, "C")  # Fallback seguro
 
+    # mes_letra = ""
+    # if (
+    #     fecha_inicio_dt
+    #     and fecha_fin_dt
+    #     and fecha_inicio_dt == fecha_fin_dt.replace(day=1)
+    # ):
+    #     mes_letra = fecha_inicio_dt.strftime("%B %Y").capitalize()
+    # elif fecha_inicio_dt and fecha_fin_dt:
+    #     mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
+
     mes_letra = ""
-    if (
-        fecha_inicio_dt
-        and fecha_fin_dt
-        and fecha_inicio_dt == fecha_fin_dt.replace(day=1)
-    ):
-        mes_letra = fecha_inicio_dt.strftime("%B %Y").capitalize()
-    elif fecha_inicio_dt and fecha_fin_dt:
-        mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
+    if fecha_inicio and fecha_fin:
+        if fecha_inicio.month == fecha_fin.month and fecha_inicio.year == fecha_fin.year:
+            mes_letra = fecha_inicio.strftime("%B %Y").capitalize()
+        else:
+            mes_letra = f"{fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}"
+
+    
 
     # Filtra todos los objetos por la empresa del visitante
     pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(
@@ -3928,10 +3939,12 @@ def api_estado_resultados(request):
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
     try:
         empresa = Empresa.objects.get(id=empresa_id)
-        saldo_inicial = float(empresa.saldo_inicial or 0)
-        saldo_final = float(empresa.saldo_final or 0)
+        saldo_inicial_empresa = float(CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
+    .aggregate(t=Sum("saldo_inicial"))["t"] or 0
+)
+        saldo_final = 0.00
     except Empresa.DoesNotExist:
-        saldo_inicial = 0
+        saldo_inicial_empresa = 0
         saldo_final = 0
     # --- FILTRO POR FECHA ---
     if fecha_inicio:
@@ -3942,48 +3955,56 @@ def api_estado_resultados(request):
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
-    # --- Saldo inicial dinámico en modo flujo por mes ---
-    if modo == "flujo" and mes and anio and empresa:
-        mes = int(mes)
-        anio = int(anio)
-        saldo_inicial = float(empresa.saldo_inicial or 0)
-        # Determina el año de inicio (puedes ajustar si tienes fecha de inicio real)
-        anio_inicio = (
-            empresa.fecha_creacion.year if hasattr(empresa, "fecha_creacion") else anio
-        )
-        for y in range(anio_inicio, anio + 1):
-            mes_inicio = 1
-            mes_fin = mes - 1 if y == anio else 12
-            for m in range(mes_inicio, mes_fin + 1):
-                fecha_inicio_loop = date(y, m, 1)
-                if m == 12:
-                    fecha_fin_loop = date(y, 12, 31)
-                else:
-                    fecha_fin_loop = date(y, m + 1, 1) - timedelta(days=1)
-                pagos_loop = Pago.objects.exclude(forma_pago="nota_credito").filter(
-                    factura__empresa_id=empresa_id,
-                    fecha_pago__gte=fecha_inicio_loop,
-                    fecha_pago__lte=fecha_fin_loop,
-                )
-                cobros_otros_loop = CobroOtrosIngresos.objects.filter(
-                    factura__empresa_id=empresa_id,
-                    fecha_cobro__gte=fecha_inicio_loop,
-                    fecha_cobro__lte=fecha_fin_loop,
-                )
-                gastos_loop = PagoGasto.objects.filter(
-                    gasto__empresa_id=empresa_id,
-                    fecha_pago__gte=fecha_inicio_loop,
-                    fecha_pago__lte=fecha_fin_loop,
-                )
-                total_ingresos_loop = float(
-                    pagos_loop.aggregate(total=Sum("monto"))["total"] or 0
-                ) + float(cobros_otros_loop.aggregate(total=Sum("monto"))["total"] or 0)
-                total_gastos_loop = float(
-                    gastos_loop.aggregate(total=Sum("monto"))["total"] or 0
-                )
-                saldo_inicial += total_ingresos_loop - total_gastos_loop
-        # --- Fin de saldo inicial dinámico ---
+    # --- Saldo inicial dinámico acumulado ---
+    saldo_inicial = saldo_inicial_empresa
+    if empresa and empresa_id and fecha_inicio:
+        anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
 
+        if mes and anio:
+            anio_tope = int(anio)
+            mes_tope = int(mes) - 1
+            if mes_tope == 0:
+                anio_tope -= 1
+                mes_tope = 12
+        else:
+            if fecha_inicio.month == 1:
+                anio_tope = fecha_inicio.year - 1
+                mes_tope = 12
+            else:
+                anio_tope = fecha_inicio.year
+                mes_tope = fecha_inicio.month - 1
+
+        if anio_tope >= anio_inicio:
+            for y in range(anio_inicio, anio_tope + 1):
+                mes_fin_loop = mes_tope if y == anio_tope else 12
+                for m in range(1, mes_fin_loop + 1):
+                    fi = date(y, m, 1)
+                    ff = date(y, m + 1, 1) - timedelta(days=1) if m < 12 else date(y, 12, 31)
+                    ing = float(
+                        Pago.objects.exclude(forma_pago="nota_credito")
+                        .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+                        .aggregate(t=Sum("monto"))["t"] or 0
+                    ) + float(
+                        CobroOtrosIngresos.objects
+                        .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
+                        .aggregate(t=Sum("monto"))["t"] or 0
+                    )
+                    gto = float(
+                        PagoGasto.objects
+                        .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+                        .aggregate(t=Sum("monto"))["t"] or 0
+                    ) + float(
+                        GastoCajaChica.objects
+                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
+                        .aggregate(t=Sum("importe"))["t"] or 0
+                    ) + float(
+                        ValeCaja.objects
+                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
+                        .aggregate(t=Sum("importe"))["t"] or 0
+                    )
+                    saldo_inicial += ing - gto
+
+        # --- Fin de saldo inicial dinámico ---
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)

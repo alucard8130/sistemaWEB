@@ -177,15 +177,17 @@
               <td>
                 {% if area.empresa.es_premium %}        
                   {% if area.estado_vigencia == "Vigente" %}
-                  <a href="{% url 'contrato_formulario' area.pk %}" class="btn btn-sm btn-primary m-1" {% if area.empresa and area.empresa.es_plus %} target="_blank" {% endif %}  title="Descargar contrato">  
-                  
-                    <i class="bi bi-file-earmark-text"></i>
-                  </a>
+                 <button 
+    onclick="window.open('{% url 'contrato_formulario' area.pk %}', 'contrato_{{ area.pk }}', 'width=1000,height=800,scrollbars=yes')"
+    class="btn btn-sm btn-outline-primary m-1" 
+    title="Generar contrato">
+    <i class="bi bi-file-earmark-text"></i>
+</button>
                   {% else %}
-                  <spam class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
+                  <span class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
                   
                     <i class="bi bi-file-earmark-text"></i>
-                  </spam>
+                  </span>
                   {% endif %}
                 {% else %}
                   <a href="#" class="btn btn-sm btn-primary m-1" title=" Contrato solo PREMIUM">

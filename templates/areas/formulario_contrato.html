@@ -1,73 +1,102 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="UTF-8">
     <title>Formulario Contrato</title>
-    <!-- Bootstrap base styles -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <!-- Bootstrap icons -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
-      rel="stylesheet"
-    />
-    <!-- Google Font Rubik -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Rubik&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Customised CSS -->
-    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
-  </head>
-  <body>
-    <div class="container">
-        <h2>Datos Adicionales para Generacion del Contrato</h2>
-        <form method="post">
-    {% csrf_token %}
-    <div class="row">
-        <!-- Sección Arrendador -->
-        <div class="col-md-6">
-            <h4 class="mb-3">Datos del Arrendador</h4>
-            {% for field in form %}
-                {% if "arrendador" in field.name %}
-                    <div class="mb-3">
-                        {{ field.label_tag }}
-                        {{ field }}
-                        {% if field.errors %}
-                            <div class="text-danger">{{ field.errors }}</div>
-                        {% endif %}
-                    </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-        <!-- Sección Arrendatario -->
-         
-        <div class="col-md-6">
-            <h4 class="mb-3">Datos del Arrendatario</h4>
-            {% for field in form %}
-                {% if "arrendatario" in field.name %}
-                    <div class="mb-3">
-                        {{ field.label_tag }}
-                        {{ field }}
-                        {% if field.errors %}
-                            <div class="text-danger">{{ field.errors }}</div>
-                        {% endif %}
-                    </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    <button type="submit" class="btn btn-primary mt-4">Generar contrato</button>
-    <button type="button" class="btn btn-secondary mt-4" onclick="window.location.href='{% url 'dashboard_inicio' %}'">Cancelar</button>
-</form>
-    </div>
-    <!-- 🔹 Footer -->
-    {% include 'tool_bar.html' %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f4f6f8; }
+        .card { max-width: 900px; margin: 40px auto; }
+    </style>
+</head>
+<body>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} mt-2 mx-3">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 
-    <!-- Scripts -->
+    <div class="container">
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    Datos para generar contrato — Área {{ area.numero }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <!-- Cuenta bancaria -->
+                        <div class="col-12 mb-4">
+                            <h5 class="border-bottom pb-2">Datos bancarios del contrato</h5>
+                            {% for field in form %}
+                                {% if "cuenta_bancaria" in field.name %}
+                                <div class="mb-3">
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <div class="form-text text-muted">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        <div class="text-danger small">{{ field.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Arrendador -->
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2">Datos del Arrendador</h5>
+                            {% for field in form %}
+                                {% if "arrendador" in field.name %}
+                                <div class="mb-3">
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        <div class="text-danger small">{{ field.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Arrendatario -->
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2">Datos del Arrendatario</h5>
+                            {% for field in form %}
+                                {% if "arrendatario" in field.name %}
+                                <div class="mb-3">
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        <div class="text-danger small">{{ field.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-file-earmark-check me-1"></i> Generar contrato
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="window.close()">
+    <i class="bi bi-x-circle me-1"></i> Cancelar
+</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

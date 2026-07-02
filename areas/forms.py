@@ -1,4 +1,6 @@
 from django import forms
+
+from empresas.models import CuentaBancaria
 from .models import AreaComun
 from clientes.models import Cliente
 #from empresas.models import Empresa
@@ -164,8 +166,20 @@ class AreaComunCargaMasivaForm(forms.Form):
 class DatosContratoForm(forms.Form):
     def __init__(self, *args, **kwargs):
         tipo_contribuyente = kwargs.pop("tipo_contribuyente", None)
+        empresa = kwargs.pop("empresa", None)  # ← nuevo parámetro
         super().__init__(*args, **kwargs)
 
+        # Selección de cuenta bancaria de la empresa
+        if empresa:
+            cuentas = CuentaBancaria.objects.filter(empresa=empresa, activa=True)
+            self.fields["cuenta_bancaria_id"] = forms.ModelChoiceField(
+                queryset=cuentas,
+                label="Cuenta bancaria para el contrato",
+                empty_label="Selecciona una cuenta bancaria",
+                widget=forms.Select(attrs={"class": "form-select"}),
+                help_text="Esta cuenta aparecerá en la cláusula de pago del contrato.",
+            )
+            
         # Campos de datos arrendador (siempre)
         self.fields["escritura_numero_arrendador"] = forms.CharField(
             label="Número Escritura Arrendador", max_length=50
@@ -182,9 +196,9 @@ class DatosContratoForm(forms.Form):
         self.fields["notario_ciudad_arrendador"] = forms.CharField(
             label="Ciudad Notario Arrendador", max_length=100
         )
-        self.fields["clabe_interbancaria_arrendador"] = forms.CharField(
-            label="CLABE Interbancaria Arrendador", max_length=50
-        )
+        # self.fields["clabe_interbancaria_arrendador"] = forms.CharField(
+        #     label="CLABE Interbancaria Arrendador", max_length=50
+        # )
         self.fields["apoderado_nombre_arrendador"] = forms.CharField(
             label="Nombre Apoderado Arrendador", max_length=100
         )

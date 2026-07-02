@@ -79,11 +79,16 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {# <a href="{% url 'cuenta_bancaria_editar' cuenta.pk %}" class="btn btn-sm btn-warning">Editar</a> #}
-                                <a href="{% url 'cuenta_bancaria_eliminar' cuenta.pk %}" class="btn btn-sm btn-danger" title="Eliminar cuenta" onclick="return confirm('¿Estás seguro de eliminar esta cuenta bancaria?');">
-                                    <i class="fas fa-trash-alt"></i> Eliminar
-                                </a>
-                            </td>
+    <a href="{% url 'cuenta_bancaria_editar' cuenta.pk %}" 
+       class="btn btn-sm btn-warning me-1" title="Editar cuenta">
+        <i class="bi bi-pencil-square"></i> Editar
+    </a>
+    <a href="{% url 'cuenta_bancaria_eliminar' cuenta.pk %}" 
+       class="btn btn-sm btn-danger" title="Eliminar cuenta"
+       onclick="return confirm('¿Estás seguro de eliminar esta cuenta bancaria?');">
+        <i class="bi bi-trash3"></i> Eliminar
+    </a>
+</td>
                         </tr>
                         {% empty %}
                         <tr>

@@ -115,6 +115,9 @@
     <a href="{% url 'generar_contrato' area.pk %}?pdf=1" class="btn btn-primary"
       >Descargar PDF
     </a>
+    <button class="btn btn-sm btn-outline-secondary" onclick="window.close()" title="Cerrar ventana">
+        <i class="bi bi-x-circle"></i> Cerrar
+    </button>
   </div>
     <header>
       {% comment %} <div>
@@ -286,9 +289,9 @@
       "EL BENEFICIARIO" se obliga a pagar mensualmente a "EL CONDOMINIO" la
       cantidad de <strong>${{ area.cuota|floatformat:2|intcomma }}</strong> IVA
       incluido, por meses adelantados, dentro de los primeros 10 días naturales
-      del mes, en el domicilio de "EL CONDOMINIO" o mediante transferencia
-      bancaria a la cuenta <strong>{{ empresa.cuenta_bancaria }}</strong>, clave
-      interbancaria <strong>{{ clabe_interbancaria_arrendador }}</strong>.
+      del mes, en el domicilio de "EL CONDOMINIO" o mediante transferencia bancaria al banco <strong>{{ banco_arrendador }}</strong>,
+      cuenta <strong>{{ numero_cuenta_arrendador }}</strong>,
+      clave interbancaria <strong>{{ clabe_interbancaria_arrendador }}</strong>.
     </p>
 
     <h4>CUARTA: DEPOSITO EN GARANTIA</h4>
@@ -545,7 +548,15 @@
     </p>
     
   
-
+      <script>
+    function imprimirYCerrar() {
+        window.print();
+        // Espera a que termine de imprimir y cierra
+        window.addEventListener('afterprint', function() {
+            window.close();
+        }, { once: true }); // once: true para que no se dispare múltiples veces
+    }
+</script>
     <!-- Scripts: descarga directa del PDF (si la vista devuelve PDF en la misma URL) -->
     <script>
       // Si desea forzar descarga vía fetch (opcional): aquí un helper que solicita la ruta PDF y fuerza descarga.

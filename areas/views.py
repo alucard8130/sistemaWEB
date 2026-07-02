@@ -420,7 +420,6 @@ def contrato_formulario(request, area_id):
         messages.error(request, "La Generación de contratos solo está disponible en la versión PREMIUM")
         return redirect('lista_areas')
     
-    #tipo_contribuyente = getattr(area.cliente, 'tipo_contribuyente', None)
     # Validar tipo_contribuyente
     tipo_contribuyente = getattr(area.cliente, 'tipo_contribuyente', None)
     if not tipo_contribuyente:
@@ -429,7 +428,11 @@ def contrato_formulario(request, area_id):
     })
 
     if request.method == 'POST':
-        form = DatosContratoForm(request.POST, tipo_contribuyente=tipo_contribuyente)
+        form = DatosContratoForm(request.POST, tipo_contribuyente=tipo_contribuyente,empresa=empresa)
+        if not form.is_valid():
+            print("ERRORES DEL FORMULARIO:", form.errors)
+            messages.error(request, f"Errores: {form.errors}")
+
         if form.is_valid():
             # Calcular meses de vigencia
             fecha_inicial = area.fecha_inicial
@@ -440,13 +443,20 @@ def contrato_formulario(request, area_id):
                 meses_vigencia = delta.years * 12 + delta.months
                 if delta.days > 0:
                     meses_vigencia += 1  # Si hay días extra, cuenta como mes adicional
+                    
+            # Extraer datos de la cuenta bancaria seleccionada
+            cuenta = form.cleaned_data.get("cuenta_bancaria_id")
+
             contexto = {
                 'area': area,
                 'empresa': empresa,
                 'meses_vigencia': meses_vigencia,
-                **form.cleaned_data, 
+                'banco_arrendador': cuenta.banco if cuenta else "—",
+                'numero_cuenta_arrendador': cuenta.numero_cuenta if cuenta else "—",
+                'clabe_interbancaria_arrendador': cuenta.clabe if cuenta else "—",
+                **{k: v for k, v in form.cleaned_data.items() if k != 'cuenta_bancaria_id'},
             }
             return render(request, 'areas/plantilla_contrato.html', contexto)
     else:
-        form = DatosContratoForm(tipo_contribuyente=tipo_contribuyente)
+        form = DatosContratoForm(tipo_contribuyente=tipo_contribuyente,empresa=empresa)
     return render(request, 'areas/formulario_contrato.html', {'form': form, 'area': area, 'empresa': empresa})

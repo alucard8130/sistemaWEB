@@ -29,10 +29,10 @@ def empresa_crear(request):
 @login_required
 def empresa_lista(request):
     if request.user.is_superuser:
-        empresas = Empresa.objects.all()
+        empresas = Empresa.objects.prefetch_related('cuentas_bancarias').all()
     else:
         empresa = getattr(request.user.perfilusuario, 'empresa', None)
-        empresas = Empresa.objects.filter(pk=empresa.pk) if empresa else Empresa.objects.none()
+        empresas = Empresa.objects.prefetch_related('cuentas_bancarias').filter(pk=empresa.pk) if empresa else Empresa.objects.none()
     return render(request, 'empresas/lista.html', {'empresas': empresas})
 
 
@@ -96,4 +96,25 @@ def cuenta_bancaria_eliminar(request, pk):
 
 
 
+@login_required
+def cuenta_bancaria_editar(request, pk):
+    cuenta = get_object_or_404(CuentaBancaria, pk=pk)
+    # Seguridad: solo puede editar cuentas de su propia empresa
+    if not request.user.is_superuser and cuenta.empresa != request.user.perfilusuario.empresa:
+        messages.error(request, "No tienes permiso para editar esta cuenta.")
+        return redirect('cuentas_bancarias_lista')
 
+    if request.method == 'POST':
+        form = CuentaBancariaForm(request.POST, instance=cuenta)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Cuenta {cuenta.banco} actualizada correctamente.")
+            return redirect('cuentas_bancarias_lista')
+    else:
+        form = CuentaBancariaForm(instance=cuenta)
+
+    return render(request, 'empresas/cuenta_bancaria_editar.html', {
+        'form': form,
+        'cuenta': cuenta,
+        'empresa': cuenta.empresa,
+    })

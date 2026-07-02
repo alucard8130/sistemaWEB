@@ -19,7 +19,7 @@ from principal.views import (actualizar_ticket, agregar_seguimiento, api_areas_p
                              eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
                                visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
 from principal.views import reiniciar_sistema, respaldo_empresa_excel
-from empresas.views import cuenta_bancaria_crear, cuenta_bancaria_eliminar, cuentas_bancarias_lista, empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
+from empresas.views import cuenta_bancaria_crear, cuenta_bancaria_editar, cuenta_bancaria_eliminar, cuentas_bancarias_lista, empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
 from locales.views import (
     crear_local, editar_local, eliminar_local, lista_locales, 
     locales_inactivos, reactivar_local)
@@ -45,6 +45,7 @@ urlpatterns = [
     path('empresas/resetear/<int:empresa_id>/', resetear_empresa, name='resetear_empresa'),
     path('empresas/editar/<int:pk>/', empresa_editar, name='empresa_editar'),
     path('empresas/eliminar/<int:pk>/', empresa_eliminar, name='empresa_eliminar'),
+    path('cuentas-bancarias/editar/<int:pk>/', cuenta_bancaria_editar, name='cuenta_bancaria_editar'),
     path('cuenta-bancaria/crear/', cuenta_bancaria_crear, name='cuenta_bancaria_crear'),
     path('cuentas-bancarias/', cuentas_bancarias_lista, name='cuentas_bancarias_lista'),
     path('cuentas-bancarias/eliminar/<int:pk>/', cuenta_bancaria_eliminar, name='cuenta_bancaria_eliminar'),

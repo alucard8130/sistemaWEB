@@ -57,52 +57,67 @@
         <div class="table-responsive rounded-3 border">
             <table class="table align-middle mb-0 shadow-sm">
                 <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>RFC</th>
-                        <th>Regimen Fiscal</th>
-                        <th>Código Postal</th>
-                        <th>Teléfono</th>
-                        <th>Email</th>
-                        <th>Banco</th>
-                        <th>Número de cuenta</th>
-                        <th>CLABE</th>
-                        <th>Saldo Inicial</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for empresa in empresas %}
-                        <tr>
-                            <td>{{ empresa.nombre }}</td>
-                            <td>{{ empresa.rfc }}</td>
-                            <td>{{ empresa.regimen_fiscal }}</td>
-                            <td>{{ empresa.codigo_postal }}</td>
-                            <td>{{ empresa.telefono }}</td>
-                            <td>{{ empresa.email }}</td>
-                            <td>{{ empresa.cuenta_bancaria }}</td>
-                            <td>{{ empresa.numero_cuenta }}</td>
-                            <td>{{ empresa.clabe }}</td>
-                            <td>${{ empresa.saldo_inicial|floatformat:2 |intcomma }}</td>
-                            <td>
-                                {% if request.user.is_superuser %}
-                                    <a href="{% url 'empresa_editar' empresa.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
-                                    <a href="{% url 'empresa_eliminar' empresa.pk %}" class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                        <i class="bi bi-trash3"></i>
-                                    </a>
-                                {% else %}
-                                    <span class="badge bg-secondary">Solo lectura</span>
+    <tr>
+        <th>Nombre</th>
+        <th>RFC</th>
+        <th>Régimen Fiscal</th>
+        <th>Código Postal</th>
+        <th>Teléfono</th>
+        <th>Email</th>
+        <th>Cuentas bancarias</th>
+        <th>Acciones</th>
+    </tr>
+</thead>
+<tbody>
+    {% for empresa in empresas %}
+        <tr>
+            <td>{{ empresa.nombre }}</td>
+            <td>{{ empresa.rfc }}</td>
+            <td>{{ empresa.regimen_fiscal }}</td>
+            <td>{{ empresa.codigo_postal }}</td>
+            <td>{{ empresa.telefono }}</td>
+            <td>{{ empresa.email }}</td>
+            <td>
+                {% with cuentas=empresa.cuentas_bancarias.all %}
+                    {% if cuentas %}
+                        {% for cuenta in cuentas %}
+                            <div class="mb-1 {% if not forloop.last %}border-bottom pb-1{% endif %}">
+                                <strong>{{ cuenta.banco }}</strong>
+                                {% if cuenta.tipo_cuenta %}
+                                    <span class="text-muted small"> — {{ cuenta.tipo_cuenta }}</span>
+                                {% endif %}<br>
+                                <span class="small text-muted">Cta: {{ cuenta.numero_cuenta }}</span><br>
+                                <span class="small text-muted">CLABE: {{ cuenta.clabe|default:"—" }}</span><br>
+                                <span class="small">Saldo inicial: ${{ cuenta.saldo_inicial|floatformat:2|intcomma }}</span>
+                                {% if not cuenta.activa %}
+                                    <span class="badge bg-secondary ms-1">Inactiva</span>
                                 {% endif %}
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="11" class="text-center text-muted">No hay empresas registradas.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted small">Sin cuentas registradas</span>
+                    {% endif %}
+                {% endwith %}
+            </td>
+            <td>
+                {% if request.user.is_superuser %}
+                    <a href="{% url 'empresa_editar' empresa.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                    <a href="{% url 'empresa_eliminar' empresa.pk %}" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                        <i class="bi bi-trash3"></i>
+                    </a>
+                {% else %}
+                    <span class="badge bg-secondary">Solo lectura</span>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="8" class="text-center text-muted">No hay empresas registradas.</td>
+        </tr>
+    {% endfor %}
+</tbody>
             </table>
         </div>
 
