@@ -9,6 +9,16 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+    #wizardModal .modal-dialog {
+        max-width: 95vw !important;
+        width: 95vw !important;
+        margin: 20px auto !important;
+    }
+    #wizardModal .modal-body {
+        padding: 1rem 1.5rem !important;
+    }
+</style>
 </head>
 <body class="has-global-sidebar">
     {% include 'navbar.html' %}
@@ -292,79 +302,224 @@ if (premiumBtn) {
 
 <!-- Modal Wizard -->
  {% if mostrar_wizard %}
-<div class="modal fade" id="wizardModal" tabindex="-1" aria-labelledby="wizardModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+<div class="modal fade" id="wizardModal" tabindex="-1" aria-labelledby="wizardModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog">
     <form id="wizardForm" method="post" action="{% url 'guardar_datos_empresa' %}">
       {% csrf_token %}
       <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="wizardModalLabel">Completa los datos de tu empresa</h5>
+
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="wizardModalLabel">
+            <i class="bi bi-building me-2"></i>Configura tu empresa
+          </h5>
         </div>
-        <div class="modal-body">
-          <!-- Paso 1: Datos empresa -->
-          <div class="wizard-step" id="step-1">
-            <div class="mb-3">
-              <label>Nombre de la empresa</label>
-              <input type="text" name="nombre_empresa" class="form-control" required>
-            </div>
-            <div class="mb-3">
-              <label>Dirección</label>
-              <input type="text" name="direccion" class="form-control">
-            </div>
-            <div class="mb-3">
-              <label>Email</label>
-              <input type="email" name="email_empresa" class="form-control" required>
-            </div>
-            <div class="mb-3">
-              <label>RFC</label>
-              <input type="text" name="rfc_empresa" class="form-control" required>
-            </div>
-            <button type="button" class="btn btn-primary" onclick="nextStep(2)">Siguiente</button>
+
+        <!-- Indicador de progreso -->
+        <div class="px-4 pt-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <small class="text-muted" id="step-label">Paso 1 de 2 — Datos generales</small>
           </div>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar bg-primary" id="progress-bar" role="progressbar" style="width: 50%"></div>
+          </div>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- Paso 1: Datos generales -->
+          <div class="wizard-step" id="step-1">
+            <h6 class="fw-bold mb-3 text-primary">Datos generales de la empresa</h6>
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label">Empresa <span class="text-danger">*</span></label>
+                <input type="text" name="nombre_empresa" class="form-control" required>
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">RFC <span class="text-danger">*</span></label>
+                <input type="text" name="rfc_empresa" class="form-control" required maxlength="13" placeholder="Ej: AAA010101AAA">
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Régimen fiscal <span class="text-danger">*</span></label>
+                <select name="regimen_fiscal" class="form-select" required>
+                  <option value="">Selecciona un régimen</option>
+                  {% for value, label in regimen_choices %}
+                    <option value="{{ value }}">{{ value }} — {{ label }}</option>
+                  {% endfor %}
+                </select>
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Código postal <span class="text-danger">*</span></label>
+                <input type="text" name="codigo_postal" class="form-control" required maxlength="10">
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Dirección</label>
+                <input type="text" name="direccion_empresa" class="form-control">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Email <span class="text-danger">*</span></label>
+                <input type="email" name="email_empresa" class="form-control" required>
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Teléfono</label>
+                <input type="text" name="telefono_empresa" class="form-control" maxlength="15">
+              </div>
+            </div>
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'cerrar_wizard' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-clock me-1"></i> Completar después
+              </a>
+              <button type="button" class="btn btn-primary" onclick="nextStep(2)">
+                Siguiente <i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            </div>
+          </div>
+
           <!-- Paso 2: Datos bancarios -->
           <div class="wizard-step d-none" id="step-2">
-            <div class="mb-3">
-              <label>Número de cuenta bancaria</label>
-              <input type="text" name="numero_cuenta" class="form-control" required>
+            <h6 class="fw-bold mb-3 text-primary">Cuenta bancaria principal</h6>
+            <p class="text-muted small mb-3">
+              Esta cuenta se usará para generar reportes financieros y documentos de pago.
+              Puedes agregar más cuentas después desde el módulo de configuración.
+            </p>
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label">Banco <span class="text-danger">*</span></label>
+                <select name="cuenta_bancaria" class="form-select" required>
+                  <option value="">Selecciona un banco</option>
+                  {% for value, label in bancos_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">No.cuenta <span class="text-danger">*</span></label>
+                <input type="text" name="numero_cuenta" class="form-control" required>
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">CLABE <span class="text-danger">*</span></label>
+                <input type="text" name="clabe" class="form-control" maxlength="18"
+                       placeholder="18 dígitos" required
+                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Moneda <span class="text-danger">*</span></label>
+                <select name="moneda" class="form-select" required>
+                  <option value="">Selecciona una moneda</option>
+                  {% for value, label in moneda_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Tipo de cuenta <span class="text-danger">*</span></label>
+                <select name="tipo_cuenta" class="form-select" required>
+                  <option value="">Selecciona un tipo</option>
+                  {% for value, label in tipo_cuenta_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <div class="invalid-feedback">Este campo es obligatorio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Saldo inicial</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" name="saldo_inicial" class="form-control" step="0.01" min="0" value="0">
+                </div>
+                <div class="form-text">Puede ser 0 si la cuenta es nueva.</div>
+              </div>
             </div>
-            <div class="mb-3">
-               <label>Nombre del banco</label>
-  <select name="cuenta_bancaria" class="form-control" required>
-    <option value="">Selecciona un banco</option>
-    {% for value, label in empresa.BANCOS_CHOICES %}
-      <option value="{{ value }}">{{ label }}</option>
-    {% endfor %}
-  </select>
+            <div class="d-flex justify-content-between mt-4">
+              <button type="button" class="btn btn-outline-secondary" onclick="nextStep(1)">
+                <i class="bi bi-arrow-left me-1"></i> Atrás
+              </button>
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-1"></i> Guardar y empezar
+              </button>
             </div>
-            <div class="mb-3">
-              <label>Saldo inicial bancos</label>
-              <input type="number" name="saldo_inicial" class="form-control" step="0.01" min="0" value="0">
-            </div>
-            <button type="button" class="btn btn-secondary" onclick="nextStep(1)">Atrás</button>
-            <button type="submit" class="btn btn-success">Guardar</button>
           </div>
+
         </div>
       </div>
     </form>
   </div>
 </div>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 function nextStep(step) {
+  if (step === 2) {
+    const campos = [
+      'nombre_empresa', 'rfc_empresa', 'regimen_fiscal', 'codigo_postal', 'email_empresa'
+    ];
+    let valido = true;
+    campos.forEach(function(name) {
+      const el = document.querySelector(`[name="${name}"]`);
+      if (!el || !el.value.trim()) {
+        el.classList.add('is-invalid');
+        valido = false;
+      } else {
+        el.classList.remove('is-invalid');
+        el.classList.add('is-valid');
+      }
+    });
+    if (!valido) return;
+  }
+
   document.querySelectorAll('.wizard-step').forEach(function(div) {
     div.classList.add('d-none');
   });
   document.getElementById('step-' + step).classList.remove('d-none');
+
+  const labels = { 1: "Paso 1 de 2 — Datos generales", 2: "Paso 2 de 2 — Cuenta bancaria" };
+  const progress = { 1: "50%", 2: "100%" };
+  document.getElementById('step-label').textContent = labels[step];
+  document.getElementById('progress-bar').style.width = progress[step];
 }
+
+document.getElementById('wizardForm').addEventListener('submit', function(e) {
+  const campos2 = ['cuenta_bancaria', 'numero_cuenta', 'clabe', 'moneda', 'tipo_cuenta'];
+  let valido = true;
+
+  campos2.forEach(function(name) {
+    const el = document.querySelector(`[name="${name}"]`);
+    if (!el || !el.value.trim()) {
+      el.classList.add('is-invalid');
+      valido = false;
+    } else {
+      el.classList.remove('is-invalid');
+      el.classList.add('is-valid');
+    }
+  });
+
+  const clabe = document.querySelector('[name="clabe"]');
+  if (clabe && clabe.value.trim() && !/^\d{18}$/.test(clabe.value.trim())) {
+    clabe.classList.add('is-invalid');
+    clabe.nextElementSibling.textContent = 'La CLABE debe tener exactamente 18 dígitos numéricos.';
+    valido = false;
+  }
+
+  if (!valido) e.preventDefault();
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+  var modal = new bootstrap.Modal(document.getElementById('wizardModal'), {
+    backdrop: 'static',
+    keyboard: false
+  });
+  modal.show();
+});
 </script>
-<script>
-      // Lógica para abrir el wizard automáticamente
-      window.onload = function() {
-        $('#wizardModal').modal('show');
-      }
-    </script>
 {% endif %}
+
 {% if mostrar_recordatorio %}
 <div id="modalRecordatorio" class="modal-overlay">
   <div class="modal-content">
@@ -592,7 +747,6 @@ function cerrarModal() {
 }
 </style>
     {% include 'tool_bar.html' %}
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     const labels = {{ labels|safe }};

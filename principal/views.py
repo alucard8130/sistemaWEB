@@ -116,7 +116,8 @@ from django.db.models.functions import TruncMonth
 def dashboard_inicio(request):
     empresa = request.user.perfilusuario.empresa
     perfil = request.user.perfilusuario
-    mostrar_wizard = perfil.mostrar_wizard
+    #mostrar_wizard = perfil.mostrar_wizard
+    mostrar_wizard = perfil.mostrar_wizard and not request.session.get('wizard_cerrado', False)
 
     hoy = date.today()
     primer_dia_mes = hoy.replace(day=1)
@@ -337,6 +338,10 @@ def dashboard_inicio(request):
         'mostrar_wizard': mostrar_wizard,
         'es_plus': es_plus,
         'es_premium': es_premium,
+        'regimen_choices': Empresa.REGIMEN_CHOICES,
+        'bancos_choices': Empresa.BANCOS_CHOICES,
+        'tipo_cuenta_choices': CuentaBancaria.TIPO_CUENTA,
+        'moneda_choices': CuentaBancaria.TIPO_MONEDA,
     }
     return render(request, 'pantalla_inicio.html', context)
 
@@ -1219,6 +1224,12 @@ def cancelar_suscripcion_premium(request):
         return JsonResponse({"status": "error", "detail": str(e)}, status=400)
 
 
+@login_required
+def cerrar_wizard(request):
+    # Marca en la sesión que el wizard fue cerrado temporalmente
+    request.session['wizard_cerrado'] = True
+    return redirect("dashboard_inicio")
+
 @require_POST
 @login_required
 def guardar_datos_empresa(request):
@@ -1228,21 +1239,45 @@ def guardar_datos_empresa(request):
 
     if Empresa.objects.filter(rfc=nuevo_rfc).exclude(id=empresa.id).exists():
         messages.error(request, "El RFC ingresado ya está registrado en otra empresa.")
-        return redirect("pantalla_inicio")
+        return redirect("dashboard_inicio")
 
-    # Solo campos que pertenecen al modelo Empresa
-    empresa.nombre = request.POST.get("nombre_empresa", "")
+    # Datos generales de la empresa
+    empresa.nombre = request.POST.get("nombre_empresa", "").strip()
     empresa.rfc = nuevo_rfc
-    empresa.direccion = request.POST.get("direccion_empresa", "")
-    empresa.email = request.POST.get("email_empresa", "")
-    empresa.telefono = request.POST.get("telefono_empresa", "")
+    empresa.regimen_fiscal = request.POST.get("regimen_fiscal", "").strip()
+    empresa.direccion = request.POST.get("direccion_empresa", "").strip()
+    empresa.email = request.POST.get("email_empresa", "").strip()
+    empresa.telefono = request.POST.get("telefono_empresa", "").strip()
+    empresa.codigo_postal = request.POST.get("codigo_postal", "").strip()
     empresa.save()
+
+    # Datos bancarios — crear cuenta en CuentaBancaria si vienen datos
+    banco = request.POST.get("cuenta_bancaria", "").strip()
+    numero_cuenta = request.POST.get("numero_cuenta", "").strip()
+    clabe = request.POST.get("clabe", "").strip()
+    try:
+        saldo_inicial = float(request.POST.get("saldo_inicial", 0) or 0)
+    except ValueError:
+        saldo_inicial = 0.0
+
+    if banco and numero_cuenta:
+        # Solo crear si no existe ya una cuenta con ese número para esta empresa
+        if not CuentaBancaria.objects.filter(empresa=empresa, numero_cuenta=numero_cuenta).exists():
+            CuentaBancaria.objects.create(
+                empresa=empresa,
+                banco=banco,
+                numero_cuenta=numero_cuenta,
+                clabe=clabe,
+                moneda=request.POST.get("moneda", "MXN"),
+                tipo_cuenta=request.POST.get("tipo_cuenta", ""),
+                saldo_inicial=saldo_inicial,
+                activa=True,
+            )
 
     perfil.mostrar_wizard = False
     perfil.save()
-    messages.success(request, "¡Datos de empresa actualizados correctamente!")
-    return redirect("pantalla_inicio")
-
+    messages.success(request, "¡Datos de empresa configurados correctamente!")
+    return redirect("dashboard_inicio")
 
 # MODULO DE TICKETS DE MANTENIMIENTO-->
 @login_required

@@ -5,7 +5,6 @@ from django.db import models
 class Empresa(models.Model):
     BANCOS_CHOICES = [
         ('BANAMEX', 'Banamex'),
-        ('BANCOMER', 'Bancomer'),
         ('SANTANDER', 'Santander'),
         ('HSBC', 'HSBC'),
         ('BBVA', 'BBVA'),
