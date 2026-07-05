@@ -1801,11 +1801,11 @@ def visitante_consulta_facturas(request):
                 "¡Pago realizado correctamente! En breve se reflejará en el sistema."
             )
 
-    factura_pendiente_mas_antigua = (
-        facturas.filter(estatus="pendiente").order_by("fecha_vencimiento").last()
+    factura_pendiente_mas_reciente = (
+        facturas.filter(estatus="pendiente").order_by("-fecha_vencimiento").first()
     )
     factura_pendiente_id = (
-        factura_pendiente_mas_antigua.id if factura_pendiente_mas_antigua else None
+        factura_pendiente_mas_reciente.id if factura_pendiente_mas_reciente else None
     )
     #paginacion
     page_number = request.GET.get("page", 1)
