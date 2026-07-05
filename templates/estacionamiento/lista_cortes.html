@@ -1,0 +1,165 @@
+{% load humanize %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Estacionamiento</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-p-circle me-2"></i>Ingresos por Estacionamiento</h4>
+        <a href="{% url 'crear_corte_estacionamiento' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo corte
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Filtros -->
+    <form method="get" class="row g-2 mb-3 align-items-end">
+        <div class="col-auto">
+            <select name="periodo" class="form-select" onchange="this.form.submit()">
+                <option value="">Todos los periodos</option>
+                <option value="semanal" {% if periodo_filtro == 'semanal' %}selected{% endif %}>Semanal</option>
+                <option value="quincenal" {% if periodo_filtro == 'quincenal' %}selected{% endif %}>Quincenal</option>
+                <option value="mensual" {% if periodo_filtro == 'mensual' %}selected{% endif %}>Mensual</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'lista_cortes_estacionamiento' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i> Limpiar
+            </a>
+        </div>
+    </form>
+
+    <!-- Tarjetas de totales -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Total efectivo</div>
+                    <div class="fs-5 fw-bold text-success">${{ totales.total_efectivo|default:0|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Total tarjeta/SPEI</div>
+                    <div class="fs-5 fw-bold text-primary">${{ totales.total_tarjeta|default:0|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Total boletos</div>
+                    <div class="fs-5 fw-bold">{{ totales.total_boletos|default:0|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Total ingresos brutos</div>
+                    <div class="fs-5 fw-bold text-dark">${{ totales.total_efectivo|default:0|add:totales.total_tarjeta|default:0|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de cortes -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Periodo</th>
+                            <th>Tipo</th>
+                            <th class="text-end">Efectivo</th>
+                            <th class="text-end">Tarjeta</th>
+                            <th class="text-center">Boletos</th>
+                            <th class="text-end">Bruto</th>
+                            <th class="text-end">Neto plaza</th>
+                            <th>Operador</th>
+                            <th>Cuenta</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for corte in cortes %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'detalle_corte_estacionamiento' corte.pk %}" class="fw-semibold text-decoration-none">
+                                    {{ corte.label_periodo }}
+                                </a>
+                            </td>
+                            <td><span class="badge bg-secondary">{{ corte.get_periodo_display }}</span></td>
+                            <td class="text-end">${{ corte.total_efectivo|floatformat:2|intcomma }}</td>
+                            <td class="text-end">${{ corte.total_tarjeta|floatformat:2|intcomma }}</td>
+                            <td class="text-center">{{ corte.total_boletos }}</td>
+                            <td class="text-end">${{ corte.total_ingresos_brutos|floatformat:2|intcomma }}</td>
+                            <td class="text-end fw-bold text-success">${{ corte.ingreso_neto_plaza|floatformat:2|intcomma }}</td>
+                            <td>
+                                {% if corte.tiene_operador_externo %}
+                                    <span class="badge bg-warning text-dark">{{ corte.nombre_operador|default:"Externo" }}</span>
+                                {% else %}
+                                    <span class="text-muted small">Plaza propia</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">{{ corte.cuenta_bancaria.banco|default:"—" }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'detalle_corte_estacionamiento' corte.pk %}" class="btn btn-sm btn-outline-info me-1" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'editar_corte_estacionamiento' corte.pk %}" class="btn btn-sm btn-outline-warning me-1" title="Editar">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{% url 'eliminar_corte_estacionamiento' corte.pk %}" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                    <i class="bi bi-trash3"></i>
+                                </a>
+                                {% if not corte.factura %}
+                                    <a href="{% url 'generar_factura_corte_estacionamiento' corte.pk %}" 
+                                    class="btn btn-sm btn-outline-success me-1" title="Generar factura">
+                                        <i class="bi bi-receipt"></i>
+                                    </a>
+                                {% else %}
+                                    <span class="badge bg-success" title="Factura: {{ corte.factura.folio }}">
+                                        <i class="bi bi-check-circle"></i> {{ corte.factura.folio }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">
+                                <i class="bi bi-p-circle fs-3 d-block mb-2"></i>
+                                No hay cortes registrados aún.
+                                <a href="{% url 'crear_corte_estacionamiento' %}">Registrar el primero</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="{% static 'js/script.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

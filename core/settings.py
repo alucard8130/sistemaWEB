@@ -58,6 +58,9 @@ INSTALLED_APPS = [
     "adminpanel",
     "publicidad",
     "conciliaciones",
+    "estacionamiento",
+    "cobros_estado_cuenta",
+    "acceso_empresas",
 ]
 
 
@@ -142,6 +145,7 @@ EMAIL_BACKEND = os.getenv(
     "django.core.mail.backends.smtp.EmailBackend"  # default: SMTP (Render/local)
 )
 
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 465))
@@ -206,10 +210,26 @@ if os.getenv("DEBUG", "True") == "False":
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY_TEST")
     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET_TEST")
+    ## STRIPE_PORTAL_PRICES ADMINISTRADORES Y/O COMITE
+    STRIPE_PORTAL_WEBHOOK_SECRET = os.getenv("STRIPE_PORTAL_WEBHOOK_SECRET_TEST")
+    STRIPE_PORTAL_PRICES = {
+        'basico': os.getenv("STRIPE_PORTAL_PRICE_BASICO_TEST"),
+        'profesional': os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL_TEST"),
+        'enterprise': os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE_TEST"),
+    }
 else:
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
+    ## STRIPE_PORTAL_PRICES ADMINISTRADORES Y/O COMITE 
+    STRIPE_PORTAL_WEBHOOK_SECRET = os.getenv("STRIPE_PORTAL_WEBHOOK_SECRET")
+    STRIPE_PORTAL_PRICES = {
+        'basico': os.getenv("STRIPE_PORTAL_PRICE_BASICO"),
+        'profesional': os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL"),
+        'enterprise': os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE"),
+    }
+
+
 
 
 AWS_ACCESS_KEY_ID = os.getenv('DO_ACCESS_KEY_ID')

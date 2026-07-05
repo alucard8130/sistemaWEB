@@ -31,8 +31,15 @@ def reporte_ingresos_vs_gastos(request):
     anio = request.GET.get("anio")
     periodo = request.GET.get("periodo")
 
+    # if not request.user.is_superuser:
+    #     empresa_id = str(request.user.perfilusuario.empresa.id)
+    # else:
+    #     empresa_id = request.GET.get("empresa") or ""
     if not request.user.is_superuser:
-        empresa_id = str(request.user.perfilusuario.empresa.id)
+        if hasattr(request.user, 'usuario_acceso'):
+            empresa_id = str(request.session.get('empresa_id', ''))
+        else:
+            empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
         empresa_id = request.GET.get("empresa") or ""
 
@@ -340,8 +347,19 @@ def estado_resultados(request):
     periodo = request.GET.get("periodo")
     hoy = datetime.date.today()
 
+    # if not request.user.is_superuser:
+    #     empresa_id = str(request.user.perfilusuario.empresa.id)
+    # else:
+    #     empresa_id = request.GET.get("empresa") or request.session.get("empresa_id")
+
+    #     if not empresa_id or not str(empresa_id).isdigit():
+    #         empresa_id = None
     if not request.user.is_superuser:
-        empresa_id = str(request.user.perfilusuario.empresa.id)
+        # Usuario de acceso externo (administradora/comité)
+        if hasattr(request.user, 'usuario_acceso'):
+            empresa_id = str(request.session.get('empresa_id', ''))
+        else:
+            empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
         empresa_id = request.GET.get("empresa") or request.session.get("empresa_id")
         if not empresa_id or not str(empresa_id).isdigit():

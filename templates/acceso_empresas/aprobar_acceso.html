@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Aprobar acceso — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+<div class="container mt-4" style="max-width: 600px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-check2-square me-2"></i>Revisar solicitud de acceso</h5>
+        </div>
+        <div class="card-body">
+
+            <div class="mb-4">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="text-muted small">Usuario</div>
+                        <strong>{{ acceso.usuario_acceso.usuario.get_full_name|default:acceso.usuario_acceso.usuario.username }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Organización</div>
+                        <strong>{{ acceso.usuario_acceso.nombre_organizacion }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Tipo</div>
+                        <span class="badge bg-secondary">{{ acceso.usuario_acceso.get_tipo_display }}</span>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Plan</div>
+                        <span class="badge bg-info text-dark">{{ acceso.usuario_acceso.get_plan_display }}</span>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <div class="text-muted small">Empresa solicitada</div>
+                        <strong class="fs-5">{{ acceso.empresa.nombre }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aprobar con permisos -->
+            <form method="post">
+                {% csrf_token %}
+                <h6 class="fw-bold border-bottom pb-2 mb-3">Configurar reportes visibles</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_dashboard" id="ver_dashboard">
+                            <label class="form-check-label" for="ver_dashboard">
+                                <i class="bi bi-house me-1"></i> Dashboard
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_estado_resultados" id="ver_er">
+                            <label class="form-check-label" for="ver_er">
+                                <i class="bi bi-bar-chart-line me-1"></i> Estado de Resultados
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_cobranza" id="ver_cob">
+                            <label class="form-check-label" for="ver_cob">
+                                <i class="bi bi-collection me-1"></i> Cobranza
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_gastos" id="ver_gas">
+                            <label class="form-check-label" for="ver_gas">
+                                <i class="bi bi-receipt me-1"></i> Gastos
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" name="accion" value="aprobar" class="btn btn-success flex-grow-1">
+                        <i class="bi bi-check-circle me-1"></i> Aprobar acceso
+                    </button>
+                    <button type="submit" name="accion" value="rechazar" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i> Rechazar
+                    </button>
+                    <a href="{% url 'acceso_superuser_panel' %}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

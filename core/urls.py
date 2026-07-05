@@ -204,6 +204,9 @@ urlpatterns = [
     path('presupuestos/borrar_ingresos/', borrar_presupuesto_ingresos, name='borrar_presupuesto_ingresos'),
     path('presupuestos/exportar_matriz_ingresos_excel/', exportar_matriz_presupuesto_ingresos_excel, name='exportar_matriz_presupuesto_ingresos_excel'),
     path('wizard/cerrar/',cerrar_wizard, name='cerrar_wizard'),
+    path('estacionamiento/', include('estacionamiento.urls')),
+    path('cobros-estado-cuenta/', include('cobros_estado_cuenta.urls')),
+    path('portal/', include('acceso_empresas.urls')),
 ]
 
     

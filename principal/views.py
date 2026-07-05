@@ -961,8 +961,9 @@ def stripe_webhook(request):
         #"price_1RnT1IPW7xPgzk0myWccMWtW",  # pruebas plus
     }
     premium_prices = {
-        "price_1TjV1JPYnlfwKZQHyh773EsU",  # produccion premium
+        "price_1Tpa52PYnlfwKZQHWUWxDAuE",  # produccion premium
         #"price_1RnSzMPW7xPgzk0mLslR8vT5", # pruebas premium
+        
     }
 
 

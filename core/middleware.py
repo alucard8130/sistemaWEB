@@ -10,7 +10,14 @@ class EmpresaSeleccionMiddleware:
         if request.user.is_authenticated and request.user.is_superuser:
             # Si no está en la vista de seleccionar empresa y no tiene empresa en sesión
             if not request.session.get('empresa_id') and request.path != reverse('seleccionar_empresa'):
-                # Evita redirigir en logout/login/static/media
-                if not request.path.startswith('/logout') and not request.path.startswith('/static') and not request.path.startswith('/media'):
+                # Excluir rutas que no requieren empresa seleccionada
+                rutas_excluidas = [
+                    '/logout',
+                    '/static',
+                    '/media',
+                    '/portal/',  # ← portal de acceso externo
+                    '/admin/',   # ← admin de Django
+                ]
+                if not any(request.path.startswith(ruta) for ruta in rutas_excluidas):
                     return redirect('seleccionar_empresa')
         return self.get_response(request)

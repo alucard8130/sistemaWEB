@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Portal GESAC{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #f0f4f8; }
+        .portal-navbar {
+            background: #152A52;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .portal-navbar .brand { color: white; font-weight: bold; font-size: 1.1em; }
+        .portal-navbar .empresa-activa { color: #D9A441; font-size: 0.9em; }
+        .portal-navbar .nav-links a {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            margin-left: 20px;
+            font-size: 0.9em;
+        }
+        .portal-navbar .nav-links a:hover { color: white; }
+        .content-area { padding: 24px; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Navbar del portal (sin acceso al sistema base) -->
+<div class="portal-navbar">
+    <div>
+        <span class="brand"><i class="bi bi-building me-1"></i> GESAC Portal</span>
+        {% if empresa_activa %}
+            <span class="empresa-activa ms-3">
+                <i class="bi bi-arrow-right-short"></i> {{ empresa_activa.nombre }}
+            </span>
+        {% endif %}
+    </div>
+    <div class="nav-links">
+        <a href="{% url 'acceso_dashboard' %}"><i class="bi bi-house me-1"></i> Inicio</a>
+        {% if acceso_activo %}
+            {% if acceso_activo.ver_estado_resultados %}
+                <a href="{% url 'acceso_estado_resultados' %}"><i class="bi bi-bar-chart-line me-1"></i> Estado de Resultados</a>
+            {% endif %}
+            {% if acceso_activo.ver_cobranza %}
+                <a href="{% url 'acceso_cobranza' %}"><i class="bi bi-collection me-1"></i> Cobranza</a>
+            {% endif %}
+            {% if acceso_activo.ver_gastos %}
+                <a href="{% url 'acceso_gastos' %}"><i class="bi bi-receipt me-1"></i> Gastos</a>
+            {% endif %}
+        {% endif %}
+        <a href="{% url 'acceso_logout' %}" class="text-danger">
+            <i class="bi bi-box-arrow-left me-1"></i> Salir
+        </a>
+    </div>
+</div>
+
+<!-- Contenido -->
+<div class="content-area">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

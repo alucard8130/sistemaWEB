@@ -96,7 +96,6 @@ class VisitanteAcceso(models.Model):
     nombre=models.CharField(max_length=100, blank=True,null=True, verbose_name="Nombre Completo")
     username = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=128) 
-    #empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     empresas = models.ManyToManyField(Empresa)
     locales = models.ManyToManyField(LocalComercial, blank=True, verbose_name="Locales")
     areas = models.ManyToManyField(AreaComun, blank=True, verbose_name="Áreas comunes")

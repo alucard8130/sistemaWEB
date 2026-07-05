@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Solicitar acceso — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>body { background: #f0f4f8; }</style>
+</head>
+<body>
+<div class="container mt-4" style="max-width: 600px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-building-add me-2"></i>Solicitar acceso a empresa</h5>
+        </div>
+        <div class="card-body">
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <p class="text-muted small mb-3">
+                Busca el condominio o plaza al que deseas solicitar acceso.
+                El administrador recibirá tu solicitud y definirá los reportes que podrás ver.
+            </p>
+
+            <!-- Búsqueda -->
+            <form method="get" class="mb-4">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control"
+                           placeholder="Buscar por nombre del condominio o plaza..."
+                           value="{{ query }}" minlength="3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <div class="form-text">Escribe al menos 3 caracteres para buscar.</div>
+            </form>
+
+            <!-- Resultados -->
+            {% if query %}
+                {% if empresas %}
+                    <div class="list-group">
+                        {% for empresa in empresas %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="empresa_id" value="{{ empresa.id }}">
+                            <button type="submit" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ empresa.nombre }}</strong>
+                                    <div class="text-muted small">{{ empresa.rfc }}</div>
+                                </div>
+                                <span class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-send me-1"></i> Solicitar
+                                </span>
+                            </button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-search fs-3 d-block mb-2"></i>
+                        No se encontraron empresas con "{{ query }}"
+                    </div>
+                {% endif %}
+            {% endif %}
+
+            <div class="mt-3">
+                <a href="{% url 'acceso_dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

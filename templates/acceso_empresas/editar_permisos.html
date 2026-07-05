@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar permisos — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+<div class="container mt-4" style="max-width: 500px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Editar permisos</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <div class="text-muted small">Usuario</div>
+                <strong>{{ acceso.usuario_acceso }}</strong>
+            </div>
+            <div class="mb-4">
+                <div class="text-muted small">Empresa</div>
+                <strong>{{ acceso.empresa.nombre }}</strong>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <h6 class="fw-bold border-bottom pb-2 mb-3">Reportes visibles</h6>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_dashboard"
+                                   {% if acceso.ver_dashboard %}checked{% endif %}>
+                            <label class="form-check-label">Dashboard</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_estado_resultados"
+                                   {% if acceso.ver_estado_resultados %}checked{% endif %}>
+                            <label class="form-check-label">Estado de Resultados</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_cobranza"
+                                   {% if acceso.ver_cobranza %}checked{% endif %}>
+                            <label class="form-check-label">Cobranza</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="ver_gastos"
+                                   {% if acceso.ver_gastos %}checked{% endif %}>
+                            <label class="form-check-label">Gastos</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" name="activo"
+                           {% if acceso.activo %}checked{% endif %}>
+                    <label class="form-check-label">Acceso activo</label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning flex-grow-1">
+                        <i class="bi bi-floppy me-1"></i> Guardar cambios
+                    </button>
+                    <a href="{% url 'acceso_superuser_panel' %}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -3,83 +3,196 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 18/08/2025
-        Description: Login page for the application
-    -->
     <meta charset="UTF-8">
     <title>Iniciar sesión - GESAC</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS --> 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        body { min-height: 100vh; background: #f0f4f8; }
+
+        .hero-left {
+            background: linear-gradient(135deg, #152A52 0%, #1e3d6e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 48px 40px;
+            color: white;
+        }
+        .hero-left .brand-logo { width: 100px; margin-bottom: 24px; }
+        .hero-left h1 { font-size: 1.6em; font-weight: 800; text-align: center; line-height: 1.3; }
+        .hero-left .tagline { color: rgba(255,255,255,0.7); text-align: center; margin-top: 12px; font-size: 0.95em; }
+
+        .acceso-card {
+            border: 2px solid transparent;
+            border-radius: 14px;
+            padding: 28px 20px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+            height: 100%;
+        }
+        .acceso-card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,0.1); color: inherit; }
+        .acceso-card.condominos { background: #f0faff; border-color: #0ea5e9; }
+        .acceso-card.condominos:hover { background: #e0f5ff; }
+        .acceso-card.administradores { background: #fff8f0; border-color: #D9A441; }
+        .acceso-card.administradores:hover { background: #fff0dc; }
+        .acceso-icon { font-size: 3rem; margin-bottom: 14px; display: block; }
+        .acceso-title { font-weight: bold; font-size: 1.1em; margin-bottom: 6px; }
+        .acceso-desc { font-size: 0.85em; color: #666; line-height: 1.5; }
+
+        .divider-v {
+            border-left: 1px solid #dee2e6;
+            height: 80%;
+            position: absolute;
+            left: 50%;
+            top: 10%;
+        }
+    </style>
 </head>
-<body style="min-height: 100vh">
-    <!-- Dark button -->
-    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar">
-        <div class="d-flex align-items-center ms-auto">  
+<body>
+
+    <!-- Navbar -->
+    <div class="navbar navbar-expand-lg sticky-top py-2 shadow-navbar" style="z-index:100;">
+        <div class="d-flex align-items-center ms-auto">
             <button id="toggleDark" class="toggle-switch">
                 <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
             </button>
         </div>
     </div>
-     <div class="mt-4 text-center">
-    <a href="{% url 'registro_usuario' %}" class="btn btn-lg px-4 py-2 shadow-sm animate__animated animate__pulse animate__infinite btn-verde-fuerte" style="font-size: 1.15rem;">
-        <i class="bi bi-person-plus-fill me-2"></i> ¿Nuevo aquí? ¡Regístrate gratis!
-    </a>
-    <div class="small text-muted mt-2">
-        Crea tu cuenta y comienza a Administrar tus propiedades en minutos.
-    </div>
-    <div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-        <div class="login-box">
-            <div class="text-center mb-4">
-                <h3 class="fw-bold mb-1 login-title border-bottom pb-2 d-inline-block">SISTEMA WEB ADMINISTRATIVO CONDOMINAL</h3>
-                <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="login-logo mt-0 mb-3">
-                <h2 class="fw-bold mb-1 login-title border-bottom pb-2 d-inline-block">Acceso Usuarios Sistema</h2>
-            </div>
-            
-            <form method="post">
-                {% csrf_token %}
-                <div class="mb-3 text-start">
-                    <label for="id_username" class="form-label">Usuario</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                        <input type="text" name="username" autofocus required class="form-control" id="id_username">
-                    </div>
-                </div>
-                <div class="mb-3 text-start">
-                    <label for="id_password" class="form-label">Contraseña</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                        <input type="password" name="password" required class="form-control" id="id_password">
-                    </div>
-                </div>    
-                {% if form.errors %}
-                    <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
-                {% endif %}
-                <button type="submit" class="btn btn-primary w-50">
-                    <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión
-                </button>
+
+    <div class="container-fluid p-0" style="min-height: calc(100vh - 56px);">
+        <div class="row g-0" style="min-height: calc(100vh - 56px);">
+
+            <!-- Columna izquierda: branding -->
+            <div class="col-lg-4 hero-left d-none d-lg-flex">
+                <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="brand-logo">
+                <h1>SISTEMA WEB ADMINISTRATIVO CONDOMINAL</h1>
+                <p class="tagline">La plataforma todo-en-uno con inteligencia artificial para cobranza, facturación fiscal y reportes financieros de condominios, plazas y propiedades en renta.</p>
+                <div class="mt-4">
+                    <a href="{% url 'registro_usuario' %}" class="btn btn-lg px-4 py-2 animate__animated animate__pulse animate__infinite btn-verde-fuerte">
+                        <i class="bi bi-person-plus-fill me-2"></i> ¿Nuevo aquí? ¡Regístrate gratis!
+                    </a>
                 
-            </form>
-            <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a>
-            <a href="{% url 'visitante_login' %}" class="btn btn-outline-info mt-3">Acceso Condominos</a>
+                <!-- Nuevo botón -->
+<div class="mt-3">
+    <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" 
+       target="_blank"
+       class="btn btn-outline-light px-4 py-2">
+        <i class="bi bi-info-circle me-2"></i> ¿Quieres saber más sobre GESAC?
+    </a>
+</div>
+
+                </div>
+            </div>
+
+            <!-- Columna derecha: login + accesos -->
+            <div class="col-lg-8 d-flex flex-column justify-content-center align-items-center px-4 py-5">
+
+                <!-- Mobile: logo y registro -->
+                <div class="d-lg-none text-center mb-4">
+                    <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" style="width:70px;" class="mb-2">
+                    <h5 class="fw-bold">GESAC</h5>
+                    <a href="{% url 'registro_usuario' %}" class="btn btn-sm btn-success animate__animated animate__pulse animate__infinite mb-3">
+                        <i class="bi bi-person-plus-fill me-1"></i> ¿Nuevo? Regístrate gratis
+                    </a>
+                </div>
+
+                <div style="width: 100%; padding: 0 40px;">
+                    <!-- Login del sistema -->
+                    <div class="login-box mb-5" style="padding: 32px 40px; max-width: 100% !important; width: 100% !important;">
+                        <h4 class="fw-bold mb-4 text-center border-bottom pb-3">
+                            <i class="bi bi-shield-lock me-2"></i>Acceso usuarios operativos
+                        </h4>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="row g-3 align-items-end">    
+                                <div class="col-md-4">
+                                    <label class="form-label">Usuario</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                                        <input type="text" name="username" autofocus required class="form-control" id="id_username">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Contraseña</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                        <input type="password" name="password" required class="form-control" id="id_password">
+                                    </div>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-box-arrow-in-right me-1"></i>Entrar
+                                    </button>
+                                </div>
+                            </div>
+                            {% if form.errors %}
+                                <div class="alert alert-danger mt-3 py-2">Usuario o contraseña incorrectos.</div>
+                            {% endif %}
+                            <div class="col-md-2 d-flex align-items-end">
+                                <a href="{% url 'password_reset' %}" class="small text-muted text-nowrap">¿Olvidaste tu contraseña?</a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Separador -->
+                    <div class="text-center mb-4 position-relative">
+                        <hr>
+                        <span class="position-absolute top-50 start-50 translate-middle bg-light px-3 text-muted small">
+                            Otros accesos
+                        </span>
+                    </div>
+
+                    <!-- Tarjetas de acceso -->
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <a href="{% url 'visitante_login' %}" class="acceso-card condominos">
+                                <span class="acceso-icon text-info">
+                                    <i class="bi bi-house-heart"></i>
+                                </span>
+                                <div class="acceso-title" style="color:#0ea5e9;">Acceso Condóminos</div>
+                                <div class="acceso-desc">
+                                    Consulta tu estado de cuenta, descarga facturas y realiza pagos en línea desde cualquier dispositivo.
+                                </div>
+                                <div class="mt-3">
+                                    <span class="btn btn-sm btn-outline-info">Entrar como condómino →</span>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'acceso_login' %}" class="acceso-card administradores">
+                                <span class="acceso-icon" style="color:#D9A441;">
+                                    <i class="bi bi-buildings"></i>
+                                </span>
+                                <div class="acceso-title" style="color:#D9A441;">Empresas Administradoras / Miembros de Comités</div>
+                                <div class="acceso-desc">
+                                    Accede a reportes financieros, cartera de cobranza y estado de resultados de tus condominios.
+                                </div>
+                                <div class="mt-3">
+                                    <span class="btn btn-sm btn-outline-warning">Entrar como administrador/miembro de comité →</span>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
-        
     </div>
-   
-    <!-- 🔹 Footer -->
-<footer class="mt-4">
-        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
+
+    <footer class="text-center text-muted small py-3" style="background:#f0f4f8;">
+        © {% now "Y" %} GESAC. Created By JMEB. Todos los derechos reservados.
     </footer>
+
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

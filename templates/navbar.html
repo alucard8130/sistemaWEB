@@ -152,18 +152,37 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado">Depositos no identificados</a></li>
               <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
+                  <li><a class="dropdown-item reporte-link" href="{% url 'lista_sesiones_estado_cuenta' %}">
+                      <i class="bi bi-bank me-1"></i> Cobros Automaticos
+                  </a></li>
+              {% else %}
+                  <li><a class="dropdown-item disabled" href="#">
+                      <i class="bi bi-bank me-1"></i> Cobros Automaticos (PREMIUM)
+                  </a></li>
+              {% endif %}
+              {% comment %} {% if request.user.perfilusuario.empresa.es_premium %}
                 <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:cargar_estado' %}">Conciliar Edo.Cta</a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#">Conciliar Edo.Cta (PREMIUM)</a></li>
-              {% endif %}  
-
+              {% endif %}   {% endcomment %}
+              <li><hr class="dropdown-divider"></li>
+              <!-- Estacionamiento -->
+              {% if request.user.perfilusuario.empresa.es_premium %}
+                <li><a class="dropdown-item reporte-link" href="{% url 'lista_cortes_estacionamiento' %}">
+                    <i class="bi bi-p-circle me-1"></i> Cortes Z (Estacionamiento)
+                </a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#">
+                    <i class="bi bi-p-circle me-1"></i> Cortes Z (Estacionamiento) (PREMIUM)
+                </a></li>
+              {% endif %}
               {% comment %}<li><a class="dropdown-item" href="{% url 'conciliaciones:resultado' estado_id=1 %}">Resultado Conciliación</a></li>{% endcomment %}
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
               {% endif %}
             </ul>
           </li>
-
+        
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Cartera Vencida">
               Cartera <i style="font-size: 1.5em;"></i>

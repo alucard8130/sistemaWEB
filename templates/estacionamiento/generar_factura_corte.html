@@ -1,0 +1,96 @@
+{% load humanize %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Generar factura — {{ corte.label_periodo }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="container mt-4" style="max-width: 700px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-file-earmark-invoice me-2"></i>
+                Generar factura — {{ corte.label_periodo }}
+            </h5>
+        </div>
+        <div class="card-body">
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Resumen del corte -->
+            <div class="alert alert-info mb-4">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-muted small">Ingresos brutos</div>
+                        <div class="fw-bold">${{ corte.total_ingresos_brutos|floatformat:2|intcomma }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Descuento operador</div>
+                        <div class="fw-bold text-danger">-${{ corte.monto_operador|floatformat:2|intcomma }}</div>
+                    </div>
+                    <div class="col-12 mt-2 border-top pt-2">
+                        <div class="text-muted small">Monto a facturar (ingreso neto plaza)</div>
+                        <div class="fw-bold fs-5 text-success">${{ corte.ingreso_neto_plaza|floatformat:2|intcomma }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                    <select name="cliente_id" class="form-select" required>
+                        <option value="">Selecciona un cliente</option>
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombre }} — {{ cliente.rfc|default:"Sin RFC" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% comment %} <div class="mb-3">
+                    <label class="form-label">Tipo de ingreso <span class="text-danger">*</span></label>
+                    <select name="tipo_ingreso_id" class="form-select" required>
+                        <option value="">Selecciona un tipo</option>
+                        {% for tipo in tipos_ingreso %}
+                            <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Si no existe "Estacionamiento", créalo primero en el módulo de Otros Ingresos.</div>
+                </div> {% endcomment %}
+                <div class="mb-3">
+                    <label class="form-label">Fecha de vencimiento <span class="text-danger">*</span></label>
+                    <input type="date" name="fecha_vencimiento" class="form-control"
+                           value="{{ fecha_vencimiento_default }}" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Observaciones</label>
+                    <textarea name="observaciones" class="form-control" rows="2"
+                              placeholder="Ingresos por estacionamiento — {{ corte.label_periodo }}"></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-file-earmark-check me-1"></i> Generar factura
+                    </button>
+                    <a href="{% url 'detalle_corte_estacionamiento' corte.pk %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

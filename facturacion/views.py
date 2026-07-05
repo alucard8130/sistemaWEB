@@ -1151,7 +1151,7 @@ def pagos_por_origen(request):
 
     })
 
-#saldos.html
+#dashboard/saldos.html
 #dashboard cartera vencida
 @login_required
 def dashboard_saldos(request):
@@ -1177,16 +1177,31 @@ def dashboard_saldos(request):
             filtro_empresa = Q()
         else:
             filtro_empresa = Q(empresa_id=empresa_id)
+    # else:
+    #     try:
+    #         empresa = request.user.perfilusuario.empresa
+    #         empresas = Empresa.objects.filter(id=empresa.id)
+    #         empresa_id = empresa.id
+    #         filtro_empresa = Q(empresa_id=empresa_id)
+    #     except Exception:
+    #         messages.error(request, "No tienes una empresa asignada. Contacta al administrador.")
+    #         return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})   
+
     else:
         try:
-            empresa = request.user.perfilusuario.empresa
+            # Usuario de acceso externo (administradora/comité)
+            if hasattr(request.user, 'usuario_acceso'):
+                empresa_id = request.session.get('empresa_id')
+                empresa = Empresa.objects.get(id=empresa_id)
+            else:
+                empresa = request.user.perfilusuario.empresa
             empresas = Empresa.objects.filter(id=empresa.id)
             empresa_id = empresa.id
             filtro_empresa = Q(empresa_id=empresa_id)
         except Exception:
             messages.error(request, "No tienes una empresa asignada. Contacta al administrador.")
-            return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})   
-
+            return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})
+    
     # Filtrado base de facturas pendientes
     facturas = Factura.objects.filter(estatus='pendiente').filter(filtro_empresa)
     if cliente_id:
@@ -1422,7 +1437,7 @@ def dashboard_saldos(request):
     })
 
 #pagos.html
-#dashboard Ingresos en desuso
+#dashboard Ingresos 
 @login_required
 def dashboard_pagos(request):
     anio_actual = datetime.now().year

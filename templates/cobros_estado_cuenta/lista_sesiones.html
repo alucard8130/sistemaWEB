@@ -1,0 +1,132 @@
+{% load humanize %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Estados de cuenta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+{% include 'loading_overlay.html' %}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-bank me-2"></i>Estados de cuenta procesados</h4>
+        <a href="{% url 'subir_estado_cuenta' %}" class="btn btn-primary">
+            <i class="bi bi-cloud-upload me-1"></i> Subir nuevo
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Banco</th>
+                            <th>Periodo</th>
+                            <th>Cuenta</th>
+                            <th class="text-end">Saldo inicial</th>
+                            <th class="text-end">Total abonos</th>
+                            <th class="text-end">Saldo final</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center">Movimientos</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sesion in sesiones %}
+                        <tr>
+                            <td><strong>{{ sesion.banco_detectado|default:"—" }}</strong></td>
+                            <td>
+                                {% if sesion.periodo_inicio and sesion.periodo_fin %}
+                                    {{ sesion.periodo_inicio }} al {{ sesion.periodo_fin }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">{{ sesion.cuenta_bancaria.numero_cuenta|default:"—" }}</td>
+                            <td class="text-end">${{ sesion.saldo_inicial|default:0|floatformat:2|intcomma }}</td>
+                            <td class="text-end text-success">${{ sesion.total_abonos|default:0|floatformat:2|intcomma }}</td>
+                            <td class="text-end">${{ sesion.saldo_final|default:0|floatformat:2|intcomma }}</td>
+                            <td class="text-center">
+                                {% if sesion.estado == 'listo' %}
+                                    <span class="badge bg-warning text-dark">Listo para revisar</span>
+                                {% elif sesion.estado == 'aplicado' %}
+                                    <span class="badge bg-success">Aplicado</span>
+                                {% elif sesion.estado == 'procesando' %}
+                                    <span class="badge bg-info">Procesando</span>
+                                {% elif sesion.estado == 'error' %}
+                                    <span class="badge bg-danger" title="{{ sesion.error_detalle }}">Error</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ sesion.movimientos.count }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if sesion.estado == 'listo' %}
+                                <a href="{% url 'revisar_sesion_estado_cuenta' sesion.pk %}" class="btn btn-sm btn-outline-primary reporte-link" title="Revisar estado de cuenta">
+                                    <i class="bi bi-check2-square me-1"></i>
+                                </a>
+                                {% elif sesion.estado == 'aplicado' %}
+                                <a href="{% url 'revisar_sesion_estado_cuenta' sesion.pk %}" class="btn btn-sm btn-outline-secondary reporte-link" title="Ver estado de cuenta">
+                                    <i class="bi bi-eye me-1"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'eliminar_sesion_estado_cuenta' sesion.pk %}" 
+                                    class="btn btn-sm btn-outline-danger ms-1" title="Eliminar">
+                                    <i class="bi bi-trash3"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <i class="bi bi-bank fs-3 d-block mb-2"></i>
+                                No hay estados de cuenta procesados aún.
+                                <a href="{% url 'subir_estado_cuenta' %}">Subir el primero</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="{% static 'js/script.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
+</body>
+</html>

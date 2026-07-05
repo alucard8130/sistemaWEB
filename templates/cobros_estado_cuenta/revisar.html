@@ -1,0 +1,426 @@
+{% load humanize %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Revisar estado de cuenta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .confianza-alta { border-left: 4px solid #198754; }
+        .confianza-media { border-left: 4px solid #ffc107; }
+        .confianza-baja { border-left: 4px solid #fd7e14; }
+        .confianza-ninguna { border-left: 4px solid #dee2e6; }
+        .estado-aplicado { opacity: 0.6; }
+        .movimiento-card { transition: all 0.2s; }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+{% include 'loading_overlay.html' %}
+
+<div class="container-fluid mt-4">
+
+    <!-- Encabezado sesión -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-1">
+                        <i class="bi bi-bank me-2"></i>
+                        {{ sesion.banco_detectado }} —
+                        {{ sesion.periodo_inicio }} al {{ sesion.periodo_fin }}
+                    </h5>
+                    <small class="text-muted">Cuenta: {{ sesion.cuenta_bancaria.numero_cuenta|default:"No especificada" }}</small>
+                </div>
+                <div class="col-md-4">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="text-muted small">Saldo inicial</div>
+                            <div class="fw-bold">${{ sesion.saldo_inicial|floatformat:2|intcomma }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted small">Total abonos</div>
+                            <div class="fw-bold text-success">${{ sesion.total_abonos|floatformat:2|intcomma }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted small">Saldo final</div>
+                            <div class="fw-bold">${{ sesion.saldo_final|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros rápidos -->
+    <div class="d-flex gap-2 mb-3 align-items-center">
+        <span class="text-muted small">Filtrar:</span>
+        <button class="btn btn-sm btn-outline-secondary active" onclick="filtrar('todos', this)">Todos ({{ movimientos.count }})</button>
+        <button class="btn btn-sm btn-outline-warning" onclick="filtrar('pendiente', this)">Pendientes</button>
+        <button class="btn btn-sm btn-outline-success" onclick="filtrar('aplicado', this)">Aplicados</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="filtrar('ignorado', this)">Ignorados</button>
+        <a href="{% url 'lista_sesiones_estado_cuenta' %}" class="btn btn-sm btn-outline-secondary ms-auto">
+            <i class="bi bi-arrow-left me-1"></i> Volver
+        </a>
+    </div>
+
+    <!-- Movimientos -->
+    {% for mov in movimientos %}
+    <div class="card shadow-sm mb-3 movimiento-card confianza-{{ mov.confianza_match }} {% if mov.estado != 'pendiente' %}estado-aplicado{% endif %}"
+         data-estado="{{ mov.estado }}">
+        <div class="card-body">
+            <div class="row align-items-start">
+
+                <!-- Datos del movimiento -->
+                <div class="col-md-5">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-light text-dark border">{{ mov.fecha }}</span>
+                        <span class="fw-bold text-success fs-6">${{ mov.monto|floatformat:2|intcomma }}</span>
+                        {% if mov.confianza_match == 'alta' %}
+                            <span class="badge bg-success">Match alto</span>
+                        {% elif mov.confianza_match == 'media' %}
+                            <span class="badge bg-warning text-dark">Match medio</span>
+                        {% elif mov.confianza_match == 'baja' %}
+                            <span class="badge bg-warning text-dark">Match bajo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Sin match</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small">{{ mov.descripcion }}</div>
+                    {% if mov.referencia %}
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-tag me-1"></i>{{ mov.referencia }}
+                        </div>
+                    {% endif %}
+                    {% if mov.razon_match %}
+                        <div class="small text-success mt-1">
+                            <i class="bi bi-check-circle me-1"></i>{{ mov.razon_match }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Cliente detectado / selector -->
+                <div class="col-md-3">
+                    {% if mov.cliente_detectado %}
+                        <div class="small fw-bold mb-1">Cliente detectado:</div>
+                        <div class="small">{{ mov.cliente_detectado.nombre }}</div>
+                        {% if mov.cliente_detectado.referencia_pago %}
+                            <div class="small text-muted">{{ mov.cliente_detectado.referencia_pago }}</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="small text-muted">Sin cliente detectado</div>
+                    {% endif %}
+                </div>
+
+                <!-- Acciones -->
+<div class="col-md-4">
+    {% if mov.estado == 'pendiente' %}
+    <div class="accordion accordion-flush" id="acc-{{ mov.pk }}">
+
+        <!-- Opción 1: Asignar a factura existente -->
+        <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed py-2 small" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#op1-{{ mov.pk }}">
+                    <i class="bi bi-file-earmark-check me-1"></i> Asignar a factura existente
+                </button>
+            </h2>
+            <div id="op1-{{ mov.pk }}" class="accordion-collapse collapse">
+                <div class="accordion-body py-2">
+                    <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="asignar_factura">
+                        <div class="mb-2">
+                            <select name="cliente_id" class="form-select form-select-sm cliente-sel"
+                                    data-mov="{{ mov.pk }}" onchange="cargarFacturas(this)" required>
+                                <option value="">Cliente...</option>
+                                {% for c in clientes %}
+                                    <option value="{{ c.id }}"
+                                        {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
+                                        {{ c.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <select name="factura_id" class="form-select form-select-sm factura-sel-{{ mov.pk }}"
+                                    onchange="setTipoFactura(this, '{{ mov.pk }}')" required>
+                                <option value="">Selecciona factura...</option>
+                            </select>
+                            <input type="hidden" name="tipo_factura" class="tipo-factura-{{ mov.pk }}">
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm w-100">
+                            <i class="bi bi-check me-1"></i> Aplicar cobro
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opción 2: Crear factura de cuota nueva -->
+        <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed py-2 small" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#op2-{{ mov.pk }}">
+                    <i class="bi bi-file-earmark-plus me-1"></i> Crear factura de cuota
+                </button>
+            </h2>
+            <div id="op2-{{ mov.pk }}" class="accordion-collapse collapse">
+                <div class="accordion-body py-2">
+                    <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="crear_factura_cuota">
+                        <div class="mb-2">
+                            <select name="cliente_id" class="form-select form-select-sm cliente-local-sel"
+                                    data-mov="{{ mov.pk }}" onchange="cargarPropiedades(this)" required>
+                                <option value="">Cliente...</option>
+                                {% for c in clientes %}
+                                    <option value="{{ c.id }}"
+                                        {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
+                                        {{ c.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <select name="tipo_cuota" class="form-select form-select-sm" required>
+                                <option value="mantenimiento">Mantenimiento</option>
+                                <option value="renta">Renta</option>
+                                <option value="deposito">Depósito en Garantía</option>
+                                <option value="extraordinaria">Extraordinaria</option>
+                                <option value="penalidad">Multa</option>
+                                <option value="intereses">Intereses</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <select name="local_id" class="form-select form-select-sm local-sel-{{ mov.pk }}">
+                                <option value="">Local (opcional)</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <select name="area_id" class="form-select form-select-sm area-sel-{{ mov.pk }}">
+                                <option value="">Área común (opcional)</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <input type="date" name="fecha_vencimiento" class="form-control form-control-sm"
+                                   value="{{ mov.fecha|date:'Y-m-d' }}" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-plus me-1"></i> Crear factura + pago
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opción 3: Crear FacturaOtrosIngresos nueva -->
+        <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed py-2 small" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#op3-{{ mov.pk }}">
+                    <i class="bi bi-file-earmark-text me-1"></i> Crear factura otros ingresos
+                </button>
+            </h2>
+            <div id="op3-{{ mov.pk }}" class="accordion-collapse collapse">
+                <div class="accordion-body py-2">
+                    <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="crear_factura_otros">
+                        <div class="mb-2">
+                            <select name="cliente_id" class="form-select form-select-sm" required>
+                                <option value="">Cliente...</option>
+                                {% for c in clientes %}
+                                    <option value="{{ c.id }}"
+                                        {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
+                                        {{ c.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <select name="tipo_ingreso_id" class="form-select form-select-sm">
+                                <option value="">Tipo de ingreso (opcional)</option>
+                                {% for tipo in tipos_ingreso %}
+                                    <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-plus me-1"></i> Crear factura + cobro
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opción 4: Depósito no identificado -->
+        <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed py-2 small" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#op4-{{ mov.pk }}">
+                    <i class="bi bi-question-circle me-1"></i> Depósito no identificado
+                </button>
+            </h2>
+            <div id="op4-{{ mov.pk }}" class="accordion-collapse collapse">
+                <div class="accordion-body py-2">
+                    <p class="small text-muted mb-2">
+                        Registra este abono como depósito no identificado para asignarlo después.
+                    </p>
+                    <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="no_identificado">
+                        <button type="submit" class="btn btn-warning btn-sm w-100">
+                            <i class="bi bi-question-circle me-1"></i> Registrar como no identificado
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ignorar -->
+        <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="ignorar">
+            <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                <i class="bi bi-x-circle me-1"></i> Ignorar
+            </button>
+        </form>
+
+    </div>
+
+    {% elif mov.estado == 'asignado_factura' %}
+        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Pago/cobro aplicado</span>
+        {% if mov.pago_generado %}
+            <div class="small text-muted mt-1">Pago ID: {{ mov.pago_generado.id }}</div>
+        {% endif %}
+    {% elif mov.estado == 'factura_nueva' %}
+        <span class="badge bg-primary"><i class="bi bi-file-earmark-check me-1"></i> Factura creada</span>
+        {% if mov.factura_otros_ingresos %}
+            <div class="small text-muted mt-1">{{ mov.factura_otros_ingresos.folio }}</div>
+        {% endif %}
+    {% elif mov.estado == 'ignorado' %}
+        <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i> Ignorado</span>
+    {% endif %}
+</div>
+
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+        No se detectaron abonos en este estado de cuenta.
+    </div>
+    {% endfor %}
+
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="{% static 'js/script.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const facturasPorCliente = {{ facturas_por_cliente_json|safe }};
+const propiedadesPorCliente = {{ propiedades_por_cliente_json|safe }};
+
+function cargarFacturas(sel) {
+    const clienteId = sel.value;
+    const movPk = sel.dataset.mov;
+    const factSel = document.querySelector(`.factura-sel-${movPk}`);
+    const tipoInput = document.querySelector(`.tipo-factura-${movPk}`);
+    factSel.innerHTML = '<option value="">Selecciona factura...</option>';
+    tipoInput.value = '';
+
+    if (clienteId && facturasPorCliente[clienteId]) {
+        const cuotas = facturasPorCliente[clienteId].filter(f => f.tipo === 'cuota');
+        const otros = facturasPorCliente[clienteId].filter(f => f.tipo === 'otros');
+
+        if (cuotas.length) {
+            const grp = document.createElement('optgroup');
+            grp.label = '── Facturas de cuota ──';
+            cuotas.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id;
+                opt.dataset.tipo = 'cuota';
+                const local = f.local ? ` | Local ${f.local}` : '';
+                const area = f.area ? ` | Área ${f.area}` : '';
+                opt.textContent = `${f.folio} — ${f.concepto}${local}${area} — $${f.monto.toLocaleString('es-MX', {minimumFractionDigits:2})} — vence ${f.vencimiento}`;
+                grp.appendChild(opt);
+            });
+            factSel.appendChild(grp);
+        }
+        if (otros.length) {
+            const grp = document.createElement('optgroup');
+            grp.label = '── Otros ingresos ──';
+            otros.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id;
+                opt.dataset.tipo = 'otros';
+                opt.textContent = `${f.folio} — ${f.concepto} — $${f.monto.toLocaleString('es-MX', {minimumFractionDigits:2})} — vence ${f.vencimiento}`;
+                grp.appendChild(opt);
+            });
+            factSel.appendChild(grp);
+        }
+    }
+}
+
+function setTipoFactura(sel, movPk) {
+    const opt = sel.options[sel.selectedIndex];
+    const tipoInput = document.querySelector(`.tipo-factura-${movPk}`);
+    tipoInput.value = opt.dataset.tipo || '';
+}
+
+function cargarPropiedades(sel) {
+    const clienteId = sel.value;
+    const movPk = sel.dataset.mov;
+    const localSel = document.querySelector(`.local-sel-${movPk}`);
+    const areaSel = document.querySelector(`.area-sel-${movPk}`);
+
+    localSel.innerHTML = '<option value="">Local (opcional)</option>';
+    areaSel.innerHTML = '<option value="">Área común (opcional)</option>';
+
+    if (clienteId && propiedadesPorCliente[clienteId]) {
+        propiedadesPorCliente[clienteId].locales.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.id;
+            opt.textContent = `Local ${l.numero}`;
+            localSel.appendChild(opt);
+        });
+        propiedadesPorCliente[clienteId].areas.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = `Área ${a.numero}`;
+            areaSel.appendChild(opt);
+        });
+    }
+}
+
+// Cargar facturas y propiedades para clientes ya detectados al cargar la página
+document.querySelectorAll('.cliente-sel').forEach(sel => {
+    if (sel.value) cargarFacturas(sel);
+});
+document.querySelectorAll('.cliente-local-sel').forEach(sel => {
+    if (sel.value) cargarPropiedades(sel);
+});
+
+function filtrar(estado, btn) {
+    document.querySelectorAll('.movimiento-card').forEach(card => {
+        card.style.display = (estado === 'todos' || card.dataset.estado === estado) ? '' : 'none';
+    });
+    document.querySelectorAll('[onclick^="filtrar"]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+</script>
+<script>
+    // Mostrar overlay de carga al enviar formularios
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', () => {
+            document.getElementById('loading-overlay').classList.remove('d-none');
+        });
+    });
+</script>
+</body>
+</html>

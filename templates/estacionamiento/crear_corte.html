@@ -1,0 +1,191 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if editando %}Editar{% else %}Nuevo{% endif %} corte</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="container mt-4">
+    <div class="card shadow-sm" style="max-width: 860px; margin: 0 auto;">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-p-circle me-2"></i>
+                {% if editando %}Editar corte{% else %}Nuevo corte de estacionamiento{% endif %}
+            </h5>
+        </div>
+        <div class="card-body">
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Periodo -->
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Periodo del corte</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">{{ form.periodo.label }} <span class="text-danger">*</span></label>
+                        {{ form.periodo }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ form.fecha_inicio.label }} <span class="text-danger">*</span></label>
+                        {{ form.fecha_inicio }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ form.fecha_fin.label }} <span class="text-danger">*</span></label>
+                        {{ form.fecha_fin }}
+                    </div>
+                </div>
+
+                <!-- Ingresos -->
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Ingresos del periodo</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">{{ form.total_efectivo.label }} <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            {{ form.total_efectivo }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ form.total_tarjeta.label }} <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            {{ form.total_tarjeta }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ form.total_boletos.label }}</label>
+                        {{ form.total_boletos }}
+                    </div>
+                </div>
+
+                <!-- Operador externo -->
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Operador</h6>
+                <div class="mb-3 form-check">
+                    {{ form.tiene_operador_externo }}
+                    <label class="form-check-label" for="id_tiene_operador">
+                        {{ form.tiene_operador_externo.label }}
+                    </label>
+                </div>
+                <div id="seccion_operador" style="display:none;">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">{{ form.nombre_operador.label }}</label>
+                            {{ form.nombre_operador }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ form.porcentaje_operador.label }}</label>
+                            <div class="input-group">
+                                {{ form.porcentaje_operador }}
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ form.monto_renta_operador.label }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.monto_renta_operador }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cuenta y archivo -->
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Depósito y archivo</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.cuenta_bancaria.label }}</label>
+                        {{ form.cuenta_bancaria }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.fecha_deposito.label }}</label>
+                        {{ form.fecha_deposito }}
+                        <div class="form-text">Fecha en que se depositó en la cuenta bancaria.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.archivo_origen.label }}</label>
+                        {{ form.archivo_origen }}
+                        <div class="form-text">CSV, Excel — opcional, para referencia</div>
+                    </div>
+                </div>
+
+                <!-- Observaciones -->
+                <div class="mb-4">
+                    <label class="form-label">{{ form.observaciones.label }}</label>
+                    {{ form.observaciones }}
+                </div>
+
+                <!-- Resumen dinámico -->
+                <div class="alert alert-info" id="resumen_corte">
+                    <strong>Resumen:</strong>
+                    Total bruto: <span id="r_bruto">$0.00</span> |
+                    Operador: <span id="r_operador">$0.00</span> |
+                    <strong>Neto plaza: <span id="r_neto">$0.00</span></strong>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-floppy me-1"></i>
+                        {% if editando %}Guardar cambios{% else %}Registrar corte{% endif %}
+                    </button>
+                    <a href="{% url 'lista_cortes_estacionamiento' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="{% static 'js/script.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Mostrar/ocultar sección operador
+const chk = document.getElementById('id_tiene_operador');
+const sec = document.getElementById('seccion_operador');
+
+function toggleOperador() {
+    sec.style.display = chk.checked ? 'block' : 'none';
+    calcularResumen();
+}
+chk.addEventListener('change', toggleOperador);
+toggleOperador();
+
+// Resumen dinámico
+function fmt(n) { return '$' + parseFloat(n || 0).toLocaleString('es-MX', {minimumFractionDigits:2}); }
+
+function calcularResumen() {
+    const efectivo = parseFloat(document.querySelector('[name="total_efectivo"]').value || 0);
+    const tarjeta  = parseFloat(document.querySelector('[name="total_tarjeta"]').value  || 0);
+    const bruto = efectivo + tarjeta;
+
+    let operador = 0;
+    if (chk.checked) {
+        const pct   = parseFloat(document.querySelector('[name="porcentaje_operador"]').value || 0);
+        const renta = parseFloat(document.querySelector('[name="monto_renta_operador"]').value || 0);
+        operador = bruto * (pct / 100) + renta;
+    }
+
+    document.getElementById('r_bruto').textContent    = fmt(bruto);
+    document.getElementById('r_operador').textContent = fmt(operador);
+    document.getElementById('r_neto').textContent     = fmt(bruto - operador);
+}
+
+document.querySelectorAll('[name="total_efectivo"],[name="total_tarjeta"],[name="porcentaje_operador"],[name="monto_renta_operador"]')
+    .forEach(el => el.addEventListener('input', calcularResumen));
+calcularResumen();
+</script>
+</body>
+</html>
