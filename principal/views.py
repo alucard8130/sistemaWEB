@@ -957,7 +957,7 @@ def stripe_webhook(request):
         return HttpResponse(status=400)
 
     plus_prices = {
-        "price_1TjRnLPYnlfwKZQHwFHQDTjx",  # produccion plus
+        "price_1Tpf3ZPYnlfwKZQHaGf2lnol",  # produccion plus
         #"price_1RnT1IPW7xPgzk0myWccMWtW",  # pruebas plus
     }
     premium_prices = {
@@ -1094,7 +1094,7 @@ def crear_sesion_pago(request):
 
     session_kwargs = {
         "payment_method_types": ["card"],
-        "line_items": [{"price": "price_1TjRnLPYnlfwKZQHwFHQDTjx", "quantity": 1}], #produccion
+        "line_items": [{"price": "price_1Tpf3ZPYnlfwKZQHaGf2lnol", "quantity": 1}], #produccion
         #"line_items": [{"price": "price_1RnT1IPW7xPgzk0myWccMWtW", "quantity": 1}], #desarrollo
         "mode": "subscription",
         "success_url": success,
@@ -1135,7 +1135,7 @@ def crear_sesion_pago_premium(request):
 
     session_kwargs = {
         "payment_method_types": ["card"],
-        "line_items": [{"price": "price_1TjV1JPYnlfwKZQHyh773EsU", "quantity": 1}], #produccion
+        "line_items": [{"price": "price_1Tpa52PYnlfwKZQHWUWxDAuE", "quantity": 1}], #produccion
         #"line_items": [{"price": "price_1RnSzMPW7xPgzk0mLslR8vT5", "quantity": 1}], #desarrollo
         "mode": "subscription",
         "success_url": success,
@@ -1802,7 +1802,7 @@ def visitante_consulta_facturas(request):
             )
 
     factura_pendiente_mas_antigua = (
-        facturas.filter(estatus="pendiente").order_by("fecha_vencimiento").first()
+        facturas.filter(estatus="pendiente").order_by("fecha_vencimiento").last()
     )
     factura_pendiente_id = (
         factura_pendiente_mas_antigua.id if factura_pendiente_mas_antigua else None
