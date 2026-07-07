@@ -4,118 +4,239 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background: #f0f4f8; }
-        .sidebar { background: #152A52; min-height: 100vh; padding: 0; }
-        .sidebar-brand { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar-nav a { color: rgba(255,255,255,0.75); padding: 12px 20px; display: block; text-decoration: none; border-left: 3px solid transparent; }
-        .sidebar-nav a:hover, .sidebar-nav a.active { color: white; background: rgba(255,255,255,0.08); border-left-color: #D9A441; }
-        .sidebar-nav .nav-section { color: rgba(255,255,255,0.4); font-size: 0.75em; padding: 16px 20px 4px; text-transform: uppercase; letter-spacing: 1px; }
-        .main-content { padding: 28px; }
         .empresa-badge { background: #D9A441; color: #152A52; font-weight: bold; }
+
+        /* Sidebar desktop */
+        .sidebar {
+            background: #152A52;
+            min-height: 100vh;
+            width: 260px;
+            min-width: 260px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+        .sidebar-brand { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-nav a {
+            color: rgba(255,255,255,0.75);
+            padding: 12px 20px;
+            display: block;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            color: white;
+            background: rgba(255,255,255,0.08);
+            border-left-color: #D9A441;
+        }
+        .sidebar-nav .nav-section {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.75em;
+            padding: 16px 20px 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main content con margen para el sidebar */
+        .main-wrapper {
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+        .main-content { padding: 28px; }
+
+        /* Topbar móvil */
+        .mobile-topbar {
+            display: none;
+            background: #152A52;
+            padding: 12px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+
+        /* Overlay para cerrar sidebar en móvil */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.open {
+                display: block;
+            }
+            .main-wrapper {
+                margin-left: 0;
+            }
+            .mobile-topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .main-content {
+                padding: 16px;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="d-flex">
 
-    <!-- Sidebar -->
-    <div class="sidebar" style="width: 260px; min-width: 260px;">
-        <div class="sidebar-brand">
+<!-- Overlay para cerrar sidebar en móvil -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-brand d-flex justify-content-between align-items-center">
+        <div>
             <div class="text-white fw-bold fs-5">GESAC</div>
             <div class="text-white-50 small">Portal de Acceso</div>
         </div>
-
-        <!-- Selector de empresa -->
-        {% if accesos %}
-        <div class="p-3 border-bottom" style="border-color: rgba(255,255,255,0.1) !important;">
-            <div class="text-white-50 small mb-2">Empresa activa:</div>
-            {% if empresa_activa %}
-                <span class="badge empresa-badge w-100 py-2 text-start">
-                    <i class="bi bi-building me-1"></i>{{ empresa_activa.nombre }}
-                </span>
-            {% endif %}
-            {% if accesos.count > 1 %}
-            <div class="mt-2">
-                {% for acceso in accesos %}
-                    {% if acceso.aprobado and acceso.activo and acceso.empresa != empresa_activa %}
-                    <a href="{% url 'acceso_cambiar_empresa' acceso.empresa.id %}"
-                       class="btn btn-sm btn-outline-light w-100 mb-1 text-start">
-                        <i class="bi bi-arrow-repeat me-1"></i>{{ acceso.empresa.nombre }}
-                    </a>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        <!-- Navegación -->
-        <nav class="sidebar-nav mt-2">
-            <div class="nav-section">Inicio</div>
-            <a href="{% url 'acceso_dashboard' %}" class="active">
-                <i class="bi bi-house me-2"></i>Dashboard
-            </a>
-
-            {% if acceso_activo %}
-            <div class="nav-section">Reportes</div>
-            {% if acceso_activo.ver_estado_resultados %}
-            <a href="{% url 'acceso_estado_resultados' %}">
-                <i class="bi bi-bar-chart-line me-2"></i>Estado de Resultados
-            </a>
-            {% endif %}
-            {% if acceso_activo.ver_cobranza %}
-            <a href="{% url 'acceso_cobranza' %}">
-                <i class="bi bi-collection me-2"></i>Cobranza
-            </a>
-            {% endif %}
-            {% if acceso_activo.ver_gastos %}
-            <a href="{% url 'acceso_gastos' %}">
-                <i class="bi bi-receipt me-2"></i>Gastos
-            </a>
-            {% endif %}
-            {% endif %}
-
-            <div class="nav-section">Mi cuenta</div>
-            <a href="{% url 'acceso_solicitar_empresa' %}">
-                <i class="bi bi-plus-circle me-2"></i>Solicitar acceso a empresa
-            </a>
-            <a href="{% url 'acceso_logout' %}">
-                <i class="bi bi-box-arrow-left me-2"></i>Cerrar sesión
-            </a>
-        </nav>
+        <button class="btn btn-sm btn-link text-white d-md-none" onclick="toggleSidebar()">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
 
-    <!-- Contenido principal -->
-    <div class="flex-grow-1 main-content">
+    <!-- Selector de empresa -->
+    {% if accesos %}
+    <div class="p-3 border-bottom" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div class="text-white-50 small mb-2">Condominio activo:</div>
+        {% if empresa_activa %}
+            <span class="badge empresa-badge w-100 py-2 text-start">
+                <i class="bi bi-building me-1"></i>{{ empresa_activa.nombre }}
+            </span>
+        {% endif %}
+        {% if accesos.count > 1 %}
+        <div class="mt-2">
+            {% for acceso in accesos %}
+                {% if acceso.aprobado and acceso.activo and acceso.empresa != empresa_activa %}
+                <a href="{% url 'acceso_cambiar_empresa' acceso.empresa.id %}"
+                   class="btn btn-sm btn-outline-light w-100 mb-1 text-start">
+                    <i class="bi bi-arrow-repeat me-1"></i>{{ acceso.empresa.nombre }}
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Navegación -->
+    <nav class="sidebar-nav mt-2">
+        <div class="nav-section">Inicio</div>
+        <a href="{% url 'acceso_dashboard' %}" class="active">
+            <i class="bi bi-house me-2"></i>Dashboard
+        </a>
+
+        {% if acceso_activo %}
+        <div class="nav-section">Reportes</div>
+        {% if acceso_activo.ver_estado_resultados %}
+        <a href="{% url 'acceso_estado_resultados' %}">
+            <i class="bi bi-bar-chart-line me-2"></i>Estado de Resultados
+        </a>
+        {% endif %}
+        {% if acceso_activo.ver_cobranza %}
+        <a href="{% url 'acceso_cobranza' %}">
+            <i class="bi bi-collection me-2"></i>Cobranza
+        </a>
+        {% endif %}
+        {% if acceso_activo.ver_gastos %}
+        <a href="{% url 'acceso_gastos' %}">
+            <i class="bi bi-receipt me-2"></i>Gastos
+        </a>
+        {% endif %}
+        {% endif %}
+
+        <div class="nav-section">Mi cuenta</div>
+        <a href="{% url 'acceso_solicitar_empresa' %}">
+            <i class="bi bi-plus-circle me-2"></i>Solicitar acceso
+        </a>
+        <a href="{% url 'acceso_logout' %}">
+            <i class="bi bi-box-arrow-left me-2"></i>Cerrar sesión
+        </a>
+    </nav>
+</div>
+
+<!-- Topbar móvil -->
+<div class="mobile-topbar">
+    <button class="btn btn-link text-white p-0" onclick="toggleSidebar()">
+        <i class="bi bi-list fs-4"></i>
+    </button>
+    <span class="text-white fw-bold">GESAC Portal</span>
+    {% if empresa_activa %}
+    <span class="badge empresa-badge small">{{ empresa_activa.nombre|truncatechars:20 }}</span>
+    {% else %}
+    <span></span>
+    {% endif %}
+</div>
+
+<!-- Contenido principal -->
+<div class="main-wrapper">
+    <div class="main-content">
 
         {% if messages %}
-    {% for message in messages %}
-        {% if ua.activo and 'pendiente de pago' in message.message %}
-            {# No mostrar mensaje de pago si ya está activo #}
-        {% else %}
+        {% for message in messages %}
+            {% if ua.activo and 'pendiente de pago' in message.message %}
+            {% else %}
             <div class="alert alert-{{ message.tags }} alert-dismissible">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
+            {% endif %}
+        {% endfor %}
         {% endif %}
-    {% endfor %}
-{% endif %}
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h4 class="mb-0">Bienvenido, {{ request.user.first_name|default:request.user.username }}</h4>
+                <h4 class="mb-0">Bienvenido, {{ ua.nombre }}</h4>
                 <small class="text-muted">{{ ua.get_tipo_display }} — Plan {{ ua.get_plan_display }}</small>
             </div>
         </div>
 
+        <!-- Alerta de límite de empresas -->
+        {% if not ua.puede_agregar_empresa %}
+        <div class="alert alert-warning mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            Has alcanzado el límite de tu plan <strong>{{ ua.get_plan_display }}</strong>.
+            Actualiza para agregar más condominios:
+            <div class="mt-2 d-flex flex-wrap gap-2">
+                {% if ua.plan == 'basico' %}
+                <a href="{% url 'acceso_upgrade' 'profesional' %}" class="btn btn-sm btn-warning">
+                    <i class="bi bi-arrow-up-circle me-1"></i> Profesional — $499/mes
+                </a>
+                <a href="{% url 'acceso_upgrade' 'enterprise' %}" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-arrow-up-circle me-1"></i> Enterprise — $999/mes
+                </a>
+                {% elif ua.plan == 'profesional' %}
+                <a href="{% url 'acceso_upgrade' 'enterprise' %}" class="btn btn-sm btn-warning">
+                    <i class="bi bi-arrow-up-circle me-1"></i> Enterprise — $999/mes
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if not accesos %}
-        <!-- Sin empresas -->
-        <div class="card shadow-sm text-center p-5">
+        <div class="card shadow-sm text-center p-4">
             <i class="bi bi-building-add text-muted" style="font-size:3rem;"></i>
-            <h5 class="mt-3">Aún no tienes acceso a ninguna empresa</h5>
+            <h5 class="mt-3">Aún no tienes acceso a ningún condominio</h5>
             <p class="text-muted">Solicita acceso a los condominios que administras o de los que eres parte.</p>
             <a href="{% url 'acceso_solicitar_empresa' %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-1"></i> Solicitar acceso
@@ -124,25 +245,24 @@
 
         {% else %}
 
-        <!-- Estado de accesos -->
         <div class="row g-3 mb-4">
             {% for acceso in accesos %}
-            <div class="col-md-6 col-lg-4">
+            <div class="col-12 col-sm-6 col-lg-4">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <strong>{{ acceso.empresa.nombre }}</strong>
+                            <strong class="me-2">{{ acceso.empresa.nombre }}</strong>
                             {% if acceso.estado == 'aprobado' %}
-                                <span class="badge bg-success">Aprobado</span>
+                                <span class="badge bg-success flex-shrink-0">Aprobado</span>
                             {% elif acceso.estado == 'pendiente' %}
-                                <span class="badge bg-warning text-dark">Pendiente</span>
+                                <span class="badge bg-warning text-dark flex-shrink-0">Pendiente</span>
                             {% elif acceso.estado == 'rechazado' %}
-                                <span class="badge bg-danger">Rechazado</span>
+                                <span class="badge bg-danger flex-shrink-0">Rechazado</span>
                             {% endif %}
                         </div>
                         {% if acceso.aprobado %}
                         <div class="small text-muted mb-2">Reportes disponibles:</div>
-                        <div class="d-flex flex-wrap gap-1">
+                        <div class="d-flex flex-wrap gap-1 mb-2">
                             {% if acceso.ver_dashboard %}<span class="badge bg-light text-dark border">Dashboard</span>{% endif %}
                             {% if acceso.ver_estado_resultados %}<span class="badge bg-light text-dark border">Financiero</span>{% endif %}
                             {% if acceso.ver_cobranza %}<span class="badge bg-light text-dark border">Cobranza</span>{% endif %}
@@ -150,18 +270,18 @@
                         </div>
                         {% if acceso.empresa != empresa_activa %}
                         <a href="{% url 'acceso_cambiar_empresa' acceso.empresa.id %}"
-                           class="btn btn-outline-primary btn-sm w-100 mt-3">
-                            <i class="bi bi-arrow-repeat me-1"></i> Ver esta empresa
+                           class="btn btn-outline-primary btn-sm w-100 mt-2">
+                            <i class="bi bi-arrow-repeat me-1"></i> Ver este condominio
                         </a>
                         {% else %}
-                        <div class="text-center mt-3">
-                            <span class="badge empresa-badge px-3 py-2">Empresa activa</span>
+                        <div class="text-center mt-2">
+                            <span class="badge empresa-badge px-3 py-2">Activo</span>
                         </div>
                         {% endif %}
                         {% else %}
                         <div class="small text-muted mt-2">
                             {% if acceso.estado == 'pendiente' %}
-                            Tu solicitud está siendo revisada por el administrador.
+                            Tu solicitud está siendo revisada.
                             {% elif acceso.estado == 'rechazado' %}
                             Tu solicitud fue rechazada. Contacta al administrador.
                             {% endif %}
@@ -173,17 +293,10 @@
             {% endfor %}
         </div>
 
-        <!-- Botón agregar empresa -->
         {% if ua.puede_agregar_empresa %}
         <a href="{% url 'acceso_solicitar_empresa' %}" class="btn btn-outline-primary">
-            <i class="bi bi-plus-circle me-1"></i> Solicitar acceso a otra empresa
+            <i class="bi bi-plus-circle me-1"></i> Solicitar acceso a otro condominio
         </a>
-        {% else %}
-        <div class="alert alert-warning">
-            <i class="bi bi-info-circle me-1"></i>
-            Has alcanzado el límite de empresas de tu plan ({{ ua.limite_empresas }}).
-            Contacta a soporte para actualizar tu plan.
-        </div>
         {% endif %}
 
         {% endif %}
@@ -191,5 +304,13 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+}
+</script>
 </body>
 </html>

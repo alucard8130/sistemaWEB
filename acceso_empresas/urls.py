@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from django.contrib.auth import views as auth_views
+#from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     # Portal público
@@ -31,32 +31,11 @@ urlpatterns = [
     path('webhook/', views.stripe_webhook_portal, name='acceso_stripe_webhook'),
 
     # Recuperación de contraseña
-    path('password/reset/', 
-        auth_views.PasswordResetView.as_view(
-            template_name='acceso_empresas/password_reset.html',
-            email_template_name='acceso_empresas/password_reset_email.html',
-            subject_template_name='acceso_empresas/password_reset_subject.txt',
-            success_url='/portal/password/reset/done/'
-        ),
-        name='acceso_password_reset'),
+    path('password/reset/', views.password_reset, name='acceso_password_reset'),
+    path('password/reset/done/', views.password_reset_done, name='acceso_password_reset_done'),
+    path('password/reset/<str:token>/', views.password_reset_confirm, name='acceso_password_reset_confirm'),
+    path('password/reset/complete/', views.password_reset_complete, name='acceso_password_reset_complete'),
 
-    path('password/reset/done/',
-        auth_views.PasswordResetDoneView.as_view(
-            template_name='acceso_empresas/password_reset_done.html'
-        ),
-        name='acceso_password_reset_done'),
-
-    path('password/reset/<uidb64>/<token>/',
-        auth_views.PasswordResetConfirmView.as_view(
-            template_name='acceso_empresas/password_reset_confirm.html',
-            success_url='/portal/password/reset/complete/'
-        ),
-        name='acceso_password_reset_confirm'),
-
-    path('password/reset/complete/',
-        auth_views.PasswordResetCompleteView.as_view(
-            template_name='acceso_empresas/password_reset_complete.html'
-        ),
-        name='acceso_password_reset_complete'),
-
+        
+    path('upgrade/<str:nuevo_plan>/', views.upgrade_plan, name='acceso_upgrade'),
 ]

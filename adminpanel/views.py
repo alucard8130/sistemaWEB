@@ -20,12 +20,13 @@ from presupuestos.models import Presupuesto, PresupuestoIngreso
 from empleados.models import Empleado
 from proveedores.models import Proveedor
 
-
+#usuarios GESAC
 @staff_member_required
 def lista_usuarios_normales(request):
     usuarios = User.objects.filter(is_superuser=False).order_by('-date_joined')
     return render(request, "adminpanel/lista_usuarios.html", {"usuarios": usuarios})
 
+#usuarios condomninos
 @staff_member_required
 def lista_usuarios_visitantes(request):
     visitantes = VisitanteAcceso.objects.all().order_by('-id')

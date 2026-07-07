@@ -90,12 +90,12 @@ def incidencias_lista(request):
             incidencias = incidencias.filter(empleado_id=empleado_id)
 
     # Si no hay ningún filtro, no mostrar nada
-    if not (empleado_id or fecha_inicio or fecha_fin):
-        incidencias = Incidencia.objects.none()
-    else:            
-        if fecha_inicio:
+    # if not (empleado_id or fecha_inicio or fecha_fin):
+    #     incidencias = Incidencia.objects.none()
+    # else:            
+    if fecha_inicio:
             incidencias = incidencias.filter(fecha__gte=fecha_inicio)
-        if fecha_fin:
+    if fecha_fin:
             incidencias = incidencias.filter(fecha__lte=fecha_fin)
 
     return render(request, 'incidencias/lista.html', {

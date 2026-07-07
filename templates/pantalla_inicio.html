@@ -34,26 +34,32 @@
     <script src="https://js.stripe.com/v3/"></script>
 
     {% if es_demo %}
-<div style="
-    position: fixed;
-    bottom: 20px;
-    right: 10px;
-    z-index: 9999;
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    padding: 10px 10px;
-    max-width: 300px;
-    font-size: 0.875rem;
-">
-    <strong>¡Bienvenido a tu cuenta demo!</strong><br>
-    <hr>
-    <button id="stripe-checkout-demo-btn" type="button" class="btn btn-success btn-sm w-100">
-        <i class="bi bi-credit-card"></i> Obten los beneficios de la membresia PLUS !!
-    </button>
-</div>
+      <div style="
+          position: fixed;
+          bottom: 20px;
+          right: 10px;
+          z-index: 9999;
+          background: #fff3cd;
+          color: #856404;
+          border: 1px solid #ffeeba;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          padding: 10px 10px;
+          max-width: 300px;
+          font-size: 0.875rem;
+      ">
+          <strong>¡Cuenta demo!</strong><br>
+          <hr>
+          <button id="stripe-checkout-demo-btn" type="button" class="btn btn-success btn-sm w-100">
+              <i class="bi bi-credit-card"></i> Quiero ser PLUS !!
+          </button>
+          <a href="#"
+        class="btn btn-secondary btn-sm w-100 mt-2"
+        data-bs-toggle="modal"
+        data-bs-target="#modalInfoPlus">
+        <i class="bi bi-info-circle"></i> ¿Qué es PLUS?
+      </a>
+      </div>
 {% endif %}
 
 {% if es_plus %}
@@ -127,6 +133,14 @@ if (premiumBtn) {
     if (premiumCtaModal && premiumBtn) {
         premiumCtaModal.addEventListener('click', function () {
             premiumBtn.click();
+        });
+    }
+
+     // ========== CTA MODAL PLUS ==========
+    const plusCtaModal = document.getElementById('plus-cta-modal');
+    if (plusCtaModal && demoPlusBtn) {
+        plusCtaModal.addEventListener('click', function () {
+            demoPlusBtn.click();
         });
     }
 
@@ -265,38 +279,6 @@ if (premiumBtn) {
                     </div>
                 </div>
             </div>
-
-            {% comment %}
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5>Top deudores</h5>
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Cliente</th>
-                                        <th>Saldo pendiente</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for cliente, saldo in top_deudores %}
-                                    <tr>
-                                        <td>{{ cliente }}</td>
-                                        <td class="text-end">${{ saldo|floatformat:2|intcomma }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="2">No hay deudores pendientes.</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endcomment %}
         </div>
     </main>
 
@@ -554,6 +536,205 @@ function cerrarModal() {
 </script>
 {% endif %}
 
+<!-- Modal Información Plus -->
+<div class="modal fade" id="modalInfoPlus" tabindex="-1" aria-labelledby="modalInfoPlusLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable plus-modal-dialog">
+    <div class="modal-content plus-modal">
+      <div class="plus-hero">
+        <div class="plus-hero-copy">
+          <span class="plus-badge">PLAN PLUS</span>
+          <h2 id="modalInfoPlusLabel">Escala la administración de tu condominio</h2>
+          <p>Usa todas las herramientas avanzadas y la inteligencia artificial para optimizar la gestión de tu condominio sin periodo de prueba.</p>
+
+          <div class="plus-price-wrap">
+            <div class="plus-price-card">
+              <small>Mensual</small>
+              <strong>$599 MXN</strong>
+            </div>
+            <div class="plus-price-card plus-price-card-alt">
+              <small>Anual (1 mes de regalo)</small>
+              <strong>$6,589 MXN pago único</strong>
+            </div>
+          </div>
+
+          <p class="plus-note">Precios más IVA · 12 meses de resguardo de base de datos</p>
+        </div>
+
+        <div class="plus-hero-panel">
+          <h5>Incluye</h5>
+          <p>1 usuario operativo extra</p>
+          <p>30 unidades(propiedades)</p>
+          <hr>
+          <p>Soporte 24/5</p>
+        </div>
+      </div>
+
+      <div class="modal-body plus-body">
+        <div class="plus-feature-grid">
+          <div class="plus-feature">30 unidades(propiedades)</div>
+          <div class="plus-feature">Emision mensual de cuotas automaticas</div>
+          <div class="plus-feature">Generación de recibos de pago</div>
+          <div class="plus-feature">Emision de facturas por otros ingresos</div>
+          <div class="plus-feature">Registro de depositos no identificados</div>
+          <div class="plus-feature">Módulo de comunicación y votaciones</div>
+          <div class="plus-feature">Avisos y notificaciones a condóminos</div>
+          <div class="plus-feature">Control de propiedades y áreas comunes</div>
+          <div class="plus-feature">Control de cuotas, ingresos y gastos</div>
+          <div class="plus-feature">Control de solicitudes de gastos</div>
+          <div class="plus-feature">Cartera vencida y envío de avisos de adeudos automáticos</div>
+          <div class="plus-feature">Presupuestos de ingresos y gastos</div>
+          <div class="plus-feature">Gráficos y estado de resultados</div>
+          <div class="plus-feature">Consulta REPSE proveedores</div>
+          <div class="plus-feature">Control de nómina(incidencias)</div>
+          <div class="plus-feature">Control de caja chica(fondeos y gastos)</div>
+        </div>
+      </div>
+
+      <div class="modal-footer plus-footer">
+        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-warning plus-cta" id="plus-cta-modal">
+          <i class="bi bi-stars"></i> Quiero Plus
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.plus-modal-dialog {
+  --bs-modal-width: min(980px, 95vw);
+}
+.plus-modal {
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #0f1b2a 0%, #182d47 45%, #244a6e 100%);
+  color: #f7fbff;
+  box-shadow: 0 24px 60px rgba(4, 12, 24, 0.45);
+}
+
+.plus-hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.2rem;
+  padding: 1.5rem 1.5rem 1rem;
+}
+
+.plus-badge {
+  display: inline-block;
+  background: #ffcc00;
+  color: #1f2a37;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border-radius: 999px;
+  padding: .3rem .7rem;
+  margin-bottom: .8rem;
+  font-size: .75rem;
+}
+
+.plus-hero-copy h2 {
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: .6rem;
+}
+
+.plus-hero-copy p {
+  margin-bottom: .7rem;
+  color: #d8e7f6;
+}
+
+.plus-price-wrap {
+  display: flex;
+  gap: .8rem;
+  margin: .9rem 0 .6rem;
+}
+
+.plus-price-card {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: .7rem .9rem;
+  min-width: 150px;
+}
+
+.plus-price-card small {
+  display: block;
+  color: #d7e6f5;
+  margin-bottom: .15rem;
+}
+
+.plus-price-card strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.plus-price-card-alt {
+  background: rgba(255, 204, 0, 0.18);
+  border-color: rgba(255, 214, 80, 0.55);
+}
+
+.plus-note {
+  font-size: .85rem;
+  color: #c4d9ef;
+  margin-bottom: 0;
+}
+
+.plus-hero-panel {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 14px;
+  padding: 1rem;
+  align-self: stretch;
+}
+
+.plus-hero-panel h5 {
+  margin-bottom: .7rem;
+  font-weight: 700;
+}
+
+.plus-hero-panel p {
+  margin-bottom: .45rem;
+}
+
+.plus-body {
+  padding-top: .4rem;
+}
+
+.plus-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .7rem;
+}
+
+.plus-feature {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 10px;
+  padding: .7rem .8rem;
+  font-size: .95rem;
+}
+
+.plus-footer {
+  border-top: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.15);
+}
+
+.plus-cta {
+  font-weight: 700;
+  border: 0;
+  border-radius: 10px;
+  padding: .55rem 1rem;
+}
+
+@media (max-width: 768px) {
+  .plus-hero {
+    grid-template-columns: 1fr;
+  }
+  .plus-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
 <!-- Modal Información Premium -->
 <div class="modal fade" id="modalInfoPremium" tabindex="-1" aria-labelledby="modalInfoPremiumLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable premium-modal-dialog">
@@ -580,7 +761,8 @@ function cerrarModal() {
 
         <div class="premium-hero-panel">
           <h5>Incluye</h5>
-          <p>2 usuarios operativos</p>
+          <p>3 usuarios operativos extra</p>
+          <p>Unidades ilimitadas por condominio</p>
           <hr>
           <p>Soporte VIP prioritario</p>
         </div>
@@ -588,12 +770,16 @@ function cerrarModal() {
 
       <div class="modal-body premium-body">
         <div class="premium-feature-grid">
-          <div class="premium-feature">Todo lo del Plan Básico</div>
+          <div class="premium-feature">Todo lo del Plan Plus</div>
+          <div class="premium-feature">Unidades ilimitadas por condominio</div>
+          <div class="premium-feature">Pagos en linea de cuotas via STRIPE para tus condominos</div>
           <div class="premium-feature">Facturación electrónica y timbrado (ilimitada bajo demanda)</div>
           <div class="premium-feature">Contratos de áreas comunes automáticos</div>
           <div class="premium-feature">Cortes Z (Estacionamiento) automáticos</div>
-          <div class="premium-feature">Cobros automatizados</div>
-          <div class="premium-feature">Acceso APP móvil</div>
+          <div class="premium-feature">Cobros automatizados con AI by Antrophic(bajo demanda)</div>
+          <div class="premium-feature">Control de asistencia empleados via QR</div>
+          <div class="premium-feature">Acceso APP GESAC</div>
+          <div class="premium-feature">Acceso APP MantPRO (para gestion de mantenimiento)</div>
           <div class="premium-feature">Publicidad institucional</div>
           <div class="premium-feature">36 meses de resguardo de base de datos</div>
           <div class="premium-feature">Soporte VIP</div>

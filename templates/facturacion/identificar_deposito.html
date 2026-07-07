@@ -85,7 +85,7 @@
                 <option value="">Seleciona una opcion</option>
                 {% for factura in facturas %}
                     <option value="{{ factura.id }}">
-                        {{ factura.folio }} - {{ factura.cliente.nombre }} - ${{ factura.saldo_pendiente|floatformat:2|intcomma }} ({{ factura.get_tipo_cuota_display }})
+                        {{ factura.folio }} - {{ factura.fecha_vencimiento|date:"M-Y" }} - {{ factura.cliente.nombre }} - ${{ factura.saldo_pendiente|floatformat:2|intcomma }} ({{ factura.get_tipo_cuota_display }})
                         {% if factura.local %} - Local: {{ factura.local.numero }}{% endif %}
                         {% if factura.area_comun %} - Área: {{ factura.area_comun.numero }}{% endif %}
                     </option>
@@ -96,10 +96,7 @@
         <a href="{% url 'lista_depositos_por_identificar' %}" class="btn btn-secondary reporte-link">Cancelar</a>
     </form>
 </div>
- <!-- 🔹 Footer -->
-    <footer>
-        © {% now "Y" %} GESAC. Created By JMEB Todos los derechos reservados. <br>
-    </footer>
+ 
 
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>

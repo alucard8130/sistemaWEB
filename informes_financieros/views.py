@@ -1,6 +1,7 @@
 from django.shortcuts import render
 
 # from django.db.models import Sum
+from acceso_empresas.decorators import login_o_portal_required
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from clientes.models import Cliente
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
@@ -21,7 +22,7 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.db.models import F, Value, CharField, Sum, Case, When, IntegerField
 
 
-@login_required
+@login_o_portal_required 
 def reporte_ingresos_vs_gastos(request):
     empresas = Empresa.objects.all()
     empresa_id = request.GET.get("empresa")
@@ -36,12 +37,15 @@ def reporte_ingresos_vs_gastos(request):
     # else:
     #     empresa_id = request.GET.get("empresa") or ""
     if not request.user.is_superuser:
-        if hasattr(request.user, 'usuario_acceso'):
+        # Verificar si viene del portal de acceso
+        if getattr(request, 'is_portal_acceso', False):
             empresa_id = str(request.session.get('empresa_id', ''))
         else:
             empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
-        empresa_id = request.GET.get("empresa") or ""
+        empresa_id = request.GET.get("empresa") or request.session.get("empresa_id")
+        if not empresa_id or not str(empresa_id).isdigit():
+            empresa_id = None
 
     # Si no hay ningún filtro, mostrar periodo actual por default
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
@@ -333,7 +337,7 @@ def reporte_ingresos_vs_gastos(request):
     )
 
 
-@login_required
+@login_o_portal_required
 def estado_resultados(request):
     from collections import OrderedDict
     import datetime
@@ -355,8 +359,8 @@ def estado_resultados(request):
     #     if not empresa_id or not str(empresa_id).isdigit():
     #         empresa_id = None
     if not request.user.is_superuser:
-        # Usuario de acceso externo (administradora/comité)
-        if hasattr(request.user, 'usuario_acceso'):
+        # Verificar si viene del portal de acceso
+        if getattr(request, 'is_portal_acceso', False):
             empresa_id = str(request.session.get('empresa_id', ''))
         else:
             empresa_id = str(request.user.perfilusuario.empresa.id)
@@ -669,7 +673,7 @@ def estado_resultados(request):
     )
 
 
-@login_required
+@login_o_portal_required 
 def exportar_estado_resultados_excel(request):
     from collections import OrderedDict
 

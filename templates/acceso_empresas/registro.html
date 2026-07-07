@@ -3,27 +3,64 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro — Portal GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background: #f0f4f8; }
-        .plan-card { cursor: pointer; border: 2px solid #dee2e6; transition: all 0.2s; }
+        .plan-card {
+            cursor: pointer;
+            border: 2px solid #dee2e6;
+            transition: all 0.2s;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            height: 100%;
+        }
         .plan-card:hover { border-color: #152A52; }
         .plan-card.selected { border-color: #152A52; background: #f0f4ff; }
-        .plan-precio { font-size: 1.8em; font-weight: bold; color: #152A52; }
+        .plan-precio { font-size: 1.6em; font-weight: bold; color: #152A52; }
+
+        /* Header sticky en móvil */
+        .portal-header {
+            background: #152A52;
+            padding: 14px 20px;
+            text-align: center;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        @media (max-width: 576px) {
+            .plan-precio { font-size: 1.3em; }
+            .btn-group-registro {
+                flex-direction: column-reverse;
+                gap: 10px;
+            }
+            .btn-group-registro .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="container mt-4" style="max-width: 860px;">
-    <div class="text-center mb-4">
-        <h3 class="fw-bold" style="color:#152A52;">GESAC — Portal de Acceso</h3>
-        <p class="text-muted">Crea tu cuenta para acceder a reportes financieros de tus condominios</p>
-    </div>
+
+<!-- Header -->
+<div class="portal-header">
+    <div class="fw-bold fs-5">GESAC — Portal de Acceso</div>
+    <div class="small opacity-75">Crea tu cuenta para acceder a reportes de tus condominios</div>
+</div>
+
+<div class="container py-4" style="max-width: 860px;">
 
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         {% endfor %}
     {% endif %}
 
@@ -38,12 +75,12 @@
             <div class="card-body">
                 <div class="row g-3">
                     {% for plan in planes %}
-                    <div class="col-md-4">
-                        <div class="plan-card rounded p-3 text-center {% if forloop.first %}selected{% endif %}"
+                    <div class="col-12 col-sm-4">
+                        <div class="plan-card {% if forloop.first %}selected{% endif %}"
                              onclick="seleccionarPlan('{{ plan.id }}', this)">
                             <div class="fw-bold mb-1">{{ plan.nombre }}</div>
                             <div class="plan-precio">${{ plan.precio }}</div>
-                            <div class="text-muted small mb-2">/mes MXN</div>
+                            <div class="text-muted small mb-2">/mes MXN más IVA</div>
                             <div class="badge bg-primary mb-2">{{ plan.empresas }}</div>
                             <div class="text-muted small">{{ plan.descripcion }}</div>
                         </div>
@@ -61,8 +98,8 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="form-check border rounded p-3">
+                    <div class="col-12 col-md-6">
+                        <div class="form-check border rounded p-3 h-100">
                             <input class="form-check-input" type="radio" name="tipo"
                                    id="tipo-admin" value="administradora" checked>
                             <label class="form-check-label" for="tipo-admin">
@@ -71,8 +108,8 @@
                             </label>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-check border rounded p-3">
+                    <div class="col-12 col-md-6">
+                        <div class="form-check border rounded p-3 h-100">
                             <input class="form-check-input" type="radio" name="tipo"
                                    id="tipo-comite" value="comite">
                             <label class="form-check-label" for="tipo-comite">
@@ -92,32 +129,32 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-12 col-sm-6">
                         <label class="form-label">Nombre <span class="text-danger">*</span></label>
                         <input type="text" name="nombre" class="form-control" required>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-sm-6">
                         <label class="form-label">Apellido</label>
                         <input type="text" name="apellido" class="form-control">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-sm-6">
                         <label class="form-label">Nombre de tu organización / comité <span class="text-danger">*</span></label>
                         <input type="text" name="nombre_organizacion" class="form-control"
                                placeholder="Ej: Administradora XYZ SA de CV">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-sm-6">
                         <label class="form-label">Teléfono</label>
                         <input type="text" name="telefono" class="form-control" placeholder="55 1234 5678">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-sm-6">
                         <label class="form-label">Correo electrónico <span class="text-danger">*</span></label>
                         <input type="email" name="email" class="form-control" required>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-3">
                         <label class="form-label">Contraseña <span class="text-danger">*</span></label>
                         <input type="password" name="password" class="form-control" required minlength="8">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-sm-3">
                         <label class="form-label">Confirmar contraseña <span class="text-danger">*</span></label>
                         <input type="password" name="password2" class="form-control" required>
                     </div>
@@ -125,7 +162,7 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex btn-group-registro justify-content-between align-items-center mb-4">
             <a href="{% url 'acceso_login' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-1"></i> Ya tengo cuenta
             </a>

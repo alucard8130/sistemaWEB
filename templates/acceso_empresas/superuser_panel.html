@@ -47,7 +47,7 @@
                         {% for acceso in solicitudes_pendientes %}
                         <tr>
                             <td>
-                                <strong>{{ acceso.usuario_acceso.usuario.get_full_name|default:acceso.usuario_acceso.usuario.username }}</strong>
+                                <strong>{{ acceso.usuario_acceso.nombre }}</strong>
                                 <div class="small text-muted">{{ acceso.usuario_acceso.nombre_organizacion }}</div>
                             </td>
                             <td><span class="badge bg-secondary">{{ acceso.usuario_acceso.get_tipo_display }}</span></td>
@@ -95,8 +95,8 @@
                         {% for ua in todos_usuarios %}
                         <tr>
                             <td>
-                                <strong>{{ ua.usuario.get_full_name|default:ua.usuario.username }}</strong>
-                                <div class="small text-muted">{{ ua.usuario.email }}</div>
+                                <strong>{{ ua.nombre }}</strong>
+                                <div class="small text-muted">{{ ua.email }}</div>
                             </td>
                             <td class="small">{{ ua.nombre_organizacion|default:"—" }}</td>
                             <td><span class="badge bg-secondary">{{ ua.get_tipo_display }}</span></td>

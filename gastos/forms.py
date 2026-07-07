@@ -92,8 +92,6 @@ class GastoForm(forms.ModelForm):
                     'class': 'form-select'
                 }))
 
-
- 
     class Meta:
         model = Gasto
         fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr', 'observaciones']
@@ -115,13 +113,13 @@ class GastoForm(forms.ModelForm):
                 'class': 'form-control'
             }),
             'monto': forms.NumberInput(attrs={
-                'class': 'form-control'
+                'class': 'form-control','type': 'number', 'step': '0.01', 'min': '0', 'title': "Ingrese el importe total con iva del gasto. Ejemplo: 100 para $100.00"
             }),
             'retencion_iva': forms.NumberInput(attrs={
-                'class': 'form-control'
+                'class': 'form-control', 'title': "Ingrese el importe de retención de IVA, si aplica. Ejemplo: 100 para $100 si la factura tiene IVA Retenido, el iva 16% no es retención." 
             }),
             'retencion_isr': forms.NumberInput(attrs={
-                'class': 'form-control'
+                'class': 'form-control', 'title': "Ingrese el importe de retención de ISR, si aplica. Ejemplo: 100 para $100 si la factura tiene ISR Retenido o es retencion de ISR por nomina."
             }),
             'descripcion': forms.Textarea(attrs={
                 'rows':2,
@@ -136,12 +134,12 @@ class GastoForm(forms.ModelForm):
             }),
         }
         labels = {
-            
-            'descripcion': 'Descripción',
-            'fecha': 'Fecha del Gasto',
-            'monto': 'Monto',
-            'retencion_iva': 'Retención IVA',
-            'retencion_isr': 'Retención ISR',
+            'tipo_gasto': 'Cuenta de Gasto',
+            'descripcion': 'Descripción del gasto',
+            'fecha': 'Fecha Solicitud',
+            'monto': 'Importe',
+            'retencion_iva': 'Retención IVA (serv profesionales)',
+            'retencion_isr': 'Retención ISR (nomina o servicios profesionales)',
         }
       
       

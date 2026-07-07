@@ -801,7 +801,7 @@ def enviar_correo_evento(request, evento_id):
             )
     return JsonResponse({"ok": False}, status=400)
 
-
+#registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
 def registro_usuario(request):
     mensaje = ""
     if request.method == "POST":
@@ -2581,17 +2581,18 @@ def factura_a_json_facturama(
     }
 
 
+#timbrar facturas cuotas de mantenimiento y areas comunes
 @login_required
 def timbrar_factura(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     empresa = factura.empresa
     next_url = request.GET.get("next") or request.POST.get("next")
-    # Solo permite timbrar si la empresa es PREMIUM
-    if not empresa.es_premium:
-        messages.error(
-            request, "El timbrado solo está disponible en la versión PREMIUM del sistema."
-        )
-        return redirect("lista_facturas")
+    # # Solo permite timbrar si la empresa es PREMIUM
+    # if not empresa.es_premium:
+    #     messages.error(
+    #         request, "El timbrado solo está disponible en la versión PREMIUM del sistema."
+    #     )
+    #     return redirect("lista_facturas")
 
     if (
         not request.user.is_superuser
@@ -2985,14 +2986,14 @@ def descargar_cfdi_facturama(request, id):
 @login_required
 def timbrar_factura_otros_ingresos(request, pk):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=pk)
-    empresa = factura.empresa
+    #empresa = factura.empresa
 
-    # Solo permite timbrar si la empresa es PLUS
-    if not empresa.es_plus:
-        messages.error(
-            request, "El timbrado solo está disponible en la versión PLUS del sistema."
-        )
-        return redirect("lista_facturas_otros_ingresos")
+    # # Solo permite timbrar si la empresa es PLUS
+    # if not empresa.es_plus:
+    #     messages.error(
+    #         request, "El timbrado solo está disponible en la versión PLUS del sistema."
+    #     )
+    #     return redirect("lista_facturas_otros_ingresos")
 
     if factura.uuid:
         messages.info(request, "La factura ya está timbrada.")

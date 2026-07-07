@@ -1,83 +1,104 @@
-from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 from .models import UsuarioAcceso, AccesoEmpresa
 from empresas.models import Empresa
 import datetime
-import stripe
+import secrets
+from django.core.mail import send_mail
 from django.conf import settings
-from django.views.decorators.csrf import csrf_exempt
+from datetime import timedelta
+
+
+# def _get_usuario_acceso(request):
+#     """Obtiene el UsuarioAcceso desde la sesión"""
+#     ua_id = request.session.get('ua_id')
+#     if not ua_id:
+#         return None
+#     try:
+#         return UsuarioAcceso.objects.get(pk=ua_id, activo=True)
+#     except UsuarioAcceso.DoesNotExist:
+#         return None
+
+
+def requiere_acceso(f):
+    """Decorator para vistas del portal — usa sesión propia sin User de Django"""
+    def wrapper(request, *args, **kwargs):
+        ua_id = request.session.get('ua_id')
+        if not ua_id:
+            return redirect('acceso_login')
+        try:
+            ua = UsuarioAcceso.objects.get(pk=ua_id)
+            if not ua.activo:
+                return redirect('acceso_checkout')
+            request.ua = ua
+        except UsuarioAcceso.DoesNotExist:
+            return redirect('acceso_login')
+        return f(request, *args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
 
 
 def portal_login(request):
-    """Login exclusivo para usuarios de acceso"""
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        email_o_user = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
 
-        # Intentar encontrar usuario por email si no funciona por username
-        if '@' in username:
+        # Intentar como superusuario de Django (username o email)
+        django_user = authenticate(request, username=email_o_user, password=password)
+        if not django_user and '@' in email_o_user:
+            # Intentar por email
             try:
-                from django.contrib.auth.models import User
-                user_obj = User.objects.get(email=username)
-                username = user_obj.username
+                u = User.objects.get(email=email_o_user)
+                django_user = authenticate(request, username=u.username, password=password)
             except User.DoesNotExist:
                 pass
 
-        user = authenticate(request, username=username, password=password)
+        if django_user and django_user.is_superuser:
+            login(request, django_user)
+            return redirect('acceso_superuser_panel')
 
-        if user is not None:
-            if user.is_superuser:
-                login(request, user)
-                return redirect('acceso_superuser_panel')
-            elif hasattr(user, 'usuario_acceso'):
-                if user.usuario_acceso.activo:
-                    login(request, user)
+        # Intentar como UsuarioAcceso del portal (solo por email)
+        if '@' in email_o_user:
+            try:
+                ua = UsuarioAcceso.objects.get(email=email_o_user)
+                if ua.check_password(password):
+                    if not ua.activo:
+                        request.session['ua_id'] = ua.id
+                        messages.warning(request, "Tu cuenta está pendiente de pago.")
+                        return redirect('acceso_checkout')
+                    request.session['ua_id'] = ua.id
                     return redirect('acceso_dashboard')
                 else:
-                    # ← En lugar de error, hacer login y mandar a pagar
-                    login(request, user)
-                    messages.warning(request,
-                        "Tu cuenta está pendiente de pago. "
-                        "Completa tu suscripción para acceder al portal."
-                    )
-                    return redirect('acceso_checkout')
-            else:
-                messages.error(request, "Este portal es exclusivo para empresas administradoras y comités.")
+                    messages.error(request, "Email o contraseña incorrectos.")
+            except UsuarioAcceso.DoesNotExist:
+                messages.error(request, "Email o contraseña incorrectos.")
         else:
             messages.error(request, "Usuario o contraseña incorrectos.")
 
     return render(request, 'acceso_empresas/login.html')
 
 
+def portal_logout(request):
+    request.session.flush()
+    if request.user.is_authenticated:
+        logout(request)
+    return redirect('acceso_login')
+
+
 def portal_registro(request):
-    """Registro de nuevo usuario de acceso"""
     PLANES = [
-        {
-            'id': 'basico',
-            'nombre': 'Básico',
-            'precio': 299,
-            'empresas': '1 empresa',
-            'descripcion': 'Ideal para comités de un solo condominio',
-        },
-        {
-            'id': 'profesional',
-            'nombre': 'Profesional',
-            'precio': 699,
-            'empresas': 'hasta 3 empresas',
-            'descripcion': 'Para administradoras con varios condominios',
-        },
-        {
-            'id': 'enterprise',
-            'nombre': 'Enterprise',
-            'precio': 1499,
-            'empresas': 'Ilimitadas',
-            'descripcion': 'Para grandes empresas administradoras',
-        },
+        {'id': 'basico', 'nombre': 'Básico', 'precio': 299,
+         'empresas': '1 condominio', 'descripcion': 'Ideal para comités de un solo condominio'},
+        {'id': 'profesional', 'nombre': 'Profesional', 'precio': 499,
+         'empresas': 'hasta 3 condominios', 'descripcion': 'Para administradoras con varios condominios'},
+        {'id': 'enterprise', 'nombre': 'Enterprise', 'precio': 999,
+         'empresas': 'Ilimitados', 'descripcion': 'Para grandes empresas administradoras'},
     ]
 
     if request.method == 'POST':
@@ -91,7 +112,6 @@ def portal_registro(request):
         nombre_organizacion = request.POST.get('nombre_organizacion', '').strip()
         telefono = request.POST.get('telefono', '').strip()
 
-        # Validaciones
         if not all([nombre, email, password, tipo, nombre_organizacion]):
             messages.error(request, "Todos los campos marcados con * son obligatorios.")
             return render(request, 'acceso_empresas/registro.html', {'planes': PLANES})
@@ -104,86 +124,96 @@ def portal_registro(request):
             messages.error(request, "La contraseña debe tener al menos 8 caracteres.")
             return render(request, 'acceso_empresas/registro.html', {'planes': PLANES})
 
-        if User.objects.filter(email=email).exists():
+        if UsuarioAcceso.objects.filter(email=email).exists():
             messages.error(request, "Ya existe una cuenta con ese correo electrónico.")
             return render(request, 'acceso_empresas/registro.html', {'planes': PLANES})
 
-        # Crear usuario
-        username = email.split('@')[0]
-        # Asegurar username único
-        base_username = username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
-
-        user = User.objects.create_user(
-            username=username,
+        # Crear UsuarioAcceso sin User de Django
+        ua = UsuarioAcceso(
+            nombre=f"{nombre} {apellido}".strip(),
             email=email,
-            password=password,
-            first_name=nombre,
-            last_name=apellido,
-        )
-
-        UsuarioAcceso.objects.create(
-            usuario=user,
+            telefono=telefono,
+            nombre_organizacion=nombre_organizacion,
             tipo=tipo,
             plan=plan,
-            nombre_organizacion=nombre_organizacion,
-            telefono=telefono,
-            activo=False,  # Se activa al pagar
+            activo=False,
         )
+        ua.set_password(password)
+        ua.save()
 
-        # Login automático para que el template de pago pueda mostrar el botón
-        login(request, user)
+        # Guardar en sesión
+        request.session['ua_id'] = ua.id
 
-        messages.success(request,
-            "Cuenta creada correctamente. "
-            "Completa el pago de tu suscripción para activar tu acceso."
-        )
-        return redirect('acceso_checkout')  # ← directo al checkout, no a pago_pendiente
+        messages.success(request, "Cuenta creada. Completa el pago para activar tu acceso.")
+        return redirect('acceso_checkout')
 
     return render(request, 'acceso_empresas/registro.html', {'planes': PLANES})
-
-
-def portal_logout(request):
-    logout(request)
-    return redirect('acceso_login')
 
 
 def pago_pendiente(request):
     return render(request, 'acceso_empresas/pago_pendiente.html')
 
 
-def requiere_acceso(f):
-    """Decorator para vistas del portal de acceso"""
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect('acceso_login')
-        if not hasattr(request.user, 'usuario_acceso'):
-            if request.user.is_superuser:
-                return f(request, *args, **kwargs)
-            return redirect('acceso_login')
-        if not request.user.usuario_acceso.activo:
-            messages.error(request, "Tu suscripción no está activa.")
-            return redirect('acceso_pago_pendiente')
-        return f(request, *args, **kwargs)
-    wrapper.__name__ = f.__name__
-    return wrapper
+def pago_exitoso(request):
+    return render(request, 'acceso_empresas/pago_exitoso.html')
+
+
+def checkout_suscripcion(request):
+    import stripe
+    from django.conf import settings
+
+    ua_id = request.session.get('ua_id')
+    if not ua_id:
+        return redirect('acceso_login')
+
+    try:
+        ua = UsuarioAcceso.objects.get(pk=ua_id)
+    except UsuarioAcceso.DoesNotExist:
+        return redirect('acceso_login')
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    price_id = settings.STRIPE_PORTAL_PRICES.get(ua.plan)
+
+    if not price_id:
+        messages.error(request, "Plan no válido.")
+        return redirect('acceso_pago_pendiente')
+
+    try:
+        if ua.stripe_customer_id:
+            customer_id = ua.stripe_customer_id
+        else:
+            customer = stripe.Customer.create(
+                email=ua.email,
+                name=ua.nombre,
+                metadata={'usuario_acceso_id': ua.id, 'plan': ua.plan}
+            )
+            ua.stripe_customer_id = customer.id
+            ua.save()
+            customer_id = customer.id
+
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=['card'],
+            line_items=[{'price': price_id, 'quantity': 1}],
+            mode='subscription',
+            success_url=request.build_absolute_uri('/portal/pago-exitoso/'),
+            cancel_url=request.build_absolute_uri('/portal/pago-pendiente/'),
+            metadata={'usuario_acceso_id': ua.id, 'plan': ua.plan},
+        )
+        return redirect(session.url, permanent=False)
+
+    except Exception as e:
+        messages.error(request, f"Error al procesar el pago: {str(e)}")
+        return redirect('acceso_pago_pendiente')
 
 
 @requiere_acceso
 def dashboard(request):
-    """Dashboard principal del usuario de acceso"""
-    if request.user.is_superuser:
-        return redirect('acceso_superuser_panel')
-
-    ua = request.user.usuario_acceso
+    ua = request.ua
     accesos = AccesoEmpresa.objects.filter(
         usuario_acceso=ua
     ).select_related('empresa').order_by('estado', 'empresa__nombre')
 
-    # Empresa activa (desde sesión)
     empresa_activa_id = request.session.get('acceso_empresa_activa_id')
     empresa_activa = None
     acceso_activo = None
@@ -194,7 +224,6 @@ def dashboard(request):
         if acceso_activo:
             empresa_activa = acceso_activo.empresa
 
-    # Si no hay empresa activa, usar la primera aprobada
     if not empresa_activa:
         primer_acceso = accesos.filter(aprobado=True, activo=True).first()
         if primer_acceso:
@@ -212,11 +241,9 @@ def dashboard(request):
 
 @requiere_acceso
 def cambiar_empresa_activa(request, empresa_id):
-    """Cambiar la empresa activa en sesión"""
-    ua = request.user.usuario_acceso
+    ua = request.ua
     acceso = get_object_or_404(AccesoEmpresa,
-        usuario_acceso=ua, empresa_id=empresa_id, aprobado=True, activo=True
-    )
+        usuario_acceso=ua, empresa_id=empresa_id, aprobado=True, activo=True)
     request.session['acceso_empresa_activa_id'] = empresa_id
     messages.success(request, f"Ahora viendo: {acceso.empresa.nombre}")
     return redirect('acceso_dashboard')
@@ -224,53 +251,48 @@ def cambiar_empresa_activa(request, empresa_id):
 
 @requiere_acceso
 def solicitar_acceso_empresa(request):
-    """Solicitar acceso a una empresa"""
-    ua = request.user.usuario_acceso
-
+    ua = request.ua
     if not ua.puede_agregar_empresa:
-        messages.error(request,
-            f"Tu plan {ua.get_plan_display()} permite máximo {ua.limite_empresas} empresa(s). "
-            "Actualiza tu plan para agregar más."
-        )
+        messages.error(request, f"Tu plan permite máximo {ua.limite_empresas} empresa(s).")
         return redirect('acceso_dashboard')
 
     if request.method == 'POST':
         empresa_id = request.POST.get('empresa_id')
         empresa = get_object_or_404(Empresa, pk=empresa_id)
-
         if AccesoEmpresa.objects.filter(usuario_acceso=ua, empresa=empresa).exists():
             messages.warning(request, "Ya tienes una solicitud para esta empresa.")
             return redirect('acceso_dashboard')
-
-        AccesoEmpresa.objects.create(
-            usuario_acceso=ua,
-            empresa=empresa,
-            estado='pendiente',
-            aprobado=False,
-        )
-        messages.success(request,
-            f"Solicitud enviada para '{empresa.nombre}'. "
-            "El administrador revisará tu solicitud."
-        )
+        AccesoEmpresa.objects.create(usuario_acceso=ua, empresa=empresa, estado='pendiente')
+        messages.success(request, f"Solicitud enviada para '{empresa.nombre}'.")
         return redirect('acceso_dashboard')
 
-    # Buscar empresas
     query = request.GET.get('q', '')
     empresas = []
     if query and len(query) >= 3:
-        empresas_ids_ya_solicitadas = ua.accesos_empresas.values_list('empresa_id', flat=True)
-        empresas = Empresa.objects.filter(
-            nombre__icontains=query
-        ).exclude(id__in=empresas_ids_ya_solicitadas)[:10]
+        ids_ya = ua.accesos_empresas.values_list('empresa_id', flat=True)
+        empresas = Empresa.objects.filter(nombre__icontains=query).exclude(id__in=ids_ya)[:10]
 
     return render(request, 'acceso_empresas/solicitar_empresa.html', {
-        'empresas': empresas,
-        'query': query,
-        'ua': ua,
+        'empresas': empresas, 'query': query, 'ua': ua,
     })
 
 
-# ============ VISTAS DE REPORTES ============
+def _get_acceso_activo(request):
+    ua_id = request.session.get('ua_id')
+    empresa_id = request.session.get('acceso_empresa_activa_id')
+    if not ua_id or not empresa_id:
+        return None
+    try:
+        ua = UsuarioAcceso.objects.get(pk=ua_id, activo=True)
+        return AccesoEmpresa.objects.filter(
+            usuario_acceso=ua,
+            empresa_id=empresa_id,
+            aprobado=True,
+            activo=True,
+        ).first()
+    except UsuarioAcceso.DoesNotExist:
+        return None
+
 
 @requiere_acceso
 def reporte_estado_resultados(request):
@@ -278,29 +300,24 @@ def reporte_estado_resultados(request):
     if not acceso_activo or not acceso_activo.ver_estado_resultados:
         messages.error(request, "No tienes acceso a este reporte.")
         return redirect('acceso_dashboard')
-
     request.session['empresa_id'] = acceso_activo.empresa.id
-    request.is_portal_acceso = True  # ← marca el request
+    request.is_portal_acceso = True
     request.acceso_activo = acceso_activo
     request.empresa_activa_portal = acceso_activo.empresa
-
     from informes_financieros.views import estado_resultados
     return estado_resultados(request)
 
 
-#dashboard_saldos
 @requiere_acceso
 def reporte_cobranza(request):
     acceso_activo = _get_acceso_activo(request)
     if not acceso_activo or not acceso_activo.ver_cobranza:
         messages.error(request, "No tienes acceso a este reporte.")
         return redirect('acceso_dashboard')
-
     request.session['empresa_id'] = acceso_activo.empresa.id
-    request.is_portal_acceso = True  # ← esto controla el navbar
+    request.is_portal_acceso = True
     request.acceso_activo = acceso_activo
     request.empresa_activa_portal = acceso_activo.empresa
-
     from facturacion.views import dashboard_saldos
     return dashboard_saldos(request)
 
@@ -311,32 +328,46 @@ def reporte_gastos(request):
     if not acceso_activo or not acceso_activo.ver_gastos:
         messages.error(request, "No tienes acceso a este reporte.")
         return redirect('acceso_dashboard')
-
     request.session['empresa_id'] = acceso_activo.empresa.id
-    request.is_portal_acceso = True  # ← esto controla el navbar
+    request.is_portal_acceso = True
     request.acceso_activo = acceso_activo
     request.empresa_activa_portal = acceso_activo.empresa
-
-    from informes_financieros.views import reporte_ingresos_vs_gastos  # o la vista que uses para gastos
+    from informes_financieros.views import reporte_ingresos_vs_gastos
     return reporte_ingresos_vs_gastos(request)
 
+@requiere_acceso
+def upgrade_plan(request, nuevo_plan):
+    import stripe
+    from django.conf import settings
 
-def _get_acceso_activo(request):
-    """Helper: obtener el acceso activo del usuario"""
-    if not hasattr(request.user, 'usuario_acceso'):
-        return None
-    ua = request.user.usuario_acceso
-    empresa_id = request.session.get('acceso_empresa_activa_id')
-    if not empresa_id:
-        return None
-    return AccesoEmpresa.objects.filter(
-        usuario_acceso=ua,
-        empresa_id=empresa_id,
-        aprobado=True,
-        activo=True,
-    ).first()
+    ua = request.ua
+    planes_validos = {
+        'basico': ['profesional', 'enterprise'],
+        'profesional': ['enterprise'],
+    }
 
+    if nuevo_plan not in planes_validos.get(ua.plan, []):
+        messages.error(request, "Plan no válido.")
+        return redirect('acceso_dashboard')
 
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    price_id = settings.STRIPE_PORTAL_PRICES.get(nuevo_plan)
+
+    try:
+        session = stripe.checkout.Session.create(
+            customer=ua.stripe_customer_id,
+            payment_method_types=['card'],
+            line_items=[{'price': price_id, 'quantity': 1}],
+            mode='subscription',
+            success_url=request.build_absolute_uri('/portal/pago-exitoso/'),
+            cancel_url=request.build_absolute_uri('/portal/'),
+            metadata={'usuario_acceso_id': ua.id, 'plan': nuevo_plan},
+        )
+        return redirect(session.url, permanent=False)
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        return redirect('acceso_dashboard')
+    
 # ============ PANEL SUPERUSUARIO ============
 
 @login_required(login_url='/portal/login/')
@@ -346,81 +377,17 @@ def superuser_panel(request):
 
     solicitudes_pendientes = AccesoEmpresa.objects.filter(
         estado='pendiente'
-    ).select_related('usuario_acceso__usuario', 'empresa').order_by('-fecha_solicitud')
+    ).select_related('usuario_acceso', 'empresa').order_by('-fecha_solicitud')
 
-    todos_usuarios = UsuarioAcceso.objects.select_related(
-        'usuario'
-    ).prefetch_related('accesos_empresas__empresa').order_by('-fecha_registro')
+    todos_usuarios = UsuarioAcceso.objects.prefetch_related(
+        'accesos_empresas__empresa'
+    ).order_by('-fecha_registro')
 
     return render(request, 'acceso_empresas/superuser_panel.html', {
         'solicitudes_pendientes': solicitudes_pendientes,
         'todos_usuarios': todos_usuarios,
     })
 
-
-@login_required(login_url='/portal/login/')
-def aprobar_acceso(request, acceso_id):
-    if not request.user.is_superuser:
-        return redirect('acceso_login')
-
-    acceso = get_object_or_404(AccesoEmpresa, pk=acceso_id)
-
-    if request.method == 'POST':
-        accion = request.POST.get('accion')
-
-        if accion == 'aprobar':
-            acceso.estado = 'aprobado'
-            acceso.aprobado = True
-            acceso.aprobado_por = request.user
-            acceso.fecha_aprobacion = timezone.now()
-            # Permisos configurados por el superusuario
-            acceso.ver_dashboard = request.POST.get('ver_dashboard') == 'on'
-            acceso.ver_estado_resultados = request.POST.get('ver_estado_resultados') == 'on'
-            acceso.ver_cobranza = request.POST.get('ver_cobranza') == 'on'
-            acceso.ver_gastos = request.POST.get('ver_gastos') == 'on'
-            acceso.save()
-
-            # Activar usuario si no estaba activo
-            ua = acceso.usuario_acceso
-            if not ua.activo:
-                ua.activo = True
-                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
-                ua.save()
-
-            messages.success(request,
-                f"Acceso aprobado para {ua} a {acceso.empresa.nombre}."
-            )
-
-        elif accion == 'rechazar':
-            acceso.estado = 'rechazado'
-            acceso.aprobado = False
-            acceso.save()
-            messages.warning(request, "Solicitud rechazada.")
-
-        return redirect('acceso_superuser_panel')
-
-    return render(request, 'acceso_empresas/aprobar_acceso.html', {'acceso': acceso})
-
-
-@login_required(login_url='/portal/login/')
-def editar_permisos(request, acceso_id):
-    """Editar permisos de un acceso ya aprobado"""
-    if not request.user.is_superuser:
-        return redirect('acceso_login')
-
-    acceso = get_object_or_404(AccesoEmpresa, pk=acceso_id)
-
-    if request.method == 'POST':
-        acceso.ver_dashboard = request.POST.get('ver_dashboard') == 'on'
-        acceso.ver_estado_resultados = request.POST.get('ver_estado_resultados') == 'on'
-        acceso.ver_cobranza = request.POST.get('ver_cobranza') == 'on'
-        acceso.ver_gastos = request.POST.get('ver_gastos') == 'on'
-        acceso.activo = request.POST.get('activo') == 'on'
-        acceso.save()
-        messages.success(request, "Permisos actualizados correctamente.")
-        return redirect('acceso_superuser_panel')
-
-    return render(request, 'acceso_empresas/editar_permisos.html', {'acceso': acceso})
 
 @login_required(login_url='/portal/login/')
 def activar_usuario(request, ua_pk):
@@ -435,82 +402,91 @@ def activar_usuario(request, ua_pk):
     return redirect('acceso_superuser_panel')
 
 
-# ===========PANEL STRIPE CHECKOUT=========== #
-
 @login_required(login_url='/portal/login/')
-def checkout_suscripcion(request):
-    """Redirige al usuario a Stripe Checkout para pagar su plan"""
-    if not hasattr(request.user, 'usuario_acceso'):
+def aprobar_acceso(request, acceso_id):
+    if not request.user.is_superuser:
         return redirect('acceso_login')
 
-    ua = request.user.usuario_acceso
-    stripe.api_key = settings.STRIPE_SECRET_KEY
+    acceso = get_object_or_404(AccesoEmpresa, pk=acceso_id)
 
-    price_id = settings.STRIPE_PORTAL_PRICES.get(ua.plan)
-    if not price_id:
-        messages.error(request, "Plan no válido.")
-        return redirect('acceso_pago_pendiente')
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        if accion == 'aprobar':
+            acceso.estado = 'aprobado'
+            acceso.aprobado = True
+            acceso.aprobado_por = request.user
+            acceso.fecha_aprobacion = timezone.now()
+            acceso.ver_dashboard = request.POST.get('ver_dashboard') == 'on'
+            acceso.ver_estado_resultados = request.POST.get('ver_estado_resultados') == 'on'
+            acceso.ver_cobranza = request.POST.get('ver_cobranza') == 'on'
+            acceso.ver_gastos = request.POST.get('ver_gastos') == 'on'
+            acceso.save()
 
-    try:
-        # Crear o recuperar customer en Stripe
-        if ua.stripe_customer_id:
-            customer_id = ua.stripe_customer_id
-        else:
-            customer = stripe.Customer.create(
-                email=request.user.email,
-                name=request.user.get_full_name() or request.user.username,
-                metadata={'usuario_acceso_id': ua.id, 'plan': ua.plan}
-            )
-            ua.stripe_customer_id = customer.id
-            ua.save()
-            customer_id = customer.id
+            ua = acceso.usuario_acceso
+            if not ua.activo:
+                ua.activo = True
+                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
+                ua.save()
 
-        # Crear sesión de checkout
-        session = stripe.checkout.Session.create(
-            customer=customer_id,
-            payment_method_types=['card'],
-            line_items=[{'price': price_id, 'quantity': 1}],
-            mode='subscription',
-            success_url=request.build_absolute_uri('/portal/pago-exitoso/'),
-            cancel_url=request.build_absolute_uri('/portal/pago-pendiente/'),
-            metadata={'usuario_acceso_id': ua.id, 'plan': ua.plan},
-        )
-        return redirect(session.url, permanent=False)
+            messages.success(request, f"Acceso aprobado para {ua} a {acceso.empresa.nombre}.")
 
-    except stripe.error.StripeError as e:
-        messages.error(request, f"Error al procesar el pago: {str(e)}")
-        return redirect('acceso_pago_pendiente')
+        elif accion == 'rechazar':
+            acceso.estado = 'rechazado'
+            acceso.aprobado = False
+            acceso.save()
+            messages.warning(request, "Solicitud rechazada.")
+
+        return redirect('acceso_superuser_panel')
+
+    return render(request, 'acceso_empresas/aprobar_acceso.html', {'acceso': acceso})
 
 
-def pago_exitoso(request):
-    """Página de confirmación después del pago"""
-    return render(request, 'acceso_empresas/pago_exitoso.html')
+@login_required(login_url='/portal/login/')
+def editar_permisos(request, acceso_id):
+    if not request.user.is_superuser:
+        return redirect('acceso_login')
+
+    acceso = get_object_or_404(AccesoEmpresa, pk=acceso_id)
+    if request.method == 'POST':
+        acceso.ver_dashboard = request.POST.get('ver_dashboard') == 'on'
+        acceso.ver_estado_resultados = request.POST.get('ver_estado_resultados') == 'on'
+        acceso.ver_cobranza = request.POST.get('ver_cobranza') == 'on'
+        acceso.ver_gastos = request.POST.get('ver_gastos') == 'on'
+        acceso.activo = request.POST.get('activo') == 'on'
+        acceso.save()
+        messages.success(request, "Permisos actualizados correctamente.")
+        return redirect('acceso_superuser_panel')
+
+    return render(request, 'acceso_empresas/editar_permisos.html', {'acceso': acceso})
 
 
 @csrf_exempt
 def stripe_webhook_portal(request):
-    """Webhook de Stripe para el portal de acceso"""
+    import stripe
+    from django.conf import settings
+
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-   #webhook_secret = settings.STRIPE_WEBHOOK_SECRET
     webhook_secret = settings.STRIPE_PORTAL_WEBHOOK_SECRET
-    
+
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except (ValueError, stripe.error.SignatureVerificationError):
+    except (ValueError, stripe.SignatureVerificationError):
         return HttpResponse(status=400)
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         usuario_acceso_id = session.get('metadata', {}).get('usuario_acceso_id')
+        nuevo_plan = session.get('metadata', {}).get('plan')
         subscription_id = session.get('subscription')
-
         if usuario_acceso_id:
             try:
                 ua = UsuarioAcceso.objects.get(pk=usuario_acceso_id)
                 ua.activo = True
                 ua.stripe_subscription_id = subscription_id
                 ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
+                if nuevo_plan in ['basico', 'profesional', 'enterprise']:
+                    ua.plan = nuevo_plan
                 ua.save()
             except UsuarioAcceso.DoesNotExist:
                 pass
@@ -527,7 +503,8 @@ def stripe_webhook_portal(request):
                 pass
 
     elif event['type'] in ['customer.subscription.deleted', 'invoice.payment_failed']:
-        subscription_id = event['data']['object'].get('id') or event['data']['object'].get('subscription')
+        subscription_id = event['data']['object'].get('id') or \
+                         event['data']['object'].get('subscription')
         if subscription_id:
             try:
                 ua = UsuarioAcceso.objects.get(stripe_subscription_id=subscription_id)
@@ -536,4 +513,92 @@ def stripe_webhook_portal(request):
             except UsuarioAcceso.DoesNotExist:
                 pass
 
-    return HttpResponse(status=200)    
+    return HttpResponse(status=200)
+
+
+def cerrar_wizard(request):
+    request.session['wizard_cerrado'] = True
+    return redirect('pantalla_inicio')  
+
+
+
+def password_reset(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        try:
+            ua = UsuarioAcceso.objects.get(email=email)
+            # Generar token único
+            token = secrets.token_urlsafe(32)
+            ua.reset_token = token
+            ua.reset_token_expira = timezone.now() + timedelta(hours=24)
+            ua.save()
+
+            # Construir URL de reset
+            reset_url = request.build_absolute_uri(
+                f'/portal/password/reset/{token}/'
+            )
+
+            # Enviar email
+            send_mail(
+                subject='Restablecer contraseña — GESAC Portal',
+                message=f"""Hola {ua.nombre},
+
+Recibimos una solicitud para restablecer la contraseña de tu cuenta en GESAC Portal.
+
+Haz clic en el siguiente enlace para crear una nueva contraseña:
+
+{reset_url}
+
+Este enlace expirará en 24 horas.
+
+Si no solicitaste este cambio, puedes ignorar este mensaje.
+
+— Equipo GESAC""",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[ua.email],
+                fail_silently=True,
+            )
+        except UsuarioAcceso.DoesNotExist:
+            pass  # No revelar si el email existe o no
+
+        # Siempre redirigir al done para no revelar si existe el email
+        return redirect('acceso_password_reset_done')
+
+    return render(request, 'acceso_empresas/password_reset.html')
+
+
+def password_reset_done(request):
+    return render(request, 'acceso_empresas/password_reset_done.html')
+
+
+def password_reset_confirm(request, token):
+    try:
+        ua = UsuarioAcceso.objects.get(
+            reset_token=token,
+            reset_token_expira__gt=timezone.now()
+        )
+    except UsuarioAcceso.DoesNotExist:
+        ua = None
+
+    if request.method == 'POST' and ua:
+        password1 = request.POST.get('new_password1', '')
+        password2 = request.POST.get('new_password2', '')
+
+        if len(password1) < 8:
+            messages.error(request, "La contraseña debe tener al menos 8 caracteres.")
+        elif password1 != password2:
+            messages.error(request, "Las contraseñas no coinciden.")
+        else:
+            ua.set_password(password1)
+            ua.reset_token = None
+            ua.reset_token_expira = None
+            ua.save()
+            return redirect('acceso_password_reset_complete')
+
+    return render(request, 'acceso_empresas/password_reset_confirm.html', {
+        'validlink': ua is not None,
+    })
+
+
+def password_reset_complete(request):
+    return render(request, 'acceso_empresas/password_reset_complete.html')

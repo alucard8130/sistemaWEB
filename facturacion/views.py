@@ -3,6 +3,7 @@
 #from django.forms import CharField
 from django.shortcuts import render, redirect,get_object_or_404
 from django.urls import reverse
+from acceso_empresas.decorators import login_o_portal_required
 from areas.models import AreaComun
 from clientes.models import Cliente
 #import empresas
@@ -1153,7 +1154,7 @@ def pagos_por_origen(request):
 
 #dashboard/saldos.html
 #dashboard cartera vencida
-@login_required
+@login_o_portal_required 
 def dashboard_saldos(request):
     hoy = timezone.now().date()
     cliente_id = request.GET.get('cliente')
@@ -1189,11 +1190,12 @@ def dashboard_saldos(request):
 
     else:
         try:
-            # Usuario de acceso externo (administradora/comité)
-            if hasattr(request.user, 'usuario_acceso'):
+            if getattr(request, 'is_portal_acceso', False):
+                # Usuario del portal de acceso externo
                 empresa_id = request.session.get('empresa_id')
                 empresa = Empresa.objects.get(id=empresa_id)
             else:
+                # Usuario normal del sistema
                 empresa = request.user.perfilusuario.empresa
             empresas = Empresa.objects.filter(id=empresa.id)
             empresa_id = empresa.id
