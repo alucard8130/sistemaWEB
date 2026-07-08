@@ -1941,14 +1941,14 @@ def visitante_timbrar_factura(request, pk):
         return redirect("visitante_consulta_facturas")
 
     # Validar membresía
-    if getattr(visitante, "membresia_tipo", "basica") not in ["plus", "premium"]:
-        return redirect("visitante_membresia_pago")  # Crea esta vista/URL para el pago
+    # if getattr(visitante, "membresia_tipo", "basica") not in ["plus", "premium"]:
+    #     return redirect("visitante_membresia_pago")  # Crea esta vista/URL para el pago
 
     empresa = factura.empresa
-    if not empresa.es_plus:
+    if not empresa.es_premium:
         messages.error(
             request,
-            "TIMBRADO de Facturas solo está disponible en la versión PLUS. Contacta al administrador del sistema.",
+            "TIMBRADO de Facturas solo está disponible en la versión PREMIUM. Contacta al administrador del condominio para que contrate la versión PREMIUM.",
         )
         return redirect("visitante_consulta_facturas")
 
@@ -2014,13 +2014,13 @@ def stripe_checkout_visitante(request, factura_id):
     ):
         messages.error(
             request,
-            " PAGO EN LINEA no esta configurado. Contacta al administrador del sistema.",
+            " PAGO EN LINEA no esta configurado. Contacta al administrador del condominio para su configuración.",
         )
         return redirect("visitante_consulta_facturas")
-    elif not empresa.es_plus:
+    elif not empresa.es_premium:
         messages.error(
             request,
-            " PAGO EN LINEA solo está disponible en la versión PLUS del sistema.Contacta al administrador del sistema.",
+            "Disponible en la versión PREMIUM del sistema./n Contacta al administrador del condominio para que contrate la version PREMIUM.",
         )
         return redirect(
             "visitante_consulta_facturas"
