@@ -207,7 +207,8 @@ urlpatterns = [
     path('estacionamiento/', include('estacionamiento.urls')),
     path('cobros-estado-cuenta/', include('cobros_estado_cuenta.urls')),
     path('portal/', include('acceso_empresas.urls')),
-    path('asistente/', include('asistente_premium.urls')),  
+    path('asistente/', include('asistente_premium.urls')), 
+    path('asistencia/', include('empleados.urls')), 
 ]
 
     

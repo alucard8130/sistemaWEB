@@ -202,11 +202,16 @@
               Nomina <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><hr class="dropdown-divider"></li>
+              {% comment %} <li><hr class="dropdown-divider"></li> {% endcomment %}
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'empleado_crear' %}">Nuevo Empleado</a></li>{% endcomment %}
               {% comment %}<li><hr class="dropdown-divider"></li>{% endcomment %}
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'incidencia_crear' %}">Nueva Incidencia</a></li>{% endcomment %}
               <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}">Incidencias</a></li>
+              {% if empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}">Reporte Asistencia</a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#">Reporte Asistencia (PREMIUM)</a></li>
+              {% endif %}
             </ul>
           </li>
 

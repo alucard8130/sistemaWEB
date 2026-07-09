@@ -3,23 +3,6 @@ from django.db import models
 
 # Create your models here.
 class Empresa(models.Model):
-    # BANCOS_CHOICES = [
-    #     ('BANAMEX', 'Banamex'),
-    #     ('SANTANDER', 'Santander'),
-    #     ('HSBC', 'HSBC'),
-    #     ('BBVA', 'BBVA'),
-    #     ('IXE', 'Ixe'),
-    #     ('SCOTIABANK', 'Scotiabank'),
-    #     ('BANORTE', 'Banorte'),
-    #     ('INBURSA', 'Inbursa'),
-    #     ('BANCOPPEL', 'Bancoppel'),
-    #     ('AFIRME', 'Afirme'),
-    #     ('BAJIO', 'Bajío'),
-    #     ('MULTIVA', 'Multiva'),
-    #     ('BANREGIO', 'Banregio'),
-    #     ('BANJERCITO', 'Banjército'),
-    #     ('OTRO', 'Otro'),
-    # ]
     REGIMEN_CHOICES = [
         ('601', 'General de Ley Personas Morales'),
         ('603', 'Personas Morales con Fines no Lucrativos'),
@@ -29,10 +12,6 @@ class Empresa(models.Model):
     nombre = models.CharField(max_length=100)
     rfc = models.CharField(max_length=13, unique=True)
     regimen_fiscal = models.CharField(max_length=100, choices=REGIMEN_CHOICES, blank=True, null=True,default='603')
-    #cuenta_bancaria = models.CharField(max_length=100, choices=BANCOS_CHOICES, blank=True, null=True)
-    #numero_cuenta = models.CharField(max_length=50, blank=True, null=True)
-    #saldo_inicial = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    #saldo_final = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,blank=True, null=True)
     direccion = models.TextField()
     codigo_postal = models.CharField(max_length=10, blank=True, null=True)
     telefono = models.CharField(max_length=15, blank=True, null=True)
@@ -43,7 +22,10 @@ class Empresa(models.Model):
     stripe_webhook_secret = models.CharField(max_length=255, blank=True, null=True)
     es_plus = models.BooleanField(default=False)  # True = versión plus, False = demo
     es_premium = models.BooleanField(default=False)  # True = versión premium, False = Plus
-    #clabe=models.CharField(max_length=18, blank=True, null=True)
+    # --- Ubicación para validar asistencia por GPS ---
+    lat_oficina = models.DecimalField(max_digits=30, decimal_places=20, null=True, blank=True,help_text="Latitud de la oficina/caseta donde se debe marcar asistencia")
+    lng_oficina = models.DecimalField(max_digits=30, decimal_places=20, null=True, blank=True,help_text="Longitud de la oficina/caseta donde se debe marcar asistencia")
+    radio_permitido_metros = models.PositiveIntegerField(default=150,help_text="Radio permitido (en metros) alrededor de la ubicación para marcar asistencia válida")
 
     def __str__(self):
         return self.nombre

@@ -1,0 +1,349 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Checador · {{ empleado.nombre }}</title>
+<style>
+    :root {
+        --bg: #10161d;
+        --panel: #1a222c;
+        --panel-border: #2a3542;
+        --texto: #edeff2;
+        --texto-tenue: #7c8794;
+        --entrada: #2dd4bf;
+        --entrada-oscuro: #1ea595;
+        --salida: #f2a93b;
+        --salida-oscuro: #c98a26;
+        --exito: #34d399;
+        --error: #f87171;
+        --mono: 'DM Mono', 'IBM Plex Mono', 'Courier New', monospace;
+        --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        background: radial-gradient(circle at 50% 0%, #1a2530 0%, var(--bg) 60%);
+        color: var(--texto);
+        font-family: var(--sans);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+    }
+
+    .checador {
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+    }
+
+    .marca-empresa {
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--texto-tenue);
+        margin-bottom: 28px;
+    }
+
+    .reloj {
+        font-family: var(--mono);
+        font-size: 56px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        line-height: 1;
+        color: var(--texto);
+        text-shadow: 0 0 24px rgba(45, 212, 191, 0.25);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .fecha {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--texto-tenue);
+        margin-top: 8px;
+        text-transform: capitalize;
+    }
+
+    .empleado {
+        margin-top: 32px;
+        padding: 20px;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+    }
+
+    .empleado-nombre {
+        font-size: 19px;
+        font-weight: 600;
+    }
+
+    .empleado-puesto {
+        font-size: 13px;
+        color: var(--texto-tenue);
+        margin-top: 2px;
+    }
+
+    .ubicacion {
+        margin-top: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--texto-tenue);
+        padding: 5px 10px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .ubicacion-punto {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--texto-tenue);
+        transition: background 0.3s ease;
+    }
+
+    .ubicacion.ok .ubicacion-punto { background: var(--exito); box-shadow: 0 0 8px var(--exito); }
+    .ubicacion.buscando .ubicacion-punto { background: var(--salida); animation: parpadeo 1.2s ease-in-out infinite; }
+    .ubicacion.error .ubicacion-punto { background: var(--error); }
+
+    @keyframes parpadeo {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+    }
+
+    .registro-hoy {
+        margin-top: 18px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .registro-item {
+        flex: 1;
+        padding: 12px 8px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--panel-border);
+    }
+
+    .registro-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--texto-tenue);
+    }
+
+    .registro-hora {
+        font-family: var(--mono);
+        font-size: 18px;
+        margin-top: 4px;
+    }
+
+    .registro-hora.vacio { color: var(--texto-tenue); }
+
+    .boton-marcar {
+        margin-top: 24px;
+        width: 100%;
+        padding: 20px;
+        border: none;
+        border-radius: 16px;
+        font-size: 17px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+        color: #0a0f14;
+    }
+
+    .boton-marcar.entrada {
+        background: linear-gradient(135deg, var(--entrada) 0%, var(--entrada-oscuro) 100%);
+        box-shadow: 0 8px 24px rgba(45, 212, 191, 0.28);
+    }
+
+    .boton-marcar.salida {
+        background: linear-gradient(135deg, var(--salida) 0%, var(--salida-oscuro) 100%);
+        box-shadow: 0 8px 24px rgba(242, 169, 59, 0.28);
+    }
+
+    .boton-marcar:active { transform: scale(0.97); }
+    .boton-marcar:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+    .mensaje-completo {
+        margin-top: 24px;
+        padding: 16px;
+        border-radius: 14px;
+        background: rgba(52, 211, 153, 0.08);
+        border: 1px solid rgba(52, 211, 153, 0.25);
+        color: var(--exito);
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .feedback {
+        margin-top: 16px;
+        font-size: 13px;
+        min-height: 18px;
+        color: var(--texto-tenue);
+    }
+
+    .feedback.exito { color: var(--exito); }
+    .feedback.error { color: var(--error); }
+
+    .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(10, 15, 20, 0.3);
+        border-top-color: #0a0f14;
+        border-radius: 50%;
+        animation: girar 0.7s linear infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+    }
+
+    @keyframes girar { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+    <div class="checador">
+        <div class="marca-empresa"><h2><strong>{{ empleado.empresa.nombre }}</strong></h2></div>
+        <div class="marca-empresa">CHECADOR VIRTUAL GESAC</div>
+        
+
+        <div class="reloj" id="reloj">--:--:--</div>
+        <div class="fecha" id="fechaHoy"></div>
+
+        <div class="empleado">
+            <div class="empleado-nombre">{{ empleado.nombre }}</div>
+            <div class="empleado-puesto">{{ empleado.get_puesto_display }}</div>
+
+            <div class="ubicacion buscando" id="ubicacionEstado">
+                <span class="ubicacion-punto"></span>
+                <span id="ubicacionTexto">Buscando ubicación…</span>
+            </div>
+
+            <div class="registro-hoy">
+                <div class="registro-item">
+                    <div class="registro-label">Entrada</div>
+                    <div class="registro-hora {% if not registro.hora_entrada %}vacio{% endif %}" id="horaEntradaMostrada">
+                        {% if registro.hora_entrada %}{{ registro.hora_entrada|time:"H:i" }}{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div class="registro-item">
+                    <div class="registro-label">Salida</div>
+                    <div class="registro-hora {% if not registro.hora_salida %}vacio{% endif %}" id="horaSalidaMostrada">
+                        {% if registro.hora_salida %}{{ registro.hora_salida|time:"H:i" }}{% else %}—{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if ya_completo %}
+                <div class="mensaje-completo">✓ Ya completaste tu jornada de hoy</div>
+            {% else %}
+                {% if puede_marcar_entrada %}
+                    <button class="boton-marcar entrada" id="btnEntrada" onclick="marcar('entrada')">Marcar entrada</button>
+                {% elif puede_marcar_salida %}
+                    <button class="boton-marcar salida" id="btnSalida" onclick="marcar('salida')">Marcar salida</button>
+                {% endif %}
+            {% endif %}
+
+            <div class="feedback" id="feedback"></div>
+        </div>
+    </div>
+
+    {% csrf_token %}
+
+    <script>
+        const TOKEN = "{{ token }}";
+        const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // ---------- Reloj en vivo ----------
+        function actualizarReloj() {
+            const ahora = new Date();
+            const hh = String(ahora.getHours()).padStart(2, '0');
+            const mm = String(ahora.getMinutes()).padStart(2, '0');
+            const ss = String(ahora.getSeconds()).padStart(2, '0');
+            document.getElementById('reloj').textContent = `${hh}:${mm}:${ss}`;
+        }
+        actualizarReloj();
+        setInterval(actualizarReloj, 1000);
+
+        const formateadorFecha = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+        document.getElementById('fechaHoy').textContent = formateadorFecha.format(new Date());
+
+        // ---------- Geolocalización ----------
+        let coords = { lat: null, lng: null };
+
+        function actualizarEstadoUbicacion(estado, texto) {
+            const el = document.getElementById('ubicacionEstado');
+            el.className = 'ubicacion ' + estado;
+            document.getElementById('ubicacionTexto').textContent = texto;
+        }
+
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    coords.lat = pos.coords.latitude;
+                    coords.lng = pos.coords.longitude;
+                    actualizarEstadoUbicacion('ok', 'Ubicación detectada');
+                },
+                (err) => {
+                    actualizarEstadoUbicacion('error', 'Sin acceso a ubicación — se marcará sin validar');
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        } else {
+            actualizarEstadoUbicacion('error', 'Tu navegador no soporta ubicación');
+        }
+
+        // ---------- Marcar entrada/salida ----------
+        async function marcar(tipo) {
+            const boton = document.getElementById(tipo === 'entrada' ? 'btnEntrada' : 'btnSalida');
+            const feedback = document.getElementById('feedback');
+
+            if (!boton) return;
+            boton.disabled = true;
+            const textoOriginal = boton.textContent;
+            boton.innerHTML = '<span class="spinner"></span>Registrando…';
+            feedback.textContent = '';
+            feedback.className = 'feedback';
+
+            try {
+                const respuesta = await fetch(`/asistencia/marcar/${TOKEN}/${tipo}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF
+                    },
+                    body: JSON.stringify({ lat: coords.lat, lng: coords.lng })
+                });
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    throw new Error(datos.error || 'No se pudo registrar.');
+                }
+
+                feedback.textContent = datos.mensaje;
+                feedback.className = 'feedback exito';
+
+                const campoHora = tipo === 'entrada' ? 'horaEntradaMostrada' : 'horaSalidaMostrada';
+                const elHora = document.getElementById(campoHora);
+                elHora.textContent = datos.hora;
+                elHora.classList.remove('vacio');
+
+                setTimeout(() => window.location.reload(), 1200);
+
+            } catch (error) {
+                feedback.textContent = '❌ ' + error.message;
+                feedback.className = 'feedback error';
+                boton.disabled = false;
+                boton.textContent = textoOriginal;
+            }
+        }
+    </script>
+</body>
+</html>

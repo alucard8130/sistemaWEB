@@ -19,6 +19,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .btn-asistencia {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+        }
+        .btn-whatsapp { color: #25D366; border: 1px solid #25D36655; }
+        .btn-whatsapp:hover { background: #25D366; color: white; }
+        .btn-whatsapp.disabled { color: #ccc; border-color: #eee; pointer-events: none; }
+
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -38,12 +53,15 @@
                         <th>Nombre</th>
                         <th>RFC</th>
                         <th>Puesto</th>
+                        <th>Hora Entrada</th>
+                        <th>Hora Salida</th>
                         <th>Departamento</th>
                         <th>Teléfono</th>
                         <th>Email</th>
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
                         {% endif %}
+                        <th>Link Checador</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -53,12 +71,35 @@
                         <td>{{ empleado.nombre }}</td>
                         <td>{{ empleado.rfc }}</td>
                         <td>{{ empleado.puesto }}</td>
+                        <td>{{ empleado.hora_entrada_esperada }}</td>
+                        <td>{{ empleado.hora_salida_esperada }}</td>
                         <td>{{ empleado.departamento }}</td>
                         <td>{{ empleado.telefono }}</td>
                         <td>{{ empleado.email }}</td>
                         {% if request.user.is_superuser %}
                             <td>{{ empleado.empresa.nombre }}</td>
                         {% endif %}
+                        
+                        <td>
+                            {% if empresa.es_premium %}
+                            <a
+                                class="btn-asistencia btn-whatsapp {% if not empleado.telefono %}{% endif %}"
+                                href="#"
+                                title="{% if empleado.telefono %}Enviar link por WhatsApp{% else %}Sin teléfono registrado{% endif %}"
+                                data-telefono="{{ empleado.telefono|default:'' }}"
+                                data-nombre="{{ empleado.nombre }}"
+                                data-empresa="{{ empleado.empresa.nombre }}"
+                                data-url="{{ request.scheme }}://{{ request.get_host }}{{ empleado.url_marcar_asistencia }}"
+                                onclick="enviarPorWhatsapp(this); return false;"
+                            >
+                                <i class="bi bi-whatsapp"></i>
+                            </a>
+                            {% else %}
+                            <span class="text-muted" title="Función disponible solo para empresas PREMIUM">
+                                <i class="bi bi-whatsapp"></i>
+                            </span>
+                            {% endif %}
+                        </td>
                         <td>
                             <a href="{% url 'empleado_editar' empleado.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
                                 <i class="bi bi-pencil-square"></i>
@@ -67,7 +108,7 @@
                     </tr>
                     {% empty %}
                     <tr class="no-data-row">
-                        <td colspan="6">No hay empleados registrados.</td>
+                        <td colspan="8">No hay empleados registrados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -81,5 +122,31 @@
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        /**
+         * Limpia el telefono y le agrega el codigo de pais (52 = Mexico) si
+         * parece un numero local de 10 digitos. Ajusta esto si tus empleados
+         * tienen numeros de otro pais.
+         */
+        function formatearTelefonoWhatsapp(telefono) {
+            let limpio = telefono.replace(/\D/g, '');
+            if (limpio.length === 10) {
+                limpio = '52' + limpio;
+            }
+            return limpio;
+        }
+
+        function enviarPorWhatsapp(el) {
+            const telefono = el.dataset.telefono;
+            if (!telefono) return;
+
+            const nombre = el.dataset.nombre;
+            const url = el.dataset.url;
+            const numero = formatearTelefonoWhatsapp(telefono);
+            const mensaje = `Hola ${nombre}, este es tu link para registrar tu asistencia en ${el.dataset.empresa} :\n${url}`;
+
+            window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+        }
+    </script>
 </body>
 </html>

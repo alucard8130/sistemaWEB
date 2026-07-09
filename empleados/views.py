@@ -50,7 +50,7 @@ def empleado_lista(request):
     else:
         empresa = request.user.perfilusuario.empresa
         empleados = Empleado.objects.filter(empresa=empresa, activo=True).order_by('nombre')
-    return render(request, 'empleados/lista.html', {'empleados': empleados})
+    return render(request, 'empleados/lista.html', {'empleados': empleados, 'empresa': empresa})
 
 
 @login_required
