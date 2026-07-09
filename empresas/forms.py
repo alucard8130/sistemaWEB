@@ -9,11 +9,11 @@ class EmpresaForm(forms.ModelForm):
             'rfc',
             'regimen_fiscal',
             'codigo_postal',
-            'cuenta_bancaria',
-            'numero_cuenta',
-            'clabe',
-            'saldo_inicial',
-            'saldo_final',
+            #'cuenta_bancaria',
+            #'numero_cuenta',
+            #'clabe',
+            #'saldo_inicial',
+            #'saldo_final',
             'direccion',
             'telefono',
             'email'
@@ -48,25 +48,25 @@ class EmpresaForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Email'
             }),
-            'cuenta_bancaria': forms.Select(attrs={
-                'class': 'form-control',
-            }),
-            'numero_cuenta': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Número de Cuenta'
-            }),
-            'clabe': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'CLABE'
-            }),
-            'saldo_inicial': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Saldo Inicial'
-            }),
-            'saldo_final': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Saldo Final'
-            }),
+            # 'cuenta_bancaria': forms.Select(attrs={
+            #     'class': 'form-control',
+            # }),
+            # 'numero_cuenta': forms.TextInput(attrs={
+            #     'class': 'form-control',
+            #     'placeholder': 'Número de Cuenta'
+            # }),
+            # 'clabe': forms.TextInput(attrs={
+            #     'class': 'form-control',
+            #     'placeholder': 'CLABE'
+            # }),
+            # 'saldo_inicial': forms.NumberInput(attrs={
+            #     'class': 'form-control',
+            #     'placeholder': 'Saldo Inicial'
+            # }),
+            # 'saldo_final': forms.NumberInput(attrs={
+            #     'class': 'form-control',
+            #     'placeholder': 'Saldo Final'
+            # }),
         }
         labels = {
             'nombre': 'Nombre de la empresa',
@@ -76,11 +76,11 @@ class EmpresaForm(forms.ModelForm):
             'direccion': 'Dirección',
             'telefono': 'Teléfono',
             'email': 'Email',
-            'cuenta_bancaria': 'Banco',
-            'numero_cuenta': 'Número de Cuenta',
+            #'cuenta_bancaria': 'Banco',
+            #'numero_cuenta': 'Número de Cuenta',
             #'saldo_inicial': 'Saldo Inicial',
             #'saldo_final': 'Saldo Final',
-            'clabe': 'CLABE interbancaria',
+            #'clabe': 'CLABE interbancaria',
         }
 
 # class CuentaBancariaForm(forms.ModelForm):

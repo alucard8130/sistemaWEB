@@ -1,23 +1,28 @@
-#import csv
+# import csv
 from decimal import ROUND_HALF_UP
 import locale
 import os
 from typing_extensions import OrderedDict
-#from urllib import response
+
+# from urllib import response
 from uuid import uuid4
-#import uuid
+
+# import uuid
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.db import transaction
-#from openai import base_url
+
+# from openai import base_url
 import openpyxl
-#from areas import models
+
+# from areas import models
 from core import settings
 from empleados.models import Empleado
-#import empresas
+
+# import empresas
 from empresas.models import CuentaBancaria, Empresa
 from clientes.models import Cliente
 from facturacion.forms import TimbrarFacturaForm
@@ -27,7 +32,8 @@ from locales.models import LocalComercial
 from areas.models import AreaComun
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from presupuestos.models import Presupuesto, PresupuestoIngreso
-#from principal.admin import VisitanteAccesoForm
+
+# from principal.admin import VisitanteAccesoForm
 from principal.forms import TemaGeneralForm, VisitanteLoginForm
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
@@ -52,12 +58,14 @@ from django.contrib.auth.models import User
 from datetime import date, datetime, timedelta
 import stripe
 from .models import TicketMantenimiento
-#from django.contrib.auth import get_user_model
+
+# from django.contrib.auth import get_user_model
 from django.utils import timezone
-from .models import  SeguimientoTicket
+from .models import SeguimientoTicket
 from django.contrib.auth.hashers import check_password
 from django.urls import reverse
-#from django.conf import settings
+
+# from django.conf import settings
 import requests
 from decimal import Decimal
 from .forms import (
@@ -73,12 +81,13 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 import logging
-from rest_framework.authtoken.models import Token
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
+
+# from rest_framework.authtoken.models import Token
+# from rest_framework.authentication import TokenAuthentication
+# from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import (
-    authentication_classes,
-    permission_classes,
+    # authentication_classes,
+    # permission_classes,
     parser_classes,
 )
 from .models import VisitanteToken
@@ -104,20 +113,21 @@ from django.utils.crypto import get_random_string
 from django.core.paginator import Paginator
 import weasyprint
 from babel.dates import format_date
-import pytz 
+import pytz
 from django.db.models.functions import TruncMonth
-#import calendar
-#from collections import defaultdict
+# import calendar
+# from collections import defaultdict
 
 
-
-#pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
+# pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 @login_required
 def dashboard_inicio(request):
     empresa = request.user.perfilusuario.empresa
     perfil = request.user.perfilusuario
-    #mostrar_wizard = perfil.mostrar_wizard
-    mostrar_wizard = perfil.mostrar_wizard and not request.session.get('wizard_cerrado', False)
+    # mostrar_wizard = perfil.mostrar_wizard
+    mostrar_wizard = perfil.mostrar_wizard and not request.session.get(
+        "wizard_cerrado", False
+    )
 
     hoy = date.today()
     primer_dia_mes = hoy.replace(day=1)
@@ -125,159 +135,179 @@ def dashboard_inicio(request):
     ultimo_dia_mes_anterior = primer_dia_mes - timedelta(days=1)
     meses = []
     for i in range(5, -1, -1):
-        y = primer_dia_mes.year if primer_dia_mes.month - i > 0 else primer_dia_mes.year - 1
+        y = (
+            primer_dia_mes.year
+            if primer_dia_mes.month - i > 0
+            else primer_dia_mes.year - 1
+        )
         m = (primer_dia_mes.month - i - 1) % 12 + 1
         meses.append(date(y, m, 1))
 
     # Ingresos del mes actual y anterior
-    ingresos_mes = Pago.objects.filter(
-        factura__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes,
-        fecha_pago__lte=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
+    ingresos_mes = (
+        Pago.objects.filter(
+            factura__empresa=empresa,
+            fecha_pago__gte=primer_dia_mes,
+            fecha_pago__lte=hoy,
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
-    ingresos_mes_otros = CobroOtrosIngresos.objects.filter(
-        factura__empresa=empresa,
-        fecha_cobro__gte=primer_dia_mes,
-        fecha_cobro__lte=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
+    ingresos_mes_otros = (
+        CobroOtrosIngresos.objects.filter(
+            factura__empresa=empresa,
+            fecha_cobro__gte=primer_dia_mes,
+            fecha_cobro__lte=hoy,
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
     ingresos_mes_total = ingresos_mes + ingresos_mes_otros
-    
-    ingresos_mes_anterior = Pago.objects.filter(
-        factura__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes_anterior,
-        fecha_pago__lte=ultimo_dia_mes_anterior
-    ).aggregate(total=Sum('monto'))['total'] or 0
 
-    ingresos_mes_anterior_otros = CobroOtrosIngresos.objects.filter(
-        factura__empresa=empresa,
-        fecha_cobro__gte=primer_dia_mes_anterior,
-        fecha_cobro__lte=ultimo_dia_mes_anterior
-    ).aggregate(total=Sum('monto'))['total'] or 0
+    ingresos_mes_anterior = (
+        Pago.objects.filter(
+            factura__empresa=empresa,
+            fecha_pago__gte=primer_dia_mes_anterior,
+            fecha_pago__lte=ultimo_dia_mes_anterior,
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
+
+    ingresos_mes_anterior_otros = (
+        CobroOtrosIngresos.objects.filter(
+            factura__empresa=empresa,
+            fecha_cobro__gte=primer_dia_mes_anterior,
+            fecha_cobro__lte=ultimo_dia_mes_anterior,
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
     ingresos_mes_anterior_total = ingresos_mes_anterior + ingresos_mes_anterior_otros
-    
+
     variacion_ingresos = (
-        ((ingresos_mes_total - ingresos_mes_anterior_total) / ingresos_mes_anterior_total) * 100
-        if ingresos_mes_anterior_total else 0
+        (
+            (ingresos_mes_total - ingresos_mes_anterior_total)
+            / ingresos_mes_anterior_total
+        )
+        * 100
+        if ingresos_mes_anterior_total
+        else 0
     )
 
     # Gastos del mes actual y anterior
-    gastos_mes = PagoGasto.objects.filter(
-        gasto__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes,
-        fecha_pago__lte=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
+    gastos_mes = (
+        PagoGasto.objects.filter(
+            gasto__empresa=empresa, fecha_pago__gte=primer_dia_mes, fecha_pago__lte=hoy
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
-    gastos_mes_anterior = PagoGasto.objects.filter(
-        gasto__empresa=empresa,
-        fecha_pago__gte=primer_dia_mes_anterior,
-        fecha_pago__lte=ultimo_dia_mes_anterior
-    ).aggregate(total=Sum('monto'))['total'] or 0
+    gastos_mes_anterior = (
+        PagoGasto.objects.filter(
+            gasto__empresa=empresa,
+            fecha_pago__gte=primer_dia_mes_anterior,
+            fecha_pago__lte=ultimo_dia_mes_anterior,
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
     variacion_gastos = (
         ((gastos_mes - gastos_mes_anterior) / gastos_mes_anterior) * 100
-        if gastos_mes_anterior else 0
+        if gastos_mes_anterior
+        else 0
     )
 
     # Facturas pendientes y vencidas cuotas y áreas comunes
-    facturas_pendientes = Factura.objects.filter(
-        empresa=empresa,
-        estatus='pendiente'
-    ).select_related('cliente').prefetch_related('pagos')
+    facturas_pendientes = (
+        Factura.objects.filter(empresa=empresa, estatus="pendiente")
+        .select_related("cliente")
+        .prefetch_related("pagos")
+    )
 
-    #facturas pendientes otros ingresos
-    facturas_pendientes_otros = FacturaOtrosIngresos.objects.filter(    
-        empresa=empresa,
-        estatus='pendiente'
-    ).select_related('tipo_ingreso').prefetch_related('cobros')
+    # facturas pendientes otros ingresos
+    facturas_pendientes_otros = (
+        FacturaOtrosIngresos.objects.filter(empresa=empresa, estatus="pendiente")
+        .select_related("tipo_ingreso")
+        .prefetch_related("cobros")
+    )
 
     facturas_vencidas_cuotas = facturas_pendientes.filter(fecha_vencimiento__lt=hoy)
-    facturas_vencidas_otros = facturas_pendientes_otros.filter(fecha_vencimiento__lt=hoy)
-    cartera_vencida = sum(f.saldo_pendiente for f in facturas_vencidas_cuotas) + sum(f.saldo for f in facturas_vencidas_otros)
+    facturas_vencidas_otros = facturas_pendientes_otros.filter(
+        fecha_vencimiento__lt=hoy
+    )
+    cartera_vencida = sum(f.saldo_pendiente for f in facturas_vencidas_cuotas) + sum(
+        f.saldo for f in facturas_vencidas_otros
+    )
 
     # Cantidad de facturas pendientes
-    cantidad_facturas_pendientes = facturas_pendientes.count() + facturas_pendientes_otros.count()
+    cantidad_facturas_pendientes = (
+        facturas_pendientes.count() + facturas_pendientes_otros.count()
+    )
 
     # Pagos recibidos hoy
-    pagos_hoy = Pago.objects.filter(
-        empresa=empresa,
-        fecha_pago=hoy
-    ).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_hoy = (
+        Pago.objects.filter(empresa=empresa, fecha_pago=hoy).aggregate(
+            total=Sum("monto")
+        )["total"]
+        or 0
+    )
 
-    # Top deudores
-    # deudores = defaultdict(float)
-    # for f in facturas_pendientes:
-    #     deudores[f.cliente.nombre] += f.saldo_pendiente
-    # top_deudores = sorted(deudores.items(), key=lambda x: x[1], reverse=True)[:5]
-
-    # Datos para gráficos (últimos 6 meses)
-    # Pagos (ingresos)
     pagos_por_mes = (
         Pago.objects.filter(
-            factura__empresa=empresa,
-            fecha_pago__gte=meses[0],
-            fecha_pago__lte=hoy
+            factura__empresa=empresa, fecha_pago__gte=meses[0], fecha_pago__lte=hoy
         )
-        .annotate(mes=TruncMonth('fecha_pago'))
-        .values('mes')
-        .annotate(total=Sum('monto'))
-        .order_by('mes')
-)
+        .annotate(mes=TruncMonth("fecha_pago"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
 
     # Pagos de gastos generales por mes
     gastos_por_mes = (
         PagoGasto.objects.filter(
-            gasto__empresa=empresa,
-            fecha_pago__gte=meses[0],
-            fecha_pago__lte=hoy
+            gasto__empresa=empresa, fecha_pago__gte=meses[0], fecha_pago__lte=hoy
         )
-        .annotate(mes=TruncMonth('fecha_pago'))
-        .values('mes')
-        .annotate(total=Sum('monto'))
-        .order_by('mes')
+        .annotate(mes=TruncMonth("fecha_pago"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
     )
-    #gastos y vales caja chica por mes
+    # gastos y vales caja chica por mes
     gastos_caja_por_mes = (
         GastoCajaChica.objects.filter(
-            fondeo__empresa=empresa,
-            fecha__gte=meses[0],
-            fecha__lte=hoy
+            fondeo__empresa=empresa, fecha__gte=meses[0], fecha__lte=hoy
         )
-        .annotate(mes=TruncMonth('fecha'))
-        .values('mes')
-        .annotate(total=Sum('importe'))
-        .order_by('mes')
+        .annotate(mes=TruncMonth("fecha"))
+        .values("mes")
+        .annotate(total=Sum("importe"))
+        .order_by("mes")
     )
     vales_caja_por_mes = (
         ValeCaja.objects.filter(
-            fondeo__empresa=empresa,
-            fecha__gte=meses[0],
-            fecha__lte=hoy
+            fondeo__empresa=empresa, fecha__gte=meses[0], fecha__lte=hoy
         )
-        .annotate(mes=TruncMonth('fecha'))
-        .values('mes')
-        .annotate(total=Sum('importe'))
-        .order_by('mes')
+        .annotate(mes=TruncMonth("fecha"))
+        .values("mes")
+        .annotate(total=Sum("importe"))
+        .order_by("mes")
     )
 
     # Convierte los resultados a diccionarios {mes: total}
     pagos_dict = {}
     for p in pagos_por_mes:
-        if p['mes']:
-            pagos_dict[p['mes'].strftime('%Y-%m')] = float(p['total'])
+        if p["mes"]:
+            pagos_dict[p["mes"].strftime("%Y-%m")] = float(p["total"])
 
     pagosgasto_dict = {}
     for p in gastos_por_mes:
-        if p['mes']:
-            pagosgasto_dict[p['mes'].strftime('%Y-%m')] = float(p['total'])
+        if p["mes"]:
+            pagosgasto_dict[p["mes"].strftime("%Y-%m")] = float(p["total"])
 
-    labels = [m.strftime('%b %Y') for m in meses]
-    labels_keys = [m.strftime('%Y-%m') for m in meses]
+    labels = [m.strftime("%b %Y") for m in meses]
+    labels_keys = [m.strftime("%Y-%m") for m in meses]
     ingresos_data = [pagos_dict.get(k, 0) for k in labels_keys]
     gastos_data = [pagosgasto_dict.get(k, 0) for k in labels_keys]
-    
+
     # Cartera vencida por rango de días
     rangos = [
         (0, 30),
@@ -290,61 +320,58 @@ def dashboard_inicio(request):
     for inicio, fin in rangos:
         facturas_rango = facturas_pendientes.filter(
             fecha_vencimiento__lt=hoy - timedelta(days=inicio),
-            fecha_vencimiento__gte=hoy - timedelta(days=fin)
+            fecha_vencimiento__gte=hoy - timedelta(days=fin),
         )
         total = sum(f.saldo_pendiente for f in facturas_rango)
         cartera_rangos.append(total)
 
-    
     # --- Recordatorio de facturación mensual ---
     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
 
     mensaje_pago = None
     if request.GET.get("pago") == "ok":
-        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."    
+        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
 
-    # es_demo=False    
-    es_demo = request.user.perfilusuario.tipo_usuario == "demo"
-    es_plus= request.user.perfilusuario.tipo_usuario == "plus"
-    es_premium = request.user.perfilusuario.tipo_usuario == "premium"
-
-    
+    # es_demo=False
+    # es_demo = request.user.perfilusuario.tipo_usuario == "demo"
+    # es_plus = request.user.perfilusuario.tipo_usuario == "plus"
+    # es_premium = request.user.empresa.es_premium == "premium"
 
     context = {
-        'ingresos_mes': ingresos_mes,
-        'ingresos_mes_otros': ingresos_mes_otros,
-        'ingresos_mes_total': ingresos_mes_total,
-        'ingresos_mes_anterior': ingresos_mes_anterior,
-        'ingresos_mes_anterior_otros': ingresos_mes_anterior_otros,
-        'ingresos_mes_anterior_total': ingresos_mes_anterior_total,
-        'variacion_ingresos': variacion_ingresos,
-        'gastos_mes': gastos_mes,
-        'gastos_mes_anterior': gastos_mes_anterior,
-        'variacion_gastos': variacion_gastos,
-        'cartera_vencida': cartera_vencida,
-        'facturas_pendientes': cantidad_facturas_pendientes,
-        'pagos_hoy': pagos_hoy,
+        "ingresos_mes": ingresos_mes,
+        "ingresos_mes_otros": ingresos_mes_otros,
+        "ingresos_mes_total": ingresos_mes_total,
+        "ingresos_mes_anterior": ingresos_mes_anterior,
+        "ingresos_mes_anterior_otros": ingresos_mes_anterior_otros,
+        "ingresos_mes_anterior_total": ingresos_mes_anterior_total,
+        "variacion_ingresos": variacion_ingresos,
+        "gastos_mes": gastos_mes,
+        "gastos_mes_anterior": gastos_mes_anterior,
+        "variacion_gastos": variacion_gastos,
+        "cartera_vencida": cartera_vencida,
+        "facturas_pendientes": cantidad_facturas_pendientes,
+        "pagos_hoy": pagos_hoy,
         #'top_deudores': top_deudores,
-        'pagos_por_mes': list(pagos_por_mes),
-        'gastos_por_mes': list(gastos_por_mes),
-        'cartera_rangos': cartera_rangos,
-        'labels': labels,
-        'ingresos_data': ingresos_data,
-        'gastos_data': gastos_data,
-        'es_demo': es_demo,
-        'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY,
-        'mensaje_pago': mensaje_pago,
-        'mostrar_recordatorio': mostrar_recordatorio,
-        'mostrar_wizard': mostrar_wizard,
-        'es_plus': es_plus,
-        'es_premium': es_premium,
-        'regimen_choices': Empresa.REGIMEN_CHOICES,
-        'bancos_choices': Empresa.BANCOS_CHOICES,
-        'tipo_cuenta_choices': CuentaBancaria.TIPO_CUENTA,
-        'moneda_choices': CuentaBancaria.TIPO_MONEDA,
+        "pagos_por_mes": list(pagos_por_mes),
+        "gastos_por_mes": list(gastos_por_mes),
+        "cartera_rangos": cartera_rangos,
+        "labels": labels,
+        "ingresos_data": ingresos_data,
+        "gastos_data": gastos_data,
+        #"es_demo": es_demo,
+        "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
+        "mensaje_pago": mensaje_pago,
+        "mostrar_recordatorio": mostrar_recordatorio,
+        "mostrar_wizard": mostrar_wizard,
+        #"es_plus": es_plus,
+        #"es_premium": es_premium,
+        "regimen_choices": Empresa.REGIMEN_CHOICES,
+        "bancos_choices": CuentaBancaria.BANCOS_CHOICES,
+        "tipo_cuenta_choices": CuentaBancaria.TIPO_CUENTA,
+        "moneda_choices": CuentaBancaria.TIPO_MONEDA,
+        "empresa": empresa,
     }
-    return render(request, 'pantalla_inicio.html', context)
-
+    return render(request, "pantalla_inicio.html", context)
 
 
 @staff_member_required
@@ -379,7 +406,9 @@ def reiniciar_sistema(request):
                 Factura.objects.filter(empresa=empresa).delete()
 
                 # 5) Caja chica
-                FondeoCajaChica.objects.filter(empresa=empresa).delete()  # cascada a gastos/vales
+                FondeoCajaChica.objects.filter(
+                    empresa=empresa
+                ).delete()  # cascada a gastos/vales
 
                 # 6) Gastos
                 Gasto.objects.filter(empresa=empresa).delete()
@@ -399,11 +428,13 @@ def reiniciar_sistema(request):
                 Aviso.objects.filter(empresa=empresa).delete()
 
                 # 8) Dejar saldos en cero (empresa sigue activa)
-                #empresa.saldo_inicial = 0
-                #empresa.saldo_final = 0
-                #empresa.save(update_fields=["saldo_inicial", "saldo_final"])
+                # empresa.saldo_inicial = 0
+                # empresa.saldo_final = 0
+                # empresa.save(update_fields=["saldo_inicial", "saldo_final"])
 
-            messages.success(request, f"Empresa {empresa.nombre} reiniciada en cero correctamente.")
+            messages.success(
+                request, f"Empresa {empresa.nombre} reiniciada en cero correctamente."
+            )
         except Exception as e:
             messages.error(request, f"Error al reiniciar empresa: {e}")
 
@@ -411,7 +442,12 @@ def reiniciar_sistema(request):
 
     empresas = Empresa.objects.all().order_by("nombre")
     empresa_id = request.session.get("empresa_id")
-    return render(request, "reiniciar_sistema.html", {"empresas": empresas, "empresa_id": empresa_id})
+    return render(
+        request,
+        "reiniciar_sistema.html",
+        {"empresas": empresas, "empresa_id": empresa_id},
+    )
+
 
 @staff_member_required
 def respaldo_empresa_excel(request):
@@ -560,7 +596,7 @@ def respaldo_empresa_excel(request):
                 str(g.fecha),
             ]
         )
-    #CAJA CHICA - FONDEOS
+    # CAJA CHICA - FONDEOS
     ws = wb.create_sheet("Fondeos Caja Chica")
     ws.append(["id", "empresa", "monto", "fecha", "registrado_por"])
     for f in FondeoCajaChica.objects.filter(empresa=empresa):
@@ -587,7 +623,7 @@ def respaldo_empresa_excel(request):
                 g.registrado_por.get_full_name() if g.registrado_por else "",
             ]
         )
-    #CAJA CHICA - VALES
+    # CAJA CHICA - VALES
     ws = wb.create_sheet("Vales Caja Chica")
     ws.append(["id", "fondeo", "beneficiario", "importe", "fecha", "registrado_por"])
     for v in ValeCaja.objects.filter(fondeo__empresa=empresa):
@@ -601,7 +637,7 @@ def respaldo_empresa_excel(request):
                 v.registrado_por.get_full_name() if v.registrado_por else "",
             ]
         )
-        
+
     # PAGOS GASTOS
     ws = wb.create_sheet("Pagos Gastos")
     ws.append(["id", "referencia", "fecha_pago", "monto", "registrado_por"])
@@ -801,7 +837,8 @@ def enviar_correo_evento(request, evento_id):
             )
     return JsonResponse({"ok": False}, status=400)
 
-#registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
+
+# registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
 def registro_usuario(request):
     mensaje = ""
     if request.method == "POST":
@@ -829,11 +866,15 @@ def registro_usuario(request):
             if not user.is_superuser:
                 perfil.tipo_usuario = "demo"
             perfil.save()
-            messages.success(request, "¡Registro exitoso! Por favor inicia sesión con tus credenciales.")
+            messages.success(
+                request,
+                "¡Registro exitoso! Por favor inicia sesión con tus credenciales.",
+            )
             return redirect("login")
     return render(request, "registro.html", {"mensaje": mensaje})
 
-#lista usurios demo
+
+# lista usurios demo
 @staff_member_required
 @login_required
 def usuarios_demo(request):
@@ -942,6 +983,26 @@ def _safe_cancel_subscription(subscription_id):
 
 
 # Webhook de Stripe pago sistema de suscripciones GESAC
+def _renovar_vencimiento(perfil, dias=30):
+    """
+    Extiende perfil.fecha_vencimiento 'dias' días.
+
+    Si la membresía todavía no ha vencido (renovación anticipada, ej. el
+    usuario pagó unos días antes de que se le acabara el mes), se extiende
+    a partir de la fecha de vencimiento actual, para no perder los días que
+    ya tenía pagados. Si ya venció (o es la primera vez), se extiende a
+    partir de ahora.
+    """
+    ahora = timezone.now()
+    vencimiento_actual = perfil.fecha_vencimiento
+    base = (
+        vencimiento_actual
+        if vencimiento_actual and vencimiento_actual > ahora
+        else ahora
+    )
+    perfil.fecha_vencimiento = base + timedelta(days=dias)
+
+
 @csrf_exempt
 def stripe_webhook(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -957,15 +1018,13 @@ def stripe_webhook(request):
         return HttpResponse(status=400)
 
     plus_prices = {
-        "price_1Tpf3ZPYnlfwKZQHaGf2lnol",  # produccion plus
+        "price_1TrLU4PYnlfwKZQHncNKhhvd",  # produccion plus
         #"price_1RnT1IPW7xPgzk0myWccMWtW",  # pruebas plus
     }
     premium_prices = {
         "price_1Tpa52PYnlfwKZQHWUWxDAuE",  # produccion premium
-        #"price_1RnSzMPW7xPgzk0mLslR8vT5", # pruebas premium
-        
+        #"price_1RnSzMPW7xPgzk0mLslR8vT5",  # pruebas premium
     }
-
 
     # Alta inicial o upgrade por Checkout
     if event["type"] == "checkout.session.completed":
@@ -978,6 +1037,19 @@ def stripe_webhook(request):
         if not perfil:
             print("No se encontró PerfilUsuario para checkout.session.completed")
             return HttpResponse(status=200)
+        
+        # Si el usuario se registró sin correo, se toma el que Stripe le pidió
+        # (y confirmó) durante el checkout. customer_details.email es el dato
+        # real que el cliente tecleó en la pantalla de pago; es más confiable
+        # que customer_email (que solo refleja lo que nosotros le mandamos,
+        # si es que le mandamos algo).
+        if perfil.usuario and not perfil.usuario.email:
+            email_stripe = (session.get("customer_details") or {}).get("email") or session.get("customer_email")
+            if email_stripe:
+                perfil.usuario.email = email_stripe
+                perfil.usuario.save(update_fields=["email"])
+                print(f"Email tomado de Stripe checkout: {email_stripe}")
+
 
         tenia_suscripcion = bool(
             perfil.stripe_plus_subscription_id or perfil.stripe_premium_subscription_id
@@ -998,15 +1070,7 @@ def stripe_webhook(request):
             perfil.stripe_subscription_id = subscription_id
 
         elif price_id in premium_prices:
-            # regla: premium solo si ya existe plus
-            # if not perfil.stripe_plus_subscription_id:
-            #     print("Intento premium sin plus previo. Se revierte.")
-            #     try:
-            #         _safe_cancel_subscription(subscription_id)
-            #     except Exception as e:
-            #         print("No se pudo revertir premium invalido:", e)
-            #     return HttpResponse(status=200)
-
+        
             perfil.stripe_premium_subscription_id = subscription_id
             # legacy/fallback temporal
             perfil.stripe_subscription_id = subscription_id
@@ -1015,9 +1079,7 @@ def stripe_webhook(request):
             print("Price ID no reconocido:", price_id)
             return HttpResponse(status=200)
 
-        # if not tenia_suscripcion:
-        #     perfil.mostrar_wizard = True
-
+   
         _sync_membership_state(perfil)
         perfil.save()
 
@@ -1043,8 +1105,7 @@ def stripe_webhook(request):
         if subscription_id:
             try:
                 sub = stripe.Subscription.retrieve(
-                    subscription_id,
-                    expand=["items.data.price"]
+                    subscription_id, expand=["items.data.price"]
                 )
                 items = sub.get("items", {}).get("data", [])
                 if items and items[0].get("price"):
@@ -1068,7 +1129,13 @@ def stripe_webhook(request):
             elif subscription_id == perfil.stripe_premium_subscription_id:
                 pass
             else:
-                print("invoice.payment_succeeded con subscription no reconocida:", subscription_id)
+                print(
+                    "invoice.payment_succeeded con subscription no reconocida:",
+                    subscription_id,
+                )
+
+        # Cada pago exitoso de renovacion (mensual) extiende 30 dias mas
+        _renovar_vencimiento(perfil, dias=30)
 
         _sync_membership_state(perfil)
         perfil.save()
@@ -1094,7 +1161,7 @@ def crear_sesion_pago(request):
 
     session_kwargs = {
         "payment_method_types": ["card"],
-        "line_items": [{"price": "price_1Tpf3ZPYnlfwKZQHaGf2lnol", "quantity": 1}], #produccion
+        "line_items": [{"price": "price_1TrLU4PYnlfwKZQHncNKhhvd", "quantity": 1}], #produccion
         #"line_items": [{"price": "price_1RnT1IPW7xPgzk0myWccMWtW", "quantity": 1}], #desarrollo
         "mode": "subscription",
         "success_url": success,
@@ -1105,24 +1172,39 @@ def crear_sesion_pago(request):
 
     if perfil.stripe_customer_id:
         session_kwargs["customer"] = perfil.stripe_customer_id
-    else:
+    elif request.user.email:
+        # Solo se manda customer_email si de verdad hay un correo guardado;
+        # un string vacío hace que Stripe rechace la sesión con
+        # "Invalid email address:". Si no hay correo, se omite el parámetro
+        # y Stripe simplemente se lo pide al usuario en la pantalla de pago.
         session_kwargs["customer_email"] = request.user.email
 
-    session = stripe.checkout.Session.create(**session_kwargs)
-    return JsonResponse({"id": session.id})
+    try:
+        session = stripe.checkout.Session.create(**session_kwargs)
+    except Exception as e:
+        # El customer_id guardado ya no existe en este modo/cuenta de Stripe
+        # (típico al alternar entre llaves test/live). Se limpia el id
+        # inválido y se reintenta, dejando que Stripe cree un customer nuevo.
+        if "No such customer" in str(e) and perfil.stripe_customer_id:
+            print(f"Customer inválido {perfil.stripe_customer_id}, se limpia y reintenta")
+            perfil.stripe_customer_id = None
+            perfil.save(update_fields=["stripe_customer_id"])
+
+            session_kwargs.pop("customer", None)
+            if request.user.email:
+                session_kwargs["customer_email"] = request.user.email
+
+            session = stripe.checkout.Session.create(**session_kwargs)
+        else:
+            raise
+
+    return JsonResponse({"id": session.id, "url": session.url})
 
 
 @login_required
 def crear_sesion_pago_premium(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
     perfil = request.user.perfilusuario
-
-    # Regla: premium solo si ya es plus
-    # if not perfil.stripe_plus_subscription_id:
-    #     return JsonResponse(
-    #         {"status": "error", "detail": "Debes activar PLUS antes de contratar PREMIUM."},
-    #         status=400
-    #     )
 
     if perfil.stripe_premium_subscription_id:
         return JsonResponse(
@@ -1146,11 +1228,34 @@ def crear_sesion_pago_premium(request):
 
     if perfil.stripe_customer_id:
         session_kwargs["customer"] = perfil.stripe_customer_id
-    else:
+    elif request.user.email:
+        # Solo se manda customer_email si de verdad hay un correo guardado;
+        # un string vacío hace que Stripe rechace la sesión con
+        # "Invalid email address:". Si no hay correo, se omite el parámetro
+        # y Stripe simplemente se lo pide al usuario en la pantalla de pago.
         session_kwargs["customer_email"] = request.user.email
 
-    session = stripe.checkout.Session.create(**session_kwargs)
-    return JsonResponse({"id": session.id})
+    try:
+        session = stripe.checkout.Session.create(**session_kwargs)
+    except Exception as e:
+        # El customer_id guardado ya no existe en este modo/cuenta de Stripe
+        # (típico al alternar entre llaves test/live). Se limpia el id
+        # inválido y se reintenta, dejando que Stripe cree un customer nuevo.
+        if "No such customer" in str(e) and perfil.stripe_customer_id:
+            print(f"Customer inválido {perfil.stripe_customer_id}, se limpia y reintenta")
+            perfil.stripe_customer_id = None
+            perfil.save(update_fields=["stripe_customer_id"])
+
+            session_kwargs.pop("customer", None)
+            if request.user.email:
+                session_kwargs["customer_email"] = request.user.email
+
+            session = stripe.checkout.Session.create(**session_kwargs)
+        else:
+            raise
+
+    return JsonResponse({"id": session.id, "url": session.url})
+
 
 
 @require_POST
@@ -1166,10 +1271,12 @@ def cancelar_suscripcion(request):
     if perfil.stripe_premium_subscription_id:
         return JsonResponse(
             {"status": "error", "detail": "Primero cancela la membresía PREMIUM."},
-            status=400
+            status=400,
         )
 
-    plus_subscription_id = perfil.stripe_plus_subscription_id or perfil.stripe_subscription_id
+    plus_subscription_id = (
+        perfil.stripe_plus_subscription_id or perfil.stripe_subscription_id
+    )
     # if not plus_subscription_id:
     #     return JsonResponse({"status": "no encontrada"}, status=404)
 
@@ -1210,7 +1317,8 @@ def cancelar_suscripcion_premium(request):
 
         perfil.stripe_premium_subscription_id = None
 
-        # legacy: si el id legacy era el premium cancelado, volverlo al plus (si existe), si no existe que sea None y que el tipo_usuario se ajuste a plus
+        # legacy: si el id legacy era el premium cancelado, volverlo al plus (si existe), si no existe que sea None 
+        # y que el tipo_usuario se ajuste a plus
 
         if perfil.stripe_subscription_id == premium_subscription_id:
             perfil.stripe_subscription_id = perfil.stripe_plus_subscription_id
@@ -1228,8 +1336,9 @@ def cancelar_suscripcion_premium(request):
 @login_required
 def cerrar_wizard(request):
     # Marca en la sesión que el wizard fue cerrado temporalmente
-    request.session['wizard_cerrado'] = True
+    request.session["wizard_cerrado"] = True
     return redirect("dashboard_inicio")
+
 
 @require_POST
 @login_required
@@ -1263,7 +1372,9 @@ def guardar_datos_empresa(request):
 
     if banco and numero_cuenta:
         # Solo crear si no existe ya una cuenta con ese número para esta empresa
-        if not CuentaBancaria.objects.filter(empresa=empresa, numero_cuenta=numero_cuenta).exists():
+        if not CuentaBancaria.objects.filter(
+            empresa=empresa, numero_cuenta=numero_cuenta
+        ).exists():
             CuentaBancaria.objects.create(
                 empresa=empresa,
                 banco=banco,
@@ -1279,6 +1390,7 @@ def guardar_datos_empresa(request):
     perfil.save()
     messages.success(request, "¡Datos de empresa configurados correctamente!")
     return redirect("dashboard_inicio")
+
 
 # MODULO DE TICKETS DE MANTENIMIENTO-->
 @login_required
@@ -1317,7 +1429,7 @@ def crear_ticket(request):
                         skipped.append(f"{f.name} (no es imagen)")
                         continue
                     if f.size > MAX_SIZE:
-                        skipped.append(f"{f.name} (>{int(MAX_SIZE/1024/1024)}MB)")
+                        skipped.append(f"{f.name} (>{int(MAX_SIZE / 1024 / 1024)}MB)")
                         continue
                     # adjuntar
                     email.attach(f.name, f.read(), content_type)
@@ -1340,7 +1452,7 @@ def crear_ticket(request):
                     request,
                     "Se omitieron archivos al enviar el correo: "
                     + ", ".join(skipped[:20])
-                    + (f", ...(+{len(skipped)-20})" if len(skipped) > 20 else ""),
+                    + (f", ...(+{len(skipped) - 20})" if len(skipped) > 20 else ""),
                 )
 
         # # Enviar notificación por WhatsApp si el empleado tiene teléfono
@@ -1493,21 +1605,22 @@ def lista_tickets(request):
     return render(request, "mantenimiento/lista_tickets.html", {"tickets": tickets})
 
 
-@login_required
-def seleccionar_empresa(request):
-    if not request.user.is_superuser:
-        return redirect("dashboard_inicio")  # O la vista normal
+# @login_required
+# def seleccionar_empresa(request):
+#     if not request.user.is_superuser:
+#         return redirect("dashboard_inicio")  # O la vista normal
 
-    if request.method == "POST":
-        empresa_id = request.POST.get("empresa")
-        if empresa_id:
-            request.session["empresa_id"] = empresa_id
-            return redirect("dashboard_inicio")  # O la vista principal
-    empresas = Empresa.objects.all()
-    return render(request, "seleccionar_empresa.html", {"empresas": empresas})
+#     if request.method == "POST":
+#         empresa_id = request.POST.get("empresa")
+#         if empresa_id:
+#             request.session["empresa_id"] = empresa_id
+#             return redirect("dashboard_inicio")  # O la vista principal
+#     empresas = Empresa.objects.all()
+#     return render(request, "seleccionar_empresa.html", {"empresas": empresas})
 
 
 # modulo visitantes consulta adeudos y pagos de facturas via WEB
+
 
 def registro_visitante(request):
     empresas = Empresa.objects.all()
@@ -1717,6 +1830,7 @@ def visitante_seleccionar_empresa(request):
         request, "visitantes/seleccionar_empresa.html", {"empresas": empresas}
     )
 
+
 def calcular_interes_mora(fecha_vencimiento, saldo_pendiente, tasa_mensual=0.06):
     if not fecha_vencimiento or saldo_pendiente <= 0:
         return Decimal("0.00")
@@ -1724,13 +1838,16 @@ def calcular_interes_mora(fecha_vencimiento, saldo_pendiente, tasa_mensual=0.06)
     if fecha_vencimiento >= hoy:
         return Decimal("0.00")
     # Calcular meses completos de atraso
-    meses = (hoy.year - fecha_vencimiento.year) * 12 + (hoy.month - fecha_vencimiento.month)
+    meses = (hoy.year - fecha_vencimiento.year) * 12 + (
+        hoy.month - fecha_vencimiento.month
+    )
     if hoy.day < fecha_vencimiento.day:
         meses -= 1
     if meses <= 0:
         return Decimal("0.00")
     interes = Decimal(saldo_pendiente) * Decimal(tasa_mensual) * Decimal(meses)
     return interes.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
 
 def visitante_consulta_facturas(request):
     visitante_id = request.session.get("visitante_id")
@@ -1756,22 +1873,30 @@ def visitante_consulta_facturas(request):
     nombre_cliente = (
         locales.first().cliente.nombre
         if locales.exists() and locales.first().cliente
-        else areas.first().cliente.nombre if areas.exists() and areas.first().cliente else ""
-
+        else areas.first().cliente.nombre
+        if areas.exists() and areas.first().cliente
+        else ""
     )
     facturas = Factura.objects.none()
     if local_id:
         facturas = Factura.objects.filter(
-            local_id=local_id, local__in=locales, empresa=empresa, monto__gt=0  # Solo mostrar facturas con monto mayor a 0
+            local_id=local_id,
+            local__in=locales,
+            empresa=empresa,
+            monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
         ).order_by("-fecha_vencimiento")
     elif area_id:
         facturas = Factura.objects.filter(
-            area_comun_id=area_id, area_comun__in=areas, empresa=empresa, monto__gt=0  # Solo mostrar facturas con monto mayor a 0
+            area_comun_id=area_id,
+            area_comun__in=areas,
+            empresa=empresa,
+            monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
         ).order_by("-fecha_vencimiento")
     else:
         facturas = Factura.objects.filter(
-            Q(local__in=locales) | Q(area_comun__in=areas), empresa=empresa,
-            monto__gt=0  # Solo mostrar facturas con monto mayor a 0
+            Q(local__in=locales) | Q(area_comun__in=areas),
+            empresa=empresa,
+            monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
         ).order_by("-fecha_vencimiento")
 
     # Obtén los años únicos de las facturas
@@ -1789,7 +1914,6 @@ def visitante_consulta_facturas(request):
         f.saldo_pendiente for f in facturas if f.estatus == "pendiente"
     )
     total_cobrado = sum(f.monto for f in facturas if f.estatus == "cobrada")
-    
 
     mensaje_pago = None
     if pagook and factura_id:
@@ -1807,14 +1931,16 @@ def visitante_consulta_facturas(request):
     factura_pendiente_id = (
         factura_pendiente_mas_antigua.id if factura_pendiente_mas_antigua else None
     )
-    #paginacion
+    # paginacion
     page_number = request.GET.get("page", 1)
     paginator = Paginator(facturas, 10)  # Mostrar 10 facturas por página
     facturas_paginadas = paginator.get_page(page_number)
     # Calcula interés de mora para facturas pendientes
     for f in facturas_paginadas:
         if f.estatus == "pendiente":
-            f.interes_mora = calcular_interes_mora(f.fecha_vencimiento, f.saldo_pendiente)
+            f.interes_mora = calcular_interes_mora(
+                f.fecha_vencimiento, f.saldo_pendiente
+            )
         else:
             f.interes_mora = Decimal("0.00")
     return render(
@@ -1840,10 +1966,11 @@ def visitante_consulta_facturas(request):
         },
     )
 
+
 def descargar_estado_cuenta_pdf(request):
     visitante_id = request.session.get("visitante_id")
     empresa_id = request.session.get("empresa_id")
-    
+
     if not visitante_id or not empresa_id:
         return redirect("visitante_login")
     visitante = VisitanteAcceso.objects.get(id=visitante_id)
@@ -1863,39 +1990,52 @@ def descargar_estado_cuenta_pdf(request):
     )
     facturas = Factura.objects.none()
     if local_id:
-        facturas = Factura.objects.filter(local_id=local_id, local__in=locales, empresa=empresa, monto__gt=0)
+        facturas = Factura.objects.filter(
+            local_id=local_id, local__in=locales, empresa=empresa, monto__gt=0
+        )
     elif area_id:
-        facturas = Factura.objects.filter(area_comun_id=area_id, area_comun__in=areas, empresa=empresa, monto__gt=0)
+        facturas = Factura.objects.filter(
+            area_comun_id=area_id, area_comun__in=areas, empresa=empresa, monto__gt=0
+        )
     else:
-        facturas = Factura.objects.filter(Q(local__in=locales) | Q(area_comun__in=areas), empresa=empresa, monto__gt=0)
+        facturas = Factura.objects.filter(
+            Q(local__in=locales) | Q(area_comun__in=areas), empresa=empresa, monto__gt=0
+        )
     if anio and anio.isdigit():
         facturas = facturas.filter(fecha_vencimiento__year=int(anio))
 
     # Calcula intereses si es necesario (igual que en la vista principal)
     for f in facturas:
         if f.estatus == "pendiente":
-            f.interes_mora = calcular_interes_mora(f.fecha_vencimiento, f.saldo_pendiente)
+            f.interes_mora = calcular_interes_mora(
+                f.fecha_vencimiento, f.saldo_pendiente
+            )
         else:
             f.interes_mora = Decimal("0.00")
 
     total_saldo = sum(f.saldo_pendiente for f in facturas)
     total_interes = sum(f.interes_mora for f in facturas)
     fecha_generacion = timezone.now()
-    html = render_to_string("facturacion/estado_cuenta_pdf.html", {
-        "facturas": facturas,
-        "visitante": visitante,
-        "empresa": empresa,
-        "local_id": local_id,
-        "area_id": area_id,
-        "anio": anio,
-        "nombre_cliente": nombre_cliente,
-        "total_saldo": total_saldo,
-        "total_interes": total_interes,
-        "fecha_generacion": fecha_generacion,
-    })
+    html = render_to_string(
+        "facturacion/estado_cuenta_pdf.html",
+        {
+            "facturas": facturas,
+            "visitante": visitante,
+            "empresa": empresa,
+            "local_id": local_id,
+            "area_id": area_id,
+            "anio": anio,
+            "nombre_cliente": nombre_cliente,
+            "total_saldo": total_saldo,
+            "total_interes": total_interes,
+            "fecha_generacion": fecha_generacion,
+        },
+    )
 
     response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="estado_cuenta_{nombre_cliente}.pdf"'
+    response["Content-Disposition"] = (
+        f'attachment; filename="estado_cuenta_{nombre_cliente}.pdf"'
+    )
     weasyprint.HTML(string=html).write_pdf(response)
     return response
 
@@ -2156,19 +2296,22 @@ def crear_sesion_pago_membresia_plus(request):
 
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
-            line_items=[{
-                "price": price_id,
-                "quantity": 1,
-            }],
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": 1,
+                }
+            ],
             mode="subscription",
-            success_url=request.build_absolute_uri('/visitante/membresia/success/'),
-            cancel_url=request.build_absolute_uri('/visitante/membresia/pago/'),
+            success_url=request.build_absolute_uri("/visitante/membresia/success/"),
+            cancel_url=request.build_absolute_uri("/visitante/membresia/pago/"),
             metadata={"visitante_id": visitante.id},
             client_reference_id=str(visitante.id),
             customer_email=visitante.email,
         )
         return redirect(session.url)
     return redirect("visitante_membresia_pago")
+
 
 @csrf_exempt
 def crear_sesion_pago_membresia_premium(request):
@@ -2188,13 +2331,15 @@ def crear_sesion_pago_membresia_premium(request):
 
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
-            line_items=[{
-                "price": price_id,
-                "quantity": 1,
-            }],
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": 1,
+                }
+            ],
             mode="subscription",
-            success_url=request.build_absolute_uri('/visitante/membresia/success/'),
-            cancel_url=request.build_absolute_uri('/visitante/membresia/pago/'),
+            success_url=request.build_absolute_uri("/visitante/membresia/success/"),
+            cancel_url=request.build_absolute_uri("/visitante/membresia/pago/"),
             metadata={"visitante_id": visitante.id},
             client_reference_id=str(visitante.id),
             customer_email=visitante.email,
@@ -2207,7 +2352,9 @@ def membresia_pago_exitoso(request):
     visitante_id = request.session.get("visitante_id")
     visitante = VisitanteAcceso.objects.get(id=visitante_id)
     membresia = visitante.membresia_tipo
-    return render(request, "visitantes/membresia_pago_exitoso.html", {"membresia": membresia} )
+    return render(
+        request, "visitantes/membresia_pago_exitoso.html", {"membresia": membresia}
+    )
 
 
 def visitante_membresia_pago(request):
@@ -2230,17 +2377,21 @@ def stripe_webhook_membresia(request):
     except Exception as e:
         logger.error(f"Error validando Stripe webhook: {e}")
         return HttpResponse(status=400)
-    
+
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         logger.info(f"Session ID: {session.get('id')}")
-        visitante_id = session.get("metadata", {}).get("visitante_id") or session.get("client_reference_id")
+        visitante_id = session.get("metadata", {}).get("visitante_id") or session.get(
+            "client_reference_id"
+        )
         visitante = None
         if visitante_id:
             visitante = VisitanteAcceso.objects.filter(id=visitante_id).first()
             logger.info(f"Visitante encontrado por ID: {visitante_id} -> {visitante}")
         else:
-            logger.warning("No se encontró visitante_id en metadata ni client_reference_id.")
+            logger.warning(
+                "No se encontró visitante_id en metadata ni client_reference_id."
+            )
 
         # Obtén los line items de la sesión
         try:
@@ -2260,14 +2411,20 @@ def stripe_webhook_membresia(request):
             # Agrega aquí todos tus price_id reales
         }
         membresia_tipo = price_map.get(price_id)
-        logger.info(f"Membresía determinada: {membresia_tipo} para Price ID: {price_id}")
+        logger.info(
+            f"Membresía determinada: {membresia_tipo} para Price ID: {price_id}"
+        )
 
         if visitante and membresia_tipo:
             visitante.membresia_tipo = membresia_tipo
             visitante.save()
-            logger.info(f"Membresía actualizada a {membresia_tipo} para visitante {visitante.id}")
+            logger.info(
+                f"Membresía actualizada a {membresia_tipo} para visitante {visitante.id}"
+            )
         else:
-            logger.warning("No se pudo actualizar la membresía (visitante o price_id faltante)")
+            logger.warning(
+                "No se pudo actualizar la membresía (visitante o price_id faltante)"
+            )
 
     return HttpResponse(status=200)
 
@@ -2443,7 +2600,8 @@ def aviso_eliminar(request, aviso_id):
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASS = os.getenv("FACTURAMA_PASSWORD")
 
-#configuracion modulo facturama
+
+# configuracion modulo facturama
 def timbrar_factura_facturama(datos_factura):
     url = (
         "https://apisandbox.facturama.mx/api-lite/3/cfdis"  # URL de sandbox desarrollo
@@ -2479,7 +2637,6 @@ def factura_a_json_facturama(
     tz_mx = pytz.timezone("America/Mexico_City")
     fecha_timbrado = timezone.now().astimezone(tz_mx).strftime("%Y-%m-%d %H:%M:%S")
 
-    
     if hasattr(factura, "local") and factura.local:
         # Factura de local comercial
         descripcion = (
@@ -2581,7 +2738,7 @@ def factura_a_json_facturama(
     }
 
 
-#timbrar facturas cuotas de mantenimiento y areas comunes
+# timbrar facturas cuotas de mantenimiento y areas comunes
 @login_required
 def timbrar_factura(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
@@ -2986,7 +3143,7 @@ def descargar_cfdi_facturama(request, id):
 @login_required
 def timbrar_factura_otros_ingresos(request, pk):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=pk)
-    #empresa = factura.empresa
+    # empresa = factura.empresa
 
     # # Solo permite timbrar si la empresa es PLUS
     # if not empresa.es_plus:
@@ -3278,11 +3435,11 @@ def api_reporte_ingresos_vs_gastos(request):
         return Response({"error": "Acceso denegado"}, status=403)
 
     if getattr(visitante, "es_admin", False):
-    #if getattr(visitante, "es_admin", False) or request.GET.get("empresa_id"):
+        # if getattr(visitante, "es_admin", False) or request.GET.get("empresa_id"):
         empresa_id = request.GET.get("empresa_id")
         if not empresa_id:
             return Response({"error": "Debe seleccionar una empresa"}, status=400)
-        #solo empresas vinculadas al visitante administrador
+        # solo empresas vinculadas al visitante administrador
         empresa = Empresa.objects.filter(id=empresa_id).first()
         if not empresa:
             return Response({"error": "Empresa no encontrada"}, status=404)
@@ -3310,7 +3467,9 @@ def api_reporte_ingresos_vs_gastos(request):
     # Prioridad: periodo > mes/año > fechas manuales
     if periodo == "mes_actual":
         fecha_inicio = hoy.replace(day=1)
-        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(
+            day=1
+        ) - timedelta(days=1)
         mes = hoy.month
         anio = hoy.year
     elif periodo == "periodo_actual":
@@ -3327,7 +3486,11 @@ def api_reporte_ingresos_vs_gastos(request):
             #     fecha_fin = date(anio, 12, 31)
             # else:
             #     fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
-            fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1) if mes < 12 else date(anio, 12, 31)    
+            fecha_fin = (
+                date(anio, mes + 1, 1) - timedelta(days=1)
+                if mes < 12
+                else date(anio, 12, 31)
+            )
         except Exception:
             fecha_inicio = None
             fecha_fin = None
@@ -3341,7 +3504,7 @@ def api_reporte_ingresos_vs_gastos(request):
     # Convierte a date si es string
     if isinstance(fecha_inicio, str):
         try:
-            #fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            # fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
             fecha_inicio = date.fromisoformat(fecha_inicio)
         except Exception:
             fecha_inicio = None
@@ -3350,7 +3513,7 @@ def api_reporte_ingresos_vs_gastos(request):
 
     if isinstance(fecha_fin, str):
         try:
-            #fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            # fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
             fecha_fin = date.fromisoformat(fecha_fin)
         except Exception:
             fecha_fin = None
@@ -3378,12 +3541,13 @@ def api_reporte_ingresos_vs_gastos(request):
 
     mes_letra = ""
     if fecha_inicio and fecha_fin:
-        if fecha_inicio.month == fecha_fin.month and fecha_inicio.year == fecha_fin.year:
+        if (
+            fecha_inicio.month == fecha_fin.month
+            and fecha_inicio.year == fecha_fin.year
+        ):
             mes_letra = fecha_inicio.strftime("%B %Y").capitalize()
         else:
             mes_letra = f"{fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}"
-
-    
 
     # Filtra todos los objetos por la empresa del visitante
     pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(
@@ -3408,22 +3572,26 @@ def api_reporte_ingresos_vs_gastos(request):
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
         vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
-        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__gte=fecha_inicio)
+        pagos_por_identificar = pagos_por_identificar.filter(
+            fecha_pago__gte=fecha_inicio
+        )
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
         pagos_gastos = pagos_gastos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
         vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
-        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__lte=fecha_fin)        
+        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__lte=fecha_fin)
 
     total_ingresos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros_ingresos = cobros_otros.aggregate(total=Sum("monto"))["total"] or 0
-    total_pagos_por_identificar =  (
+    total_pagos_por_identificar = (
         pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
     )
-    total_ingresos_cobrados = total_ingresos + total_otros_ingresos + total_pagos_por_identificar
-    
+    total_ingresos_cobrados = (
+        total_ingresos + total_otros_ingresos + total_pagos_por_identificar
+    )
+
     total_gastos_pagados = pagos_gastos.aggregate(total=Sum("monto"))["total"] or 0
     total_gastos_caja_chica = (
         gastos_caja_chica.aggregate(total=Sum("importe"))["total"] or 0
@@ -3434,7 +3602,6 @@ def api_reporte_ingresos_vs_gastos(request):
     total_egresos = (
         total_gastos_pagados + total_gastos_caja_chica + total_vales_caja_chica
     )
-    
 
     # Agrupar por tipo de origen (Local/Área)
     ingresos_qs = (
@@ -3465,8 +3632,8 @@ def api_reporte_ingresos_vs_gastos(request):
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f"{tipo}"] = float(x["total"])
         ingresos_por_origen["Depositos no identificados"] = float(
-        total_pagos_por_identificar
-    )
+            total_pagos_por_identificar
+        )
 
     gastos_agregados = {}
     gastos_qs = PagoGasto.objects.select_related("gasto__tipo_gasto__subgrupo__grupo")
@@ -3808,7 +3975,7 @@ def api_estado_resultados(request):
     if not getattr(visitante, "acceso_api_reporte", False):
         return Response({"error": "Acceso denegado"}, status=403)
 
-    if getattr(visitante, "es_admin", False)or request.GET.get("empresa_id"):
+    if getattr(visitante, "es_admin", False) or request.GET.get("empresa_id"):
         empresa_id = request.GET.get("empresa_id")
         if not empresa_id:
             return Response({"error": "Debe seleccionar una empresa"}, status=400)
@@ -3976,9 +4143,12 @@ def api_estado_resultados(request):
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
     try:
         empresa = Empresa.objects.get(id=empresa_id)
-        saldo_inicial_empresa = float(CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
-    .aggregate(t=Sum("saldo_inicial"))["t"] or 0
-)
+        saldo_inicial_empresa = float(
+            CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True).aggregate(
+                t=Sum("saldo_inicial")
+            )["t"]
+            or 0
+        )
         saldo_final = 0.00
     except Empresa.DoesNotExist:
         saldo_inicial_empresa = 0
@@ -3995,7 +4165,11 @@ def api_estado_resultados(request):
     # --- Saldo inicial dinámico acumulado ---
     saldo_inicial = saldo_inicial_empresa
     if empresa and empresa_id and fecha_inicio:
-        anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
+        anio_inicio = (
+            empresa.fecha_creacion.year
+            if hasattr(empresa, "fecha_creacion") and empresa.fecha_creacion
+            else fecha_inicio.year
+        )
 
         if mes and anio:
             anio_tope = int(anio)
@@ -4016,28 +4190,53 @@ def api_estado_resultados(request):
                 mes_fin_loop = mes_tope if y == anio_tope else 12
                 for m in range(1, mes_fin_loop + 1):
                     fi = date(y, m, 1)
-                    ff = date(y, m + 1, 1) - timedelta(days=1) if m < 12 else date(y, 12, 31)
+                    ff = (
+                        date(y, m + 1, 1) - timedelta(days=1)
+                        if m < 12
+                        else date(y, 12, 31)
+                    )
                     ing = float(
                         Pago.objects.exclude(forma_pago="nota_credito")
-                        .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
+                        .filter(
+                            factura__empresa_id=empresa_id,
+                            fecha_pago__gte=fi,
+                            fecha_pago__lte=ff,
+                        )
+                        .aggregate(t=Sum("monto"))["t"]
+                        or 0
                     ) + float(
-                        CobroOtrosIngresos.objects
-                        .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
+                        CobroOtrosIngresos.objects.filter(
+                            factura__empresa_id=empresa_id,
+                            fecha_cobro__gte=fi,
+                            fecha_cobro__lte=ff,
+                        ).aggregate(t=Sum("monto"))["t"]
+                        or 0
                     )
-                    gto = float(
-                        PagoGasto.objects
-                        .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        GastoCajaChica.objects
-                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe"))["t"] or 0
-                    ) + float(
-                        ValeCaja.objects
-                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe"))["t"] or 0
+                    gto = (
+                        float(
+                            PagoGasto.objects.filter(
+                                gasto__empresa_id=empresa_id,
+                                fecha_pago__gte=fi,
+                                fecha_pago__lte=ff,
+                            ).aggregate(t=Sum("monto"))["t"]
+                            or 0
+                        )
+                        + float(
+                            GastoCajaChica.objects.filter(
+                                fondeo__empresa_id=empresa_id,
+                                fecha__gte=fi,
+                                fecha__lte=ff,
+                            ).aggregate(t=Sum("importe"))["t"]
+                            or 0
+                        )
+                        + float(
+                            ValeCaja.objects.filter(
+                                fondeo__empresa_id=empresa_id,
+                                fecha__gte=fi,
+                                fecha__lte=ff,
+                            ).aggregate(t=Sum("importe"))["t"]
+                            or 0
+                        )
                     )
                     saldo_inicial += ing - gto
 
@@ -4051,17 +4250,21 @@ def api_estado_resultados(request):
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos = gastos.filter(fecha__lte=fecha_fin)
 
-    #depositos por identificar
+    # depositos por identificar
     pagos_por_identificar = Pago.objects.filter(
         factura__isnull=True, identificado=False
     ).filter(factura__empresa_id=empresa_id)
     if empresa_id:
         pagos_por_identificar = pagos_por_identificar.filter(empresa_id=empresa_id)
     if fecha_inicio:
-        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__gte=fecha_inicio)
+        pagos_por_identificar = pagos_por_identificar.filter(
+            fecha_pago__gte=fecha_inicio
+        )
     if fecha_fin:
         pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__lte=fecha_fin)
-    total_por_identificar = float(pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0)    
+    total_por_identificar = float(
+        pagos_por_identificar.aggregate(total=Sum("monto"))["total"] or 0
+    )
 
     saldo_final_flujo = None
     total_gastos = 0.0
@@ -4105,7 +4308,9 @@ def api_estado_resultados(request):
                 (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             )
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
-            ingresos_por_origen["Depositos no identificados"] = float(total_por_identificar)
+            ingresos_por_origen["Depositos no identificados"] = float(
+                total_por_identificar
+            )
         total_ingresos = float(sum(ingresos_por_origen.values()))
 
         # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
@@ -4291,7 +4496,9 @@ def api_estado_resultados(request):
         for x in otros:
             tipo = (x["tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
             ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
-            ingresos_por_origen["Depositos no identificados"] = float(total_por_identificar)
+            ingresos_por_origen["Depositos no identificados"] = float(
+                total_por_identificar
+            )
         total_ingresos = float(sum(ingresos_por_origen.values()))
 
         # Agrupar y sumar todos los gastos por tipo real (gastos normales, caja chica y vales)
@@ -4460,7 +4667,7 @@ def api_estado_resultados(request):
 @visitante_token_required
 def api_avisos_empresa(request):
     visitante = request.visitante
-    empresa_id=request.GET.get("empresa_id")
+    empresa_id = request.GET.get("empresa_id")
     empresa = None
     if empresa_id:
         empresa = Empresa.objects.filter(id=empresa_id).first()
@@ -4469,16 +4676,13 @@ def api_avisos_empresa(request):
             empresa = visitante.locales.first().empresa
         elif visitante.areas.exists():
             empresa = visitante.areas.first().empresa
-            
 
     if not empresa:
         return Response(
             {"error": "No se encontró empresa asociada al visitante."}, status=400
         )
 
-    avisos = Aviso.objects.filter(empresa=empresa).order_by(
-        "-fecha_creacion"
-    )
+    avisos = Aviso.objects.filter(empresa=empresa).order_by("-fecha_creacion")
     data = [
         {
             "id": aviso.id,
@@ -4510,16 +4714,28 @@ def enviar_recordatorio_morosidad(request):
     def formato_importe(importe):
         return "${:,.2f}".format(round(importe, 2))
 
-    def construir_correo_html(cliente, facturas, empresa_nombre, email_empresa, tipo="local"):
+    def construir_correo_html(
+        cliente, facturas, empresa_nombre, email_empresa, tipo="local"
+    ):
         total = sum(f.saldo_pendiente for f in facturas)
-        tipo_label = "cuotas de local comercial" if tipo == "local" else "cuotas de área común"
+        tipo_label = (
+            "cuotas de local comercial" if tipo == "local" else "cuotas de área común"
+        )
 
         filas_facturas = ""
         for factura in facturas:
             if tipo == "local":
-                ubicacion = f"Local: {factura.local.numero}" if factura.local else "Sin ubicación"
+                ubicacion = (
+                    f"Local: {factura.local.numero}"
+                    if factura.local
+                    else "Sin ubicación"
+                )
             else:
-                ubicacion = f"Área común: {factura.area_comun.numero}" if factura.area_comun else "Sin ubicación"
+                ubicacion = (
+                    f"Área común: {factura.area_comun.numero}"
+                    if factura.area_comun
+                    else "Sin ubicación"
+                )
 
             filas_facturas += f"""
             <tr>
@@ -4644,7 +4860,9 @@ def enviar_recordatorio_morosidad(request):
         facturas = Factura.objects.filter(local_id=local_id, estatus="pendiente")
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
-            messages.warning(request, "No hay adeudos pendientes para el local seleccionado.")
+            messages.warning(
+                request, "No hay adeudos pendientes para el local seleccionado."
+            )
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
         email = cliente.email
@@ -4659,13 +4877,23 @@ def enviar_recordatorio_morosidad(request):
                         cliente.email = email
                         cliente.save()
                 else:
-                    return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+                    return render(
+                        request,
+                        "facturacion/capturar_email.html",
+                        {"form": form, "cliente": cliente, "next": next_url},
+                    )
             else:
                 form = CapturarEmailForm()
-                return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+                return render(
+                    request,
+                    "facturacion/capturar_email.html",
+                    {"form": form, "cliente": cliente, "next": next_url},
+                )
 
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
-        html_message, total_str = construir_correo_html(cliente, facturas, empresa_nombre, email_empresa, tipo="local")
+        html_message, total_str = construir_correo_html(
+            cliente, facturas, empresa_nombre, email_empresa, tipo="local"
+        )
         texto_plano = f"{empresa_nombre}\n\nEstimado {cliente.nombre}, tiene adeudos pendientes por un total de {total_str}.\n\nPague en línea: {settings.PORTAL_PAGOS_URL}/\nDescargue la app: https://apps.apple.com/us/app/gesac-condominos/id6756532273"
 
         send_mail(
@@ -4676,7 +4904,10 @@ def enviar_recordatorio_morosidad(request):
             html_message=html_message,
             fail_silently=True,
         )
-        messages.success(request, f"Recordatorio enviado correctamente al cliente {cliente.nombre} del local {facturas[0].local.numero if facturas[0].local else ''}.")
+        messages.success(
+            request,
+            f"Recordatorio enviado correctamente al cliente {cliente.nombre} del local {facturas[0].local.numero if facturas[0].local else ''}.",
+        )
         return redirect(next_url or "lista_facturas")
 
     elif area_id:
@@ -4684,7 +4915,9 @@ def enviar_recordatorio_morosidad(request):
         facturas = Factura.objects.filter(area_comun_id=area_id, estatus="pendiente")
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
-            messages.warning(request, "No hay adeudos pendientes para el área común seleccionada.")
+            messages.warning(
+                request, "No hay adeudos pendientes para el área común seleccionada."
+            )
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
         email = cliente.email
@@ -4699,13 +4932,23 @@ def enviar_recordatorio_morosidad(request):
                         cliente.email = email
                         cliente.save()
                 else:
-                    return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+                    return render(
+                        request,
+                        "facturacion/capturar_email.html",
+                        {"form": form, "cliente": cliente, "next": next_url},
+                    )
             else:
                 form = CapturarEmailForm()
-                return render(request, "facturacion/capturar_email.html", {"form": form, "cliente": cliente, "next": next_url})
+                return render(
+                    request,
+                    "facturacion/capturar_email.html",
+                    {"form": form, "cliente": cliente, "next": next_url},
+                )
 
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
-        html_message, total_str = construir_correo_html(cliente, facturas, empresa_nombre, email_empresa, tipo="area")
+        html_message, total_str = construir_correo_html(
+            cliente, facturas, empresa_nombre, email_empresa, tipo="area"
+        )
         texto_plano = f"{empresa_nombre}\n\nEstimado {cliente.nombre}, tiene adeudos pendientes por un total de {total_str}.\n\nPague en línea: {settings.PORTAL_PAGOS_URL}/\nDescargue la app: https://apps.apple.com/us/app/gesac-condominos/id6756532273"
 
         send_mail(
@@ -4716,11 +4959,15 @@ def enviar_recordatorio_morosidad(request):
             html_message=html_message,
             fail_silently=True,
         )
-        messages.success(request, f"Recordatorio enviado correctamente al cliente {cliente.nombre} del área común {facturas[0].area_comun.numero if facturas[0].area_comun else ''}.")
+        messages.success(
+            request,
+            f"Recordatorio enviado correctamente al cliente {cliente.nombre} del área común {facturas[0].area_comun.numero if facturas[0].area_comun else ''}.",
+        )
         return redirect(next_url or "lista_facturas")
 
     else:
-        messages.error(request, "Debes seleccionar un local o un área común antes de enviar el recordatorio.")
+        messages.error(
+            request,
+            "Debes seleccionar un local o un área común antes de enviar el recordatorio.",
+        )
         return redirect(next_url or "lista_facturas")
-
-

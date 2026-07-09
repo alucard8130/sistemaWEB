@@ -33,7 +33,7 @@
     <!-- Cargar Stripe UNA SOLA VEZ al inicio -->
     <script src="https://js.stripe.com/v3/"></script>
 
-    {% if es_demo %}
+   {% if not empresa.es_plus and not empresa.es_premium %}
       <div style="
           position: fixed;
           bottom: 20px;
@@ -51,7 +51,7 @@
           <strong>¡Cuenta demo!</strong><br>
           <hr>
           <button id="stripe-checkout-demo-btn" type="button" class="btn btn-success btn-sm w-100">
-              <i class="bi bi-credit-card"></i> Quiero ser PLUS !!
+              <i class="bi bi-credit-card"></i> Actualizar a PLUS !!
           </button>
           <a href="#"
         class="btn btn-secondary btn-sm w-100 mt-2"
@@ -60,34 +60,39 @@
         <i class="bi bi-info-circle"></i> ¿Qué es PLUS?
       </a>
       </div>
-{% endif %}
+      
+    {% endif %} 
 
-{% if es_plus %}
-<div style="
-    position: fixed;
-    bottom: 20px;
-    right: 10px;
-    z-index: 9999;
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    padding: 10px 10px;
-    max-width: 250px;
-    font-size: 0.875rem;
-">
-    <button id="stripe-checkout-premium-btn" type="button" class="btn btn-success btn-sm w-100">
-        <i class="bi bi-credit-card"></i> Quiero ser PREMIUM !!
-    </button>
-    <a href="#"
-   class="btn btn-secondary btn-sm w-100 mt-2"
-   data-bs-toggle="modal"
-   data-bs-target="#modalInfoPremium">
-  <i class="bi bi-info-circle"></i> ¿Qué es PREMIUM?
-</a>
-</div>
-{% endif %}
+     {% if empresa.es_plus %}
+      <div style="
+          position: fixed;
+          bottom: 20px;
+          right: 10px;
+          z-index: 9999;
+          background: #fff3cd;
+          color: #856404;
+          border: 1px solid #ffeeba;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          padding: 10px 10px;
+          max-width: 250px;
+          font-size: 0.875rem;
+      ">
+          <button id="stripe-checkout-premium-btn" type="button" class="btn btn-success btn-sm w-100">
+              <i class="bi bi-credit-card"></i> Actualizar a PREMIUM !!
+          </button>
+          <a href="#"
+        class="btn btn-secondary btn-sm w-100 mt-2"
+        data-bs-toggle="modal"
+        data-bs-target="#modalInfoPremium">
+        <i class="bi bi-info-circle"></i> ¿Qué es PREMIUM?
+      </a>
+      </div>
+    {% endif %}
+    
+    {% if empresa.es_premium %}
+    
+      {% endif %}
 
 <!-- Scripts centralizados (sin duplicados) -->
 <script>
@@ -549,11 +554,11 @@ function cerrarModal() {
           <div class="plus-price-wrap">
             <div class="plus-price-card">
               <small>Mensual</small>
-              <strong>$599 MXN</strong>
+              <strong>$699 MXN</strong>
             </div>
             <div class="plus-price-card plus-price-card-alt">
               <small>Anual (1 mes de regalo)</small>
-              <strong>$6,589 MXN pago único</strong>
+              <strong>$7,689 MXN pago único</strong>
             </div>
           </div>
 
@@ -572,6 +577,7 @@ function cerrarModal() {
       <div class="modal-body plus-body">
         <div class="plus-feature-grid">
           <div class="plus-feature">30 unidades(propiedades)</div>
+          <div class="plus-feature">Asistente virtual inteligente</div>
           <div class="plus-feature">Emision mensual de cuotas automaticas</div>
           <div class="plus-feature">Generación de recibos de pago</div>
           <div class="plus-feature">Emision de facturas por otros ingresos</div>
@@ -772,6 +778,7 @@ function cerrarModal() {
         <div class="premium-feature-grid">
           <div class="premium-feature">Todo lo del Plan Plus</div>
           <div class="premium-feature">Unidades (propiedades) ilimitadas</div>
+          <div class="premium-feature">Asistente virtual inteligente</div>
           <div class="premium-feature">Pagos en linea de cuotas via STRIPE para tus condominos</div>
           <div class="premium-feature">Facturación electrónica y timbrado (ilimitada bajo demanda)</div>
           <div class="premium-feature">Contratos de áreas comunes automáticos</div>
@@ -997,5 +1004,16 @@ function cerrarModal() {
 
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+   
+        <!-- Asistente Premium Widget -->
+    {% comment %} {% if user.is_authenticated and request.user.perfilusuario.empresa.es_premium %}
+        {% include 'asistente_premium/chat_widget.html' %}
+    {% endif %} {% endcomment %}
+    {% if user.is_authenticated and request.user.perfilusuario.empresa %}
+        {% include 'asistente_premium/chat_widget.html' %}
+    {% endif %}
+
+</body>
+
 </body>
 </html>

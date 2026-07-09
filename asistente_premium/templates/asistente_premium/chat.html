@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sherlock - Asistente personal inteligente</title>
+    <link rel="stylesheet" href="{% static 'asistente_premium/css/chat.css' %}">
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="header-title">
+                    <h1>🤖 Sherlock</h1>
+                    <p>Tu asistente personal inteligente</p>
+                </div>
+                {% comment %} <button class="btn-close" onclick="minimizarChat()">−</button> {% endcomment %}
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- El mensaje de bienvenida y sus opciones se generan por JS
+                 (mostrarMenuPrincipal), filtradas según el plan de la
+                 empresa -- así la misma lógica aplica aquí, al cancelar,
+                 y al "no entiendo bien", sin tener la lista de botones
+                 duplicada en HTML y en JS. -->
+        </div>
+ 
+        <!-- Input Area -->
+        <div class="chat-input-area">
+            <form onsubmit="enviarFormulario(event)">
+                <div class="input-container">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Escribe tu solicitud o respuesta..."
+                        class="chat-input"
+                        autocomplete="off"
+                    >
+                    <button type="submit" class="btn-send">
+                        <span>Enviar</span>
+                        <span class="arrow">→</span>
+                    </button>
+                    <button type="button" id="cancelBtn" class="btn-cancel" style="display:none;" onclick="cancelarConversacion()">
+                        ❌
+                    </button>
+                </div>
+                <div class="input-suggestions" id="inputSuggestions"></div>
+            </form>
+        </div>
+    </div>
+ 
+    <!-- Modales -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+    
+    <!-- Modal de Carga -->
+    <div class="modal loading-modal" id="loadingModal">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Procesando tu solicitud...</p>
+        </div>
+    </div>
+ 
+    <!-- Modal de Éxito -->
+    <div class="modal success-modal" id="successModal">
+        <div class="modal-content">
+            <div class="modal-icon">✅</div>
+            <h2>¡Éxito!</h2>
+            <p id="successMessage"></p>
+            <button class="btn btn-primary" onclick="cerrarModal()">Continuar</button>
+        </div>
+    </div>
+ 
+    <script src="{% static 'asistente_premium/js/chat.js' %}"></script>
+    <script>
+        // Configuración inicial
+        const config = {
+            apiUrl: "{% url 'conversacion-enviar-mensaje' %}",
+            cancelarUrlTemplate: "{% url 'conversacion-cancelar' pk=0 %}",
+            csrfToken: "{{ csrf_token }}",
+            empresaId: "{{ empresa_id }}",
+            nivelEmpresa: "{{ nivel_empresa }}",
+            stripePublicKey: "{{ stripe_public_key|escapejs }}",
+            urlCrearSesionPagoPlus: "{% url 'crear_sesion_pago' %}",
+            urlCrearSesionPagoPremium: "{% url 'crear_sesion_pago_premium' %}",
+        };
+    </script>
+</body>
+</html>

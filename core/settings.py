@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "estacionamiento",
     "cobros_estado_cuenta",
     "acceso_empresas",
+    "asistente_premium",
 ]
 
 
@@ -73,7 +74,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'core.middleware.EmpresaSeleccionMiddleware',
+    #'core.middleware.EmpresaSeleccionMiddleware',
 
 ]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

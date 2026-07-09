@@ -1,16 +1,16 @@
 
 import secrets
-from django.contrib.auth.models import User, AbstractUser
+from django.contrib.auth.models import User
 from django.db import models
 from areas.models import AreaComun
 from empresas.models import Empresa
-from django.conf import settings
-from django.contrib.auth import get_user_model
+#from django.conf import settings
+#from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from locales.models import LocalComercial
 from django import forms
-from django.db import models
-from django.contrib.auth.models import User
+#from django.db import models
+#from django.contrib.auth.models import User
 
 #perfil de usuario extendido
 class PerfilUsuario(models.Model):
@@ -29,6 +29,7 @@ class PerfilUsuario(models.Model):
     stripe_premium_subscription_id = models.CharField(max_length=100, blank=True, null=True)
     mostrar_wizard = models.BooleanField(default=False)
     ultima_visita_changelog= models.DateTimeField(null=True, blank=True)
+    fecha_vencimiento = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
        return f"{self.usuario.username} → {self.empresa.nombre if self.empresa else 'Sin empresa'}"
