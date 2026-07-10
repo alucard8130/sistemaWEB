@@ -458,7 +458,7 @@ const MENU_OPCIONES = [
     { requerido: 'plus', emoji: '\ud83c\udfe2', texto: 'Alta Proveedor', mensaje: 'Quiero dar de alta un proveedor' },
     { requerido: 'plus', emoji: '\ud83d\udc68\u200d\ud83d\udcbc', texto: 'Alta Empleado', mensaje: 'Quiero dar de alta un empleado' },
     { requerido: 'premium', emoji: '\ud83d\udcb5', texto: 'Alta Cuenta Bancaria', mensaje: 'Quiero dar de alta una cuenta bancaria' },
-    { requerido: 'premium', emoji: '\ud83d\udcb3', texto: 'Alta Cuenta de Gastos', mensaje: 'Quiero dar de alta una cuenta de gastos' },
+    { requerido: 'plus', emoji: '\ud83d\udcb3', texto: 'Alta Cuenta de Gastos', mensaje: 'Quiero dar de alta una cuenta de gastos' },
     { requerido: 'premium', emoji: '\ud83d\udd0d', texto: 'Buscar Factura', mensaje: 'Quiero buscar una factura' },
     { requerido: 'premium', emoji: '\ud83d\udcb0', texto: 'Registrar Cobro', mensaje: 'Quiero registrar un cobro' },
 ];
