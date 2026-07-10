@@ -1,6 +1,6 @@
 from os import path
 
-from .views import crear_evento, eliminar_evento, registro_usuario, reiniciar_sistema, reporte_auditoria, stripe_webhook
+from .views import  registro_usuario, reiniciar_sistema, reporte_auditoria
 urlpatterns = [
     # otras rutas...
     path('reiniciar/', reiniciar_sistema, name='reiniciar_sistema'),

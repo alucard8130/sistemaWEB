@@ -53,12 +53,10 @@
           <button id="stripe-checkout-demo-btn" type="button" class="btn btn-success btn-sm w-100">
               <i class="bi bi-credit-card"></i> Actualizar a PLUS !!
           </button>
-          <a href="#"
-        class="btn btn-secondary btn-sm w-100 mt-2"
-        data-bs-toggle="modal"
-        data-bs-target="#modalInfoPlus">
-        <i class="bi bi-info-circle"></i> ¿Qué es PLUS?
-      </a>
+            <a href="{% url 'info_plus' %}"
+            class="btn btn-secondary btn-sm w-100 mt-2">
+                <i class="bi bi-info-circle"></i> ¿Qué es PLUS?
+            </a>
       </div>
       
     {% endif %} 

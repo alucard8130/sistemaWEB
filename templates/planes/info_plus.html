@@ -1,0 +1,250 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan Plus · GESAC</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+    body {
+        background: linear-gradient(145deg, #0f1b2a 0%, #182d47 45%, #244a6e 100%);
+        min-height: 100vh;
+        color: #f7fbff;
+        font-family: 'Rubik', sans-serif;
+        padding: 40px 16px;
+    }
+
+    .plus-page {
+        max-width: 980px;
+        margin: 0 auto;
+    }
+
+    .plus-hero {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 1.2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        margin-bottom: 1.5rem;
+    }
+
+    .plus-badge {
+        display: inline-block;
+        background: #ffcc00;
+        color: #1f2a37;
+        font-weight: 700;
+        letter-spacing: .04em;
+        border-radius: 999px;
+        padding: .3rem .7rem;
+        margin-bottom: .8rem;
+        font-size: .75rem;
+    }
+
+    .plus-hero-copy h1 {
+        font-weight: 800;
+        line-height: 1.15;
+        margin-bottom: .6rem;
+        font-size: 2rem;
+    }
+
+    .plus-hero-copy p {
+        margin-bottom: .7rem;
+        color: #d8e7f6;
+    }
+
+    .plus-price-wrap {
+        display: flex;
+        gap: .8rem;
+        margin: .9rem 0 .6rem;
+        flex-wrap: wrap;
+    }
+
+    .plus-price-card {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 12px;
+        padding: .7rem .9rem;
+        min-width: 150px;
+    }
+
+    .plus-price-card small {
+        display: block;
+        color: #d7e6f5;
+        margin-bottom: .15rem;
+    }
+
+    .plus-price-card strong {
+        font-size: 1.25rem;
+        font-weight: 800;
+    }
+
+    .plus-price-card-alt {
+        background: rgba(255, 204, 0, 0.18);
+        border-color: rgba(255, 214, 80, 0.55);
+    }
+
+    .plus-note {
+        font-size: .85rem;
+        color: #c4d9ef;
+        margin-bottom: 0;
+    }
+
+    .plus-hero-panel {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        padding: 1rem;
+        align-self: stretch;
+    }
+
+    .plus-hero-panel h5 {
+        margin-bottom: .7rem;
+        font-weight: 700;
+    }
+
+    .plus-hero-panel p {
+        margin-bottom: .45rem;
+    }
+
+    .plus-feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .7rem;
+        margin-bottom: 2rem;
+    }
+
+    .plus-feature {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 10px;
+        padding: .7rem .8rem;
+        font-size: .95rem;
+    }
+
+    .plus-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .plus-cta {
+        font-weight: 700;
+        border: 0;
+        border-radius: 10px;
+        padding: .7rem 1.4rem;
+        font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .plus-hero {
+            grid-template-columns: 1fr;
+        }
+        .plus-feature-grid {
+            grid-template-columns: 1fr;
+        }
+        .plus-actions {
+            flex-direction: column-reverse;
+            align-items: stretch;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="plus-page">
+        <div class="plus-hero">
+            <div class="plus-hero-copy">
+                <span class="plus-badge">PLAN PLUS</span>
+                <h1>Escala la administración de tu condominio</h1>
+                <p>Usa todas las herramientas avanzadas y la inteligencia artificial para optimizar la gestión de tu condominio sin periodo de prueba.</p>
+
+                <div class="plus-price-wrap">
+                    <div class="plus-price-card">
+                        <small>Mensual</small>
+                        <strong>$699 MXN</strong>
+                    </div>
+                    <div class="plus-price-card plus-price-card-alt">
+                        <small>Anual (1 mes de regalo)</small>
+                        <strong>$7,689 MXN pago único</strong>
+                    </div>
+                </div>
+
+                <p class="plus-note">Precios más IVA · 12 meses de resguardo de base de datos</p>
+            </div>
+
+            <div class="plus-hero-panel">
+                <h5>Incluye</h5>
+                <p>1 usuario operativo extra</p>
+                <p>30 unidades (propiedades)</p>
+                <hr>
+                <p>Soporte 24/5</p>
+            </div>
+        </div>
+
+        <div class="plus-feature-grid">
+            <div class="plus-feature">30 unidades (propiedades)</div>
+            <div class="plus-feature">Asistente virtual inteligente</div>
+            <div class="plus-feature">Emisión mensual de cuotas automáticas</div>
+            <div class="plus-feature">Generación de recibos de pago</div>
+            <div class="plus-feature">Emisión de facturas por otros ingresos</div>
+            <div class="plus-feature">Registro de depósitos no identificados</div>
+            <div class="plus-feature">Módulo de comunicación y votaciones</div>
+            <div class="plus-feature">Avisos y notificaciones a condóminos</div>
+            <div class="plus-feature">Control de propiedades y áreas comunes</div>
+            <div class="plus-feature">Control de cuotas, ingresos y gastos</div>
+            <div class="plus-feature">Control de solicitudes de gastos</div>
+            <div class="plus-feature">Cartera vencida y envío de avisos de adeudos automáticos</div>
+            <div class="plus-feature">Presupuestos de ingresos y gastos</div>
+            <div class="plus-feature">Gráficos y estado de resultados</div>
+            <div class="plus-feature">Consulta REPSE proveedores</div>
+            <div class="plus-feature">Control de nómina (incidencias)</div>
+            <div class="plus-feature">Control de caja chica (fondeos y gastos)</div>
+        </div>
+
+        <div class="plus-actions">
+            <a href="{% url 'dashboard_inicio' %}" class="btn btn-outline-light">Regresar Inicio</a>
+            <button type="button" class="btn btn-warning plus-cta" id="btn-quiero-plus">
+                <i class="bi bi-stars"></i> Actualizar a Plus
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('btn-quiero-plus').addEventListener('click', function () {
+            const boton = this;
+            boton.disabled = true;
+            boton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+
+            fetch("{% url 'crear_sesion_pago' %}")
+                .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok) {
+                        throw new Error(data.detail || data.status || 'No se pudo crear la sesión de pago.');
+                    }
+                    if (data.url) {
+                        // Forma recomendada: navega directo a la URL de checkout de Stripe
+                        window.location.href = data.url;
+                    } else if (data.id) {
+                        // Fallback si el backend solo regresa el id de sesion
+                        const stripe = Stripe("{{ stripe_public_key|escapejs }}");
+                        stripe.redirectToCheckout({ sessionId: data.id });
+                    } else {
+                        throw new Error('Respuesta inesperada del servidor.');
+                    }
+                })
+                .catch(error => {
+                    alert('Error al crear la sesión de pago: ' + error.message);
+                    boton.disabled = false;
+                    boton.innerHTML = '<i class="bi bi-stars"></i> Actualizar a Plus';
+                });
+        });
+    </script>
+</body>
+</html>

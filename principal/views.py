@@ -374,6 +374,12 @@ def dashboard_inicio(request):
     return render(request, "pantalla_inicio.html", context)
 
 
+@login_required
+def info_plus(request):
+    return render(request, 'planes/info_plus.html', {
+        'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+    })
+
 @staff_member_required
 @login_required
 def reiniciar_sistema(request):

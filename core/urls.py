@@ -12,6 +12,7 @@ from empleados.views import (exportar_incidencias_excel, incidencia_cancelar, in
 from facturacion.views import (consulta_facturas, exportar_consulta_facturas_excel, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
+from principal import views
 from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
 from principal.views import (actualizar_ticket, agregar_seguimiento, api_areas_por_empresa, api_avisos_empresa, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_reporte_ingresos_vs_gastos, aviso_crear, aviso_eliminar, 
                              avisos_lista, cancelar_suscripcion_premium, cerrar_wizard, consulta_cfdis_facturama, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_sesion_pago_premium,  crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, membresia_pago_exitoso, 
@@ -209,6 +210,7 @@ urlpatterns = [
     path('portal/', include('acceso_empresas.urls')),
     path('asistente/', include('asistente_premium.urls')), 
     path('asistencia/', include('empleados.urls')), 
+    path('planes/plus/', views.info_plus, name='info_plus'),
 ]
 
     
