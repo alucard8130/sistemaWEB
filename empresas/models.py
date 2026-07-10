@@ -20,7 +20,7 @@ class Empresa(models.Model):
     stripe_public_key = models.CharField(max_length=255, blank=True, null=True)
     stripe_secret_key = models.CharField(max_length=255, blank=True, null=True)
     stripe_webhook_secret = models.CharField(max_length=255, blank=True, null=True)
-    es_plus = models.BooleanField(default=False)  # True = versión plus, False = demo
+    es_plus = models.BooleanField(default=False)  # True = versión plus
     es_premium = models.BooleanField(default=False)  # True = versión premium, False = Plus
     # --- Ubicación para validar asistencia por GPS ---
     lat_oficina = models.DecimalField(max_digits=30, decimal_places=20, null=True, blank=True,help_text="Latitud de la oficina/caseta donde se debe marcar asistencia")
