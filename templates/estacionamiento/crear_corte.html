@@ -22,10 +22,20 @@
         <div class="card-body">
 
             {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+{% if form.non_field_errors %}
+    <div class="alert alert-danger py-2">
+        {% for error in form.non_field_errors %}
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+        {% endfor %}
+    </div>
+{% endif %}
+
+            
 
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}

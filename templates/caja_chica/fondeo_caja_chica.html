@@ -45,17 +45,24 @@
           <h2>Fondeo de Caja Chica</h2>
           <form  method="post" id="fondeo_form">
             {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger py-2">
+                    {% for error in form.non_field_errors %}
+                        <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
             <div class="row mb-3">
-              
                 <label for="id_numero_cheque" class="form-label"
-                  >Num. cheque o transfer</label
+                  >Num. cheque o transfer (origen del recurso)</label
                 >
               {{ form.numero_cheque }}
             </div>
             <div class="row mb-3">
               
                 <label for="id_importe_cheque" class="form-label"
-                  >Importe del Fondo</label
+                  >Importe</label
                 >
               {{ form.importe_cheque }}
             </div>
@@ -74,7 +81,7 @@
             </div>
             <div class="row mb-3">
               
-                <label for="id_fecha" class="form-label">Fecha Fondeo</label>
+                <label for="id_fecha" class="form-label">Fecha obtención del recurso</label>
               
               {{ form.fecha }}
             </div>

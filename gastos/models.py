@@ -5,7 +5,6 @@ from django.db.models import Sum
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
 from proveedores.models import Proveedor
-from django.conf import settings
 from django.contrib.auth.models import User
 
 

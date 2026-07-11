@@ -3,6 +3,7 @@ import json
 import io
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from facturacion.models import CobroOtrosIngresos, Pago
 from gastos.models import PagoGasto
 from .forms import EstadoCuentaBancarioForm, ConciliacionBancariaForm
@@ -11,8 +12,14 @@ import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
 from django.db import transaction
 from calendar import monthrange
+from .utils import get_o_crear_periodo
+from .models import SaldoCuentaPeriodo
+from empresas.models import CuentaBancaria, Empresa
+import datetime
+from django.utils import timezone
 
 
+################################# VISTAS PARA CARGAR ESTADOS DE CUENTA Y CONCILIAR ########################################
 @login_required
 def cargar_estado_cuenta(request):
     empresa = request.user.perfilusuario.empresa
@@ -48,6 +55,7 @@ def cargar_estado_cuenta(request):
 
     return render(request, "conciliacion/cargar_estado.html", {"form": form})
 
+
 def _buscar_columna(columnas, aliases):
     for columna in columnas:
         nombre = str(columna).strip().lower()
@@ -81,6 +89,7 @@ def _normalizar_monto(valor):
             return None
 
     return monto.quantize(Decimal("0.01"))
+
 
 def _leer_dataframe_subido(archivo):
     nombre = archivo.name.lower()
@@ -135,11 +144,20 @@ def procesar_movimientos_estado_cuenta(estado, archivo):
     col_fecha = _buscar_columna(df.columns, ["fecha"])
     col_desc = _buscar_columna(
         df.columns,
-        ["descripcion", "descripción", "description", "concepto", "detalle", "movimiento"],
+        [
+            "descripcion",
+            "descripción",
+            "description",
+            "concepto",
+            "detalle",
+            "movimiento",
+        ],
     )
     col_monto = _buscar_columna(df.columns, ["monto", "importe", "cantidad"])
     col_cargo = _buscar_columna(df.columns, ["cargo", "retiro", "debito", "débito"])
-    col_abono = _buscar_columna(df.columns, ["abono", "deposito", "depósito", "credito", "crédito"])
+    col_abono = _buscar_columna(
+        df.columns, ["abono", "deposito", "depósito", "credito", "crédito"]
+    )
 
     if not col_fecha:
         return False, "No se detecto la columna fecha."
@@ -206,9 +224,11 @@ def procesar_movimientos_estado_cuenta(estado, archivo):
 
     return True, f"Se importaron {creados} movimientos."
 
+
 def _key_movimiento(tipo, monto, fecha):
     monto_decimal = Decimal(str(monto)).quantize(Decimal("0.01"))
     return (tipo, monto_decimal, fecha)
+
 
 def _decimal_2(valor):
     return Decimal(str(valor)).quantize(Decimal("0.01"))
@@ -219,6 +239,7 @@ def _valor_sistema(movimiento, campo, default=None):
         return movimiento.get(campo, default)
     return getattr(movimiento, campo, default)
 
+
 def _serializar_movimiento_banco(movimiento):
     return {
         "id": movimiento.id,
@@ -227,6 +248,7 @@ def _serializar_movimiento_banco(movimiento):
         "monto": float(_decimal_2(movimiento.monto)),
         "tipo": movimiento.tipo,
     }
+
 
 def _serializar_movimiento_sistema(movimiento):
     fecha = _valor_sistema(movimiento, "fecha")
@@ -342,6 +364,7 @@ def _buscar_mejor_candidato(
 
     return mejor
 
+
 def _rango_periodo_conciliacion(estado):
     fecha_base_inicio = estado.fecha_inicio or estado.fecha_fin
     fecha_base_fin = estado.fecha_fin or estado.fecha_inicio
@@ -358,27 +381,29 @@ def _rango_periodo_conciliacion(estado):
 
     return inicio, fin
 
+
 def _movimientos_sistema_desde_modelos(estado):
     movimientos = []
     inicio_periodo, fin_periodo = _rango_periodo_conciliacion(estado)
 
-    pagos = Pago.objects.filter(
-        empresa=estado.empresa,
-        cuenta_bancaria=estado.cuenta_bancaria,
-        fecha_pago__isnull=False,
-    ).select_related("factura").order_by("fecha_pago", "id")
+    pagos = (
+        Pago.objects.filter(
+            empresa=estado.empresa,
+            cuenta_bancaria=estado.cuenta_bancaria,
+            fecha_pago__isnull=False,
+        )
+        .select_related("factura")
+        .order_by("fecha_pago", "id")
+    )
 
     if inicio_periodo and fin_periodo:
         pagos = pagos.filter(fecha_pago__range=(inicio_periodo, fin_periodo))
 
     for pago in pagos:
-        descripcion = (
-            getattr(pago, "observaciones", "")
-            or (
-                f"Pago factura {pago.factura.folio}"
-                if getattr(pago, "factura", None)
-                else "Pago"
-            )
+        descripcion = getattr(pago, "observaciones", "") or (
+            f"Pago factura {pago.factura.folio}"
+            if getattr(pago, "factura", None)
+            else "Pago"
         )
         movimientos.append(
             {
@@ -391,23 +416,24 @@ def _movimientos_sistema_desde_modelos(estado):
             }
         )
 
-    cobros = CobroOtrosIngresos.objects.filter(
-        factura__empresa=estado.empresa,
-        cuenta_bancaria=estado.cuenta_bancaria,
-        fecha_cobro__isnull=False,
-    ).select_related("factura").order_by("fecha_cobro", "id")
+    cobros = (
+        CobroOtrosIngresos.objects.filter(
+            factura__empresa=estado.empresa,
+            cuenta_bancaria=estado.cuenta_bancaria,
+            fecha_cobro__isnull=False,
+        )
+        .select_related("factura")
+        .order_by("fecha_cobro", "id")
+    )
 
     if inicio_periodo and fin_periodo:
         cobros = cobros.filter(fecha_cobro__range=(inicio_periodo, fin_periodo))
 
     for cobro in cobros:
-        descripcion = (
-            getattr(cobro, "observaciones", "")
-            or (
-                f"Cobro otros ingresos {cobro.factura.folio}"
-                if getattr(cobro, "factura", None)
-                else "Cobro otros ingresos"
-            )
+        descripcion = getattr(cobro, "observaciones", "") or (
+            f"Cobro otros ingresos {cobro.factura.folio}"
+            if getattr(cobro, "factura", None)
+            else "Cobro otros ingresos"
         )
         movimientos.append(
             {
@@ -420,13 +446,16 @@ def _movimientos_sistema_desde_modelos(estado):
             }
         )
 
-    pagos_gasto = PagoGasto.objects.filter(
-        gasto__empresa=estado.empresa,
-        cuenta_bancaria=estado.cuenta_bancaria,
-        fecha_pago__isnull=False,
-    ).select_related("gasto").order_by("fecha_pago", "id")
+    pagos_gasto = (
+        PagoGasto.objects.filter(
+            gasto__empresa=estado.empresa,
+            cuenta_bancaria=estado.cuenta_bancaria,
+            fecha_pago__isnull=False,
+        )
+        .select_related("gasto")
+        .order_by("fecha_pago", "id")
+    )
 
-    
     if inicio_periodo and fin_periodo:
         pagos_gasto = pagos_gasto.filter(
             fecha_pago__range=(inicio_periodo, fin_periodo)
@@ -451,13 +480,16 @@ def _movimientos_sistema_desde_modelos(estado):
 
     return movimientos
 
+
 @transaction.atomic
 def conciliar_estado_con_sistema(
     estado,
     tolerancia_monto=Decimal("1.00"),
 ):
     movimientos_banco = list(
-        MovimientoEstadoCuenta.objects.filter(estado_cuenta=estado).order_by("fecha", "id")
+        MovimientoEstadoCuenta.objects.filter(estado_cuenta=estado).order_by(
+            "fecha", "id"
+        )
     )
     movimientos_sistema_pendientes = list(_movimientos_sistema_desde_modelos(estado))
     inicio_periodo, fin_periodo = _rango_periodo_conciliacion(estado)
@@ -493,9 +525,7 @@ def conciliar_estado_con_sistema(
         else:
             movimiento_banco.conciliado = False
             movimiento_banco.save(update_fields=["conciliado"])
-            no_conciliadas_banco.append(
-                _serializar_movimiento_banco(movimiento_banco)
-            )
+            no_conciliadas_banco.append(_serializar_movimiento_banco(movimiento_banco))
 
     no_conciliadas_sistema = []
     for movimiento_sistema in movimientos_sistema_pendientes:
@@ -518,7 +548,7 @@ def conciliar_estado_con_sistema(
 @login_required
 def conciliar_estado_cuenta(request, estado_id):
     estado = EstadoCuentaBancario.objects.get(id=estado_id)
-    if request.method == 'POST':
+    if request.method == "POST":
         form = ConciliacionBancariaForm(request.POST)
         if form.is_valid():
             resultado = conciliar_estado_con_sistema(estado)
@@ -531,17 +561,19 @@ def conciliar_estado_cuenta(request, estado_id):
                     "resumen": resultado,
                 },
             )
-            return redirect('conciliaciones:resultado', estado_id=estado.id)
+            return redirect("conciliaciones:resultado", estado_id=estado.id)
     else:
-        form = ConciliacionBancariaForm(initial={'estado_cuenta': estado})
-    return render(request, 'conciliacion/conciliar.html', {'form': form, 'estado': estado})
+        form = ConciliacionBancariaForm(initial={"estado_cuenta": estado})
+    return render(
+        request, "conciliacion/conciliar.html", {"form": form, "estado": estado}
+    )
+
 
 @login_required
 def resultado_conciliacion(request, estado_id):
     estado = get_object_or_404(EstadoCuentaBancario, id=estado_id)
     conciliacion = (
-        ConciliacionBancaria.objects
-        .filter(estado_cuenta=estado)
+        ConciliacionBancaria.objects.filter(estado_cuenta=estado)
         .order_by("-fecha_conciliacion")
         .first()
     )
@@ -572,8 +604,12 @@ def resultado_conciliacion(request, estado_id):
     resumen.setdefault("no_conciliadas_sistema", [])
     resumen.setdefault("totales", {})
     resumen["totales"].setdefault("conciliadas", len(resumen["conciliadas"]))
-    resumen["totales"].setdefault("no_conciliadas_banco", len(resumen["no_conciliadas_banco"]))
-    resumen["totales"].setdefault("no_conciliadas_sistema", len(resumen["no_conciliadas_sistema"]))
+    resumen["totales"].setdefault(
+        "no_conciliadas_banco", len(resumen["no_conciliadas_banco"])
+    )
+    resumen["totales"].setdefault(
+        "no_conciliadas_sistema", len(resumen["no_conciliadas_sistema"])
+    )
 
     return render(
         request,
@@ -584,3 +620,88 @@ def resultado_conciliacion(request, estado_id):
             "resumen": resumen,
         },
     )
+
+
+#################################  VISTAS PARA SALDOS DE CUENTA POR PERIODO  ########################################
+@login_required
+def saldos_periodo(request):
+    es_super = request.user.is_superuser
+    if es_super:
+        empresa_id = request.session.get("empresa_id")
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+
+    hoy = datetime.date.today()
+    anio = int(request.GET.get("anio", hoy.year))
+    mes = int(request.GET.get("mes", hoy.month))
+
+    cuentas = CuentaBancaria.objects.filter(empresa=empresa, activa=True)
+
+    periodos = []
+    for cuenta in cuentas:
+        periodo, movimientos = get_o_crear_periodo(cuenta, empresa, anio, mes)
+        periodos.append(
+            {
+                "cuenta": cuenta,
+                "periodo": periodo,
+                "movimientos": movimientos,
+            }
+        )
+
+    anios = range(hoy.year - 3, hoy.year + 1)
+    meses = range(1, 13)
+
+    return render(
+        request,
+        "conciliacion/saldos_periodo.html",
+        {
+            "periodos": periodos,
+            "empresa": empresa,
+            "anio": anio,
+            "mes": mes,
+            "anios": anios,
+            "meses": meses,
+        },
+    )
+
+
+@login_required
+def cerrar_periodo(request, periodo_id):
+    es_super = request.user.is_superuser
+    if es_super:
+        empresa_id = request.session.get("empresa_id")
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+
+    periodo = get_object_or_404(SaldoCuentaPeriodo, pk=periodo_id, empresa=empresa)
+
+    if periodo.cerrado:
+        messages.warning(request, "Este período ya está cerrado.")
+        return redirect("conciliaciones:saldos_periodo")
+
+    if request.method == "POST":
+        saldo_final_banco = request.POST.get("saldo_final_banco")
+        notas = request.POST.get("notas", "")
+
+        try:
+            saldo_final_banco = Decimal(saldo_final_banco)
+        except Exception:
+            messages.error(request, "Saldo final inválido.")
+            return redirect("conciliaciones:saldos_periodo")
+
+        periodo.saldo_final = saldo_final_banco
+        periodo.cerrado = True
+        periodo.fecha_cierre = timezone.now()
+        periodo.cerrado_por = request.user
+        periodo.notas = notas
+        periodo.save()
+
+        messages.success(
+            request,
+            f"Período {periodo.nombre_mes()} {periodo.anio} cerrado correctamente.",
+        )
+        return redirect("conciliaciones:saldos_periodo")
+
+    return render(request, "conciliacion/cerrar_periodo.html", {"periodo": periodo})

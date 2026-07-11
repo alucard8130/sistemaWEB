@@ -1,0 +1,72 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancelar traspaso — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="container mt-4" style="max-width: 500px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-x-circle me-2"></i>Cancelar traspaso</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Al cancelar este traspaso los saldos de ambas cuentas serán revertidos automáticamente.
+            </div>
+
+            <div class="row g-2 mb-4">
+                <div class="col-6">
+                    <div class="text-muted small">Fecha</div>
+                    <strong>{{ traspaso.fecha|date:"d/m/Y" }}</strong>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">Monto</div>
+                    <strong class="text-danger">${{ traspaso.monto|floatformat:2|intcomma }}</strong>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">Cuenta origen</div>
+                    <strong>{{ traspaso.cuenta_origen.banco }}</strong>
+                    <div class="small text-muted">{{ traspaso.cuenta_origen.numero_cuenta }}</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">Cuenta destino</div>
+                    <strong>{{ traspaso.cuenta_destino.banco }}</strong>
+                    <div class="small text-muted">{{ traspaso.cuenta_destino.numero_cuenta }}</div>
+                </div>
+                {% if traspaso.concepto %}
+                <div class="col-12">
+                    <div class="text-muted small">Concepto</div>
+                    <strong>{{ traspaso.concepto }}</strong>
+                </div>
+                {% endif %}
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger flex-grow-1">
+                        <i class="bi bi-x-circle me-1"></i> Confirmar cancelación
+                    </button>
+                    <a href="{% url 'lista_traspasos' %}" class="btn btn-outline-secondary">
+                        Volver
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

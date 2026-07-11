@@ -3,404 +3,373 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!--
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 12/09/2025
-      Description: Generated invoices
-    -->
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estado de Cuenta</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const btnRecordatorio = document.querySelector('.btn-warning');
-    if (btnRecordatorio) {
-        btnRecordatorio.addEventListener('click', function(e) {
-            const localId = document.getElementById('local_id').value;
-            const areaId = document.getElementById('area_id').value;
-            if (!localId && !areaId) {
-                e.preventDefault();
-                alert('Debes seleccionar un local o un área común antes de enviar el recordatorio.');
-            }
-        });
-    }
-});
-</script>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <!-- Block for displaying messages -->
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-                <!-- Block for displaying messages -->
-                {% if form.non_field_errors %}
-                    <div class="alert alert-danger">
-                    {% for error in form.non_field_errors %}
-                        {{ error }}
-                    {% endfor %}
-                    </div>
-                {% endif %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
 
-    <!-- Main content -->
-    <div class="container-fluid mt-2">
-<div class="row mb-1 justify-content-center">
-  <div class="col-12 col-md-4 mb-2 d-flex align-items-stretch justify-content-center">
-    <div class="card text-center shadow-sm p-3" style="width:70%; min-width:400px; max-width:320px; margin:auto; font-size:0.9rem; margin-right:30px;">
-    <div class="card-body p-2">
-        <h5><i class="bi bi-cash-coin"></i>Estado de Cuenta</h5>
-      <h6 class="card-title mb-1" style="font-size:1rem;">Adeudo mes actual</h6>
-      <h2 class="mb-0" style="font-size:1.7rem; color:#dc3545;">${{ adeudo_acumulado_mes_actual|floatformat:2|intcomma }}</h2>
-      <hr>
-      <div class="row">
-      <div class="col-12 text-start mb-2">
-        <small>Adeudo mes anterior</small><br>
-        ${{ adeudo_acumulado_mes_anterior|floatformat:2 |intcomma }}
-        {% if adeudo_acumulado_mes_anterior == 0 %}
-          <span style="color:gray;">N/A</span>
-        {% else %}
-          {% if var_acumulado_mes > 0 %}
-            <span style="color:red;">&#9650; {{ var_acumulado_mes|floatformat:1 }}%</span>
-          {% elif var_acumulado_mes < 0 %}
-            <span <span style="color:green;">&#9660; {{ var_acumulado_mes|floatformat:1 }}%</span>
-          {% else %}
-            <span style="color:gray;">0%</span>
-          {% endif %}
-        {% endif %}
-      </div>
-      <div class="col-12 text-start">
-        <small>Adeudo mes, año anterior</small><br>
-        ${{ adeudo_acumulado_mes_actual_anio_anterior|floatformat:2 |intcomma }}
-        {% if adeudo_acumulado_mes_actual_anio_anterior == 0 %}
-          <span style="color:gray;">N/A</span>
-        {% else %}
-          {% if var_acumulado_mes > 0 %}
-            <span style="color:red;">&#9650; {{ var_acumulado_mes_actual_anio_anterior|floatformat:1 }}%</span>
-          {% elif var_acumulado_mes < 0 %}
-            <span style="color:green;">&#9660; {{ var_acumulado_mes_actual_anio_anterior|floatformat:1 }}%</span>
-          {% else %}
-            <span style="color:gray;">0%</span>
-          {% endif %}
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
+    <div class="container-fluid mt-2 px-3">
 
-  <div class="col-12 col-md-8 mb-2 d-flex align-items-stretch">
-    <div class="card shadow-sm p-3 w-100" style="min-width:400px; max-width:400px; margin:auto; margin-left:30px;">
-      <div class="card-body p-2">
-        <h6 class="card-title mb-2" style="font-size:1rem;">Tendencia de Adeudo (últimos 12 meses)</h6>
-        <canvas id="adeudoTrendChart" height="120"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="row mb-1 justify-content-center">
-    <div class="col-12 d-flex justify-content-end">
-                    {% comment %} <a href="{% url 'crear_factura' %}?local={{ local_id }}&area_comun={{ area_id }}&cliente={{ cliente_id }}&tipo_cuota={{ tipo_cuota }}&tipo_origen=local&next={{ request.get_full_path|urlencode }}" class="btn btn-crear reporte-link">
-                        <i class="bi bi-plus-circle me-4" title="Nueva Factura">Factura local</i>
-                    </a> {% endcomment %}
-                {% if local_id  %}
-                    <a href="{% url 'enviar_recordatorio_morosidad' %}?local_id={{ local_id }}&next={{ request.get_full_path|urlencode }}" class="btn btn-warning reporte-link">
-                        Enviar recordatorio de adeudo
-                    </a>
-                {% elif area_id %}
-                    <a href="{% url 'enviar_recordatorio_morosidad' %}?area_id={{ area_id }}&next={{ request.get_full_path|urlencode }}" class="btn btn-warning reporte-link">
-                        Enviar recordatorio de adeudo
-                    </a>
-                {% else %}
-                    <a href="#" class="btn btn-warning mb-3" onclick="alert('Debes seleccionar un local o un área común antes de enviar el recordatorio.'); return false;">
-                        Enviar recordatorio de adeudo
-                    </a>
-                {% endif %}
-                </div>
-                </div>
-
-    <div class="card shadow-sm mb-1">
-        <div class="card-body">
-            <form id="form-filtros" method="get" class="row g-2">
-            {% if request.user.is_superuser %}
-            <div class="col-auto">
-                <select name="empresa" id="empresa" class="form-select">
-                    <option value="">Todas las empresas</option>
-                    {% for empresa in empresas %}
-                        <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
-                            {{ empresa.nombre }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="col-auto">
-                <label for="local_id" class="form-label">Propiedad:</label>
-                <select name="local_id" id="local_id" class="form-select">
-                    <option value="">selecciona una opcion</option>
-                    {% for local in locales %}
-                        <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
-                            {{ local }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-auto">
-                <label for="area_id" class="form-label">Área común:</label>
-                <select name="area_id" id="area_id" class="form-select">
-                    <option value="">selecciona una opcion</option>
-                    {% for area in areas %}
-                        <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
-                            {{ area }}
-                        </option>
-                    {% endfor %} 
-                </select>
-            </div>
-            <div class="col-auto">
-                <label for="tipo_cuota" class="form-label">Periodo:</label>
-                <select name="anio" class="form-select">
-                    <option value="">selecciona una opcion</option>
-                    {% for fecha in anios_disponibles %}
-                        <option value="{{ fecha.year }}" {% if fecha.year|stringformat:"s" == anio_seleccionado %}selected{% endif %}>{{ fecha.year }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-auto">
-        <label for="estatus" class='form-label'>Opciones</label>
-      <div class="col-auto mb-3">
-                <button type="submit" class="btn btn-outline-primary reporte-link">
-                    <i class="bi bi-funnel" title="Buscar"></i>
+        <!-- Encabezado -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-cash-coin me-2"></i>Estado de Cuenta</h4>
+            {% if local_id %}
+                <a href="{% url 'enviar_recordatorio_morosidad' %}?local_id={{ local_id }}&next={{ request.get_full_path|urlencode }}" 
+                   class="btn btn-warning btn-sm reporte-link">
+                    <i class="bi bi-bell me-1"></i> Envio por correo recordatorio de adeudos
+                </a>
+            {% elif area_id %}
+                <a href="{% url 'enviar_recordatorio_morosidad' %}?area_id={{ area_id }}&next={{ request.get_full_path|urlencode }}" 
+                   class="btn btn-warning btn-sm reporte-link">
+                    <i class="bi bi-bell me-1"></i> Envio por correo recordatorio de adeudos
+                </a>
+            {% else %}
+                <button class="btn btn-warning btn-sm" 
+                        onclick="alert('Selecciona un local o área común primero.')">
+                    <i class="bi bi-bell me-1"></i> Envio por correo recordatorio de adeudos
                 </button>
-                <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-clockwise" title="Limpiar"></i>
-                    </a>
-                        <a href="{% url 'exportar_lista_facturas_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}"
-                        class="btn btn-outline-success reporte-link {% if not empresa_seleccionada and not local_id and not area_id and not tipo_cuota_seleccionada and not anio_seleccionado and not q %}disabled{% endif %}">
-                            <i class="bi bi-file-earmark-excel-fill" title="Exportar a Excel"></i>
-                        </a>
-            </div>
-        </form>
-    </div>
-    </div>
-</div>
+            {% endif %}
+        </div>
 
-
-        <!-- Invoices table -->
-        <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
-    <table class="table align-middle mb-0 shadow-sm">
-        <thead>
-            <tr>
-                <th>Folio</th>
-                {% if request.user.is_superuser %}
-                    <th>Empresa</th>
-                {% endif %}
-                <th>Cliente</th>
-                <th>Local/Área</th>
-                <th>Importe</th>
-                <th>Saldo</th>
-                <th>Tipo Cuota</th>
-                <th>Periodo</th>
-                <th>Descripción</th>
-                <th>Estatus</th>
-                <th>Acciones</th>
-                <th>CFDI</th>
-                <th>Historial</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for factura in facturas %}
-                <tr>
-                    <td>{{ factura.folio }}</td>
-                    {% if request.user.is_superuser %}
-                        <td>{{ factura.empresa.nombre }}</td>
-                    {% endif %}
-                    <td>{{ factura.cliente.nombre }}</td>
-                    <td>
-                        {% if factura.local %}
-                            {{ factura.local.numero }}
-                        {% elif factura.area_comun %}
-                            {{ factura.area_comun.numero }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                    <td>${{ factura.saldo_pendiente|floatformat:2|intcomma}}</td>
-                    <td>{{ factura.tipo_cuota}}</td>
-                    <td>{{ factura.fecha_vencimiento|date:"b/y"|upper}}</td>
-                    {% if factura.observaciones == None or factura.observaciones == '' %}
-                        <td></td>
-                    {% else %}
-                        <td>{{ factura.observaciones }}</td>
-                    {% endif %}
-                    <td>
-                        {% if factura.estatus == 'cobrada' %}
-                            <span class="badge bg-success">{{ factura.get_estatus_display }}</span>
-                        {% elif factura.estatus == 'pendiente' %}
-                            <span class="badge bg-warning">{{ factura.get_estatus_display }}</span>
-                        {% elif factura.estatus == 'cancelada' %}
-                            <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
-                        {% endif %}
-                    </td>
-                    <!--Columna acciones-->
-                    <td class="text-nowrap">
-                        {% if factura.saldo_pendiente > 0 %}
-                            <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success reporte-link" title="Registrar deposito">
-                                <i class="bi bi-cash-coin me-1"></i>
-                            </a>
-                            <a href="{% url 'editar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-primary reporte-link" title="Editar factura">
-                                <i class="bi bi-pencil-square me-1"></i>
-                            </a>
-                            <a href="{% url 'eliminar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger reporte-link" title="Eliminar factura">
-                                <i class="bi bi-trash me-1"></i>
-                            </a>
-                        {% else %}
-                            <span class="text-muted"></span>
-                        {% endif %}
-
-                        {% if factura.empresa.es_demo or factura.empresa.es_plus %}
-                            <a href="{% url 'recibo_factura' factura.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Recibo">
-                                <i class="bi bi-printer"></i>
-                            </a>
-                        {% else %}
-                            <span></span>
-                        {% endif %}
-                        
-                        
-                            {% if factura.estatus == 'cancelada' %}
-                                <span class="text-muted"></span>
-                            {% else %}
-                                <a href="{% url 'crear_factura' %}?cliente={{ factura.cliente.id }}{% if factura.local %}&local={{ factura.local.id }}&tipo_origen=local{% endif %}{% if factura.area_comun %}&area_comun={{ factura.area_comun.id }}&tipo_origen=area_comun{% endif %}&tipo_cuota={{ factura.tipo_cuota }}&next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success reporte-link" title="Nueva factura">
-                                    <i class="bi bi-plus-circle me-1 sm" title="Nueva factura"></i>
-                                </a>
+        <!-- KPIs + Gráfica -->
+        <div class="row g-3 mb-3">
+            <!-- KPI Adeudo -->
+            <div class="col-12 col-md-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-3">
+                        <div class="text-muted small mb-1">Adeudo acumulado mes actual</div>
+                        <div class="fw-bold text-danger" style="font-size:1.8rem;">
+                            ${{ adeudo_acumulado_mes_actual|floatformat:2|intcomma }}
+                        </div>
+                        <hr class="my-2">
+                        <div class="row g-0">
+                            <div class="col-6">
+                                <div class="text-muted small">Mes anterior</div>
+                                <div class="fw-bold small">${{ adeudo_acumulado_mes_anterior|floatformat:2|intcomma }}</div>
+                                {% if adeudo_acumulado_mes_anterior == 0 %}
+                                    <span class="text-muted small">N/A</span>
+                                {% elif var_acumulado_mes > 0 %}
+                                    <span class="text-danger small">▲ {{ var_acumulado_mes|floatformat:1 }}%</span>
+                                {% elif var_acumulado_mes < 0 %}
+                                    <span class="text-success small">▼ {{ var_acumulado_mes|floatformat:1 }}%</span>
+                                {% else %}
+                                    <span class="text-muted small">0%</span>
                                 {% endif %}
-                        {% if factura.empresa.es_premium %}        
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted small">Mismo mes año ant.</div>
+                                <div class="fw-bold small">${{ adeudo_acumulado_mes_actual_anio_anterior|floatformat:2|intcomma }}</div>
+                                {% if adeudo_acumulado_mes_actual_anio_anterior == 0 %}
+                                    <span class="text-muted small">N/A</span>
+                                {% elif var_acumulado_mes_actual_anio_anterior > 0 %}
+                                    <span class="text-danger small">▲ {{ var_acumulado_mes_actual_anio_anterior|floatformat:1 }}%</span>
+                                {% elif var_acumulado_mes_actual_anio_anterior < 0 %}
+                                    <span class="text-success small">▼ {{ var_acumulado_mes_actual_anio_anterior|floatformat:1 }}%</span>
+                                {% else %}
+                                    <span class="text-muted small">0%</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Gráfica tendencia -->
+            <div class="col-12 col-md-8">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-3">
+                        <div class="text-muted small mb-1">Tendencia de adeudo (últimos 12 meses)</div>
+                        <canvas id="adeudoTrendChart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros compactos -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body py-2 px-3">
+                <form id="form-filtros" method="get">
+                    <div class="row g-2 align-items-end">
+                        {% if request.user.is_superuser %}
+                        <div class="col-12 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Empresa</label>
+                            <select name="empresa" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for empresa in empresas %}
+                                    <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
+                                        {{ empresa.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="col-12 col-md-3">
+                            <label class="form-label form-label-sm mb-1">Propiedad</label>
+                            <select name="local_id" id="local_id" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for local in locales %}
+                                    <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
+                                        {{ local }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label form-label-sm mb-1">Área común</label>
+                            <select name="area_id" id="area_id" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for area in areas %}
+                                    <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
+                                        {{ area }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Año</label>
+                            <select name="anio" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                {% for fecha in anios_disponibles %}
+                                    <option value="{{ fecha.year }}" {% if fecha.year|stringformat:"s" == anio_seleccionado|stringformat:"s" %}selected{% endif %}>
+                                        {{ fecha.year }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Búsqueda</label>
+                            <input type="text" name="q" class="form-control form-control-sm"
+                                   placeholder="Folio o cliente" value="{{ q|default:'' }}">
+                        </div>
+                        <div class="col-auto d-flex gap-1 align-items-end">
+                            <button type="submit" class="btn btn-primary btn-sm reporte-link" title="Filtrar">
+                                <i class="bi bi-funnel-fill"></i>
+                            </button>
+                            <a href="{% url 'lista_facturas' %}" class="btn btn-outline-secondary btn-sm reporte-link" title="Limpiar">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </a>
+                         <a href="{% url 'exportar_estado_cuenta_excel' %}?{{ request.GET.urlencode }}"
+                            class="btn btn-outline-success btn-sm {% if not local_id and not area_id %}disabled{% endif %}"
+                            title="Exportar estado de cuenta pendiente">
+                                <i class="bi bi-file-earmark-excel-fill"></i> Descargar Adeudos
+                        </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-responsive rounded-3 border" style="font-size: 0.85rem;">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Folio</th>
+                        {% if request.user.is_superuser %}<th>Empresa</th>{% endif %}
+                        <th>Cliente</th>
+                        <th>Local/Área</th>
+                        <th class="text-end">Importe</th>
+                        <th class="text-end">Saldo</th>
+                        <th>Tipo Cuota</th>
+                        <th>Período</th>
+                        <th>Descripción</th>
+                        <th class="text-center">Estatus</th>
+                        <th class="text-center">Acciones</th>
+                        <th class="text-center">CFDI</th>
+                        <th class="text-center">Historial</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for factura in facturas %}
+                    <tr>
+                        <td class="small text-muted">{{ factura.folio }}</td>
+                        {% if request.user.is_superuser %}
+                            <td class="small">{{ factura.empresa.nombre }}</td>
+                        {% endif %}
+                        <td class="small">{{ factura.cliente.nombre }}</td>
+                        <td class="small">
+                            {% if factura.local %}{{ factura.local.numero }}
+                            {% elif factura.area_comun %}{{ factura.area_comun.numero }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="small text-end">${{ factura.monto|floatformat:2|intcomma }}</td>
+                        <td class="small text-end {% if factura.saldo_pendiente > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ${{ factura.saldo_pendiente|floatformat:2|intcomma }}
+                        </td>
+                        <td class="small">{{ factura.tipo_cuota }}</td>
+                        <td class="small text-nowrap">{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
+                        <td class="small">{{ factura.observaciones|default:""|truncatechars:35 }}</td>
+                        <td class="text-center">
+                            {% if factura.estatus == 'cobrada' %}
+                                <span class="badge bg-success">Cobrada</span>
+                            {% elif factura.estatus == 'pendiente' %}
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif factura.estatus == 'cancelada' %}
+                                <span class="badge bg-danger">Cancelada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center text-nowrap">
+                            {% if factura.saldo_pendiente > 0 %}
+                                <a href="{% url 'registrar_pago' factura.id %}?next={{ request.get_full_path|urlencode }}" 
+                                   class="btn btn-xs btn-outline-success reporte-link" title="Registrar pago">
+                                    <i class="bi bi-cash-coin"></i>
+                                </a>
+                                <a href="{% url 'editar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" 
+                                   class="btn btn-xs btn-outline-primary reporte-link" title="Editar">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{% url 'eliminar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" 
+                                   class="btn btn-xs btn-outline-danger reporte-link" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            {% endif %}
+                            {% if factura.empresa.es_demo or factura.empresa.es_plus %}
+                                <a href="{% url 'recibo_factura' factura.id %}" 
+                                   class="btn btn-xs btn-outline-primary" target="_blank" title="Imprimir">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            {% endif %}
+                            {% if factura.estatus != 'cancelada' %}
+                                <a href="{% url 'crear_factura' %}?cliente={{ factura.cliente.id }}{% if factura.local %}&local={{ factura.local.id }}&tipo_origen=local{% endif %}{% if factura.area_comun %}&area_comun={{ factura.area_comun.id }}&tipo_origen=area_comun{% endif %}&tipo_cuota={{ factura.tipo_cuota }}&next={{ request.get_full_path|urlencode }}" 
+                                   class="btn btn-xs btn-success reporte-link" title="Nueva factura">
+                                    <i class="bi bi-plus-circle"></i>
+                                </a>
+                            {% endif %}
+                            {% if factura.empresa.es_premium %}
                                 {% if not factura.uuid %}
-                                    <a href="{% url 'timbrar_factura' factura.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-success btn-sm reporte-link" title="Timbrar factura">
+                                    <a href="{% url 'timbrar_factura' factura.pk %}?next={{ request.get_full_path|urlencode }}" 
+                                       class="btn btn-xs btn-outline-success reporte-link" title="Timbrar">
                                         <i class="bi bi-file-earmark-check"></i>
                                     </a>
                                 {% else %}
                                     <span class="badge bg-dark">Timbrada</span>
                                 {% endif %}
-                    
-                        {% else %}
-                             <a href="#" class="btn btn-outline-success btn-sm" title=" Timbrar solo PREMIUM">
-                                        <i class="bi bi-file-earmark-check"></i>
-                                    </a>
-                        {% endif %}
-                    </td>
-
-                    <td>
-                    {% if factura.facturama_id %}
-                                <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" class="btn btn-success btn-sm " title="Descargar CFDI PDF/XML">
+                            {% else %}
+                                <a href="#" class="btn btn-xs btn-outline-success" title="Solo PREMIUM">
+                                    <i class="bi bi-file-earmark-check"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if factura.facturama_id %}
+                                <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" 
+                                   class="btn btn-xs btn-success" title="Descargar CFDI">
                                     <i class="bi bi-download"></i>
                                 </a>
                             {% else %}
-                                <span class="text-muted"></span>
+                                <span class="text-muted">—</span>
                             {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'facturas_detalle' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-info reporte-link" title="Ver Historial">
-                            Ver
-                            <i class="bi bi-eye me-1"></i>
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'facturas_detalle' factura.id %}?next={{ request.get_full_path|urlencode }}" 
+                               class="btn btn-xs btn-outline-info reporte-link" title="Ver Historial">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="13" class="text-center text-muted py-4">
+                            <i class="bi bi-funnel fs-3 d-block mb-2"></i>
+                            Selecciona una propiedad o área común para consultar.
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <nav class="mt-2">
+            <ul class="pagination pagination-sm">
+                {% if facturas.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ facturas.previous_page_number }}&{{ request.GET.urlencode }}">
+                            <i class="bi bi-chevron-left"></i> Anterior
                         </a>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr class="no-data-row">
-                    <td colspan="12">Sin Facturas Consultadas.</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-        <nav aria-label="Paginación">
-            <ul class="pagination">
-            {% if facturas.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ facturas.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span>
                 </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-            {% endif %}
-            <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
-            {% if facturas.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ facturas.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-            {% endif %}
+                {% if facturas.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ facturas.next_page_number }}&{{ request.GET.urlencode }}">
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
             </ul>
         </nav>
+
     </div>
 
-    <!-- 🔹 Footer -->
-  {% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+        // Gráfica tendencia
+        const trendLabels = {{ trend_labels|safe }};
+        const trendData = {{ trend_data|safe }};
+        new Chart(document.getElementById('adeudoTrendChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: 'Adeudo',
+                    data: trendData,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220,53,69,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#dc3545'
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { font: { size: 10 } } },
+                    y: { ticks: { font: { size: 10 } } }
+                }
+            }
+        });
     });
-  });
-});
-</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const trendLabels = {{ trend_labels|safe }};
-  const trendData = {{ trend_data|safe }};
-  new Chart(document.getElementById('adeudoTrendChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: trendLabels,
-      datasets: [{
-        label: 'Adeudo',
-        data: trendData,
-        borderColor: '#dc3545',
-        backgroundColor: 'rgba(220,53,69,0.1)',
-        fill: true,
-        tension: 0.3,
-        pointRadius: 4,
-        pointBackgroundColor: '#dc3545'
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { font: { size: 10 } } },
-        y: { ticks: { font: { size: 10 } } }
-      }
-    }
-  });
-});
-</script>
+    </script>
 </body>
 </html>

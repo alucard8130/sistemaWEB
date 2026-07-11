@@ -1,0 +1,87 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerrar período — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="container mt-4" style="max-width: 560px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-lock me-2"></i>Cerrar período —
+                {{ periodo.nombre_mes }} {{ periodo.anio }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info small">
+                <i class="bi bi-info-circle me-1"></i>
+                Ingresa el saldo final que aparece en tu estado de cuenta bancario.
+                Esto permitirá detectar diferencias entre lo registrado en GESAC y el banco.
+            </div>
+
+            <div class="row g-2 mb-4">
+                <div class="col-6">
+                    <div class="text-muted small">Cuenta</div>
+                    <strong>{{ periodo.cuenta.banco }}</strong>
+                    <div class="small text-muted">{{ periodo.cuenta.numero_cuenta }}</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">Saldo calculado en GESAC</div>
+                    <strong class="text-primary fs-5">
+                        ${{ periodo.saldo_calculado|floatformat:2|intcomma }}
+                    </strong>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small">Saldo inicial del período</div>
+                    <strong>${{ periodo.saldo_inicial|floatformat:2|intcomma }}</strong>
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        Saldo final según estado de cuenta del banco
+                        <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" name="saldo_final_banco" class="form-control form-control-lg"
+                               step="0.01" required placeholder="0.00" autofocus>
+                    </div>
+                    <div class="form-text">
+                        Ingresa el saldo que aparece al final del mes en tu estado de cuenta bancario.
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Notas u observaciones</label>
+                    <textarea name="notas" class="form-control" rows="2"
+                              placeholder="Ej: Diferencia por comisión bancaria no registrada"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success flex-grow-1">
+                        <i class="bi bi-lock me-1"></i> Confirmar cierre
+                    </button>
+                    <a href="{% url 'conciliaciones:saldos_periodo' %}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

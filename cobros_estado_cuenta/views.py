@@ -180,6 +180,16 @@ def subir_estado_cuenta(request):
             sesion.estado = 'listo'
             sesion.save()
 
+            # Validar que el período del estado de cuenta sea del año actual
+            hoy = datetime.date.today()
+            if sesion.periodo_inicio and sesion.periodo_inicio.year < hoy.year:
+                sesion.delete()
+                messages.error(request,
+                    f"El estado de cuenta corresponde al año {sesion.periodo_inicio.year}. "
+                    f"Solo se permiten estados de cuenta del año {hoy.year}."
+                )
+                return render(request, 'cobros_estado_cuenta/subir.html', {'cuentas': cuentas})
+
             # Crear los movimientos extraídos
             for abono in datos.get('abonos', []):
                 cliente = None

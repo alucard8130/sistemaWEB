@@ -17,7 +17,7 @@ urlpatterns = [
     path('carga-masiva/', views.carga_masiva_facturas, name='carga_masiva_facturas'),
     path('plantilla-facturas/', views.plantilla_facturas_excel, name='plantilla_facturas_excel'),
     path('factura/<int:factura_id>/editar/', views.editar_factura, name='editar_factura'),
-    path('factura/exportar/excel/', views.exportar_lista_facturas_excel, name='exportar_lista_facturas_excel'),
+    #path('factura/exportar/excel/', views.exportar_lista_facturas_excel, name='exportar_lista_facturas_excel'),
     path('carga-masiva-c/', views.carga_masiva_facturas_cobradas, name='carga_masiva_facturas_cobradas'),
     path('detalle/<int:pk>/', views.facturas_detalle, name='facturas_detalle'),
     path('otros-ingresos/nueva/', views.crear_factura_otros_ingresos, name='crear_factura_otros_ingresos'),
@@ -34,6 +34,8 @@ urlpatterns = [
     path('facturas-otros-ingresos/eliminar/<int:factura_id>/', views.eliminar_factura_otros_ingresos, name='eliminar_factura_otros_ingresos'),
     path('ingresos-mensuales/', views.grafico_ingresos_mensuales, name='grafico_ingresos_mensual'),
     path('ingresos-anuales/', views.grafico_ingresos_anual, name='grafico_ingresos_anual'),
+    path('exportar-estado-cuenta/', views.exportar_estado_cuenta_excel, name='exportar_estado_cuenta_excel'),
+    
 
     
 ]

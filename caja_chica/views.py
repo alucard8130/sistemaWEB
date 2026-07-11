@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from num2words import num2words
 from django.utils import timezone
+from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado, Incidencia
 from proveedores.models import Proveedor
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
@@ -12,7 +13,6 @@ from gastos.models import TipoGasto
 from django.db import transaction
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum
-from caja_chica import models
 from openpyxl import Workbook
 from django.core.paginator import Paginator
 from datetime import datetime
@@ -34,6 +34,8 @@ def detalle_fondeo(request, fondeo_id):
         {"fondeo": fondeo, "gastos": gastos, "vales": vales},
     )
 
+
+#asignar recursos a caja chica, validar que numero_cheque no se repita dentro de la misma empresa del usuario logeado
 @login_required
 def fondeo_caja_chica(request):
     """
@@ -53,6 +55,8 @@ def fondeo_caja_chica(request):
             if empresa:
                 if "empleado_asignado" in form.fields:
                     form.fields["empleado_asignado"].queryset = form.fields["empleado_asignado"].queryset.filter(empresa=empresa)
+                if "cuenta_bancaria" in form.fields:
+                    form.fields["cuenta_bancaria"].queryset = form.fields["cuenta_bancaria"].queryset.filter(empresa=empresa, activa=True)    
         except Exception:
             pass
 
@@ -67,6 +71,15 @@ def fondeo_caja_chica(request):
                     form.add_error("numero_cheque", "El número de cheque ya existe para esta empresa.")
                     messages.error(request, "El número de cheque ya existe para esta empresa.")
                     return render(request, "caja_chica/fondeo_caja_chica.html", {"form": form})
+                
+                # Validar período cerrado
+                fecha = form.cleaned_data.get('fecha')
+                cuenta_bancaria = form.cleaned_data.get('cuenta_bancaria')
+                if fecha and cuenta_bancaria:
+                    periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
+                    if not periodo_valido:
+                        form.add_error(None, error_periodo)
+                        return render(request, 'caja_chica/fondeo_caja_chica.html', {'form': form})
 
             fondeo = form.save(commit=False)
             # asegurar empresa asociada al fondeo (usar empresa del perfil)
@@ -87,6 +100,9 @@ def fondeo_caja_chica(request):
             try:
                 if "empleado_asignado" in form.fields:
                     form.fields["empleado_asignado"].queryset = form.fields["empleado_asignado"].queryset.filter(empresa=empresa)
+                    
+                if "cuenta_bancaria" in form.fields:
+                    form.fields["cuenta_bancaria"].queryset = form.fields["cuenta_bancaria"].queryset.filter(empresa=empresa, activa=True)    
             except Exception:
                 pass
 
@@ -116,6 +132,15 @@ def registrar_gasto_caja_chica(request):
         if form.is_valid():
             gasto = form.save(commit=False)
             fondeo = gasto.fondeo
+            # Validar período cerrado — cuenta bancaria viene del fondeo
+            fecha = gasto.fecha
+            cuenta_bancaria = fondeo.cuenta_bancaria if fondeo else None
+            if fecha and cuenta_bancaria:
+                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
+                if not periodo_valido:
+                    form.add_error(None, error_periodo)
+                    return render(request, 'caja_chica/registrar_gasto_caja_chica.html', {'form': form})
+            
             if gasto.importe > fondeo.saldo:
                 form.add_error("importe", f"El importe excede el saldo disponible (${fondeo.saldo}) en el fondeo.")
                 messages.error(request, f"El importe excede el saldo disponible ${fondeo.saldo} en el fondeo.")
@@ -154,6 +179,15 @@ def generar_vale_caja(request):
         if form.is_valid():
             vale = form.save(commit=False)
             fondeo = vale.fondeo
+            # Validar período cerrado — cuenta bancaria viene del fondeo
+            fecha = vale.fecha
+            cuenta_bancaria = fondeo.cuenta_bancaria if fondeo else None
+            if fecha and cuenta_bancaria:
+                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
+                if not periodo_valido:
+                    form.add_error(None, error_periodo)
+                    return render(request, 'caja_chica/generar_vale_caja.html', {'form': form}) 
+                
             if vale.importe > fondeo.saldo:
                 form.add_error("importe", f"El importe excede el saldo disponible (${fondeo.saldo}) en el fondeo.")
                 messages.error(request, f"El importe excede el saldo disponible ${fondeo.saldo} en el fondeo.")
@@ -202,13 +236,13 @@ def lista_fondeos(request):
     if fecha_fin:
         fondeos = fondeos.filter(fecha__lte=fecha_fin)
     
-    fondeos = fondeos.order_by('-fecha')
+    fondeos = fondeos.order_by('-saldo', '-fecha')  # Ordenar por saldo descendente y luego por fecha descendente
     empleados = Empleado.objects.filter(id__in=fondeos.values_list('empleado_asignado_id', flat=True)).order_by('nombre')
     cheques_existentes = fondeos.values_list('numero_cheque', flat=True).distinct().order_by('numero_cheque')
     total_importe = fondeos.object_list.aggregate(total=Sum('importe_cheque'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('importe_cheque'))['total']
     total_saldo = fondeos.object_list.aggregate(total=Sum('saldo'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('saldo'))['total']
 
-    paginator = Paginator(fondeos, 20)
+    paginator = Paginator(fondeos, 10)  # Mostrar 10 fondeos por página
     page_number = request.GET.get("page")
     fondeos = paginator.get_page(page_number)
 
@@ -335,7 +369,7 @@ def lista_gastos_caja_chica(request):
     # proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
     # tipos_gasto = TipoGasto.objects.all()
 
-    paginator = Paginator(gastos, 20)
+    paginator = Paginator(gastos, 10)
     page_number = request.GET.get("page")
     gastos = paginator.get_page(page_number)
 
@@ -432,17 +466,17 @@ def lista_vales_caja_chica(request):
     if request.user.is_superuser and empresa_id:
         vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
             fondeo__empresa_id=empresa_id
-        ).order_by('-fecha')
+        ).order_by('status', '-fecha')
     elif request.user.is_superuser:
-        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").all().order_by('-fecha')
+        vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").all().order_by('status', '-fecha')
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
             vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
                 fondeo__empresa=perfil.empresa
-            ).order_by('-fecha')
+            ).order_by('status', '-fecha')
         else:
-            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").none().order_by('-fecha')
+            vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").none().order_by('status', '-fecha')
 
     # Filtros
     if empleado_id and empleado_id.isdigit():
@@ -463,7 +497,7 @@ def lista_vales_caja_chica(request):
     empleados = Empleado.objects.filter(id__in=vales.values_list('recibido_por_id', flat=True)).order_by('nombre')
     tipos_gasto = TipoGasto.objects.all()
 
-    paginator = Paginator(vales, 20)
+    paginator = Paginator(vales, 10)
     page_number = request.GET.get("page")
     vales = paginator.get_page(page_number)
 

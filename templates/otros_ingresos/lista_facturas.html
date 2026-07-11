@@ -1,260 +1,256 @@
 {% load static %}
-{% comment %} {% load archivo_existe %} {% endcomment %}
 {% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 28/08/2025
-      Description: Invoices (OTHERS INCOMES)
-    -->
     <meta charset="UTF-8">
-    <title>Facturas otros ingresos</title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facturas Otros Ingresos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    <!-- Block for displaying messages -->
+
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         {% endfor %}
     {% endif %}
 
-    <!-- Main content -->
-    <div class="container-fluid mt-2" align="center">
-            <div class="card shadow-sm">
-                <div class="card-body">      
-      <h3 class="mb-0">Facturas Otros Ingresos</h3>
-            </div>
-            </div>
-    </div>
-    <div class="card shadow-sm mb-1">
-    <div class="card-body">
-    <form id="form-filtros" method="get" class="row g-2">
-    <div class="col-auto">
-        <label for="cliente_id" class='form-label'>Cliente</label>
-        <select name="cliente_id" class="form-select">
-            <option value="">selecciona un cliente</option>
-            {% for cliente in clientes %}
-                <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == cliente_id %}selected{% endif %}>{{ cliente.nombre }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <label for="tipo_ingreso" class='form-label'>Tipo de ingreso</label>
-        <select name="tipo_ingreso" class="form-select">
-            <option value="">selecciona una opcion</option>
-            {% for tipo in tipos_ingreso %}
-                <option value="{{ tipo }}" {% if tipo == tipo_ingreso_seleccionada %}selected{% endif %}>{{ tipo }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto"> 
-        <label for="estatus" class='form-label'>Opciones</label>
-      <div class="col-auto mb-3">
-              <button type="submit" class="btn btn-outline-primary reporte-link">
-                  <i class="bi bi-funnel" title='Buscar'></i> 
-                      
-              </button>
-                <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-clockwise" title='Limpiar'></i> 
-                
-            </a>
-            <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-excel-fill" title='Exportar a Excel'></i> 
-                
-            </a>
-          </div>
-        
-      </form>
-      </div>
-        </div>
-        </div>
-        <div>
-          <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear reporte-link mt-3" title="Nueva factura otros ingresos">
-            <i class="bi bi-plus-circle m-3">Nueva Factura</i>
-            </a> 
-        </div>
-        <!-- Invoices table -->     
-        <div class="table-responsive rounded-3 border" style='font-size:0.9rem;'> 
-          <table class="table align-middle mb-0 shadow-sm">
-              <thead>
-                  <tr>
-                      <th>Folio</th>
-                      {% if request.user.is_superuser %}
-                        <th>Empresa</th>
-                      {% endif %}
-                      <th>Cliente</th>
-                      
-                      <th>Importe</th>
-                      <th>Saldo</th>
-                      <th>Tipo Ingreso</th>
-                    <!--  <th>Fecha emisión</th>-->
-                      <th>Periodo</th>
-                      <th>Descripción</th>
-                      <th>Estatus</th>
-                      <th>Acciones</th>
-                      <th>CFDI</th>    
-                      <th>Historial</th>
-                  
-                  </tr>
-              </thead>
-              <tbody>
-                  {% for factura in facturas %}
-                      <tr>
-                          <td>{{ factura.folio }}</td>
-                          {% if request.user.is_superuser %}
-                            <td>{{ factura.empresa.nombre }}</td>
-                          {% endif %}
-                          <td>{{ factura.cliente.nombre }}</td>
-                          
-                          <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                          <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
-                          <td>{{ factura.tipo_ingreso }}</td>
-                          <td>{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
-                          {% if factura.observaciones == None or factura.observaciones == '' %}
-                              <td></td>
-                          {% else %}
-                              <td>{{ factura.observaciones }}</td>
-                          {% endif %}
+    <div class="container-fluid mt-2 px-3">
 
-                        <td>{% if factura.estatus == 'cobrada' %} 
-                              <span class="badge bg-success">{{ factura.get_estatus_display }}</span> 
-                          {% elif factura.estatus == 'pendiente' %} 
-                              <span class="badge bg-warning">{{ factura.get_estatus_display }}</span>
-                          {% elif factura.estatus == 'cancelada' %} 
-                              <span class="badge bg-danger">{{ factura.get_estatus_display }}</span>
-                          {% endif %}
+        <!-- Encabezado + botón nuevo -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Facturas Otros Ingresos</h4>
+            <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-success btn-sm reporte-link">
+                <i class="bi bi-plus-lg me-1"></i> Nueva Factura
+            </a>
+        </div>
+
+        <!-- Filtros compactos -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body py-2 px-3">
+                <form id="form-filtros" method="get">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-3">
+                            <label class="form-label form-label-sm mb-1">Cliente</label>
+                            <select name="cliente_id" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                {% for cliente in clientes %}
+                                    <option value="{{ cliente.id }}" {% if cliente.id|stringformat:"s" == cliente_id %}selected{% endif %}>
+                                        {{ cliente.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label form-label-sm mb-1">Tipo de ingreso</label>
+                            <select name="tipo_ingreso" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                {% for tipo in tipos_ingreso %}
+                                    <option value="{{ tipo }}" {% if tipo == tipo_ingreso_seleccionada %}selected{% endif %}>
+                                        {{ tipo }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Estatus</label>
+                            <select name="estatus" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option value="pendiente" {% if estatus_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                                <option value="cobrada" {% if estatus_filtro == 'cobrada' %}selected{% endif %}>Cobrada</option>
+                                <option value="cancelada" {% if estatus_filtro == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Período</label>
+                            <input type="month" name="periodo" class="form-control form-control-sm"
+                                   value="{{ periodo_filtro|default:'' }}">
+                        </div>
+                        <div class="col-auto d-flex gap-1 align-items-end">
+                            <button type="submit" class="btn btn-primary btn-sm reporte-link" title="Filtrar">
+                                <i class="bi bi-funnel-fill"></i>
+                            </button>
+                            <a href="{% url 'lista_facturas_otros_ingresos' %}" class="btn btn-outline-secondary btn-sm reporte-link" title="Limpiar">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </a>
+                            <a href="{% url 'exportar_lista_facturas_otros_ingresos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success btn-sm" title="Exportar Excel">
+                                <i class="bi bi-file-earmark-excel-fill"></i>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-responsive rounded-3 border" style="font-size: 0.85rem;">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Folio</th>
+                        {% if request.user.is_superuser %}
+                            <th>Empresa</th>
+                        {% endif %}
+                        <th>Cliente</th>
+                        <th class="text-end">Importe</th>
+                        <th class="text-end">Saldo</th>
+                        <th>Tipo Ingreso</th>
+                        <th>Período</th>
+                        <th>Descripción</th>
+                        <th class="text-center">Estatus</th>
+                        <th class="text-center">Acciones</th>
+                        <th class="text-center">CFDI</th>
+                        <th class="text-center">Historial</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for factura in facturas %}
+                    <tr>
+                        <td class="small text-muted">{{ factura.folio }}</td>
+                        {% if request.user.is_superuser %}
+                            <td class="small">{{ factura.empresa.nombre }}</td>
+                        {% endif %}
+                        <td class="small">{{ factura.cliente.nombre }}</td>
+                        <td class="small text-end">${{ factura.monto|floatformat:2|intcomma }}</td>
+                        <td class="small text-end {% if factura.saldo > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ${{ factura.saldo|floatformat:2|intcomma }}
                         </td>
-        
-                          <td class="text-nowrap">
+                        <td class="small">{{ factura.tipo_ingreso }}</td>
+                        <td class="small text-nowrap">{{ factura.fecha_vencimiento|date:"b/y"|upper }}</td>
+                        <td class="small">{{ factura.observaciones|default:""|truncatechars:40 }}</td>
+                        <td class="text-center">
+                            {% if factura.estatus == 'cobrada' %}
+                                <span class="badge bg-success">Cobrada</span>
+                            {% elif factura.estatus == 'pendiente' %}
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif factura.estatus == 'cancelada' %}
+                                <span class="badge bg-danger">Cancelada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center text-nowrap">
                             {% if factura.saldo > 0 %}
-                                <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-success reporte-link" title="Registrar deposito">
-                                
-                                    <i class="bi bi-cash-coin me-1"></i>
+                                <a href="{% url 'registrar_cobro_otros_ingresos' factura.id %}" 
+                                   class="btn btn-xs btn-outline-success reporte-link" title="Registrar cobro">
+                                    <i class="bi bi-cash-coin"></i>
                                 </a>
-                                {% comment %} <a href="{% url 'crear_factura_otros_ingresos' %}" class="btn btn-crear reporte-link btn-sm" title="Nueva factura otros ingresos">
-                                    <i class="bi bi-plus-circle me-1"></i> 
-                                    
-                                    </a> {% endcomment %}
-                                <a href="{% url 'eliminar_factura_otros_ingresos' factura.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger reporte-link" title="Eliminar factura">
-                                    <i class="bi bi-trash me-1"></i>
+                                <a href="{% url 'eliminar_factura_otros_ingresos' factura.id %}?next={{ request.get_full_path|urlencode }}" 
+                                   class="btn btn-xs btn-outline-danger reporte-link" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
                                 </a>
                             {% endif %}
-
                             {% if factura.empresa.es_demo or factura.empresa.es_plus %}
-                                <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" class="btn btn-outline-primary btn-sm reporte-link" target="_blank" title="Imprimir Factura">
+                                <a href="{% url 'recibo_factura_otras_cuotas' factura.id %}" 
+                                   class="btn btn-xs btn-outline-primary reporte-link" target="_blank" title="Imprimir">
                                     <i class="bi bi-printer"></i>
                                 </a>
-                            {% else%}
-                                <span></span>
                             {% endif %}
-
-                            {% if factura.estatus == 'cancelada' %}
-                              <span class="text-muted"></span>
-                            {% else %}   
-                                <a href="{% url 'crear_factura_otros_ingresos' %}?cliente={{ factura.cliente.id }}" class="btn btn-crear reporte-link btn-sm" title="Nueva factura otros ingresos">
-                                    <i class="bi bi-plus-circle me-1"></i> 
-                                </a>   
-                            {% endif %}
-
-                            {% if factura.empresa.es_premium %}     
-                                {% if not factura.uuid %}
-                                    <a href="{% url 'timbrar_factura_otros_ingresos' factura.pk %}" class="btn btn-outline-success reporte-link btn-sm" title="Timbrar factura">
-
-                                        <i class="bi bi-file-earmark-check"></i>
-                                    </a>
-                                {% else %}
-                                    <span class="badge bg-dark">Timbrada</span>   
-                                {% endif %}
-                
-                            {% else %}
-                                <a href="#" class="btn btn-outline-success btn-sm" title=" Timbrar solo PREMIUM">
-                                        <i class="bi bi-file-earmark-check"></i>
-                                    </a>
-                            {% endif %}
-                          </td>
-                           <td>
-                                {% if factura.facturama_id %}
-                                    <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" class="btn btn-success btn-sm" title="Descargar CFDI PDF/XML">
-                                        <i class="bi bi-download"></i>
-                                    </a>
-                                {% else %}
-                                    <span class="text-muted"></span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" class="btn btn-sm btn-outline-info reporte-link" title="Ver Historial">Ver
-                                    <i class="bi bi-eye me-1"></i>
+                            {% if factura.estatus != 'cancelada' %}
+                                <a href="{% url 'crear_factura_otros_ingresos' %}?cliente={{ factura.cliente.id }}" 
+                                   class="btn btn-xs btn-crear reporte-link" title="Nueva factura">
+                                    <i class="bi bi-plus-circle"></i>
                                 </a>
-                            </td>
-                      </tr>
-                        {% empty %}
-                            <tr class="no-data-row">
-                                <td colspan="9">No hay facturas registradas.</td>
-                            </tr>
-                        {% endfor %}
-              </tbody>
-          </table>
-      </div>
+                            {% endif %}
+                            {% if factura.empresa.es_premium %}
+                                {% if not factura.uuid %}
+                                    <a href="{% url 'timbrar_factura_otros_ingresos' factura.pk %}" 
+                                       class="btn btn-xs btn-outline-success reporte-link" title="Timbrar">
+                                        <i class="bi bi-file-earmark-check"></i>
+                                    </a>
+                                {% else %}
+                                    <span class="badge bg-dark">Timbrada</span>
+                                {% endif %}
+                            {% else %}
+                                <a href="#" class="btn btn-xs btn-outline-success" title="Solo PREMIUM">
+                                    <i class="bi bi-file-earmark-check"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if factura.facturama_id %}
+                                <a href="{% url 'descargar_cfdi_facturama' factura.facturama_id %}" 
+                                   class="btn btn-xs btn-success" title="Descargar CFDI">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'detalle_factura_otros_ingresos' factura.id %}" 
+                               class="btn btn-xs btn-outline-info reporte-link" title="Ver Historial">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            No hay facturas registradas.
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <nav class="mt-2">
+            <ul class="pagination pagination-sm">
+                {% if facturas.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ facturas.previous_page_number }}&{{ request.GET.urlencode }}">
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span>
+                </li>
+                {% if facturas.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ facturas.next_page_number }}&{{ request.GET.urlencode }}">
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+
     </div>
-<nav aria-label="Paginación">
-    <ul class="pagination">
-        {% if facturas.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ facturas.previous_page_number }}">Anterior</a>
-            </li>
-        {% else %}
-            <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-        {% endif %}
-        <li class="page-item disabled"><span class="page-link">Página {{ facturas.number }} de {{ facturas.paginator.num_pages }}</span></li>
-        {% if facturas.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ facturas.next_page_number }}">Siguiente</a>
-            </li>
-        {% else %}
-            <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-        {% endif %}
-    </ul>
-</nav>
 
-    <!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
     });
-  }
-
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>
+    </script>
 </body>
 </html>

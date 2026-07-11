@@ -115,8 +115,7 @@ import weasyprint
 from babel.dates import format_date
 import pytz
 from django.db.models.functions import TruncMonth
-# import calendar
-# from collections import defaultdict
+
 
 
 # pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
@@ -374,6 +373,7 @@ def dashboard_inicio(request):
     return render(request, "pantalla_inicio.html", context)
 
 
+
 @login_required
 def info_plus(request):
     return render(request, 'planes/info_plus.html', {
@@ -453,6 +453,7 @@ def reiniciar_sistema(request):
         "reiniciar_sistema.html",
         {"empresas": empresas, "empresa_id": empresa_id},
     )
+
 
 
 @staff_member_required
@@ -761,6 +762,7 @@ def respaldo_empresa_excel(request):
     return response
 
 
+
 @staff_member_required
 def reporte_auditoria(request):
     modelo = request.GET.get("modelo")
@@ -770,7 +772,6 @@ def reporte_auditoria(request):
     return render(
         request, "auditoria/reporte.html", {"auditorias": queryset, "modelo": modelo}
     )
-
 
 @csrf_exempt
 @login_required
@@ -789,6 +790,7 @@ def crear_evento(request):
         evento.save()
         return JsonResponse({"ok": True, "id": evento.id})
     return JsonResponse({"ok": False}, status=400)
+
 
 
 @csrf_exempt
@@ -1263,7 +1265,6 @@ def crear_sesion_pago_premium(request):
     return JsonResponse({"id": session.id, "url": session.url})
 
 
-
 @require_POST
 @login_required
 def cancelar_suscripcion(request):
@@ -1398,7 +1399,7 @@ def guardar_datos_empresa(request):
     return redirect("dashboard_inicio")
 
 
-# MODULO DE TICKETS DE MANTENIMIENTO-->
+# MODULO DE TICKETS DE MANTENIMIENTO-- NO ESTA EN FUNCION-SUSTITUIDO POR APP MANTPRO, EN UN FUTURO ENLAZAR CON MANTPRO>
 @login_required
 def crear_ticket(request):
     empresa = request.user.perfilusuario.empresa
@@ -1567,7 +1568,6 @@ def detalle_ticket(request, ticket_id):
         {"ticket": ticket, "seguimientos": seguimientos},
     )
 
-
 @login_required
 def tickets_asignados(request):
     empresa = request.user.perfilusuario.empresa
@@ -1592,7 +1592,6 @@ def tickets_asignados(request):
         },
     )
 
-
 @login_required
 def lista_tickets(request):
     if request.user.is_superuser:
@@ -1611,22 +1610,8 @@ def lista_tickets(request):
     return render(request, "mantenimiento/lista_tickets.html", {"tickets": tickets})
 
 
-# @login_required
-# def seleccionar_empresa(request):
-#     if not request.user.is_superuser:
-#         return redirect("dashboard_inicio")  # O la vista normal
-
-#     if request.method == "POST":
-#         empresa_id = request.POST.get("empresa")
-#         if empresa_id:
-#             request.session["empresa_id"] = empresa_id
-#             return redirect("dashboard_inicio")  # O la vista principal
-#     empresas = Empresa.objects.all()
-#     return render(request, "seleccionar_empresa.html", {"empresas": empresas})
-
 
 # modulo visitantes consulta adeudos y pagos de facturas via WEB
-
 
 def registro_visitante(request):
     empresas = Empresa.objects.all()
@@ -2601,8 +2586,8 @@ def aviso_eliminar(request, aviso_id):
         return redirect("avisos_lista")
     return render(request, "avisos/aviso_confirmar_eliminar.html", {"aviso": aviso})
 
-
-# Modulo de timbrado de facturas con FACTURAMA
+#################################################################################################
+# Modulo de timbrado de facturas con FACTURAMA PENDIENTE PROBAR EN PRODUCCION
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASS = os.getenv("FACTURAMA_PASSWORD")
 
@@ -3208,7 +3193,6 @@ def timbrar_factura_otros_ingresos(request, pk):
 
 
 # Modulo APIS visitantes via APLICACIONES MOVILES
-
 
 # Decorador para verificar token de visitante
 def visitante_token_required(view_func):

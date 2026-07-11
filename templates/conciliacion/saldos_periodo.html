@@ -1,0 +1,227 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saldos por período — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+{% include 'loading_overlay.html' %}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h4 class="mb-0"><i class="bi bi-calendar-month me-2"></i>Saldos por período</h4>
+        <a href="{% url 'lista_traspasos' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left-right me-1"></i> Ver traspasos
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Filtros de período -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body py-2">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small mb-1">Mes</label>
+                    <select name="mes" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for m in meses %}
+                        <option value="{{ m }}" {% if m == mes %}selected{% endif %}>
+                            {% if m == 1 %}Enero
+                            {% elif m == 2 %}Febrero
+                            {% elif m == 3 %}Marzo
+                            {% elif m == 4 %}Abril
+                            {% elif m == 5 %}Mayo
+                            {% elif m == 6 %}Junio
+                            {% elif m == 7 %}Julio
+                            {% elif m == 8 %}Agosto
+                            {% elif m == 9 %}Septiembre
+                            {% elif m == 10 %}Octubre
+                            {% elif m == 11 %}Noviembre
+                            {% elif m == 12 %}Diciembre
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-1">Año</label>
+                    <select name="anio" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for a in anios %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tarjetas por cuenta -->
+    {% for item in periodos %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center
+            {% if item.periodo.cerrado %}bg-success text-white{% else %}bg-primary text-white{% endif %}">
+            <div>
+                <i class="bi bi-bank me-1"></i>
+                <strong>{{ item.cuenta.banco }}</strong> — {{ item.cuenta.numero_cuenta }}
+                <span class="badge bg-light text-dark ms-2">{{ item.cuenta.get_moneda_display }}</span>
+            </div>
+            {% if item.periodo.cerrado %}
+                <span class="badge bg-white text-success">
+                    <i class="bi bi-lock-fill me-1"></i> Cerrado
+                </span>
+            {% else %}
+                <span class="badge bg-warning text-dark">
+                    <i class="bi bi-unlock me-1"></i> Abierto
+                </span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <!-- Saldo inicial -->
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small">Saldo inicial</div>
+                    <div class="fw-bold fs-5">${{ item.periodo.saldo_inicial|floatformat:2|intcomma }}</div>
+                </div>
+                <!-- Ingresos -->
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small">Total ingresos</div>
+                    <div class="fw-bold fs-5 text-success">
+                        +${{ item.movimientos.total_ingresos|floatformat:2|intcomma }}
+                    </div>
+                </div>
+                <!-- Egresos -->
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small">Total egresos</div>
+                    <div class="fw-bold fs-5 text-danger">
+                        -${{ item.movimientos.total_egresos|floatformat:2|intcomma }}
+                    </div>
+                </div>
+                <!-- Saldo calculado -->
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small">Saldo calculado</div>
+                    <div class="fw-bold fs-5
+                        {% if item.periodo.saldo_calculado >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                        ${{ item.periodo.saldo_calculado|floatformat:2|intcomma }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalle de movimientos -->
+            <div class="row g-2 mb-3">
+                <div class="col-12">
+                    <div class="small text-muted fw-bold mb-1">Detalle de movimientos</div>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted small">Pagos de cuotas</td>
+                                <td class="text-end text-success small">
+                                    +${{ item.movimientos.pagos|floatformat:2|intcomma }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small">Cobros otros ingresos</td>
+                                <td class="text-end text-success small">
+                                    +${{ item.movimientos.cobros_oi|floatformat:2|intcomma }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small">Traspasos recibidos</td>
+                                <td class="text-end text-success small">
+                                    +${{ item.movimientos.traspasos_entrada|floatformat:2|intcomma }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted small">Pagos de gastos</td>
+                                <td class="text-end text-danger small">
+                                    -${{ item.movimientos.pagos_gastos|floatformat:2|intcomma }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small">Fondeos caja chica</td>
+                                <td class="text-end text-danger small">
+                                    -${{ item.movimientos.fondeos|floatformat:2|intcomma }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small">Traspasos enviados</td>
+                                <td class="text-end text-danger small">
+                                    -${{ item.movimientos.traspasos_salida|floatformat:2|intcomma }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Saldo banco (si está cerrado) -->
+            {% if item.periodo.cerrado %}
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <div class="alert alert-success py-2 mb-0">
+                        <div class="small text-muted">Saldo según banco</div>
+                        <div class="fw-bold">${{ item.periodo.saldo_final|floatformat:2|intcomma }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert {% if item.periodo.saldo_final == item.periodo.saldo_calculado %}alert-success{% else %}alert-danger{% endif %} py-2 mb-0">
+                        <div class="small">Diferencia</div>
+                        <div class="fw-bold">
+                            ${{ item.periodo.saldo_final|add:item.periodo.saldo_calculado|floatformat:2|intcomma }}
+                        </div>
+                    </div>
+                </div>
+                {% if item.periodo.notas %}
+                <div class="col-md-4">
+                    <div class="alert alert-light py-2 mb-0">
+                        <div class="small text-muted">Notas</div>
+                        <div class="small">{{ item.periodo.notas }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="text-muted small">
+                <i class="bi bi-person me-1"></i>
+                Cerrado por {{ item.periodo.cerrado_por }} el {{ item.periodo.fecha_cierre|date:"d/m/Y H:i" }}
+            </div>
+            {% else %}
+            <!-- Botón cerrar período -->
+            <div class="mt-2">
+                <a href="{% url 'conciliaciones:cerrar_periodo' item.periodo.pk %}" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-lock me-1"></i> Cerrar período con saldo del banco
+                    
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-info">No hay cuentas bancarias activas para esta empresa.</div>
+    {% endfor %}
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -62,3 +62,39 @@ class ConciliacionBancaria(models.Model):
 
     def __str__(self):
         return f"Conciliación {self.estado_cuenta} {self.fecha_conciliacion}"
+    
+
+class SaldoCuentaPeriodo(models.Model):
+    cuenta = models.ForeignKey(
+        CuentaBancaria, on_delete=models.CASCADE,
+        related_name='saldos_periodo'
+    )
+    empresa = models.ForeignKey(
+        Empresa, on_delete=models.CASCADE,
+        related_name='saldos_periodo'
+    )
+    anio = models.IntegerField()
+    mes = models.IntegerField()
+    saldo_inicial = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    saldo_final = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    saldo_calculado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cerrado = models.BooleanField(default=False)
+    fecha_cierre = models.DateTimeField(null=True, blank=True)
+    cerrado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    notas = models.TextField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ('cuenta', 'anio', 'mes')
+        ordering = ['-anio', '-mes']
+        verbose_name = 'Saldo por período'
+        verbose_name_plural = 'Saldos por período'
+
+    def __str__(self):
+        return f"{self.cuenta} — {self.mes}/{self.anio}"
+
+    def nombre_mes(self):
+        meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+        return meses[self.mes - 1]

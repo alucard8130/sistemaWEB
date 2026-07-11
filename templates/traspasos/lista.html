@@ -1,0 +1,106 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traspasos bancarios — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+{% include 'loading_overlay.html' %}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h4 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios</h4>
+        <a href="{% url 'nuevo_traspaso' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo traspaso
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h6 class="mb-0"><i class="bi bi-bank me-1"></i> {{ empresa }}</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Cuenta origen</th>
+                            <th>Cuenta destino</th>
+                            <th class="text-end">Monto</th>
+                            <th>Concepto</th>
+                            <th>Referencia</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for traspaso in traspasos %}
+                        <tr {% if traspaso.estado == 'cancelado' %}class="table-secondary text-muted"{% endif %}>
+                            <td class="small">{{ traspaso.fecha|date:"d/m/Y" }}</td>
+                            <td class="small">
+                                <div>{{ traspaso.cuenta_origen.banco }}</div>
+                                <div class="text-muted">{{ traspaso.cuenta_origen.numero_cuenta }}</div>
+                            </td>
+                            <td class="small">
+                                <div>{{ traspaso.cuenta_destino.banco }}</div>
+                                <div class="text-muted">{{ traspaso.cuenta_destino.numero_cuenta }}</div>
+                            </td>
+                            <td class="text-end fw-bold">
+                                ${{ traspaso.monto|floatformat:2|intcomma }}
+                            </td>
+                            <td class="small">{{ traspaso.concepto|default:"—" }}</td>
+                            <td class="small">{{ traspaso.referencia|default:"—" }}</td>
+                            <td>
+                                {% if traspaso.estado == 'completado' %}
+                                    <span class="badge bg-success">Completado</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Cancelado</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if traspaso.estado == 'completado' %}
+                                <a href="{% url 'cancelar_traspaso' traspaso.pk %}"
+                                   class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-x-circle me-1"></i> Cancelar
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                No hay traspasos registrados.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

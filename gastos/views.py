@@ -10,11 +10,12 @@ from openpyxl import Workbook
 import openpyxl
 from unidecode import unidecode
 from caja_chica.models import GastoCajaChica, ValeCaja
+from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
 
 # from facturacion.models import Pago
-from presupuestos.models import Presupuesto, PresupuestoIngreso
+from presupuestos.models import Presupuesto
 from proveedores.models import Proveedor
 from .forms import (
     GastoForm,
@@ -26,23 +27,22 @@ from .forms import (
 )
 from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
 from datetime import datetime, timedelta
-
 # from django.utils.timezone import localtime
 # from django.db.models.functions import TruncMonth
-from django.db.models import F, Max, Value
+from django.db.models import F, DecimalField, Max, Value
 #import calendar
-from django.db.models import Q, Sum, Count, Case, When, FloatField,Max
+from django.db.models import Q, Sum, Count, Case, When, FloatField
 from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
-from django.db.models.functions import ExtractMonth, ExtractYear, TruncMonth, TruncYear
-
+from django.db.models.functions import Coalesce, TruncMonth, TruncYear
 # from caja_chica.models import GastoCajaChica, ValeCaja
 from num2words import num2words
 # from django.utils import timezone
 # from django.db.models import Count
 from django.utils.dateformat import DateFormat
+from datetime import date
 
 
 @login_required
@@ -238,12 +238,8 @@ def gastos_lista(request):
 
     if user.is_superuser and empresa_id:
         gastos_base = Gasto.objects.filter(empresa_id=empresa_id)
-        proveedores = Proveedor.objects.filter(
-            activo=True, empresa_id=empresa_id
-        ).order_by("nombre")
-        empleados = Empleado.objects.filter(
-            activo=True, empresa_id=empresa_id
-        ).order_by("nombre")
+        proveedores = Proveedor.objects.filter(activo=True, empresa_id=empresa_id).order_by("nombre")
+        empleados = Empleado.objects.filter(activo=True, empresa_id=empresa_id).order_by("nombre")
         tipos_gasto = TipoGasto.objects.filter(empresa_id=empresa_id).order_by("nombre")
     elif user.is_superuser:
         gastos_base = Gasto.objects.all()
@@ -253,17 +249,17 @@ def gastos_lista(request):
     else:
         empresa = user.perfilusuario.empresa
         gastos_base = Gasto.objects.filter(empresa=empresa)
-        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa).order_by(
-            "nombre"
-        )
-        empleados = Empleado.objects.filter(activo=True, empresa=empresa).order_by(
-            "nombre"
-        )
+        proveedores = Proveedor.objects.filter(activo=True, empresa=empresa).order_by("nombre")
+        empleados = Empleado.objects.filter(activo=True, empresa=empresa).order_by("nombre")
         tipos_gasto = TipoGasto.objects.filter(empresa=empresa).order_by("nombre")
 
+    # Filtros
     proveedor_id = request.GET.get("proveedor")
     empleado_id = request.GET.get("empleado")
     tipo_gasto = request.GET.get("tipo_gasto")
+    estatus_filtro = request.GET.get("estatus")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
 
     if proveedor_id:
         gastos_base = gastos_base.filter(proveedor_id=proveedor_id)
@@ -271,92 +267,95 @@ def gastos_lista(request):
         gastos_base = gastos_base.filter(empleado_id=empleado_id)
     if tipo_gasto:
         gastos_base = gastos_base.filter(tipo_gasto=tipo_gasto)
+    if estatus_filtro:
+        gastos_base = gastos_base.filter(estatus=estatus_filtro)
+    if fecha_inicio:
+        gastos_base = gastos_base.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        gastos_base = gastos_base.filter(fecha__lte=fecha_fin)
 
-    # KPIs y totales usando agregaciones
-    kpi = gastos_base.aggregate(
+    hoy = date.today()
+    fecha_inicio_kpi = date(hoy.year, 1, 1)
+    fecha_fin_kpi = hoy
+
+    # Si hay filtros de fecha activos, usar esos para los KPIs
+    if fecha_inicio:
+        fecha_inicio_kpi = date.fromisoformat(fecha_inicio)
+    if fecha_fin:
+        fecha_fin_kpi = date.fromisoformat(fecha_fin)
+
+    # KPIs filtrados por período
+    gastos_kpi = gastos_base.filter(fecha__gte=fecha_inicio_kpi, fecha__lte=fecha_fin_kpi)
+
+    kpi = gastos_kpi.aggregate(
         num_pagadas=Count("id", filter=Q(estatus="pagada")),
         num_pendientes=Count("id", filter=Q(estatus="pendiente")),
         monto_pagadas=Sum(
-            Case(
-                When(estatus="pagada", then=F("monto")),
-                default=Value(0),
-                output_field=FloatField(),
-            )
+            Case(When(estatus="pagada", then=F("monto")), default=Value(0), output_field=FloatField())
         ),
         monto_pendientes=Sum(
-            Case(
-                When(estatus="pendiente", then=F("monto")),
-                default=Value(0),
-                output_field=FloatField(),
-            )
+            Case(When(estatus="pendiente", then=F("monto")), default=Value(0), output_field=FloatField())
         ),
         total_solicitudes=Count("id"),
-    )
+)
 
     num_pagadas = kpi["num_pagadas"] or 0
     num_pendientes = kpi["num_pendientes"] or 0
     monto_pagadas = kpi["monto_pagadas"] or 0
     monto_pendientes = kpi["monto_pendientes"] or 0
     total_solicitudes = kpi["total_solicitudes"] or 0
-
     porc_pagadas = (num_pagadas / total_solicitudes * 100) if total_solicitudes else 0
-    porc_pendientes = (
-        (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
-    )
+    porc_pendientes = (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
 
-    # Top 10 proveedores (solo nombre y cantidad)
-    top_proveedores_qs = (
-        gastos_base.exclude(proveedor__isnull=True)
-        .values("proveedor__nombre")
-        .annotate(cantidad=Count("id"))
-        .order_by("-cantidad")[:10]
-    )
-    top_proveedores = [
-        (item["proveedor__nombre"], item["cantidad"]) for item in top_proveedores_qs
-    ]
-    top_prov_labels = [item["proveedor__nombre"] for item in top_proveedores_qs]
-    top_prov_data = [item["cantidad"] for item in top_proveedores_qs]
+    # # Top 10 proveedores
+    # top_proveedores_qs = (
+    #     gastos_base.exclude(proveedor__isnull=True)
+    #     .values("proveedor__nombre")
+    #     .annotate(cantidad=Count("id"))
+    #     .order_by("-cantidad")[:10]
+    # )
+    # top_prov_labels = [item["proveedor__nombre"] for item in top_proveedores_qs]
+    # top_prov_data = [item["cantidad"] for item in top_proveedores_qs]
 
-    # Paginación y optimización de consultas
+    # Queryset final con anotaciones
     gastos = (
         gastos_base.select_related(
-            "empresa",
-            "proveedor",
-            "empleado",
-            "tipo_gasto",
-            "tipo_gasto__subgrupo",
-            "tipo_gasto__subgrupo__grupo",
+            "empresa", "proveedor", "empleado", "tipo_gasto",
+            "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo",
         )
-        .prefetch_related("pagos")
-        .order_by("-fecha")
+        .annotate(
+            total_pagado_ann=Coalesce(Sum('pagos__monto'), Value(0, output_field=DecimalField())),
+            saldo_restante_ann=F('monto') - Coalesce(Sum('pagos__monto'), Value(0, output_field=DecimalField())),
+        )
+        .order_by('-saldo_restante_ann', '-fecha', '-id')  # Ordenar por saldo descendente, luego por fecha descendente y luego por ID descendente
     )
-    paginator = Paginator(gastos, 15)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
 
-    return render(
-        request,
-        "gastos/lista.html",
-        {
-            "gastos": page_obj,
-            "proveedores": proveedores,
-            "empleados": empleados,
-            "tipos_gasto": tipos_gasto,
-            "proveedor_id": proveedor_id,
-            "empleado_id": empleado_id,
-            "tipo_gasto_sel": tipo_gasto,
-            "num_pagadas": num_pagadas,
-            "num_pendientes": num_pendientes,
-            "monto_pagadas": monto_pagadas,
-            "monto_pendientes": monto_pendientes,
-            "porc_pagadas": porc_pagadas,
-            "porc_pendientes": porc_pendientes,
-            "top_proveedores": top_proveedores,
-            "top_prov_labels": top_prov_labels,
-            "top_prov_data": top_prov_data,
-            "total_solicitudes": total_solicitudes,
-        },
-    )
+    paginator = Paginator(gastos, 10)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    return render(request, "gastos/lista.html", {
+        "gastos": page_obj,
+        "proveedores": proveedores,
+        "empleados": empleados,
+        "tipos_gasto": tipos_gasto,
+        "proveedor_id": proveedor_id,
+        "empleado_id": empleado_id,
+        "tipo_gasto_sel": tipo_gasto,
+        "estatus_filtro": estatus_filtro,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "num_pagadas": num_pagadas,
+        "num_pendientes": num_pendientes,
+        "monto_pagadas": monto_pagadas,
+        "monto_pendientes": monto_pendientes,
+        "porc_pagadas": porc_pagadas,
+        "porc_pendientes": porc_pendientes,
+        # "top_prov_labels": top_prov_labels,
+        # "top_prov_data": top_prov_data,
+        "total_solicitudes": total_solicitudes,
+        "fecha_inicio_kpi": fecha_inicio_kpi,
+        "fecha_fin_kpi": fecha_fin_kpi,
+    })
 
 
 @login_required
@@ -421,7 +420,7 @@ def gasto_eliminar(request, pk):
         return redirect("gastos_lista")
     return render(request, "gastos/confirmar_eliminar.html", {"gasto": gasto})
 
-
+#pago de solicitudes
 @login_required
 def registrar_pago_gasto(request, gasto_id):
     gasto = get_object_or_404(Gasto, pk=gasto_id)
@@ -441,6 +440,19 @@ def registrar_pago_gasto(request, gasto_id):
             pago = form.save(commit=False)
             pago.gasto = gasto
             pago.registrado_por = request.user
+            # Validar período cerrado
+            fecha_pago = pago.fecha_pago
+            cuenta_bancaria = pago.cuenta_bancaria
+            if fecha_pago and cuenta_bancaria:
+                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha_pago)
+                if not periodo_valido:
+                    form.add_error(None, error_periodo)
+                    return render(request, 'gastos/registrar_pago.html', {
+                        'form': form,
+                        'gasto': gasto,
+                        'saldo_restante': saldo_restante,
+                    })
+        
             if pago.monto > saldo_restante:
                 form.add_error(
                     "monto",

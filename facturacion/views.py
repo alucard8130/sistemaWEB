@@ -7,10 +7,11 @@ from acceso_empresas.decorators import login_o_portal_required
 from areas.models import AreaComun
 from clientes.models import Cliente
 #import empresas
+from conciliaciones.utils import validar_periodo_abierto
 from empresas.models import CuentaBancaria, Empresa
 #from facturacion.utils import debe_mostrar_recordatorio_facturacion
 from locales.models import LocalComercial
-from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, FiltroFacturaForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, PagoPorIdentificarForm, TipoOtroIngresoForm
+from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, PagoPorIdentificarForm, TipoOtroIngresoForm
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
 from principal.models import AuditoriaCambio #PerfilUsuario
 from django.utils.timezone import now
@@ -31,7 +32,6 @@ from unidecode import unidecode
 from django.db.models.functions import TruncMonth, TruncYear
 from datetime import datetime
 from django.db import IntegrityError, transaction
-#from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
 import io
 from django.utils.dateformat import DateFormat
@@ -222,6 +222,10 @@ def eliminar_factura(request, factura_id):
         'factura': factura
     })
 
+
+#estados de cuenta cuotas y adeudos
+#consulta de facturas por local, area, empresa, tipo de cuota, año y búsqueda por folio o nombre de cliente
+#registrar cobros a facturas
 @login_required
 def lista_facturas(request):
     empresa_id = request.GET.get('empresa')
@@ -269,7 +273,7 @@ def lista_facturas(request):
     tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
     
     # Paginación
-    paginator = Paginator(facturas, 25)
+    paginator = Paginator(facturas, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -361,6 +365,113 @@ def lista_facturas(request):
         'var_acumulado_mes': var_acumulado_mes,
         'var_acumulado_mes_actual_anio_anterior': var_acumulado_mes_actual_anio_anterior, 
     })
+
+#exporta a excel el estado de cuenta de facturas cuotas pendientes con saldo mayor a cero, filtradas por local, area, empresa y año
+def exportar_estado_cuenta_excel(request):
+    local_id = request.GET.get('local_id')
+    area_id = request.GET.get('area_id')
+    empresa_id = request.GET.get('empresa')
+    anio = request.GET.get('anio')
+
+    if request.user.is_superuser:
+        facturas = Factura.objects.select_related(
+            'cliente', 'empresa', 'local', 'area_comun'
+        ).prefetch_related('pagos')
+        if empresa_id:
+            facturas = facturas.filter(empresa_id=empresa_id)
+    else:
+        empresa = request.user.perfilusuario.empresa
+        facturas = Factura.objects.select_related(
+            'cliente', 'empresa', 'local', 'area_comun'
+        ).prefetch_related('pagos').filter(empresa=empresa)
+
+    # Solo pendientes con saldo mayor a cero
+    facturas = facturas.filter(estatus='pendiente')
+
+    if local_id:
+        facturas = facturas.filter(local_id=local_id)
+    if area_id:
+        facturas = facturas.filter(area_comun_id=area_id)
+    if anio:
+        facturas = facturas.filter(fecha_vencimiento__year=anio)
+
+    facturas = facturas.order_by('-fecha_vencimiento')
+
+    # Filtrar las que tengan saldo pendiente > 0
+    facturas_con_saldo = [f for f in facturas if f.saldo_pendiente > 0]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Estado de Cuenta"
+
+    # Encabezados
+    ws.append([
+        'Folio', 'Cliente', 'Local/Área', 'Tipo Cuota',
+        'Período', 'Importe', 'Saldo Pendiente', 'Descripción'
+    ])
+
+    # Estilo encabezados
+    from openpyxl.styles import Font, PatternFill, Alignment
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+
+    # Contenido
+    for factura in facturas_con_saldo:
+        local_area = (
+            factura.local.numero if factura.local
+            else factura.area_comun.numero if factura.area_comun
+            else '—'
+        )
+        ws.append([
+            factura.folio,
+            factura.cliente.nombre,
+            local_area,
+            factura.tipo_cuota,
+            factura.fecha_vencimiento.strftime('%b/%y').upper() if factura.fecha_vencimiento else '',
+            float(factura.monto),
+            float(factura.saldo_pendiente),
+            factura.observaciones or '',
+        ])
+
+    # Ajustar ancho columnas
+    for col in ws.columns:
+        max_length = max(len(str(cell.value or '')) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max(max_length + 4, 12)
+
+    # Total al final
+    ws.append([])
+    ws.append(['', '', '', '', 'TOTAL ADEUDO',
+                '', sum(float(f.saldo_pendiente) for f in facturas_con_saldo), ''])
+    total_row = ws.max_row
+    ws.cell(total_row, 5).font = Font(bold=True)
+    ws.cell(total_row, 7).font = Font(bold=True, color="DC3545")
+
+    # Nombre del archivo
+    nombre = 'estado_cuenta'
+    if local_id:
+        try:
+            local = LocalComercial.objects.get(pk=local_id)
+            nombre = f"estado_cuenta_{local.numero}"
+        except Exception:
+            pass
+    elif area_id:
+        try:
+            area = AreaComun.objects.get(pk=area_id)
+            nombre = f"estado_cuenta_{area.numero}"
+        except Exception:
+            pass
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename={nombre}.xlsx'
+    wb.save(response)
+    return response
+
 
 #emision mensual facturas cuotas 
 @login_required
@@ -727,6 +838,8 @@ def confirmar_facturacion(request):
         'faltantes_mensaje': faltantes_mensaje,
     })
 
+
+#vistas registro de cobros por cuotas
 @login_required
 @transaction.atomic
 def registrar_pago(request, factura_id):
@@ -746,6 +859,19 @@ def registrar_pago(request, factura_id):
             pago = form.save(commit=False)
             pago.factura = factura  
             pago.registrado_por = request.user
+            
+            # Validar período cerrado
+            fecha_pago = pago.fecha_pago
+            cuenta_bancaria = pago.cuenta_bancaria
+            if fecha_pago and cuenta_bancaria:
+                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha_pago)
+                if not periodo_valido:
+                    form.add_error(None, error_periodo)
+                    return render(request, 'facturacion/registrar_pago.html', {
+                        'form': form,
+                        'factura': factura,
+                        'saldo': factura.saldo_pendiente,
+                    })
 
             if pago.forma_pago == "nota_credito":
                 pago.save()
@@ -854,7 +980,8 @@ def reversa_cobro_erroneo(request, pago_id, factura_id):
         "next": next_url,
     })
 
-#registro depositos x identificar
+#####MODULO REGISTRO DE DEPOSITOS POR IDENTIFICAR##############################
+#registro de depositos por identificar
 @login_required
 def registrar_deposito_por_identificar(request):
     empresa= request.user.perfilusuario.empresa
@@ -866,6 +993,15 @@ def registrar_deposito_por_identificar(request):
             pago.identificado = False
             pago.factura = None
             pago.empresa= request.user.perfilusuario.empresa
+            # Validar período cerrado
+            fecha = pago.fecha_pago
+            cuenta_bancaria = pago.cuenta_bancaria
+            if fecha and cuenta_bancaria:
+                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
+                if not periodo_valido:
+                    form.add_error(None, error_periodo)
+                    return render(request, 'facturacion/registrar_deposito_por_identificar.html', {'form': form})
+        
             pago.save()
             return redirect('lista_depositos_por_identificar')
     else:
@@ -2883,8 +3019,11 @@ def lista_facturas_otros_ingresos(request):
     empresa_id = request.session.get("empresa_id")
     tipo_ingreso=request.GET.get('tipo_ingreso')
     cliente_id=request.GET.get('cliente_id')
+    estatus_filtro = request.GET.get('estatus')
+    periodo_filtro = request.GET.get('periodo')  # formato: 2026-07
     
-    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_emision')
+    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('estatus','-fecha_emision')
+
     # Filtrar por empresa si no es superusuario 
     if request.user.is_superuser and empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
@@ -2900,20 +3039,26 @@ def lista_facturas_otros_ingresos(request):
         tipos_ingreso=TipoOtroIngreso.objects.all()
             
    
-    # Filtros adicionales
+    # Filtros
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
     if tipo_ingreso:
         facturas = facturas.filter(tipo_ingreso__nombre=tipo_ingreso)
-
-    # # Para el filtro de clientes y tipos en el formulario
-    # clientes = Cliente.objects.filter(empresa=Empresa.objects.get(id=empresa_id)) if empresa_id else Cliente.objects.all()
-    # tipos_ingreso = FacturaOtrosIngresos.objects.values_list('tipo_ingreso__nombre', flat=True).distinct()
+    if estatus_filtro:
+        facturas = facturas.filter(estatus=estatus_filtro)
+    if periodo_filtro:
+        try:
+            anio, mes = periodo_filtro.split('-')
+            facturas = facturas.filter(
+                fecha_vencimiento__year=anio,
+                fecha_vencimiento__month=mes
+            )
+        except ValueError:
+            pass
     
     # Paginación
-    paginator = Paginator(facturas, 15)  
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    paginator = Paginator(facturas, 10)  
+    page_obj = paginator.get_page(request.GET.get('page'))
 
     return render(request, 'otros_ingresos/lista_facturas.html', {
         'facturas': page_obj,
@@ -2921,8 +3066,12 @@ def lista_facturas_otros_ingresos(request):
         'tipos_ingreso': tipos_ingreso,
         'cliente_id': cliente_id,
         'tipo_ingreso_seleccionado': tipo_ingreso,
+        'estatus_filtro': estatus_filtro,
+        'periodo_filtro': periodo_filtro,
     })
 
+
+#registrar cobro de otros ingresos
 @login_required
 def registrar_cobro_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
@@ -2941,6 +3090,18 @@ def registrar_cobro_otros_ingresos(request, factura_id):
             cobro = form.save(commit=False)
             cobro.factura = factura
             cobro.registrado_por = request.user
+            # Validar período cerrado
+            fecha_cobro = cobro.fecha_cobro
+            cuenta_bancaria = cobro.cuenta_bancaria
+            if fecha_cobro and cuenta_bancaria:
+                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha_cobro)
+                if not periodo_valido:
+                    form.add_error(None, error_periodo)
+                    return render(request, 'otros_ingresos/registrar_cobro.html', {
+                        'form': form,
+                        'factura': factura,
+                        'saldo_pendiente': factura.saldo,
+                    })
 
             if cobro.forma_cobro == "nota_credito":
                     cobro.save()
@@ -3367,7 +3528,8 @@ def recibo_pago_otras_cuotas(request, pago_id):
         },
     )
 
-
+#consulta de facturas para visitantes
+#revisar donde se renderiza la vista de consulta_facturas.html y si se necesita agregar filtros por local o area
 @login_required
 def consulta_facturas(request):
     local_id = request.GET.get('local_id')
@@ -3414,55 +3576,55 @@ def consulta_facturas(request):
         'empresa': empresa,
     })
 
-@login_required
-def exportar_consulta_facturas_excel(request):
-    local_id = request.GET.get('local_id')
-    area_id = request.GET.get('area_id')
+#@login_required
+# def exportar_consulta_facturas_excel(request):
+#     local_id = request.GET.get('local_id')
+#     area_id = request.GET.get('area_id')
 
-    if request.user.is_superuser:
-        facturas = Factura.objects.all()
-    else:
-        empresa = request.user.perfilusuario.empresa
-        facturas = Factura.objects.filter(empresa=empresa)
+#     if request.user.is_superuser:
+#         facturas = Factura.objects.all()
+#     else:
+#         empresa = request.user.perfilusuario.empresa
+#         facturas = Factura.objects.filter(empresa=empresa)
 
-    if local_id:
-        facturas = facturas.filter(local_id=local_id)
-    if area_id:
-        facturas = facturas.filter(area_comun_id=area_id)
+#     if local_id:
+#         facturas = facturas.filter(local_id=local_id)
+#     if area_id:
+#         facturas = facturas.filter(area_comun_id=area_id)
 
-    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun')
+#     facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun')
 
-    # Crear libro y hoja
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Consulta Facturas"
-    # Encabezados
-    ws.append([
-        'Folio', 'Empresa', 'Cliente', 'Local', 'Área común', 'Monto',
-        'Saldo', 'Fecha emisión', 'Fecha vencimiento', 'Estatus', 'Observaciones'
-    ])
-    # Contenido
-    for factura in facturas:
-        ws.append([
-            factura.folio,
-            factura.empresa.nombre,
-            factura.cliente.nombre,
-            factura.local.numero if factura.local else '',
-            factura.area_comun.numero if factura.area_comun else '',
-            float(factura.monto),
-            float(factura.saldo_pendiente),
-            factura.fecha_emision,
-            factura.fecha_vencimiento,
-            factura.estatus,
-            factura.observaciones or ''
-        ])
-    # Respuesta HTTP
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = 'attachment; filename=consulta_facturas.xlsx'
-    wb.save(response)
-    return response    
+#     # Crear libro y hoja
+#     wb = openpyxl.Workbook()
+#     ws = wb.active
+#     ws.title = "Consulta Facturas"
+#     # Encabezados
+#     ws.append([
+#         'Folio', 'Empresa', 'Cliente', 'Local', 'Área común', 'Monto',
+#         'Saldo', 'Fecha emisión', 'Fecha vencimiento', 'Estatus', 'Observaciones'
+#     ])
+#     # Contenido
+#     for factura in facturas:
+#         ws.append([
+#             factura.folio,
+#             factura.empresa.nombre,
+#             factura.cliente.nombre,
+#             factura.local.numero if factura.local else '',
+#             factura.area_comun.numero if factura.area_comun else '',
+#             float(factura.monto),
+#             float(factura.saldo_pendiente),
+#             factura.fecha_emision,
+#             factura.fecha_vencimiento,
+#             factura.estatus,
+#             factura.observaciones or ''
+#         ])
+#     # Respuesta HTTP
+#     response = HttpResponse(
+#         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+#     )
+#     response['Content-Disposition'] = 'attachment; filename=consulta_facturas.xlsx'
+#     wb.save(response)
+#     return response    
 
 
 

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "cobros_estado_cuenta",
     "acceso_empresas",
     "asistente_premium",
+    "traspasos",
 ]
 
 

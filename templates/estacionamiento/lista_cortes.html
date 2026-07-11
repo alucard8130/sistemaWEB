@@ -124,13 +124,13 @@
                                 <a href="{% url 'detalle_corte_estacionamiento' corte.pk %}" class="btn btn-sm btn-outline-info me-1" title="Ver detalle">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                {% if not corte.factura %}
                                 <a href="{% url 'editar_corte_estacionamiento' corte.pk %}" class="btn btn-sm btn-outline-warning me-1" title="Editar">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
                                 <a href="{% url 'eliminar_corte_estacionamiento' corte.pk %}" class="btn btn-sm btn-outline-danger" title="Eliminar">
                                     <i class="bi bi-trash3"></i>
                                 </a>
-                                {% if not corte.factura %}
                                     <a href="{% url 'generar_factura_corte_estacionamiento' corte.pk %}" 
                                     class="btn btn-sm btn-outline-success me-1" title="Generar factura">
                                         <i class="bi bi-receipt"></i>

@@ -1,0 +1,136 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo traspaso — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="container mt-4" style="max-width: 700px;">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Nuevo traspaso bancario</h5>
+        </div>
+        <div class="card-body">
+
+            <!-- Saldos actuales -->
+            <div class="row g-3 mb-4">
+              {% for item in cuentas_con_saldo %}
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light p-3">
+                        <div class="small text-muted">{{ item.banco }} — {{ item.numero_cuenta }}</div>
+                        <div class="fw-bold">
+                            Saldo: ${{ item.saldo_actual|floatformat:2 | intcomma }}
+                        </div>
+                        <div class="small text-muted">{{ item.tipo_cuenta }} · {{ item.moneda }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Cuenta origen <span class="text-danger">*</span></label>
+                        <select name="cuenta_origen" class="form-select" required
+                                onchange="actualizarSaldo(this, 'saldo-origen')">
+                            <option value="">Selecciona la cuenta origen</option>
+                            {% for item in cuentas_con_saldo %}
+                            <option value="{{ item.id }}"
+                                    data-saldo="{{ item.saldo_actual }}">
+                                {{ item.banco }} — {{ item.numero_cuenta }}
+                                (${{ item.saldo_actual|floatformat:2|intcomma }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text" id="saldo-origen"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Cuenta destino <span class="text-danger">*</span></label>
+                        <select name="cuenta_destino" class="form-select" required
+                                onchange="actualizarSaldo(this, 'saldo-destino')">
+                            <option value="">Selecciona la cuenta destino</option>
+                            {% for cuenta in cuentas %}
+                            <option value="{{ cuenta.id }}"
+                                    data-saldo="{{ cuenta.saldo_final|default:cuenta.saldo_inicial }}">
+                                {{ cuenta.banco }} — {{ cuenta.numero_cuenta }}
+                                (${{ cuenta.saldo_final|default:cuenta.saldo_inicial|floatformat:2|intcomma }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text" id="saldo-destino"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Monto <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" name="monto" class="form-control"
+                                   step="0.01" min="0.01" required placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Fecha <span class="text-danger">*</span></label>
+                        <input type="date" name="fecha" class="form-control"
+                               value="{{ fecha_hoy }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Referencia</label>
+                        <input type="text" name="referencia" class="form-control"
+                               placeholder="Ej: SPEI-001">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Concepto</label>
+                        <input type="text" name="concepto" class="form-control"
+                               placeholder="Ej: Traspaso para pago de nómina">
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-circle me-1"></i> Registrar traspaso
+                    </button>
+                    <a href="{% url 'lista_traspasos' %}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function actualizarSaldo(select, targetId) {
+    const option = select.options[select.selectedIndex];
+    const saldo = option.dataset.saldo;
+    const target = document.getElementById(targetId);
+    if (saldo !== undefined && saldo !== '') {
+        const num = parseFloat(saldo);
+        target.textContent = 'Saldo disponible: $' + num.toLocaleString('es-MX', {minimumFractionDigits: 2});
+        target.className = num < 0 ? 'form-text text-danger' : 'form-text text-success';
+    } else {
+        target.textContent = '';
+    }
+}
+</script>
+</body>
+</html>

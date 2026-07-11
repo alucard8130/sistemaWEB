@@ -1,9 +1,11 @@
+import datetime
 from django.db import models
 # Create your views here.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, Count
+from conciliaciones.utils import validar_periodo_abierto
 from .models import CorteEstacionamiento, TicketEstacionamiento
 from .forms import CorteEstacionamientoForm, ImportarTicketsForm
 #from empresas.models import CuentaBancaria
@@ -11,7 +13,6 @@ import csv
 import io
 from facturacion.models import CobroOtrosIngresos, FacturaOtrosIngresos, TipoOtroIngreso
 from clientes.models import Cliente
-import datetime
 from django.db import transaction, IntegrityError
 import re
 
@@ -60,6 +61,15 @@ def crear_corte(request):
             if empresa:
                 corte.empresa = empresa
             corte.registrado_por = request.user
+            # Validar período cerrado — usar fecha_deposito y cuenta_bancaria del corte
+            fecha = corte.fecha_deposito
+            cuenta_bancaria = corte.cuenta_bancaria
+            if fecha and cuenta_bancaria:
+                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
+                if not periodo_valido:
+                    form.add_error(None, error_periodo)
+                    return render(request, 'estacionamiento/crear_corte.html', {'form': form})
+
             corte.save()
             messages.success(request, f"Corte registrado correctamente: {corte.label_periodo}")
             return redirect('lista_cortes_estacionamiento')
@@ -94,6 +104,26 @@ def generar_factura_corte(request, pk):
                 'tipos_ingreso': tipos_ingreso,
                 'fecha_vencimiento_default': corte.fecha_fin.strftime('%Y-%m-%d'),
             })
+        # Validar política de fechas en fecha_vencimiento
+        try:
+            fecha_venc = datetime.date.fromisoformat(fecha_vencimiento)
+        except ValueError:
+            messages.error(request, "Fecha de vencimiento inválida.")
+            return render(request, 'estacionamiento/generar_factura_corte.html', {
+                'corte': corte,
+                'clientes': clientes,
+                'fecha_vencimiento_default': corte.fecha_fin.strftime('%Y-%m-%d'),
+            })
+        # Validar con la cuenta bancaria del corte
+        if corte.cuenta_bancaria:
+            periodo_valido, error_periodo = validar_periodo_abierto(corte.cuenta_bancaria, fecha_venc)
+            if not periodo_valido:
+                messages.error(request, error_periodo)
+                return render(request, 'estacionamiento/generar_factura_corte.html', {
+                    'corte': corte,
+                    'clientes': clientes,
+                    'fecha_vencimiento_default': corte.fecha_fin.strftime('%Y-%m-%d'),
+                })
 
         cliente = get_object_or_404(Cliente, pk=cliente_id, empresa=empresa)
         # Obtener o crear tipo de ingreso Estacionamiento automáticamente
@@ -131,9 +161,25 @@ def generar_factura_corte(request, pk):
                         folio=folio,
                         fecha_vencimiento=fecha_vencimiento,
                         monto=corte.ingreso_neto_plaza,
-                        observaciones=observaciones or f"Ingresos por estacionamiento — {corte.label_periodo}",
+                        observaciones=observaciones if observaciones else f"Ingresos por estacionamiento — {corte.label_periodo}",
                         estatus='pendiente',
                     )
+                    # Validar período cerrado antes de crear el cobro
+                    fecha_cobro = corte.fecha_deposito
+                    cuenta_bancaria = corte.cuenta_bancaria
+                    if fecha_cobro and cuenta_bancaria:
+                        periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha_cobro)
+                        if not periodo_valido:
+                            # Revertir la factura creada y mostrar error
+                            factura.delete()
+                            messages.error(request, error_periodo)
+                            return render(request, 'estacionamiento/generar_factura_corte.html', {
+                                'corte': corte,
+                                'clientes': clientes,
+                                'fecha_vencimiento_default': corte.fecha_fin.strftime('%Y-%m-%d'),
+                            })
+
+
                     # Registrar el cobro automáticamente — el corte ya fue depositado
                     CobroOtrosIngresos.objects.create(
                         factura=factura,
@@ -142,7 +188,7 @@ def generar_factura_corte(request, pk):
                         forma_cobro='deposito',
                         cuenta_bancaria=corte.cuenta_bancaria,
                         registrado_por=request.user,
-                        observaciones=f"Cobro automático — {corte.label_periodo}",
+                        observaciones=f"Cobro automático Corte Z — {corte.label_periodo}",
                     )
                     # Actualizar estatus de la factura a cobrada
                     factura.actualizar_estatus()

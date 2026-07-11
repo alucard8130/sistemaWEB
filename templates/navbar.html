@@ -60,34 +60,38 @@
               Catálogos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><hr class="dropdown-divider"></li>
+              {% comment %} <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cuentas_bancarias_lista' %}">Bancos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:saldos_periodo' %}">Saldos por período</a></li> {% endcomment %}
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_clientes' %}">Clientes</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'clientes_inactivos' %}">Clientes Inactivos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_clientes' %}"><i class="bi bi-people me-2"></i>Clientes</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'clientes_inactivos' %}"><i class="bi bi-people me-2"></i>Clientes Inactivos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'tipos_gasto_lista' %}">Cuentas Gastos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'tipos_gasto_lista' %}"><i class="bi bi-journal-text me-2"></i>Cuentas Gastos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'empleado_lista' %}">Empleados</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'empleado_lista' %}"><i class="bi bi-person me-2"></i>Empleados</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'proveedor_lista' %}">Proveedores</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'proveedor_lista' %}"><i class="bi bi-truck me-2"></i>Proveedores</a></li>
 
             </ul>
           </li>
           {% endif %}
-
-          {% comment %} <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Clientes">
-              Clientes <i style="font-size: 1.5em;"></i>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Configuración">
+              Bancos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              
+              <li><a class="dropdown-item reporte-link" href="{% url 'cuentas_bancarias_lista' %}"><i class="bi bi-bank me-2"></i>Cuentas Bancarias</a></li>
+              {% if request.user.perfilusuario.empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:saldos_periodo' %}"><i class="bi bi-calendar me-2"></i>Saldos por período</a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-calendar me-2"></i>Saldos por período (PREMIUM)</a></li>
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_clientes' %}">Carga Masiva</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_traspasos' %}"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios</a></li>
             </ul>
-          </li> {% endcomment %}
-
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Propiedades">
               Propiedades <i style="font-size: 1.5em;"></i>
@@ -95,11 +99,11 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'crear_local' %}">Nueva Propiedad</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_locales' %}">Propiedades</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'locales_inactivos' %}">Propiedades Inactivas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_locales' %}"><i class="bi bi-building me-2"></i>Propiedades</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'locales_inactivos' %}"><i class="bi bi-building me-2"></i>Propiedades Inactivas</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_locales' %}">Incrementar Cuotas</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_locales' %}">Carga Masiva</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_locales' %}"><i class="bi bi-arrow-up me-2"></i>Incrementar Cuotas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_locales' %}"><i class="bi bi-upload me-2"></i>Carga Masiva</a></li>
             </ul>
           </li>
 
@@ -110,11 +114,11 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'crear_area' %}">Nueva Área común</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_areas' %}">Áreas Comunes</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'areas_inactivas' %}">Áreas Inactivas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_areas' %}"><i class="bi bi-building me-2"></i>Áreas Comunes</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'areas_inactivas' %}"><i class="bi bi-building me-2"></i>Áreas Inactivas</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_areas' %}">Incrementar Cuotas</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_areas' %}">Carga Masiva</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_areas' %}"><i class="bi bi-arrow-up me-2"></i>Incrementar Cuotas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_areas' %}"><i class="bi bi-upload me-2"></i>Carga Masiva</a></li>
             </ul>
           </li>
 
@@ -124,12 +128,12 @@
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'facturar_mes' %}" title="Genera Masivamente las facturas por cuotas de mantenimiento y areas comunes">Generacion Mensual Cuotas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'facturar_mes' %}" title="Genera Masivamente las facturas por cuotas de mantenimiento y areas comunes"><i class="bi bi-calendar-check me-2"></i>Generacion Mensual Cuotas</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas' %}" title="Busca facturas de cuotas y asigna pagos">Facturas Cuotas Mantto y Areas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas' %}" title="Busca facturas de cuotas y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Cuotas Mantto y Areas</a></li>
               {% comment %}<li><a class="dropdown-item" href="{% url 'crear_factura' %}" title="Crear una nueva factura de cuotas">Nueva Factura Cuotas</a></li>{% endcomment %}
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas_otros_ingresos' %}" title="Busca facturas de otros ingresos y asigna pagos">Facturas Otros Ingresos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas_otros_ingresos' %}" title="Busca facturas de otros ingresos y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Otros Ingresos</a></li>
               {% comment %}<li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}" title="Crear una nueva factura de otros ingresos">Nueva Factura Otros Ingresos</a></li>{% endcomment %}
               <li><hr class="dropdown-divider"></li>
             </ul>
@@ -141,14 +145,14 @@
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}?tipo=local" title="Reporte Depositos por Cuotas de mantenimiento y areas comunes">Reporte Depositos Cuotas</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}" title="Reporte de Depositos Otros Ingresos">Reporte Depositos Otros Ingresos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}?tipo=local" title="Reporte Depositos por Cuotas de mantenimiento y areas comunes"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Cuotas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}" title="Reporte de Depositos Otros Ingresos"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Otros Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'dashboard_pagos' %}" title="Dashboard de Ingresos Consolidados">Graficos Ingresos</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales">Grafico de Ingresos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales"><i class="bi bi-bar-chart me-2"></i>Grafico de Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'registrar_deposito_por_identificar' %}" title="Registrar Deposito no identificado">Registrar Deposito no identificado</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado">Depositos no identificados</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado"><i class="bi bi-question-circle me-2"></i>Depositos no identificados</a></li>
               <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
                   <li><a class="dropdown-item reporte-link" href="{% url 'lista_sesiones_estado_cuenta' %}">
@@ -188,10 +192,10 @@
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_saldos_antiguedad' %}">Reporte Antiguedad Saldos</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}">Reporte Detalle Saldos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_saldos_antiguedad' %}"><i class="bi bi-file-text me-2"></i>Reporte Antiguedad Saldos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}"><i class="bi bi-file-text me-2"></i>Reporte Detalle Saldos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}">Graficos Saldos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}"><i class="bi bi-bar-chart me-2"></i>Graficos Saldos</a></li>
               
               {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas' %}">Carga Masiva</a></li> {% endcomment %}
             </ul>
@@ -206,11 +210,11 @@
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'empleado_crear' %}">Nuevo Empleado</a></li>{% endcomment %}
               {% comment %}<li><hr class="dropdown-divider"></li>{% endcomment %}
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'incidencia_crear' %}">Nueva Incidencia</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}">Incidencias</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}"><i class="bi bi-list-ul me-2"></i>Incidencias</a></li>
               {% if empresa.es_premium %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}">Reporte Asistencia</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}"><i class="bi bi-file-text me-2"></i>Reporte Asistencia</a></li>
               {% else %}
-                <li><a class="dropdown-item disabled" href="#">Reporte Asistencia (PREMIUM)</a></li>
+                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-text me-2"></i>Reporte Asistencia (PREMIUM)</a></li>
               {% endif %}
             </ul>
           </li>
@@ -222,15 +226,16 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'gasto_nuevo' %}">Nueva Solicitud de Gasto</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'gastos_lista' %}">Solicitudes de Gasto</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}">Reporte Pagos Solicitudes Gastos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'gastos_lista' %}"><i class="bi bi-list-ul me-2"></i>Solicitudes de Gasto</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Pagos Solicitudes Gastos</a></li>
               <li><hr class="dropdown-divider"></li>
+              {% comment %} <li><a href="{% url 'lista_traspasos' %}" class="dropdown-item"><i class="bi bi-arrow-left-right me-2"></i> Traspasos bancarios</a></li> {% endcomment %}
               {% if request.user.is_superuser %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'subgrupos_gasto_lista' %}">Alta subgrupo gasto</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'subgrupos_gasto_lista' %}"><i class="bi bi-plus-circle me-2"></i>Alta subgrupo gasto</a></li>
               {% endif %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'grafico_gastos_mensual' %}">Grafico de Gastos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'grafico_gastos_mensual' %}"><i class="bi bi-bar-chart me-2"></i>Grafico de Gastos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_retenciones_gastos' %}">Reporte Retencion Impuestos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_retenciones_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Retencion Impuestos</a></li>
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
               {% endif %}
@@ -239,18 +244,18 @@
 
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Caja Chica">
-              Control Caja <i style="font-size: 1.5em;"></i>
+              Caja <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'fondeo_caja_chica' %}">Nuevo Fondo Caja Chica</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_fondeos' %}">Fondeos Caja Chica</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_fondeos' %}"><i class="bi bi-list-ul me-2"></i>Fondeos Caja Chica</a></li>
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'registrar_gasto_caja_chica' %}">Nuevo Gasto Caja Chica</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_gastos_caja_chica' %}">Gastos Caja Chica</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_gastos_caja_chica' %}"><i class="bi bi-list-ul me-2"></i>Gastos Caja Chica</a></li>
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'generar_vale_caja' %}">Nuevo Vale Caja Chica</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_vales_caja_chica' %}">Vales Caja Chica</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_vales_caja_chica' %}"><i class="bi bi-list-ul me-2"></i>Vales Caja Chica</a></li>
             </ul>
           </li>
 
@@ -260,8 +265,8 @@
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto' %}">Matriz Presupuesto Gastos</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_ingresos' %}">Matriz Presupuesto Ingresos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto' %}"><i class="bi bi-list-ul me-2"></i>Matriz Presupuesto Gastos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_ingresos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Presupuesto Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
               {% comment %}
               <li><a class="dropdown-item" href="{% url 'carga_masiva_presupuestos' %}">Carga Presupuesto Gastos</a></li>
@@ -276,15 +281,15 @@
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}">Reporte de Resultados</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}"><i class="bi bi-file-text me-2"></i>Reporte de Resultados</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}">Comparativo Ppto vs Gastos</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_total' %}">Comparativo Presupuestos Gtos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Gastos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_total' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Presupuestos Gtos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}">Comparativo Ppto vs Ingresos</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_ingresos' %}">Comparativo Presupuestos Ing</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Ingresos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_ingresos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Presupuestos Ing</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_vs_gastos' %}">Grafico Ingresos vs Gastos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_vs_gastos' %}"><i class="bi bi-bar-chart me-2"></i>Grafico Ingresos vs Gastos</a></li>
             </ul>
           </li>
 
@@ -295,13 +300,13 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'crear_tema_y_enviar' %}">Nuevo Asunto General</a></li>{% endcomment %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_temas' %}">Asuntos Generales</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_temas' %}"><i class="bi bi-list-ul me-2"></i>Asuntos Generales</a></li>
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'aviso_crear' %}">Nuevo Aviso App</a></li>{% endcomment %}
                {% if request.user.perfilusuario.empresa.es_premium %}
-                <li><a class="dropdown-item reporte-link" href="{% url 'avisos_lista' %}">Avisos App GESAC</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'avisos_lista' %}"><i class="bi bi-bell me-2"></i>Avisos App GESAC</a></li>
               {% else %}
-                <li><a class="dropdown-item disabled" href="#">Avisos App GESAC (PREMIUM)</a></li>  
+                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-bell me-2"></i>Avisos App GESAC (PREMIUM)</a></li>  
               {% endif %}
               <li><hr class="dropdown-divider"></li>
             </ul>

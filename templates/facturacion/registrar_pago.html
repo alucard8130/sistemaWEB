@@ -29,7 +29,10 @@
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}" />
   </head>
-  <!-- Block for displaying messages -->
+  
+  <body>
+
+    <!-- Block for displaying messages -->
   {% if messages %} {% for message in messages %}
   <div class="alert alert-{{ message.tags }}">{{ message }}</div>
   {% endfor %} {% endif %}
@@ -39,7 +42,6 @@
     {% for error in form.non_field_errors %} {{ error }} {% endfor %}
   </div>
   {% endif %}
-  <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
