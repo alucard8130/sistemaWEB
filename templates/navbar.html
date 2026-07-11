@@ -83,10 +83,10 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cuentas_bancarias_lista' %}"><i class="bi bi-bank me-2"></i>Cuentas Bancarias</a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if request.user.perfilusuario.empresa.es_plus %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:saldos_periodo' %}"><i class="bi bi-calendar me-2"></i>Saldos por período</a></li>
               {% else %}
-                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-calendar me-2"></i>Saldos por período (PREMIUM)</a></li>
+                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-calendar me-2"></i>Saldos por período (PLUS)</a></li>
               {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_traspasos' %}"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios</a></li>
