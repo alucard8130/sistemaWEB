@@ -1,417 +1,324 @@
 {% load static %}
-{% load archivo_existe %}
 {% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 04/09/2025
-      Description: Income report
-    -->
     <meta charset="UTF-8">
-    <title>Reporte depositos cuotas</title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Depósitos Cuotas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    <!-- Block for displaying messages -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
 
-    <div class="container-fluid mt-4" >
-        <!-- Dashboard KPIs -->
-<div class="row mb-4 justify-content-center">
-  <div class="col-12 col-md-4 mb-2 d-flex align-items-stretch justify-content-center">
-    <div class="card text-center shadow-sm p-3" style="width:63%; min-width:480px; max-width:350px; margin:auto; font-size:0.85rem;">
-      <div class="card-body p-2">
-        <h5><i class="bi bi-cash-coin"></i>Cuotas Mantenimiento y Areas comunes</h5>
-        <h6 class="card-title mb-1" style="font-size:0.9rem;">Ingresos año actual</h6>
-        <h2 class="mb-0" style="font-size:1.5rem; color:#28a745;">${{ pagos_anio_actual|floatformat:2|intcomma }}</h2>
-        <hr>
-        <div class="row">
-          <div class="col-6 text-start">
-            <small>Año actual</small><br>
-            <span style="font-size:0.95rem;">${{ pagos_anio_actual|floatformat:0|intcomma }}</span>
-            <span style="font-size:0.95rem;">
-              {% if var_anio > 0 %}
-                <span style="color:green;">&#9650; {{ var_anio|floatformat:1 }}%</span>
-              {% elif var_anio < 0 %}
-                <span style="color:red;">&#9660; {{ var_anio|floatformat:1 }}%</span>
-              {% else %}
-                <span style="color:gray;">0%</span>
-              {% endif %}
-            </span>
-          </div>
-          <div class="col-6 text-start">
-            <small>Mes actual</small><br>
-            <span style="font-size:0.95rem;">${{ pagos_mes_actual|floatformat:0|intcomma }}</span>
-            <span style="font-size:0.95rem;">
-              {% if var_mes > 0 %}
-                <span style="color:green;">&#9650; {{ var_mes|floatformat:1 }}%</span>
-              {% elif var_mes < 0 %}
-                <span style="color:red;">&#9660; {{ var_mes|floatformat:1 }}%</span>
-              {% else %}
-                <span style="color:gray;">0%</span>
-              {% endif %}
-            </span>
-          </div>
-        </div>
-        <div class="row mt-2">
-          <div class="col-6 text-start">
-            <small>Año anterior</small><br>
-            <span style="font-size:0.85rem; color:#888;">${{ pagos_anio_anterior|floatformat:0|intcomma }}</span>
-          </div>
-          <div class="col-6 text-start">
-            <small>Mes anterior</small><br>
-            <span style="font-size:0.85rem; color:#888;">${{ pagos_mes_anterior|floatformat:0|intcomma }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
-    <div class="card text-center shadow-sm p-3 w-100" style="max-width:300px; margin:auto;">
-      <div class="card-body p-2">
-        <h6 class="card-title mb-2" style="font-size:0.9rem;">Ingresos Tipo de Cuota</h6>
-        <canvas id="kpiTipoChart" height="180"></canvas>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-md-4 mb-1 d-flex align-items-stretch">
-    <div class="card text-center shadow-sm p-3 w-100" style="max-width:300px; margin:auto;">
-      <div class="card-body p-2">
-        <h6 class="card-title mb-2" style="font-size:0.9rem;">Ingresos Forma de Pago</h6>
-        <canvas id="kpiFormaChart" height="180"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Ingresos por tipo de cuota (barras horizontales, solo valor sobre la barra)
-  const tipoLabels = {{ tipo_labels|safe }};
-  const tipoData = {{ tipo_data|safe }};
-  new Chart(document.getElementById('kpiTipoChart').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: tipoLabels,
-      datasets: [{
-        label: '',
-        data: tipoData,
-        backgroundColor: '#28a745',
-        borderRadius: 8,
-        barThickness: 18
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        datalabels: {
-          anchor: 'end',
-          align: 'right',
-          color: '#fff',
-          font: { size: 10 },
-          formatter: function(value) {
-            return '$' + value.toLocaleString();
-          }
-        }
-      },
-      scales: {
-        x: {
-          display: false,
-          grid: { display: false, drawBorder: false }
-        },
-        y: {
-          display: true,
-          grid: { display: false, drawBorder: false },
-          ticks: {
-            color: '#222',
-            font: { size: 10 }
-          }
-        }
-      },
-      layout: {
-        padding: { left: 0, right: 0, top: 0, bottom: 0 }
-      },
-      // Agrega estas dos líneas para juntar las barras
-  barPercentage: 0.2,
-  categoryPercentage: 0.2
-    },
-    plugins: [ChartDataLabels]
-  });
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
 
-  // Pagos por forma de pago (barras horizontales, solo valor sobre la barra)
-  const formaLabels = {{ forma_labels|safe }};
-  const formaData = {{ forma_data|safe }};
-  new Chart(document.getElementById('kpiFormaChart').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: formaLabels,
-      datasets: [{
-        label: '',
-        data: formaData,
-        backgroundColor: '#007bff',
-        borderRadius: 8,
-        barThickness: 18
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        datalabels: {
-          anchor: 'end',
-          align: 'right',
-          color: '#fff',
-          font: { size: 10 },
-          formatter: function(value) {
-            return '$' + value.toLocaleString();
-          }
-        }
-      },
-      scales: {
-        x: {
-          display: false,
-          grid: { display: false, drawBorder: false }
-        },
-        y: {
-          display: true,
-          grid: { display: false, drawBorder: false },
-          ticks: {
-            color: '#222',
-            font: { size: 10 }
-          }
-        }
-      },
-      layout: {
-        padding: { left: 0, right: 0, top: 0, bottom: 0 }
-      },
-      // Agrega estas dos líneas para juntar las barras
-  barPercentage: 0.2,
-  categoryPercentage: 0.2
-    },
-    plugins: [ChartDataLabels]
-  });
-});
-</script>
-<div class="card shadow-sm mb-1">
-    <div class="card-body">
-        <form id="form-filtros" method="get" class="row g-2">
-            {% if request.user.is_superuser %}
-            <div class="col-auto">
-                <label for="empresa" class="form-label mb-0">Empresa:</label>
-                <select name="empresa" id="empresa" class="form-select">
-                    <option value="">selecciona una opcion</option>
-                    {% for empresa in empresas %}
-                        <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>
-                            {{ empresa.nombre }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="col-auto">
-              <label for="local_id" class="form-label mb-0">Propiedades:</label>
-                <select name="local_id" id="local_id" class="form-select">
-                    <option value="">selecciona una opcion</option>
-                    {% for local in locales %}
-                        <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>
-                            {{ local }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-           
-            <div class="col-auto">
-             <label for="area_id" class="form-label mb-0">Áreas:</label>
-                <select name="area_id" id="area_id" class="form-select">
-                    <option value="">selecciona una opcion</option>
-                    {% for area in areas %}
-                        <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>
-                            {{ area }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-auto">
-        <label for="tipo_cuota" class="form-label mb-0">Tipo cuota:</label>
-        <select name="tipo_cuota" id="tipo_cuota" class="form-select">
-            <option value="">selecciona una opcion</option>
-            {% for val, display in TIPO_CUOTA_CHOICES %}
-                <option value="{{ val }}" {% if tipo_cuota == val %}selected{% endif %}>{{ display }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-      <label for="forma_pago" class="form-label mb-0">Forma de pago:</label>
-        <select name="forma_pago" id="forma_pago" class="form-select">
-            <option value="">selecciona una opcion</option>
-            {% for val, display in FORMAS_PAGO %}
-                <option value="{{ val }}" {% if forma_pago == val %}selected{% endif %}>{{ display }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <label for="cuenta_bancaria" class="form-label mb-0">Cuenta bancaria:</label>
-        <select name="cuenta_bancaria" id="cuenta_bancaria" class="form-select">
-            <option value="">selecciona una opcion</option>
-            {% for cuenta in cuentas_bancarias %}
-                <option value="{{ cuenta.id }}" {% if cuenta.id|stringformat:"s" == cuenta_bancaria %}selected{% endif %}>
-                    {{ cuenta }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-      <label for="fecha_inicio" class="form-label mb-0">Desde:</label>
-        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
-    </div>
-    <div class="col-auto">
-        <label for="fecha_fin" class="form-label mb-0">Hasta:</label>
-        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin }}">
-    </div>
-            <div class="col-auto align-self-end">
-                <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-funnel-fill" title="Buscar"></i>
-                </button>
-                <a href="{% url 'pagos_por_origen' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-clockwise" title="Limpiar filtros"></i>
-                </a>
-                <a href="{% url 'exportar_pagos_excel' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill" title="Exportar a Excel"></i>
-                </a>
-            </div>
-        </form>     
+    <div class="container-fluid mt-2 px-3">
+
+        <!-- Encabezado -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-arrow-down-circle me-2"></i>Depósitos de Cuotas</h4>
         </div>
-    </div>           
-        <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
-            <table class="table align-middle mb-0 shadow-sm">
-                <thead>
-                    <tr>
+
+        <!-- KPIs -->
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-3">
+                        <div class="text-muted small mb-1"><i class="bi bi-cash-coin me-1"></i>Cuotas de Mantenimiento y Áreas</div>
+                        <div class="fw-bold text-success" style="font-size:1.6rem;">
+                            ${{ pagos_anio_actual|floatformat:2|intcomma }}
+                        </div>
+                        <div class="small text-muted mb-2">Ingresos año actual</div>
+                        <hr class="my-2">
+                        <div class="row g-0">
+                            <div class="col-6">
+                                <div class="text-muted small">Año actual</div>
+                                <div class="fw-bold small">${{ pagos_anio_actual|floatformat:0|intcomma }}</div>
+                                {% if var_anio > 0 %}
+                                    <span class="text-success small">▲ {{ var_anio|floatformat:1 }}%</span>
+                                {% elif var_anio < 0 %}
+                                    <span class="text-danger small">▼ {{ var_anio|floatformat:1 }}%</span>
+                                {% else %}
+                                    <span class="text-muted small">0%</span>
+                                {% endif %}
+                                <div class="text-muted small mt-1">Año anterior: ${{ pagos_anio_anterior|floatformat:0|intcomma }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted small">Mes actual</div>
+                                <div class="fw-bold small">${{ pagos_mes_actual|floatformat:0|intcomma }}</div>
+                                {% if var_mes > 0 %}
+                                    <span class="text-success small">▲ {{ var_mes|floatformat:1 }}%</span>
+                                {% elif var_mes < 0 %}
+                                    <span class="text-danger small">▼ {{ var_mes|floatformat:1 }}%</span>
+                                {% else %}
+                                    <span class="text-muted small">0%</span>
+                                {% endif %}
+                                <div class="text-muted small mt-1">Mes anterior: ${{ pagos_mes_anterior|floatformat:0|intcomma }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-3">
+                        <div class="text-muted small mb-2">Ingresos por Tipo de Cuota</div>
+                        <canvas id="kpiTipoChart" height="160"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-3">
+                        <div class="text-muted small mb-2">Ingresos por Forma de Pago</div>
+                        <canvas id="kpiFormaChart" height="160"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros compactos -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body py-2 px-3">
+                <form id="form-filtros" method="get">
+                    <div class="row g-2 align-items-end">
                         {% if request.user.is_superuser %}
-                            <th>Empresa</th>
+                        <div class="col-12 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Empresa</label>
+                            <select name="empresa" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for empresa in empresas %}
+                                    <option value="{{ empresa.id }}" {% if empresa.id == empresa_seleccionada %}selected{% endif %}>{{ empresa.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                         {% endif %}
+                        <div class="col-12 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Propiedad</label>
+                            <select name="local_id" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for local in locales %}
+                                    <option value="{{ local.id }}" {% if local.id|stringformat:"s" == local_id %}selected{% endif %}>{{ local }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Área común</label>
+                            <select name="area_id" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for area in areas %}
+                                    <option value="{{ area.id }}" {% if area.id|stringformat:"s" == area_id %}selected{% endif %}>{{ area }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <label class="form-label form-label-sm mb-1">Tipo cuota</label>
+                            <select name="tipo_cuota" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                {% for val, display in TIPO_CUOTA_CHOICES %}
+                                    <option value="{{ val }}" {% if tipo_cuota == val %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <label class="form-label form-label-sm mb-1">Forma pago</label>
+                            <select name="forma_pago" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for val, display in FORMAS_PAGO %}
+                                    <option value="{{ val }}" {% if forma_pago == val %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label form-label-sm mb-1">Cuenta bancaria</label>
+                            <select name="cuenta_bancaria" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                {% for cuenta in cuentas_bancarias %}
+                                    <option value="{{ cuenta.id }}" {% if cuenta.id|stringformat:"s" == cuenta_bancaria %}selected{% endif %}>
+                                        {{ cuenta.banco }}-{{ cuenta.numero_cuenta|slice:"-4:" }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <label class="form-label form-label-sm mb-1">Desde</label>
+                            <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6 col-md-1">
+                            <label class="form-label form-label-sm mb-1">Hasta</label>
+                            <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-auto d-flex gap-1 align-items-end">
+                            <button type="submit" class="btn btn-primary btn-sm reporte-link" title="Filtrar">
+                                <i class="bi bi-funnel-fill"></i>
+                            </button>
+                            <a href="{% url 'pagos_por_origen' %}" class="btn btn-outline-secondary btn-sm reporte-link" title="Limpiar">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </a>
+                            <a href="{% url 'exportar_pagos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success btn-sm" title="Exportar Excel">
+                                <i class="bi bi-file-earmark-excel-fill"></i>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-responsive rounded-3 border" style="font-size: 0.85rem;">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        {% if request.user.is_superuser %}<th>Empresa</th>{% endif %}
                         <th>Folio</th>
-                        <th>Local \ Area</th>
+                        <th>Local/Área</th>
                         <th>Cliente</th>
                         <th>Tipo Cuota</th>
-                        <th>Monto</th>
-                        <th>Cuenta deposito</th>
-                        <th>Forma de pago</th>
-                        <th>Fecha de pago</th>
+                        <th class="text-end">Monto</th>
+                        <th>Cuenta Depósito</th>
+                        <th>Forma de Pago</th>
+                        <th>Fecha Pago</th>
                         <th>Comentarios</th>
-                        <th>Acciones</th>
+                        <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for pago in pagos %}
                         <tr>
                             {% if request.user.is_superuser %}
-                                <td>{{ pago.factura.empresa.nombre }}</td>
+                                <td class="small">{{ pago.factura.empresa.nombre }}</td>
                             {% endif %}
-                                <td>{{ pago.factura.folio }}</td>
-                            <td>
-                                {% if pago.factura.local %}
-                                    {{ pago.factura.local.numero }}
-                                {% elif pago.factura.area_comun %}
-                                    {{ pago.factura.area_comun.numero }}
-                                {% else %}
-                                    -
-                                {% endif %}
+                            <td class="small text-muted">{{ pago.factura.folio }}</td>
+                            <td class="small">
+                                {% if pago.factura.local %}{{ pago.factura.local.numero }}
+                                {% elif pago.factura.area_comun %}{{ pago.factura.area_comun.numero }}
+                                {% else %}—{% endif %}
                             </td>
-                            <td>{{ pago.factura.cliente.nombre }}</td>
-                            <td>{{ pago.factura.get_tipo_cuota_display }}</td>
-                            <td>${{ pago.monto|floatformat:2|intcomma }}</td>
-                            {% if pago.cuenta_bancaria.numero_cuenta %}
-                            <td>{{ pago.cuenta_bancaria.banco }}-{{ pago.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
-                            {% else %}
-                            <td></td>
-                            {% endif %}
-                            <td>{{ pago.forma_pago|title }}</td>
-                            <td>{{ pago.fecha_pago|date:"d/m/Y"|upper }}</td>   
-                            {% if pago.observaciones == None or pago.observaciones == "" %}
-                            <td></td>
-                            {% else %}
-                            <td>{{ pago.observaciones }}</td>
-                            {% endif %}
-                            <td>
-                            <a href="{% url 'recibo_pago' pago.id %}" class="btn btn-outline-primary btn-sm" title="Imprimir Recibo" target="_blank">
-                                Recibo
-                                <i class="bi bi-printer"></i>
-                            </a>
-                        </td> 
+                            <td class="small">{{ pago.factura.cliente.nombre }}</td>
+                            <td class="small">{{ pago.factura.get_tipo_cuota_display }}</td>
+                            <td class="small text-end {% if pago.monto < 0 %}text-danger{% endif %}">
+                                ${{ pago.monto|floatformat:2|intcomma }}
+                            </td>
+                            <td class="small">
+                                {% if pago.cuenta_bancaria %}
+                                    {{ pago.cuenta_bancaria.banco }}-{{ pago.cuenta_bancaria.numero_cuenta|slice:"-4:" }}
+                                {% else %}—{% endif %}
+                            </td>
+                            <td class="small">{{ pago.forma_pago|title }}</td>
+                            <td class="small text-nowrap">{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                            <td class="small text-muted">{{ pago.observaciones|default:"" }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'recibo_pago' pago.id %}" class="btn btn-xs btn-outline-primary" title="Imprimir Recibo" target="_blank">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </td>
+                        </tr>
                     {% empty %}
-                        <tr class="no-data-row">
-                            <td colspan="10">No hay ingresos registrados.</td>
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                No hay ingresos registrados.
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <nav aria-label="Paginación">
-            <ul class="pagination">
-            {% if pagos.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ pagos.previous_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Anterior</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+
+        <!-- Paginación -->
+        <nav class="mt-2">
+            <ul class="pagination pagination-sm">
+                {% if pagos.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagos.previous_page_number }}&{{ request.GET.urlencode }}">
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Anterior</span></li>
                 {% endif %}
-                <li class="page-item disabled"><span class="page-link">Página {{ pagos.number }} de {{ pagos.paginator.num_pages }}</span></li>
-            {% if pagos.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ pagos.next_page_number }}{% if empresa_seleccionada %}&empresa={{ empresa_seleccionada }}{% endif %}{% if local_id %}&local_id={{ local_id }}{% endif %}{% if area_id %}&area_id={{ area_id }}{% endif %}">Siguiente</a>
+                <li class="page-item disabled">
+                    <span class="page-link">Página {{ pagos.number }} de {{ pagos.paginator.num_pages }}</span>
                 </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-            {% endif %}
+                {% if pagos.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagos.next_page_number }}&{{ request.GET.urlencode }}">
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
             </ul>
         </nav>
+
     </div>
 
-    <!-- 🔹 Footer -->
- {% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+        const tipoLabels = {{ tipo_labels|safe }};
+        const tipoData = {{ tipo_data|safe }};
+        new Chart(document.getElementById('kpiTipoChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: tipoLabels,
+                datasets: [{ label: '', data: tipoData, backgroundColor: '#28a745', borderRadius: 6, barThickness: 14 }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#333', font: { size: 9 }, formatter: v => '$' + v.toLocaleString() } },
+                scales: { x: { display: false }, y: { ticks: { font: { size: 9 } } } }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        const formaLabels = {{ forma_labels|safe }};
+        const formaData = {{ forma_data|safe }};
+        new Chart(document.getElementById('kpiFormaChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: formaLabels,
+                datasets: [{ label: '', data: formaData, backgroundColor: '#007bff', borderRadius: 6, barThickness: 14 }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#333', font: { size: 9 }, formatter: v => '$' + v.toLocaleString() } },
+                scales: { x: { display: false }, y: { ticks: { font: { size: 9 } } } }
+            },
+            plugins: [ChartDataLabels]
+        });
     });
-  });
-});
-</script>
+    </script>
 </body>
 </html>

@@ -188,7 +188,7 @@
             <span class="ms-2">${{ saldo_final_flujo|floatformat:2|intcomma }}</span>
         </div>
 
-        <!-- Caja chica -->
+        {% comment %} <!-- Caja chica -->
         <div class="alert alert-warning text-end mb-3">
             <i class="bi bi-cash-coin me-1"></i>
             <strong>Saldo caja chica:</strong>
@@ -200,7 +200,7 @@
             <i class="bi bi-bank2 me-1"></i>
             <strong>Saldo final en bancos (sin caja chica):</strong>
             <span class="ms-2">${{ saldo_final_bancos_menos_caja|floatformat:2|intcomma }}</span>
-        </div>
+        </div> {% endcomment %}
 
         
 

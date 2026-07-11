@@ -339,10 +339,6 @@ def reporte_ingresos_vs_gastos(request):
 
 @login_o_portal_required
 def estado_resultados(request):
-    from collections import OrderedDict
-    import datetime
-    import locale
-
     empresas = Empresa.objects.all()
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
@@ -351,13 +347,6 @@ def estado_resultados(request):
     periodo = request.GET.get("periodo")
     hoy = datetime.date.today()
 
-    # if not request.user.is_superuser:
-    #     empresa_id = str(request.user.perfilusuario.empresa.id)
-    # else:
-    #     empresa_id = request.GET.get("empresa") or request.session.get("empresa_id")
-
-    #     if not empresa_id or not str(empresa_id).isdigit():
-    #         empresa_id = None
     if not request.user.is_superuser:
         # Verificar si viene del portal de acceso
         if getattr(request, 'is_portal_acceso', False):
@@ -519,22 +508,23 @@ def estado_resultados(request):
                         CobroOtrosIngresos.objects
                         .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
                         .aggregate(t=Sum("monto"))["t"] or 0
+                    ) + float(
+                        Pago.objects.filter(factura__isnull=True, identificado=False, empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+                        .aggregate(t=Sum("monto"))["t"] or 0
                     )
                     gto = float(
                         PagoGasto.objects
                         .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
                         .aggregate(t=Sum("monto"))["t"] or 0
                     ) + float(
-                        GastoCajaChica.objects
-                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe"))["t"] or 0
-                    ) + float(
-                        ValeCaja.objects
-                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe"))["t"] or 0
+                        FondeoCajaChica.objects  # ← usar fondeos, NO gastos individuales
+                        .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
+                        .aggregate(t=Sum("importe_cheque"))["t"] or 0
                     )
                     saldo_inicial += ing - gto
-
+        # Temporal — después del loop del saldo inicial
+        print(f"DEBUG saldo_inicial calculado: {saldo_inicial}")
+        
     # --- Filtro por fechas ---
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
@@ -601,36 +591,6 @@ def estado_resultados(request):
             estructura_gastos.setdefault(grupo, OrderedDict()).setdefault(subgrupo, {})
             estructura_gastos[grupo][subgrupo][tipo] = estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
 
-    agregar_a_estructura(gastos_modo,
-        "gasto__tipo_gasto__subgrupo__grupo__nombre",
-        "gasto__tipo_gasto__subgrupo__nombre",
-        "gasto__tipo_gasto__nombre", "monto")
-    agregar_a_estructura(gastos_caja_chica,
-        "tipo_gasto__subgrupo__grupo__nombre",
-        "tipo_gasto__subgrupo__nombre",
-        "tipo_gasto__nombre", "importe")
-    agregar_a_estructura(vales_caja_chica,
-        "tipo_gasto__subgrupo__grupo__nombre",
-        "tipo_gasto__subgrupo__nombre",
-        "tipo_gasto__nombre", "importe")
-
-    # Convertir a listas para el template
-    for grupo in estructura_gastos:
-        for subgrupo in estructura_gastos[grupo]:
-            tipos_dict = estructura_gastos[grupo][subgrupo]
-            estructura_gastos[grupo][subgrupo] = [
-                {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
-            ]
-
-    total_gastos = sum(
-        sum(t["total"] for t in tipos)
-        for subgrupos in estructura_gastos.values()
-        for tipos in subgrupos.values()
-    )
-
-    # --- SALDO FINAL FLUJO ---
-    saldo_final_flujo = saldo_inicial + total_ingresos - total_gastos
-
     # --- CAJA CHICA ---
     filtros_fondeo = {}
     if empresa_id:
@@ -639,10 +599,48 @@ def estado_resultados(request):
         filtros_fondeo["fecha__gte"] = fecha_inicio
     if fecha_fin:
         filtros_fondeo["fecha__lte"] = fecha_fin
-    saldo_caja_chica = float(FondeoCajaChica.objects.filter(**filtros_fondeo).aggregate(s=Sum("saldo"))["s"] or 0)
 
-    saldo_final_bancos_menos_caja = saldo_final_flujo - saldo_caja_chica
+    # saldo_caja_chica = float(FondeoCajaChica.objects.filter(**filtros_fondeo).aggregate(s=Sum("saldo"))["s"] or 0)
+
+    agregar_a_estructura(gastos_modo,
+        "gasto__tipo_gasto__subgrupo__grupo__nombre",
+        "gasto__tipo_gasto__subgrupo__nombre",
+        "gasto__tipo_gasto__nombre", "monto")
+    
+    # Por esto — fondeos como una sola línea de egreso:
+    fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo)
+    total_fondeos = float(fondeos_periodo.aggregate(t=Sum("importe_cheque"))["t"] or 0)
+    if total_fondeos > 0:
+        estructura_gastos.setdefault("Caja Chica", OrderedDict())
+        estructura_gastos["Caja Chica"]["Fondeos"] = [{"tipo": "Fondeo de caja chica", "total": total_fondeos}]
+
+    # Convertir a listas para el template
+    for grupo in estructura_gastos:
+        for subgrupo in estructura_gastos[grupo]:
+            tipos_dict = estructura_gastos[grupo][subgrupo]
+            if isinstance(tipos_dict, dict):
+                estructura_gastos[grupo][subgrupo] = [
+                    {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
+            ]
+
+    total_gastos = sum(
+    sum(t["total"] for t in tipos)
+    for subgrupos in estructura_gastos.values()
+    for tipos in subgrupos.values()
+    if isinstance(tipos, list)
+    )
+
+    # Justo después de calcular total_gastos en la vista
+    print(f"DEBUG total_gastos: {total_gastos}")
+    print(f"DEBUG total_ingresos: {total_ingresos}")
+    print(f"DEBUG saldo_inicial: {saldo_inicial}")
+    print(f"DEBUG saldo_final_flujo: {saldo_inicial + total_ingresos - total_gastos}")
+
+    # --- SALDO FINAL FLUJO ---
+    saldo_final_flujo = saldo_inicial + total_ingresos - total_gastos
+    #saldo_final_bancos_menos_caja = saldo_final_flujo - saldo_caja_chica
     saldo = total_ingresos - total_gastos
+
 
     return render(
         request,
@@ -658,8 +656,8 @@ def estado_resultados(request):
             "saldo": saldo,
             "saldo_inicial": saldo_inicial,
             "saldo_final_flujo": saldo_final_flujo,
-            "saldo_caja_chica": saldo_caja_chica,
-            "saldo_final_bancos_menos_caja": saldo_final_bancos_menos_caja,
+            #"saldo_caja_chica": saldo_caja_chica,
+            #"saldo_final_bancos_menos_caja": saldo_final_bancos_menos_caja,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
             "mes": str(mes or ""),
@@ -792,17 +790,13 @@ def exportar_estado_resultados_excel(request):
                         .aggregate(t=Sum("monto"))["t"] or 0
                     )
                     gto = float(
-                        PagoGasto.objects
-                        .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
+                    PagoGasto.objects
+                    .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+                    .aggregate(t=Sum("monto"))["t"] or 0
                     ) + float(
-                        GastoCajaChica.objects
-                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe"))["t"] or 0
-                    ) + float(
-                        ValeCaja.objects
-                        .filter(fondeo__empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe"))["t"] or 0
+                        FondeoCajaChica.objects  # ← usar fondeos, NO gastos individuales
+                        .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
+                        .aggregate(t=Sum("importe_cheque"))["t"] or 0
                     )
                     saldo_inicial += ing - gto
 

@@ -4202,31 +4202,14 @@ def api_estado_resultados(request):
                         ).aggregate(t=Sum("monto"))["t"]
                         or 0
                     )
-                    gto = (
-                        float(
-                            PagoGasto.objects.filter(
-                                gasto__empresa_id=empresa_id,
-                                fecha_pago__gte=fi,
-                                fecha_pago__lte=ff,
-                            ).aggregate(t=Sum("monto"))["t"]
-                            or 0
-                        )
-                        + float(
-                            GastoCajaChica.objects.filter(
-                                fondeo__empresa_id=empresa_id,
-                                fecha__gte=fi,
-                                fecha__lte=ff,
-                            ).aggregate(t=Sum("importe"))["t"]
-                            or 0
-                        )
-                        + float(
-                            ValeCaja.objects.filter(
-                                fondeo__empresa_id=empresa_id,
-                                fecha__gte=fi,
-                                fecha__lte=ff,
-                            ).aggregate(t=Sum("importe"))["t"]
-                            or 0
-                        )
+                    gto = float(
+                    PagoGasto.objects
+                    .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+                    .aggregate(t=Sum("monto"))["t"] or 0
+                    ) + float(
+                        FondeoCajaChica.objects  # ← usar fondeos, NO gastos individuales
+                        .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
+                        .aggregate(t=Sum("importe_cheque"))["t"] or 0
                     )
                     saldo_inicial += ing - gto
 

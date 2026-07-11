@@ -577,14 +577,10 @@ def reporte_pagos_gastos(request):
         cuenta_bancaria,
     ])
 
-    # Si no hay filtros, limitar a los últimos 12 meses
+    # Por — período actual por defecto (enero a hoy):
     if not filtros_aplicados:
-        ultima_fecha = pagos.aggregate(ultima_fecha=Max("fecha_pago"))["ultima_fecha"]
-        if ultima_fecha:
-            fecha_fin_dt = ultima_fecha
-            fecha_inicio_dt = fecha_fin_dt - timedelta(days=365)
-            fecha_inicio = fecha_inicio_dt.strftime("%Y-%m-%d")
-            fecha_fin = fecha_fin_dt.strftime("%Y-%m-%d")
+        fecha_inicio = datetime.now().date().replace(month=1, day=1).strftime("%Y-%m-%d")
+        fecha_fin = datetime.now().date().strftime("%Y-%m-%d")
 
     # Cuentas bancarias filtradas por empresa
     if not es_super:
@@ -625,10 +621,6 @@ def reporte_pagos_gastos(request):
         pagos = pagos.filter(gasto__empleado_id=empleado_id)
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
-    # if fecha_inicio:
-    #     pagos = pagos.filter(fecha_pago__gte=parse_date(fecha_inicio))
-    # if fecha_fin:
-    #     pagos = pagos.filter(fecha_pago__lte=parse_date(fecha_fin))
     if fecha_inicio:
         fecha_inicio_dt = parse_date(fecha_inicio)
     if fecha_inicio_dt:
@@ -651,32 +643,12 @@ def reporte_pagos_gastos(request):
 
     total_pagos_acumulado = pagos.aggregate(total=Sum("monto"))["total"] or 0
 
-    pagos_anio_actual = (
-        pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum("monto"))[
-            "total"
-        ]
-        or 0
-    )
-    pagos_anio_anterior = (
-        pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum("monto"))[
-            "total"
-        ]
-        or 0
-    )
-
-    pagos_mes_actual = (
-        pagos.filter(
-            fecha_pago__year=anio_actual, fecha_pago__month=mes_actual
-        ).aggregate(total=Sum("monto"))["total"]
-        or 0
-    )
-    pagos_mes_anterior = (
-        pagos.filter(
-            fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior
-        ).aggregate(total=Sum("monto"))["total"]
-        or 0
-    )
-    pagos_gastos_chart = pagos.filter(fecha_pago__year=anio_actual)
+    
+    pagos_anio_actual = pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_anio_anterior = pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_mes_actual = pagos.filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_mes_anterior = pagos.filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_gastos_chart = pagos
 
     # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)
     tipo_dict = (

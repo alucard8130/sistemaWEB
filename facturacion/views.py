@@ -1142,14 +1142,10 @@ def pagos_por_origen(request):
         ]
     )
 
-    # Primera carga: mostrar solo el último año con registros
+    # Primera carga
     if not filtros_aplicados:
-        ultima_fecha = pagos.aggregate(ultima_fecha=Max("fecha_pago"))["ultima_fecha"]
-        if ultima_fecha:
-            fecha_fin_dt = ultima_fecha
-            fecha_inicio_dt = fecha_fin_dt - timedelta(days=365)
-            fecha_inicio = fecha_inicio_dt.strftime("%Y-%m-%d")
-            fecha_fin = fecha_fin_dt.strftime("%Y-%m-%d")
+        fecha_inicio = date.today().replace(month=1, day=1).strftime("%Y-%m-%d")
+        fecha_fin = date.today().strftime("%Y-%m-%d")
 
 
     if empresa_id:
@@ -1209,7 +1205,7 @@ def pagos_por_origen(request):
     var_mes = variacion(pagos_mes_actual, pagos_mes_anterior)
 
     anio_actual = date.today().year
-    pagos_chart = pagos.filter(fecha_pago__year=anio_actual)
+    pagos_chart = pagos
 
     # Agrupa por tipo_cuota (clave) y suma montos
     tipo_dict = defaultdict(float)
@@ -1233,13 +1229,6 @@ def pagos_por_origen(request):
     forma_labels = list(forma_dict.keys())
     forma_data = list(forma_dict.values())
 
-    #agrupar por cuenta bancaria
-    # cuenta_dict = defaultdict(float)
-    # for p in pagos_chart:
-    #     if p.cuenta_bancaria:
-    #         cuenta_dict[p.cuenta_bancaria] += float(p.monto)
-    # cuenta_labels = list(cuenta_dict.keys())
-    # cuenta_data = list(cuenta_dict.values())
 
     if request.user.is_superuser:
         cuentas_bancarias = CuentaBancaria.objects.all()
