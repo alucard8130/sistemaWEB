@@ -152,20 +152,20 @@ def get_o_crear_periodo(cuenta, empresa, anio, mes):
     return periodo, movimientos
 
 
-def validar_periodo_abierto(cuenta, fecha, user=None):
+def validar_periodo_abierto(cuenta, fecha):
     if not cuenta or not fecha:
         return True, None
 
     hoy = datetime.date.today()
 
     # Superusuario puede registrar en años anteriores
-    if not (user and user.is_superuser):
+    #if not (user and user.is_superuser):
     # Política de seguridad: no se puede registrar en años anteriores al actual
-        if fecha.year < hoy.year:
-            return False, (
-                f"No se pueden registrar movimientos con fecha del año {fecha.year}. "
-                f"Solo se permiten movimientos del año {hoy.year} en adelante."
-            )
+    if fecha.year < hoy.year:
+        return False, (
+            f"No se pueden registrar movimientos con fecha del año {fecha.year}. "
+            f"Solo se permiten movimientos del año {hoy.year} en adelante."
+        )
 
     # Política adicional: no se puede registrar con fecha futura
     if fecha > hoy:
