@@ -4,124 +4,344 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>comparativo ppto ingresos vs ingresos</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparativo Presupuestal Ingresos — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        .ca-header {
+            background: linear-gradient(135deg, #0d3b2e 0%, #1a7a45 60%, #27ae60 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(13,59,46,0.2);
+            position: relative; overflow: hidden;
+        }
+        .ca-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .ca-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .ca-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        .ca-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+
+        .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+        @media (max-width:768px) { .kpi-strip { grid-template-columns:repeat(2,1fr); } }
+        .kpi-box { background:white; border-radius:14px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid transparent; }
+        .kpi-box.p1 { border-top-color:#1a7a45; }
+        .kpi-box.p2 { border-top-color:#2471a3; }
+        .kpi-box.p3 { border-top-color:#d4ac0d; }
+        .kpi-box.p4 { border-top-color:#c0392b; }
+        .kpi-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .kpi-val   { font-size:1.35rem; font-weight:700; line-height:1.2; margin:4px 0 2px; }
+        .kpi-sub   { font-size:0.75rem; color:#9ca3af; }
+
+        .ca-table-wrap { background:white; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.08); overflow:hidden; }
+        .ca-table-scroll { overflow-x:auto; max-height:calc(100vh - 320px); overflow-y:auto; }
+
+        table.ca-table { border-collapse:separate; border-spacing:0; width:100%; font-size:0.78rem; }
+
+        table.ca-table thead th {
+            position:sticky; top:0; z-index:10;
+            background:#0d3b2e; color:white;
+            font-weight:600; font-size:0.7rem; text-transform:uppercase;
+            letter-spacing:0.05em; padding:10px 12px; white-space:nowrap;
+            border-bottom:2px solid #27ae60;
+        }
+
+        /* Sticky primeras cols */
+        table.ca-table thead th:nth-child(1),
+        table.ca-table tbody td:nth-child(1),
+        table.ca-table tfoot td:nth-child(1) { position:sticky; left:0; z-index:11; min-width:110px; }
+        table.ca-table thead th:nth-child(2),
+        table.ca-table tbody td:nth-child(2),
+        table.ca-table tfoot td:nth-child(2) { position:sticky; left:110px; z-index:11; min-width:200px; border-right:2px solid #e0f0e8; }
+        table.ca-table thead th:nth-child(1),
+        table.ca-table thead th:nth-child(2) { background:#073d22; z-index:20; }
+
+        /* Filas */
+        tr.ca-global td { background:linear-gradient(90deg,#0d3b2e,#1a7a45); color:white; font-weight:700; font-size:0.8rem; padding:11px 12px; border-bottom:1px solid #0d3b2e; }
+        tr.ca-global td:nth-child(1),tr.ca-global td:nth-child(2) { background:#073d22; }
+
+        tr.ca-origen td { background:linear-gradient(90deg,#1a5c34,#27ae60); color:white; font-weight:700; font-size:0.77rem; padding:9px 12px; border-bottom:1px solid #1a7a45; }
+        tr.ca-origen td:nth-child(1),tr.ca-origen td:nth-child(2) { background:#0d3b2e; }
+
+        tr.ca-tipo td { background:white; color:#374151; font-size:0.77rem; padding:6px 12px; border-bottom:1px solid #f1f5f9; transition:background 0.1s; }
+        tr.ca-tipo:hover td { background:#f0faf5; }
+        tr.ca-tipo td:nth-child(1),tr.ca-tipo td:nth-child(2) { background:#fafffe; }
+        tr.ca-tipo:hover td:nth-child(1),tr.ca-tipo:hover td:nth-child(2) { background:#e8f8f0; }
+
+        tfoot tr td { background:linear-gradient(90deg,#d4ac0d,#f0c330); color:#5a3e00; font-weight:700; font-size:0.78rem; padding:10px 12px; position:sticky; bottom:0; z-index:5; border-top:2px solid #c8a000; }
+        tfoot tr td:nth-child(1),tfoot tr td:nth-child(2) { background:#b8960a; z-index:15; color:white; }
+
+        td.num { text-align:right; white-space:nowrap; }
+        td.num-bold { text-align:right; font-weight:700; white-space:nowrap; }
+
+        .var-badge {
+            display:inline-block; padding:2px 7px; border-radius:10px;
+            font-size:0.68rem; font-weight:700; white-space:nowrap;
+        }
+        /* Para ingresos: subir es bueno (verde), bajar es malo (rojo) */
+        .var-badge.pos { background:#eafaf1; color:#1e8449; }
+        .var-badge.neg { background:#fdf0f0; color:#c0392b; }
+        .var-badge.neu { background:#f0f4f8; color:#6b7280; }
+
+        .sep-left { border-left:2px solid #e0f0e8 !important; }
+
+        .btn-colapsar {
+            width:20px; height:20px; border-radius:4px; border:none;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:0.65rem; cursor:pointer; transition:all 0.15s;
+            padding:0; flex-shrink:0; margin-right:6px;
+        }
+        tr.ca-origen .btn-colapsar { background:rgba(255,255,255,0.2); color:white; }
+        tr.ca-origen .btn-colapsar:hover { background:rgba(255,255,255,0.35); }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .ca-header { background:#0d3b2e !important; -webkit-print-color-adjust:exact; }
+            .ca-table-scroll { max-height:none; overflow:visible; }
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    
-<div class="container mt-4">
-  <h4>Comparativo Presupuestal Ingresos — {{ empresa.nombre }} - Año {{ anio }} vs Año {{ anio_ant }}</h4>
 
-  <form id="form-filtros" method="get" class="row g-2 mb-3">
-    <div class="col-auto">
-      <label class="form-label">Selecionar Año</label>
-      <input type="number" name="anio" value="{{ anio }}" class="form-control" />
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="ca-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="ca-empresa"><i class="bi bi-building me-1"></i>{{ empresa.nombre }}</div>
+                    <div class="ca-titulo"><i class="bi bi-graph-up-arrow me-2"></i>Comparativo Presupuestal de Ingresos — {{ anio }} vs {{ anio_ant }}</div>
+                    <div style="font-size:0.78rem;opacity:0.75;margin-top:3px;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Presupuesto {{ anio }} vs Presupuesto {{ anio_ant }} — variación y tendencia por origen
+                    </div>
+                </div>
+                <div class="d-flex gap-2 no-print">
+                    <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI STRIP -->
+        <div class="kpi-strip mb-4">
+            <div class="kpi-box p1">
+                <div class="kpi-label"><i class="bi bi-file-text me-1"></i>Ppto {{ anio_ant }}</div>
+                <div class="kpi-val" style="color:#1a7a45;">${{ total_anterior|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">Presupuesto año anterior</div>
+            </div>
+            <div class="kpi-box p2">
+                <div class="kpi-label"><i class="bi bi-file-earmark-check me-1"></i>Ppto {{ anio }}</div>
+                <div class="kpi-val text-primary">${{ total_actual|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">Presupuesto año actual</div>
+            </div>
+            <div class="kpi-box p3">
+                <div class="kpi-label"><i class="bi bi-arrow-left-right me-1"></i>Diferencia</div>
+                <div class="kpi-val {% if diferencia_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if diferencia_total >= 0 %}+{% endif %}${{ diferencia_total|floatformat:0|intcomma }}
+                </div>
+                <div class="kpi-sub">{% if diferencia_total >= 0 %}Mayor presupuesto{% else %}Menor presupuesto{% endif %}</div>
+            </div>
+            <div class="kpi-box p4">
+                <div class="kpi-label"><i class="bi bi-percent me-1"></i>% Variación</div>
+                <div class="kpi-val {% if pct_total >= 0 %}text-success{% elif pct_total < 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {% if pct_total is not None %}{% if pct_total > 0 %}+{% endif %}{{ pct_total|floatformat:1 }}%{% else %}—{% endif %}
+                </div>
+                <div class="kpi-sub">Vs presupuesto {{ anio_ant }}</div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="ca-toolbar no-print">
+            <form method="get" class="d-flex align-items-center gap-2" id="form-filtros">
+                <label class="small fw-bold text-muted mb-0">Año:</label>
+                <input type="number" name="anio" value="{{ anio }}" class="form-control form-control-sm" style="width:90px;">
+                {% if request.user.is_superuser %}
+                <label class="small fw-bold text-muted mb-0">Empresa ID:</label>
+                <input type="text" name="empresa" value="{{ empresa.id }}" class="form-control form-control-sm" style="width:80px;">
+                {% endif %}
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Mostrar
+                </button>
+            </form>
+            <div class="ms-auto d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" id="btn-expandir-todo">
+                    <i class="bi bi-arrows-expand me-1"></i>Expandir todo
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="btn-colapsar-todo">
+                    <i class="bi bi-arrows-collapse me-1"></i>Colapsar todo
+                </button>
+            </div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="ca-table-wrap">
+            <div class="ca-table-scroll">
+                <table class="ca-table">
+                    <thead>
+                        <tr>
+                            <th>Nivel</th>
+                            <th>Descripción</th>
+                            <th class="text-end">Ppto {{ anio_ant }}</th>
+                            <th class="text-end">Ppto {{ anio }}</th>
+                            <th class="text-end sep-left">Diferencia</th>
+                            <th class="text-center">% Variación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <!-- GLOBAL -->
+                        <tr class="ca-global">
+                            <td><i class="bi bi-globe me-1"></i>Global</td>
+                            <td><strong>Total anual</strong></td>
+                            <td class="num">${{ total_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num-bold">${{ total_actual|floatformat:0|intcomma }}</td>
+                            <td class="num sep-left {% if diferencia_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if diferencia_total >= 0 %}+{% endif %}${{ diferencia_total|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if pct_total is not None %}
+                                <span class="var-badge {% if pct_total > 0 %}pos{% elif pct_total < 0 %}neg{% else %}neu{% endif %}">
+                                    {% if pct_total > 0 %}+{% endif %}{{ pct_total|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="var-badge neu">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+
+                        {% for o in origenes %}
+                        <!-- ORIGEN -->
+                        <tr class="ca-origen" data-origen="{{ forloop.counter }}">
+                            <td>
+                                <button type="button" class="btn-colapsar toggle-origen" data-origen="{{ forloop.counter }}">
+                                    <i class="bi bi-dash-lg ic-abierto"></i>
+                                    <i class="bi bi-plus-lg ic-cerrado" style="display:none"></i>
+                                </button>
+                                <i class="bi bi-building me-1"></i>Cuenta
+                            </td>
+                            <td><strong>{{ origen_labels|lookup:o.origen|default:o.origen|capfirst }}</strong></td>
+                            <td class="num">${{ o.tot_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num-bold">${{ o.tot_actual|floatformat:0|intcomma }}</td>
+                            <td class="num sep-left {% if o.diferencia >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if o.diferencia >= 0 %}+{% endif %}${{ o.diferencia|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if o.pct is not None %}
+                                <span class="var-badge {% if o.pct > 0 %}pos{% elif o.pct < 0 %}neg{% else %}neu{% endif %}">
+                                    {% if o.pct > 0 %}+{% endif %}{{ o.pct|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="var-badge neu">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+
+                        {% for t in o.tipos %}
+                        <!-- TIPO -->
+                        <tr class="ca-tipo fila-origen-{{ forloop.parentloop.counter }}">
+                            <td style="padding-left:40px;">
+                                <i class="bi bi-dot" style="color:#1a7a45;"></i>Sub-Cuenta
+                            </td>
+                            <td>{% with tipo_display=tipo_cuota_map|lookup:t.tipo|default:t.tipo %}{{ tipo_display }}{% endwith %}</td>
+                            <td class="num text-muted">${{ t.anterior|floatformat:0|intcomma }}</td>
+                            <td class="num-bold">${{ t.actual|floatformat:0|intcomma }}</td>
+                            <td class="num sep-left {% if t.diferencia >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if t.diferencia >= 0 %}+{% endif %}${{ t.diferencia|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if t.pct is not None %}
+                                <span class="var-badge {% if t.pct > 0 %}pos{% elif t.pct < 0 %}neg{% else %}neu{% endif %}">
+                                    {% if t.pct > 0 %}+{% endif %}{{ t.pct|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="var-badge neu">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2"><strong><i class="bi bi-calculator me-1"></i>Total General</strong></td>
+                            <td class="num"><strong>${{ total_anterior|floatformat:0|intcomma }}</strong></td>
+                            <td class="num-bold"><strong>${{ total_actual|floatformat:0|intcomma }}</strong></td>
+                            <td class="num sep-left {% if diferencia_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                <strong>{% if diferencia_total >= 0 %}+{% endif %}${{ diferencia_total|floatformat:0|intcomma }}</strong>
+                            </td>
+                            <td class="text-center">
+                                {% if pct_total is not None %}
+                                <span class="var-badge {% if pct_total > 0 %}pos{% elif pct_total < 0 %}neg{% else %}neu{% endif %}">
+                                    <strong>{% if pct_total > 0 %}+{% endif %}{{ pct_total|floatformat:0 }}%</strong>
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
     </div>
-    {% if request.user.is_superuser %}
-    <div class="col-auto">
-      <label class="form-label">Empresa (id)</label>
-      <input type="text" name="empresa" value="{{ empresa.id }}" class="form-control" />
-    </div>
-    {% endif %}
-    <div class="col-auto align-self-end">
-      <button class="btn btn-primary">Mostrar</button>
-      {% comment %} <a class="btn btn-outline-secondary" href="?anio={{ anio }}&export=excel">Exportar Excel</a> {% endcomment %}
-    </div>
-  </form>
 
-  <table class="table table-sm table-striped">
-    <thead class="table-dark">
-      <tr>
-        <th>Nivel</th><th>Descripción</th>
-        <th class="text-end">Total {{ anio_ant }}</th>
-        <th class="text-end">Total {{ anio }}</th>
-        <th class="text-end">Diferencia</th>
-        <th class="text-end">% Variación</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr class="table-secondary">
-        <td><strong>GLOBAL</strong></td>
-        <td><strong>Total anual</strong></td>
-        <td class="text-end">${{ total_anterior|floatformat:0|intcomma }}</td>
-        <td class="text-end"><strong>${{ total_actual|floatformat:0|intcomma }}</strong></td>
-        <td class="text-end">${{ diferencia_total|floatformat:0|intcomma }}</td>
-        <td class="text-end">
-          {% if pct_total is not None %}
-            {% if pct_total > 0 %}+{% endif %}{{ pct_total|floatformat:0|intcomma }} %
-          {% else %}
-            N/A
-          {% endif %}
-        </td>
-      </tr>
-
-      {% for o in origenes %}
-        <tr class="table-primary">
-          <td><strong>CUENTA</strong></td>
-          <td><strong>{{ origen_labels|lookup:o.origen|default:o.origen|capfirst }}</strong></td>
-          <td class="text-end">${{ o.tot_anterior|floatformat:0|intcomma }}</td>
-          <td class="text-end"><strong>${{ o.tot_actual|floatformat:0|intcomma }}</strong></td>
-          <td class="text-end">${{ o.diferencia|floatformat:0|intcomma }}</td>
-          <td class="text-end">
-            {% if o.pct is not None %}
-              {% if o.pct > 0 %}+{% endif %}{{ o.pct|floatformat:0|intcomma }} %
-            {% else %}
-              N/A
-            {% endif %}
-          </td>
-        </tr>
-
-        {% for t in o.tipos %}
-          {% with tipo_display=tipo_cuota_map|lookup:t.tipo|default:t.tipo %}
-          <tr class="table-light">
-            <td style="padding-left:20px;">SUB-CUENTA</td>
-            <td style="padding-left:20px;">{{ tipo_display }}</td>
-            <td class="text-end">${{ t.anterior|floatformat:0|intcomma }}</td>
-            <td class="text-end">${{ t.actual|floatformat:0|intcomma }}</td>
-            <td class="text-end">${{ t.diferencia|floatformat:0|intcomma }}</td>
-            <td class="text-end">
-              {% if t.pct is not None %}
-                {% if t.pct > 0 %}+{% endif %}{{ t.pct|floatformat:0|intcomma }} %
-              {% else %}
-                N/A
-              {% endif %}
-            </td>
-          </tr>
-          {% endwith %}
-        {% endfor %}
-      {% endfor %}
-
-    </tbody>
-  </table>
-</div>
-<!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
+    document.addEventListener('DOMContentLoaded', function() {
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+
+        function toggleIcon(btn, collapsed) {
+            btn.querySelector('.ic-abierto').style.display = collapsed ? 'none' : '';
+            btn.querySelector('.ic-cerrado').style.display = collapsed ? '' : 'none';
+        }
+
+        document.querySelectorAll('.toggle-origen').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var oId = btn.dataset.origen;
+                var collapsed = btn.classList.toggle('collapsed');
+                document.querySelectorAll('.fila-origen-'+oId).forEach(function(r) {
+                    r.style.display = collapsed ? 'none' : '';
+                });
+                toggleIcon(btn, collapsed);
+            });
+        });
+
+        document.getElementById('btn-expandir-todo').addEventListener('click', function() {
+            document.querySelectorAll('[class*="fila-origen-"]').forEach(function(r) { r.style.display = ''; });
+            document.querySelectorAll('.toggle-origen').forEach(function(btn) {
+                btn.classList.remove('collapsed');
+                toggleIcon(btn, false);
+            });
+        });
+
+        document.getElementById('btn-colapsar-todo').addEventListener('click', function() {
+            document.querySelectorAll('[class*="fila-origen-"]').forEach(function(r) { r.style.display = 'none'; });
+            document.querySelectorAll('.toggle-origen').forEach(function(btn) {
+                btn.classList.add('collapsed');
+                toggleIcon(btn, true);
+            });
+        });
+
     });
-  });
-});
-</script>
+    </script>
 </body>
 </html>

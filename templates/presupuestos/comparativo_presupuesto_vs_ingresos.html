@@ -3,243 +3,437 @@
 {% load math_filters %}
 {% load dict_extras %}
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 29/07/2025
-      Date of modification: 12/09/2025
-      Description:  Budget vs revenue comparison report
-    -->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reporte comparativo ingresos vs presupuesto</title>
-    <!-- Bootstrap base styles -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparativo Ingresos vs Presupuesto — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap 5 + DataTables -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
-    <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css"/>
-    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"/>
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* ── HEADER ── */
+        .cr-header {
+            background: linear-gradient(135deg, #0d3b2e 0%, #1a7a45 60%, #27ae60 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(13,59,46,0.2);
+            position: relative; overflow: hidden;
+        }
+        .cr-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .cr-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .cr-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* ── TOOLBAR ── */
+        .cr-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .cr-toolbar .divider { width:1px; height:28px; background:#e5e7eb; }
+
+        /* ── KPI STRIP ── */
+        .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+        @media (max-width:768px) { .kpi-strip { grid-template-columns:repeat(2,1fr); } }
+        .kpi-box { background:white; border-radius:14px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid transparent; }
+        .kpi-box.verde  { border-top-color:#1a7a45; }
+        .kpi-box.azul   { border-top-color:#2471a3; }
+        .kpi-box.rojo   { border-top-color:#c0392b; }
+        .kpi-box.dorado { border-top-color:#d4ac0d; }
+        .kpi-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .kpi-val   { font-size:1.35rem; font-weight:700; line-height:1.2; margin:4px 0 2px; }
+        .kpi-sub   { font-size:0.75rem; color:#9ca3af; }
+
+        /* ── PILLS PERÍODO ── */
+        .med-btn {
+            padding:5px 14px; border-radius:20px; border:1px solid #e2e8f0;
+            background:white; color:#4a6080; cursor:pointer; font-size:0.78rem;
+            font-weight:500; transition:all 0.15s; text-decoration:none; display:inline-block;
+        }
+        .med-btn.activo { background:#1a7a45; color:white; border-color:#1a7a45; }
+        .med-btn:hover:not(.activo) { background:#e8f8f0; border-color:#1a7a45; color:#0d3b2e; }
+
+        /* ── TOGGLE COLS ── */
+        .btn-toggle-col {
+            font-size:0.75rem; padding:5px 12px; border-radius:20px;
+            border:1px solid #e2e8f0; background:white; color:#4a6080;
+            cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:5px;
+        }
+        .btn-toggle-col.activo { background:#1a7a45; color:white; border-color:#1a7a45; }
+        .btn-toggle-col:hover:not(.activo) { background:#e8f8f0; border-color:#1a7a45; }
+
+        /* ── TABLA ── */
+        .cr-table-wrap { background:white; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.08); overflow:hidden; }
+        .cr-table-scroll { overflow-x:auto; max-height:calc(100vh - 320px); overflow-y:auto; }
+
+        table.cr-table { border-collapse:separate; border-spacing:0; width:100%; font-size:0.76rem; }
+
+        table.cr-table thead tr:first-child th {
+            position:sticky; top:0; z-index:12;
+            background:#0d3b2e; color:white;
+            font-weight:700; font-size:0.7rem; text-transform:uppercase;
+            letter-spacing:0.05em; padding:8px 10px; text-align:center;
+            border-bottom:1px solid #1a7a45;
+        }
+        table.cr-table thead tr:last-child th {
+            position:sticky; top:33px; z-index:11;
+            background:#1a5c34; color:rgba(255,255,255,0.85);
+            font-weight:500; font-size:0.68rem; text-transform:uppercase;
+            letter-spacing:0.04em; padding:6px 8px; text-align:right;
+            border-bottom:2px solid #27ae60;
+        }
+
+        /* Sticky col */
+        table.cr-table thead th.th-fixed,
+        table.cr-table tbody td.td-fixed,
+        table.cr-table tfoot td.td-fixed {
+            position:sticky; left:0; z-index:13; min-width:180px;
+            border-right:2px solid #e0f0e8;
+        }
+        table.cr-table thead th.th-fixed { background:#073d22; z-index:22; }
+
+        /* Filas principales */
+        tr.cr-principal td {
+            background:linear-gradient(90deg,#d5f5e3,#eafaf1);
+            color:#0d3b2e; font-weight:700; font-size:0.78rem;
+            padding:9px 10px; border-bottom:1px solid #a9dfbf;
+        }
+        tr.cr-principal td.td-fixed { background:#c8f0d8; }
+
+        /* Filas subtipo */
+        tr.cr-subtipo td {
+            background:white; color:#374151; font-weight:400;
+            font-size:0.76rem; padding:7px 10px; border-bottom:1px solid #f1f5f9;
+            transition:background 0.1s;
+        }
+        tr.cr-subtipo:hover td { background:#f0faf5; }
+        tr.cr-subtipo td.td-fixed { background:#fafffe; padding-left:28px; }
+        tr.cr-subtipo:hover td.td-fixed { background:#e8f8f0; }
+
+        /* Fila total otros */
+        tr.cr-total-otros td {
+            background:linear-gradient(90deg,#e8f8f0,#f0faf5);
+            color:#0d3b2e; font-weight:600; font-size:0.77rem;
+            padding:8px 10px; border-bottom:1px solid #b8e8cc;
+            border-top:2px solid #27ae60;
+        }
+        tr.cr-total-otros td.td-fixed { background:#d5f5e3; }
+
+        /* Footer */
+        tfoot tr td {
+            background:linear-gradient(90deg,#d4ac0d,#f0c330); color:#5a3e00;
+            font-weight:700; font-size:0.78rem; padding:10px 10px;
+            position:sticky; bottom:0; z-index:5; border-top:2px solid #c8a000;
+        }
+        tfoot tr td.td-fixed { background:#b8960a; z-index:15; color:white; }
+
+        /* Celdas */
+        td.cr-presup { color:#6b7280; text-align:right; }
+        td.cr-real   { font-weight:700; text-align:right; color:#0d3b2e; }
+        td.cr-pct    { text-align:center; }
+
+        .pct-badge {
+            display:inline-block; padding:2px 7px; border-radius:10px;
+            font-size:0.68rem; font-weight:700; white-space:nowrap;
+        }
+        .pct-badge.pos { background:#eafaf1; color:#1e8449; }
+        .pct-badge.neg { background:#fdf0f0; color:#c0392b; }
+        .pct-badge.neutro { background:#f0f4f8; color:#6b7280; }
+
+        td.cr-var-pos { color:#1e8449; font-weight:700; text-align:right; }
+        td.cr-var-neg { color:#c0392b; font-weight:700; text-align:right; }
+        td.cr-var-neu { color:#6b7280; font-weight:600; text-align:right; }
+
+        td.mes-sep, th.mes-sep { border-left:2px solid #e0f0e8 !important; }
+        th.th-total { background:#d4ac0d !important; color:#5a3e00 !important; }
+        td.td-total { background:#fffbeb !important; }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .cr-header { background:#0d3b2e !important; -webkit-print-color-adjust:exact; }
+            .cr-table-scroll { max-height:none; overflow:visible; }
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    
-    <div class="container-fluid mt-4">
-        <h2>Comparativo Ingresos vs Presupuesto - Año {{ anio }}</h2>
-        <form id="form-filtros" method="get" class="row mb-3 g-2">
-            <div class="col-auto">
-                <select name="anio" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:110px;">
-                    {% for a in anios %}
-                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
-                    {% endfor %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="cr-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="cr-empresa"><i class="bi bi-building me-1"></i>{{ empresa.nombre }}</div>
+                    <div class="cr-titulo"><i class="bi bi-graph-up-arrow me-2"></i>Comparativo Presupuesto vs Ingresos Real — {{ anio }}</div>
+                    <div style="font-size:0.78rem;opacity:0.75;margin-top:3px;">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        {% if medicion == 'mes' %}Mes: {{ meses_nombres.0|capfirst }}
+                        {% elif medicion == 'semestre1' %}Primer semestre (Ene–Jun)
+                        {% elif medicion == 'semestre2' %}Segundo semestre (Jul–Dic)
+                        {% elif medicion == 'anual' %}Año completo
+                        {% else %}Período actual (Ene–{{ meses_nombres|last|capfirst }})
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 align-items-center no-print flex-wrap">
+                    <a href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion={{ medicion }}{% if medicion == 'mes' %}&mes={{ meses.0 }}{% endif %}&excel=1"
+                       class="btn btn-sm btn-success">
+                        <i class="bi bi-file-earmark-excel-fill me-1"></i>Descargar Excel
+                    </a>
+                    {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button> {% endcomment %}
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI STRIP -->
+        <div class="kpi-strip mb-4">
+            <div class="kpi-box verde">
+                <div class="kpi-label"><i class="bi bi-file-text me-1"></i>Presupuestado</div>
+                <div class="kpi-val" style="color:#1a7a45;">${{ tot_anual.presupuesto|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">Total período</div>
+            </div>
+            <div class="kpi-box azul">
+                <div class="kpi-label"><i class="bi bi-cash-coin me-1"></i>Ingreso real</div>
+                <div class="kpi-val text-primary">${{ tot_anual.real|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">Total período</div>
+            </div>
+            <div class="kpi-box rojo">
+                <div class="kpi-label"><i class="bi bi-arrow-left-right me-1"></i>Variación</div>
+                <div class="kpi-val {% if tot_anual.variacion >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if tot_anual.variacion >= 0 %}+{% endif %}${{ tot_anual.variacion|floatformat:0|intcomma }}
+                </div>
+                <div class="kpi-sub">{% if tot_anual.variacion >= 0 %}Sobre lo presupuestado{% else %}Bajo lo presupuestado{% endif %}</div>
+            </div>
+            <div class="kpi-box dorado">
+                <div class="kpi-label"><i class="bi bi-percent me-1"></i>% Cumplimiento</div>
+                {% if tot_anual.presupuesto %}
+                    {% with pct=tot_anual.real|divide:tot_anual.presupuesto|mul:100 %}
+                    <div class="kpi-val {% if pct >= 100 %}text-success{% elif pct >= 80 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ pct|floatformat:0 }}%
+                    </div>
+                    <div class="kpi-sub">Ingresado vs presupuestado</div>
+                    {% endwith %}
+                {% else %}
+                    <div class="kpi-val text-muted">—</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="cr-toolbar no-print">
+            <form method="get" class="d-flex align-items-center gap-2" id="form-anio">
+                <label class="small fw-bold text-muted mb-0">Año:</label>
+                <select name="anio" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    {% for a in anios %}<option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>{% endfor %}
                 </select>
                 {% if empresas %}
-                    <select name="empresa" onchange="this.form.submit()" class="form-select d-inline" style="width:auto;max-width:260px;">
-                        {% for emp in empresas %}
-                            <option value="{{ emp.id }}" {% if emp.id == empresa.id %}selected{% endif %}>{{ emp.nombre }}</option>
-                        {% endfor %}
-                    </select>
+                <select name="empresa" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    {% for emp in empresas %}<option value="{{ emp.id }}" {% if emp.id == empresa.id %}selected{% endif %}>{{ emp.nombre }}</option>{% endfor %}
+                </select>
                 {% endif %}
-                <a class="btn btn-success btn-sm ms-2"
-                href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion={{ medicion }}{% if medicion == 'mes' %}&mes={{ meses.0 }}{% endif %}&excel=1">
-                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar a Excel
-                </a>
-            </div>
-        </form>
+                <input type="hidden" name="medicion" value="{{ medicion }}">
+            </form>
 
-        <form id="form-filtros" method="get" class="mb-3 d-flex align-items-center gap-2">
-            <select name="medicion" class="form-select" style="width:auto;">
-                <option value="mes" {% if medicion == "mes" %}selected{% endif %}>Mes actual</option>
-                <option value="curso" {% if medicion == "curso" %}selected{% endif %}>Periodo actual</option>
-                <option value="semestre1" {% if medicion == "semestre1" %}selected{% endif %}>Primer semestre</option>
-                <option value="semestre2" {% if medicion == "semestre2" %}selected{% endif %}>Segundo semestre</option>  
-                <option value="anual" {% if medicion == "anual" %}selected{% endif %}>Año completo</option>
-            </select>
-            {% comment %} <button type="submit" class="btn btn-outline-primary reporte-link">
-                <i class="bi bi-search me-1"></i> Consultar
-            </button> {% endcomment %}
-        </form>
-            
-        <div class="table-responsive rounded-3 border" id="table-container-corp" data-meses-count="{{ meses_nombres|length }}">
-            <table id="tabla-comparativa" class="table align-middle mb-0 shadow-sm">
-                <thead class="encabezado-claro">
-                    <tr>
-                        <th rowspan="2">Origen/Tipo</th>
-                        {% for mes_nombre in meses_nombres %}
-                            <th class="text-center" colspan="3">{{ mes_nombre|capfirst }}</th>
-                        {% endfor %}
-                        <th class="text-center" colspan="4">Total anual</th>
-                    </tr>
-                    <tr>
-                        {% for m in meses_nombres %}
-                            <th class="text-end">Presup.</th>
-                            <th class="text-end">Real</th>
-                            <th class="text-end">% Var.</th>
-                        {% endfor %}
-                        <th class="text-end">Presup.</th>
-                        <th class="text-end">Real</th>
-                        <th class="text-end">Var.</th>
-                        <th class="text-end">% Var.</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="divider"></div>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="small fw-bold text-muted">Período:</span>
+                <a href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion=curso" class="med-btn {% if medicion == 'curso' %}activo{% endif %} reporte-link">Período actual</a>
+                <a href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion=mes" class="med-btn {% if medicion == 'mes' %}activo{% endif %} reporte-link">Mes actual</a>
+                <a href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion=semestre1" class="med-btn {% if medicion == 'semestre1' %}activo{% endif %} reporte-link">1er semestre</a>
+                <a href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion=semestre2" class="med-btn {% if medicion == 'semestre2' %}activo{% endif %} reporte-link">2do semestre</a>
+                <a href="?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}&medicion=anual" class="med-btn {% if medicion == 'anual' %}activo{% endif %} reporte-link">Año completo</a>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="small fw-bold text-muted">Cols:</span>
+                <button class="btn-toggle-col activo" data-col="presup"><i class="bi bi-file-text"></i> Presup.</button>
+                <button class="btn-toggle-col activo" data-col="real"><i class="bi bi-cash"></i> Real</button>
+                <button class="btn-toggle-col activo" data-col="pct"><i class="bi bi-percent"></i> % Cumpl.</button>
+            </div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="cr-table-wrap">
+            <div class="cr-table-scroll">
+                <table class="cr-table">
+                    <thead>
+                        <tr>
+                            <th class="th-fixed" rowspan="2" style="text-align:left;">Origen / Tipo</th>
+                            {% for mes_nombre in meses_nombres %}
+                                <th colspan="3" class="{% if not forloop.first %}mes-sep{% endif %}" style="text-align:center;">
+                                    {{ mes_nombre|capfirst|slice:":3" }} {{ anio }}
+                                </th>
+                            {% endfor %}
+                            <th colspan="4" class="th-total mes-sep" style="text-align:center;">Total</th>
+                        </tr>
+                        <tr>
+                            {% for m in meses_nombres %}
+                                <th class="col-presup {% if not forloop.first %}mes-sep{% endif %}">Presup.</th>
+                                <th class="col-real">Real</th>
+                                <th class="col-pct">% Cumpl.</th>
+                            {% endfor %}
+                            <th class="col-presup mes-sep th-total">Presup.</th>
+                            <th class="col-real th-total">Real</th>
+                            <th class="col-var th-total">Var.</th>
+                            <th class="col-pct th-total">% Cumpl.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     {% for row in comparativo %}
                         {% if row.total_presup != 0 or row.total_real != 0 %}
-                            <tr {% if row.tipo == None and row.nombre == "Otros ingresos (Total)" %}class="table-info fw-bold"{% endif %}>
-                            <td>
+
+                        {% if row.tipo == None and row.nombre == "Otros ingresos (Total)" %}
+                        <tr class="cr-total-otros">
+                        {% elif row.tipo %}
+                        <tr class="cr-subtipo">
+                        {% else %}
+                        <tr class="cr-principal">
+                        {% endif %}
+
+                            <td class="td-fixed">
                                 {% if row.tipo %}
-                                    &nbsp;&nbsp;— {{ row.tipo }}
+                                    <i class="bi bi-dot" style="color:#1a7a45;"></i>{{ row.tipo }}
+                                {% elif row.nombre == "Otros ingresos (Total)" %}
+                                    <i class="bi bi-layers me-1"></i>Otros ingresos — Total
                                 {% else %}
-                                    {{ row.nombre }}
+                                    <i class="bi bi-building me-1"></i>{{ row.nombre }}
                                 {% endif %}
                             </td>
+
                             {% for mes in row.meses %}
-                            <td class="text-end text-secondary" style="font-size:0.95em;">
+                            <td class="cr-presup col-presup {% if not forloop.first %}mes-sep{% endif %}">
                                 {{ mes.presupuesto|floatformat:0|intcomma }}
                             </td>
-                            <td class="text-end fw-bold">
+                            <td class="cr-real col-real">
                                 {{ mes.real|floatformat:0|intcomma }}
                             </td>
-                            <td class="text-end">
+                            <td class="cr-pct col-pct">
                                 {% if mes.presupuesto %}
-                                    {{ mes.real|minus:mes.presupuesto|divide:mes.presupuesto|mul:100|floatformat:0 }}%
+                                    {% with pct=mes.real|divide:mes.presupuesto|mul:100 %}
+                                    <span class="pct-badge {% if pct >= 100 %}pos{% elif pct >= 80 %}neutro{% else %}neg{% endif %}">
+                                        {{ pct|floatformat:0 }}%
+                                    </span>
+                                    {% endwith %}
                                 {% elif mes.real %}
-                                    100%
-                                {% else %}
-                                    0%
+                                    <span class="pct-badge pos">100%</span>
                                 {% endif %}
                             </td>
-                        {% endfor %}
-                            <td class="total-anual-cell text-end text-secondary" style="font-size:0.95em;">
-                                {{ row.total_presup|floatformat:0|intcomma }}
+                            {% endfor %}
+
+                            <td class="cr-presup col-presup mes-sep td-total">{{ row.total_presup|floatformat:0|intcomma }}</td>
+                            <td class="cr-real col-real td-total">{{ row.total_real|floatformat:0|intcomma }}</td>
+                            <td class="td-total {% if row.total_var >= 0 %}cr-var-pos{% else %}cr-var-neg{% endif %}">
+                                {% if row.total_var >= 0 %}+{% endif %}{{ row.total_var|floatformat:0|intcomma }}
                             </td>
-                            <td class="total-anual-cell text-end fw-bold">
-                                {{ row.total_real|floatformat:0|intcomma }}
-                            </td>
-                            <td class="total-anual-cell text-end">
-                                {{ row.total_var|floatformat:0|intcomma }}
-                            </td>
-                            <td class="total-anual-cell text-end">
+                            <td class="cr-pct col-pct td-total">
                                 {% if row.total_presup %}
-                                    {{ row.total_var|divide:row.total_presup|mul:100|floatformat:0 }}%
+                                    {% with pct=row.total_real|divide:row.total_presup|mul:100 %}
+                                    <span class="pct-badge {% if pct >= 100 %}pos{% elif pct >= 80 %}neutro{% else %}neg{% endif %}">
+                                        {{ pct|floatformat:0 }}%
+                                    </span>
+                                    {% endwith %}
                                 {% elif row.total_real %}
-                                    100%
-                                {% else %}
-                                    0%
+                                    <span class="pct-badge pos">100%</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% endif %}
                     {% endfor %}
-                </tbody>
-                <tfoot class="table-secondary">
-                    <tr class="fw-bold">
-                        <th class="col-grupo text-end" id="td-total-general-label" colspan="3"><strong>Total mensual</strong></th>
-                        {% comment %} <th>Total mensual</th> {% endcomment %}
-                        {% for m in meses %}
-                        {% with mes_total=totales_meses|lookup:m %}
-                            <td class="text-end text-secondary" style="font-size:0.95em;">
-                                {{ mes_total.presupuesto|floatformat:0|intcomma }}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td class="td-fixed"><strong><i class="bi bi-calculator me-1"></i>Total General</strong></td>
+                            {% for m in meses %}
+                            {% with mes_total=totales_meses|lookup:m %}
+                                <td class="cr-presup col-presup {% if not forloop.first %}mes-sep{% endif %}"><strong>{{ mes_total.presupuesto|floatformat:0|intcomma }}</strong></td>
+                                <td class="cr-real col-real"><strong>{{ mes_total.real|floatformat:0|intcomma }}</strong></td>
+                                <td class="cr-pct col-pct">
+                                    {% if mes_total.presupuesto %}
+                                        {% with pct=mes_total.real|divide:mes_total.presupuesto|mul:100 %}
+                                        <span class="pct-badge {% if pct >= 100 %}pos{% elif pct >= 80 %}neutro{% else %}neg{% endif %}">
+                                            <strong>{{ pct|floatformat:0 }}%</strong>
+                                        </span>
+                                        {% endwith %}
+                                    {% endif %}
+                                </td>
+                            {% endwith %}
+                            {% endfor %}
+                            <td class="cr-presup col-presup mes-sep"><strong>{{ tot_anual.presupuesto|floatformat:0|intcomma }}</strong></td>
+                            <td class="cr-real col-real"><strong>{{ tot_anual.real|floatformat:0|intcomma }}</strong></td>
+                            <td class="{% if tot_anual.variacion >= 0 %}cr-var-pos{% else %}cr-var-neg{% endif %}">
+                                <strong>{% if tot_anual.variacion >= 0 %}+{% endif %}{{ tot_anual.variacion|floatformat:0|intcomma }}</strong>
                             </td>
-                            <td class="text-end fw-bold">
-                                {{ mes_total.real|floatformat:0|intcomma }}
-                            </td>
-                            <td class="text-end">
-                                {% if mes_total.presupuesto %}
-                                    {{ mes_total.variacion|divide:mes_total.presupuesto|mul:100|floatformat:0 }}%
-                                {% elif mes_total.real %}
-                                    100%
-                                {% else %}
-                                    0%
-                                {% endif %}
-                            </td>
-                        {% endwith %}
-                        {% endfor %}
-                            <td class="total-anual-cell text-end text-secondary" style="font-size:0.95em;">
-                                {{ tot_anual.presupuesto|floatformat:0|intcomma }}
-                            </td>
-                            <td class="total-anual-cell text-end fw-bold">
-                                {{ tot_anual.real|floatformat:0|intcomma }}
-                            </td>
-                            <td class="total-anual-cell text-end">
-                                {{ tot_anual.variacion|floatformat:0|intcomma }}
-                            </td>
-                            <td class="total-anual-cell text-end">
+                            <td class="cr-pct col-pct">
                                 {% if tot_anual.presupuesto %}
-                                    {{ tot_anual.variacion|divide:tot_anual.presupuesto|mul:100|floatformat:0 }}%
-                                {% elif tot_anual.real %}
-                                    100%
-                                {% else %}
-                                    0%
+                                    {% with pct=tot_anual.real|divide:tot_anual.presupuesto|mul:100 %}
+                                    <span class="pct-badge {% if pct >= 100 %}pos{% elif pct >= 80 %}neutro{% else %}neg{% endif %}">
+                                        <strong>{{ pct|floatformat:0 }}%</strong>
+                                    </span>
+                                    {% endwith %}
                                 {% endif %}
                             </td>
-                    </tr>
-                </tfoot>
-            </table>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </div>
+
     </div>
 
-    <!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'js/presup_vs_ingresos.js' %}"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay y enviar el formulario al cambiar cualquier filtro
-  document.querySelectorAll('#form-filtros select').forEach(function(sel) {
-    sel.addEventListener('change', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-      // Espera un pequeño tiempo para mostrar el overlay antes de enviar
-      setTimeout(function() {
-        sel.form.submit();
-      }, 50);
-    });
-  });
+    document.addEventListener('DOMContentLoaded', function() {
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
+        // Toggle columnas
+        document.querySelectorAll('.btn-toggle-col').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var col = btn.dataset.col;
+                var visible = btn.classList.toggle('activo');
+                document.querySelectorAll('.col-'+col).forEach(function(el) {
+                    el.style.display = visible ? '' : 'none';
+                });
+            });
+        });
 
-  // También para el submit manual (por si usas botón)
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+        // Loading overlay
+        document.querySelectorAll('select').forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                setTimeout(function() { sel.form && sel.form.submit(); }, 50);
+            });
+        });
+
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
     });
-  }
-});
-</script>
-{% comment %} <script>
-$(document).ready(function() {
-    $('#tabla-comparativa').DataTable({
-        fixedHeader: true,
-        paging: false,
-        searching: false,
-        info: false,
-        ordering: false,
-        scrollX: true
-    });
-});
-</script> {% endcomment %}
+    </script>
 </body>
 </html>

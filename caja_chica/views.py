@@ -16,6 +16,10 @@ from django.db.models import Sum
 from openpyxl import Workbook
 from django.core.paginator import Paginator
 from datetime import datetime
+from collections import OrderedDict
+from datetime import date
+from empresas.models import Empresa
+
 
 def imprimir_vale_caja(request, vale_id):
     vale = get_object_or_404(ValeCaja, id=vale_id)
@@ -812,3 +816,108 @@ def comprobar_vale(request, vale_id):
         form = ComprobarValeForm(initial=initial)
 
     return render(request, "caja_chica/comprobar_vale.html", {"form": form, "vale": vale})    
+
+
+
+
+#REPORTE DE CAJA CHICA
+@login_required
+def reporte_caja_chica(request):
+    es_super = request.user.is_superuser
+    empresa_id = request.session.get('empresa_id') if es_super else None
+
+    if not es_super:
+        empresa = request.user.perfilusuario.empresa
+        empresa_id = empresa.id
+    else:
+        empresa = Empresa.objects.filter(id=empresa_id).first() if empresa_id else None
+
+    # Filtros de fecha — por defecto enero a hoy
+    hoy = date.today()
+    fecha_inicio_str = request.GET.get('fecha_inicio', date(hoy.year, 1, 1).strftime('%Y-%m-%d'))
+    fecha_fin_str = request.GET.get('fecha_fin', hoy.strftime('%Y-%m-%d'))
+
+    try:
+        fecha_inicio = date.fromisoformat(fecha_inicio_str)
+        fecha_fin = date.fromisoformat(fecha_fin_str)
+    except ValueError:
+        fecha_inicio = date(hoy.year, 1, 1)
+        fecha_fin = hoy
+
+    # Base querysets
+    fondeos_qs = FondeoCajaChica.objects.filter(empresa_id=empresa_id) if empresa_id else FondeoCajaChica.objects.none()
+    gastos_qs = GastoCajaChica.objects.filter(fondeo__empresa_id=empresa_id) if empresa_id else GastoCajaChica.objects.none()
+    vales_qs = ValeCaja.objects.filter(fondeo__empresa_id=empresa_id) if empresa_id else ValeCaja.objects.none()
+
+    # Saldo inicial — fondeos acumulados ANTES del período
+    saldo_inicial = float(
+        fondeos_qs.filter(fecha__lt=fecha_inicio)
+        .aggregate(t=Sum('importe_cheque'))['t'] or 0
+    ) - float(
+        gastos_qs.filter(fecha__lt=fecha_inicio)
+        .aggregate(t=Sum('importe'))['t'] or 0
+    ) - float(
+        vales_qs.filter(fecha__lt=fecha_inicio)
+        .aggregate(t=Sum('importe'))['t'] or 0
+    )
+
+    # Fondeos del período (ingresos a caja)
+    fondeos_periodo = fondeos_qs.filter(fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+    total_fondeos = float(fondeos_periodo.aggregate(t=Sum('importe_cheque'))['t'] or 0)
+
+    # Gastos del período por categoría
+    gastos_periodo = gastos_qs.filter(fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+    vales_periodo = vales_qs.filter(fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+
+    # Agrupar por tipo_gasto
+    estructura = OrderedDict()
+
+    for g in gastos_periodo.values(
+        'tipo_gasto__subgrupo__grupo__nombre',
+        'tipo_gasto__subgrupo__nombre',
+        'tipo_gasto__nombre'
+    ).annotate(total=Sum('importe')).order_by('tipo_gasto__subgrupo__grupo__nombre'):
+        grupo = (g['tipo_gasto__subgrupo__grupo__nombre'] or 'Sin grupo').title()
+        subgrupo = (g['tipo_gasto__subgrupo__nombre'] or 'Sin subgrupo').title()
+        tipo = (g['tipo_gasto__nombre'] or 'Sin tipo').title()
+        estructura.setdefault(grupo, OrderedDict()).setdefault(subgrupo, {})
+        estructura[grupo][subgrupo][tipo] = estructura[grupo][subgrupo].get(tipo, 0) + float(g['total'])
+
+    for v in vales_periodo.values(
+        'tipo_gasto__subgrupo__grupo__nombre',
+        'tipo_gasto__subgrupo__nombre',
+        'tipo_gasto__nombre'
+    ).annotate(total=Sum('importe')).order_by('tipo_gasto__subgrupo__grupo__nombre'):
+        grupo = (v['tipo_gasto__subgrupo__grupo__nombre'] or 'Sin grupo').title()
+        subgrupo = (v['tipo_gasto__subgrupo__nombre'] or 'Sin subgrupo').title()
+        tipo = (v['tipo_gasto__nombre'] or 'Sin tipo').title()
+        estructura.setdefault(grupo, OrderedDict()).setdefault(subgrupo, {})
+        estructura[grupo][subgrupo][tipo] = estructura[grupo][subgrupo].get(tipo, 0) + float(v['total'])
+
+    # Convertir a listas para el template
+    for grupo in estructura:
+        for subgrupo in estructura[grupo]:
+            tipos_dict = estructura[grupo][subgrupo]
+            estructura[grupo][subgrupo] = [
+                {'tipo': tipo, 'total': total} for tipo, total in tipos_dict.items()
+            ]
+
+    total_gastos = sum(
+        sum(t['total'] for t in tipos)
+        for subgrupos in estructura.values()
+        for tipos in subgrupos.values()
+    )
+
+    saldo_final = saldo_inicial + total_fondeos - total_gastos
+
+    return render(request, 'caja_chica/reporte_caja_chica.html', {
+        'empresa': empresa,
+        'fecha_inicio': fecha_inicio_str,
+        'fecha_fin': fecha_fin_str,
+        'saldo_inicial': saldo_inicial,
+        'total_fondeos': total_fondeos,
+        'fondeos_periodo': fondeos_periodo,
+        'estructura': estructura,
+        'total_gastos': total_gastos,
+        'saldo_final': saldo_final,
+    })

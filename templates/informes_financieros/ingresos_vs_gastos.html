@@ -1,82 +1,204 @@
 {% load static %}
 {% load humanize %}
 {% load custom_filters %}
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 31/07/2025
-      Date of modification: 19/08/2025
-      Description:  Income vs expenses
-    -->
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ingresos vs gastos</title>
-    <!-- Bootstrap base styles -->
+    <title>Ingresos vs Gastos — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* HEADER */
+        .ivg-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 50%, #27ae60 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(15,45,82,0.18);
+            position: relative; overflow: hidden;
+        }
+        .ivg-header::before {
+            content:''; position:absolute; top:-60px; right:-60px;
+            width:240px; height:240px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .ivg-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .ivg-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+        .ivg-periodo { font-size:0.85rem; opacity:0.85; }
+
+        /* TOOLBAR */
+        .ivg-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .ivg-toolbar .divider { width:1px; height:28px; background:#e5e7eb; }
+        .med-btn {
+            padding:5px 14px; border-radius:20px; border:1px solid #e2e8f0;
+            background:white; color:#4a6080; font-size:0.78rem; font-weight:500;
+            cursor:pointer; transition:all 0.15s; text-decoration:none; display:inline-block;
+        }
+        .med-btn.activo { background:#1a5276; color:white; border-color:#1a5276; }
+        .med-btn:hover:not(.activo) { background:#e8f0f8; border-color:#1a5276; }
+
+        /* KPI STRIP */
+        .kpi-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }
+        @media (max-width:768px) { .kpi-strip { grid-template-columns:1fr; } }
+
+        .kpi-ing {
+            background: linear-gradient(135deg, #eafaf1, #d5f5e3);
+            border-radius: 16px; padding: 20px 24px;
+            border-left: 5px solid #1e8449;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .kpi-gto {
+            background: linear-gradient(135deg, #fdf0f0, #fad7d7);
+            border-radius: 16px; padding: 20px 24px;
+            border-left: 5px solid #c0392b;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .kpi-res {
+            border-radius: 16px; padding: 20px 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .kpi-res.pos { background:linear-gradient(135deg,#e8f4fd,#d0eaf8); border-left:5px solid #2471a3; }
+        .kpi-res.neg { background:linear-gradient(135deg,#fdf0f0,#fad7d7); border-left:5px solid #c0392b; }
+
+        .kpi-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; margin-bottom:4px; }
+        .kpi-val   { font-size:1.6rem; font-weight:700; line-height:1.2; }
+        .kpi-sub   { font-size:0.75rem; color:#9ca3af; margin-top:6px; }
+        .kpi-bar   { height:5px; border-radius:3px; margin-top:10px; background:#e5e7eb; overflow:hidden; }
+        .kpi-bar-fill { height:100%; border-radius:3px; transition:width 0.6s ease; }
+
+        /* GRÁFICAS */
+        .chart-card {
+            background: white; border-radius: 16px;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+            overflow: hidden; height: 100%;
+        }
+        .chart-header {
+            padding: 14px 20px; border-bottom: 1px solid #f1f5f9;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .chart-header.ing { background: linear-gradient(135deg,#eafaf1,#f0faf5); }
+        .chart-header.gto { background: linear-gradient(135deg,#fdf0f0,#fef5f5); }
+        .chart-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1rem; }
+        .chart-icon.ing { background:#1e8449; color:white; }
+        .chart-icon.gto { background:#c0392b; color:white; }
+        .chart-body { padding: 16px; }
+
+        /* Tabla mini ingresos */
+        .mini-table { font-size:0.8rem; width:100%; }
+        .mini-table td { padding:5px 8px; border-bottom:1px solid #f1f5f9; }
+        .mini-table td:last-child { text-align:right; font-weight:600; }
+        .mini-table tr:last-child td { border-bottom:none; font-weight:700; }
+        .mini-bar { height:4px; border-radius:2px; margin-top:3px; }
+        .mini-bar.ing { background:#1e8449; }
+        .mini-bar.gto { background:#c0392b; }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .ivg-header { background:#0f2d52 !important; -webkit-print-color-adjust:exact; }
+        }
+    </style>
 </head>
 <body>
     {% if request.is_portal_acceso %}
-        <!-- Navbar del portal -->
         <div style="background:#152A52; padding:12px 24px; display:flex; justify-content:space-between; align-items:center;">
-            <span style="color:white; font-weight:bold;">
-                <i class="bi bi-building me-1"></i> GESAC Portal — {{ request.empresa_activa_portal.nombre }}
-            </span>
-            <a href="{% url 'acceso_dashboard' %}" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-arrow-left me-1"></i> Volver al portal
-            </a>
+            <span style="color:white; font-weight:bold;"><i class="bi bi-building me-1"></i> GESAC Portal — {{ request.empresa_activa_portal.nombre }}</span>
+            <a href="{% url 'acceso_dashboard' %}" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-left me-1"></i> Volver al portal</a>
         </div>
     {% else %}
         {% include 'navbar.html' %}
     {% endif %}
-
     {% include 'loading_overlay.html' %}
 
-    <div class="container-fluid mt-4">
-        <h2>Grafico Ingresos vs Gastos</h2>
+    <div class="container-fluid mt-3 px-3 pb-5">
 
-        <!-- Pastel-style flow header -->
-        <div class="d-flex align-items-center bg-light rounded p-3 mb-3 shadow-sm flujo-financiero" style="background-color: var(--verdePastel);">
-            <i class="bi bi-bar-chart-line-fill text-primary me-3 fs-4"></i>
-            <div>
-                <h5 class="mb-1">Flujo financiero</h5>
-                {% if mes_letra %}
-                    <small class="text-muted">Periodo: <strong>{{ mes_letra }}</strong></small>
-                {% else %}
-                    <small class="text-muted">Selecciona un periodo para visualizar</small>
-                {% endif %}
+        <!-- HEADER -->
+        <div class="ivg-header">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    {% if empresa_id %}
+                    <div class="ivg-empresa"><i class="bi bi-building me-1"></i>
+                        {% for emp in empresas %}{% if emp.id|stringformat:"s" == empresa_id %}{{ emp.nombre }}{% endif %}{% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="ivg-titulo"><i class="bi bi-bar-chart-line me-2"></i>Ingresos vs Gastos — Flujo Financiero</div>
+                    <div class="ivg-periodo">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        {% if mes_letra %}{{ mes_letra }}{% else %}Selecciona un período{% endif %}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 no-print">
+                    {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button> {% endcomment %}
+                </div>
             </div>
         </div>
 
-        <form id="form-filtros" method="get" class="row g-2 mb-3 align-items-end">
-            <div class="col-auto">
-            {% if request.user.is_superuser %}
-                <select name="empresa" class="form-select" style="width:auto;">
+        <!-- KPI STRIP -->
+        <div class="kpi-strip">
+            <div class="kpi-ing">
+                <div class="kpi-label"><i class="bi bi-arrow-down-circle me-1"></i>Total ingresos</div>
+                <div class="kpi-val text-success">${{ total_ingresos|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">Cuotas + Otros ingresos + Depósitos</div>
+                <div class="kpi-bar"><div class="kpi-bar-fill" style="background:#1e8449; width:100%;"></div></div>
+            </div>
+            <div class="kpi-gto">
+                <div class="kpi-label"><i class="bi bi-arrow-up-circle me-1"></i>Total egresos</div>
+                <div class="kpi-val text-danger">${{ total_egresos|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">Gastos + Caja chica + Vales</div>
+                {% if total_ingresos > 0 %}
+                {% widthratio total_egresos total_ingresos 100 as pct_gto %}
+                <div class="kpi-bar"><div class="kpi-bar-fill" style="background:#c0392b; width:{{ pct_gto }}%;"></div></div>
+                {% endif %}
+            </div>
+            <div class="kpi-res {% if saldo >= 0 %}pos{% else %}neg{% endif %}">
+                <div class="kpi-label"><i class="bi bi-calculator me-1"></i>Resultado del período</div>
+                <div class="kpi-val {% if saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                    {% if saldo >= 0 %}+{% endif %}${{ saldo|floatformat:2|intcomma }}
+                </div>
+                <div class="kpi-sub">
+                    {% if saldo >= 0 %}
+                        <i class="bi bi-check-circle text-success me-1"></i>Superávit — ingresos superan egresos
+                    {% else %}
+                        <i class="bi bi-exclamation-triangle text-danger me-1"></i>Déficit — egresos superan ingresos
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="ivg-toolbar no-print">
+            <form id="form-filtros" method="get" class="d-flex align-items-center gap-2 flex-wrap">
+                {% if request.user.is_superuser %}
+                <select name="empresa" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     <option value="">Todas las empresas</option>
                     {% for emp in empresas %}
                         <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
                     {% endfor %}
                 </select>
-            {% endif %}
-            </div>
-            <div class="col-auto">
-                <button type="submit" name="periodo" value="mes_actual" class="btn btn-outline-primary"
-                    {% if periodo == 'mes_actual' %}disabled{% endif %}>Mes actual</button>
-                <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary"
-                    {% if periodo == 'periodo_actual' %}disabled{% endif %}>Periodo actual</button>
-            </div>
-        
-            <div class="col-auto">   
+                <div class="divider"></div>
+                {% endif %}
+
+                <span class="small fw-bold text-muted">Período:</span>
+                <button type="submit" name="periodo" value="mes_actual" class="med-btn {% if periodo == 'mes_actual' %}activo{% endif %}">
+                    Mes actual
+                </button>
+                <button type="submit" name="periodo" value="periodo_actual" class="med-btn {% if periodo == 'periodo_actual' %}activo{% endif %}">
+                    Período actual
+                </button>
+
+                <div class="divider"></div>
+
                 {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
-                <select name="mes" class="form-select" style="width:auto;">
+                <select name="mes" class="form-select form-select-sm" style="width:auto;">
                     <option value="">Mes</option>
                     {% for m in 1|get_range:13 %}
                         <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
@@ -85,172 +207,249 @@
                     {% endfor %}
                 </select>
                 {% endwith %}
-            </div>
-            <div class="col-auto">
-                <select name="anio" class="form-select" style="width:auto;">
+                <select name="anio" class="form-select form-select-sm" style="width:auto;">
                     <option value="">Año</option>
                     {% for y in 2022|get_range:2030 %}
                         <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
-                    {% if mes and anio %}
-                        <div class="alert alert-info mb-2">
-                            <strong>Periodo:</strong> {{ mes }}/{{ anio }}
-                        </div>
-                    {% endif %}
                 </select>
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-outline-primary">
-                    <i class="bi bi-funnel-fill"></i> Filtrar periodo
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtrar
                 </button>
-            </div>
-        </form>
-        <!-- Pastel-style financial summary card -->
-        <div class="card summary-card summary-pos">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="card-title mb-0">
-                <i class="bi bi-wallet2 me-2"></i>Resumen financiero
-                </h5>
+            </form>
+        </div>
+
+        <!-- GRÁFICAS + DETALLE -->
+        <div class="row g-4">
+
+            <!-- INGRESOS -->
+            <div class="col-12 col-lg-6">
+                <div class="chart-card">
+                    <div class="chart-header ing">
+                        <div class="chart-icon ing"><i class="bi bi-arrow-down-circle-fill"></i></div>
+                        <div>
+                            <div class="fw-bold text-success">Ingresos por origen</div>
+                            <div class="small text-muted">Total: ${{ total_ingresos|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartIngresos" style="max-height:300px;"></canvas>
+                        <hr class="my-3">
+                        <!-- Tabla detalle ingresos -->
+                        <table class="mini-table">
+                            {% for origen, monto in ingresos_por_origen.items %}
+                            <tr>
+                                <td>
+                                    <div>{{ origen|capfirst }}</div>
+                                    {% if total_ingresos > 0 %}
+                                    {% widthratio monto total_ingresos 100 as pct %}
+                                    <div class="mini-bar ing" style="width:{{ pct }}%;"></div>
+                                    {% endif %}
+                                </td>
+                                <td>${{ monto|floatformat:2|intcomma }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr style="background:#f0faf5;">
+                                <td><strong>Total ingresos</strong></td>
+                                <td><strong>${{ total_ingresos|floatformat:2|intcomma }}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <div class="card-body">
-                <div class="summary-metric text-success">
-                <span><i class="bi bi-arrow-down-circle me-2"></i>Total ingresos</span>
-                <strong>{{ total_ingresos|floatformat:2|intcomma }}</strong>
+            <!-- GASTOS -->
+            <div class="col-12 col-lg-6">
+                <div class="chart-card">
+                    <div class="chart-header gto">
+                        <div class="chart-icon gto"><i class="bi bi-arrow-up-circle-fill"></i></div>
+                        <div>
+                            <div class="fw-bold text-danger">Gastos por cuenta</div>
+                            <div class="small text-muted">Total: ${{ total_egresos|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chartGastos" style="max-height:300px;"></canvas>
+                        <hr class="my-3">
+                        <!-- Tabla detalle gastos por grupo -->
+                        <table class="mini-table">
+                            {% for grupo, subgrupos in estructura_gastos.items %}
+                            <tr style="background:#fdf5f5;">
+                                <td colspan="2" style="font-weight:700; font-size:0.78rem; text-transform:uppercase; color:#c0392b; letter-spacing:0.04em;">
+                                    <i class="bi bi-folder2-open me-1"></i>{{ grupo }}
+                                </td>
+                            </tr>
+                            {% for subgrupo, tipos in subgrupos.items %}
+                                {% for tipo in tipos %}
+                                <tr>
+                                    <td style="padding-left:20px;">
+                                        <div><i class="bi bi-dot text-danger"></i>{{ subgrupo }} — {{ tipo.tipo }}</div>
+                                        {% if total_egresos > 0 %}
+                                        {% widthratio tipo.total total_egresos 100 as pct %}
+                                        <div class="mini-bar gto" style="width:{{ pct }}%;"></div>
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ tipo.total|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                            {% endfor %}
+                            <tr style="background:#fdf0f0;">
+                                <td><strong>Total egresos</strong></td>
+                                <td><strong>${{ total_egresos|floatformat:2|intcomma }}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
                 </div>
-                <div class="summary-metric text-danger">
-                <span><i class="bi bi-calculator me-2"></i>Total egresos</span>
-                <strong>{{ total_egresos|floatformat:2|intcomma }}</strong>
-                </div>
-                <div class="summary-metric">
-                <span><i class="bi bi-graph-up-arrow me-2"></i>Resultado</span>
-                <strong>{{ saldo|floatformat:2|intcomma }}</strong>
+            </div>
+
+        </div>
+
+        <!-- BARRA RESULTADO -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm" style="border-radius:16px; overflow:hidden;">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div>
+                                <div class="small text-muted text-uppercase fw-bold letter-spacing-1">Resultado del período</div>
+                                <div class="small text-muted">{{ mes_letra }}</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-4 flex-wrap">
+                                <div class="text-center">
+                                    <div class="small text-muted">Ingresos</div>
+                                    <div class="fw-bold text-success fs-5">${{ total_ingresos|floatformat:2|intcomma }}</div>
+                                </div>
+                                <div class="text-muted fs-4">−</div>
+                                <div class="text-center">
+                                    <div class="small text-muted">Egresos</div>
+                                    <div class="fw-bold text-danger fs-5">${{ total_egresos|floatformat:2|intcomma }}</div>
+                                </div>
+                                <div class="text-muted fs-4">=</div>
+                                <div class="text-center">
+                                    <div class="small text-muted">Resultado</div>
+                                    <div class="fw-bold fs-4 {% if saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                                        {% if saldo >= 0 %}+{% endif %}${{ saldo|floatformat:2|intcomma }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Barra visual -->
+                        {% if total_ingresos > 0 %}
+                        <div class="mt-3">
+                            <div style="height:10px; border-radius:5px; background:#e5e7eb; overflow:hidden; display:flex;">
+                                {% widthratio total_egresos total_ingresos 100 as pct_e %}
+                                <div style="width:{{ pct_e }}%; background:linear-gradient(90deg,#c0392b,#e74c3c); border-radius:5px 0 0 5px;"></div>
+                                <div style="flex:1; background:linear-gradient(90deg,#1e8449,#27ae60); border-radius:0 5px 5px 0;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
+                                <small class="text-danger">Egresos {{ pct_e }}%</small>
+                                <small class="text-success">Margen {% widthratio saldo total_ingresos 100 as pct_m %}{{ pct_m }}%</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="row" style="height: 70vh;" >
-            <div class="col-6 d-flex flex-column align-items-center justify-content-center">
-                <h5>Ingresos por origen</h5>
-                <canvas id="chartIngresos" style="width:100% !important; height:60vh !important;"></canvas>
-            </div>
-             <div class="col-6 d-flex flex-column align-items-center justify-content-center">
-                <h5>Gastos por cuenta</h5>
-                <canvas id="chartGastos" style="width:100% !important; height:60vh !important;"></canvas>
-            </div>
-            
-            
-        </div>    
     </div>
-    
+
     {% if not request.is_portal_acceso %}
         {% include 'tool_bar.html' %}
     {% endif %}
-    
-    <!-- Scripts -->
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Ingresos por origen
-    const ingresosLabels = [{% for origen in ingresos_por_origen.keys %}'{{ origen|capfirst }}',{% endfor %}];
-    const ingresosData = [{% for monto in ingresos_por_origen.values %}{{ monto }},{% endfor %}];
+    document.addEventListener('DOMContentLoaded', function() {
 
-    const ctxIngresos = document.getElementById('chartIngresos');
-    new Chart(ctxIngresos, {
-        type: 'bar',
-        data: {
-            labels: ingresosLabels,
-            datasets: [{
-                label: 'Ingresos',
-                data: ingresosData,
-                backgroundColor: '#198754'
-            }]
-        },
-        options: {
-            indexAxis: 'y',
+        // Loading overlay
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
 
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                    display: false,
+        // Gráfica ingresos
+        const ingLabels = [{% for origen in ingresos_por_origen.keys %}'{{ origen|capfirst }}',{% endfor %}];
+        const ingData   = [{% for monto in ingresos_por_origen.values %}{{ monto }},{% endfor %}];
+        new Chart(document.getElementById('chartIngresos'), {
+            type: 'bar',
+            data: {
+                labels: ingLabels,
+                datasets: [{ label: 'Ingresos', data: ingData,
+                    backgroundColor: 'rgba(30,132,73,0.85)',
+                    borderRadius: 6, borderSkipped: false }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' $' + ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:2});
+                            }
+                        }
                     }
+                },
+                scales: {
+                    x: { display: false, grid: { display: false } },
+                    y: { ticks: { font: { size: 11 }, color: '#374151' }, grid: { display: false } }
                 }
             }
-        }
-    });
+        });
 
-    // Gastos por tipo
-    //const gastosLabels = [{% for g in gastos_por_tipo %}'{{ g.tipo|capfirst }}',{% endfor %}];
-    //const gastosData = [{% for g in gastos_por_tipo %}{{ g.total }},{% endfor %}];
-    const gastosLabels = [
-    {% for grupo, subgrupos in estructura_gastos.items %}
-        {% for subgrupo, tipos in subgrupos.items %}
-            {% for tipo in tipos %}
-                '{{ subgrupo }} - {{ tipo.tipo }}',
+        // Gráfica gastos
+        const gtoLabels = [
+            {% for grupo, subgrupos in estructura_gastos.items %}
+                {% for subgrupo, tipos in subgrupos.items %}
+                    {% for tipo in tipos %}
+                        '{{ subgrupo }} - {{ tipo.tipo }}',
+                    {% endfor %}
+                {% endfor %}
             {% endfor %}
-        {% endfor %}
-    {% endfor %}
-    ];
-    const gastosData = [
-    {% for grupo, subgrupos in estructura_gastos.items %}
-        {% for subgrupo, tipos in subgrupos.items %}
-            {% for tipo in tipos %}
-                {{ tipo.total }},
+        ];
+        const gtoData = [
+            {% for grupo, subgrupos in estructura_gastos.items %}
+                {% for subgrupo, tipos in subgrupos.items %}
+                    {% for tipo in tipos %}
+                        {{ tipo.total }},
+                    {% endfor %}
+                {% endfor %}
             {% endfor %}
-        {% endfor %}
-    {% endfor %}
-];
-    const ctxGastos = document.getElementById('chartGastos');
-    new Chart(ctxGastos, {
-        type: 'bar',
-        data: {
-            labels: gastosLabels,
-            datasets: [{
-                label: 'Gastos',
-                data: gastosData,
-                backgroundColor: '#dc3545'
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-        
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        display: false,
+        ];
+        new Chart(document.getElementById('chartGastos'), {
+            type: 'bar',
+            data: {
+                labels: gtoLabels,
+                datasets: [{ label: 'Gastos', data: gtoData,
+                    backgroundColor: 'rgba(192,57,43,0.85)',
+                    borderRadius: 6, borderSkipped: false }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' $' + ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:2});
+                            }
+                        }
                     }
+                },
+                scales: {
+                    x: { display: false, grid: { display: false } },
+                    y: { ticks: { font: { size: 10 }, color: '#374151' }, grid: { display: false } }
                 }
             }
-        }
+        });
     });
     </script>
-    <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
-
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>
-    </div>
 </body>
 </html>

@@ -3,163 +3,472 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Comparativo Presupuestal Gastos</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparativo Presupuestal Gastos — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* HEADER */
+        .ca-header {
+            background: linear-gradient(135deg, #1a0533 0%, #4a1080 60%, #7b2fbe 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(74,16,128,0.22);
+            position: relative; overflow: hidden;
+        }
+        .ca-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .ca-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .ca-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* TOOLBAR */
+        .ca-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+
+        /* KPI STRIP */
+        .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+        @media (max-width:768px) { .kpi-strip { grid-template-columns:repeat(2,1fr); } }
+        .kpi-box { background:white; border-radius:14px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid transparent; }
+        .kpi-box.p1 { border-top-color:#4a1080; }
+        .kpi-box.p2 { border-top-color:#c0392b; }
+        .kpi-box.p3 { border-top-color:#2471a3; }
+        .kpi-box.p4 { border-top-color:#d4ac0d; }
+        .kpi-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .kpi-val   { font-size:1.35rem; font-weight:700; line-height:1.2; margin:4px 0 2px; }
+        .kpi-sub   { font-size:0.75rem; color:#9ca3af; }
+
+        /* TABLA */
+        .ca-table-wrap { background:white; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.08); overflow:hidden; }
+        .ca-table-scroll { overflow-x:auto; max-height:calc(100vh - 320px); overflow-y:auto; }
+
+        table.ca-table { border-collapse:separate; border-spacing:0; width:100%; font-size:0.78rem; }
+
+        table.ca-table thead th {
+            position:sticky; top:0; z-index:10;
+            background:#1a0533; color:white;
+            font-weight:600; font-size:0.7rem; text-transform:uppercase;
+            letter-spacing:0.05em; padding:10px 12px; white-space:nowrap;
+            border-bottom:2px solid #7b2fbe;
+        }
+
+        /* Sticky primera col */
+        table.ca-table thead th:nth-child(1),
+        table.ca-table thead th:nth-child(2),
+        table.ca-table tbody td:nth-child(1),
+        table.ca-table tbody td:nth-child(2),
+        table.ca-table tfoot td:nth-child(1),
+        table.ca-table tfoot td:nth-child(2) { position:sticky; z-index:11; }
+
+        table.ca-table thead th:nth-child(1),
+        table.ca-table tbody td:nth-child(1),
+        table.ca-table tfoot td:nth-child(1) { left:0; min-width:110px; background-clip:padding-box; }
+
+        table.ca-table thead th:nth-child(2),
+        table.ca-table tbody td:nth-child(2),
+        table.ca-table tfoot td:nth-child(2) { left:110px; min-width:200px; border-right:2px solid #e2e8f0; background-clip:padding-box; }
+
+        table.ca-table thead th:nth-child(1),
+        table.ca-table thead th:nth-child(2) { background:#0d0022; z-index:20; }
+
+        /* Filas */
+        tr.ca-global td { background:linear-gradient(90deg,#1a0533,#4a1080); color:white; font-weight:700; font-size:0.8rem; padding:11px 12px; border-bottom:1px solid #2d0a4e; }
+        tr.ca-global td:nth-child(1),tr.ca-global td:nth-child(2) { background:#12022a; }
+
+        tr.ca-grupo td { background:linear-gradient(90deg,#2d0a4e,#6b21a8); color:white; font-weight:700; font-size:0.77rem; padding:9px 12px; border-bottom:1px solid #4a1080; }
+        tr.ca-grupo td:nth-child(1),tr.ca-grupo td:nth-child(2) { background:#1a0533; }
+
+        tr.ca-subgrupo td { background:#f3e8ff; color:#2d0a4e; font-weight:600; font-size:0.77rem; padding:7px 12px; border-bottom:1px solid #e9d5ff; }
+        tr.ca-subgrupo td:nth-child(1),tr.ca-subgrupo td:nth-child(2) { background:#ede0ff; }
+
+        tr.ca-tipo td { background:white; color:#374151; font-size:0.77rem; padding:6px 12px; border-bottom:1px solid #f1f5f9; transition:background 0.1s; }
+        tr.ca-tipo:hover td { background:#faf5ff; }
+        tr.ca-tipo td:nth-child(1),tr.ca-tipo td:nth-child(2) { background:#fdfcff; }
+        tr.ca-tipo:hover td:nth-child(1),tr.ca-tipo:hover td:nth-child(2) { background:#f5eeff; }
+
+        tfoot tr td { background:linear-gradient(90deg,#d4ac0d,#f0c330); color:#5a3e00; font-weight:700; font-size:0.78rem; padding:10px 12px; position:sticky; bottom:0; z-index:5; border-top:2px solid #c8a000; }
+        tfoot tr td:nth-child(1),tfoot tr td:nth-child(2) { background:#b8960a; z-index:15; color:white; }
+
+        /* Celdas numéricas */
+        td.num { text-align:right; white-space:nowrap; }
+        td.num-bold { text-align:right; font-weight:700; white-space:nowrap; }
+
+        /* Badges variación */
+        .var-badge {
+            display:inline-block; padding:2px 7px; border-radius:10px;
+            font-size:0.68rem; font-weight:700; white-space:nowrap;
+        }
+        .var-badge.pos { background:#fdf0f0; color:#c0392b; } /* gasto subió = malo */
+        .var-badge.neg { background:#eafaf1; color:#1e8449; } /* gasto bajó = bueno */
+        .var-badge.neu { background:#f0f4f8; color:#6b7280; }
+
+        /* Para ejecución: real vs nuevo ppto */
+        .ejec-badge {
+            display:inline-block; padding:2px 7px; border-radius:10px;
+            font-size:0.68rem; font-weight:700; white-space:nowrap;
+        }
+        .ejec-badge.alto  { background:#fdf0f0; color:#c0392b; } /* gastó más que ppto */
+        .ejec-badge.bajo  { background:#eafaf1; color:#1e8449; } /* gastó menos */
+        .ejec-badge.igual { background:#f0f4f8; color:#6b7280; }
+
+        /* Separador columnas */
+        .sep-left { border-left:2px solid #e8e0f8 !important; }
+
+        /* Toggle grupos */
+        .btn-colapsar {
+            width:20px; height:20px; border-radius:4px; border:none;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:0.65rem; cursor:pointer; transition:all 0.15s;
+            padding:0; flex-shrink:0; margin-right:6px;
+        }
+        tr.ca-grupo .btn-colapsar { background:rgba(255,255,255,0.2); color:white; }
+        tr.ca-grupo .btn-colapsar:hover { background:rgba(255,255,255,0.35); }
+        tr.ca-subgrupo .btn-colapsar { background:#7b2fbe; color:white; }
+        tr.ca-subgrupo .btn-colapsar:hover { background:#4a1080; }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .ca-header { background:#1a0533 !important; -webkit-print-color-adjust:exact; }
+            .ca-table-scroll { max-height:none; overflow:visible; }
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    
-<div class="container mt-4">
-  <h4>Comparativo Presupuestal Gastos — {{ empresa.nombre }} - Año {{ anio }} vs Año {{ anio_ant }}</h4>
 
-  <form id="form-filtros" method="get" class="row g-2 mb-3">
-    <div class="col-auto">
-      <label class="form-label">Seleccionar año</label>
-      <input type="number" name="anio" value="{{ anio }}" class="form-control" />
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="ca-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="ca-empresa"><i class="bi bi-building me-1"></i>{{ empresa.nombre }}</div>
+                    <div class="ca-titulo"><i class="bi bi-bar-chart-steps me-2"></i>Comparativo Presupuestal de Gastos — {{ anio }} vs {{ anio_ant }}</div>
+                    <div style="font-size:0.78rem;opacity:0.75;margin-top:3px;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Ppto {{ anio }} vs Ppto {{ anio_ant }} — Ppto {{ anio }} vs Gasto real {{ anio_ant }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 align-items-center no-print flex-wrap">
+                    <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI STRIP -->
+        <div class="kpi-strip mb-4">
+            <div class="kpi-box p1">
+                <div class="kpi-label"><i class="bi bi-file-text me-1"></i>Ppto {{ anio_ant }}</div>
+                <div class="kpi-val" style="color:#4a1080;">${{ ppto_anterior|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">Presupuesto año anterior</div>
+            </div>
+            <div class="kpi-box p2">
+                <div class="kpi-label"><i class="bi bi-receipt me-1"></i>Gasto real {{ anio_ant }}</div>
+                <div class="kpi-val text-danger">${{ real_anterior|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">Gasto ejecutado año anterior</div>
+            </div>
+            <div class="kpi-box p3">
+                <div class="kpi-label"><i class="bi bi-file-earmark-check me-1"></i>Ppto {{ anio }}</div>
+                <div class="kpi-val text-primary">${{ ppto_actual|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">
+                    {% if pct_ppto_global is not None %}
+                        {% if pct_ppto_global > 0 %}<span class="text-danger">▲ +{{ pct_ppto_global|floatformat:1 }}%</span>{% elif pct_ppto_global < 0 %}<span class="text-success">▼ {{ pct_ppto_global|floatformat:1 }}%</span>{% else %}Sin variación{% endif %}
+                        vs ppto {{ anio_ant }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="kpi-box p4">
+                <div class="kpi-label"><i class="bi bi-arrow-left-right me-1"></i>Ppto {{ anio }} vs Gasto {{ anio_ant }}</div>
+                <div class="kpi-val {% if dif_real_global >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if dif_real_global >= 0 %}+{% endif %}${{ dif_real_global|floatformat:0|intcomma }}
+                </div>
+                <div class="kpi-sub">{% if pct_ejec_global is not None %}{% if pct_ejec_global > 0 %}+{% endif %}{{ pct_ejec_global|floatformat:1 }}% vs gasto real{% endif %}</div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="ca-toolbar no-print">
+            <form method="get" class="d-flex align-items-center gap-2" id="form-filtros">
+                <label class="small fw-bold text-muted mb-0">Año:</label>
+                <input type="number" name="anio" value="{{ anio }}" class="form-control form-control-sm" style="width:90px;">
+                {% if request.user.is_superuser %}
+                <label class="small fw-bold text-muted mb-0">Empresa ID:</label>
+                <input type="text" name="empresa" value="{{ empresa.id }}" class="form-control form-control-sm" style="width:80px;">
+                {% endif %}
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Mostrar
+                </button>
+            </form>
+            <div class="ms-auto d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" id="btn-expandir-todo">
+                    <i class="bi bi-arrows-expand me-1"></i>Expandir todo
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="btn-colapsar-todo">
+                    <i class="bi bi-arrows-collapse me-1"></i>Colapsar todo
+                </button>
+            </div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="ca-table-wrap">
+            <div class="ca-table-scroll">
+                <table class="ca-table">
+                    <thead>
+                        <tr>
+                            <th>Nivel</th>
+                            <th>Descripción</th>
+                            <th class="text-end">Ppto {{ anio_ant }}</th>
+                            <th class="text-end">Gasto {{ anio_ant }}</th>
+                            <th class="text-end sep-left">Ppto {{ anio }}</th>
+                            <th class="text-end">$ Var Ppto</th>
+                            <th class="text-center">% Var Ppto</th>
+                            <th class="text-end sep-left">$ vs Gasto {{ anio_ant }}</th>
+                            <th class="text-center">% vs Gasto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <!-- GLOBAL -->
+                        <tr class="ca-global">
+                            <td><i class="bi bi-globe me-1"></i>Global</td>
+                            <td><strong>Total anual</strong></td>
+                            <td class="num">${{ ppto_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num">${{ real_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num-bold sep-left">${{ ppto_actual|floatformat:0|intcomma }}</td>
+                            <td class="num {% if dif_ppto_global >= 0 %}text-warning{% else %}text-success{% endif %}">
+                                {% if dif_ppto_global >= 0 %}+{% endif %}${{ dif_ppto_global|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if pct_ppto_global is not None %}
+                                <span class="var-badge {% if pct_ppto_global > 0 %}pos{% elif pct_ppto_global < 0 %}neg{% else %}neu{% endif %}">
+                                    {% if pct_ppto_global > 0 %}+{% endif %}{{ pct_ppto_global|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="var-badge neu">N/A</span>{% endif %}
+                            </td>
+                            <td class="num sep-left {% if dif_real_global >= 0 %}text-success{% else %}text-warning{% endif %}">
+                                {% if dif_real_global >= 0 %}+{% endif %}${{ dif_real_global|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if pct_ejec_global is not None %}
+                                <span class="ejec-badge {% if pct_ejec_global > 0 %}alto{% elif pct_ejec_global < 0 %}bajo{% else %}igual{% endif %}">
+                                    {% if pct_ejec_global > 0 %}+{% endif %}{{ pct_ejec_global|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="ejec-badge igual">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+
+                        {% for g in grupos %}
+                        <!-- GRUPO -->
+                        <tr class="ca-grupo" data-grupo="{{ forloop.counter }}">
+                            <td>
+                                <button type="button" class="btn-colapsar toggle-grupo" data-grupo="{{ forloop.counter }}">
+                                    <i class="bi bi-dash-lg ic-abierto"></i>
+                                    <i class="bi bi-plus-lg ic-cerrado" style="display:none"></i>
+                                </button>
+                                <i class="bi bi-folder2-open me-1"></i>Depto.
+                            </td>
+                            <td><strong>{{ g.grupo }}</strong></td>
+                            <td class="num">${{ g.ppto_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num">${{ g.real_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num-bold sep-left">${{ g.ppto_actual|floatformat:0|intcomma }}</td>
+                            <td class="num {% if g.dif_ppto >= 0 %}text-warning{% else %}text-success{% endif %}">
+                                {% if g.dif_ppto >= 0 %}+{% endif %}${{ g.dif_ppto|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if g.pct_ppto is not None %}
+                                <span class="var-badge {% if g.pct_ppto > 0 %}pos{% elif g.pct_ppto < 0 %}neg{% else %}neu{% endif %}">
+                                    {% if g.pct_ppto > 0 %}+{% endif %}{{ g.pct_ppto|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="var-badge neu">N/A</span>{% endif %}
+                            </td>
+                            <td class="num sep-left {% if g.dif_real >= 0 %}text-success{% else %}text-warning{% endif %}">
+                                {% if g.dif_real >= 0 %}+{% endif %}${{ g.dif_real|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if g.pct_ejec is not None %}
+                                <span class="ejec-badge {% if g.pct_ejec > 0 %}alto{% elif g.pct_ejec < 0 %}bajo{% else %}igual{% endif %}">
+                                    {% if g.pct_ejec > 0 %}+{% endif %}{{ g.pct_ejec|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="ejec-badge igual">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+
+                        {% for s in g.subgrupos %}
+                        <!-- SUBGRUPO -->
+                        <tr class="ca-subgrupo fila-grupo-{{ forloop.parentloop.counter }}" data-subgrupo="{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                            <td style="padding-left:28px;">
+                                <button type="button" class="btn-colapsar toggle-subgrupo" data-subgrupo="{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                                    <i class="bi bi-dash-lg ic-abierto"></i>
+                                    <i class="bi bi-plus-lg ic-cerrado" style="display:none"></i>
+                                </button>
+                                <i class="bi bi-chevron-right me-1"></i>Cuenta
+                            </td>
+                            <td>{{ s.subgrupo }}</td>
+                            <td class="num">${{ s.ppto_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num">${{ s.real_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num-bold sep-left">${{ s.ppto_actual|floatformat:0|intcomma }}</td>
+                            <td class="num {% if s.dif_ppto >= 0 %}text-danger{% else %}text-success{% endif %}">
+                                {% if s.dif_ppto >= 0 %}+{% endif %}${{ s.dif_ppto|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if s.pct_ppto is not None %}
+                                <span class="var-badge {% if s.pct_ppto > 0 %}pos{% elif s.pct_ppto < 0 %}neg{% else %}neu{% endif %}">
+                                    {% if s.pct_ppto > 0 %}+{% endif %}{{ s.pct_ppto|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="var-badge neu">N/A</span>{% endif %}
+                            </td>
+                            <td class="num sep-left {% if s.dif_real >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if s.dif_real >= 0 %}+{% endif %}${{ s.dif_real|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if s.pct_ejec is not None %}
+                                <span class="ejec-badge {% if s.pct_ejec > 0 %}alto{% elif s.pct_ejec < 0 %}bajo{% else %}igual{% endif %}">
+                                    {% if s.pct_ejec > 0 %}+{% endif %}{{ s.pct_ejec|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="ejec-badge igual">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+
+                        {% for t in s.tipos %}
+                        <!-- TIPO -->
+                        <tr class="ca-tipo fila-grupo-{{ forloop.parentloop.parentloop.counter }} fila-subgrupo-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}">
+                            <td style="padding-left:50px;">
+                                <i class="bi bi-dot" style="color:#7b2fbe;"></i>Sub-Cuenta
+                            </td>
+                            <td style="padding-left:8px;">{{ t.tipo }}</td>
+                            <td class="num text-muted">${{ t.ppto_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num text-muted">${{ t.real_anterior|floatformat:0|intcomma }}</td>
+                            <td class="num-bold sep-left">${{ t.ppto_actual|floatformat:0|intcomma }}</td>
+                            <td class="num {% if t.dif_ppto >= 0 %}text-danger{% else %}text-success{% endif %}">
+                                {% if t.dif_ppto >= 0 %}+{% endif %}${{ t.dif_ppto|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if t.pct_ppto is not None %}
+                                <span class="var-badge {% if t.pct_ppto > 0 %}pos{% elif t.pct_ppto < 0 %}neg{% else %}neu{% endif %}">
+                                    {% if t.pct_ppto > 0 %}+{% endif %}{{ t.pct_ppto|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="var-badge neu">N/A</span>{% endif %}
+                            </td>
+                            <td class="num sep-left {% if t.dif_real >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if t.dif_real >= 0 %}+{% endif %}${{ t.dif_real|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-center">
+                                {% if t.pct_ejec is not None %}
+                                <span class="ejec-badge {% if t.pct_ejec > 0 %}alto{% elif t.pct_ejec < 0 %}bajo{% else %}igual{% endif %}">
+                                    {% if t.pct_ejec > 0 %}+{% endif %}{{ t.pct_ejec|floatformat:0 }}%
+                                </span>
+                                {% else %}<span class="ejec-badge igual">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                        {% endfor %}
+
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2"><strong><i class="bi bi-calculator me-1"></i>Total General</strong></td>
+                            <td class="num"><strong>${{ ppto_anterior|floatformat:0|intcomma }}</strong></td>
+                            <td class="num"><strong>${{ real_anterior|floatformat:0|intcomma }}</strong></td>
+                            <td class="num-bold sep-left"><strong>${{ ppto_actual|floatformat:0|intcomma }}</strong></td>
+                            <td class="num"><strong>{% if dif_ppto_global >= 0 %}+{% endif %}${{ dif_ppto_global|floatformat:0|intcomma }}</strong></td>
+                            <td class="text-center">
+                                {% if pct_ppto_global is not None %}
+                                <span class="var-badge {% if pct_ppto_global > 0 %}pos{% elif pct_ppto_global < 0 %}neg{% else %}neu{% endif %}">
+                                    <strong>{% if pct_ppto_global > 0 %}+{% endif %}{{ pct_ppto_global|floatformat:0 }}%</strong>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="num sep-left"><strong>{% if dif_real_global >= 0 %}+{% endif %}${{ dif_real_global|floatformat:0|intcomma }}</strong></td>
+                            <td class="text-center">
+                                {% if pct_ejec_global is not None %}
+                                <span class="ejec-badge {% if pct_ejec_global > 0 %}alto{% elif pct_ejec_global < 0 %}bajo{% else %}igual{% endif %}">
+                                    <strong>{% if pct_ejec_global > 0 %}+{% endif %}{{ pct_ejec_global|floatformat:0 }}%</strong>
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
     </div>
-    {% if request.user.is_superuser %}
-    <div class="col-auto">
-      <label class="form-label">Empresa (id)</label>
-      <input type="text" name="empresa" value="{{ empresa.id }}" class="form-control" />
-    </div>
-    {% endif %}
-    <div class="col-auto align-self-end">
-      <button class="btn btn-primary">Mostrar</button>
-    </div>
-  </form>
-  <div class="mb-3">
-    <table class="table table-sm table-striped">
-      <thead class="table-dark">
-        <tr> 
-          <th>Nivel</th>
-          <th>Descripción</th>
-          <th class="text-end">Ppto {{ anio_ant }}</th>
-          <th class="text-end">Gasto {{ anio_ant }}</th>
-          <th class="text-end">Ppto {{ anio }}</th>
-          <th class="text-end">$Pp-{{ anio }} vs Pp-{{ anio_ant }}</th>
-          <th class="text-end">%Var</th>
-          <th class="text-end">$Pp-{{ anio }} vs Gto-{{ anio_ant }}</th>
-          <th class="text-end">%Var</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Totales generales -->
-        <tr class="table-secondary">
-          <td><strong>GLOBAL</strong></td>
-          <td><strong>Total anual</strong></td>
-          <td class="text-end">${{ ppto_anterior|floatformat:0|intcomma }}</td>
-          <td class="text-end">${{ real_anterior|floatformat:0|intcomma }}</td>
-          <td class="text-end"><strong>${{ ppto_actual|floatformat:0|intcomma }}</strong></td>
-          <td class="text-end">${{ dif_ppto_global|floatformat:0|intcomma }}</td>
-          <td class="text-end">
-            {% if pct_ppto_global is not None %}
-              {% if pct_ppto_global > 0 %}+{% endif %}{{ pct_ppto_global|floatformat:0|intcomma }} %
-            {% else %}N/A{% endif %}
-          </td>
-          <td class="text-end">${{ dif_real_global|floatformat:0|intcomma }}</td>
-          <td class="text-end">
-            {% if pct_ejec_global is not None %}
-              {% if pct_ejec_global > 0 %}+{% endif %}{{ pct_ejec_global|floatformat:0|intcomma }} %
-            {% else %}N/A{% endif %}
-          </td>
-        </tr>
 
-        {% for g in grupos %}
-          <tr class="table-primary">
-            <td><strong>DEPTO.</strong></td>
-            <td><strong>{{ g.grupo }}</strong></td>
-            <td class="text-end">${{ g.ppto_anterior|floatformat:0|intcomma }}</td>
-            <td class="text-end">${{ g.real_anterior|floatformat:0|intcomma }}</td>
-            <td class="text-end"><strong>${{ g.ppto_actual|floatformat:0|intcomma }}</strong></td>
-            <td class="text-end">${{ g.dif_ppto|floatformat:0|intcomma }}</td>
-            <td class="text-end">
-              {% if g.pct_ppto is not None %}
-                {% if g.pct_ppto > 0 %}+{% endif %}{{ g.pct_ppto|floatformat:0|intcomma }} %
-              {% else %}N/A{% endif %}
-            </td>
-            <td class="text-end">${{ g.dif_real|floatformat:0|intcomma }}</td>
-            <td class="text-end">
-              {% if g.pct_ejec is not None %}
-                {% if g.pct_ejec > 0 %}+{% endif %}{{ g.pct_ejec|floatformat:0|intcomma }} %
-              {% else %}N/A{% endif %}
-            </td>
-          </tr>
-
-          {% for s in g.subgrupos %}
-            <tr class="table-light">
-              <td style="padding-left:20px;">CUENTA</td>
-              <td style="padding-left:20px;">{{ s.subgrupo }}</td>
-              <td class="text-end">${{ s.ppto_anterior|floatformat:0|intcomma }}</td>
-              <td class="text-end">${{ s.real_anterior|floatformat:0|intcomma }}</td>
-              <td class="text-end">${{ s.ppto_actual|floatformat:0|intcomma }}</td>
-              <td class="text-end">${{ s.dif_ppto|floatformat:0|intcomma }}</td>
-              <td class="text-end">
-                {% if s.pct_ppto is not None %}
-                  {% if s.pct_ppto > 0 %}+{% endif %}{{ s.pct_ppto|floatformat:0|intcomma }} %
-                {% else %}N/A{% endif %}
-              </td>
-              <td class="text-end">${{ s.dif_real|floatformat:0|intcomma }}</td>
-              <td class="text-end">
-                {% if s.pct_ejec is not None %}
-                  {% if s.pct_ejec > 0 %}+{% endif %}{{ s.pct_ejec|floatformat:0|intcomma }} %
-                {% else %}N/A{% endif %}
-              </td>
-            </tr>
-
-            {% for t in s.tipos %}
-              <tr>
-                <td style="padding-left:40px;">SUB-CUENTA</td>
-                <td style="padding-left:40px;">{{ t.tipo }}</td>
-                <td class="text-end">${{ t.ppto_anterior|floatformat:0|intcomma }}</td>
-                <td class="text-end">${{ t.real_anterior|floatformat:0|intcomma }}</td>
-                <td class="text-end">${{ t.ppto_actual|floatformat:0|intcomma }}</td>
-                <td class="text-end">${{ t.dif_ppto|floatformat:0|intcomma }}</td>
-                <td class="text-end">
-                  {% if t.pct_ppto is not None %}
-                    {% if t.pct_ppto > 0 %}+{% endif %}{{ t.pct_ppto|floatformat:0|intcomma }} %
-                  {% else %}N/A{% endif %}
-                </td>
-                <td class="text-end">${{ t.dif_real|floatformat:0|intcomma }}</td>
-                <td class="text-end">
-                  {% if t.pct_ejec is not None %}
-                    {% if t.pct_ejec > 0 %}+{% endif %}{{ t.pct_ejec|floatformat:0|intcomma }} %
-                  {% else %}N/A{% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          {% endfor %}
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-<!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
+    document.addEventListener('DOMContentLoaded', function() {
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+        // Loading overlay
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+
+        function toggleIcon(btn, collapsed) {
+            btn.querySelector('.ic-abierto').style.display = collapsed ? 'none' : '';
+            btn.querySelector('.ic-cerrado').style.display = collapsed ? '' : 'none';
+        }
+
+        // Toggle grupos
+        document.querySelectorAll('.toggle-grupo').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var gId = btn.dataset.grupo;
+                var collapsed = btn.classList.toggle('collapsed');
+                document.querySelectorAll('.fila-grupo-'+gId).forEach(function(r) {
+                    r.style.display = collapsed ? 'none' : '';
+                });
+                toggleIcon(btn, collapsed);
+            });
+        });
+
+        // Toggle subgrupos
+        document.querySelectorAll('.toggle-subgrupo').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var sgId = btn.dataset.subgrupo;
+                var collapsed = btn.classList.toggle('collapsed');
+                document.querySelectorAll('.fila-subgrupo-'+sgId).forEach(function(r) {
+                    r.style.display = collapsed ? 'none' : '';
+                });
+                toggleIcon(btn, collapsed);
+            });
+        });
+
+        // Expandir/colapsar todo
+        document.getElementById('btn-expandir-todo').addEventListener('click', function() {
+            document.querySelectorAll('.fila-grupo-*, .fila-subgrupo-*').forEach(function(r) { r.style.display = ''; });
+            document.querySelectorAll('.toggle-grupo, .toggle-subgrupo').forEach(function(btn) {
+                btn.classList.remove('collapsed');
+                toggleIcon(btn, false);
+            });
+        });
+
+        document.getElementById('btn-colapsar-todo').addEventListener('click', function() {
+            document.querySelectorAll('[class*="fila-grupo-"], [class*="fila-subgrupo-"]').forEach(function(r) { r.style.display = 'none'; });
+            document.querySelectorAll('.toggle-grupo, .toggle-subgrupo').forEach(function(btn) {
+                btn.classList.add('collapsed');
+                toggleIcon(btn, true);
+            });
+        });
+
     });
-  });
-});
-</script>
+    </script>
 </body>
 </html>

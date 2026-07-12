@@ -6,430 +6,905 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 14/07/2025
-      Date of modification: 12/09/2025
-      Description: Budget matrix
-    -->
     <meta charset="UTF-8">
-    <title>Matriz presupuesto gastos</title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matriz Presupuesto — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
-        input[type="number"] { min-width: 90px; text-align: right; }
-        td, th { vertical-align: middle !important; }
-        .table-info, .table-primary, .table-warning { font-weight: bold; }
-        input[disabled] { background-color: #f0f0f0; color: #888; border-color: #ccc; }
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* ── HEADER ── */
+        .mp-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 60%, #2471a3 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(15,45,82,0.18);
+            position: relative; overflow: hidden;
+        }
+        .mp-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .mp-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .mp-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* ── TOOLBAR ── */
+        .mp-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .mp-toolbar .divider { width:1px; height:28px; background:#e5e7eb; }
+
+        /* ── LAYOUT CON PANEL ── */
+        .mp-layout {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+        .mp-table-col {
+            flex: 1;
+            min-width: 0;
+            transition: all 0.3s ease;
+        }
+        .mp-panel-col {
+            width: 340px;
+            flex-shrink: 0;
+            display: none;
+            transition: all 0.3s ease;
+        }
+        .mp-panel-col.visible {
+            display: block;
+        }
+
+        /* ── PANEL LATERAL ── */
+        .mp-panel {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            overflow: hidden;
+            position: sticky;
+            top: 16px;
+        }
+        .mp-panel-header {
+            background: linear-gradient(135deg, #1a3a5c, #2471a3);
+            color: white;
+            padding: 16px 20px;
+        }
+        .mp-panel-titulo { font-weight: 700; font-size: 0.95rem; }
+        .mp-panel-subtitulo { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
+
+        .mp-panel-body { padding: 16px; }
+
+        /* Meses en el panel */
+        .mes-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .mes-row:last-child { border-bottom: none; }
+        .mes-label {
+            width: 110px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4a6080;
+            flex-shrink: 0;
+        }
+        .mes-label.actual {
+            color: #2471a3;
+        }
+        .mes-label.actual::after {
+            content: ' ●';
+            color: #2471a3;
+            font-size: 0.6rem;
+        }
+        .panel-input {
+            flex: 1;
+            text-align: right;
+            padding: 5px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1a3a5c;
+            background: #f8fafc;
+            transition: all 0.15s;
+        }
+        .panel-input:focus {
+            outline: none;
+            border-color: #2471a3;
+            box-shadow: 0 0 0 3px rgba(36,113,163,0.15);
+            background: white;
+        }
+        .panel-input.guardado {
+            border-color: #1e8449;
+            background: #eafaf1;
+        }
+        .panel-input.error {
+            border-color: #c0392b;
+            background: #fdf0f0;
+        }
+        .panel-input:disabled {
+            background: #f0f4f8;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Total en el panel */
+        .panel-total {
+            background: linear-gradient(135deg, #f0f4f8, #e8f0f8);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-total-label { font-size: 0.8rem; color: #4a6080; font-weight: 600; }
+        .panel-total-val { font-size: 1.1rem; font-weight: 700; color: #1a3a5c; }
+
+        /* Helpers del panel */
+        .panel-helpers {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .btn-helper {
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #4a6080;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-helper:hover { background: #e8f0f8; border-color: #2471a3; color: #1a3a5c; }
+
+        .igual-input {
+            width: 100%;
+            text-align: right;
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            display: none;
+        }
+        .igual-input.visible { display: block; }
+
+        /* Status bar del panel */
+        .panel-status {
+            font-size: 0.72rem;
+            text-align: center;
+            margin-top: 8px;
+            min-height: 18px;
+            color: #9ca3af;
+        }
+        .panel-status.ok { color: #1e8449; }
+        .panel-status.err { color: #c0392b; }
+
+        /* Highlight fila seleccionada */
+        tr.mp-tipo.seleccionada td {
+            background: #e8f4ff !important;
+        }
+        tr.mp-tipo.seleccionada td:nth-child(4) {
+            font-weight: 700;
+            color: #1a3a5c !important;
+        }
+
+        /* Botón editar en la fila */
+        .btn-editar-tipo {
+            width: 20px; height: 20px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            color: #2471a3;
+            font-size: 0.65rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .btn-editar-tipo:hover { background: #2471a3; color: white; border-color: #2471a3; }
+
+        /* ── TABLA PRINCIPAL ── */
+        .mp-table-wrap {
+            border-radius: 14px; overflow: hidden;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08); background: white;
+        }
+        .mp-table-scroll {
+            overflow-x: auto;
+            max-height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        table.mp-table {
+            border-collapse: separate; border-spacing: 0;
+            width: 100%; font-size: 0.78rem;
+        }
+        table.mp-table thead tr th {
+            position: sticky; top: 0;
+            background: #1a3a5c; color: white;
+            font-weight: 600; font-size: 0.72rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            padding: 10px 10px; white-space: nowrap;
+            border-bottom: 2px solid #2e75b6; z-index: 10;
+        }
+        table.mp-table thead th:nth-child(1),
+        table.mp-table tbody td:nth-child(1) { position:sticky; left:0; z-index:11; min-width:36px; width:36px; }
+        table.mp-table thead th:nth-child(2),
+        table.mp-table tbody td:nth-child(2) { position:sticky; left:36px; z-index:11; min-width:130px; }
+        table.mp-table thead th:nth-child(3),
+        table.mp-table tbody td:nth-child(3) { position:sticky; left:166px; z-index:11; min-width:120px; }
+        table.mp-table thead th:nth-child(4),
+        table.mp-table tbody td:nth-child(4) { position:sticky; left:286px; z-index:11; min-width:130px; border-right:2px solid #e2e8f0; }
+        table.mp-table thead th:nth-child(1),
+        table.mp-table thead th:nth-child(2),
+        table.mp-table thead th:nth-child(3),
+        table.mp-table thead th:nth-child(4) { background:#0f2d52; z-index:20; }
+
+        tr.mp-grupo td {
+            background: linear-gradient(90deg, #1a3a5c, #2471a3);
+            color: white; font-weight: 700; font-size: 0.76rem;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 9px 10px; border-bottom: 1px solid #1a5276;
+        }
+        tr.mp-grupo td:nth-child(1),tr.mp-grupo td:nth-child(2),
+        tr.mp-grupo td:nth-child(3),tr.mp-grupo td:nth-child(4) {
+            background: linear-gradient(90deg, #1a3a5c, #1e4d78);
+        }
+        tr.mp-subgrupo td {
+            background: #e8f0f8; color: #1a3a5c; font-weight: 600;
+            font-size: 0.76rem; padding: 7px 10px; border-bottom: 1px solid #d0dff0;
+        }
+        tr.mp-subgrupo td:nth-child(1),tr.mp-subgrupo td:nth-child(2),
+        tr.mp-subgrupo td:nth-child(3),tr.mp-subgrupo td:nth-child(4) { background: #ddeaf8; }
+        tr.mp-tipo td {
+            background: white; color: #374151; padding: 5px 10px;
+            border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
+        }
+        tr.mp-tipo:hover td { background: #f8fbff; }
+        tr.mp-tipo td:nth-child(1),tr.mp-tipo td:nth-child(2),
+        tr.mp-tipo td:nth-child(3),tr.mp-tipo td:nth-child(4) { background: #fcfeff; }
+        tr.mp-tipo:hover td:nth-child(1),tr.mp-tipo:hover td:nth-child(2),
+        tr.mp-tipo:hover td:nth-child(3),tr.mp-tipo:hover td:nth-child(4) { background: #f0f7ff; }
+
+        tfoot tr td {
+            background: linear-gradient(90deg, #d4ac0d, #f0c330); color: #5a3e00;
+            font-weight: 700; font-size: 0.78rem; padding: 10px 10px;
+            position: sticky; bottom: 0; z-index: 5; border-top: 2px solid #c8a000;
+        }
+        tfoot tr td:nth-child(1),tfoot tr td:nth-child(2) {
+            background: linear-gradient(90deg, #b8960a, #d4ac0d); z-index:15;
+        }
+
+        input.mp-input {
+            width: 80px; font-size: 0.75rem; text-align: right;
+            padding: 3px 6px; border: 1px solid #e2e8f0; border-radius: 6px;
+            background: #f8fafc; color: #1a3a5c; font-weight: 500;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+        }
+        input.mp-input:focus { outline:none; border-color:#2471a3; box-shadow:0 0 0 3px rgba(36,113,163,0.15); background:white; }
+        input.mp-input.is-valid { border-color:#1e8449; background:#eafaf1; }
+        input.mp-input.is-invalid { border-color:#c0392b; background:#fdf0f0; }
+        input.mp-input:disabled { background:#f0f4f8; color:#9ca3af; border-color:#e5e7eb; cursor:not-allowed; }
+
+        td.mp-total-row { font-weight:700; color:#1a3a5c; background:#f0f4f8 !important; white-space:nowrap; }
+        tr.mp-grupo td.mp-total-row { color:white; background:transparent !important; }
+        tr.mp-subgrupo td.mp-total-row { color:#1a3a5c; background:#ddeaf8 !important; }
+
+        .btn-toggle {
+            width:22px; height:22px; border-radius:50%; border:none;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:0.7rem; cursor:pointer; transition:all 0.15s; padding:0; flex-shrink:0;
+        }
+        tr.mp-grupo .btn-toggle { background:rgba(255,255,255,0.2); color:white; }
+        tr.mp-grupo .btn-toggle:hover { background:rgba(255,255,255,0.35); }
+        tr.mp-subgrupo .btn-toggle { background:#2471a3; color:white; }
+        tr.mp-subgrupo .btn-toggle:hover { background:#1a5276; }
+
+        .mes-actual-col { background: rgba(36,113,163,0.06) !important; }
+        thead th.mes-actual-col { background: #1a5276 !important; }
+
+        .superuser-panel {
+            background:#fff8f0; border:1px solid #f5b8b8;
+            border-radius:12px; padding:16px 20px; margin-bottom:16px;
+        }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .mp-header { background:#0f2d52 !important; -webkit-print-color-adjust:exact; }
+            .mp-table-scroll { max-height:none; overflow:visible; }
+            .mp-panel-col { display:none !important; }
+        }
     </style>
-    <style>
-.table-responsive {
-    max-height: 70vh;
-    overflow-y: auto;
-}
-.table-fixed-header thead th {
-    position: sticky;
-    top: 0;
-    background: #fff;
-    z-index: 2;
-}
-</style>
-<style>
-.btn-toggle-cruz i {
-    color: #d32f2f !important;
-    font-size: 1.6em !important;
-    font-weight: bold !important;
-    transition: transform 0.2s;
-    vertical-align: middle;
-}
-</style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    
-    <!-- Block for displaying messages -->
+
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         {% endfor %}
     {% endif %}
-    {% if form.non_field_errors %}
-        <div class="alert alert-danger">
-        {% for error in form.non_field_errors %}
-            {{ error }}
-        {% endfor %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="mp-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="mp-empresa"><i class="bi bi-building me-1"></i>{{ empresa.nombre }}</div>
+                    <div class="mp-titulo"><i class="bi bi-table me-2"></i>Matriz Presupuesto de Gastos — {{ anio }}</div>
+                    <div style="font-size:0.78rem;opacity:0.75;margin-top:3px;">
+                        {% if edicion_habilitada and not bloqueado %}
+                            <i class="bi bi-pencil-square me-1"></i>Haz clic en cualquier cuenta para capturar sus montos mes a mes
+                        {% elif bloqueado %}
+                            <i class="bi bi-lock-fill me-1"></i>Presupuesto cerrado — solo lectura
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 align-items-center no-print flex-wrap">
+                    <a href="{% url 'exportar_presupuesto_excel' %}?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}"
+                       class="btn btn-sm btn-success">
+                        <i class="bi bi-file-earmark-excel-fill me-1"></i>Descargar Excel
+                    </a>
+                    {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button> {% endcomment %}
+                </div>
+            </div>
         </div>
-    {% endif %}
-    {% if pedir_superuser and bloqueado %}
-    <div class="alert-info mt-1">
-       <button type="button" class="btn btn-danger" id="mostrar-form-superuser">
-            Abrir presupuesto
-       </button>
 
-        <form method="post" class="row g-2 align-items-center mt-2" id="form-superuser" style="display:none;">
-            {% csrf_token %}
-            <div class="col-auto">
-                <label for="superuser_username" class="form-label mb-0">Usuario:</label>
-                <input type="text" name="superuser_username" id="superuser_username" class="form-control" required>
+        <!-- SUPERUSER PANEL -->
+        {% if pedir_superuser and bloqueado %}
+        <div class="superuser-panel no-print">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div><i class="bi bi-lock-fill text-danger me-1"></i><strong>Presupuesto cerrado.</strong> Ingresa credenciales de superusuario para reabrir.</div>
+                <button type="button" class="btn btn-sm btn-danger" id="btn-mostrar-superuser">
+                    <i class="bi bi-key me-1"></i>Abrir presupuesto
+                </button>
             </div>
-            <div class="col-auto">
-                <label for="superuser_password" class="form-label mb-0">Contraseña:</label>
-                <input type="password" name="superuser_password" id="superuser_password" class="form-control" required>
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-danger">Confirmar apertura</button>
-            </div>
-        </form>
-        <div class="mt-2"></div>
-        
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var btn = document.getElementById('mostrar-form-superuser');
-                var form = document.getElementById('form-superuser');
-                btn.addEventListener('click', function() {
-                    btn.style.display = 'none';
-                    form.style.display = 'flex';
-                });
-            });
-        </script>
-    {% endif %}
-    </div>
+            <form method="post" class="row g-2 align-items-end mt-3" id="form-superuser" style="display:none;">
+                {% csrf_token %}
+                <div class="col-auto">
+                    <label class="form-label form-label-sm mb-1">Usuario</label>
+                    <input type="text" name="superuser_username" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label form-label-sm mb-1">Contraseña</label>
+                    <input type="password" name="superuser_password" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-unlock me-1"></i>Confirmar</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
 
-    <!-- Main content -->
-        <!-- Formulario de filtros (GET) -->
-         <div class="container-fluid mt-4">
-        <form method="get" class="row g-2 mb-3">
-            <h2>{{ empresa.nombre }}</h2>
-            <h3>Matriz Presupuesto Gastos - Año {{ anio }}</h3>
-            
-            
-            <div class="col-auto">
-                <label for="anio" class="form-check-inline"><strong>Año:</strong></label>
-                <select name="anio" id="anio" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
-                    {% for a in anios %}
-                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
-                    {% endfor %}
-                </select>
-                <a href="{% url 'exportar_presupuesto_excel' %}?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}" class="btn btn-success btn-sm ms-2">
-                    <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
-                </a>
-                
-            </div>
-            
-            {% if is_super %}
-            <div class="col-auto">
-                <label for="empresa" class="form-label">Empresa:</label>
-                <select name="empresa" id="empresa" class="form-select d-inline-block" style="width:auto;" onchange="this.form.submit()">
+        <!-- TOOLBAR -->
+        <div class="mp-toolbar no-print">
+            <form method="get" class="d-flex align-items-center gap-2">
+                {% if is_super %}
+                <select name="empresa" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     {% for emp in empresas %}
                         <option value="{{ emp.id }}" {% if empresa.id == emp.id %}selected{% endif %}>{{ emp.nombre }}</option>
                     {% endfor %}
                 </select>
-            </div>
-            {% endif %}   
-        </form>
-
-        <!-- Formulario para clonar presupuesto (POST, separado) -->
-        <form method="post" action="{% url 'copiar_presupuesto_gastos_a_nuevo_anio' %}" class="row g-2 align-items-end mb-3">
-            {% csrf_token %}
-            <input type="hidden" name="empresa" value="{{ empresa.id }}">
-            <input type="hidden" name="anio" value="{{ anio }}">
-            <div class="col-auto">
-                <label for="tipo_clon" class="form-label mb-0">Clonar:</label>
-                <select name="tipo_clon" id="tipo_clon" class="form-select form-select-sm"
-                    onchange="document.getElementById('porcentaje_clon').style.display = this.value == 'con' ? 'inline-block' : 'none';">
-                    <option value="sin">Sin incremento</option>
-                    <option value="con">Con incremento</option>
-                    <option value="forecast">Forecast (tendencia)</option>
+                {% endif %}
+                <label class="small fw-bold text-muted mb-0">Año:</label>
+                <select name="anio" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    {% for a in anios %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
                 </select>
-            </div>
-            <div class="col-auto" id="porcentaje_clon" style="display:none;">
-                <label for="porcentaje" class="form-label mb-0">Porcentaje (%)</label>
-                <input type="number" step="0.01" min="0" name="porcentaje" id="porcentaje" class="form-control form-control-sm" value="10">
-            </div>
-            <div class="col-auto">
-                <button type="submit" 
-                    class="btn text-dark ms-2"
-                    style="background-color: #fff3cd; border: 1px solid #000; font-size: 0.875rem; padding: 0.25rem 0.5rem;"
-                    onmouseover="this.style.backgroundColor='#ffca2c'; this.style.color='#000';"
-                    onmouseout="this.style.backgroundColor='#fff3cd'; this.style.borderColor='#000'; this.style.color='#212529';">
-                    <i class="bi bi-arrow-repeat"></i> Clonar presupuesto
+                {% if empresa and not is_super %}<input type="hidden" name="empresa" value="{{ empresa.id }}">{% endif %}
+            </form>
+            <div class="divider"></div>
+            <form method="post" action="{% url 'copiar_presupuesto_gastos_a_nuevo_anio' %}" class="d-flex align-items-center gap-2" id="form-clon">
+                {% csrf_token %}
+                <input type="hidden" name="empresa" value="{{ empresa.id }}">
+                <input type="hidden" name="anio" value="{{ anio }}">
+                <label class="small fw-bold text-muted mb-0">Tipo Clon:</label>
+                <select name="tipo_clon" class="form-select form-select-sm" style="width:auto;"
+                    onchange="document.getElementById('wrap-pct').style.display=this.value=='con'?'flex':'none';">
+                    <option value="sin">Sin incremento</option>
+                    <option value="con">Con incremento %</option>
+                    <option value="forecast">Forecast</option>
+                </select>
+                <div id="wrap-pct" style="display:none;align-items:center;gap:6px;">
+                    <input type="number" step="0.01" min="0" name="porcentaje" value="10" class="form-control form-control-sm" style="width:70px;">
+                    <span class="small text-muted">%</span>
+                </div>
+                <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold">
+                    <i class="bi bi-arrow-repeat me-1"></i>Clonar sig año
                 </button>
-            </div> 
-        </form>
-        <div class="mb-3">
+            </form>
+            <div class="divider"></div>
             {% if edicion_habilitada %}
-                <form method="post" action="{% url 'borrar_presupuesto_gastos' %}" style="display:inline;">
+            <form method="post" action="{% url 'borrar_presupuesto_gastos' %}">
                 {% csrf_token %}
                 <input type="hidden" name="anio" value="{{ anio }}">
                 <input type="hidden" name="empresa" value="{{ empresa.id }}">
-                <button type="submit" class="btn btn-danger btn-sm"
-                    onclick="return confirm('¿Seguro que deseas borrar TODO el presupuesto de gastos del año {{ anio }} para la empresa {{ empresa.nombre }}?');">
-                    Borrar presupuesto
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                    onclick="return confirm('¿Borrar TODO el presupuesto {{ anio }} de {{ empresa.nombre }}?')">
+                    <i class="bi bi-trash3 me-1"></i>Borrar Ppto
                 </button>
-                </form>
+            </form>
             {% endif %}
+            {% if edicion_habilitada and not bloqueado %}
+            <form method="post" action="{{ request.path }}?anio={{ anio }}{% if empresa %}&empresa={{ empresa.id }}{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="anio" value="{{ anio }}">
+                <input type="hidden" name="empresa" value="{{ empresa.id }}">
+                <button type="submit" name="cerrar_presupuesto" class="btn btn-sm btn-outline-secondary"
+                    onclick="return confirm('¿Cerrar y bloquear el presupuesto {{ anio }}?')">
+                    <i class="bi bi-file-lock-fill me-1"></i>Cerrar Ppto
+                </button>
+            </form>
+            {% endif %}
+            <div class="ms-auto d-flex align-items-center gap-2">
+                {% if bloqueado %}
+                    <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Ppto Cerrado</span>
+                {% elif edicion_habilitada %}
+                    <span class="badge bg-success"><i class="bi bi-pencil-square me-1"></i>Ppto Editable</span>
+                    <span class="small text-muted">Clic en una cuenta para editar</span>
+                {% else %}
+                    <span class="badge bg-secondary"><i class="bi bi-eye me-1"></i>Ppto Solo lectura</span>
+                {% endif %}
+            </div>
         </div>
 
-        <!-- Main budget edit form (POST) -->
-        <form method="post" id="form-matriz">
-    {% csrf_token %}
-    <input type="hidden" name="anio" value="{{ anio }}">
-    {% if empresa %}
-        <input type="hidden" name="empresa" value="{{ empresa.id }}">
-    {% endif %}
+        <!-- LAYOUT TABLA + PANEL -->
+        <div class="mp-layout">
 
-    <div class="table-responsive rounded-3 border">
-        <table class="table align-middle mb-0 shadow-sm table-fixed-header" id="matriz-table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Depto.</th>
-                    <th>Cuenta</th>
-                    <th>Sub-Cuenta</th>
-                    {% for mes_nombre in meses_nombres %}
-                        <th>{{ mes_nombre }}</th>
-                    {% endfor %}
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for grupo in grupos %}
-                    <tr class="table-primary grupo-row" data-grupo="{{ grupo.id }}">
-                        <td>
-                            <button type="button" class="btn btn-sm btn-link btn-toggle-cruz toggle-grupo" data-grupo="{{ grupo.id }}" title="Colapsar/Expandir grupo">
-                                <i class="bi bi-dash-lg icon-abierto"></i>
-                                <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
+            <!-- TABLA -->
+            <div class="mp-table-col">
+                <form method="post" id="form-matriz">
+                    {% csrf_token %}
+                    <input type="hidden" name="anio" value="{{ anio }}">
+                    {% if empresa %}<input type="hidden" name="empresa" value="{{ empresa.id }}">{% endif %}
+
+                    <div class="mp-table-wrap">
+                        <div class="mp-table-scroll">
+                            <table class="mp-table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Depto.</th>
+                                        <th>Cuenta</th>
+                                        <th>Sub-Cuenta</th>
+                                        {% for mes_nombre in meses_nombres %}
+                                            <th class="text-center {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">
+                                                {{ mes_nombre|slice:":3" }}
+                                            </th>
+                                        {% endfor %}
+                                        <th class="text-center" style="background:#d4ac0d !important;color:#5a3e00;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for grupo in grupos %}
+                                        <tr class="mp-grupo" data-grupo="{{ grupo.id }}">
+                                            <td>
+                                                <button type="button" class="btn-toggle toggle-grupo" data-grupo="{{ grupo.id }}">
+                                                    <i class="bi bi-dash-lg icon-abierto"></i>
+                                                    <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
+                                                </button>
+                                            </td>
+                                            <td><strong>{{ grupo.nombre }}</strong></td>
+                                            <td colspan="2" style="font-size:0.7rem;font-weight:400;opacity:0.8;">Total grupo</td>
+                                            {% for i in "0"|get_range:12 %}
+                                                <td class="text-center mp-total-row {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">
+                                                    {{ grupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}
+                                                </td>
+                                            {% endfor %}
+                                            <td class="text-center mp-total-row">{{ grupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                                        </tr>
+
+                                        {% for subgrupo in grupo.subgrupos %}
+                                            <tr class="mp-subgrupo" data-grupo="{{ grupo.id }}" data-subgrupo="{{ subgrupo.id }}">
+                                                <td style="padding-left:20px;">
+                                                    <button type="button" class="btn-toggle toggle-subgrupo" data-subgrupo="{{ subgrupo.id }}">
+                                                        <i class="bi bi-dash-lg icon-abierto"></i>
+                                                        <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
+                                                    </button>
+                                                </td>
+                                                <td></td>
+                                                <td><strong>{{ subgrupo.nombre }}</strong></td>
+                                                <td style="font-size:0.7rem;font-weight:400;opacity:0.8;">Total subgrupo</td>
+                                                {% for i in "0"|get_range:12 %}
+                                                    <td class="text-center mp-total-row {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">
+                                                        {{ subgrupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}
+                                                    </td>
+                                                {% endfor %}
+                                                <td class="text-center mp-total-row">{{ subgrupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                                            </tr>
+
+                                            {% for tipo in subgrupo.tipos %}
+                                                <tr class="mp-tipo" data-grupo="{{ grupo.id }}" data-subgrupo="{{ subgrupo.id }}" data-tipo="{{ tipo.id }}">
+                                                    <td style="padding-left:34px;"></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td style="color:#374151;font-size:0.78rem;">
+                                                        <i class="bi bi-dot text-primary"></i>
+                                                        <span class="tipo-nombre">{{ tipo.nombre }}</span>
+                                                        {% if edicion_habilitada and not bloqueado %}
+                                                        <button type="button" class="btn-editar-tipo" title="Editar esta cuenta">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        {% endif %}
+                                                    </td>
+                                                    {% for i in "0"|get_range:12 %}
+                                                        {% with mes_num=i|add:1 %}
+                                                        <td class="text-center {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}" style="padding:4px 6px;">
+                                                            <input type="number" step="0.01" min="0"
+                                                                name="presupuesto_{{ tipo.id }}_{{ mes_num }}"
+                                                                class="mp-input presupuesto-input"
+                                                                value="{{ tipo.montos|dict_get:mes_num|floatformat:2 }}"
+                                                                data-tipo="{{ tipo.id }}" data-mes="{{ mes_num }}"
+                                                                {% if not edicion_habilitada or bloqueado %}disabled{% endif %}
+                                                            >
+                                                        </td>
+                                                        {% endwith %}
+                                                    {% endfor %}
+                                                    <td class="text-center mp-total-row tipo-total-cell">
+                                                        {{ tipo.subtotal|sum_list|floatformat:2|intcomma }}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="4"><strong><i class="bi bi-calculator me-1"></i>Total General</strong></td>
+                                        {% for total in totales_mes %}
+                                            <td class="text-center"><strong>{{ total|floatformat:2|intcomma }}</strong></td>
+                                        {% endfor %}
+                                        <td class="text-center"><strong>{{ totales_mes|sum_list|floatformat:2|intcomma }}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    {% if edicion_habilitada and not bloqueado %}
+                    <div class="d-flex justify-content-end mt-3 no-print">
+                        <button type="submit" name="guardar_presupuesto" class="btn btn-primary">
+                            <i class="bi bi-save-small me-1"></i>Guardar cambios Ppto
+                        </button>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+
+            <!-- PANEL LATERAL -->
+            <div class="mp-panel-col no-print" id="panel-col">
+                <div class="mp-panel">
+                    <div class="mp-panel-header">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="mp-panel-titulo" id="panel-titulo">Selecciona una cuenta</div>
+                                <div class="mp-panel-subtitulo" id="panel-subtitulo">Haz clic en el lápiz de cualquier cuenta</div>
+                            </div>
+                            <button type="button" id="btn-cerrar-panel"
+                                style="background:rgba(255,255,255,0.15);border:none;color:white;border-radius:6px;padding:4px 8px;cursor:pointer;">
+                                <i class="bi bi-x-lg"></i>
                             </button>
-                        </td>
-                        <td><strong>{{ grupo.nombre }}</strong></td>
-                        <td colspan="2"><strong>Total Grupo</strong></td>
-                        {% for i in "0"|get_range:12 %}
-                            <td>{{ grupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
-                        {% endfor %}
-                        <td class="fw-bold">{{ grupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
-                    </tr>
-                    {% for subgrupo in grupo.subgrupos %}
-                        <tr class="table-info subgrupo-row" data-grupo="{{ grupo.id }}" data-subgrupo="{{ subgrupo.id }}">
-                            <td style="padding-left:2em;">
-                                <button type="button" class="btn btn-sm btn-link btn-toggle-cruz toggle-subgrupo" data-subgrupo="{{ subgrupo.id }}" title="Colapsar/Expandir subgrupo">
-                                    <i class="bi bi-dash-lg icon-abierto"></i>
-                                    <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
-                                </button>
-                            </td>
-                            <td></td>
-                            <td><strong>{{ subgrupo.nombre }}</strong></td>
-                            <td><strong>Total Subgrupo</strong></td>
-                            {% for i in "0"|get_range:12 %}
-                                <td>{{ subgrupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                        </div>
+                    </div>
+                    <div class="mp-panel-body">
+
+                        <!-- Helpers -->
+                        {% if edicion_habilitada and not bloqueado %}
+                        <div class="panel-helpers">
+                            <button type="button" class="btn-helper" id="btn-igual-todos">
+                                <i class="bi bi-copy"></i> Igual para todos
+                            </button>
+                            <button type="button" class="btn-helper" id="btn-limpiar">
+                                <i class="bi bi-eraser"></i> Limpiar
+                            </button>
+                        </div>
+                        <input type="number" step="0.01" min="0" class="igual-input" id="igual-input" placeholder="Monto para todos los meses…">
+                        {% endif %}
+
+                        <!-- 12 meses -->
+                        <div id="panel-meses">
+                            {% for mes_nombre in meses_nombres %}
+                            <div class="mes-row" data-mes="{{ forloop.counter }}">
+                                <div class="mes-label {% if forloop.counter == mes_actual_num %}actual{% endif %}">
+                                    {{ mes_nombre }}
+                                </div>
+                                <input type="number" step="0.01" min="0"
+                                    class="panel-input" data-panel-mes="{{ forloop.counter }}"
+                                    placeholder="0.00"
+                                    {% if not edicion_habilitada or bloqueado %}disabled{% endif %}>
+                            </div>
                             {% endfor %}
-                            <td class="fw-bold">{{ subgrupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
-                        </tr>
-                        {% for tipo in subgrupo.tipos %}
-                            <tr class="tipo-row" data-grupo="{{ grupo.id }}" data-subgrupo="{{ subgrupo.id }}" data-tipo="{{ tipo.id }}">
-                                <td style="padding-left:3em;">
-                                    <button type="button" class="btn btn-sm btn-link btn-toggle-cruz toggle-tipo" data-tipo="{{ tipo.id }}" title="Colapsar/Expandir tipo">
-                                        <i class="bi bi-dash-lg icon-abierto"></i>
-                                        <i class="bi bi-plus-lg icon-cerrado" style="display:none"></i>
-                                    </button>
-                                </td>
-                                <td></td>
-                                <td></td>
-                                <td>{{ tipo.nombre }}</td>
-                                {% for i in "0"|get_range:12 %}
-                                    {% with mes_num=i|add:1 %}
-                                    <td>
-                                        <input type="number" step="0.01" min="0"
-                                            name="presupuesto_{{ tipo.id }}_{{ mes_num }}"
-                                            class="form-control form-control-sm presupuesto-input"
-                                            value="{{ tipo.montos|dict_get:mes_num|floatformat:2 }}"
-                                            data-tipo="{{ tipo.id }}" data-mes="{{ mes_num }}"
-                                            {% if not edicion_habilitada or bloqueado %}disabled{% endif %}
-                                            title="Editar monto de {{ tipo.nombre }} en {{ meses_nombres|list_index:i }}"
-                                        >
-                                    </td>
-                                    {% endwith %}
-                                {% endfor %}
-                                <td class="fw-bold">{{ tipo.subtotal|sum_list|floatformat:2|intcomma }}</td>
-                            </tr>
-                        {% endfor %}
-                    {% endfor %}
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr class="table-warning">
-                    <td colspan="4" class="text-end"><strong>Total General</strong></td>
-                    {% for total in totales_mes %}
-                        <td><strong>{{ total|floatformat:2|intcomma }}</strong></td>
-                    {% endfor %}
-                    <td><strong>{{ totales_mes|sum_list|floatformat:2|intcomma }}</strong></td>
-                </tr>
-            </tfoot>
-        </table>
+                        </div>
+
+                        <!-- Total -->
+                        <div class="panel-total">
+                            <span class="panel-total-label"><i class="bi bi-calculator me-1"></i>Total anual</span>
+                            <span class="panel-total-val" id="panel-total-val">$0.00</span>
+                        </div>
+                        <div class="panel-status" id="panel-status"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /mp-layout -->
     </div>
 
-    {% if edicion_habilitada %}
-        <div class="mb-3 mt-4 d-flex justify-content-end gap-2">
-            <button type="submit" class="btn btn-primary" name="guardar_presupuesto" title="Guardar todos los cambios">
-                <i class="bi bi-save me-1"></i> Guardar
-            </button>
-            {% if not bloqueado %}
-                <button type="submit" name="cerrar_presupuesto"
-                    class="btn text-dark"
-                    style="background-color: #fff3cd; border: 1px solid #212529;"
-                    onmouseover="this.style.backgroundColor='#ffca2c';"
-                    onmouseout="this.style.backgroundColor='#fff3cd';"
-                    onclick="return confirm('¿Estás seguro de cerrar el presupuesto? No podrás editarlo a menos que seas superusuario.')"
-                    title="Cerrar presupuesto y bloquear edición">
-                    <i class="bi bi-file-lock-fill me-1"></i> Cerrar Presupuesto
-                </button>
-            {% endif %}
-        </div>
-    {% endif %}
-</form>
+    {% include 'tool_bar.html' %}
 
-    <!-- 🔹 Footer -->
- {% include 'tool_bar.html' %}
-    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var anioSelect = document.querySelector('select[name="anio"]');
-    if (anioSelect) {
-        anioSelect.addEventListener('change', function() {
-            var overlay = document.getElementById('loading-overlay');
-            if (overlay) {
-                overlay.style.display = 'flex';
-            }
-            // El formulario se enviará automáticamente si tienes onchange="this.form.submit()"
-        });
-    }
-});
-</script>
-<script>
-function toggleIcon(btn, collapsed) {
-    var iconAbierto = btn.querySelector('.icon-abierto');
-    var iconCerrado = btn.querySelector('.icon-cerrado');
-    if (collapsed) {
-        iconAbierto.style.display = 'none';
-        iconCerrado.style.display = '';
-    } else {
-        iconAbierto.style.display = '';
-        iconCerrado.style.display = 'none';
-    }
-}
+    const CSRF = "{{ csrf_token }}";
+    const URL_AJAX = "{% url 'matriz_presupuesto' %}?anio={{ anio }}&empresa={{ empresa.id }}";
+    const MES_ACTUAL = {{ mes_actual_num|default:0 }};
+    const EDICION = {% if edicion_habilitada and not bloqueado %}true{% else %}false{% endif %};
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Grupos
+    // ── SUPERUSER TOGGLE ──
+    var btnSu = document.getElementById('btn-mostrar-superuser');
+    var formSu = document.getElementById('form-superuser');
+    if (btnSu && formSu) {
+        btnSu.addEventListener('click', function() { btnSu.style.display='none'; formSu.style.display='flex'; });
+    }
+
+    // ── TOGGLE GRUPOS / SUBGRUPOS ──
+    function toggleIcon(btn, collapsed) {
+        btn.querySelector('.icon-abierto').style.display = collapsed ? 'none' : '';
+        btn.querySelector('.icon-cerrado').style.display = collapsed ? '' : 'none';
+    }
     document.querySelectorAll('.toggle-grupo').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var grupoId = btn.dataset.grupo;
-            var subgrupoRows = document.querySelectorAll('.subgrupo-row[data-grupo="' + grupoId + '"]');
-            var tipoRows = document.querySelectorAll('.tipo-row[data-grupo="' + grupoId + '"]');
+            var gId = btn.dataset.grupo;
             var collapsed = btn.classList.toggle('collapsed');
-            subgrupoRows.forEach(function(row) { row.style.display = collapsed ? 'none' : ''; });
-            tipoRows.forEach(function(row) { row.style.display = collapsed ? 'none' : ''; });
+            document.querySelectorAll('.mp-subgrupo[data-grupo="'+gId+'"], .mp-tipo[data-grupo="'+gId+'"]')
+                .forEach(function(r) { r.style.display = collapsed ? 'none' : ''; });
             toggleIcon(btn, collapsed);
         });
     });
-    // Subgrupos
     document.querySelectorAll('.toggle-subgrupo').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var subgrupoId = btn.dataset.subgrupo;
-            var tipoRows = document.querySelectorAll('.tipo-row[data-subgrupo="' + subgrupoId + '"]');
+            var sgId = btn.dataset.subgrupo;
             var collapsed = btn.classList.toggle('collapsed');
-            tipoRows.forEach(function(row) { row.style.display = collapsed ? 'none' : ''; });
+            document.querySelectorAll('.mp-tipo[data-subgrupo="'+sgId+'"]')
+                .forEach(function(r) { r.style.display = collapsed ? 'none' : ''; });
             toggleIcon(btn, collapsed);
         });
     });
-    // Tipos
-    document.querySelectorAll('.toggle-tipo').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var tipoId = btn.dataset.tipo;
-            var tipoRow = document.querySelector('.tipo-row[data-tipo="' + tipoId + '"]');
-            var collapsed = btn.classList.toggle('collapsed');
-            tipoRow.style.display = collapsed ? 'none' : '';
-            toggleIcon(btn, collapsed);
+
+    // ── PANEL LATERAL ──
+    var panelCol = document.getElementById('panel-col');
+    var panelTitulo = document.getElementById('panel-titulo');
+    var panelSubtitulo = document.getElementById('panel-subtitulo');
+    var panelStatus = document.getElementById('panel-status');
+    var panelTotalVal = document.getElementById('panel-total-val');
+    var panelInputs = document.querySelectorAll('.panel-input');
+    var currentTipoId = null;
+    var currentRow = null;
+
+    function fmt(n) {
+        return '$' + parseFloat(n || 0).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    function actualizarTotalPanel() {
+        var total = 0;
+        panelInputs.forEach(function(inp) { total += parseFloat(inp.value || 0); });
+        panelTotalVal.textContent = fmt(total);
+    }
+
+    function abrirPanel(row) {
+        var tipoId = row.dataset.tipo;
+        var nombre = row.querySelector('.tipo-nombre').textContent.trim();
+        currentTipoId = tipoId;
+
+        // Quitar highlight anterior
+        if (currentRow) currentRow.classList.remove('seleccionada');
+        currentRow = row;
+        row.classList.add('seleccionada');
+
+        panelTitulo.textContent = nombre;
+        panelSubtitulo.textContent = 'Captura el presupuesto mes a mes';
+        panelStatus.textContent = '';
+        panelStatus.className = 'panel-status';
+
+        // Cargar valores desde los inputs de la tabla
+        panelInputs.forEach(function(panelInp) {
+            var mes = panelInp.dataset.panelMes;
+            var tableInp = row.querySelector('input[data-tipo="'+tipoId+'"][data-mes="'+mes+'"]');
+            panelInp.value = tableInp ? (parseFloat(tableInp.value) || '') : '';
+        });
+
+        actualizarTotalPanel();
+        panelCol.style.display = 'block';
+        panelCol.classList.add('visible');
+    }
+
+    function cerrarPanel() {
+        panelCol.style.display = 'none';
+        panelCol.classList.remove('visible');
+        if (currentRow) currentRow.classList.remove('seleccionada');
+        currentRow = null;
+        currentTipoId = null;
+    }
+
+    document.getElementById('btn-cerrar-panel').addEventListener('click', cerrarPanel);
+
+    // Clic en botón lápiz
+    document.querySelectorAll('.btn-editar-tipo').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var row = btn.closest('.mp-tipo');
+            abrirPanel(row);
         });
     });
-});
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
+
+    // Clic en nombre de cuenta (toda la fila)
+    document.querySelectorAll('.mp-tipo').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-toggle') || e.target.closest('.btn-editar-tipo') || e.target.tagName === 'INPUT') return;
+            if (!EDICION) return;
+            abrirPanel(row);
+        });
+        row.style.cursor = EDICION ? 'pointer' : 'default';
+    });
+
+    // Guardar desde panel con AJAX
+    function guardarDesdePanel(panelInp, mes) {
+        if (!currentTipoId || !EDICION) return;
+        var val = panelInp.value;
+
+        // Sincronizar con input de la tabla
+        var tableInp = document.querySelector('input[data-tipo="'+currentTipoId+'"][data-mes="'+mes+'"]');
+        if (!tableInp) return;
+
+        var oldVal = tableInp.getAttribute('data-old') || tableInp.defaultValue;
+        tableInp.value = val;
+        panelInp.classList.remove('guardado', 'error');
+        panelStatus.textContent = 'Guardando…';
+        panelStatus.className = 'panel-status';
+
+        fetch(URL_AJAX, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ tipo_id: currentTipoId, mes: mes, monto: val })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                panelInp.classList.add('guardado');
+                tableInp.setAttribute('data-old', val);
+                tableInp.classList.add('is-valid');
+                panelStatus.textContent = '✓ Guardado';
+                panelStatus.className = 'panel-status ok';
+                setTimeout(() => {
+                    panelInp.classList.remove('guardado');
+                    tableInp.classList.remove('is-valid');
+                    panelStatus.textContent = '';
+                }, 1800);
+                actualizarTotalPanel();
+            } else {
+                panelInp.classList.add('error');
+                tableInp.value = oldVal;
+                panelInp.value = oldVal;
+                panelStatus.textContent = '✗ Error al guardar';
+                panelStatus.className = 'panel-status err';
+            }
+        })
+        .catch(() => {
+            panelInp.classList.add('error');
+            tableInp.value = oldVal;
+            panelInp.value = oldVal;
+            panelStatus.textContent = '✗ Sin conexión';
+            panelStatus.className = 'panel-status err';
+        });
+    }
+
+    panelInputs.forEach(function(inp) {
+        inp.addEventListener('change', function() {
+            guardarDesdePanel(inp, inp.dataset.panelMes);
+        });
+        inp.addEventListener('input', actualizarTotalPanel);
+    });
+
+    // Helper: Igual para todos
+    var btnIgual = document.getElementById('btn-igual-todos');
+    var igualInput = document.getElementById('igual-input');
+    if (btnIgual && igualInput) {
+        btnIgual.addEventListener('click', function() {
+            igualInput.classList.toggle('visible');
+            if (igualInput.classList.contains('visible')) igualInput.focus();
+        });
+        igualInput.addEventListener('change', function() {
+            var val = igualInput.value;
+            if (!val || !currentTipoId) return;
+            panelInputs.forEach(function(inp) {
+                inp.value = val;
+                guardarDesdePanel(inp, inp.dataset.panelMes);
+            });
+            igualInput.classList.remove('visible');
+            igualInput.value = '';
+        });
+    }
+
+    // Helper: Limpiar
+    var btnLimpiar = document.getElementById('btn-limpiar');
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', function() {
+            if (!currentTipoId) return;
+            if (!confirm('¿Limpiar todos los montos de esta cuenta?')) return;
+            panelInputs.forEach(function(inp) {
+                inp.value = '';
+                guardarDesdePanel(inp, inp.dataset.panelMes);
+            });
+        });
+    }
+
+    // ── AUTOGUARDADO desde inputs de la tabla (comportamiento original) ──
     document.querySelectorAll('.presupuesto-input').forEach(function(input) {
         input.addEventListener('change', function() {
             if (input.disabled) return;
-            var tipoId = input.dataset.tipo;
-            var mes = input.dataset.mes;
-            var monto = input.value;
-            var oldValue = input.getAttribute('data-old') || input.defaultValue;
+            var oldVal = input.getAttribute('data-old') || input.defaultValue;
             input.disabled = true;
             input.classList.remove('is-invalid', 'is-valid');
-            fetch("{% url 'matriz_presupuesto' %}?anio={{ anio }}&empresa={{ empresa.id }}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": "{{ csrf_token }}",
-                    "X-Requested-With": "XMLHttpRequest"
-                },
-                body: JSON.stringify({ tipo_id: tipoId, mes: mes, monto: monto }),
+            fetch(URL_AJAX, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ tipo_id: input.dataset.tipo, mes: input.dataset.mes, monto: input.value })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 input.disabled = false;
                 if (data.success) {
                     input.classList.add('is-valid');
-                    input.setAttribute('data-old', monto);
+                    input.setAttribute('data-old', input.value);
+                    // Sincronizar con panel si está abierto
+                    if (currentTipoId === input.dataset.tipo) {
+                        var panelInp = document.querySelector('.panel-input[data-panel-mes="'+input.dataset.mes+'"]');
+                        if (panelInp) { panelInp.value = input.value; actualizarTotalPanel(); }
+                    }
+                    setTimeout(() => input.classList.remove('is-valid'), 1500);
                 } else {
                     input.classList.add('is-invalid');
-                    input.value = oldValue;
-                    alert("Error al guardar: " + (data.error || "Desconocido"));
+                    input.value = oldVal;
                 }
             })
             .catch(() => {
                 input.disabled = false;
                 input.classList.add('is-invalid');
-                input.value = oldValue;
-                alert("Error de red");
+                input.value = oldVal;
             });
         });
     });
-});
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var formClon = document.querySelector('form[action*="copiar_presupuesto_gastos_a_nuevo_anio"]');
+
+    // Loading overlay en clon
+    var formClon = document.getElementById('form-clon');
     if (formClon) {
         formClon.addEventListener('submit', function() {
             var overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.style.display = 'flex';
         });
     }
-});
-</script>
- <!-- Scripts -->
-    <script src="{% static 'js/script.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var anioSelect = document.querySelector('select[name="anio"]');
-    if (anioSelect) {
-        anioSelect.addEventListener('change', function() {
-            var overlay = document.getElementById('loading-overlay');
-            if (overlay) {
-                overlay.style.display = 'flex';
-            }
-            // El formulario se enviará automáticamente si tienes onchange="this.form.submit()"
-        });
-    }
-});
-</script>
-
+    </script>
 </body>
 </html>

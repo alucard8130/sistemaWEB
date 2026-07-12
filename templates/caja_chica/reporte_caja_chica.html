@@ -1,0 +1,433 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Caja Chica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f4f7fb; }
+
+        .reporte-header {
+            background: linear-gradient(135deg, #1a3a5c 0%, #2e75b6 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(30,60,100,0.15);
+        }
+
+        .kpi-card {
+            border-radius: 14px;
+            border: none;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            transition: transform 0.15s;
+        }
+        .kpi-card:hover { transform: translateY(-2px); }
+
+        .kpi-saldo-inicial { background: linear-gradient(135deg, #e8f4fd, #d0eaf8); border-left: 5px solid #2e75b6; }
+        .kpi-fondeos      { background: linear-gradient(135deg, #e8f8f0, #c8eedd); border-left: 5px solid #1a7a45; }
+        .kpi-gastos       { background: linear-gradient(135deg, #fdf0f0, #fad7d7); border-left: 5px solid #c0392b; }
+        .kpi-saldo-final  { background: linear-gradient(135deg, #fdf8e8, #f9ecc0); border-left: 5px solid #d4ac0d; }
+
+        .kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; opacity: 0.7; }
+        .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+
+        .filtros-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .fondeos-card {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .fondeos-header {
+            background: linear-gradient(135deg, #e8f8f0, #c8eedd);
+            padding: 14px 20px;
+            border-bottom: 1px solid #b8e8cc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .gastos-card {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .gastos-header {
+            background: linear-gradient(135deg, #fdf0f0, #fad7d7);
+            padding: 14px 20px;
+            border-bottom: 1px solid #f5b8b8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .grupo-row {
+            background: #f0f4f8;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #1a3a5c;
+            padding: 10px 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .subgrupo-row {
+            background: #f8fafc;
+            font-weight: 500;
+            font-size: 0.82rem;
+            color: #4a6080;
+            padding: 8px 20px 8px 36px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .tipo-row {
+            padding: 8px 20px 8px 56px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.85rem;
+            color: #374151;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tipo-row:hover { background: #fafbfc; }
+
+        .tipo-monto {
+            font-weight: 600;
+            color: #c0392b;
+            font-size: 0.85rem;
+        }
+
+        .total-row {
+            background: #fdf0f0;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #c0392b;
+            border-top: 2px solid #f5b8b8;
+        }
+
+        .saldo-final-bar {
+            border-radius: 14px;
+            padding: 20px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .saldo-positivo { background: linear-gradient(135deg, #e8f8f0, #c8eedd); border: 2px solid #1a7a45; }
+        .saldo-negativo { background: linear-gradient(135deg, #fdf0f0, #fad7d7); border: 2px solid #c0392b; }
+
+        .fondeo-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #e8f8f0;
+            border: 1px solid #b8e8cc;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #1a5c34;
+            margin: 3px;
+        }
+
+        .progress-bar-custom {
+            height: 6px;
+            border-radius: 3px;
+            background: #edf2f7;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-fill-gastos { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+        .progress-fill-fondeos { background: linear-gradient(90deg, #27ae60, #1a7a45); }
+
+        .link-detalle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: #2e75b6;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #2e75b6;
+            transition: all 0.15s;
+        }
+        .link-detalle:hover { background: #2e75b6; color: white; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            .reporte-header { background: #1a3a5c !important; -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    {% comment %} {% include 'navbar.html' %} {% endcomment %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- Header -->
+        <div class="reporte-header">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="small opacity-75 mb-1">
+                        <i class="bi bi-building me-1"></i>
+                        {% if empresa %}{{ empresa.nombre }}{% else %}Todas las empresas{% endif %}
+                    </div>
+                    <h3 class="mb-1 fw-bold">
+                        <i class="bi bi-cash-coin me-2"></i>Reporte de Caja Chica
+                    </h3>
+                    <div class="small opacity-85">
+                        <i class="bi bi-calendar-range me-1"></i>
+                        {{ fecha_inicio }} — {{ fecha_fin }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 no-print">
+                    <a href="{% url 'estado_resultados' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" 
+                    class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-arrow-left me-1"></i> Reporte Resultados
+                    </a>
+                     <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i> Imprimir
+                    </button> 
+                    <a href="{% url 'lista_gastos_caja_chica' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" 
+                    class="btn btn-sm btn-warning text-dark fw-bold">
+                        <i class="bi bi-list-ul me-1"></i> Ver detalle gastos
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-saldo-inicial p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-bank me-1"></i>Saldo inicial</div>
+                    <div class="kpi-value text-primary mt-1">${{ saldo_inicial|floatformat:2|intcomma }}</div>
+                    <div class="small text-muted mt-1">Antes del período</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-fondeos p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-arrow-down-circle me-1"></i>Fondeos del período</div>
+                    <div class="kpi-value text-success mt-1">${{ total_fondeos|floatformat:2|intcomma }}</div>
+                    <div class="small text-muted mt-1">{{ fondeos_periodo.count }} fondeo{{ fondeos_periodo.count|pluralize }}</div>
+                    {% if total_fondeos and saldo_inicial %}
+                    <div class="progress-bar-custom mt-2">
+                        <div class="progress-fill-fondeos" style="width: 100%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-gastos p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-arrow-up-circle me-1"></i>Total gastado</div>
+                    <div class="kpi-value text-danger mt-1">${{ total_gastos|floatformat:2|intcomma }}</div>
+                    {% if total_fondeos > 0 %}
+                    {% widthratio total_gastos total_fondeos 100 as porc_gastado %}
+                    <div class="small text-muted mt-1">{{ porc_gastado }}% del fondo</div>
+                    <div class="progress-bar-custom mt-2">
+                        <div class="progress-fill-gastos" style="width: {{ porc_gastado }}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-saldo-final p-3 h-100">
+                    <div class="kpi-label"><i class="bi bi-wallet2 me-1"></i>Saldo final caja</div>
+                    <div class="kpi-value mt-1 {% if saldo_final >= 0 %}text-warning{% else %}text-danger{% endif %}">
+                        ${{ saldo_final|floatformat:2|intcomma }}
+                    </div>
+                    <div class="small text-muted mt-1">
+                        {% if saldo_final >= 0 %}Disponible en caja{% else %}Déficit de caja{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros-card no-print">
+            <form method="get" id="form-filtros">
+                <div class="row g-2 align-items-end">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label form-label-sm mb-1">Fecha inicio</label>
+                        <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label form-label-sm mb-1">Fecha fin</label>
+                        <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-auto d-flex gap-1 align-items-end">
+                        <button type="submit" class="btn btn-primary btn-sm reporte-link" title="Filtrar">
+                            <i class="bi bi-funnel-fill"></i>
+                        </button>
+                        <a href="{% url 'reporte_caja_chica' %}" class="btn btn-outline-secondary btn-sm reporte-link" title="Limpiar">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="row g-3">
+            <!-- Fondeos del período -->
+            <div class="col-12 col-md-5">
+                <div class="fondeos-card">
+                    <div class="fondeos-header">
+                        <i class="bi bi-arrow-down-circle-fill text-success fs-5"></i>
+                        <div>
+                            <div class="fw-bold text-success">Fondeos recibidos</div>
+                            <div class="small text-muted">Dinero que entró a caja en el período</div>
+                        </div>
+                    </div>
+                    <div class="p-0">
+                        {% if fondeos_periodo %}
+                            <table class="table table-sm mb-0" style="font-size:0.83rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Fecha</th>
+                                        <th>Cheque/Ref</th>
+                                        <th>Responsable</th>
+                                        <th class="text-end pe-3">Importe</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for f in fondeos_periodo %}
+                                    <tr>
+                                        <td class="ps-3 text-nowrap">{{ f.fecha|date:"d/m/y" }}</td>
+                                        <td class="text-muted small">{{ f.numero_cheque }}</td>
+                                        <td>{{ f.empleado_asignado.nombre|truncatechars:18 }}</td>
+                                        <td class="text-end pe-3 fw-bold text-success">${{ f.importe_cheque|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr style="background:#e8f8f0; border-top: 2px solid #b8e8cc;">
+                                        <td colspan="3" class="ps-3 fw-bold text-success">Total fondeos</td>
+                                        <td class="text-end pe-3 fw-bold text-success">${{ total_fondeos|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                Sin fondeos en este período
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Saldo final -->
+                <div class="saldo-final-bar {% if saldo_final >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+                    <div>
+                        <div class="small fw-bold {% if saldo_final >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            <i class="bi bi-wallet2 me-1"></i>Saldo final en caja
+                        </div>
+                        <div class="small text-muted">= Saldo inicial + Fondeos − Gastos</div>
+                        <div class="small text-muted mt-1">
+                            ${{ saldo_inicial|floatformat:2|intcomma }} + ${{ total_fondeos|floatformat:2|intcomma }} − ${{ total_gastos|floatformat:2|intcomma }}
+                        </div>
+                    </div>
+                    <div class="fw-bold {% if saldo_final >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:1.5rem;">
+                        ${{ saldo_final|floatformat:2|intcomma }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gastos por categoría -->
+            <div class="col-12 col-md-7">
+                <div class="gastos-card">
+                    <div class="gastos-header">
+                        <i class="bi bi-arrow-up-circle-fill text-danger fs-5"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-danger">Gastos por categoría</div>
+                            <div class="small text-muted">Gastos de caja chica y vales del período</div>
+                        </div>
+                        <a href="{% url 'lista_gastos_caja_chica' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" 
+                           class="link-detalle no-print">
+                            <i class="bi bi-list-ul"></i> Ver detalle
+                        </a>
+                    </div>
+
+                    {% if estructura %}
+                        {% for grupo, subgrupos in estructura.items %}
+                            <div class="grupo-row">
+                                <i class="bi bi-folder2-open me-2"></i>{{ grupo }}
+                            </div>
+                            {% for subgrupo, tipos in subgrupos.items %}
+                                <div class="subgrupo-row">
+                                    <i class="bi bi-chevron-right me-1"></i>{{ subgrupo }}
+                                </div>
+                                {% for tipo in tipos %}
+                                    <div class="tipo-row">
+                                        <span><i class="bi bi-dot me-1 text-danger"></i>{{ tipo.tipo }}</span>
+                                        <span class="tipo-monto">${{ tipo.total|floatformat:2|intcomma }}</span>
+                                    </div>
+                                {% endfor %}
+                            {% endfor %}
+                        {% endfor %}
+                        <div class="total-row">
+                            <span><i class="bi bi-calculator me-1"></i>Total gastado</span>
+                            <span>${{ total_gastos|floatformat:2|intcomma }}</span>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Sin gastos registrados en este período
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {% comment %} {% include 'tool_bar.html' %} {% endcomment %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
+    });
+    </script>
+</body>
+</html>

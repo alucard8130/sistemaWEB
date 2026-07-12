@@ -522,8 +522,8 @@ def estado_resultados(request):
                         .aggregate(t=Sum("importe_cheque"))["t"] or 0
                     )
                     saldo_inicial += ing - gto
-        # Temporal — después del loop del saldo inicial
-        print(f"DEBUG saldo_inicial calculado: {saldo_inicial}")
+        # # Temporal — después del loop del saldo inicial
+        # print(f"DEBUG saldo_inicial calculado: {saldo_inicial}")
         
     # --- Filtro por fechas ---
     if fecha_inicio:
@@ -600,7 +600,7 @@ def estado_resultados(request):
     if fecha_fin:
         filtros_fondeo["fecha__lte"] = fecha_fin
 
-    # saldo_caja_chica = float(FondeoCajaChica.objects.filter(**filtros_fondeo).aggregate(s=Sum("saldo"))["s"] or 0)
+
 
     agregar_a_estructura(gastos_modo,
         "gasto__tipo_gasto__subgrupo__grupo__nombre",
@@ -631,10 +631,10 @@ def estado_resultados(request):
     )
 
     # Justo después de calcular total_gastos en la vista
-    print(f"DEBUG total_gastos: {total_gastos}")
-    print(f"DEBUG total_ingresos: {total_ingresos}")
-    print(f"DEBUG saldo_inicial: {saldo_inicial}")
-    print(f"DEBUG saldo_final_flujo: {saldo_inicial + total_ingresos - total_gastos}")
+    # print(f"DEBUG total_gastos: {total_gastos}")
+    # print(f"DEBUG total_ingresos: {total_ingresos}")
+    # print(f"DEBUG saldo_inicial: {saldo_inicial}")
+    # print(f"DEBUG saldo_final_flujo: {saldo_inicial + total_ingresos - total_gastos}")
 
     # --- SALDO FINAL FLUJO ---
     saldo_final_flujo = saldo_inicial + total_ingresos - total_gastos
@@ -658,8 +658,8 @@ def estado_resultados(request):
             "saldo_final_flujo": saldo_final_flujo,
             #"saldo_caja_chica": saldo_caja_chica,
             #"saldo_final_bancos_menos_caja": saldo_final_bancos_menos_caja,
-            "fecha_inicio": fecha_inicio,
-            "fecha_fin": fecha_fin,
+            "fecha_inicio": fecha_inicio.strftime('%Y-%m-%d') if fecha_inicio else '',
+            "fecha_fin": fecha_fin.strftime('%Y-%m-%d') if fecha_fin else '',
             "mes": str(mes or ""),
             "anio": str(anio or ""),
             "periodo": periodo,
@@ -1005,7 +1005,7 @@ def exportar_estado_resultados_excel(request):
     return response
 
 
-# reporte detalle saldos
+# reporte detalle adeudos vencidos por origen (local, area comun, tipo de ingreso)
 @login_required
 def cartera_vencida_por_origen(request):
     empresa_id = request.GET.get("empresa")

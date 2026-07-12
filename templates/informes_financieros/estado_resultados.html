@@ -5,15 +5,215 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Estado de Resultados</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Resultados — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* ── HEADER ── */
+        .er-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 60%, #2471a3 100%);
+            color: white;
+            border-radius: 18px;
+            padding: 28px 36px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 6px 28px rgba(15,45,82,0.18);
+            position: relative;
+            overflow: hidden;
+        }
+        .er-header::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+        }
+        .er-header::after {
+            content: '';
+            position: absolute;
+            bottom: -60px; left: 30%;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+        }
+        .er-empresa { font-size: 0.8rem; opacity: 0.7; letter-spacing: 0.06em; text-transform: uppercase; }
+        .er-titulo  { font-size: 1.5rem; font-weight: 700; margin: 4px 0; }
+        .er-periodo { font-size: 1rem; opacity: 0.85; font-weight: 500; }
+
+        /* ── FILTROS ── */
+        .filtros-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        /* ── KPI STRIP ── */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 768px) { .kpi-strip { grid-template-columns: repeat(2,1fr); } }
+
+        .kpi-box {
+            background: white;
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            border-top: 4px solid transparent;
+            transition: transform 0.15s;
+        }
+        .kpi-box:hover { transform: translateY(-2px); }
+        .kpi-box.azul   { border-top-color: #2471a3; }
+        .kpi-box.verde  { border-top-color: #1e8449; }
+        .kpi-box.rojo   { border-top-color: #c0392b; }
+        .kpi-box.dorado { border-top-color: #d4ac0d; }
+
+        .kpi-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; font-weight: 600; }
+        .kpi-val   { font-size: 1.45rem; font-weight: 700; line-height: 1.2; margin: 4px 0 2px; }
+        .kpi-sub   { font-size: 0.75rem; color: #9ca3af; }
+
+        /* ── LAYOUT PRINCIPAL ── */
+        .er-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 900px) { .er-grid { grid-template-columns: 1fr; } }
+
+        /* ── CARDS INGRESOS / GASTOS ── */
+        .er-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        .er-card-header {
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .er-card-header.ing { background: linear-gradient(135deg, #eafaf1, #d5f5e3); }
+        .er-card-header.gto { background: linear-gradient(135deg, #fdf0f0, #fad7d7); }
+
+        .er-card-header .icon-circle {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+        }
+        .icon-circle.ing { background: #1e8449; color: white; }
+        .icon-circle.gto { background: #c0392b; color: white; }
+
+        /* ── FILAS DE TABLA ── */
+        .er-row-origen {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 22px;
+            border-bottom: 1px solid #f8fafc;
+            font-size: 0.85rem;
+            transition: background 0.1s;
+        }
+        .er-row-origen:hover { background: #fafbfc; }
+        .er-row-origen .dot { width: 8px; height: 8px; border-radius: 50%; background: #1e8449; margin-right: 8px; flex-shrink: 0; }
+        .er-row-origen .dot.gto { background: #c0392b; }
+
+        .er-grupo {
+            padding: 9px 22px;
+            background: #f0f4f8;
+            font-weight: 700;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #1a3a5c;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .er-subgrupo {
+            padding: 7px 22px 7px 38px;
+            background: #f8fafc;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #4a6080;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .er-tipo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 22px 8px 54px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.83rem;
+            color: #374151;
+            transition: background 0.1s;
+        }
+        .er-tipo:hover { background: #fafbfc; }
+        .er-tipo-monto { font-weight: 600; color: #c0392b; }
+
+        /* ── TOTALES ── */
+        .er-total-ing {
+            display: flex; justify-content: space-between;
+            padding: 13px 22px;
+            background: linear-gradient(135deg, #eafaf1, #d5f5e3);
+            border-top: 2px solid #a9dfbf;
+            font-weight: 700; font-size: 0.95rem; color: #1e8449;
+        }
+        .er-total-gto {
+            display: flex; justify-content: space-between;
+            padding: 13px 22px;
+            background: linear-gradient(135deg, #fdf0f0, #fad7d7);
+            border-top: 2px solid #f5b8b8;
+            font-weight: 700; font-size: 0.95rem; color: #c0392b;
+        }
+
+        /* ── BARRA RESULTADO ── */
+        .resultado-bar {
+            background: white;
+            border-radius: 16px;
+            padding: 22px 28px;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .resultado-item { text-align: center; }
+        .resultado-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: #9ca3af; font-weight: 600; }
+        .resultado-val   { font-size: 1.3rem; font-weight: 700; }
+        .resultado-divider { width: 1px; height: 50px; background: #e5e7eb; }
+
+        .resultado-formula {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+
+        /* ── PRINT ── */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            .er-header { background: #0f2d52 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
 </head>
 <body>
+
     {% if request.is_portal_acceso %}
-        <!-- Navbar del portal -->
         <div style="background:#152A52; padding:12px 24px; display:flex; justify-content:space-between; align-items:center;">
             <span style="color:white; font-weight:bold;">
                 <i class="bi bi-building me-1"></i> GESAC Portal — {{ request.empresa_activa_portal.nombre }}
@@ -28,181 +228,224 @@
 
     {% include 'loading_overlay.html' %}
 
-    <div class="container-fluid mt-4">
+    <div class="container-fluid mt-3 px-3 pb-5">
 
-        <!-- Encabezado -->
-        <div class="text-center mb-4 p-3 border rounded shadow-sm" style="background-color: #f8fbff;">
-            <h2 class="mb-1">
-                {% if empresa_id %}
-                    {% for emp in empresas %}
-                        {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}
-                            <i class="bi bi-building"></i> {{ emp.nombre }}
+        <!-- HEADER -->
+        <div class="er-header">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div style="position:relative;z-index:1;">
+                    <div class="er-empresa">
+                        <i class="bi bi-building me-1"></i>
+                        {% if empresa_id %}
+                            {% for emp in empresas %}{% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}{{ emp.nombre }}{% endif %}{% endfor %}
+                        {% elif request.is_portal_acceso %}
+                            {{ request.empresa_activa_portal.nombre }}
+                        {% else %}
+                            Todas las empresas
                         {% endif %}
-                    {% endfor %}
-                {% else %}
+                    </div>
+                    <div class="er-titulo">
+                        <i class="bi bi-bar-chart-line me-2"></i>Reporte Resultados — Flujo de Efectivo
+                    </div>
+                    <div class="er-periodo">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        {% if mes and anio %}
+                            {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
+                                {{ meses|index:mes|default:"" }} {{ anio }}
+                            {% endwith %}
+                        {% else %}
+                            {{ mes_letra }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 align-items-start no-print" style="position:relative;z-index:1;">
+                    {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i> Imprimir
+                    </button> {% endcomment %}
+                    <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-sm btn-success">
+                        <i class="bi bi-file-earmark-excel-fill me-1"></i> Descargar Excel
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTROS -->
+        {% if not request.is_portal_acceso %}
+        <div class="filtros-bar no-print">
+            <form method="get" id="form-filtros">
+                <div class="row g-2 align-items-end">
                     {% if request.user.is_superuser %}
-                        <i class="bi bi-buildings"></i> Todas las empresas
-                    {% endif %}
-                {% endif %}
-            </h2>
-            <h4 class="text-primary fw-semibold mb-2">
-                <i class="bi bi-bar-chart-line"></i> Reporte de Resultados — Flujo de Efectivo
-            </h4>
-            <div class="text-muted fs-5">
-                {% if mes and anio %}
-                    {% with meses="Enero,Febrero,Marzo,Abril,Mayo,Junio,Julio,Agosto,Septiembre,Octubre,Noviembre,Diciembre"|split:"," %}
-                        <strong>{{ meses|index:mes|default:"" }} {{ anio }}</strong>
-                    {% endwith %}
-                {% else %}
-                    <small class="text-muted">Periodo: <strong>{{ mes_letra }}</strong></small>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Filtros -->
-        <form method="get" class="row g-2 mb-4 align-items-end justify-content-center" id="form-filtros">
-            {% if request.user.is_superuser %}
-            <div class="col-auto">
-                <select name="empresa" class="form-select" style="width:auto;">
-                    <option value="">Todas las empresas</option>
-                    {% for emp in empresas %}
-                        <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-
-            <div class="col-auto">
-                <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-primary" {% if periodo == 'periodo_actual' %}disabled{% endif %}>
-                    Periodo actual
-                </button>
-            </div>
-            <div class="col-auto">
-                <button type="submit" name="periodo" value="mes_actual" class="btn btn-outline-primary" {% if periodo == 'mes_actual' %}disabled{% endif %}>
-                    Mes actual
-                </button>
-            </div>
-            <div class="col-auto">
-                <select name="mes" class="form-select" style="width:auto;">
-                    <option value="">Mes</option>
-                    {% for m in meses_unicos %}
-                        <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>{{ m }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-auto">
-                <select name="anio" class="form-select" style="width:auto;">
-                    <option value="">Año</option>
-                    {% for y in anios_unicos %}
-                        <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-outline-primary reporte-link">
-                    <i class="bi bi-funnel-fill me-1"></i>Filtrar
-                </button>
-                <a href="{% url 'exportar_estado_resultados_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill me-1"></i> Exportar a Excel
-                </a>
-            </div>
-        </form>
-
-        <!-- Saldo inicial -->
-        <div class="alert alert-info text-end mb-3">
-            <i class="bi bi-bank me-1"></i>
-            <strong>Saldo inicial:</strong>
-            <span class="ms-2">${{ saldo_inicial|floatformat:2|intcomma }}</span>
-        </div>
-
-        <!-- Ingresos -->
-        <div class="card my-4">
-            <div class="card-header pastel-green">
-                <h5 class="mb-0"><i class="bi bi-arrow-down-circle me-1"></i>Ingresos cobrados</h5>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
-                    <tbody>
-                        {% for origen, monto in ingresos_por_origen.items %}
-                        <tr>
-                            <td class="text-start">{{ origen|capfirst }}</td>
-                            <td class="text-end">${{ monto|floatformat:2|intcomma }}</td>
-                        </tr>
-                        {% endfor %}
-                        <tr class="table-light">
-                            <td class="text-start"><strong>Total ingresos</strong></td>
-                            <td class="text-end"><strong>${{ total_ingresos|floatformat:2|intcomma }}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Gastos -->
-        <div class="card my-4">
-            <div class="card-header pastel-red">
-                <h5 class="mb-0"><i class="bi bi-arrow-up-circle me-1"></i>Gastos pagados</h5>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
-                    <tbody>
-                        {% for grupo, subgrupos in estructura_gastos.items %}
-                            <tr style="background:#f0f4f8;">
-                                <td class="fw-bold text-start">{{ grupo }}</td>
-                                <td></td>
-                            </tr>
-                            {% for subgrupo, tipos in subgrupos.items %}
-                                <tr>
-                                    <td class="ps-4 fw-semibold text-start text-muted">{{ subgrupo }}</td>
-                                    <td></td>
-                                </tr>
-                                {% for tipo in tipos %}
-                                    <tr>
-                                        <td class="ps-5 text-start">{{ tipo.tipo|capfirst }}</td>
-                                        <td class="text-end">${{ tipo.total|floatformat:2|intcomma }}</td>
-                                    </tr>
-                                {% endfor %}
+                    <div class="col-auto">
+                        <label class="form-label form-label-sm mb-1">Empresa</label>
+                        <select name="empresa" class="form-select form-select-sm">
+                            <option value="">Todas</option>
+                            {% for emp in empresas %}
+                                <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id %}selected{% endif %}>{{ emp.nombre }}</option>
                             {% endfor %}
-                        {% endfor %}
-                        <tr class="table-light">
-                            <td class="text-start"><strong>Total gastos</strong></td>
-                            <td class="text-end"><strong>${{ total_gastos|floatformat:2|intcomma }}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="col-auto">
+                        <label class="form-label form-label-sm mb-1">Mes</label>
+                        <select name="mes" class="form-select form-select-sm">
+                            <option value="">—</option>
+                            {% for m in meses_unicos %}
+                                <option value="{{ m }}" {% if mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label form-label-sm mb-1">Año</label>
+                        <select name="anio" class="form-select form-select-sm">
+                            <option value="">—</option>
+                            {% for y in anios_unicos %}
+                                <option value="{{ y }}" {% if anio|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto d-flex gap-1 align-items-end">
+                        <button type="submit" name="periodo" value="periodo_actual" class="btn btn-outline-secondary btn-sm {% if periodo == 'periodo_actual' %}active{% endif %}">
+                            <i class="bi bi-calendar-range me-1"></i>Año actual
+                        </button>
+                        <button type="submit" name="periodo" value="mes_actual" class="btn btn-outline-secondary btn-sm {% if periodo == 'mes_actual' %}active{% endif %}">
+                            <i class="bi bi-calendar-day me-1"></i>Mes actual
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm reporte-link">
+                            <i class="bi bi-funnel-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- KPI STRIP -->
+        <div class="kpi-strip">
+            <div class="kpi-box azul">
+                <div class="kpi-label"><i class="bi bi-bank me-1"></i>Saldo inicial</div>
+                <div class="kpi-val text-primary">${{ saldo_inicial|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">Al inicio del período</div>
+            </div>
+            <div class="kpi-box verde">
+                <div class="kpi-label"><i class="bi bi-arrow-down-circle me-1"></i>Total ingresos</div>
+                <div class="kpi-val text-success">${{ total_ingresos|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">Cobrado en el período</div>
+            </div>
+            <div class="kpi-box rojo">
+                <div class="kpi-label"><i class="bi bi-arrow-up-circle me-1"></i>Total gastos</div>
+                <div class="kpi-val text-danger">${{ total_gastos|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">Pagado en el período</div>
+            </div>
+            <div class="kpi-box dorado">
+                <div class="kpi-label"><i class="bi bi-calculator me-1"></i>Saldo final</div>
+                <div class="kpi-val {% if saldo_final_flujo >= 0 %}text-warning{% else %}text-danger{% endif %}">
+                    ${{ saldo_final_flujo|floatformat:2|intcomma }}
+                </div>
+                <div class="kpi-sub">En bancos al cierre</div>
             </div>
         </div>
 
-        <!-- Resultado del periodo -->
-        <div class="alert pastel-gray text-end mb-3">
-            <strong>Resultado del periodo:</strong>
-            <span class="ms-2 {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
-                ${{ saldo|floatformat:2|intcomma }}
-            </span>
+        <!-- GRID INGRESOS + GASTOS -->
+        <div class="er-grid">
+
+            <!-- INGRESOS -->
+            <div class="er-card">
+                <div class="er-card-header ing">
+                    <div class="icon-circle ing"><i class="bi bi-arrow-down-circle-fill"></i></div>
+                    <div>
+                        <div class="fw-bold text-success">Ingresos cobrados</div>
+                        <div class="small text-muted">Dinero que entró en el período</div>
+                    </div>
+                </div>
+                {% for origen, monto in ingresos_por_origen.items %}
+                <div class="er-row-origen">
+                    <span class="d-flex align-items-center">
+                        <span class="dot"></span>
+                        {{ origen|capfirst }}
+                    </span>
+                    <span class="fw-semibold text-success">${{ monto|floatformat:2|intcomma }}</span>
+                </div>
+                {% endfor %}
+                <div class="er-total-ing">
+                    <span><i class="bi bi-check-circle me-1"></i>Total ingresos</span>
+                    <span>${{ total_ingresos|floatformat:2|intcomma }}</span>
+                </div>
+            </div>
+
+            <!-- GASTOS -->
+            <div class="er-card">
+                <div class="er-card-header gto">
+                    <div class="icon-circle gto"><i class="bi bi-arrow-up-circle-fill"></i></div>
+                    <div>
+                        <div class="fw-bold text-danger">Gastos pagados</div>
+                        <div class="small text-muted">Dinero que salió en el período</div>
+                    </div>
+                </div>
+                {% for grupo, subgrupos in estructura_gastos.items %}
+                    <div class="er-grupo">
+                        <i class="bi bi-folder2-open"></i>{{ grupo }}
+                    </div>
+                    {% for subgrupo, tipos in subgrupos.items %}
+                        <div class="er-subgrupo">
+                            <i class="bi bi-chevron-right me-1"></i>{{ subgrupo }}
+                        </div>
+                        {% for tipo in tipos %}
+                        <div class="er-tipo">
+                            <span class="d-flex align-items-center gap-1">
+                                <span class="dot gto" style="width:6px;height:6px;border-radius:50%;background:#c0392b;flex-shrink:0;"></span>
+                                {{ tipo.tipo|capfirst }}
+                                {% if tipo.tipo == "Fondeo de caja chica" %}
+                                    <a href="{% url 'reporte_caja_chica' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}"
+                                       class="ms-1 small text-primary" title="Ver detalle de caja chica">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                {% endif %}
+                            </span>
+                            <span class="er-tipo-monto">${{ tipo.total|floatformat:2|intcomma }}</span>
+                        </div>
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+                <div class="er-total-gto">
+                    <span><i class="bi bi-x-circle me-1"></i>Total gastos</span>
+                    <span>${{ total_gastos|floatformat:2|intcomma }}</span>
+                </div>
+            </div>
+
         </div>
 
-        <!-- Saldo final flujo -->
-        <div class="alert alert-primary text-end mb-3">
-            <i class="bi bi-calculator me-1"></i>
-            <strong>Saldo final:</strong>
-            <span class="ms-2">${{ saldo_final_flujo|floatformat:2|intcomma }}</span>
+        <!-- BARRA DE RESULTADO -->
+        <div class="resultado-bar">
+            <div class="resultado-item">
+                <div class="resultado-label"><i class="bi bi-bank me-1"></i>Saldo inicial</div>
+                <div class="resultado-val text-primary">${{ saldo_inicial|floatformat:2|intcomma }}</div>
+            </div>
+            <div class="resultado-divider"></div>
+            <div class="resultado-item">
+                <div class="resultado-label"><i class="bi bi-plus-circle me-1"></i>Ingresos</div>
+                <div class="resultado-val text-success">+${{ total_ingresos|floatformat:2|intcomma }}</div>
+            </div>
+            <div class="resultado-divider"></div>
+            <div class="resultado-item">
+                <div class="resultado-label"><i class="bi bi-dash-circle me-1"></i>Gastos</div>
+                <div class="resultado-val text-danger">-${{ total_gastos|floatformat:2|intcomma }}</div>
+            </div>
+            <div class="resultado-divider"></div>
+            <div class="resultado-item">
+                <div class="resultado-label"><i class="bi bi-arrow-left-right me-1"></i>Resultado del período</div>
+                <div class="resultado-val {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if saldo >= 0 %}+{% endif %}${{ saldo|floatformat:2|intcomma }}
+                </div>
+            </div>
+            <div class="resultado-divider"></div>
+            <div class="resultado-item">
+                <div class="resultado-label"><i class="bi bi-bank2 me-1"></i>Saldo final en bancos</div>
+                <div class="resultado-val {% if saldo_final_flujo >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                    ${{ saldo_final_flujo|floatformat:2|intcomma }}
+                </div>
+                <div class="resultado-formula">Inicial + Ingresos − Gastos</div>
+            </div>
         </div>
-
-        {% comment %} <!-- Caja chica -->
-        <div class="alert alert-warning text-end mb-3">
-            <i class="bi bi-cash-coin me-1"></i>
-            <strong>Saldo caja chica:</strong>
-            <span class="ms-2">${{ saldo_caja_chica|floatformat:2|intcomma }}</span>
-        </div>
-
-        <!-- Saldo final en bancos -->
-        <div class="alert alert-success text-end mb-4">
-            <i class="bi bi-bank2 me-1"></i>
-            <strong>Saldo final en bancos (sin caja chica):</strong>
-            <span class="ms-2">${{ saldo_final_bancos_menos_caja|floatformat:2|intcomma }}</span>
-        </div> {% endcomment %}
-
-        
 
     </div>
 

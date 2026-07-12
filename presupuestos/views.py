@@ -1,46 +1,45 @@
 # Create your views here.
 from pyexpat.errors import messages
-from urllib import request
+#from urllib import request
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from httpx import request
-from django.contrib import messages
+from django.shortcuts import render, redirect
+#from httpx import request
 import openpyxl
 from facturacion.models import (
     CobroOtrosIngresos,
     Factura,
-    FacturaOtrosIngresos,
     Pago,
     TipoOtroIngreso,
 )
 from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
 from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
-from .forms import PresupuestoCargaMasivaForm, PresupuestoForm
+from .forms import PresupuestoCargaMasivaForm
 from django.utils.timezone import now
 from django.db.models import Sum, F
 from empresas.models import Empresa
 from calendar import month_name
 from collections import defaultdict
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation,ROUND_HALF_UP
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from django.contrib.auth import authenticate
 import calendar
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font
 from django.db.models.functions import ExtractYear, ExtractMonth
-from io import BytesIO
+#from io import BytesIO
 from datetime import date, datetime
-from django.db.models.functions import TruncMonth, TruncYear
-from .forms import PresupuestoCargaMasivaForm
-from openpyxl import load_workbook
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+#from django.db.models.functions import TruncMonth, TruncYear
+#from .forms import PresupuestoCargaMasivaForm
+from openpyxl import load_workbook 
 from caja_chica.models import GastoCajaChica
 from caja_chica.models import ValeCaja
-from django.db import models as djmodels
-from django.db.models import Sum, Q
+#from django.db import models as djmodels
+from django.db.models import Q
 from django.urls import reverse
 from openpyxl import Workbook
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.contrib import messages
 
 
 # matriz ppto gastos
@@ -192,33 +191,37 @@ def matriz_presupuesto(request):
         grupos.append(grupo)
 
     # Detectar AJAX correctamente
-    is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
+    
+    #is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
+    is_ajax = (request.headers.get("x-requested-with") == "XMLHttpRequest" and request.content_type == "application/json")
 
     # AJAX save endpoint
     if request.method == "POST" and edicion_habilitada and is_ajax:
-        import json
-
-        data = json.loads(request.body)
-        tipo_id = data.get("tipo_id")
-        mes = data.get("mes")
-        monto = data.get("monto")
-        if tipo_id and mes:
-            obj, created = Presupuesto.objects.get_or_create(
-                empresa=empresa,
-                anio=anio,
-                tipo_gasto_id=tipo_id,
-                mes=mes,
-                defaults={
-                    "grupo_id": TipoGasto.objects.get(pk=tipo_id).subgrupo.grupo.id,
-                    "subgrupo_id": TipoGasto.objects.get(pk=tipo_id).subgrupo.id,
-                    "monto": monto,
-                },
-            )
-            if not created:
-                obj.monto = monto
-                obj.save()
-            return JsonResponse({"success": True, "created": created})
-        return JsonResponse({"success": False, "error": "Missing data"}, status=400)
+        try:
+            import json
+            data = json.loads(request.body)
+            tipo_id = data.get("tipo_id")
+            mes = data.get("mes")
+            monto = data.get("monto")
+            if tipo_id and mes:
+                obj, created = Presupuesto.objects.get_or_create(
+                    empresa=empresa,
+                    anio=anio,
+                    tipo_gasto_id=tipo_id,
+                    mes=mes,
+                    defaults={
+                        "grupo_id": TipoGasto.objects.get(pk=tipo_id).subgrupo.grupo.id,
+                        "subgrupo_id": TipoGasto.objects.get(pk=tipo_id).subgrupo.id,
+                        "monto": monto,
+                    },
+                )
+                if not created:
+                    obj.monto = monto
+                    obj.save()
+                return JsonResponse({"success": True, "created": created})
+            return JsonResponse({"success": False, "error": "Missing data"}, status=400)
+        except Exception:
+            pass  # No es JSON válido — dejar caer al bloque de form normal
 
     # --- GUARDADO OPTIMIZADO (NO AJAX) ---
     if request.method == "POST" and edicion_habilitada and not is_ajax:
@@ -345,14 +348,13 @@ def matriz_presupuesto(request):
             "bloqueado": bloqueado,
             "cierre": cierre,
             "pedir_superuser": pedir_superuser,
+            "is_super": request.user.is_superuser,
+            "mes_actual_num": now().month,
         },
     )
 
 
 # borrar matriz gastos
-from django.views.decorators.http import require_POST
-
-
 @require_POST
 @login_required
 def borrar_presupuesto_gastos(request):
@@ -707,6 +709,13 @@ def reporte_presupuesto_vs_gasto(request):
             "total_general_real": total_general_real,
             "total_general_var": total_general_var,
             "total_general_pct": total_general_pct,
+            "medicion_opciones": [
+                                    ("curso", "Período actual"),
+                                    ("mes", "Mes actual"),
+                                    ("semestre1", "1er semestre"),
+                                    ("semestre2", "2do semestre"),
+                                    ("anual", "Año completo"),
+                                ],
         },
     )
 
@@ -1810,6 +1819,9 @@ def matriz_presupuesto_ingresos(request):
         for i in range(len(meses))
     ]
 
+    # En la vista, agrega un print temporal
+    # print(subtotales_origen)
+
     # --- GUARDADO OPTIMIZADO ---
     if request.method == "POST" and edicion_habilitada:
         if not empresa:
@@ -1935,6 +1947,11 @@ def matriz_presupuesto_ingresos(request):
             + f"?anio={anio}"
             + (f"&empresa={empresa.id}" if empresa else "")
         )
+    
+    totales_por_origen = {
+    origen: sum(subtotales_origen[origen])
+    for origen, _ in origenes
+}
 
     return render(
         request,
@@ -1957,6 +1974,8 @@ def matriz_presupuesto_ingresos(request):
             "cierre": cierre,
             "tipos_otros": tipos_otros,
             "otros_dict": otros_dict,
+            "mes_actual_num": now().month,
+            "totales_por_origen": totales_por_origen,
         },
     )
 
@@ -2049,9 +2068,6 @@ def exportar_matriz_presupuesto_ingresos_excel(request):
 
 
 # borra matriz presupuesto ingresos
-from django.views.decorators.http import require_POST
-
-
 @require_POST
 @login_required
 def borrar_presupuesto_ingresos(request):

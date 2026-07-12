@@ -22,4 +22,5 @@ urlpatterns = [
         views.imprimir_vale_caja,
         name="imprimir_vale_caja",
     ),
+    
 ]

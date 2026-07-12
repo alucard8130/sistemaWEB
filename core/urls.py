@@ -7,7 +7,7 @@ from django.contrib.auth import views as auth_views
 from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, resetear_empresa, toggle_activo_visitante, toggle_reporte_visitante
 #from areas import views
 from caja_chica.views import (comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, 
-                              fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica)
+                              fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica, reporte_caja_chica)
 from empleados.views import (exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista)
 from facturacion.views import (consulta_facturas, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
@@ -212,6 +212,7 @@ urlpatterns = [
     path('asistencia/', include('empleados.urls')), 
     path('planes/plus/', views.info_plus, name='info_plus'),
     path('traspasos/', include('traspasos.urls')),
+    path("reporte/", reporte_caja_chica, name="reporte_caja_chica"),
 ]
 
     

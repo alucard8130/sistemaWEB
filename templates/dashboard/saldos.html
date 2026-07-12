@@ -4,438 +4,513 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 05/07/2025
-        Description: Dashboard of balances by maturity
-    -->
     <meta charset="UTF-8">
-    <title>Graficos / Cartera vencida</title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartera Vencida — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* HEADER */
+        .cv-header {
+            background: linear-gradient(135deg, #5a0000 0%, #a93226 60%, #e74c3c 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(90,0,0,0.2);
+            position: relative; overflow: hidden;
+        }
+        .cv-header::before {
+            content:''; position:absolute; top:-60px; right:-60px;
+            width:240px; height:240px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .cv-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .cv-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* TOOLBAR */
+        .cv-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .cv-toolbar .divider { width:1px; height:28px; background:#e5e7eb; }
+
+        /* ALERTA FILTROS */
+        .filtros-badge {
+            background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 10px;
+            padding: 10px 16px; font-size: 0.8rem; color: #4a6080;
+            display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+            margin-bottom: 16px;
+        }
+        .filtro-pill {
+            background: white; border: 1px solid #e2e8f0; border-radius: 20px;
+            padding: 3px 10px; font-size: 0.75rem; font-weight: 500;
+        }
+
+        /* KPI ANTIGÜEDAD */
+        .antiguedad-strip {
+            display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 20px;
+        }
+        @media (max-width:768px) { .antiguedad-strip { grid-template-columns: repeat(2,1fr); } }
+
+        .ant-box {
+            border-radius: 14px; padding: 14px 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+            border-top: 5px solid transparent; background: white;
+            cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .ant-box:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+        .ant-box.d30  { border-top-color: #1e8449; }
+        .ant-box.d60  { border-top-color: #f0c330; }
+        .ant-box.d90  { border-top-color: #e67e22; }
+        .ant-box.d180 { border-top-color: #d35400; }
+        .ant-box.dmas { border-top-color: #c0392b; }
+        .ant-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .ant-val   { font-size:1.1rem; font-weight:700; line-height:1.3; margin:4px 0 2px; }
+        .ant-badge { display:inline-block; padding:2px 7px; border-radius:10px; font-size:0.68rem; font-weight:700; }
+        .ant-badge.verde  { background:#eafaf1; color:#1e8449; }
+        .ant-badge.amari  { background:#fef9e7; color:#d4ac0d; }
+        .ant-badge.naran  { background:#fef0e7; color:#d35400; }
+        .ant-badge.rojo   { background:#fdf0f0; color:#c0392b; }
+
+        /* CARDS */
+        .cv-card {
+            background: white; border-radius: 16px;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+            overflow: hidden; height: 100%;
+        }
+        .cv-card-header {
+            padding: 14px 20px; border-bottom: 1px solid #f1f5f9;
+            display: flex; align-items: center; gap: 10px; font-weight: 700;
+        }
+        .cv-card-header.rojo { background: linear-gradient(135deg,#fdf0f0,#fef5f5); color:#c0392b; }
+        .cv-card-header.azul { background: linear-gradient(135deg,#e8f0f8,#f0f4f8); color:#1a3a5c; }
+        .cv-card-body { padding: 20px; }
+
+        /* Lista antigüedad */
+        .edad-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .edad-item:last-child { border-bottom: none; }
+        .edad-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink:0; }
+        .edad-label { flex:1; font-size:0.82rem; font-weight:500; }
+        .edad-val { font-size:0.88rem; font-weight:700; white-space:nowrap; }
+        .edad-bar-wrap { width: 80px; height: 6px; background: #f1f5f9; border-radius: 3px; overflow:hidden; }
+        .edad-bar-fill { height: 100%; border-radius: 3px; }
+
+        /* Top adeudos */
+        .top-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .top-item:last-child { border-bottom: none; }
+        .top-rank { width: 24px; height: 24px; border-radius: 50%; background: #f0f4f8; color: #4a6080; font-size: 0.7rem; font-weight: 700; display: flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .top-rank.r1 { background: #ffd700; color: #5a3e00; }
+        .top-rank.r2 { background: #c0c0c0; color: #333; }
+        .top-rank.r3 { background: #cd7f32; color: white; }
+        .top-info { flex:1; min-width:0; }
+        .top-nombre { font-size:0.8rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .top-cliente { font-size:0.72rem; color:#9ca3af; }
+        .top-monto { font-size:0.85rem; font-weight:700; color:#c0392b; white-space:nowrap; }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .cv-header { background:#5a0000 !important; -webkit-print-color-adjust:exact; }
+        }
+    </style>
 </head>
 <body>
     {% if request.is_portal_acceso %}
         <div style="background:#152A52; padding:12px 24px; display:flex; justify-content:space-between; align-items:center;">
-            <span style="color:white; font-weight:bold;">
-                <i class="bi bi-building me-1"></i> GESAC Portal — {{ request.empresa_activa_portal.nombre }}
-            </span>
-            <a href="{% url 'acceso_dashboard' %}" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-arrow-left me-1"></i> Volver al portal
-            </a>
+            <span style="color:white; font-weight:bold;"><i class="bi bi-building me-1"></i> GESAC Portal — {{ request.empresa_activa_portal.nombre }}</span>
+            <a href="{% url 'acceso_dashboard' %}" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-left me-1"></i> Volver al portal</a>
         </div>
     {% else %}
         {% include 'navbar.html' %}
     {% endif %}
+    {% include 'loading_overlay.html' %}
 
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         {% endfor %}
     {% endif %}
-    {% comment %} {% include 'navbar.html' %} {% endcomment %}
-    
-    {% include 'loading_overlay.html' %}
-    
-    <div class="container-fluid mt-4">
-        
-        <h2>Graficos / Cartera vencida</h2>
-        <!-- Resumen de filtros aplicados -->
-<div class="alert alert-info mb-3">
-    <strong>Consulta actual:</strong>
-    {% if es_super %}
-        <span>Empresa: 
-            {% if empresa_id and empresa_id != "todas" %}
-                {{ empresas|get_empresa_nombre:empresa_id }}
-            {% else %}
-                Todas
-            {% endif %}
-        </span> |
-    {% endif %}
-    <span>Cliente: 
-        {% if cliente_id %}
-            {{ clientes|get_cliente_nombre:cliente_id }}
-        {% else %}
-            Todos
-        {% endif %}
-    </span> |
-    <span>Origen: 
-        {% if origen == "local" %}Cuotas Locales
-        {% elif origen == "area" %}Cuotas Áreas Comunes
-        {% elif origen == "otros" %}Otras Cuotas
-        {% else %}Todos{% endif %}
-    </span> |
-    <span>Tipo de cuota: 
-        {% if tipo_cuota_seleccionada %}{{ tipo_cuota_seleccionada }}{% else %}Todos{% endif %}
-    </span> |
-    <span>Periodo: 
-    {% if mes and anio %}
-        {{ mes|nombre_mes }} {{ anio }}
-    {% elif mes %}
-        {{ mes|nombre_mes }}
-    {% elif anio %}
-        Año {{ anio }}
-    {% else %}
-        Todos
-    {% endif %}
-</span>
-</div>
-        <!-- Filtros -->
-<form id="form-filtros" method="get" class="row g-2 mb-4">
-            {% if es_super %}
-            <div class="col-md-2">
-                <select name="empresa" class="form-select" onchange="this.form.submit()">
-                    <option value="todas" {% if not empresa_id or empresa_id == "todas" %}selected{% endif %}>Empresas</option>
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="cv-header">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    {% if es_super and empresa_id and empresa_id != "todas" %}
+                    <div class="cv-empresa"><i class="bi bi-building me-1"></i>
+                        {{ empresas|get_empresa_nombre:empresa_id }}
+                    </div>
+                    {% endif %}
+                    <div class="cv-titulo"><i class="bi bi-exclamation-triangle me-2"></i>Cartera Vencida — Antigüedad de Saldos</div>
+                    <div style="font-size:0.78rem;opacity:0.8;margin-top:4px;">
+                        <i class="bi bi-calendar-check me-1"></i>Análisis de adeudos pendientes por período de vencimiento
+                    </div>
+                </div>
+                <div class="d-flex gap-2 no-print">
+                    <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button>
+                    <a href="{% url 'dashboard_saldos' %}" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-x-circle me-1"></i>Limpiar filtros
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR FILTROS -->
+        <div class="cv-toolbar no-print">
+            <form id="form-filtros" method="get" class="d-flex align-items-center flex-wrap gap-2">
+                {% if es_super %}
+                <select name="empresa" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="todas" {% if not empresa_id or empresa_id == "todas" %}selected{% endif %}>Todas las empresas</option>
                     {% for emp in empresas %}
                         <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == empresa_id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
                     {% endfor %}
                 </select>
-            </div>
-            {% endif %}
-            <div class="col-md-2">
-                <select name="cliente" class="form-select" onchange="this.form.submit()">
-                    <option value="">Clientes</option>
+                <div class="divider"></div>
+                {% endif %}
+
+                <select name="cliente" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los clientes</option>
                     {% for cli in clientes %}
                         <option value="{{ cli.id }}" {% if cli.id|stringformat:"s" == cliente_id|stringformat:"s" %}selected{% endif %}>{{ cli.nombre }}</option>
                     {% endfor %}
                 </select>
-            </div>
-            <div class="col-md-2">
-                <select name="origen" class="form-select" onchange="this.form.submit()">
-                    <option value="todos" {% if origen == "todos" %}selected{% endif %}  >Todos</option>
+
+                <select name="origen" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="todos" {% if origen == "todos" or not origen %}selected{% endif %}>Todos los orígenes</option>
                     <option value="local" {% if origen == "local" %}selected{% endif %}>Cuotas Locales</option>
-                    <option value="area" {% if origen == "area" %}selected{% endif %}>Cuotas Areas Comunes</option>
-                    <option value="otros" {% if origen == "otros" %}selected{% endif %}>Otras Cuotas</option>
+                    <option value="area" {% if origen == "area" %}selected{% endif %}>Áreas Comunes</option>
+                    <option value="otros" {% if origen == "otros" %}selected{% endif %}>Otros ingresos</option>
                 </select>
-            </div>
-            <div class="col-auto">
-    <select name="tipo_cuota" class="form-select", onchange="this.form.submit()">
-        <option value="">Todos los tipos de cuota</option>
-        {% for cuota in tipos_cuota %}
-            <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
-        {% endfor %}
-    </select>
-</div>
-<div class="col-auto">
-        <select name="mes" id="mes" class="form-select" onchange="this.form.submit()">
-    <option value="">Meses</option>
-    {% for m in meses %}
-        <option value="{{ m }}" {% if mes|default:'' == m|stringformat:"s" %}selected{% endif %}>
-            {{ m|stringformat:"02d" }}
-        </option>
-    {% endfor %}
-</select>
-    </div>
-    <div class="col-auto">
-        <select name="anio" id="anio" class="form-select" onchange="this.form.submit()">
-            <option value="">Años</option>
-            {% for a in anios_facturas %}
-                <option value="{{ a }}" {% if anio|default:'' == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <!-- limpiar-->
-    <div class="col-auto">
-        <a href="{% url 'dashboard_saldos' %}" class="btn btn-secondary reporte-link">Limpiar</a>
-        <!--boton salir-->
-        <a href="{% url 'dashboard_inicio' %}" class="btn btn-outline-primary reporte-link">Salir</a>
-    </div>
-</form>
 
-        <!-- Gráficos y KPIs -->
-        <div class="row mb-4">
-            <div class="col-md-7">
-                <div class="card shadow p-3">
-                    <h5 class="mb-2"><strong>Distribución de saldos por periodo</strong></h5>
-                    <canvas id="chartSaldos"></canvas>
-                </div>
-            </div>
-            <div class="col-md-5">
-                <div class="card shadow p-3">
-                    <h6 class="mb-2"><strong>Saldos por periodo</strong></h6>
-                    <ul class="list-group">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Menos de 30 días
-                            <span class="badge bg-success rounded-pill ">
-                                {% if origen == "otros" %}
-                                    ${{ saldo_0_30_otros|floatformat:2|intcomma }}
-                                {% elif origen == "local" or origen == "area" %}
-                                    ${{ saldo_0_30|floatformat:2|intcomma }}
-                                {% else %}
-                                    ${{ saldo_0_30_total|floatformat:2|intcomma }}
-                                {% endif %}
-                            </span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            31 a 60 días
-                            <span class="badge bg-warning rounded-pill">
-                                {% if origen == "otros" %}
-                                    ${{ saldo_31_60_otros|floatformat:2|intcomma }}
-                                {% elif origen == "local" or origen == "area" %}
-                                    ${{ saldo_31_60|floatformat:2|intcomma }}
-                                {% else %}
-                                    ${{ saldo_31_60_total|floatformat:2|intcomma }}
-                                {% endif %}
-                            </span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            61 a 90 días
-                            <span class="badge bg-warning rounded-pill">
-                                {% if origen == "otros" %}
-                                    ${{ saldo_61_90_otros|floatformat:2|intcomma }}
-                                {% elif origen == "local" or origen == "area" %}
-                                    ${{ saldo_61_90|floatformat:2|intcomma }}
-                            
-                                {% else %}
-                                    ${{ saldo_61_90_total|floatformat:2|intcomma }}
-                                {% endif %} 
-                            </span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            91 a 180 días
-                            <span class="badge bg-warning rounded-pill">
-                                {% if origen == "otros" %}
-                                    ${{ saldo_91_180_otros|floatformat:2|intcomma }}
-                                {% elif origen == "local" or origen == "area" %}
-                                    ${{ saldo_91_180|floatformat:2|intcomma }}
-                                
-                                {% else %}
-                                    ${{ saldo_91_180_total|floatformat:2|intcomma }}
-                                {% endif %}
-                            </span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Más de 180 días
-                            <span class="badge bg-danger rounded-pill">
-                                {% if origen == "otros" %}
-                                     ${{ saldo_181_mas_otros|floatformat:2|intcomma }}
-                                {% elif origen == "local" or origen == "area" %}
-                                     ${{ saldo_181_mas|floatformat:2|intcomma }}
-                                
-                                {% else %}  
-                                    ${{ saldo_181_mas_total|floatformat:2|intcomma }}
-                                {% endif %}
-                            </span>
-                        </li>
-                    </ul>
-                    
-                </div>
-                <div class="mt-4">
-                <div class="card shadow p-3" >
-        <h6 class="mb-2"><strong>Top 10 Adeudos</strong></h6>
-        <canvas id="chartTopAdeudos" height="50", width="60"></canvas>
+                <select name="tipo_cuota" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los tipos</option>
+                    {% for cuota in tipos_cuota %}
+                        <option value="{{ cuota }}" {% if cuota == tipo_cuota_seleccionada %}selected{% endif %}>{{ cuota }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="divider"></div>
+
+                <select name="mes" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Mes</option>
+                    {% for m in meses %}
+                        <option value="{{ m }}" {% if mes|default:'' == m|stringformat:"s" %}selected{% endif %}>{{ m|stringformat:"02d" }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="anio" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Año</option>
+                    {% for a in anios_facturas %}
+                        <option value="{{ a }}" {% if anio|default:'' == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </form>
         </div>
+
+        <!-- FILTROS ACTIVOS -->
+        <div class="filtros-badge mb-3">
+            <i class="bi bi-funnel-fill text-muted"></i>
+            <span class="text-muted fw-bold">Filtros activos:</span>
+            <span class="filtro-pill">
+                {% if empresa_id and empresa_id != "todas" %}{{ empresas|get_empresa_nombre:empresa_id }}{% else %}Todas las empresas{% endif %}
+            </span>
+            <span class="filtro-pill">
+                {% if cliente_id %}{{ clientes|get_cliente_nombre:cliente_id }}{% else %}Todos los clientes{% endif %}
+            </span>
+            <span class="filtro-pill">
+                {% if origen == "local" %}Locales{% elif origen == "area" %}Áreas{% elif origen == "otros" %}Otros{% else %}Todos{% endif %}
+            </span>
+            {% if tipo_cuota_seleccionada %}<span class="filtro-pill">{{ tipo_cuota_seleccionada }}</span>{% endif %}
+            {% if mes %}<span class="filtro-pill">Mes {{ mes }}</span>{% endif %}
+            {% if anio %}<span class="filtro-pill">{{ anio }}</span>{% endif %}
+        </div>
+
+        <!-- KPI ANTIGÜEDAD -->
+        <div class="antiguedad-strip">
+            <div class="ant-box d30">
+                <div class="ant-label"><i class="bi bi-clock me-1"></i>0 – 30 días</div>
+                <div class="ant-val text-success">
+                    ${% if origen == "otros" %}{{ saldo_0_30_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_0_30|floatformat:0|intcomma }}{% else %}{{ saldo_0_30_total|floatformat:0|intcomma }}{% endif %}
+                </div>
+                <span class="ant-badge verde">Al corriente</span>
             </div>
+            <div class="ant-box d60">
+                <div class="ant-label"><i class="bi bi-clock-history me-1"></i>31 – 60 días</div>
+                <div class="ant-val" style="color:#d4ac0d;">
+                    ${% if origen == "otros" %}{{ saldo_31_60_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_31_60|floatformat:0|intcomma }}{% else %}{{ saldo_31_60_total|floatformat:0|intcomma }}{% endif %}
+                </div>
+                <span class="ant-badge amari">Atención</span>
+            </div>
+            <div class="ant-box d90">
+                <div class="ant-label"><i class="bi bi-exclamation-circle me-1"></i>61 – 90 días</div>
+                <div class="ant-val" style="color:#e67e22;">
+                    ${% if origen == "otros" %}{{ saldo_61_90_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_61_90|floatformat:0|intcomma }}{% else %}{{ saldo_61_90_total|floatformat:0|intcomma }}{% endif %}
+                </div>
+                <span class="ant-badge naran">En riesgo</span>
+            </div>
+            <div class="ant-box d180">
+                <div class="ant-label"><i class="bi bi-exclamation-triangle me-1"></i>91 – 180 días</div>
+                <div class="ant-val" style="color:#d35400;">
+                    ${% if origen == "otros" %}{{ saldo_91_180_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_91_180|floatformat:0|intcomma }}{% else %}{{ saldo_91_180_total|floatformat:0|intcomma }}{% endif %}
+                </div>
+                <span class="ant-badge rojo">Crítico</span>
+            </div>
+            <div class="ant-box dmas">
+                <div class="ant-label"><i class="bi bi-x-circle me-1"></i>+180 días</div>
+                <div class="ant-val text-danger">
+                    ${% if origen == "otros" %}{{ saldo_181_mas_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_181_mas|floatformat:0|intcomma }}{% else %}{{ saldo_181_mas_total|floatformat:0|intcomma }}{% endif %}
+                </div>
+                <span class="ant-badge rojo">Vencido grave</span>
             </div>
         </div>
-        
-        <!-- Gráfico de Saldos -->
-        <script>
-        const totalCartera = (
-        {% if origen == "otros" %}    
-            {{ saldo_0_30_otros|default:0 }} +
-            {{ saldo_31_60_otros|default:0 }} +
-            {{ saldo_61_90_otros|default:0 }} +
-            {{ saldo_91_180_otros|default:0 }} +
-            {{ saldo_181_mas_otros|default:0 }}
-        {% elif  origen == "todos" %}
-            {{ saldo_0_30|default:0 }} +{{ saldo_0_30_otros|default:0 }} +
-            {{ saldo_31_60|default:0 }} +{{ saldo_31_60_otros|default:0 }} +
-            {{ saldo_61_90|default:0 }} +{{ saldo_61_90_otros|default:0 }} +
-            {{ saldo_91_180|default:0 }} +{{ saldo_91_180_otros|default:0 }} +
-            {{ saldo_181_mas|default:0 }} +{{ saldo_181_mas_otros|default:0 }}
-        {% elif origen == "local" or origen == "area" %}
-            {{ saldo_0_30|default:0 }} +
-            {{ saldo_31_60|default:0 }} +
-            {{ saldo_61_90|default:0 }} +
-            {{ saldo_91_180|default:0 }} +
-            {{ saldo_181_mas|default:0 }}
-        {% else %}
-            {{ saldo_0_30|default:0 }} +{{ saldo_0_30_otros|default:0 }} +
-            {{ saldo_31_60|default:0 }} +{{ saldo_31_60_otros|default:0 }} +
-            {{ saldo_61_90|default:0 }} +{{ saldo_61_90_otros|default:0 }} +
-            {{ saldo_91_180|default:0 }} +{{ saldo_91_180_otros|default:0 }} +
-            {{ saldo_181_mas|default:0 }} +{{ saldo_181_mas_otros|default:0 }}
-        {% endif %}
-    );
-        const ctx = document.getElementById('chartSaldos');
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['0-30 días','31-60 días','61-90 días','91-180 días','181+ días'],
-                datasets: [{
-                    label: 'Saldo pendiente ($)',
-                    data: [
-                        {% if origen == "otros" %}
-                            {{ saldo_0_30_otros|default:0 }},
-                            {{ saldo_31_60_otros|default:0 }},
-                            {{ saldo_61_90_otros|default:0 }},
-                            {{ saldo_91_180_otros|default:0 }},
-                            {{ saldo_181_mas_otros|default:0 }}
-                        {% elif origen == "todos" %}
-                            {{ saldo_0_30|default:0 }} + {{ saldo_0_30_otros|default:0 }},
-                            {{ saldo_31_60|default:0 }} + {{ saldo_31_60_otros|default:0 }},
-                            {{ saldo_61_90|default:0 }} + {{ saldo_61_90_otros|default:0 }},
-                            {{ saldo_91_180|default:0 }} + {{ saldo_91_180_otros|default:0 }},
-                            {{ saldo_181_mas|default:0 }} + {{ saldo_181_mas_otros|default:0 }}
-                        {% elif origen == "local" or origen == "area" %}
-                            {{ saldo_0_30|default:0 }},
-                            {{ saldo_31_60|default:0 }},
-                            {{ saldo_61_90|default:0 }},
-                            {{ saldo_91_180|default:0 }},
-                            {{ saldo_181_mas|default:0 }}
-                        {% else %}
-                            {{ saldo_0_30|default:0 }} + {{ saldo_0_30_otros|default:0 }},
-                            {{ saldo_31_60|default:0 }} + {{ saldo_31_60_otros|default:0 }},
-                            {{ saldo_61_90|default:0 }} + {{ saldo_61_90_otros|default:0 }},
-                            {{ saldo_91_180|default:0 }} + {{ saldo_91_180_otros|default:0 }},
-                            {{ saldo_181_mas|default:0 }} + {{ saldo_181_mas_otros|default:0 }}   
-                        {% endif %}
-                    ],
-                    backgroundColor: ['#198754', '#F3F763', '#FEA55C', '#D86302', '#C00000'],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'left' },
-                    title: { display: true, text: '' },
-                    tooltip: { enabled: true },
-    // Plugin para mostrar el total en el centro
-                doughnutlabel: {
-                    labels: [
-                        {
-                            text: '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
-                            font: { size: 22, weight: 'bold' }
-                        },
-                        {
-                            text: 'Total cartera',
-                            font: { size: 14 }
-                        }
-                    ]
-                }
-            }
-        },
-        plugins: [{
-            id: 'centerText',
-            afterDraw: chart => {
-                const {ctx, chartArea: {width, height}} = chart;
-                ctx.save();
-                ctx.font = 'bold 22px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#222';
-                ctx.fillText(
-                    '$' + totalCartera.toLocaleString('es-MX', {minimumFractionDigits:2}),
-                    chart.getDatasetMeta(0).data[0].x,
-                    chart.getDatasetMeta(0).data[0].y
-                );
-                ctx.font = '14px sans-serif';
-                ctx.fillText(
-                    'Total cartera',
-                    chart.getDatasetMeta(0).data[0].x,
-                    chart.getDatasetMeta(0).data[0].y + 22
-                );
-                ctx.restore();
-            }
-        }]
-    });
-        </script>
-        <script>
-        // Gráfico de Top Adeudos 
-    const topLabels = {{ top_labels|safe }};
-    const topData = {{ top_data|safe }};
-    const topClientes = {{ top_clientes|safe }};
 
-    const ctxBar = document.getElementById('chartTopAdeudos').getContext('2d');
-    new Chart(ctxBar, {
-        type: 'bar',
-        data: {
-            labels: topLabels,
-            datasets: [{
-                label: 'Adeudo ($)',
-                data: topData,
-                backgroundColor: ''
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                title: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            
-                            const cliente = topClientes[context.dataIndex] || 'Desconocido';
-                            return cliente + ': $' + context.parsed.x.toLocaleString('es-MX', {minimumFractionDigits:2});
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        display: false,
-                        callback: function(value) {
-                            return '$' + value.toLocaleString('es-MX');
-                        }
-                    }
-                }
-            }
-        }
-    });
-    </script>
+        <!-- GRÁFICAS -->
+        <div class="row g-4">
+
+            <!-- DONA -->
+            <div class="col-12 col-lg-5">
+                <div class="cv-card">
+                    <div class="cv-card-header rojo">
+                        <i class="bi bi-pie-chart-fill"></i>Distribución por antigüedad
+                    </div>
+                    <div class="cv-card-body">
+                        <canvas id="chartSaldos" style="max-height:280px;"></canvas>
+                        <hr class="my-3">
+                        <!-- Lista visual -->
+                        {% with colores="#1e8449,#d4ac0d,#e67e22,#d35400,#c0392b" etiquetas="0-30 días,31-60 días,61-90 días,91-180 días,+180 días" %}
+                        <div id="lista-antiguedad">
+                            <div class="edad-item">
+                                <div class="edad-dot" style="background:#1e8449;"></div>
+                                <div class="edad-label">0 – 30 días</div>
+                                <div class="edad-bar-wrap"><div class="edad-bar-fill" id="bar-30" style="background:#1e8449;"></div></div>
+                                <div class="edad-val text-success" id="val-30">
+                                    ${% if origen == "otros" %}{{ saldo_0_30_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_0_30|floatformat:0|intcomma }}{% else %}{{ saldo_0_30_total|floatformat:0|intcomma }}{% endif %}
+                                </div>
+                            </div>
+                            <div class="edad-item">
+                                <div class="edad-dot" style="background:#d4ac0d;"></div>
+                                <div class="edad-label">31 – 60 días</div>
+                                <div class="edad-bar-wrap"><div class="edad-bar-fill" id="bar-60" style="background:#d4ac0d;"></div></div>
+                                <div class="edad-val" style="color:#d4ac0d;" id="val-60">
+                                    ${% if origen == "otros" %}{{ saldo_31_60_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_31_60|floatformat:0|intcomma }}{% else %}{{ saldo_31_60_total|floatformat:0|intcomma }}{% endif %}
+                                </div>
+                            </div>
+                            <div class="edad-item">
+                                <div class="edad-dot" style="background:#e67e22;"></div>
+                                <div class="edad-label">61 – 90 días</div>
+                                <div class="edad-bar-wrap"><div class="edad-bar-fill" id="bar-90" style="background:#e67e22;"></div></div>
+                                <div class="edad-val" style="color:#e67e22;" id="val-90">
+                                    ${% if origen == "otros" %}{{ saldo_61_90_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_61_90|floatformat:0|intcomma }}{% else %}{{ saldo_61_90_total|floatformat:0|intcomma }}{% endif %}
+                                </div>
+                            </div>
+                            <div class="edad-item">
+                                <div class="edad-dot" style="background:#d35400;"></div>
+                                <div class="edad-label">91 – 180 días</div>
+                                <div class="edad-bar-wrap"><div class="edad-bar-fill" id="bar-180" style="background:#d35400;"></div></div>
+                                <div class="edad-val" style="color:#d35400;" id="val-180">
+                                    ${% if origen == "otros" %}{{ saldo_91_180_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_91_180|floatformat:0|intcomma }}{% else %}{{ saldo_91_180_total|floatformat:0|intcomma }}{% endif %}
+                                </div>
+                            </div>
+                            <div class="edad-item">
+                                <div class="edad-dot" style="background:#c0392b;"></div>
+                                <div class="edad-label">+180 días</div>
+                                <div class="edad-bar-wrap"><div class="edad-bar-fill" id="bar-mas" style="background:#c0392b;"></div></div>
+                                <div class="edad-val text-danger" id="val-mas">
+                                    ${% if origen == "otros" %}{{ saldo_181_mas_otros|floatformat:0|intcomma }}{% elif origen == "local" or origen == "area" %}{{ saldo_181_mas|floatformat:0|intcomma }}{% else %}{{ saldo_181_mas_total|floatformat:0|intcomma }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOP ADEUDOS -->
+            <div class="col-12 col-lg-7">
+                <div class="cv-card">
+                    <div class="cv-card-header azul">
+                        <i class="bi bi-trophy-fill" style="color:#d4ac0d;"></i>Top 10 — Mayores Adeudos
+                    </div>
+                    <div class="cv-card-body">
+                        <canvas id="chartTopAdeudos" style="max-height:200px; margin-bottom:20px;"></canvas>
+                        <hr class="my-3">
+                        <!-- Lista top -->
+                        <div id="lista-top"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
     </div>
- <!-- 🔹 Footer -->
+
     {% if not request.is_portal_acceso %}
         {% include 'tool_bar.html' %}
     {% endif %}
-    <!-- Scripts -->
+
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay y enviar el formulario al cambiar cualquier filtro
-  document.querySelectorAll('#form-filtros select').forEach(function(sel) {
-    sel.addEventListener('change', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-      // Espera un pequeño tiempo para mostrar el overlay antes de enviar
-      setTimeout(function() {
-        sel.form.submit();
-      }, 50);
-    });
-  });
+    document.addEventListener('DOMContentLoaded', function() {
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
+        // Loading overlay
+        document.querySelectorAll('#form-filtros select').forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                setTimeout(function() { sel.form.submit(); }, 50);
+            });
+        });
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
 
-  // También para el submit manual (por si usas botón)
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+        // Datos antigüedad
+        const origen = "{{ origen|default:'todos' }}";
+        const saldos = {
+            s30:  {% if origen == "otros" %}{{ saldo_0_30_otros|default:0 }}{% elif origen == "local" or origen == "area" %}{{ saldo_0_30|default:0 }}{% else %}{{ saldo_0_30_total|default:0 }}{% endif %},
+            s60:  {% if origen == "otros" %}{{ saldo_31_60_otros|default:0 }}{% elif origen == "local" or origen == "area" %}{{ saldo_31_60|default:0 }}{% else %}{{ saldo_31_60_total|default:0 }}{% endif %},
+            s90:  {% if origen == "otros" %}{{ saldo_61_90_otros|default:0 }}{% elif origen == "local" or origen == "area" %}{{ saldo_61_90|default:0 }}{% else %}{{ saldo_61_90_total|default:0 }}{% endif %},
+            s180: {% if origen == "otros" %}{{ saldo_91_180_otros|default:0 }}{% elif origen == "local" or origen == "area" %}{{ saldo_91_180|default:0 }}{% else %}{{ saldo_91_180_total|default:0 }}{% endif %},
+            smas: {% if origen == "otros" %}{{ saldo_181_mas_otros|default:0 }}{% elif origen == "local" or origen == "area" %}{{ saldo_181_mas|default:0 }}{% else %}{{ saldo_181_mas_total|default:0 }}{% endif %}
+        };
+        const totalCartera = saldos.s30 + saldos.s60 + saldos.s90 + saldos.s180 + saldos.smas;
+
+        // Barras proporcionales
+        if (totalCartera > 0) {
+            ['30','60','90','180','mas'].forEach(function(k) {
+                var val = k === 'mas' ? saldos.smas : saldos['s'+k];
+                var bar = document.getElementById('bar-'+k);
+                if (bar) bar.style.width = Math.round(val / totalCartera * 100) + '%';
+            });
+        }
+
+        // Gráfica dona
+        new Chart(document.getElementById('chartSaldos'), {
+            type: 'doughnut',
+            data: {
+                labels: ['0-30 días','31-60 días','61-90 días','91-180 días','+180 días'],
+                datasets: [{
+                    data: [saldos.s30, saldos.s60, saldos.s90, saldos.s180, saldos.smas],
+                    backgroundColor: ['#1e8449','#d4ac0d','#e67e22','#d35400','#c0392b'],
+                    borderWidth: 2, borderColor: 'white', hoverOffset: 8
+                }]
+            },
+            options: {
+                cutout: '65%',
+                responsive: true, maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var pct = totalCartera > 0 ? Math.round(ctx.raw / totalCartera * 100) : 0;
+                                return ' $' + ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:2}) + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [{
+                id: 'centerText',
+                afterDraw: function(chart) {
+                    var {ctx, chartArea: {width, height}} = chart;
+                    var meta = chart.getDatasetMeta(0);
+                    if (!meta.data.length) return;
+                    var cx = meta.data[0].x, cy = meta.data[0].y;
+                    ctx.save();
+                    ctx.font = 'bold 16px Rubik, sans-serif';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.fillText('$' + (totalCartera/1000).toFixed(0) + 'K', cx, cy - 10);
+                    ctx.font = '11px Rubik, sans-serif';
+                    ctx.fillStyle = '#9ca3af';
+                    ctx.fillText('Total cartera', cx, cy + 10);
+                    ctx.restore();
+                }
+            }]
+        });
+
+        // Top adeudos
+        const topLabels  = {{ top_labels|safe }};
+        const topData    = {{ top_data|safe }};
+        const topClientes = {{ top_clientes|safe }};
+
+        // Gráfica barras top
+        new Chart(document.getElementById('chartTopAdeudos'), {
+            type: 'bar',
+            data: {
+                labels: topLabels,
+                datasets: [{
+                    label: 'Adeudo',
+                    data: topData,
+                    backgroundColor: topData.map(function(v, i) {
+                        var colors = ['#c0392b','#d35400','#e67e22','#d4ac0d','#f39c12','#2471a3','#1a7a45','#4a1080','#1a3a5c','#6b7280'];
+                        return colors[i] || '#9ca3af';
+                    }),
+                    borderRadius: 6, borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var cliente = topClientes[ctx.dataIndex] || '';
+                                return (cliente ? cliente + ' — ' : '') + '$' + ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:2});
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: false, grid: { display: false } },
+                    y: { ticks: { font: { size: 10 }, color: '#374151' }, grid: { display: false } }
+                }
+            }
+        });
+
+        // Lista top dinámica
+        var listaTop = document.getElementById('lista-top');
+        if (listaTop) {
+            topLabels.forEach(function(label, i) {
+                var rankClass = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
+                var pct = totalCartera > 0 ? Math.round(topData[i] / totalCartera * 100) : 0;
+                listaTop.innerHTML += `
+                <div class="top-item">
+                    <div class="top-rank ${rankClass}">${i+1}</div>
+                    <div class="top-info">
+                        <div class="top-nombre">${label}</div>
+                        <div class="top-cliente">${topClientes[i] || ''}</div>
+                    </div>
+                    <div class="top-monto">$${topData[i].toLocaleString('es-MX',{minimumFractionDigits:2})}</div>
+                    <div style="width:50px;">
+                        <div style="height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:#c0392b;border-radius:2px;"></div>
+                        </div>
+                        <div style="font-size:0.65rem;color:#9ca3af;text-align:right;">${pct}%</div>
+                    </div>
+                </div>`;
+            });
+        }
+
     });
-  }
-});
-</script>
+    </script>
 </body>
 </html>
