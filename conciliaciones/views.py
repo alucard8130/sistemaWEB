@@ -641,11 +641,15 @@ def saldos_periodo(request):
     periodos = []
     for cuenta in cuentas:
         periodo, movimientos = get_o_crear_periodo(cuenta, empresa, anio, mes)
+        saldo_final = periodo.saldo_final or 0
+        saldo_calculado = periodo.saldo_calculado or 0
+        diferencia = saldo_final - saldo_calculado
         periodos.append(
             {
                 "cuenta": cuenta,
                 "periodo": periodo,
                 "movimientos": movimientos,
+                "diferencia": diferencia,
             }
         )
 
