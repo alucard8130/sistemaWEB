@@ -513,6 +513,13 @@ def reversa_pago_gasto(request, pago_id, gasto_id):
     gasto = get_object_or_404(Gasto, id=gasto_id)
     next_url = request.GET.get("next")
 
+     # Validar que la fecha del pago original esté en un período permitido
+    if pago.cuenta_bancaria:
+        error_periodo = validar_periodo_abierto(pago.cuenta_bancaria, pago.fecha_pago)
+        if error_periodo:
+            messages.error(request, f"No se puede reversar: {error_periodo}")
+            return redirect(next_url or "gasto_detalle", pk=gasto.id)
+        
     if request.method == "POST":
         form = MotivoReversaPagoForm(request.POST)
         if form.is_valid():
@@ -523,6 +530,7 @@ def reversa_pago_gasto(request, pago_id, gasto_id):
                 monto=-pago.monto,
                 forma_pago=pago.forma_pago,
                 fecha_pago=pago.fecha_pago,
+                cuenta_bancaria=pago.cuenta_bancaria,
                 referencia=f"Reverso de pago ID {pago.id}. Motivo: {motivo_display}",
                 registrado_por=request.user,
             )
