@@ -621,6 +621,8 @@ def reporte_pagos_gastos(request):
         else:
             proveedores = Proveedor.objects.all().order_by("nombre")
             empleados = Empleado.objects.all().order_by("nombre")
+            
+    pagos_base = pagos
 
     # Solo aplica el filtro si el parámetro es numérico
     if proveedor_id and proveedor_id.isdigit():
@@ -641,6 +643,7 @@ def reporte_pagos_gastos(request):
     # Filtro de cuenta bancaria
     if cuenta_bancaria and cuenta_bancaria.isdigit():
         pagos = pagos.filter(cuenta_bancaria_id=cuenta_bancaria)
+    
 
     hoy = datetime.now().date()
     anio_actual = hoy.year
@@ -651,11 +654,11 @@ def reporte_pagos_gastos(request):
 
     total_pagos_acumulado = pagos.aggregate(total=Sum("monto"))["total"] or 0
 
-    
-    pagos_anio_actual = pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum("monto"))["total"] or 0
-    pagos_anio_anterior = pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum("monto"))["total"] or 0
-    pagos_mes_actual = pagos.filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum("monto"))["total"] or 0
-    pagos_mes_anterior = pagos.filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_anio_actual = pagos_base.filter(fecha_pago__year=anio_actual).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_anio_anterior = pagos_base.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_mes_actual = pagos_base.filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum("monto"))["total"] or 0
+    pagos_mes_anterior = pagos_base.filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum("monto"))["total"] or 0
+
     pagos_gastos_chart = pagos
 
     # KPIs por tipo de gasto (top 10, etiqueta: subgrupo - tipo)

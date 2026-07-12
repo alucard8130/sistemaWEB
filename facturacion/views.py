@@ -1141,6 +1141,21 @@ def pagos_por_origen(request):
             cuenta_bancaria,
         ]
     )
+    # Queryset base sin filtro de fechas para KPIs
+    pagos_base = pagos
+    if empresa_id:
+        pagos_base = pagos_base.filter(factura__empresa_id=empresa_id)
+    if local_id:
+        pagos_base = pagos_base.filter(factura__local_id=local_id)
+    if area_id:
+        pagos_base = pagos_base.filter(factura__area_comun_id=area_id)
+    if tipo_cuota:
+        pagos_base = pagos_base.filter(factura__tipo_cuota=tipo_cuota)
+    if forma_pago:
+        pagos_base = pagos_base.filter(forma_pago=forma_pago)
+    if cuenta_bancaria:
+        pagos_base = pagos_base.filter(cuenta_bancaria=cuenta_bancaria)
+
 
     # Primera carga
     if not filtros_aplicados:
@@ -1187,13 +1202,12 @@ def pagos_por_origen(request):
     #ingresos acumulados de todo el tiempo
     ingresos_acumulados = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
 
-    # ingresos año actual y anterior
-    pagos_anio_actual = pagos.filter(fecha_pago__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_anio_anterior = pagos.filter(fecha_pago__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
 
-    # ingresos mes actual y anterior
-    pagos_mes_actual = pagos.filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_mes_anterior = pagos.filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_anio_actual = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_anio_anterior = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_mes_actual = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
+    pagos_mes_anterior = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
+
 
     # Variaciones
     def variacion(actual, anterior):
