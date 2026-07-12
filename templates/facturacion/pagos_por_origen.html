@@ -54,7 +54,7 @@
                                     <span class="text-muted small">0%</span>
                                 {% endif %}
                                 <div class="text-muted small mt-1">Año anterior:</div>
-                                 ${{ pagos_anio_anterior|floatformat:0|intcomma }}
+                                 <div class="fw-bold small">${{ pagos_anio_anterior|floatformat:0|intcomma }}</div>
                             </div>
                             <div class="col-6">
                                 <div class="text-muted small">Mes actual</div>
@@ -67,7 +67,7 @@
                                     <span class="text-muted small">0%</span>
                                 {% endif %}
                                 <div class="text-muted small mt-1">Mes anterior:</div>
-                                ${{ pagos_mes_anterior|floatformat:0|intcomma }}
+                                 <div class="fw-bold small">${{ pagos_mes_anterior|floatformat:0|intcomma }}</div>
                             </div>
                         </div>
                     </div>
