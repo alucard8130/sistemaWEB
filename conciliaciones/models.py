@@ -80,10 +80,10 @@ class SaldoCuentaPeriodo(models.Model):
     saldo_calculado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     cerrado = models.BooleanField(default=False)
     fecha_cierre = models.DateTimeField(null=True, blank=True)
-    cerrado_por = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    cerrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     notas = models.TextField(blank=True, null=True)
+    abonos_banco = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    cargos_banco = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     class Meta:
         unique_together = ('cuenta', 'anio', 'mes')

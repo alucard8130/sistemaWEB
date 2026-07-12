@@ -4,6 +4,7 @@ import io
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+#from httpcore import request
 from facturacion.models import CobroOtrosIngresos, Pago
 from gastos.models import PagoGasto
 from .forms import EstadoCuentaBancarioForm, ConciliacionBancariaForm
@@ -12,7 +13,7 @@ import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
 from django.db import transaction
 from calendar import monthrange
-from .utils import get_o_crear_periodo
+from .utils import calcular_saldo_cuenta_periodo, get_o_crear_periodo
 from .models import SaldoCuentaPeriodo
 from empresas.models import CuentaBancaria, Empresa
 import datetime
@@ -644,12 +645,22 @@ def saldos_periodo(request):
         saldo_final = periodo.saldo_final or 0
         saldo_calculado = periodo.saldo_calculado or 0
         diferencia = saldo_final - saldo_calculado
+        # Diferencias abonos/cargos vs banco
+        dif_ingresos = None
+        dif_egresos = None
+        if periodo.abonos_banco is not None:
+            dif_ingresos = (movimientos['total_ingresos'] or 0) - periodo.abonos_banco
+        if periodo.cargos_banco is not None:
+            dif_egresos = (movimientos['total_egresos'] or 0) - periodo.cargos_banco
+
         periodos.append(
             {
                 "cuenta": cuenta,
                 "periodo": periodo,
                 "movimientos": movimientos,
                 "diferencia": diferencia,
+                "dif_ingresos": dif_ingresos,
+                "dif_egresos": dif_egresos,
             }
         )
 
@@ -688,11 +699,15 @@ def cerrar_periodo(request, periodo_id):
     if request.method == "POST":
         saldo_final_banco = request.POST.get("saldo_final_banco")
         notas = request.POST.get("notas", "")
+        abonos_banco = request.POST.get("abonos_banco")
+        cargos_banco = request.POST.get("cargos_banco")
 
         try:
             saldo_final_banco = Decimal(saldo_final_banco)
+            periodo.abonos_banco = Decimal(abonos_banco) if abonos_banco else None
+            periodo.cargos_banco = Decimal(cargos_banco) if cargos_banco else None
         except Exception:
-            messages.error(request, "Saldo final inválido.")
+            messages.error(request, "Valores inválidos.")
             return redirect("conciliaciones:saldos_periodo")
 
         periodo.saldo_final = saldo_final_banco
@@ -707,5 +722,7 @@ def cerrar_periodo(request, periodo_id):
             f"Período {periodo.nombre_mes()} {periodo.anio} cerrado correctamente.",
         )
         return redirect("conciliaciones:saldos_periodo")
+    
+    movimientos = calcular_saldo_cuenta_periodo(periodo.cuenta, periodo.anio, periodo.mes)
 
-    return render(request, "conciliacion/cerrar_periodo.html", {"periodo": periodo})
+    return render(request, "conciliacion/cerrar_periodo.html", {"periodo": periodo,"movimientos": movimientos,})

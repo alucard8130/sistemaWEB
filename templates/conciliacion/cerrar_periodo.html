@@ -50,6 +50,31 @@
                 {% csrf_token %}
                 <div class="mb-3">
                     <label class="form-label fw-bold">
+                        Abonos según banco (ingresos)
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" name="abonos_banco" id="abonos_banco" class="form-control"
+                            step="0.01" placeholder="0.00"
+                            value="{{ periodo.abonos_banco|default:'' }}">
+                    </div>
+                    <div class="form-text" id="dif-ing"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        Cargos según banco (egresos)
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" name="cargos_banco" id="cargos_banco" class="form-control"
+                            step="0.01" placeholder="0.00"
+                            value="{{ periodo.cargos_banco|default:'' }}">
+                    </div>
+                    <div class="form-text" id="dif-egr"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
                         Saldo final según estado de cuenta del banco
                         <span class="text-danger">*</span>
                     </label>
@@ -83,5 +108,29 @@
 
 {% include 'tool_bar.html' %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const ingGesac = {{ movimientos.total_ingresos|default:0 }};
+const egrGesac = {{ movimientos.total_egresos|default:0 }};
+
+function fmt(n) {
+    return '$' + Math.abs(n).toLocaleString('es-MX', {minimumFractionDigits:2});
+}
+function mostrarDif(elId, dif) {
+    var el = document.getElementById(elId);
+    if (dif === 0) {
+        el.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Sin diferencia</span>';
+    } else {
+        var dir = dif > 0 ? 'Sistema mayor al banco' : 'Banco mayor al sistema';
+        el.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Diferencia: ' + fmt(dif) + ' — ' + dir + '</span>';
+    }
+}
+
+document.getElementById('abonos_banco').addEventListener('input', function() {
+    mostrarDif('dif-ing', ingGesac - (parseFloat(this.value) || 0));
+});
+document.getElementById('cargos_banco').addEventListener('input', function() {
+    mostrarDif('dif-egr', egrGesac - (parseFloat(this.value) || 0));
+});
+</script>
 </body>
 </html>

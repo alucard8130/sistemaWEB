@@ -192,6 +192,38 @@
                         </div>
                     </div>
                 </div>
+                {% if item.dif_ingresos is not None or item.dif_egresos is not None %}
+                <div class="row g-2 mt-2">
+                    {% if item.periodo.abonos_banco is not None %}
+                    <div class="col-md-3">
+                        <div class="alert alert-success py-2 mb-0">
+                            <div class="small">Abonos según banco</div>
+                            <div class="fw-bold">${{ item.periodo.abonos_banco|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert {% if item.dif_ingresos == 0 %}alert-success{% else %}alert-danger{% endif %} py-2 mb-0">
+                            <div class="small">Dif. abonos</div>
+                            <div class="fw-bold">${{ item.dif_ingresos|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if item.periodo.cargos_banco is not None %}
+                    <div class="col-md-3">
+                        <div class="alert alert-success py-2 mb-0">
+                            <div class="small">Cargos según banco</div>
+                            <div class="fw-bold">${{ item.periodo.cargos_banco|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert {% if item.dif_egresos == 0 %}alert-success{% else %}alert-danger{% endif %} py-2 mb-0">
+                            <div class="small">Dif. cargos</div>
+                            <div class="fw-bold">${{ item.dif_egresos|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 {% if item.periodo.notas %}
                 <div class="col-md-4">
                     <div class="alert alert-light py-2 mb-0">
