@@ -184,8 +184,13 @@
                         <div class="fw-bold">${{ item.periodo.saldo_final|floatformat:2|intcomma }}</div>
                     </div>
                 </div>
-                <div class="fw-bold">
-                    ${{ item.diferencia|floatformat:2|intcomma }}
+                <div class="col-md-4">
+                    <div class="alert {% if item.periodo.saldo_final == item.periodo.saldo_calculado %}alert-success{% else %}alert-danger{% endif %} py-2 mb-0">
+                        <div class="small">Diferencia</div>
+                        <div class="fw-bold">
+                            ${{ item.diferencia|floatformat:2|intcomma }}
+                        </div>
+                    </div>
                 </div>
                 {% if item.periodo.notas %}
                 <div class="col-md-4">
