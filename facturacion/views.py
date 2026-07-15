@@ -745,10 +745,12 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
         if local.id in locales_anuales_ids:
             continue  # Saltar locales con cuota anual
         existe = Factura.objects.filter(
-            cliente=local.cliente,
-            local=local,
-            fecha_emision__year=año,
-            fecha_emision__month=mes
+        local=local,
+        tipo_cuota='mantenimiento',
+        estatus__in=['pendiente', 'cobrada'],
+        ).filter(
+            Q(fecha_emision__year=año, fecha_emision__month=mes) |
+            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
         ).exists()
         if not existe:
             empresa_id = local.empresa_id
@@ -829,10 +831,12 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
         if area.id in areas_anuales_ids:
             continue  # Saltar áreas con cuota anual
         existe = Factura.objects.filter(
-            cliente=area.cliente,
-            area_comun=area,
-            fecha_emision__year=año,
-            fecha_emision__month=mes
+        area_comun=area,
+        tipo_cuota='renta',
+        estatus__in=['pendiente', 'cobrada'],
+        ).filter(
+            Q(fecha_emision__year=año, fecha_emision__month=mes) |
+            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
         ).exists()
         if not existe:
             empresa_id = area.empresa_id
@@ -921,47 +925,46 @@ def confirmar_facturacion(request):
 
     # FILTRAR locales y áreas activos con cliente
     if request.user.is_superuser:
-        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False,es_cuota_anual=False)
-        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False,es_cuota_anual=False)
+        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False, es_cuota_anual=False)
+        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False, es_cuota_anual=False)
         filtro_facturas = Q()
     else:
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False,es_cuota_anual=False)
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False,es_cuota_anual=False)
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False)
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False)
         filtro_facturas = Q(empresa=empresa)
 
-    # CONTAR locales no facturados aún este mes
-    total_locales = sum(
-        not Factura.objects.filter(cliente=l.cliente, local=l,
-                                   fecha_emision__year=año, fecha_emision__month=mes).exists()
-        for l in locales
-    )
+    nombres_meses = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
 
-    total_areas = sum(
-        not Factura.objects.filter(cliente=a.cliente, area_comun=a,
-                                   fecha_emision__year=año, fecha_emision__month=mes).exists()
-        for a in areas
-    )
-
-    # --- Validación de secuencia de meses/años ---
-    #revisa el ano actual y un ano anterior para permitir facturar meses anteriores del mismo año, pero no del año pasado. Si se quiere permitir facturar meses del año pasado, se debe revisar el año pasado y el actual, pero eso permitiría facturar meses anteriores del año pasado aunque no se hayan facturado meses posteriores del mismo año pasado
-    #anios_a_revisar = [año - 1, año]
-    #revisa solo el anio actual para permitir facturar meses anteriores del mismo año, pero no del año pasado
-    anios_a_revisar = [año]
-    meses_emitidos_por_anio = defaultdict(set)
-    facturas_emitidas = Factura.objects.filter(
-        filtro_facturas,
-        fecha_emision__year__in=anios_a_revisar
-    ).values_list('fecha_emision__year', 'fecha_emision__month')
-
-    for anio_f, mes_f in facturas_emitidas:
-        meses_emitidos_por_anio[anio_f].add(mes_f)
-
+    # Detectar meses faltantes — un mes es faltante si algún local o área no tiene factura
     meses_faltantes_por_anio = {}
-    for anio_r in anios_a_revisar:
-        max_mes = 12 if anio_r < año else mes
-        meses_faltantes = [m for m in range(1, max_mes + 1) if m not in meses_emitidos_por_anio[anio_r]]
-        if meses_faltantes:
-            meses_faltantes_por_anio[anio_r] = meses_faltantes
+    for m in range(1, mes + 1):
+        falta_local = any(
+            not Factura.objects.filter(
+                local=l,
+                tipo_cuota='mantenimiento',
+                estatus__in=['pendiente', 'cobrada'],
+            ).filter(
+                Q(fecha_emision__year=año, fecha_emision__month=m) |
+                Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
+            ).exists()
+            for l in locales
+        )
+        falta_area = any(
+            not Factura.objects.filter(
+                area_comun=a,
+                tipo_cuota='renta',
+                estatus__in=['pendiente', 'cobrada'],
+            ).filter(
+                Q(fecha_emision__year=año, fecha_emision__month=m) |
+                Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
+            ).exists()
+            for a in areas
+        )
+        if falta_local or falta_area:
+            meses_faltantes_por_anio.setdefault(año, []).append(m)
 
     # Determina el mes/año más antiguo faltante
     if meses_faltantes_por_anio:
@@ -971,22 +974,36 @@ def confirmar_facturacion(request):
         anio_permitido = año
         mes_permitido = mes
 
+    # CONTAR locales y áreas no facturados del periodo más antiguo faltante
+    total_locales = sum(
+        not Factura.objects.filter(
+            local=l,
+            tipo_cuota='mantenimiento',
+            estatus__in=['pendiente', 'cobrada'],
+        ).filter(
+            Q(fecha_emision__year=anio_permitido, fecha_emision__month=mes_permitido) |
+            Q(fecha_vencimiento__year=anio_permitido, fecha_vencimiento__month=mes_permitido)
+        ).exists()
+        for l in locales
+    )
+
+    total_areas = sum(
+        not Factura.objects.filter(
+            area_comun=a,
+            tipo_cuota='renta',
+            estatus__in=['pendiente', 'cobrada'],
+        ).filter(
+            Q(fecha_emision__year=anio_permitido, fecha_emision__month=mes_permitido) |
+            Q(fecha_vencimiento__year=anio_permitido, fecha_vencimiento__month=mes_permitido)
+        ).exists()
+        for a in areas
+    )
+
     # Prepara mensaje de periodos faltantes
-    nombres_meses = [
-        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-    ]
     faltantes_mensaje = []
     for anio_f, meses_f in sorted(meses_faltantes_por_anio.items()):
         meses_nombres = ", ".join([nombres_meses[m-1] for m in meses_f])
         faltantes_mensaje.append(f"{anio_f}: {meses_nombres}")
-
-    # if faltantes_mensaje:
-    #     messages.error(
-    #         request,
-    #         "Faltan por emitir cuotas de los siguientes periodos:<br>" +
-    #         "<br>".join(faltantes_mensaje)
-    #     )
 
     if request.method == 'POST':
         anio = int(request.POST.get('anio', anio_permitido))
@@ -997,7 +1014,7 @@ def confirmar_facturacion(request):
         # Solo permite facturar el periodo más antiguo faltante
         if (anio, mes_post) != (anio_permitido, mes_permitido):
             messages.error(request, "Solo puedes facturar el periodo más antiguo pendiente.")
-            return redirect('facturacion:confirmar_facturacion')
+            return redirect('confirmar_facturacion')
 
         request.POST = request.POST.copy()
         request.POST['anio'] = anio
@@ -1007,7 +1024,7 @@ def confirmar_facturacion(request):
     return render(request, 'facturacion/confirmar_facturacion.html', {
         'total_locales': total_locales,
         'total_areas': total_areas,
-        'año': anio_permitido,
+        'anio': anio_permitido,
         'mes': mes_permitido,
         'anio_permitido': anio_permitido,
         'mes_permitido': mes_permitido,

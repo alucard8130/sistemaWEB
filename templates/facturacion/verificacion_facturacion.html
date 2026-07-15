@@ -85,6 +85,14 @@
                         <span style="color:#ffd700;">● {{ mes_corriente_nombre }} es el mes corriente</span>
                     </div>
                 </div>
+                <div class="d-flex gap-2">
+            {% if locales_con_brecha > 0 or areas_con_brecha > 0 %}
+            <a href="{% url 'facturar_mes' %}" 
+               class="btn btn-warning fw-bold">
+                <i class="bi bi-lightning-fill me-1"></i>
+                Generar facturas faltantes
+            </a>
+            {% endif %}
                 <button onclick="window.print()" class="btn btn-sm btn-outline-light no-print">
                     <i class="bi bi-printer me-1"></i>Imprimir
                 </button>
