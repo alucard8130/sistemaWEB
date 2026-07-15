@@ -233,10 +233,10 @@
                                    class="btn btn-xs btn-outline-primary reporte-link" title="Editar">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
-                                <a href="{% url 'eliminar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" 
+                                {% comment %} <a href="{% url 'eliminar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}" 
                                    class="btn btn-xs btn-outline-danger reporte-link" title="Eliminar">
                                     <i class="bi bi-trash"></i>
-                                </a>
+                                </a> {% endcomment %}
                             {% endif %}
                             {% if factura.empresa.es_demo or factura.empresa.es_plus %}
                                 <a href="{% url 'recibo_factura' factura.id %}" 
@@ -260,7 +260,7 @@
                                     <span class="badge bg-dark">Timbrada</span>
                                 {% endif %}
                             {% else %}
-                                <a href="#" class="btn btn-xs btn-outline-success" title="Solo PREMIUM">
+                                <a href="#" class="btn btn-xs btn-outline-success" title="Timbrar Solo PREMIUM">
                                     <i class="bi bi-file-earmark-check"></i>
                                 </a>
                             {% endif %}
