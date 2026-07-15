@@ -66,10 +66,38 @@ def crear_factura(request):
             elif tipo == 'area_comun':
                 factura.local = None
             cliente = factura.cliente
+
+            # ---- Validación duplicado ----
+            if factura.tipo_cuota in ('mantenimiento', 'renta'):
+                mes = factura.fecha_vencimiento.month
+                anio = factura.fecha_vencimiento.year
+                duplicado_qs = Factura.objects.filter(
+                    tipo_cuota=factura.tipo_cuota,
+                    fecha_vencimiento__year=anio,
+                    fecha_vencimiento__month=mes,
+                    estatus__in=['pendiente', 'cobrada'],
+                )
+                if factura.local:
+                    duplicado_qs = duplicado_qs.filter(local=factura.local)
+                elif factura.area_comun:
+                    duplicado_qs = duplicado_qs.filter(area_comun=factura.area_comun)
+
+                if duplicado_qs.exists():
+                    dup = duplicado_qs.first()
+                    form.add_error(None, 
+                        f"Ya existe una factura de {factura.get_tipo_cuota_display()} "
+                        f"para {mes:02d}/{anio} — Folio: {dup.folio} ({dup.estatus}). "
+                        f"No se puede duplicar."
+                    )
+                    return render(request, 'facturacion/crear_factura.html', {
+                        'form': form,
+                        'pedir_superuser': False,
+                        'next': request.POST.get('next') or reverse('lista_facturas'),
+                    })    
             
             #validar observaciones
             if factura.observaciones is None:
-                factura.observaciones = ""
+                factura.observaciones = "factura manual"
             
             # ---- Validación local ----
             if factura.local:
@@ -183,6 +211,8 @@ def crear_factura(request):
         'next': next_url,
     })
 
+
+#deshabilite la funcion porque estan borrando facturas para que no crezca la cartera, eso esta mal
 @login_required
 def eliminar_factura(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
@@ -364,7 +394,136 @@ def lista_facturas(request):
         'adeudo_acumulado_mes_anterior': adeudo_acumulado_mes_anterior,
         'var_acumulado_mes': var_acumulado_mes,
         'var_acumulado_mes_actual_anio_anterior': var_acumulado_mes_actual_anio_anterior, 
+        'anios': list(range(hoy.year - 2, hoy.year + 2)),
     })
+
+
+#reporte de verificación de facturación por local y área, mostrando los meses con facturas pendientes o cobradas, y los meses faltantes
+@login_required
+def verificacion_facturacion(request):
+    hoy = date.today()
+    anio = int(request.GET.get('anio', hoy.year))
+    mes_actual = hoy.month
+    tipo_cuota = request.GET.get('tipo_cuota', 'mantenimiento')
+
+    if request.user.is_superuser:
+        empresa_id = request.GET.get('empresa')
+        empresas = Empresa.objects.all()
+        empresa = Empresa.objects.filter(id=empresa_id).first() if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    # Meses a verificar: enero hasta mes anterior (meses cerrados)
+    meses_cerrados = list(range(1, mes_actual))  # ej julio → [1,2,3,4,5,6]
+    mes_corriente = mes_actual  # julio → aviso
+
+    # Locales y áreas activos
+    locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
+    areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+
+    # Facturas del año/tipo seleccionado
+    facturas_qs = Factura.objects.filter(
+        empresa=empresa,
+        tipo_cuota=tipo_cuota,
+        fecha_vencimiento__year=anio,
+        estatus__in=['pendiente', 'cobrada']
+    )
+
+    # Construir set de (local_id, None, mes) y (None, area_id, mes) existentes
+    meses_local = {}   # {local_id: set de meses con factura}
+    meses_area  = {}   # {area_id: set de meses con factura}
+
+    for f in facturas_qs:
+        mes = f.fecha_vencimiento.month
+        if f.local_id:
+            meses_local.setdefault(f.local_id, set()).add(mes)
+        if f.area_comun_id:
+            meses_area.setdefault(f.area_comun_id, set()).add(mes)
+
+    MESES_NOMBRES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+
+    # Armar resultado locales
+    resultado_locales = []
+    for local in locales:
+        meses_con_factura = meses_local.get(local.id, set())
+        meses_info = []
+        faltantes = 0
+        for m in meses_cerrados:
+            tiene = m in meses_con_factura
+            if not tiene:
+                faltantes += 1
+            meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
+        # Mes corriente
+        meses_info.append({
+            'mes': mes_corriente,
+            'nombre': MESES_NOMBRES[mes_corriente-1],
+            'tiene': mes_corriente in meses_con_factura,
+            'corriente': True
+        })
+        resultado_locales.append({
+            'propiedad': local,
+            'tipo': 'local',
+            'meses': meses_info,
+            'faltantes': faltantes,
+            'ok': faltantes == 0,
+        })
+
+    # Armar resultado áreas
+    resultado_areas = []
+    for area in areas:
+        meses_con_factura = meses_area.get(area.id, set())
+        meses_info = []
+        faltantes = 0
+        for m in meses_cerrados:
+            tiene = m in meses_con_factura
+            if not tiene:
+                faltantes += 1
+            meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
+        meses_info.append({
+            'mes': mes_corriente,
+            'nombre': MESES_NOMBRES[mes_corriente-1],
+            'tiene': mes_corriente in meses_con_factura,
+            'corriente': True
+        })
+        resultado_areas.append({
+            'propiedad': area,
+            'tipo': 'area',
+            'meses': meses_info,
+            'faltantes': faltantes,
+            'ok': faltantes == 0,
+        })
+
+    # Totales resumen
+    total_locales = len(resultado_locales)
+    locales_ok = sum(1 for r in resultado_locales if r['ok'])
+    locales_con_brecha = total_locales - locales_ok
+
+    total_areas = len(resultado_areas)
+    areas_ok = sum(1 for r in resultado_areas if r['ok'])
+    areas_con_brecha = total_areas - areas_ok
+
+    return render(request, 'facturacion/verificacion_facturacion.html', {
+        'empresa': empresa,
+        'empresas': empresas,
+        'anio': anio,
+        'tipo_cuota': tipo_cuota,
+        'meses_cerrados': meses_cerrados,
+        'mes_corriente': mes_corriente,
+        'mes_corriente_nombre': MESES_NOMBRES[mes_corriente-1],
+        'resultado_locales': resultado_locales,
+        'resultado_areas': resultado_areas,
+        'total_locales': total_locales,
+        'locales_ok': locales_ok,
+        'locales_con_brecha': locales_con_brecha,
+        'total_areas': total_areas,
+        'areas_ok': areas_ok,
+        'areas_con_brecha': areas_con_brecha,
+        'MESES_NOMBRES': MESES_NOMBRES,
+    })
+
+
+
 
 #exporta a excel el estado de cuenta de facturas cuotas pendientes con saldo mayor a cero, filtradas por local, area, empresa y año
 def exportar_estado_cuenta_excel(request):

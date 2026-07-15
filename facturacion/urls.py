@@ -35,6 +35,7 @@ urlpatterns = [
     path('ingresos-mensuales/', views.grafico_ingresos_mensuales, name='grafico_ingresos_mensual'),
     path('ingresos-anuales/', views.grafico_ingresos_anual, name='grafico_ingresos_anual'),
     path('exportar-estado-cuenta/', views.exportar_estado_cuenta_excel, name='exportar_estado_cuenta_excel'),
+    path('verificacion-facturacion/', views.verificacion_facturacion, name='verificacion_facturacion'),
     
 
     
