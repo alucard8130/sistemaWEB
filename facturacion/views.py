@@ -3,6 +3,7 @@
 #from django.forms import CharField
 from django.shortcuts import render, redirect,get_object_or_404
 from django.urls import reverse
+from numpy import rint
 from acceso_empresas.decorators import login_o_portal_required
 from areas.models import AreaComun
 from clientes.models import Cliente
@@ -404,7 +405,10 @@ def verificacion_facturacion(request):
     hoy = date.today()
     anio = int(request.GET.get('anio', hoy.year))
     mes_actual = hoy.month
-    tipo_cuota = request.GET.get('tipo_cuota', 'mantenimiento')
+    tipo_cuota = request.GET.get('tipo_cuota', 'todos')
+
+    if tipo_cuota not in ('todos', 'mantenimiento', 'renta'):
+        tipo_cuota = 'todos'
 
     if request.user.is_superuser:
         empresa_id = request.GET.get('empresa')
@@ -414,25 +418,34 @@ def verificacion_facturacion(request):
         empresa = request.user.perfilusuario.empresa
         empresas = None
 
-    # Meses a verificar: enero hasta mes anterior (meses cerrados)
-    meses_cerrados = list(range(1, mes_actual))  # ej julio → [1,2,3,4,5,6]
-    mes_corriente = mes_actual  # julio → aviso
+    meses_cerrados = list(range(1, mes_actual))
+    mes_corriente = mes_actual
 
-    # Locales y áreas activos
     locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
     areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
 
-    # Facturas del año/tipo seleccionado
-    facturas_qs = Factura.objects.filter(
-        empresa=empresa,
-        tipo_cuota=tipo_cuota,
-        fecha_vencimiento__year=anio,
-        estatus__in=['pendiente', 'cobrada']
-    )
+    # Filtrar facturas según tipo
+    if tipo_cuota == 'todos':
+        facturas_qs = Factura.objects.filter(
+            empresa=empresa,
+            tipo_cuota__in=['mantenimiento', 'renta'],
+            fecha_vencimiento__year=anio,
+            estatus__in=['pendiente', 'cobrada']
+        )
+    else:
+        facturas_qs = Factura.objects.filter(
+            empresa=empresa,
+            tipo_cuota=tipo_cuota,
+            fecha_vencimiento__year=anio,
+            estatus__in=['pendiente', 'cobrada']
+        )
 
-    # Construir set de (local_id, None, mes) y (None, area_id, mes) existentes
-    meses_local = {}   # {local_id: set de meses con factura}
-    meses_area  = {}   # {area_id: set de meses con factura}
+    # Controlar qué tablas mostrar
+    mostrar_locales = tipo_cuota in ('todos', 'mantenimiento')
+    mostrar_areas = tipo_cuota in ('todos', 'renta')
+
+    meses_local = {}
+    meses_area  = {}
 
     for f in facturas_qs:
         mes = f.fecha_vencimiento.month
@@ -445,54 +458,55 @@ def verificacion_facturacion(request):
 
     # Armar resultado locales
     resultado_locales = []
-    for local in locales:
-        meses_con_factura = meses_local.get(local.id, set())
-        meses_info = []
-        faltantes = 0
-        for m in meses_cerrados:
-            tiene = m in meses_con_factura
-            if not tiene:
-                faltantes += 1
-            meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
-        # Mes corriente
-        meses_info.append({
-            'mes': mes_corriente,
-            'nombre': MESES_NOMBRES[mes_corriente-1],
-            'tiene': mes_corriente in meses_con_factura,
-            'corriente': True
-        })
-        resultado_locales.append({
-            'propiedad': local,
-            'tipo': 'local',
-            'meses': meses_info,
-            'faltantes': faltantes,
-            'ok': faltantes == 0,
-        })
+    if mostrar_locales:
+        for local in locales:
+            meses_con_factura = meses_local.get(local.id, set())
+            meses_info = []
+            faltantes = 0
+            for m in meses_cerrados:
+                tiene = m in meses_con_factura
+                if not tiene:
+                    faltantes += 1
+                meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
+            meses_info.append({
+                'mes': mes_corriente,
+                'nombre': MESES_NOMBRES[mes_corriente-1],
+                'tiene': mes_corriente in meses_con_factura,
+                'corriente': True
+            })
+            resultado_locales.append({
+                'propiedad': local,
+                'tipo': 'local',
+                'meses': meses_info,
+                'faltantes': faltantes,
+                'ok': faltantes == 0,
+            })
 
     # Armar resultado áreas
     resultado_areas = []
-    for area in areas:
-        meses_con_factura = meses_area.get(area.id, set())
-        meses_info = []
-        faltantes = 0
-        for m in meses_cerrados:
-            tiene = m in meses_con_factura
-            if not tiene:
-                faltantes += 1
-            meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
-        meses_info.append({
-            'mes': mes_corriente,
-            'nombre': MESES_NOMBRES[mes_corriente-1],
-            'tiene': mes_corriente in meses_con_factura,
-            'corriente': True
-        })
-        resultado_areas.append({
-            'propiedad': area,
-            'tipo': 'area',
-            'meses': meses_info,
-            'faltantes': faltantes,
-            'ok': faltantes == 0,
-        })
+    if mostrar_areas:
+        for area in areas:
+            meses_con_factura = meses_area.get(area.id, set())
+            meses_info = []
+            faltantes = 0
+            for m in meses_cerrados:
+                tiene = m in meses_con_factura
+                if not tiene:
+                    faltantes += 1
+                meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
+            meses_info.append({
+                'mes': mes_corriente,
+                'nombre': MESES_NOMBRES[mes_corriente-1],
+                'tiene': mes_corriente in meses_con_factura,
+                'corriente': True
+            })
+            resultado_areas.append({
+                'propiedad': area,
+                'tipo': 'area',
+                'meses': meses_info,
+                'faltantes': faltantes,
+                'ok': faltantes == 0,
+            })
 
     # Totales resumen
     total_locales = len(resultado_locales)
@@ -520,6 +534,9 @@ def verificacion_facturacion(request):
         'areas_ok': areas_ok,
         'areas_con_brecha': areas_con_brecha,
         'MESES_NOMBRES': MESES_NOMBRES,
+        'mostrar_locales': mostrar_locales,
+        'mostrar_areas': mostrar_areas,
+        'anios': list(range(hoy.year - 2, hoy.year + 2)),
     })
 
 

@@ -93,6 +93,7 @@
 
         <!-- KPI STRIP -->
         <div class="kpi-strip">
+            {% if mostrar_locales %}
             <div class="kpi-box verde">
                 <div class="kpi-label"><i class="bi bi-check-circle me-1"></i>Locales al corriente</div>
                 <div class="kpi-val text-success">{{ locales_ok }} / {{ total_locales }}</div>
@@ -103,6 +104,9 @@
                 <div class="kpi-val text-danger">{{ locales_con_brecha }}</div>
                 <div style="font-size:0.75rem;color:#9ca3af;">Meses sin factura</div>
             </div>
+            {% endif %}
+
+            {% if mostrar_areas %}
             <div class="kpi-box verde">
                 <div class="kpi-label"><i class="bi bi-check-circle me-1"></i>Áreas al corriente</div>
                 <div class="kpi-val text-success">{{ areas_ok }} / {{ total_areas }}</div>
@@ -113,7 +117,9 @@
                 <div class="kpi-val text-danger">{{ areas_con_brecha }}</div>
                 <div style="font-size:0.75rem;color:#9ca3af;">Meses sin factura</div>
             </div>
+                  {% endif %}
         </div>
+  
 
         <!-- TOOLBAR -->
         <div class="vf-toolbar no-print">
@@ -132,9 +138,14 @@
                     {% endfor %}
                 </select>
                 <label class="small fw-bold text-muted mb-0">Tipo:</label>
-                <select name="tipo_cuota" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                {% comment %} <select name="tipo_cuota" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     <option value="mantenimiento" {% if tipo_cuota == 'mantenimiento' %}selected{% endif %}>Mantenimiento</option>
                     <option value="renta" {% if tipo_cuota == 'renta' %}selected{% endif %}>Renta</option>
+                </select> {% endcomment %}
+                <select name="tipo_cuota" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="todos" {% if tipo_cuota == 'todos' %}selected{% endif %}>Ambos</option>
+                    <option value="mantenimiento" {% if tipo_cuota == 'mantenimiento' %}selected{% endif %}>Mantenimiento (Locales)</option>
+                    <option value="renta" {% if tipo_cuota == 'renta' %}selected{% endif %}>Renta (Áreas comunes)</option>
                 </select>
                 <!-- Solo mostrar con brecha -->
                 <label class="small fw-bold text-muted mb-0">Mostrar:</label>
@@ -146,6 +157,7 @@
             </form>
         </div>
 
+        {% if mostrar_locales %}
         <!-- TABLA LOCALES -->
         <div class="vf-table-wrap">
             <div class="vf-table-header" style="background:linear-gradient(135deg,#e8f0f8,#f0f4f8);">
@@ -208,7 +220,9 @@
                 </table>
             </div>
         </div>
+        {% endif %}
 
+        {% if mostrar_areas %}
         <!-- TABLA ÁREAS -->
         <div class="vf-table-wrap">
             <div class="vf-table-header" style="background:linear-gradient(135deg,#e8f8f0,#f0faf5);">
@@ -271,8 +285,9 @@
                 </table>
             </div>
         </div>
-
+        {% endif %}
     </div>
+    
 
     {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
