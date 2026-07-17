@@ -129,9 +129,6 @@ class GastoForm(forms.ModelForm):
                 'rows':2,
                 'class': 'form-control'
             }),
-            'cuenta_bancaria': forms.Select(attrs={
-                'class': 'form-select'
-            }),
         }
         labels = {
             'tipo_gasto': 'Cuenta de Gasto',

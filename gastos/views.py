@@ -26,10 +26,10 @@ from .forms import (
     TipoGastoForm,
 )
 from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
-from datetime import datetime, timedelta
+from datetime import datetime
 # from django.utils.timezone import localtime
 # from django.db.models.functions import TruncMonth
-from django.db.models import F, DecimalField, Max, Value
+from django.db.models import F, DecimalField, Value
 #import calendar
 from django.db.models import Q, Sum, Count, Case, When, FloatField
 from django.utils.dateparse import parse_date
@@ -43,6 +43,7 @@ from num2words import num2words
 # from django.db.models import Count
 from django.utils.dateformat import DateFormat
 from datetime import date
+from django.contrib import messages as django_messages
 
 
 @login_required
@@ -374,8 +375,15 @@ def gasto_nuevo(request):
             if not request.user.is_superuser:
                 gasto.empresa = request.user.perfilusuario.empresa
 
+            # Validar período
+            permitido, error = validar_periodo_abierto(None, gasto.fecha, user=request.user)
+            if not permitido:
+                messages.error(request, error)
+                return render(request, "gastos/form.html", {"form": form, "modo": "crear"})    
+
             gasto.estatus = "pendiente"
             gasto.save()
+            messages.success(request, f"Solicitud de gasto folio: {gasto.id}, registrada correctamente.")
             return redirect("gastos_lista")
     else:
         form = GastoForm(

@@ -152,20 +152,24 @@ def get_o_crear_periodo(cuenta, empresa, anio, mes):
     return periodo, movimientos
 
 
-def validar_periodo_abierto(cuenta, fecha):
-    if not cuenta or not fecha:
-        return True, None
+def validar_periodo_abierto(cuenta, fecha, user=None):
+    # if not cuenta:
+    #     return True, None
 
+    if not fecha:
+        return True, None
+    
     hoy = datetime.date.today()
 
     # Superusuario puede registrar en años anteriores
     #if not (user and user.is_superuser):
     # Política de seguridad: no se puede registrar en años anteriores al actual
-    if fecha.year < hoy.year:
-        return False, (
-            f"No se pueden registrar movimientos con fecha del año {fecha.year}. "
-            f"Solo se permiten movimientos del año {hoy.year} en adelante."
-        )
+    if not (user and user.is_superuser):
+        if fecha.year < hoy.year:
+            return False, (
+                f"No se pueden registrar movimientos con fecha del año {fecha.year}. "
+                f"Solo se permiten movimientos del año {hoy.year} en adelante."
+            )
 
     # Política adicional: no se puede registrar con fecha futura
     if fecha > hoy:
@@ -175,17 +179,18 @@ def validar_periodo_abierto(cuenta, fecha):
     )
 
     # Verificar si el período está cerrado
-    periodo = SaldoCuentaPeriodo.objects.filter(
-        cuenta=cuenta,
-        anio=fecha.year,
-        mes=fecha.month,
-        cerrado=True
-    ).first()
+    if cuenta:
+        periodo = SaldoCuentaPeriodo.objects.filter(
+            cuenta=cuenta,
+            anio=fecha.year,
+            mes=fecha.month,
+            cerrado=True
+        ).first()
 
-    if periodo:
-        return False, (
-            f"El período {periodo.nombre_mes()} {periodo.anio} ya está cerrado. "
-            f"No se pueden registrar movimientos en períodos cerrados."
-        )
+        if periodo:
+            return False, (
+                f"El período {periodo.nombre_mes()} {periodo.anio} ya está cerrado. "
+                f"No se pueden registrar movimientos en períodos cerrados."
+            )
 
     return True, None
