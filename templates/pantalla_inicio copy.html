@@ -1,100 +1,28 @@
 {% load static %}
 {% load humanize %}
-{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — GESAC</title>
+    <title>Pantalla de Inicio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
-
-        .empresa-banner {
-            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 60%, #2471a3 100%);
-            color: white; border-radius: 16px; padding: 16px 24px;
-            margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;
-            box-shadow: 0 4px 16px rgba(15,45,82,0.15);
-        }
-        .empresa-nombre { font-size: 1.1rem; font-weight: 700; }
-        .empresa-sub { font-size: 0.75rem; opacity: 0.75; }
-
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-        @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
-
-        .kpi-card {
-            background: white; border-radius: 14px; padding: 18px 20px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06); border-top: 4px solid transparent;
-            position: relative; overflow: hidden;
-        }
-        .kpi-card.ing  { border-top-color: #1e8449; }
-        .kpi-card.gto  { border-top-color: #c0392b; }
-        .kpi-card.cart { border-top-color: #d4ac0d; }
-        .kpi-card.fact { border-top-color: #2471a3; }
-
-        .kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; font-weight: 600; }
-        .kpi-val   { font-size: 1.4rem; font-weight: 700; line-height: 1.2; margin: 6px 0 4px; }
-        .kpi-sub   { font-size: 0.75rem; color: #9ca3af; }
-        .kpi-delta { font-size: 0.75rem; font-weight: 600; }
-        .kpi-delta.pos { color: #1e8449; }
-        .kpi-delta.neg { color: #c0392b; }
-        .kpi-icon  { font-size: 1.6rem; float: right; opacity: 0.15; margin-top: -4px; }
-
-        .ing-breakdown { margin-top: 10px; }
-        .ing-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.75rem; }
-        .ing-row .label { flex: 1; color: #4a6080; font-weight: 500; }
-        .ing-row .monto { font-weight: 700; white-space: nowrap; }
-        .ing-bar-wrap { width: 80px; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
-        .ing-bar-fill { height: 100%; border-radius: 3px; }
-
-        .gto-breakdown { margin-top: 10px; }
-        .gto-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.75rem; }
-        .gto-row .label { flex: 1; color: #4a6080; font-weight: 500; }
-        .gto-row .monto { font-weight: 700; white-space: nowrap; }
-
-        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-        @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
-
-        .chart-card { background: white; border-radius: 16px; box-shadow: 0 2px 14px rgba(0,0,0,0.07); overflow: hidden; }
-        .chart-card-header { padding: 14px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
-        .chart-card-title { font-weight: 700; font-size: 0.88rem; color: #1a3a5c; }
-        .chart-card-sub { font-size: 0.72rem; color: #9ca3af; }
-        .chart-card-body { padding: 16px 20px; }
-
-        .ant-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; }
-        .ant-0   { background: #eafaf1; color: #1e8449; }
-        .ant-30  { background: #fef9e7; color: #d4ac0d; }
-        .ant-60  { background: #fef0e7; color: #d35400; }
-        .ant-90  { background: #fdf0f0; color: #c0392b; }
-
-        .quick-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
-        @media (max-width: 900px) { .quick-grid { grid-template-columns: repeat(2,1fr); } }
-        .quick-btn {
-            background: white; border-radius: 12px; padding: 14px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-decoration: none;
-            display: flex; align-items: center; gap: 10px;
-            color: #1a3a5c; font-weight: 600; font-size: 0.82rem;
-            transition: all 0.15s; border: 1px solid transparent;
-        }
-        .quick-btn:hover { border-color: #2471a3; background: #f0f7ff; color: #1a3a5c; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(36,113,163,0.12); }
-        .quick-btn .icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
-
-        table.mini-table { font-size: 0.78rem; width: 100%; border-collapse: collapse; }
-        table.mini-table th { background: #f8fafc; color: #6b7280; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
-        table.mini-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #374151; }
-        table.mini-table tr:last-child td { border-bottom: none; }
-        table.mini-table tr:hover td { background: #f8fbff; }
-    </style>
+<style>
+    #wizardModal .modal-dialog {
+        max-width: 95vw !important;
+        width: 95vw !important;
+        margin: 20px auto !important;
+    }
+    #wizardModal .modal-body {
+        padding: 1rem 1.5rem !important;
+    }
+</style>
 </head>
-<body>
-{% include 'navbar.html' %}
-{% include 'loading_overlay.html' %}
+<body class="has-global-sidebar">
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
 
     {% if mensaje_pago %}
     <div class="alert alert-success m-3 mb-0">
@@ -286,216 +214,77 @@ if (premiumBtn) {
 });
 </script>
 
-<div class="container-fluid mt-3 px-3 pb-5">
-
-    <!-- BANNER -->
-    <div class="empresa-banner">
-        <div>
-            <div class="empresa-sub"><i class="bi bi-building me-1"></i>Condominio activo</div>
-            <div class="empresa-nombre">{{ empresa.nombre }}</div>
-        </div>
-        <div class="d-flex align-items-center gap-3">
-            <div style="text-align:right;">
-                <div style="font-size:0.72rem;opacity:0.7;">{{ hoy|date:"l, d \d\e F Y" }}</div>
-                <div style="font-size:0.82rem;font-weight:600;">{{ request.user.get_full_name|default:request.user.username }}</div>
+<!-- Contenido principal -->
+    <main class="pb-5">
+        <div class="container mt-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Condominio: <strong>{{ request.user.perfilusuario.empresa }}</strong></h5>
+                </div>
             </div>
-            <span class="badge" style="background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:20px;font-size:0.75rem;">
-                {{ membresia_label|default:"Premium" }}
-            </span>
-        </div>
-    </div>
-
-    <!-- ACCESOS RÁPIDOS -->
-    {% comment %} <div class="quick-grid">
-        <a href="{% url 'facturar_mes' %}" class="quick-btn">
-            <div class="icon" style="background:#e8f4ff;"><i class="bi bi-receipt text-primary"></i></div>
-            <span>Generar facturas</span>
-        </a>
-        <a href="{% url 'lista_facturas' %}" class="quick-btn">
-            <div class="icon" style="background:#eafaf1;"><i class="bi bi-cash-coin text-success"></i></div>
-            <span>Registrar cobro</span>
-        </a>
-        <a href="{% url 'gasto_nuevo' %}" class="quick-btn">
-            <div class="icon" style="background:#fdf0f0;"><i class="bi bi-receipt-cutoff text-danger"></i></div>
-            <span>Nueva solicitud gasto</span>
-        </a>
-        <a href="{% url 'dashboard_saldos' %}" class="quick-btn">
-            <div class="icon" style="background:#fef9e7;"><i class="bi bi-exclamation-triangle" style="color:#d4ac0d;"></i></div>
-            <span>Ver cartera vencida</span>
-        </a>
-    </div> {% endcomment %}
-
-    <!-- KPI GRID -->
-    <div class="kpi-grid">
-
-        <!-- INGRESOS -->
-        <div class="kpi-card ing">
-            <i class="bi bi-arrow-down-circle-fill kpi-icon text-success"></i>
-            <div class="kpi-label"><i class="bi bi-calendar-month me-1"></i>Ingresos {{ mes_nombre }}</div>
-            <div class="kpi-val text-success">${{ ingresos_mes|floatformat:0|intcomma }}</div>
-            {% if delta_ingresos is not None %}
-            <div class="kpi-delta {% if delta_ingresos >= 0 %}pos{% else %}neg{% endif %}">
-                {% if delta_ingresos >= 0 %}▲{% else %}▼{% endif %} {{ delta_ingresos|floatformat:1 }}% vs mes anterior
-            </div>
-            {% endif %}
-            <div class="ing-breakdown">
-                <div class="ing-row">
-                    <span class="label">💰 Cobrado</span>
-                    <div class="ing-bar-wrap">
-                        <div class="ing-bar-fill" style="background:#1e8449; width:{{ pct_cobrado }}%;"></div>
+        <div class="container mt-3">
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5>Ingresos del mes</h5>
+                            <h2>${{ ingresos_mes_total|floatformat:2|intcomma }}</h2>
+                            <small>vs mes anterior: {{ variacion_ingresos|floatformat:2|intcomma }}%</small>
+                        </div>
                     </div>
-                    <span class="monto text-success">${{ ingresos_mes|floatformat:0|intcomma }}</span>
                 </div>
-                <div class="ing-row">
-                    <span class="label">⏳ Por cobrar</span>
-                    <div class="ing-bar-wrap">
-                        <div class="ing-bar-fill" style="background:#d4ac0d; width:{{ pct_por_cobrar }}%;"></div>
+
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5>Gastos del mes</h5>
+                            <h2>${{ gastos_mes|floatformat:2|intcomma }}</h2>
+                            <small>vs mes anterior: {{ variacion_gastos|floatformat:2|intcomma }}%</small>
+                        </div>
                     </div>
-                    <span class="monto" style="color:#d4ac0d;">${{ por_cobrar_mes|floatformat:0|intcomma }}</span>
                 </div>
-                <div class="ing-row" style="border-top:1px solid #f1f5f9;padding-top:4px;margin-top:2px;">
-                    <span class="label" style="font-weight:700;">Total esperado</span>
-                    <span class="monto text-primary">${{ total_posible_ingresos|floatformat:0|intcomma }}</span>
-                </div>
-            </div>
-        </div>
 
-        <!-- GASTOS -->
-        <div class="kpi-card gto">
-            <i class="bi bi-arrow-up-circle-fill kpi-icon text-danger"></i>
-            <div class="kpi-label"><i class="bi bi-calendar-month me-1"></i>Gastos {{ mes_nombre }}</div>
-            <div class="kpi-val text-danger">${{ gastos_pagados_mes|floatformat:0|intcomma }}</div>
-            {% if delta_gastos is not None %}
-            <div class="kpi-delta {% if delta_gastos <= 0 %}pos{% else %}neg{% endif %}">
-                {% if delta_gastos <= 0 %}▼{% else %}▲{% endif %} {{ delta_gastos|floatformat:1 }}% vs mes anterior
-            </div>
-            {% endif %}
-            <div class="gto-breakdown">
-                <div class="gto-row">
-                    <span class="label">✅ Pagados</span>
-                    <span class="monto text-danger">${{ gastos_pagados_mes|floatformat:0|intcomma }}</span>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5>Cartera vencida</h5>
+                            <h2>${{ cartera_vencida|floatformat:2|intcomma }}</h2>
+                        </div>
+                    </div>
                 </div>
-                <div class="gto-row">
-                    <span class="label">📋 Solicitudes pendientes</span>
-                    <span class="monto" style="color:#d35400;">${{ gastos_pendientes_mes|floatformat:0|intcomma }}</span>
-                </div>
-                <div class="gto-row" style="border-top:1px solid #f1f5f9;padding-top:4px;margin-top:2px;">
-                    <span class="label" style="font-weight:700;">Total comprometido</span>
-                    <span class="monto text-dark">${{ total_gastos_mes|floatformat:0|intcomma }}</span>
+
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5>Facturas pendientes de cobro</h5>
+                            <h2>{{ facturas_pendientes }}</h2>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- CARTERA -->
-        <div class="kpi-card cart">
-            <i class="bi bi-exclamation-triangle-fill kpi-icon" style="color:#d4ac0d;"></i>
-            <div class="kpi-label"><i class="bi bi-clock-history me-1"></i>Cartera vencida</div>
-            <div class="kpi-val" style="color:#d4ac0d;">${{ cartera_vencida|floatformat:0|intcomma }}</div>
-            <div class="kpi-sub">{{ facturas_vencidas_count }} facturas pendientes</div>
-            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-                <span class="ant-pill ant-0">0-30: ${{ saldo_0_30|floatformat:0|intcomma }}</span>
-                <span class="ant-pill ant-60">31-90: ${{ saldo_31_90|floatformat:0|intcomma }}</span>
-                <span class="ant-pill ant-90">+90: ${{ saldo_90_mas|floatformat:0|intcomma }}</span>
-            </div>
-        </div>
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Ingresos y Gastos (últimos 6 meses)</h5>
+                            <canvas id="graficoIngresosGastos"></canvas>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- RESULTADO -->
-        <div class="kpi-card fact">
-            <i class="bi bi-calculator-fill kpi-icon text-primary"></i>
-            <div class="kpi-label"><i class="bi bi-bar-chart me-1"></i>Resultado {{ mes_nombre }}</div>
-            <div class="kpi-val {% if resultado_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
-                {% if resultado_mes >= 0 %}+{% endif %}${{ resultado_mes|floatformat:0|intcomma }}
-            </div>
-            <div class="kpi-sub">Ingresos − Egresos pagados</div>
-            <div style="height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;margin-top:10px;">
-                <div style="height:100%;width:{{ pct_gastos }}%;background:linear-gradient(90deg,#c0392b,#e74c3c);border-radius:3px;"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-top:3px;">
-                <span style="font-size:0.68rem;color:#c0392b;">Gastos {{ pct_gastos }}%</span>
-                <span style="font-size:0.68rem;color:#1e8449;">Margen {{ pct_margen }}%</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- GRÁFICAS -->
-    <div class="charts-row">
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <div>
-                    <div class="chart-card-title"><i class="bi bi-bar-chart-fill text-success me-2"></i>Ingresos últimos 6 meses</div>
-                    <div class="chart-card-sub">Cobrado vs por cobrar</div>
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Cartera vencida por rango de días</h5>
+                            <canvas id="graficoCartera"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="chart-card-body">
-                <canvas id="chartIngresos" style="max-height:240px;"></canvas>
-            </div>
         </div>
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <div>
-                    <div class="chart-card-title"><i class="bi bi-bar-chart-fill text-danger me-2"></i>Gastos últimos 6 meses</div>
-                    <div class="chart-card-sub">Pagados vs solicitudes pendientes</div>
-                </div>
-            </div>
-            <div class="chart-card-body">
-                <canvas id="chartGastos" style="max-height:240px;"></canvas>
-            </div>
-        </div>
-    </div>
+    </main>
 
-    <!-- TOP DEUDORES + DONA -->
-    <div class="charts-row">
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <div class="chart-card-title"><i class="bi bi-people-fill text-warning me-2"></i>Top deudores</div>
-                <a href="{% url 'dashboard_saldos' %}" style="font-size:0.75rem;color:#2471a3;">Ver todo →</a>
-            </div>
-            <table class="mini-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Cliente / Local</th>
-                        <th class="text-end">Saldo</th>
-                        <th>Antigüedad</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in top_deudores %}
-                    <tr>
-                        <td style="color:#9ca3af;font-weight:600;">{{ forloop.counter }}</td>
-                        <td>
-                            <div style="font-weight:600;font-size:0.78rem;">{{ d.cliente__nombre|truncatechars:22 }}</div>
-                            <div style="font-size:0.7rem;color:#9ca3af;">{{ d.local__numero|default:d.area_comun__numero|default:"—" }}</div>
-                        </td>
-                        <td class="text-end" style="font-weight:700;color:#c0392b;">${{ d.saldo|floatformat:0|intcomma }}</td>
-                        <td>
-                            {% if d.dias_vencido <= 30 %}
-                                <span class="ant-pill ant-0">0-30 días</span>
-                            {% elif d.dias_vencido <= 90 %}
-                                <span class="ant-pill ant-60">31-90 días</span>
-                            {% else %}
-                                <span class="ant-pill ant-90">+90 días</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted py-3">Sin deudores pendientes 🎉</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="chart-card">
-            <div class="chart-card-header">
-                <div class="chart-card-title"><i class="bi bi-pie-chart-fill text-warning me-2"></i>Cartera vencida por antigüedad</div>
-            </div>
-            <div class="chart-card-body d-flex justify-content-center">
-                <canvas id="chartCartera" style="max-height:240px; max-width:300px;"></canvas>
-            </div>
-        </div>
-    </div>
-
-</div>
 <!-- Modal Wizard -->
  {% if mostrar_wizard %}
 <div class="modal fade" id="wizardModal" tabindex="-1" aria-labelledby="wizardModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
@@ -509,6 +298,7 @@ if (premiumBtn) {
             <i class="bi bi-building me-2"></i>Configura tu empresa
           </h5>
         </div>
+
         <!-- Indicador de progreso -->
         <div class="px-4 pt-3">
           <div class="d-flex justify-content-between align-items-center mb-1">
@@ -714,6 +504,7 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endif %}
+
 {% if mostrar_recordatorio %}
 <div id="modalRecordatorio" class="modal-overlay">
   <div class="modal-content">
@@ -1146,122 +937,75 @@ function cerrarModal() {
 }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{% static 'js/script.js' %}"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
+    {% include 'tool_bar.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    const labels = {{ labels|safe }};
+    const ingresosData = {{ ingresos_data|safe }};
+    const gastosData = {{ gastos_data|safe }};
 
-    const meses6 = {{ meses_6|safe }};
-
-    new Chart(document.getElementById('chartIngresos'), {
-        type: 'bar',
+    const ctx = document.getElementById('graficoIngresosGastos').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: meses6,
+            labels: labels,
             datasets: [
                 {
-                    label: 'Cobrado',
-                    data: {{ ingresos_cobrados_6|safe }},
-                    backgroundColor: 'rgba(30,132,73,0.85)',
-                    borderRadius: 6, borderSkipped: false,
+                    label: 'Ingresos',
+                    data: ingresosData,
+                    borderColor: 'rgba(54, 162, 235, 0.7)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    fill: false,
+                    tension: 0.3
                 },
                 {
-                    label: 'Por cobrar',
-                    data: {{ ingresos_porcobrar_6|safe }},
-                    backgroundColor: 'rgba(212,172,13,0.6)',
-                    borderRadius: 6, borderSkipped: false,
+                    label: 'Gastos',
+                    data: gastosData,
+                    borderColor: 'rgba(255, 99, 132, 0.7)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    fill: false,
+                    tension: 0.3
                 }
             ]
         },
         options: {
-            responsive: true, maintainAspectRatio: true,
+            responsive: true,
             plugins: {
-                legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } },
-                tooltip: { callbacks: { label: ctx => ' $' + ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:0}) } }
-            },
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'K' } }
+                legend: { position: 'top' }
             }
         }
     });
+    </script>
 
-    new Chart(document.getElementById('chartGastos'), {
-        type: 'bar',
-        data: {
-            labels: meses6,
-            datasets: [
-                {
-                    label: 'Pagados',
-                    data: {{ gastos_pagados_6|safe }},
-                    backgroundColor: 'rgba(192,57,43,0.85)',
-                    borderRadius: 0, borderSkipped: false, stack: 'gastos'
-                },
-                {
-                    label: 'Pendientes',
-                    data: {{ gastos_pendientes_6|safe }},
-                    backgroundColor: 'rgba(211,84,0,0.45)',
-                    borderRadius: 6, borderSkipped: false, stack: 'gastos'
-                }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: true,
-            plugins: {
-                legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } },
-                tooltip: { callbacks: { label: ctx => ' $' + ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:0}) } }
-            },
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'K' }, stacked: true }
-            }
-        }
-    });
+    <script>
+    const carteraRangos = {{ cartera_rangos|safe }};
+    const labelsCartera = ['0-30 días', '31-60 días', '61-90 días', '91-180 días', '181+ días'];
 
-    const totalCartera = {{ cartera_vencida|default:0 }};
-    new Chart(document.getElementById('chartCartera'), {
-        type: 'doughnut',
+    const ctxCartera = document.getElementById('graficoCartera').getContext('2d');
+    new Chart(ctxCartera, {
+        type: 'pie',
         data: {
-            labels: ['0-30 días','31-60 días','61-90 días','91-180 días','+180 días'],
+            labels: labelsCartera,
             datasets: [{
-                data: [{{ saldo_0_30|default:0 }}, {{ saldo_31_60|default:0 }}, {{ saldo_61_90|default:0 }}, {{ saldo_91_180|default:0 }}, {{ saldo_181_mas|default:0 }}],
-                backgroundColor: ['#1e8449','#d4ac0d','#e67e22','#d35400','#c0392b'],
-                borderWidth: 2, borderColor: 'white', hoverOffset: 8
+                data: carteraRangos,
+                backgroundColor: ['#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF']
             }]
         },
         options: {
-            cutout: '65%', responsive: true, maintainAspectRatio: true,
+            responsive: true,
             plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } },
-                tooltip: { callbacks: { label: ctx => ' $' + ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:0}) + ' (' + (totalCartera > 0 ? Math.round(ctx.raw/totalCartera*100) : 0) + '%)' } }
+                legend: { position: 'top' }
             }
-        },
-        plugins: [{
-            id: 'center',
-            afterDraw: function(chart) {
-                const meta = chart.getDatasetMeta(0);
-                if (!meta.data.length) return;
-                const {ctx} = chart;
-                const cx = meta.data[0].x, cy = meta.data[0].y;
-                ctx.save();
-                ctx.font = 'bold 14px Rubik,sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#1a1a2e';
-                ctx.fillText('$' + (totalCartera/1000).toFixed(0) + 'K', cx, cy-8);
-                ctx.font = '10px Rubik,sans-serif';
-                ctx.fillStyle = '#9ca3af';
-                ctx.fillText('cartera', cx, cy+8);
-                ctx.restore();
-            }
-        }]
+        }
     });
-});
-</script>
-<script src="{% static 'js/script.js' %}"></script>
+    </script>
 
-
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% if user.is_authenticated and request.user.perfilusuario.empresa %}
         {% include 'asistente_premium/chat_widget.html' %}
     {% endif %}
+
 </body>
+
 </html>
