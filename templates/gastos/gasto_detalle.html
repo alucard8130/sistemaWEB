@@ -56,6 +56,7 @@
             <thead>
                 <tr>
                     <th>Fecha de Pago</th>
+                    <th>Folio Comprobante</th>
                     <th>Monto</th>
                     <th>Cuenta Bancaria
                     <th>Forma de Pago</th>
@@ -68,7 +69,7 @@
                 {% for pago in pagos %}
                 <tr>
                     <td>{{ pago.fecha_pago }}</td>
-                    <td>${{ pago.monto|floatformat:2|intcomma }}</td>
+                    <td>{{ pago.gasto.folio_comprobante }}</td>
                     {% if pago.cuenta_bancaria %}
                     <td>{{ pago.cuenta_bancaria }}</td>
                     {% else %}

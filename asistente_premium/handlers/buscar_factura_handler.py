@@ -26,7 +26,7 @@ class BuscarFacturaHandler(BaseHandler):
         'buscar_factura', 'consultar_factura', 'estatus_factura', 'checar_factura',
         'ver_factura', 'factura_pendiente','abrir_factura','busca_factura','consulta_factura',
     ]
-    descripcion = "Buscar el estatus de una factura"
+    descripcion = "Buscar factura cuotas y asignar cobro"
     emoji = "🔎"
 
     campos_requeridos = ['criterio']
@@ -137,9 +137,9 @@ class BuscarFacturaHandler(BaseHandler):
         if factura.estatus == 'pendiente':
             resultado['opciones'] = [
                 {
-                    'texto': '💰 Asignar Cobro',
-                    'valor': f"Quiero asignar un cobro a la factura {factura.folio}",
-                    'intencion': 'asignar_cobro',
+                    'texto': '💰 Registrar Cobro',
+                    'valor': f"Quiero registrar un cobro a la factura {factura.folio}",
+                    'intencion': 'registrar_cobro'
                 }
             ]
 

@@ -153,12 +153,13 @@
                                     <i class="bi bi-printer"></i>
                                 </a>
                             {% endif %}
-                            {% if factura.estatus != 'cancelada' %}
+                            {% comment %} {% if factura.estatus != 'cancelada' %}
                                 <a href="{% url 'crear_factura_otros_ingresos' %}?cliente={{ factura.cliente.id }}" 
                                    class="btn btn-xs btn-crear reporte-link" title="Nueva factura">
                                     <i class="bi bi-plus-circle"></i>
                                 </a>
-                            {% endif %}
+                            {% endif %} {% endcomment %}
+                            {% if factura.estatus != 'cancelada' %}
                             {% if factura.empresa.es_premium %}
                                 {% if not factura.uuid %}
                                     <a href="{% url 'timbrar_factura_otros_ingresos' factura.pk %}" 
@@ -173,6 +174,7 @@
                                     <i class="bi bi-file-earmark-check"></i>
                                 </a>
                             {% endif %}
+                            {% endif %}
                         </td>
                         <td class="text-center">
                             {% if factura.facturama_id %}
@@ -181,7 +183,7 @@
                                     <i class="bi bi-download"></i>
                                 </a>
                             {% else %}
-                                <span class="text-muted">—</span>
+                                <span class="text-muted" style="font-style: italic; font-size: smaller;">no Timbrada</span>
                             {% endif %}
                         </td>
                         <td class="text-center">
@@ -208,7 +210,7 @@
             <ul class="pagination pagination-sm">
                 {% if facturas.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ facturas.previous_page_number }}&{{ request.GET.urlencode }}">
+                        <a class="page-link" href="?page={{ facturas.previous_page_number }}&cliente_id={{ cliente_id|default:'' }}&tipo_ingreso={{ tipo_ingreso_seleccionado|default:'' }}&estatus={{ estatus_filtro|default:'' }}&periodo={{ periodo_filtro|default:'' }}">
                             <i class="bi bi-chevron-left"></i> Anterior
                         </a>
                     </li>
@@ -220,7 +222,7 @@
                 </li>
                 {% if facturas.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ facturas.next_page_number }}&{{ request.GET.urlencode }}">
+                        <a class="page-link" href="?page={{ facturas.next_page_number }}&cliente_id={{ cliente_id|default:'' }}&tipo_ingreso={{ tipo_ingreso_seleccionado|default:'' }}&estatus={{ estatus_filtro|default:'' }}&periodo={{ periodo_filtro|default:'' }}">
                             Siguiente <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>

@@ -26,22 +26,14 @@ async function enviarMensaje(mensaje, intencion = null) {
 
     try {
         isWaitingForResponse = true;
+
+        // Mostrar mensaje del usuario
         agregarMensajeUsuario(mensaje);
+
+        // Mostrar loading
         mostrarLoading();
 
-        // Si hay datos del comprobante y se está confirmando la solicitud
-        const body = {
-            mensaje: mensaje,
-            intencion: intencion,
-            conversacion_id: currentConversationId,
-            empresa_id: config.empresaId
-        };
-
-        if (window._datosComprobante && intencion === 'crear_solicitud_gasto') {
-            body.datos_comprobante = window._datosComprobante;
-            window._datosComprobante = null;
-        }
-
+        // Enviar al servidor
         const respuesta = await fetch(config.apiUrl, {
             method: 'POST',
             credentials: 'include',
@@ -49,7 +41,12 @@ async function enviarMensaje(mensaje, intencion = null) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': config.csrfToken
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify({
+                mensaje: mensaje,
+                intencion: intencion,
+                conversacion_id: currentConversationId,
+                empresa_id: config.empresaId
+            })
         });
 
         if (!respuesta.ok) {
@@ -58,11 +55,15 @@ async function enviarMensaje(mensaje, intencion = null) {
 
         const datos = await respuesta.json();
 
+        // Actualizar ID de conversación
         if (datos.conversacion_id) {
             currentConversationId = datos.conversacion_id;
         }
 
+        // Procesar respuesta
         procesarRespuestaAsistente(datos);
+
+        // Auto-scroll
         scrollAlFinal();
 
     } catch (error) {
@@ -78,24 +79,31 @@ async function enviarMensaje(mensaje, intencion = null) {
  * Procesa la respuesta del asistente
  */
 function procesarRespuestaAsistente(datos) {
-    console.log('[DEBUG] Respuesta del backend:', JSON.stringify(datos));
     const mensaje = datos.mensaje || '';
     const opciones = datos.opciones || [];
     const estado = datos.estado;
 
+    // Metadata del campo actual (solo aplica cuando se están pidiendo datos):
+    // - campo_tipo === 'select' + campo_opciones -> botones de selección
+    // - campo_requerido === false -> botón para saltar el campo
     const campoInfo = estado === 'solicitando_datos' ? {
         tipo: datos.campo_tipo,
         opciones: datos.campo_opciones,
         requerido: datos.campo_requerido
     } : null;
 
+    // Agregar mensaje del asistente
     agregarMensajeAsistente(mensaje, opciones, campoInfo);
 
-    // Solo mostrar modal de éxito si no hay opciones de seguimiento
+    // Si esta completo, mostrar modal de exito -- excepto cuando la
+    // respuesta trae botones de accion (ej. "Asignar pago" al buscar una
+    // factura pendiente), porque el modal los taparia y el usuario tendria
+    // que cerrarlo antes de poder darles clic.
     if (estado === 'completada' && datos.exito !== false && opciones.length === 0) {
         mostrarExito(mensaje);
     }
 
+    // Si hay campos requeridos, ajustar UI y mostrar boton de cancelar
     if (estado === 'solicitando_datos') {
         habilitarInputChat();
         mostrarBotonCancelar();
@@ -103,33 +111,45 @@ function procesarRespuestaAsistente(datos) {
         ocultarBotonCancelar();
     }
 
-    // Resetear conversación solo si no hay opciones de seguimiento
+    // La conversacion termino (con exito, o fallo y el backend la marco como
+    // cancelada) -> el siguiente mensaje del usuario debe iniciar una nueva
     if (estado === 'completada' || estado === 'error') {
-        if (opciones.length === 0) {
-            currentConversationId = null;
-        }
-        // Si hay opciones, mantener currentConversationId para que
-        // el siguiente mensaje llegue con contexto
+        currentConversationId = null;
     }
 
+    // Si hubo un error de validacion (ej. RFC invalido), se vuelve a mostrar
+    // el menu principal para que el usuario pueda reintentar u optar por
+    // otra tarea -- EXCEPTO cuando es un bloqueo total por plan (empresa
+    // demo): ahi no tiene sentido ofrecer el menu porque no puede hacer
+    // nada de todos modos, solo se le ofrece el boton de actualizar plan.
     if (estado === 'error') {
         if (datos.requiere_upgrade) {
             mostrarBotonActualizarMembresia(datos.requiere_upgrade);
         }
         if (!datos.bloqueo_total) {
             mostrarMenuPrincipal(
-                datos.requiere_upgrade ? '¿Quieres intentar algo más?' : '¿Quieres intentarlo de nuevo?'
+                datos.requiere_upgrade ? '\u00bfQuieres intentar algo m\u00e1s?' : '\u00bfQuieres intentarlo de nuevo?'
             );
         }
     }
 
-    if (estado === 'solicitando_intención') {
+    // Si no se reconocio la intencion ("no entiendo bien"), NO se debe
+    // arrastrar este conversacion_id al siguiente mensaje: si se arrastra,
+    // el backend jamas vuelve a intentar reconocer la intencion (ni por
+    // texto libre ni por el boton de opcion) y el chat se queda atorado
+    // repitiendo "no entiendo" para siempre. Al resetear, cada intento
+    // (escrito o por boton) arranca una conversacion nueva y limpia.
+    if (estado === 'solicitando_intenci\u00f3n') {
         currentConversationId = null;
     }
 }
 
 /**
- * Muestra un botón para actualizar el plan
+ * Muestra un boton para actualizar el plan (ej. cuando Sherlock no puede
+ * ayudar porque la funcion requiere un nivel de membresia superior). Al
+ * hacer clic dispara el mismo flujo de checkout de Stripe que ya usas en
+ * pantalla_inicio.html (crear sesion -> redirectToCheckout), en vez de
+ * mandar a un link externo.
  */
 function mostrarBotonActualizarMembresia(nivelRequerido) {
     const container = document.getElementById('chatMessages');
@@ -153,10 +173,17 @@ function mostrarBotonActualizarMembresia(nivelRequerido) {
 }
 
 /**
- * Inicia checkout de Stripe
+ * Crea la sesion de checkout de Stripe para el nivel indicado ('plus' o
+ * 'premium') y redirige al usuario a la pagina de pago hospedada por Stripe.
+ * Mismo mecanismo que 'stripe-checkout-demo-btn' / 'stripe-checkout-premium-btn'
+ * en pantalla_inicio.html, solo que disparado desde un boton dentro del chat.
  */
 async function iniciarCheckoutStripe(nivelRequerido) {
     const url = nivelRequerido === 'premium' ? config.urlCrearSesionPagoPremium : config.urlCrearSesionPagoPlus;
+
+    // Se abre la pestana en blanco de forma SINCRONA con el clic (antes del
+    // fetch), porque los navegadores bloquean window.open() si no ocurre
+    // como reaccion directa e inmediata a una interaccion del usuario.
     const nuevaPestana = window.open('', '_blank');
 
     try {
@@ -170,12 +197,20 @@ async function iniciarCheckoutStripe(nivelRequerido) {
         }
 
         if (data.url) {
+            // Forma recomendada: la sesion de Stripe ya trae su propia URL
+            // de checkout, se navega ahi la pestana nueva.
             if (nuevaPestana) {
                 nuevaPestana.location.href = data.url;
             } else {
+                // El navegador bloqueo el popup: se abre igual, aunque el
+                // usuario tendria que permitir popups para verla.
                 window.open(data.url, '_blank', 'noopener,noreferrer');
             }
         } else {
+            // Fallback si el backend solo regresa el id de sesion sin 'url':
+            // redirectToCheckout navega la pestana ACTUAL (no puede abrir
+            // una nueva), asi que se cierra la pestana en blanco y se usa
+            // el comportamiento anterior en la misma ventana.
             if (nuevaPestana) nuevaPestana.close();
             const stripe = Stripe(config.stripePublicKey);
             await stripe.redirectToCheckout({ sessionId: data.id });
@@ -191,7 +226,7 @@ async function iniciarCheckoutStripe(nivelRequerido) {
 }
 
 /**
- * Cancela la conversación en curso
+ * Cancela la conversacion en curso llamando al endpoint 'cancelar' del backend
  */
 async function cancelarConversacion() {
     if (!currentConversationId) {
@@ -231,7 +266,7 @@ async function cancelarConversacion() {
 }
 
 /**
- * Reinicia el estado del chat
+ * Reinicia el estado del chat en el navegador tras cancelar/terminar
  */
 function reiniciarChat() {
     currentConversationId = null;
@@ -242,21 +277,28 @@ function reiniciarChat() {
     input.focus();
 }
 
+/**
+ * Muestra el boton de cancelar (mientras hay una conversacion en curso)
+ */
 function mostrarBotonCancelar() {
     const btn = document.getElementById('cancelBtn');
     if (btn) btn.style.display = 'inline-flex';
 }
 
+/**
+ * Oculta el boton de cancelar
+ */
 function ocultarBotonCancelar() {
     const btn = document.getElementById('cancelBtn');
     if (btn) btn.style.display = 'none';
 }
 
 /**
- * Agrega mensaje del usuario
+ * Agrega un mensaje del usuario
  */
 function agregarMensajeUsuario(texto) {
     const container = document.getElementById('chatMessages');
+
     const div = document.createElement('div');
     div.className = 'message message-usuario';
     div.innerHTML = `
@@ -265,48 +307,48 @@ function agregarMensajeUsuario(texto) {
             <p>${escapeHtml(texto)}</p>
         </div>
     `;
+
     container.appendChild(div);
     scrollAlFinal();
 }
 
 /**
- * Agrega mensaje del asistente
+ * Agrega un mensaje del asistente
+ *
+ * @param {string} texto - Contenido del mensaje
+ * @param {Array} opciones - Opciones de selección de intención (ej. "no entendí, ¿qué quieres hacer?")
+ * @param {Object|null} campoInfo - Metadata del campo actual que se está pidiendo:
+ *        { tipo, opciones: [{valor, label}], requerido }
  */
 function agregarMensajeAsistente(texto, opciones = [], campoInfo = null) {
-    console.log('[DEBUG] agregarMensajeAsistente - opciones:', opciones.length, 'campoInfo:', JSON.stringify(campoInfo));
     const container = document.getElementById('chatMessages');
+
     const div = document.createElement('div');
     div.className = 'message message-asistente';
 
     let html = `
         <div class="message-avatar">🤖</div>
-        <div class="message-content">   
+        <div class="message-content">
             <p>${escapeHtml(texto)}</p>
     `;
 
     if (opciones.length > 0) {
+        // Botones de selección de intención (flujo "no entendí")
         html += '<div class="message-options">';
         opciones.forEach(opcion => {
             const valor = typeof opcion.valor === 'string' ? opcion.valor : opcion.texto;
             const intencionArg = opcion.intencion ? `'${escapeHtml(opcion.intencion)}'` : 'null';
-            
-            if (opcion.intencion) {
-                html += `
-                    <button class="option-btn" onclick="enviarMensajeConSeguimiento('${escapeHtml(valor)}', ${intencionArg})">
-                        ${escapeHtml(opcion.texto)}
-                    </button>
-                `;
-            } else {
-                html += `
-                    <button class="option-btn" onclick="enviarMensaje('${escapeHtml(valor)}', ${intencionArg})">
-                        ${escapeHtml(opcion.texto)}
-                    </button>
-                `;
-            }
+            html += `
+                <button class="option-btn" onclick="enviarMensaje('${escapeHtml(valor)}', ${intencionArg})">
+                    ${escapeHtml(opcion.texto)}
+                </button>
+            `;
         });
         html += '</div>';
     } else if (campoInfo && ((campoInfo.tipo === 'select' && campoInfo.opciones) || campoInfo.requerido === false)) {
+        // Botones del campo actual: opciones de selección + botón de saltar
         html += '<div class="message-options campo-options">';
+
         if (campoInfo.tipo === 'select' && campoInfo.opciones) {
             campoInfo.opciones.forEach(op => {
                 html += `
@@ -316,6 +358,7 @@ function agregarMensajeAsistente(texto, opciones = [], campoInfo = null) {
                 `;
             });
         }
+
         if (campoInfo.requerido === false) {
             html += `
                 <button class="option-btn option-btn-skip" onclick="enviarMensaje('omitir')">
@@ -323,28 +366,23 @@ function agregarMensajeAsistente(texto, opciones = [], campoInfo = null) {
                 </button>
             `;
         }
+
         html += '</div>';
-    
     }
 
     html += '</div>';
+
     div.innerHTML = html;
     container.appendChild(div);
     scrollAlFinal();
 }
 
-function enviarMensajeConSeguimiento(mensaje, intencion) {
-    // Resetear conversación actual para crear una nueva con la intención de seguimiento
-    console.log('[DEBUG] enviarMensajeConSeguimiento:', mensaje, intencion);
-    currentConversationId = null;
-    enviarMensaje(mensaje, intencion);
-}
-
 /**
- * Agrega mensaje de error
+ * Agrega un mensaje de error
  */
 function agregarMensajeError(texto) {
     const container = document.getElementById('chatMessages');
+
     const div = document.createElement('div');
     div.className = 'message message-asistente message-error';
     div.innerHTML = `
@@ -353,58 +391,97 @@ function agregarMensajeError(texto) {
             <p>${escapeHtml(texto)}</p>
         </div>
     `;
+
     container.appendChild(div);
     scrollAlFinal();
 }
 
+/**
+ * Muestra el modal de carga
+ */
 function mostrarLoading() {
     const modal = document.getElementById('loadingModal');
     const overlay = document.getElementById('modalOverlay');
+
     modal.classList.add('visible');
     overlay.classList.add('visible');
 }
 
+/**
+ * Cierra el modal de carga
+ */
 function cerrarLoading() {
     const modal = document.getElementById('loadingModal');
     const overlay = document.getElementById('modalOverlay');
+
     modal.classList.remove('visible');
     overlay.classList.remove('visible');
 }
 
+/**
+ * Muestra modal de éxito
+ */
 function mostrarExito(mensaje) {
     const modal = document.getElementById('successModal');
     const overlay = document.getElementById('modalOverlay');
     const successMessage = document.getElementById('successMessage');
+
     successMessage.textContent = mensaje;
+
     modal.classList.add('visible');
     overlay.classList.add('visible');
 }
 
+/**
+ * Cierra modal. Tras completar una tarea con exito, vuelve a mostrar el
+ * menu principal en el chat para que el usuario pueda iniciar otra tarea
+ * sin recargar la pagina.
+ */
 function cerrarModal() {
     document.getElementById('successModal').classList.remove('visible');
     document.getElementById('modalOverlay').classList.remove('visible');
+
     mostrarMenuPrincipal();
 }
 
+/**
+ * Agrega al chat el mensaje de bienvenida con las opciones rapidas
+ * (el mismo menu que se ve al abrir el chat por primera vez).
+ */
+// Catalogo de opciones del menu principal, con el nivel minimo de plan
+// requerido para cada una. Es la UNICA fuente de verdad para el frontend:
+// se usa en la bienvenida inicial, al cancelar, y en "no entiendo bien"
+// (aunque para "no entiendo bien" el backend ya manda sus propias opciones
+// filtradas -- ver mas abajo).
 const MENU_OPCIONES = [
     { requerido: 'plus', emoji: '\ud83d\udc65', texto: 'Alta Cliente', mensaje: 'Quiero dar de alta un cliente' },
     { requerido: 'plus', emoji: '\ud83c\udfe2', texto: 'Alta Proveedor', mensaje: 'Quiero dar de alta un proveedor' },
     { requerido: 'plus', emoji: '\ud83d\udc68\u200d\ud83d\udcbc', texto: 'Alta Empleado', mensaje: 'Quiero dar de alta un empleado' },
     { requerido: 'plus', emoji: '\ud83d\udcb5', texto: 'Alta Cuenta Bancaria', mensaje: 'Quiero dar de alta una cuenta bancaria' },
     { requerido: 'plus', emoji: '\ud83d\udcb3', texto: 'Alta Cuenta de Gastos', mensaje: 'Quiero dar de alta una cuenta de gastos' },
-    { requerido: 'premium', emoji: '\ud83d\udd0d', texto: 'Buscar Factura Cuotas y asignar cobro', mensaje: 'Quiero buscar una factura' },
-    //{ requerido: 'premium', emoji: '\ud83d\udcb0', texto: 'Registrar Cobro de Cuotas', mensaje: 'Quiero registrar un cobro' },
-    { requerido: 'plus', emoji: '\ud83e\uddfe', texto: 'Solicitud de gasto ', mensaje: 'Quiero registrar una solicitud de gasto' },
-    { requerido: 'premium', emoji: '\ud83d\udcce', texto: 'Subir comprobante y generar solicitud de gasto', mensaje: 'subir_comprobante' },
+    { requerido: 'premium', emoji: '\ud83d\udd0d', texto: 'Buscar Factura', mensaje: 'Quiero buscar una factura' },
+    { requerido: 'premium', emoji: '\ud83d\udcb0', texto: 'Registrar Cobro', mensaje: 'Quiero registrar un cobro' },
+    { requerido: 'premium', emoji: '\ud83d\udcb8', texto: 'Crear solicitud de gasto', mensaje: 'Quiero registrar una solicitud de gasto' },
 ];
 
 const NIVEL_ORDEN_JS = { demo: 0, plus: 1, premium: 2 };
 
+/**
+ * Filtra MENU_OPCIONES segun config.nivelEmpresa (viene del backend via
+ * ChatView -> nivel_empresa -> config.nivelEmpresa en chat.html).
+ */
 function opcionesDisponiblesMenu() {
     const nivelActual = NIVEL_ORDEN_JS[config.nivelEmpresa] ?? 0;
     return MENU_OPCIONES.filter(op => NIVEL_ORDEN_JS[op.requerido] <= nivelActual);
 }
 
+/**
+ * Agrega al chat el mensaje de bienvenida/menu con las opciones filtradas
+ * segun el plan de la empresa (config.nivelEmpresa). Se usa tanto para la
+ * bienvenida inicial como al cancelar o al "no reconocer" mas intentos.
+ * Si la empresa es demo (sin acceso a nada), en vez de un menu vacio se
+ * muestra el aviso de actualizar plan.
+ */
 function mostrarMenuPrincipal(mensaje = '\u00bfEn que mas puedo ayudarte?') {
     const disponibles = opcionesDisponiblesMenu();
 
@@ -418,23 +495,12 @@ function mostrarMenuPrincipal(mensaje = '\u00bfEn que mas puedo ayudarte?') {
 
     const container = document.getElementById('chatMessages');
 
-    const botonesHtml = disponibles.map(op => {
-        // El botón de subir comprobante activa el input de archivo
-        if (op.mensaje === 'subir_comprobante') {
-            return `
-                <button class="quick-action-btn" onclick="document.getElementById('comprobanteInput').click()">
-                    <span class="emoji">${op.emoji}</span>
-                    <span>${escapeHtml(op.texto)}</span>
-                </button>
-            `;
-        }
-        return `
-            <button class="quick-action-btn" onclick="enviarMensaje('${escapeHtml(op.mensaje)}')">
-                <span class="emoji">${op.emoji}</span>
-                <span>${escapeHtml(op.texto)}</span>
-            </button>
-        `;
-    }).join('');
+    const botonesHtml = disponibles.map(op => `
+        <button class="quick-action-btn" onclick="enviarMensaje('${escapeHtml(op.mensaje)}')">
+            <span class="emoji">${op.emoji}</span>
+            <span>${escapeHtml(op.texto)}</span>
+        </button>
+    `).join('');
 
     const div = document.createElement('div');
     div.className = 'message message-asistente welcome-message';
@@ -452,11 +518,17 @@ function mostrarMenuPrincipal(mensaje = '\u00bfEn que mas puedo ayudarte?') {
     scrollAlFinal();
 }
 
+/**
+ * Minimiza el chat
+ */
 function minimizarChat() {
     const container = document.querySelector('.chat-container');
     container.style.display = 'none';
 }
 
+/**
+ * Scroll automático al final
+ */
 function scrollAlFinal() {
     const container = document.getElementById('chatMessages');
     setTimeout(() => {
@@ -464,12 +536,18 @@ function scrollAlFinal() {
     }, 100);
 }
 
+/**
+ * Habilita el input del chat
+ */
 function habilitarInputChat() {
     const input = document.getElementById('messageInput');
     input.disabled = false;
     input.focus();
 }
 
+/**
+ * Escapa HTML para evitar XSS
+ */
 function escapeHtml(texto) {
     const map = {
         '&': '&amp;',
@@ -481,10 +559,11 @@ function escapeHtml(texto) {
     return String(texto).replace(/[&<>"']/g, m => map[m]);
 }
 
-// Inicialización
+// Inicialización cuando carga la página
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Chat asistente cargado ✓');
 
+    // Permitir Enter para enviar
     document.getElementById('messageInput').addEventListener('keypress', function(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
@@ -492,56 +571,73 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Auto-scroll inicial
     scrollAlFinal();
+
+    // El boton de cancelar solo se muestra mientras hay una conversacion en curso
     ocultarBotonCancelar();
-    mostrarMenuPrincipal('\ud83d\udc4b \u00a1Hola! Soy Sherlock, tu asistente virtual. \u00bfEn qu\u00e9 puedo ayudarte hoy?');
 
-    // Subida de comprobante
-    const comprobanteInput = document.getElementById('comprobanteInput');
-    if (comprobanteInput) {
-        comprobanteInput.addEventListener('change', async function(e) {
-            const archivo = e.target.files[0];
-            if (!archivo) return;
-
-            agregarMensajeUsuario(`📎 Analizando comprobante: ${archivo.name}...`);
-            mostrarLoading();
-
-            const formData = new FormData();
-            formData.append('comprobante', archivo);
-
-            try {
-                const resp = await fetch('/asistente/api/conversaciones/procesar_comprobante/', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': config.csrfToken },
-                    body: formData
-                });
-                const data = await resp.json();
-                cerrarLoading();
-
-                if (data.exito && data.datos) {
-                    const d = data.datos;
-                    agregarMensajeAsistente(
-                        `✅ Comprobante analizado:\n\n` +
-                        `🏢 Proveedor: ${d.proveedor_nombre || 'No detectado'}\n` +
-                        `📅 Fecha: ${d.fecha || 'No detectada'}\n` +
-                        `💰 Total: $${d.monto_total || 0}\n` +
-                        `📝 Concepto: ${d.descripcion || 'No detectado'}\n\n` +
-                        `¿Quieres que cree la solicitud de gasto con estos datos?`,
-                        [
-                            { texto: '✅ Sí, crear solicitud', valor: 'Quiero registrar una solicitud de gasto', intencion: 'crear_solicitud_gasto' },
-                            { texto: '❌ No, cancelar', valor: 'cancelar', intencion: null }
-                        ]
-                    );
-                    window._datosComprobante = d;
-                } else {
-                    agregarMensajeError(`❌ No pude leer el comprobante: ${data.error || 'Error desconocido'}`);
-                }
-            } catch (err) {
-                cerrarLoading();
-                agregarMensajeError('❌ Error al procesar el archivo.');
-            }
-
-            e.target.value = '';
-        });
-    }
+    // Bienvenida inicial: usa la misma funcion filtrada por plan que se usa
+    // en cancelar/reintentar, para que el HTML no tenga botones duplicados
+    // ni desalineados del nivel de membresia real.
+    mostrarMenuPrincipal('\ud83d\udc4b \u00a1Hola! Soy Sherlock, tu asistente virtual. En que puedo ayudarte hoy?');
 });
+
+// Subida de comprobante
+document.getElementById('comprobanteInput').addEventListener('change', async function(e) {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+
+    // Mostrar mensaje en el chat
+    agregarMensaje('usuario', `📎 Subiendo comprobante: ${archivo.name}...`);
+    mostrarModal('loadingModal');
+
+    const formData = new FormData();
+    formData.append('comprobante', archivo);
+
+    try {
+        const resp = await fetch('/api/conversaciones/procesar_comprobante/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': config.csrfToken },
+            body: formData
+        });
+        const data = await resp.json();
+        ocultarModal('loadingModal');
+
+        if (data.exito && data.datos) {
+            const d = data.datos;
+            // Mostrar resumen extraído
+            agregarMensaje('asistente', 
+                `✅ Comprobante analizado:\n\n` +
+                `🏢 **Proveedor:** ${d.proveedor_nombre || 'No detectado'}\n` +
+                `📅 **Fecha:** ${d.fecha || 'No detectada'}\n` +
+                `💰 **Total:** $${d.monto_total || 0}\n` +
+                `📝 **Concepto:** ${d.descripcion || 'No detectado'}\n\n` +
+                `¿Quieres que cree la solicitud de gasto con estos datos?`
+            );
+            // Guardar datos extraídos para usarlos en el handler
+            window._datosComprobante = d;
+            // Mostrar botones de confirmación
+            mostrarOpciones([
+                { texto: '✅ Sí, crear solicitud', valor: 'confirmar_comprobante', intencion: 'crear_solicitud_gasto' },
+                { texto: '❌ No, cancelar', valor: 'cancelar' }
+            ]);
+        } else {
+            agregarMensaje('asistente', `❌ No pude leer el comprobante: ${data.error || 'Error desconocido'}`);
+        }
+    } catch (err) {
+        ocultarModal('loadingModal');
+        agregarMensaje('asistente', '❌ Error al procesar el archivo.');
+    }
+
+    // Limpiar input
+    e.target.value = '';
+});
+
+// En la función que maneja el envío de mensaje, detectar si hay datos del comprobante
+if (window._datosComprobante && intencion === 'crear_solicitud_gasto') {
+    const d = window._datosComprobante;
+    // Precargar fecha y monto en el mensaje para que el handler los extraiga
+    mensaje = `crear solicitud de gasto fecha:${d.fecha} monto:${d.monto_total} descripcion:${d.descripcion} retencion_iva:${d.retencion_iva || 0} retencion_isr:${d.retencion_isr || 0}`;
+    window._datosComprobante = null;
+}

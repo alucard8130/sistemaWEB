@@ -307,7 +307,7 @@ def gastos_lista(request):
     total_solicitudes = kpi["total_solicitudes"] or 0
     porc_pagadas = (num_pagadas / total_solicitudes * 100) if total_solicitudes else 0
     porc_pendientes = (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
-
+    folio_comprobante = request.GET.get("folio_comprobante")
     # # Top 10 proveedores
     # top_proveedores_qs = (
     #     gastos_base.exclude(proveedor__isnull=True)
@@ -356,6 +356,8 @@ def gastos_lista(request):
         "total_solicitudes": total_solicitudes,
         "fecha_inicio_kpi": fecha_inicio_kpi,
         "fecha_fin_kpi": fecha_fin_kpi,
+        "folio_comprobante": folio_comprobante,
+        
     })
 
 
@@ -489,6 +491,8 @@ def gasto_detalle(request, pk):
     gasto = get_object_or_404(Gasto, pk=pk)
     pagos = gasto.pagos.all().order_by("fecha_pago")
     reversados_ids = set()
+    folio_comprobante = gasto.folio_comprobante
+
     for pago in pagos:
         if (
             pago.monto < 0
@@ -510,6 +514,7 @@ def gasto_detalle(request, pk):
             "gasto": gasto,
             "pagos": pagos,
             "reversados_ids": reversados_ids,
+            "folio_comprobante": folio_comprobante,
         },
     )
 

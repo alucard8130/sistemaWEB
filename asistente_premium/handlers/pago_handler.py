@@ -13,7 +13,7 @@ class AsignarPagoHandler(BaseHandler):
 
     intencion_principal = 'asignar_cobro'
     intencion_aliases = [
-        'registrar_cobro', 'agregar_cobro', 'nuevo_cobro', 'cobrar_factura', 'abonar_factura',
+        'registrar_cobro', 'agregar_cobro', 'nuevo_cobro', 'cobrar_factura', 'abonar_factura','asignar_pago','asignar_cobro', 'registrar_pago', 'agregar_pago', 'nuevo_pago', 'pagar_factura', 'abonar_factura'
     ]
     descripcion = "Asignar un cobro a una factura"
     emoji = "💰"
@@ -155,7 +155,7 @@ class AsignarPagoHandler(BaseHandler):
                 monto=self.datos['monto'],
                 forma_pago=self.datos['forma_pago'],
                 cuenta_bancaria=cuenta,
-                observaciones=self.datos.get('observaciones') or None,
+                observaciones=self.datos.get('observaciones') or 'cobro aplicado Sherlock',
                 registrado_por=self.usuario,
                 identificado=True,
             )

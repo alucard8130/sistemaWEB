@@ -42,6 +42,8 @@ class Gasto(models.Model):
     fecha = models.DateField()
     monto = models.DecimalField(max_digits=12, decimal_places=2)
     comprobante = models.FileField(upload_to='cfdi_gastos/', blank=True, null=True)
+    folio_comprobante = models.CharField(max_length=100, blank=True, null=True, 
+                                      help_text='Folio o número de la factura/comprobante adjunto')
     STATUS_CHOICES = [
         ('pendiente', 'Pendiente'),
         ('pagada', 'Pagada'),

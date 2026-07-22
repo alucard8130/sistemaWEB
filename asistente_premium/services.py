@@ -1,6 +1,7 @@
 """Servicios mejorados con sistema de handlers"""
 from datetime import datetime
 from typing import Dict, Any, Optional, List
+from xml.sax import handler
 from .models import ConversacionAsistente, MensajeAsistente
 from .intents import recognizar_intencion, extraer_datos_mensaje
 from .handlers import obtener_handler, HANDLERS_REGISTRY
@@ -13,10 +14,12 @@ NIVEL_REQUERIDO_POR_INTENCION = {
     'crear_cliente': 'plus',
     'crear_proveedor': 'plus',
     'crear_empleado': 'plus',
-    'crear_cuenta_bancaria': 'premium',
-    'crear_tipo_gasto': 'premium',
+    'crear_cuenta_bancaria': 'plus',
+    'crear_tipo_gasto': 'plus',
     'buscar_factura': 'premium',
-    'asignar_cobro': 'premium',
+    # 'asignar_cobro': 'premium',
+    'crear_solicitud_gasto': 'plus',
+    'subir_comprobante': 'premium',
 }
 
 # Orden de jerarquía de planes, de menor a mayor acceso
@@ -92,7 +95,8 @@ class AsistenteService:
         }
 
     @transaction.atomic
-    def procesar_mensaje(self, mensaje_texto: str, conversacion_id: int = None, intencion_sugerida: str = None) -> Dict[str, Any]:
+    def procesar_mensaje(self, mensaje_texto: str, conversacion_id: int = None, 
+                         intencion_sugerida: str = None, datos_comprobante: dict = None) -> Dict[str, Any]:
         """Procesa mensaje usando el sistema de handlers"""
 
         nivel_empresa = self._nivel_empresa(self.empresa)
@@ -122,6 +126,8 @@ class AsistenteService:
             if intencion_sugerida:
                 intencion = intencion_sugerida
                 confianza = 1.0
+                print(f"[DEBUG] intencion_sugerida: {intencion_sugerida}")
+                print(f"[DEBUG] intencion final: {intencion}")
             else:
                 intencion, confianza = recognizar_intencion(mensaje_texto)
 
@@ -138,6 +144,19 @@ class AsistenteService:
                 intencion=intencion if confianza > 0.3 else 'otro',
                 estado='iniciada',
             )
+            # ← AGREGA ESTO: precargar datos del comprobante si vienen
+            if datos_comprobante:
+                conversacion.datos_recopilados.update({
+                    'fecha': datos_comprobante.get('fecha'),
+                    'monto': datos_comprobante.get('monto_total'),
+                    'descripcion': datos_comprobante.get('descripcion'),
+                    'retencion_iva': datos_comprobante.get('retencion_iva') or 0,
+                    'retencion_isr': datos_comprobante.get('retencion_isr') or 0,
+                    'rfc_proveedor': datos_comprobante.get('rfc_proveedor'),
+                    'proveedor_nombre_comprobante': datos_comprobante.get('proveedor_nombre'),
+                    'folio_comprobante': datos_comprobante.get('folio'),
+                })
+                conversacion.save()
 
         MensajeAsistente.objects.create(
             conversacion=conversacion,
@@ -175,9 +194,20 @@ class AsistenteService:
 
         datos_extraidos = extraer_datos_mensaje(mensaje)
         conversacion.datos_recopilados.update(datos_extraidos)
+        print(f"[DEBUG] mensaje: {mensaje!r}")
+        print(f"[DEBUG] datos_extraidos: {datos_extraidos}")
 
+        # ← AGREGA ESTO: pasar datos precargados al handler antes de obtener_campos
+        handler.establecer_datos(conversacion.datos_recopilados)
         campos = handler.obtener_campos()
+        
+        # Guardar datos autocompletados por el handler (proveedor, tipo_gasto, etc.)
+        conversacion.datos_recopilados.update(handler.datos)
+        conversacion.save()  # ← guardar antes de calcular faltantes
+        print(f"[DEBUG] datos_recopilados: {conversacion.datos_recopilados}")
+        print(f"[DEBUG] campos_faltantes antes: {[c['nombre'] for c in campos]}")
         campos_faltantes = self._obtener_campos_faltantes(conversacion.datos_recopilados, campos)
+        print(f"[DEBUG] campos_faltantes después: {[c['nombre'] for c in campos_faltantes]}")
 
         conversacion.estado = 'solicitando_datos'
 
@@ -268,8 +298,13 @@ class AsistenteService:
             }
 
         if resultado.get('exito'):
-            conversacion.estado = 'completada'
-            conversacion.fecha_finalizacion = datetime.now()
+            if 'opciones' in resultado:
+                # Hay opciones de seguimiento — no cerrar la conversación aún
+                conversacion.estado = 'completada'
+                conversacion.fecha_finalizacion = datetime.now()
+            else:
+                conversacion.estado = 'completada'
+                conversacion.fecha_finalizacion = datetime.now()
         else:
             conversacion.errores = resultado.get('errores', {})
             conversacion.estado = 'cancelada'
@@ -280,6 +315,7 @@ class AsistenteService:
             'estado': 'completada' if resultado.get('exito') else 'error',
             'mensaje': resultado.get('mensaje'),
             'intencion': conversacion.intencion,
+            'exito': resultado.get('exito', False),
         }
 
         if 'objeto_id' in resultado:

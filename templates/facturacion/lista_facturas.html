@@ -250,6 +250,7 @@
                                     <i class="bi bi-plus-circle"></i>
                                 </a>
                             {% endif %}
+                            {% if factura.estatus != 'cancelada' %}
                             {% if factura.empresa.es_premium %}
                                 {% if not factura.uuid %}
                                     <a href="{% url 'timbrar_factura' factura.pk %}?next={{ request.get_full_path|urlencode }}" 
@@ -264,6 +265,7 @@
                                     <i class="bi bi-file-earmark-check"></i>
                                 </a>
                             {% endif %}
+                            {% endif %}
                         </td>
                         <td class="text-center">
                             {% if factura.facturama_id %}
@@ -272,7 +274,7 @@
                                     <i class="bi bi-download"></i>
                                 </a>
                             {% else %}
-                                <span class="text-muted">—</span>
+                                <span class="text-muted" style="font-style: italic; font-size: smaller;">no Timbrada</span>
                             {% endif %}
                         </td>
                         <td class="text-center">

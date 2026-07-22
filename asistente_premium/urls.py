@@ -8,6 +8,7 @@ router = DefaultRouter()
 router.register(r'conversaciones', ConversacionAsistenteViewSet, basename='conversacion')
 
 
+
 urlpatterns = [
     # API REST
     path('api/', include(router.urls)),

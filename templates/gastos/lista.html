@@ -160,13 +160,14 @@
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
                         {% endif %}
-                        <th>Folio</th>
+                        <th>#Solicitud</th>
                         <th>Fecha</th>
-                        <th>Proveedor/Empleado</th>
+                        <th>Prov/Empleado</th>
                         <th>Cuenta de Gasto</th>
                         <th class="text-end">Monto</th>
                         <th class="text-end">Saldo</th>
                         <th>Descripción</th>
+                        <th>#Fac/Comp</th>
                         <th class="text-center">Status</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -192,6 +193,12 @@
                             ${{ gasto.saldo_restante_ann|floatformat:2|intcomma }}
                         </td>
                         <td class="small">{{ gasto.descripcion|truncatechars:50 }}</td>
+                        {% if  gasto.folio_comprobante %}
+                        <td class="small">{{ gasto.folio_comprobante }}</td>
+                        {% else %}
+                        <td class="small text-center"></td>
+                        {% endif %}
+
                         <td class="text-center">
                             {% if gasto.estatus == 'pagada' %}
                                 <span class="badge bg-success">Pagada</span>
@@ -218,9 +225,9 @@
                                     <i class="bi bi-trash3"></i>
                                 </a>
                             {% endif %}
-                            <a href="{% url 'gasto_nuevo' %}" class="btn btn-xs btn-crear reporte-link" title="Nueva Solicitud">
+                            {% comment %} <a href="{% url 'gasto_nuevo' %}" class="btn btn-xs btn-crear reporte-link" title="Nueva Solicitud">
                                 <i class="bi bi-plus-circle"></i>
-                            </a>
+                            </a> {% endcomment %}
                             <a href="{% url 'gasto_detalle' gasto.id %}" 
                                class="btn btn-xs btn-outline-info reporte-link" title="Ver Historial">
                                 <i class="bi bi-eye"></i>

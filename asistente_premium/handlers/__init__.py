@@ -1,5 +1,6 @@
 """Inicializador de handlers"""
 from asistente_premium.handlers.cuenta_bancaria_handler import CuentaBancariaHandler
+from asistente_premium.handlers.solicitud_gasto_handler import SolicitudGastoHandler
 from .tipo_gasto_handler import TipoGastoHandler
 from .base_handler import BaseHandler
 from .cliente_handler import ClienteHandler
@@ -13,13 +14,14 @@ from .pago_handler import AsignarPagoHandler
 # Registro de todos los handlers disponibles
 HANDLERS_REGISTRY = {
     'crear_cliente': ClienteHandler,
-    #'actualizar_cliente': ActualizarClienteHandler,
     'crear_proveedor': ProveedorHandler,
     'crear_cuenta_bancaria': CuentaBancariaHandler,
     'crear_empleado': EmpleadoHandler,
     'crear_tipo_gasto': TipoGastoHandler,
     'buscar_factura': BuscarFacturaHandler,
     'asignar_pago': AsignarPagoHandler,
+    'registrar_cobro': AsignarPagoHandler,  # ← alias directo
+    'crear_solicitud_gasto': SolicitudGastoHandler,
 }
 
 def obtener_handler(intencion: str, usuario, empresa=None):

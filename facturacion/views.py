@@ -3218,7 +3218,7 @@ def lista_facturas_otros_ingresos(request):
     estatus_filtro = request.GET.get('estatus')
     periodo_filtro = request.GET.get('periodo')  # formato: 2026-07
     
-    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('estatus','-fecha_emision')
+    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_vencimiento')
 
     # Filtrar por empresa si no es superusuario 
     if request.user.is_superuser and empresa_id:
