@@ -121,257 +121,6 @@ import pytz
 
 # pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 
-# def dashboard_inicio(request):
-#     empresa = request.user.perfilusuario.empresa
-#     perfil = request.user.perfilusuario
-#     # mostrar_wizard = perfil.mostrar_wizard
-#     mostrar_wizard = perfil.mostrar_wizard and not request.session.get(
-#         "wizard_cerrado", False
-#     )
-
-#     hoy = date.today()
-#     primer_dia_mes = hoy.replace(day=1)
-#     primer_dia_mes_anterior = (primer_dia_mes - timedelta(days=1)).replace(day=1)
-#     ultimo_dia_mes_anterior = primer_dia_mes - timedelta(days=1)
-#     meses = []
-#     for i in range(5, -1, -1):
-#         y = (
-#             primer_dia_mes.year
-#             if primer_dia_mes.month - i > 0
-#             else primer_dia_mes.year - 1
-#         )
-#         m = (primer_dia_mes.month - i - 1) % 12 + 1
-#         meses.append(date(y, m, 1))
-
-#     # Ingresos del mes actual y anterior
-#     ingresos_mes = (
-#         Pago.objects.filter(
-#             factura__empresa=empresa,
-#             fecha_pago__gte=primer_dia_mes,
-#             fecha_pago__lte=hoy,
-#         ).aggregate(total=Sum("monto"))["total"]
-#         or 0
-#     )
-
-#     ingresos_mes_otros = (
-#         CobroOtrosIngresos.objects.filter(
-#             factura__empresa=empresa,
-#             fecha_cobro__gte=primer_dia_mes,
-#             fecha_cobro__lte=hoy,
-#         ).aggregate(total=Sum("monto"))["total"]
-#         or 0
-#     )
-
-#     ingresos_mes_total = ingresos_mes + ingresos_mes_otros
-
-#     ingresos_mes_anterior = (
-#         Pago.objects.filter(
-#             factura__empresa=empresa,
-#             fecha_pago__gte=primer_dia_mes_anterior,
-#             fecha_pago__lte=ultimo_dia_mes_anterior,
-#         ).aggregate(total=Sum("monto"))["total"]
-#         or 0
-#     )
-
-#     ingresos_mes_anterior_otros = (
-#         CobroOtrosIngresos.objects.filter(
-#             factura__empresa=empresa,
-#             fecha_cobro__gte=primer_dia_mes_anterior,
-#             fecha_cobro__lte=ultimo_dia_mes_anterior,
-#         ).aggregate(total=Sum("monto"))["total"]
-#         or 0
-#     )
-
-#     ingresos_mes_anterior_total = ingresos_mes_anterior + ingresos_mes_anterior_otros
-
-#     variacion_ingresos = (
-#         (
-#             (ingresos_mes_total - ingresos_mes_anterior_total)
-#             / ingresos_mes_anterior_total
-#         )
-#         * 100
-#         if ingresos_mes_anterior_total
-#         else 0
-#     )
-
-#     # Gastos del mes actual y anterior
-#     gastos_mes = (
-#         PagoGasto.objects.filter(
-#             gasto__empresa=empresa, fecha_pago__gte=primer_dia_mes, fecha_pago__lte=hoy
-#         ).aggregate(total=Sum("monto"))["total"]
-#         or 0
-#     )
-
-#     gastos_mes_anterior = (
-#         PagoGasto.objects.filter(
-#             gasto__empresa=empresa,
-#             fecha_pago__gte=primer_dia_mes_anterior,
-#             fecha_pago__lte=ultimo_dia_mes_anterior,
-#         ).aggregate(total=Sum("monto"))["total"]
-#         or 0
-#     )
-
-#     variacion_gastos = (
-#         ((gastos_mes - gastos_mes_anterior) / gastos_mes_anterior) * 100
-#         if gastos_mes_anterior
-#         else 0
-#     )
-
-#     # Facturas pendientes y vencidas cuotas y áreas comunes
-#     facturas_pendientes = (
-#         Factura.objects.filter(empresa=empresa, estatus="pendiente")
-#         .select_related("cliente")
-#         .prefetch_related("pagos")
-#     )
-
-#     # facturas pendientes otros ingresos
-#     facturas_pendientes_otros = (
-#         FacturaOtrosIngresos.objects.filter(empresa=empresa, estatus="pendiente")
-#         .select_related("tipo_ingreso")
-#         .prefetch_related("cobros")
-#     )
-
-#     facturas_vencidas_cuotas = facturas_pendientes.filter(fecha_vencimiento__lt=hoy)
-#     facturas_vencidas_otros = facturas_pendientes_otros.filter(
-#         fecha_vencimiento__lt=hoy
-#     )
-#     cartera_vencida = sum(f.saldo_pendiente for f in facturas_vencidas_cuotas) + sum(
-#         f.saldo for f in facturas_vencidas_otros
-#     )
-
-#     # Cantidad de facturas pendientes
-#     cantidad_facturas_pendientes = (
-#         facturas_pendientes.count() + facturas_pendientes_otros.count()
-#     )
-
-#     # Pagos recibidos hoy
-#     pagos_hoy = (
-#         Pago.objects.filter(empresa=empresa, fecha_pago=hoy).aggregate(
-#             total=Sum("monto")
-#         )["total"]
-#         or 0
-#     )
-
-#     pagos_por_mes = (
-#         Pago.objects.filter(
-#             factura__empresa=empresa, fecha_pago__gte=meses[0], fecha_pago__lte=hoy
-#         )
-#         .annotate(mes=TruncMonth("fecha_pago"))
-#         .values("mes")
-#         .annotate(total=Sum("monto"))
-#         .order_by("mes")
-#     )
-
-#     # Pagos de gastos generales por mes
-#     gastos_por_mes = (
-#         PagoGasto.objects.filter(
-#             gasto__empresa=empresa, fecha_pago__gte=meses[0], fecha_pago__lte=hoy
-#         )
-#         .annotate(mes=TruncMonth("fecha_pago"))
-#         .values("mes")
-#         .annotate(total=Sum("monto"))
-#         .order_by("mes")
-#     )
-#     # gastos y vales caja chica por mes
-#     gastos_caja_por_mes = (
-#         GastoCajaChica.objects.filter(
-#             fondeo__empresa=empresa, fecha__gte=meses[0], fecha__lte=hoy
-#         )
-#         .annotate(mes=TruncMonth("fecha"))
-#         .values("mes")
-#         .annotate(total=Sum("importe"))
-#         .order_by("mes")
-#     )
-#     vales_caja_por_mes = (
-#         ValeCaja.objects.filter(
-#             fondeo__empresa=empresa, fecha__gte=meses[0], fecha__lte=hoy
-#         )
-#         .annotate(mes=TruncMonth("fecha"))
-#         .values("mes")
-#         .annotate(total=Sum("importe"))
-#         .order_by("mes")
-#     )
-
-#     # Convierte los resultados a diccionarios {mes: total}
-#     pagos_dict = {}
-#     for p in pagos_por_mes:
-#         if p["mes"]:
-#             pagos_dict[p["mes"].strftime("%Y-%m")] = float(p["total"])
-
-#     pagosgasto_dict = {}
-#     for p in gastos_por_mes:
-#         if p["mes"]:
-#             pagosgasto_dict[p["mes"].strftime("%Y-%m")] = float(p["total"])
-
-#     labels = [m.strftime("%b %Y") for m in meses]
-#     labels_keys = [m.strftime("%Y-%m") for m in meses]
-#     ingresos_data = [pagos_dict.get(k, 0) for k in labels_keys]
-#     gastos_data = [pagosgasto_dict.get(k, 0) for k in labels_keys]
-
-#     # Cartera vencida por rango de días
-#     rangos = [
-#         (0, 30),
-#         (31, 60),
-#         (61, 90),
-#         (91, 180),
-#         (181, 10000),
-#     ]
-#     cartera_rangos = []
-#     for inicio, fin in rangos:
-#         facturas_rango = facturas_pendientes.filter(
-#             fecha_vencimiento__lt=hoy - timedelta(days=inicio),
-#             fecha_vencimiento__gte=hoy - timedelta(days=fin),
-#         )
-#         total = sum(f.saldo_pendiente for f in facturas_rango)
-#         cartera_rangos.append(total)
-
-#     # --- Recordatorio de facturación mensual ---
-#     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
-
-#     mensaje_pago = None
-#     if request.GET.get("pago") == "ok":
-#         mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
-
-#     # es_demo=False
-#     # es_demo = request.user.perfilusuario.tipo_usuario == "demo"
-#     # es_plus = request.user.perfilusuario.tipo_usuario == "plus"
-#     # es_premium = request.user.empresa.es_premium == "premium"
-
-#     context = {
-#         "ingresos_mes": ingresos_mes,
-#         "ingresos_mes_otros": ingresos_mes_otros,
-#         "ingresos_mes_total": ingresos_mes_total,
-#         "ingresos_mes_anterior": ingresos_mes_anterior,
-#         "ingresos_mes_anterior_otros": ingresos_mes_anterior_otros,
-#         "ingresos_mes_anterior_total": ingresos_mes_anterior_total,
-#         "variacion_ingresos": variacion_ingresos,
-#         "gastos_mes": gastos_mes,
-#         "gastos_mes_anterior": gastos_mes_anterior,
-#         "variacion_gastos": variacion_gastos,
-#         "cartera_vencida": cartera_vencida,
-#         "facturas_pendientes": cantidad_facturas_pendientes,
-#         "pagos_hoy": pagos_hoy,
-#         #'top_deudores': top_deudores,
-#         "pagos_por_mes": list(pagos_por_mes),
-#         "gastos_por_mes": list(gastos_por_mes),
-#         "cartera_rangos": cartera_rangos,
-#         "labels": labels,
-#         "ingresos_data": ingresos_data,
-#         "gastos_data": gastos_data,
-#         #"es_demo": es_demo,
-#         "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,
-#         "mensaje_pago": mensaje_pago,
-#         "mostrar_recordatorio": mostrar_recordatorio,
-#         "mostrar_wizard": mostrar_wizard,
-#         #"es_plus": es_plus,
-#         #"es_premium": es_premium,
-#         "regimen_choices": Empresa.REGIMEN_CHOICES,
-#         "bancos_choices": CuentaBancaria.BANCOS_CHOICES,
-#         "tipo_cuenta_choices": CuentaBancaria.TIPO_CUENTA,
-#         "moneda_choices": CuentaBancaria.TIPO_MONEDA,
-#         "empresa": empresa,
-#     }
-#     return render(request, "pantalla_inicio.html", context)
 MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
 @login_required
@@ -406,15 +155,28 @@ def dashboard_inicio(request):
         fecha_pago__month=mes_ant
     ).exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or Decimal('0')
     delta_ingresos = round(float((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100), 1) if ingresos_mes_ant > 0 else None
- 
+
+    # Subquery para pagos parciales
+    total_pagado_sq = Pago.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(total=Sum('monto')).values('total')
+
     # Por cobrar del mes (facturas pendientes con vencimiento en el mes)
     por_cobrar_mes = Factura.objects.filter(
         empresa=empresa,
         estatus='pendiente',
         activo=True,
         fecha_vencimiento__year=anio_actual,
-        fecha_vencimiento__month=mes_actual
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        fecha_vencimiento__month=mes_actual).annotate(
+        total_pagado_ann=Coalesce(
+            Subquery(total_pagado_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        ),
+        saldo_real=ExpressionWrapper(
+            F('monto') - F('total_pagado_ann'),
+            output_field=DecimalField()
+        )
+    ).aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
  
     total_posible_ingresos = ingresos_mes + por_cobrar_mes
     pct_cobrado = round(float(ingresos_mes / total_posible_ingresos * 100)) if total_posible_ingresos > 0 else 0
@@ -448,17 +210,21 @@ def dashboard_inicio(request):
     pct_gastos = round(float(gastos_pagados_mes / ingresos_mes * 100)) if ingresos_mes > 0 else 0
     pct_margen = 100 - pct_gastos
  
-    # ── CARTERA VENCIDA ──
-    # facturas_pendientes = Factura.objects.filter(
-    #     empresa=empresa, estatus='pendiente', activo=True
-    # ).annotate_saldo()  # si no tienes annotate_saldo usa values/aggregate
- 
     # Calcular cartera manualmente si no hay annotate_saldo
-    
     facturas_pend_qs = Factura.objects.filter(
         empresa=empresa, estatus='pendiente', activo=True
+    ).annotate(
+        total_pagado_ann=Coalesce(
+            Subquery(total_pagado_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        ),
+        saldo_real=ExpressionWrapper(
+            F('monto') - F('total_pagado_ann'),
+            output_field=DecimalField()
+        )
     )
-    cartera_vencida = facturas_pend_qs.aggregate(total=Sum('monto'))['total'] or Decimal('0')
+    
+    cartera_vencida = facturas_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
     facturas_vencidas_count = facturas_pend_qs.count()
  
     # Antigüedad por días desde fecha_vencimiento
@@ -478,7 +244,7 @@ def dashboard_inicio(request):
  
     # ── TOP DEUDORES ──
     top_deudores = []
-    for f in facturas_pend_qs.select_related('cliente', 'local', 'area_comun').order_by('-monto')[:8]:
+    for f in facturas_pend_qs.select_related('cliente', 'local', 'area_comun').order_by('-monto')[:5]:
         dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
         top_deudores.append({
             'cliente__nombre': f.cliente.nombre if f.cliente else '—',
