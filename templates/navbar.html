@@ -5,8 +5,9 @@
     Date of modification: 04/09/2025
     Description: Code navbar
 -->
-{% load static %}
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">    
 
+{% load static %}
 <div id="globalSidebarBackdrop" class="global-sidebar-backdrop"></div>
 
 <button id="globalMenuToggle" type="button" class="btn btn-primary global-menu-toggle d-lg-none" aria-label="Abrir menu">
@@ -31,7 +32,7 @@
       </button>
 
       <div class="collapse navbar-collapse" id="navbarOpciones">
-        <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center ms-auto">
+        <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center mx-auto">
 
           {% if request.user.is_staff %}
           <li class="nav-item dropdown">
@@ -262,6 +263,8 @@
               <li><hr class="dropdown-divider"></li>
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'generar_vale_caja' %}">Nuevo Vale Caja Chica</a></li>{% endcomment %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_vales_caja_chica' %}"><i class="bi bi-list-ul me-2"></i>Vales Caja Chica</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_caja_chica' %}"><i class="bi bi-file-text me-2"></i>Reporte Caja</a></li>
             </ul>
           </li>
 
@@ -340,9 +343,9 @@
       </div>
 
       <div class="d-flex align-items-center ms-auto">
-        <button id="toggleDark" class="toggle-switch" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">
+        {% comment %} <button id="toggleDark" class="toggle-switch" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">
           <div class="toggle-ball"><i class="bi bi-moon-fill"></i></div>
-        </button>
+        </button> {% endcomment %}
       </div>
     </div>
   </nav>
@@ -440,3 +443,110 @@ document.addEventListener('DOMContentLoaded', function () {
   else media.addListener(onChange);
 });
 </script>
+<style>
+/* ── NAVBAR GESAC — Solo mejoras visuales ── */
+.navbar, .navbar * { font-family: 'Rubik', sans-serif !important; }
+
+.navbar {
+    background: linear-gradient(135deg, #0f2d52 0%, #1a5276 100%) !important;
+    box-shadow: 0 2px 12px rgba(15,45,82,0.18) !important;
+    padding: 6px 16px !important;
+    border-bottom: none !important;
+}
+
+.navbar-brand {
+    font-weight: 800 !important;
+    font-size: 1.1rem !important;
+    letter-spacing: -0.02em !important;
+    color: white !important;
+}
+
+.navbar .nav-link {
+    color: rgba(255,255,255,0.85) !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+    transition: all 0.15s !important;
+}
+.navbar .nav-link:hover {
+    color: white !important;
+    background: rgba(255,255,255,0.12) !important;
+}
+.navbar .nav-link.active {
+    color: white !important;
+    background: rgba(255,255,255,0.18) !important;
+    font-weight: 600 !important;
+}
+
+.navbar .dropdown-toggle::after { opacity: 0.6; margin-left: 4px; }
+
+.navbar .dropdown-menu {
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14) !important;
+    padding: 6px !important;
+    margin-top: 6px !important;
+    animation: fadeSlideDown 0.15s ease !important;
+}
+
+@keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.navbar .dropdown-item {
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    color: #374151 !important;
+    border-radius: 8px !important;
+    padding: 7px 12px !important;
+    transition: all 0.1s !important;
+}
+.navbar .dropdown-item:hover {
+    background: #f0f4f9 !important;
+    color: #0f2d52 !important;
+}
+.navbar .dropdown-item i { opacity: 0.65; margin-right: 6px; width: 14px; }
+
+.navbar .dropdown-header {
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    color: #9ca3af !important;
+    padding: 6px 12px 2px !important;
+}
+.navbar .dropdown-divider { border-color: #f1f5f9 !important; margin: 4px 0 !important; }
+
+.navbar .btn-outline-light {
+    border-color: rgba(255,255,255,0.3) !important;
+    color: rgba(255,255,255,0.85) !important;
+    font-size: 0.78rem !important;
+    padding: 5px 10px !important;
+    border-radius: 8px !important;
+    transition: all 0.15s !important;
+}
+.navbar .btn-outline-light:hover {
+    background: rgba(255,255,255,0.15) !important;
+    color: white !important;
+    border-color: rgba(255,255,255,0.5) !important;
+}
+
+.navbar .badge {
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    padding: 4px 10px !important;
+    border-radius: 20px !important;
+}
+
+body.dark-mode .navbar {
+    background: linear-gradient(135deg, #0a1929 0%, #0f2d52 100%) !important;
+}
+body.dark-mode .navbar .dropdown-menu {
+    background: #1e2535 !important;
+    border: 1px solid #2d3748 !important;
+}
+body.dark-mode .navbar .dropdown-item { color: #e2e8f0 !important; }
+body.dark-mode .navbar .dropdown-item:hover { background: #2d3748 !important; }
+</style>

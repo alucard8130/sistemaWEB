@@ -3,194 +3,304 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 02/09/2025
-      Description: Register a new common area
-    -->
     <meta charset="UTF-8">
-    <title>Lista de gastos caja chica</title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gastos Caja Chica — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-  </head>
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* HEADER */
+        .gc-header {
+            background: linear-gradient(135deg, #5a0000 0%, #a93226 60%, #e74c3c 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(90,0,0,0.18);
+            position: relative; overflow: hidden;
+        }
+        .gc-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .gc-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .gc-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* KPI STRIP */
+        .kpi-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+        @media (max-width:768px) { .kpi-strip { grid-template-columns:repeat(2,1fr); } }
+        .kpi-box { background:white; border-radius:14px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid transparent; }
+        .kpi-box.rojo  { border-top-color:#c0392b; }
+        .kpi-box.verde { border-top-color:#1a7a45; }
+        .kpi-box.azul  { border-top-color:#2471a3; }
+        .kpi-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .kpi-val   { font-size:1.35rem; font-weight:700; line-height:1.2; margin:4px 0 2px; }
+        .kpi-sub   { font-size:0.75rem; color:#9ca3af; }
+
+        /* TOOLBAR */
+        .gc-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+
+        /* TABLA */
+        .gc-table-wrap { background:white; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.08); overflow:hidden; }
+        .gc-table-scroll { overflow-x:auto; }
+
+        table.gc-table { border-collapse:separate; border-spacing:0; width:100%; font-size:0.82rem; }
+
+        table.gc-table thead th {
+            background:#5a0000; color:white;
+            font-weight:600; font-size:0.72rem; text-transform:uppercase;
+            letter-spacing:0.05em; padding:11px 14px; white-space:nowrap;
+            border-bottom:2px solid #a93226;
+        }
+
+        table.gc-table tbody td {
+            padding:10px 14px; border-bottom:1px solid #f1f5f9;
+            color:#374151; vertical-align:middle;
+        }
+        table.gc-table tbody tr:hover td { background:#fdf5f5; }
+        table.gc-table tbody tr:last-child td { border-bottom:none; }
+
+        /* Badge tipo gasto */
+        .badge-tipo {
+            background:#fdf0f0; color:#c0392b; padding:3px 9px;
+            border-radius:10px; font-size:0.7rem; font-weight:600;
+        }
+
+        /* Badge fondeo */
+        .badge-fondeo {
+            background:#e8f4ff; color:#1a5276; padding:3px 9px;
+            border-radius:10px; font-size:0.7rem; font-weight:600;
+            font-family: monospace;
+        }
+
+        /* Botones acción */
+        .btn-accion {
+            width:30px; height:30px; border-radius:8px; border:1px solid #e2e8f0;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:0.8rem; cursor:pointer; transition:all 0.15s;
+            background:white; text-decoration:none;
+        }
+        .btn-accion.imprimir { color:#2471a3; }
+        .btn-accion.imprimir:hover { background:#2471a3; color:white; border-color:#2471a3; }
+        .btn-accion.eliminar { color:#c0392b; }
+        .btn-accion.eliminar:hover { background:#c0392b; color:white; border-color:#c0392b; }
+        .btn-accion.ver { color:#6b7280; }
+        .btn-accion.ver:hover { background:#6b7280; color:white; border-color:#6b7280; }
+
+        tfoot tr td {
+            background:linear-gradient(90deg,#d4ac0d,#f0c330); color:#5a3e00;
+            font-weight:700; font-size:0.82rem; padding:10px 14px;
+            border-top:2px solid #c8a000;
+        }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .gc-header { background:#5a0000 !important; -webkit-print-color-adjust:exact; }
+        }
+    </style>
+</head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    
-    <div class="container-fluid mt-2" align="center">
-            <div class="card shadow-sm">
-                <div class="card-body">
-        <h3>Gastos Caja Chica</h3>
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-success" role="alert">
-                    {{ message }}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="gc-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="gc-empresa"><i class="bi bi-building me-1"></i>{{ empresa.nombre }}</div>
+                    <div class="gc-titulo"><i class="bi bi-receipt-cutoff me-2"></i>Gastos Caja Chica</div>
+                    <div style="font-size:0.78rem;opacity:0.8;margin-top:3px;">
+                        <i class="bi bi-info-circle me-1"></i>Registro de gastos realizados con caja chica
+                    </div>
                 </div>
-            {% endfor %}
-        {% endif %}
-        {% comment %} <div class="mt-3">
-            <a href="{% url 'registrar_gasto_caja_chica' %}" class="btn btn-crear mb-3 reporte-link">
-                <i class="bi bi-plus-circle me-1"></i>Nuevo Gasto</a>
-        </div> {% endcomment %}
-        </div>
-        </div>
-        </div>
-        <div class="alert alert-info">
-                <h4><strong>Importe total Gastado:</strong> ${{ total_gastos|floatformat:2|intcomma }}</h4>
+                {% comment %} <div class="d-flex gap-2 no-print">
+                    <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button>
+                </div> {% endcomment %}
             </div>
-        <!-- Filtros -->
-         <div class="card mb-2">
-        <div class="card-body">
-        <form id="form-filtros" method="get" class="row g-2 mb-3">
-            <div class="col-auto">
-                <select name="proveedor" class="form-select">
-                    <option value="">Proveedores</option>
-                    {% for p in proveedores %}
-                        <option value="{{ p.id }}" {% if proveedor_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+        </div>
+
+        <!-- KPI STRIP -->
+        <div class="kpi-strip">
+            <div class="kpi-box rojo">
+                <div class="kpi-label"><i class="bi bi-receipt-cutoff me-1"></i>Total gastos</div>
+                <div class="kpi-val text-danger">${{ total_gastos|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">{{ periodo_label|default:"Período actual" }}</div>
+            </div>
+            <div class="kpi-box verde">
+                <div class="kpi-label"><i class="bi bi-hash me-1"></i>Número de gastos</div>
+                <div class="kpi-val text-success">{{ gastos.paginator.count }}</div>
+                <div class="kpi-sub">Registros encontrados</div>
+            </div>
+            <div class="kpi-box azul">
+                <div class="kpi-label"><i class="bi bi-calculator me-1"></i>Promedio por gasto</div>
+                <div class="kpi-val text-primary">
+                    {% if gastos.paginator.count > 0 %}
+                        ${{ total_gastos|floatformat:0|intcomma }}
+                    {% else %}
+                        $0
+                    {% endif %}
+                </div>
+                <div class="kpi-sub">Importe promedio</div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR FILTROS -->
+        <div class="gc-toolbar no-print">
+            <form method="get" class="d-flex align-items-center flex-wrap gap-2" id="form-filtros">
+                <select name="fondeo" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los fondeos</option>
+                    {% for f in fondeos_disponibles %}
+                        <option value="{{ f.id }}" {% if f.id|stringformat:"s" == fondeo_sel %}selected{% endif %}>
+                            Cheque {{ f.numero_cheque }}
+                        </option>
                     {% endfor %}
                 </select>
-            </div>
-            <div class="col-auto">
-                <select name="tipo_gasto" class="form-select">
-                    <option value="">Cuenta de Gasto</option>
-                    {% for tg in tipos_gasto %}
-                        <option value="{{ tg.id }}" {% if tipo_gasto_id == tg.id|stringformat:"s" %}selected{% endif %}>{{ tg.nombre }}</option>
+
+                <select name="tipo_gasto" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los tipos</option>
+                    {% for t in tipos_gasto %}
+                        <option value="{{ t.id }}" {% if t.id|stringformat:"s" == tipo_gasto_sel %}selected{% endif %}>{{ t.nombre }}</option>
                     {% endfor %}
                 </select>
-            </div>
-            <div class="col-auto">
-                <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control" placeholder="Fecha inicio">
-            </div>
-            <div class="col-auto">
-                <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control" placeholder="Fecha fin">
-            </div>
-            <div class="col-auto align-self-end">
-                <button type="submit" class="btn btn-outline-primary reporte-link">
-                    <i class="bi bi-funnel-fill"></i>
+
+                <input type="date" name="fecha_inicio" class="form-control form-control-sm" style="width:auto;" value="{{ fecha_inicio|default:'' }}">
+                <input type="date" name="fecha_fin" class="form-control form-control-sm" style="width:auto;" value="{{ fecha_fin|default:'' }}">
+
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtrar
                 </button>
-                <a href="{% url 'lista_gastos_caja_chica' %}" class="btn btn-outline-secondary reporte-link">
-                    <i class="bi bi-arrow-clockwise"></i>
+                <a href="{% url 'lista_gastos_caja_chica' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
-                <a href="{% url 'exportar_gastos_caja_chica_excel' %}?proveedor={{ proveedor_id }}&tipo_gasto={{ tipo_gasto_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel-fill"></i> 
+                <a href="?{{ request.GET.urlencode }}&excel=1" class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-excel-fill"></i>
                 </a>
+            </form>
+        </div>
+
+        <!-- TABLA -->
+        <div class="gc-table-wrap">
+            <div class="gc-table-scroll">
+                <table class="gc-table">
+                    <thead>
+                        <tr>
+                            <th>Fondeo / Cheque</th>
+                            <th>Fecha</th>
+                            <th>Concepto</th>
+                            <th>Tipo de Gasto</th>
+                            <th class="text-end">Importe</th>
+                            <th class="text-center no-print">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gasto in gastos %}
+                        <tr>
+                            <td>
+                                <span class="badge-fondeo">{{ gasto.fondeo.numero_cheque }}</span>
+                            </td>
+                            <td style="color:#6b7280;">{{ gasto.fecha|date:"d/M/y"|upper }}</td>
+                            <td>
+                                <div style="font-weight:500;">{{ gasto.concepto|truncatechars:40 }}</div>
+                                {% if gasto.proveedor %}
+                                <div style="font-size:0.72rem;color:#9ca3af;">{{ gasto.proveedor.nombre }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge-tipo">{{ gasto.tipo_gasto.nombre }}</span>
+                            </td>
+                            <td class="text-end" style="font-weight:700;color:#c0392b;">
+                                ${{ gasto.importe|floatformat:2|intcomma }}
+                            </td>
+                            <td class="text-center no-print">
+                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                    {% if gasto.comprobante %}
+                                    <a href="{{ gasto.comprobante.url }}" class="btn-accion ver" title="Ver comprobante" target="_blank">
+                                        <i class="bi bi-paperclip"></i>
+                                    </a>
+                                    {% endif %}
+                                    <button type="button" class="btn-accion eliminar" title="Eliminar"
+                                        onclick="confirmarEliminar('{% url 'eliminar_gasto_caja' gasto.id %}')">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                                No hay gastos registrados
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if gastos %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="4"><strong><i class="bi bi-calculator me-1"></i>Total</strong></td>
+                            <td class="text-end"><strong>${{ total_gastos|floatformat:2|intcomma }}</strong></td>
+                            <td class="no-print"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
             </div>
-            
-        </form>
         </div>
-        </div>
-        <div>
-                <a href="{% url 'registrar_gasto_caja_chica' %}" class="btn btn-outline-success" align="right" title="Nuevo Gasto">
-                    <i class="bi bi-plus-lg"></i> Nuevo Gasto Caja Chica
-                </a> 
-        </div>
-        <div class="table-responsive rounded-3 border" style='font-size: 0.9rem;'>
-            <table class="table align-middle mb-0 shadow-sm">
-                <thead>
-                    <tr>
-                        <th>Fondo</th>
-                        <th>Fecha</th>
-                        <th>Proveedor</th>
-                        <th>Cuenta de Gasto</th>
-                        <th>Importe</th>
-                        <th>Cuenta Bancaria</th>
-                        <th>Descripción</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for gasto in gastos %}
-                    <tr>
-                        <td>{{ gasto.fondeo.numero_cheque }}</td>
-                        <td>{{ gasto.fecha|date:"d/b/y"|upper }}</td>
-                        <td>{{ gasto.proveedor.nombre }}</td>
-                        <td>{{ gasto.tipo_gasto }}</td>
-                        
-                        <td>${{ gasto.importe|floatformat:2|intcomma }}</td>
-                        {% if gasto.fondeo.cuenta_bancaria %}
-                        <td>{{ gasto.fondeo.cuenta_bancaria.banco }}-{{ gasto.fondeo.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
-                        {% else %}
-                        <td></td>
-                        {% endif %}
-                        <td>{{ gasto.descripcion }}</td>
-                        <td>
-                   
-                            <a href="{% url 'registrar_gasto_caja_chica' %}?fondeo_id={{ gasto.fondeo.id }}" 
-                            class="btn btn-crear btn-sm reporte-link"
-                            title="Registrar nuevo gasto al fondeo num. {{ gasto.fondeo.numero_cheque }}">
-                            <i class="bi bi-plus-circle me-1"></i>
-                            </a>
-                            <form method="post" action="{% url 'eliminar_gasto_caja' gasto.id %}" style="display:inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar este gasto? Se devolverá el importe al fondeo si corresponde.')"
-                                title="Eliminar gasto">
 
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr class="no-data-row">
-                        <td colspan="7">No hay gastos registrados.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <!-- Pagination -->
-             <nav aria-label="Paginación">
-    <ul class="pagination">
-        {% if gastos.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ gastos.previous_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if tipo_gasto_id %}&tipo_gasto={{ tipo_gasto_id }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Anterior</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+        <!-- PAGINACIÓN -->
+        {% if gastos.has_other_pages %}
+        <nav class="mt-3 no-print">
+            <ul class="pagination pagination-sm justify-content-center">
+                {% if gastos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ gastos.previous_page_number }}&fondeo={{ fondeo_sel|default:'' }}&tipo_gasto={{ tipo_gasto_sel|default:'' }}&fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">{{ gastos.number }} / {{ gastos.paginator.num_pages }}</span>
+                </li>
+                {% if gastos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ gastos.next_page_number }}&fondeo={{ fondeo_sel|default:'' }}&tipo_gasto={{ tipo_gasto_sel|default:'' }}&fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
         {% endif %}
-        <li class="page-item disabled"><span class="page-link">Página {{ gastos.number }} de {{ gastos.paginator.num_pages }}</span></li>
-        {% if gastos.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ gastos.next_page_number }}{% if proveedor_id %}&proveedor={{ proveedor_id }}{% endif %}{% if tipo_gasto_id %}&tipo_gasto={{ tipo_gasto_id }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Siguiente</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-        {% endif %}
-    </ul>
-</nav>
-        </div>
+
     </div>
-    <!-- 🔹 Footer -->
-   {% include 'tool_bar.html' %}
-    <!-- Scripts -->
-    <script src="{% static 'js/script.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function confirmarEliminar(url) {
+        if (confirm('¿Eliminar este gasto? Esta acción no se puede deshacer.')) {
+            window.location.href = url;
+        }
+    }
+    </script>
 </body>
 </html>

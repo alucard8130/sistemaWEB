@@ -250,6 +250,13 @@ def lista_fondeos(request):
     page_number = request.GET.get("page")
     fondeos = paginator.get_page(page_number)
 
+    hoy = date.today()
+    total_importe_mes = FondeoCajaChica.objects.filter(
+    empresa_id=empresa_id if request.user.is_superuser and empresa_id else None,
+    fecha__year=hoy.year,
+    fecha__month=hoy.month
+    ).aggregate(total=Sum('importe_cheque'))['total'] or 0
+
     return render(request, "caja_chica/lista_fondeos.html", {
         "fondeos": fondeos,
           "empleados": empleados, 
@@ -260,6 +267,8 @@ def lista_fondeos(request):
               "cheques_existentes": cheques_existentes,
                 "total_importe": total_importe or 0,
                     "total_saldo": total_saldo or 0,
+                    "total_importe_mes": total_importe_mes or 0,
+                    'periodo_label': f"{fecha_inicio} — {fecha_fin}" if fecha_inicio or fecha_fin else f"{hoy.strftime('%B %Y')}",
           })
 
 @login_required

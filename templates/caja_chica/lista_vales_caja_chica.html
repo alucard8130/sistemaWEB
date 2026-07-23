@@ -3,214 +3,308 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 02/09/2025
-      Description: Register a new common area
-    -->
     <meta charset="UTF-8">
-    <title>Lista vales caja chica</title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vales de Caja — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-  </head>
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* HEADER */
+        .vc-header {
+            background: linear-gradient(135deg, #1a0533 0%, #4a1080 60%, #7b2fbe 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(74,16,128,0.2);
+            position: relative; overflow: hidden;
+        }
+        .vc-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .vc-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .vc-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* KPI STRIP */
+        .kpi-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+        @media (max-width:768px) { .kpi-strip { grid-template-columns:repeat(2,1fr); } }
+        .kpi-box { background:white; border-radius:14px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid transparent; }
+        .kpi-box.morado { border-top-color:#7b2fbe; }
+        .kpi-box.verde  { border-top-color:#1a7a45; }
+        .kpi-box.dorado { border-top-color:#d4ac0d; }
+        .kpi-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .kpi-val   { font-size:1.35rem; font-weight:700; line-height:1.2; margin:4px 0 2px; }
+        .kpi-sub   { font-size:0.75rem; color:#9ca3af; }
+
+        /* TOOLBAR */
+        .vc-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+
+        /* TABLA */
+        .vc-table-wrap { background:white; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.08); overflow:hidden; }
+        .vc-table-scroll { overflow-x:auto; }
+
+        table.vc-table { border-collapse:separate; border-spacing:0; width:100%; font-size:0.82rem; }
+
+        table.vc-table thead th {
+            background:#1a0533; color:white;
+            font-weight:600; font-size:0.72rem; text-transform:uppercase;
+            letter-spacing:0.05em; padding:11px 14px; white-space:nowrap;
+            border-bottom:2px solid #7b2fbe;
+        }
+
+        table.vc-table tbody td {
+            padding:10px 14px; border-bottom:1px solid #f1f5f9;
+            color:#374151; vertical-align:middle;
+        }
+        table.vc-table tbody tr:hover td { background:#faf5ff; }
+        table.vc-table tbody tr:last-child td { border-bottom:none; }
+
+        /* Badges */
+        .badge-folio {
+            background:#f3e8ff; color:#4a1080; padding:3px 9px;
+            border-radius:10px; font-size:0.72rem; font-weight:700;
+            font-family: monospace;
+        }
+        .badge-estatus-pendiente { background:#fef9e7; color:#d4ac0d; padding:3px 9px; border-radius:10px; font-size:0.7rem; font-weight:700; }
+        .badge-estatus-pagado    { background:#eafaf1; color:#1a7a45; padding:3px 9px; border-radius:10px; font-size:0.7rem; font-weight:700; }
+        .badge-estatus-cancelado { background:#f0f4f8; color:#6b7280; padding:3px 9px; border-radius:10px; font-size:0.7rem; font-weight:700; }
+
+        /* Botones acción */
+        .btn-accion {
+            width:30px; height:30px; border-radius:8px; border:1px solid #e2e8f0;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:0.8rem; cursor:pointer; transition:all 0.15s;
+            background:white; text-decoration:none;
+        }
+        .btn-accion.imprimir { color:#2471a3; }
+        .btn-accion.imprimir:hover { background:#2471a3; color:white; border-color:#2471a3; }
+        .btn-accion.eliminar { color:#c0392b; }
+        .btn-accion.eliminar:hover { background:#c0392b; color:white; border-color:#c0392b; }
+        .btn-accion.ver { color:#6b7280; }
+        .btn-accion.ver:hover { background:#6b7280; color:white; border-color:#6b7280; }
+        .btn-accion.pagar { color:#1a7a45; }
+        .btn-accion.pagar:hover { background:#1a7a45; color:white; border-color:#1a7a45; }
+
+        tfoot tr td {
+            background:linear-gradient(90deg,#d4ac0d,#f0c330); color:#5a3e00;
+            font-weight:700; font-size:0.82rem; padding:10px 14px;
+            border-top:2px solid #c8a000;
+        }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .vc-header { background:#1a0533 !important; -webkit-print-color-adjust:exact; }
+        }
+    </style>
+</head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    
-    <div class="container-fluid mt-2" align="center">
-      <div class="card shadow-sm">
-          <div class="card-body">
-              <h3>Vales Caja Chica</h3>
-                {% if messages %}
-                  {% for message in messages %}
-                    <div class="alert alert-success" role="alert">
-                      {{ message }}
-                    </div>
-                  {% endfor %}
-                {% endif %}
-                </div>
-                </div>
-                </div>
-                <!-- total_gastado -->
-                  <div class="alert alert-info">
-                  <h5><strong>Pendiente de Comprobar:</strong> ${{ total_pendientes|floatformat:2|intcomma }}<br>
-                  <strong>Comprobado:</strong> ${{ total_comprobados|floatformat:2|intcomma }}<br><br>
-                  <strong>Importe total Vales:</strong> ${{ total_vales|floatformat:2|intcomma }}</h5>
-              </div>
 
-              <!-- Filtros -->
-      <div class="card mb-2">
-        <div class="card-body">
-              <form id="form-filtros" method="get" class="row g-2 mb-3">
-                  <div class="col-auto">
-                    <label for="empleado" class="form-label">Responsable</label>
-                      <select name="empleado" class="form-select">
-                          <option value="">selecciona un opcion</option>
-                          {% for empleado in empleados %}
-                              <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
-                          {% endfor %}
-                      </select>
-                  </div>
-                  <div class="col-auto">
-                    <label for="tipo_gasto" class="form-label">Cuenta de Gasto</label>
-                      <select name="tipo_gasto" class="form-select">
-                          <option value="">selecciona un opcion</option>
-                          {% for tg in tipos_gasto %}
-                              <option value="{{ tg.id }}" {% if tipo_gasto_id == tg.id|stringformat:"s" %}selected{% endif %}>{{ tg.nombre }}</option>
-                          {% endfor %}
-                      </select>
-                  </div>
-                  <div class="col-auto">
-                    <label for="fecha_inicio" class="form-label">Desde</label>
-                      <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control" placeholder="Fecha inicio">
-                  </div>
-                  <div class="col-auto">
-                    <label for="fecha_fin" class="form-label">Hasta</label>
-                      <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control" placeholder="Fecha fin">
-                  </div>
-                  <div class="col-auto align-self-end">
-                      <button type="submit" class="btn btn-outline-primary reporte-link" title="Buscar resultados">
-                          <i class="bi bi-funnel-fill"></i>
-                      </button>
-                      <a href="{% url 'lista_vales_caja_chica' %}" class="btn btn-outline-secondary reporte-link" title="Limpiar filtros">
-                           <i class="bi bi-arrow-clockwise"></i>
-                      </a>
-                        <a href="{% url 'exportar_vales_caja_chica_excel' %}?empleado={{ empleado_id }}&tipo_gasto={{ tipo_gasto_id }}&fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-outline-success" title="Exportar a Excel"  >
-                          <i class="bi bi-file-earmark-excel-fill"></i>
-                      </a>
-                  </div>
-                  
-            </form>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-            </div>
-            <div>
-                <a href="{% url 'generar_vale_caja' %}" class="btn btn-outline-success" align="right" title="Registrar nuevo vale de caja chica">
-                    <i class="bi bi-plus-lg"></i> Nuevo Vale Caja Chica
-                </a>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="vc-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="vc-empresa"><i class="bi bi-building me-1"></i>{{ empresa.nombre }}</div>
+                    <div class="vc-titulo"><i class="bi bi-file-earmark-check me-2"></i>Vales de Caja</div>
+                    <div style="font-size:0.78rem;opacity:0.8;margin-top:3px;">
+                        <i class="bi bi-info-circle me-1"></i>Registro y control de vales de caja chica
+                    </div>
                 </div>
-    
-<div class="table-responsive rounded-3 border" style='font-size: 0.9rem;'>        
-    <table class="table align-middle mb-0 shadow-sm">
-    <thead>        
-  <tr>
-    <th>Fondo</th>
-    <th>Responsable</th>
-    <th>Cuenta de Gasto</th>
-    <th>Descripción</th>
-    <th>Importe</th>
-    <th>Cuenta Bancaria</th>
-    <th>Fecha</th>
-    <th>Estado</th>
-    <th>Acciones</th>
-  </tr>
-    </thead>
-    <tbody>
-  {% for vale in vales %}
-  <tr>
-    <td>{{ vale.fondeo.numero_cheque }}</td>
-    <td>{{ vale.recibido_por }}</td>
-    <td>{{ vale.tipo_gasto }}</td>
-    <td>{{ vale.descripcion }}</td>
-    <td>${{ vale.importe|floatformat:2|intcomma }}</td>
-    {% if vale.fondeo.cuenta_bancaria %}
-    <td>{{ vale.fondeo.cuenta_bancaria.banco }}-{{ vale.fondeo.cuenta_bancaria.numero_cuenta|slice:"-4:" }}</td>
-    {% else %}
-    <td></td>
-    {% endif %}
-    <td>{{ vale.fecha|date:"d/b/y"|upper }}</td>
-    {% if vale.status == "pendiente" %}
-    <td><span class="badge bg-warning text-dark">Pendiente</span></td>
-    {% else %}
-    <td><span class="badge bg-success text-light">Comprobado</span></td>
-    {% endif %}
-    <td>
-       
-      <a href="{% url 'generar_vale_caja' %}" class="btn btn-crear btn-sm reporte-link" title="Registrar nuevo vale de caja chica">
-        <i class="bi bi-plus-circle me-1"></i>
-      </a>
-              
-      <a href="{% url 'imprimir_vale_caja' vale.id %}" class="btn btn-outline-primary btn-sm" target="_blank" title="Imprimir Vale de Caja">
-        <i class="bi bi-printer"></i>
-      </a>
-      {% if vale.status == "pendiente" %}
-      <a href="{% url 'comprobar_vale' vale.id %}" class="btn btn-outline-success btn-sm reporte-link" title="Comprobar vale de caja chica">
-        Comprobar
-        <i class="bi bi-check2-circle"></i>
-      </a>
-       <form method="post" action="{% url 'eliminar_vale_caja' vale.id %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-danger btn-sm reporte-link" onclick="return confirm('¿Eliminar este vale? Se devolverá el importe al fondeo.')"
-          title="Eliminar vale de caja chica">
-          
-              <i class="bi bi-trash"></i>
-          </button>
-      </form>
-      {% endif %}
-    </td>
-    
-  </tr>
-  {% empty %}
-  <tr class="no-data-row">
-    <td colspan="4">No hay vales registrados.</td>
-  </tr>
-  {% endfor %}
-    </tbody>
-</table>
-<nav aria-label="Paginación">
-    <ul class="pagination">
-        {% if vales.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ vales.previous_page_number }}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_id %}&tipo_gasto={{ tipo_gasto_id }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Anterior</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-        {% endif %}
-        <li class="page-item disabled"><span class="page-link">Página {{ vales.number }} de {{ vales.paginator.num_pages }}</span></li>
-        {% if vales.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ vales.next_page_number }}{% if empleado_id %}&empleado={{ empleado_id }}{% endif %}{% if tipo_gasto_id %}&tipo_gasto={{ tipo_gasto_id }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">Siguiente</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-        {% endif %}
-    </ul>
-</nav>
+                <div class="d-flex gap-2 no-print">
+                    <a href="{% url 'generar_vale_caja' %}" class="btn btn-sm btn-light fw-bold">
+                        <i class="bi bi-plus-circle me-1"></i>Nuevo Vale
+                    </a>
+                    {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button> {% endcomment %}
+                </div>
             </div>
         </div>
-    </div>  
-  <!-- 🔹 Footer -->
- {% include 'tool_bar.html' %}
 
-    <!-- Scripts -->
+        <!-- KPI STRIP -->
+        <div class="kpi-strip">
+            <div class="kpi-box morado">
+                <div class="kpi-label"><i class="bi bi-file-earmark-check me-1"></i>Total vales</div>
+                <div class="kpi-val" style="color:#7b2fbe;">${{ total_vales|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">{{ periodo_label|default:"Período actual" }}</div>
+            </div>
+            <div class="kpi-box dorado">
+                <div class="kpi-label"><i class="bi bi-clock-history me-1"></i>Pendientes</div>
+                <div class="kpi-val" style="color:#d4ac0d;">${{ total_pendientes|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">{{ count_pendientes }} vales sin pagar</div>
+            </div>
+            <div class="kpi-box verde">
+                <div class="kpi-label"><i class="bi bi-check-circle me-1"></i>Pagados</div>
+                <div class="kpi-val text-success">${{ total_comprobados|floatformat:2|intcomma }}</div>
+                <div class="kpi-sub">{{ count_pagados }} vales liquidados</div>
+            </div>
+        </div>
+
+        <!-- TOOLBAR FILTROS -->
+        <div class="vc-toolbar no-print">
+            <form method="get" class="d-flex align-items-center flex-wrap gap-2" id="form-filtros">
+                <select name="estatus" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los estatus</option>
+                    <option value="pendiente" {% if estatus_sel == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="pagado" {% if estatus_sel == 'pagado' %}selected{% endif %}>Pagado</option>
+                    <option value="cancelado" {% if estatus_sel == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                </select>
+
+                <select name="empleado" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los empleados</option>
+                    {% for e in empleados %}
+                        <option value="{{ e.id }}" {% if e.id|stringformat:"s" == empleado_sel %}selected{% endif %}>{{ e.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <input type="date" name="fecha_inicio" class="form-control form-control-sm" style="width:auto;" value="{{ fecha_inicio|default:'' }}">
+                <input type="date" name="fecha_fin" class="form-control form-control-sm" style="width:auto;" value="{{ fecha_fin|default:'' }}">
+
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtrar
+                </button>
+                <a href="{% url 'lista_vales_caja_chica' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+                <a href="?{{ request.GET.urlencode }}&excel=1" class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-excel-fill"></i>
+                </a>
+            </form>
+        </div>
+
+        <!-- TABLA -->
+        <div class="vc-table-wrap">
+            <div class="vc-table-scroll">
+                <table class="vc-table">
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Fecha</th>
+                            <th>Recibido Por</th>
+                            <th>Concepto</th>
+                            <th class="text-end">Importe</th>
+                            <th class="text-center">Estatus</th>
+                            <th class="text-center no-print">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vale in vales %}
+                        <tr>
+                            <td>
+                                <span class="badge-folio">{{ vale.fondeo }}</span>
+                            </td>
+                            <td style="color:#6b7280;">{{ vale.fecha|date:"d/M/y"|upper }}</td>
+                            <td style="font-weight:500;">{{ vale.recibido_por }}</td>
+                            <td>
+                                <div>{{ vale.concepto|truncatechars:40 }}</div>
+                                {% if vale.tipo_gasto %}
+                                <div style="font-size:0.7rem;color:#9ca3af;">{{ vale.tipo_gasto.nombre }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="text-end" style="font-weight:700;color:#4a1080;">
+                                ${{ vale.importe|floatformat:2|intcomma }}
+                            </td>
+                          
+                                <td class="text-center">
+                                  {% if vale.status == 'pendiente' %}
+                                      <span class="badge-estatus-pendiente"><i class="bi bi-clock me-1"></i>Pendiente</span>
+                                  {% elif vale.status == 'comprobado' %}
+                                      <span class="badge-estatus-pagado"><i class="bi bi-check-circle me-1"></i>Comprobado</span>
+                                  {% endif %}
+                              </td>
+                            <td class="text-center no-print">
+                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                    {% if vale.estatus == 'pendiente' %}
+                                    <a href="{% url 'pagar_vale_caja' vale.id %}" class="btn-accion pagar" title="Marcar como pagado">
+                                        <i class="bi bi-check-lg"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'imprimir_vale_caja' vale.id %}" class="btn-accion imprimir" title="Imprimir" target="_blank">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
+                                    <button type="button" class="btn-accion eliminar" title="Eliminar"
+                                        onclick="confirmarEliminar('{% url 'eliminar_vale_caja' vale.id %}')">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                                No hay vales registrados
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if vales %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="4"><strong><i class="bi bi-calculator me-1"></i>Total</strong></td>
+                            <td class="text-end"><strong>${{ total_vales|floatformat:2|intcomma }}</strong></td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        <!-- PAGINACIÓN -->
+        {% if vales.has_other_pages %}
+        <nav class="mt-3 no-print">
+            <ul class="pagination pagination-sm justify-content-center">
+                {% if vales.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ vales.previous_page_number }}&estatus={{ estatus_sel|default:'' }}&empleado={{ empleado_sel|default:'' }}&fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">{{ vales.number }} / {{ vales.paginator.num_pages }}</span>
+                </li>
+                {% if vales.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ vales.next_page_number }}&estatus={{ estatus_sel|default:'' }}&empleado={{ empleado_sel|default:'' }}&fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    </div>
+
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
-
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>   
+    function confirmarEliminar(url) {
+        if (confirm('¿Eliminar este vale? Esta acción no se puede deshacer.')) {
+            window.location.href = url;
+        }
+    }
+    </script>
 </body>
 </html>
