@@ -1,139 +1,297 @@
-{% load humanize %}
-{% load custom_filters %}
 {% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Detalle Saldos </title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartera Vencida por Origen — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* HEADER */
+        .co-header {
+            background: linear-gradient(135deg, #5a0000 0%, #a93226 60%, #e74c3c 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(90,0,0,0.18);
+            position: relative; overflow: hidden;
+        }
+        .co-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .co-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .co-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* KPI */
+        .kpi-box {
+            background:white; border-radius:14px; padding:16px 18px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid #c0392b;
+            margin-bottom:20px;
+        }
+        .kpi-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .kpi-val   { font-size:1.6rem; font-weight:700; color:#c0392b; margin:4px 0 2px; }
+        .kpi-sub   { font-size:0.75rem; color:#9ca3af; }
+
+        /* TOOLBAR */
+        .co-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+
+        /* PILLS ORIGEN */
+        .origen-pill {
+            padding:5px 14px; border-radius:20px; border:1px solid #e2e8f0;
+            background:white; color:#4a6080; font-size:0.78rem; font-weight:500;
+            cursor:pointer; transition:all 0.15s; text-decoration:none; display:inline-block;
+        }
+        .origen-pill.activo { background:#c0392b; color:white; border-color:#c0392b; }
+        .origen-pill:hover:not(.activo) { background:#fdf0f0; border-color:#c0392b; color:#c0392b; }
+
+        /* TARJETAS ORIGEN */
+        .origen-card {
+            background: white; border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            overflow: hidden; margin-bottom: 16px;
+        }
+        .origen-header {
+            padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; border-bottom: 1px solid #f1f5f9;
+            background: linear-gradient(135deg, #fdf5f5, #fff);
+        }
+        .origen-nombre { font-weight:700; font-size:0.88rem; color:#1a3a5c; display:flex; align-items:center; gap:8px; }
+        .origen-total  { font-weight:700; font-size:1rem; color:#c0392b; }
+        .origen-count  { background:#fdf0f0; color:#c0392b; padding:2px 9px; border-radius:10px; font-size:0.72rem; font-weight:600; }
+
+        /* TABLA INTERNA */
+        table.orig-table { border-collapse:collapse; width:100%; font-size:0.8rem; }
+        table.orig-table thead th {
+            background:#f8fafc; color:#6b7280; font-weight:600; font-size:0.7rem;
+            text-transform:uppercase; letter-spacing:0.05em;
+            padding:8px 14px; border-bottom:1px solid #e5e7eb;
+        }
+        table.orig-table tbody td { padding:8px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+        table.orig-table tbody tr:hover td { background:#fdf5f5; }
+        table.orig-table tbody tr:last-child td { border-bottom:none; }
+        table.orig-table tfoot td { background:#fff5f5; padding:8px 14px; font-weight:700; color:#c0392b; border-top:1px solid #f5c6c6; }
+
+        /* Días vencido badge */
+        .dias-badge {
+            display:inline-block; padding:2px 8px; border-radius:10px;
+            font-size:0.68rem; font-weight:700;
+        }
+        .dias-badge.d30  { background:#eafaf1; color:#1e8449; }
+        .dias-badge.d60  { background:#fef9e7; color:#c8a000; }
+        .dias-badge.d90  { background:#fef0e7; color:#e67e22; }
+        .dias-badge.d180 { background:#fde8d8; color:#d35400; }
+        .dias-badge.dmas { background:#fdf0f0; color:#c0392b; }
+
+        /* Total general */
+        .total-general {
+            background: linear-gradient(135deg, #1a3a5c, #2471a3);
+            color: white; border-radius: 14px; padding: 18px 24px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 16px rgba(15,45,82,0.15); margin-top: 8px;
+        }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .co-header { background:#5a0000 !important; -webkit-print-color-adjust:exact; }
+            .origen-card { break-inside:avoid; }
+        }
+    </style>
 </head>
 <body>
-            <!-- Block for displaying messages -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    <!-- 🔹 Navbar -->
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-<div class="container-fluid mt-4">
-    <h2>Reporte Detalle Adeudos x Origen (Locales/Áreas Comunes/Otros Ingresos)</h2>
+    <div class="container-fluid mt-3 px-3 pb-5">
 
-  <div class="card shadow-sm mb-1">
-    <div class="card-body">
-      <form method="get" id="form-filtros" class="mb-3">
-        <div class="row g-2 align-items-end">
-          <div class="col-auto">
-            <label for="filtro_origen" class="form-label mb-0">Origen:</label>
-            <select name="filtro_origen" id="filtro_origen" class="form-select">
-              <option value="">selecciona una opcion</option>
-              <option value="local" {% if request.GET.filtro_origen == "local" %}selected{% endif %}>Locales</option>
-              <option value="area" {% if request.GET.filtro_origen == "area" %}selected{% endif %}>Áreas Comunes</option>
-              <option value="tipoingreso" {% if request.GET.filtro_origen == "tipoingreso" %}selected{% endif %}>Otros ingresos</option>
-            </select>
-          </div>
-          <!--filtrar por cliente -->
-          <div class="col-auto">
-          <label for="cliente" class="form-label mb-0">Cliente:</label>
-          <select name="cliente" id="cliente" class="form-select" onchange="this.form.submit()">
-        <option value="">Seleccione un cliente</option>
-        {% for c in clientes %}
-          <option value="{{ c.id }}" {% if c.id|stringformat:"s" == cliente_id|stringformat:"s" %}selected{% endif %}>
-            {{ c.nombre }}
-          </option>
-        {% endfor %}
-      </select>
-        </div>
-          <!--filtrar por fecha vencimiento -->
-          <div class="col-auto">
-            {% comment %} <button type="submit" class="btn btn-primary" title="Buscar"></button> {% endcomment %}
-            <button type="submit" class="btn btn-outline-primary reporte-link">
-                          <i class="bi bi-funnel" title="Buscar"></i>
-                      </button>
-            <a href="{% url 'cartera_vencida_por_origen' %}" class="btn btn-secondary reporte-link" title="Limpiar filtros">
-              <i class="bi bi-arrow-counterclockwise"></i>
-            </a>
-            <a href="{% url 'cartera_vencida_excel' %}?{% for key, value in request.GET.items %}{{ key }}={{ value|urlencode }}{% if not forloop.last %}&{% endif %}{% endfor %}" class="btn btn-success" title="Exportar a Excel">
-              <i class="bi bi-file-earmark-excel-fill"></i></a>
-          </div>
-        </div>
-        </div>
-      </div>
-        {% comment %} Mantener otros parámetros de filtro en el formulario, excepto 'filtro_origen' que ya se maneja con el select {% endcomment %}
-        {% for key, value in request.GET.items %}
-          {% if key != 'filtro_origen' and key != 'cliente' %}
-            <input type="hidden" name="{{ key }}" value="{{ value }}">
-          {% endif %}
-        {% endfor %}
-    </form>
-      <br>
-        <div class="row">
-            {% for origen in cartera_vencida %}
-                <h5>{{ origen.origen_nombre }} (Total vencido: ${{ origen.total_vencido|floatformat:2|intcomma }})</h5>
-            <table border="1" class="table table-striped table-bordered">
-                <tr>
-                <th>Folio</th>
-                <th>Cliente</th>
-                <th>Monto</th>
-                <th>Saldo</th>
-                <th>Fecha Vencimiento</th>
-                <th>Días Vencidos</th>
-                <th>Concepto</th>
-                </tr>
-                {% for factura in origen.facturas %}
-                <tr>
-                <td>{{ factura.folio }}</td>
-                <td>{{ factura.cliente }}</td>
-                <td>${{ factura.monto|floatformat:2|intcomma }}</td>
-                <td>${{ factura.saldo|floatformat:2|intcomma }}</td>
-                <td>{{ factura.fecha_vencimiento|date:"d/b/y"|upper }}</td>
-                <td>{{ factura.dias_vencidos }}</td>
-                <td>{{ factura.concepto }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-            {% empty %}
-            <p>No hay cartera vencida.</p>
-            {% endfor %}
+        <!-- HEADER -->
+        <div class="co-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="co-empresa"><i class="bi bi-building me-1"></i>{{ request.user.perfilusuario.empresa.nombre|default:"Todas las empresas" }}</div>
+                    <div class="co-titulo"><i class="bi bi-diagram-3 me-2"></i>Cartera Vencida por Origen</div>
+                    <div style="font-size:0.78rem;opacity:0.8;margin-top:3px;">
+                        <i class="bi bi-info-circle me-1"></i>Facturas pendientes agrupadas por local, área o tipo de ingreso
+                    </div>
+                </div>
+                <div class="d-flex gap-2 no-print">
+                    {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button> {% endcomment %}
+                </div>
             </div>
+        </div>
+
+        <!-- KPI TOTAL -->
+        {% comment %} <div class="kpi-box">
+    <div class="kpi-label"><i class="bi bi-exclamation-triangle me-1"></i>Total cartera vencida</div>
+    <div class="kpi-val">${{ total_cartera|floatformat:2|intcomma }}</div>
+    <div class="kpi-sub">{{ cartera_vencida|length }} origen{% if cartera_vencida|length != 1 %}es{% endif %} con saldo pendiente</div>
+</div> {% endcomment %}
+                <!-- Mini barra de distribución — solo top 5 -->
+{% comment %} <div style="min-width:280px;max-width:350px;">
+    {% for origen in cartera_vencida|slice:":5" %}
+    {% if total_cartera > 0 %}
+    <div class="d-flex align-items-center gap-2 mb-1" style="font-size:0.72rem;">
+        <div style="width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#4a6080;">{{ origen.origen_nombre }}</div>
+        <div style="flex:1;height:5px;background:#f1f5f9;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;background:#c0392b;border-radius:3px;width:{% widthratio origen.total_vencido total_cartera 100 %}%;"></div>
+        </div>
+        <div style="color:#c0392b;font-weight:700;white-space:nowrap;font-size:0.7rem;">${{ origen.total_vencido|floatformat:0|intcomma }}</div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% if cartera_vencida|length > 5 %}
+    <div style="font-size:0.68rem;color:#9ca3af;margin-top:4px;">+{{ cartera_vencida|length|add:"-5" }} orígenes más...</div>
+    {% endif %}
+</div> {% endcomment %}
+
+        <!-- TOOLBAR -->
+        <div class="co-toolbar no-print">
+            <form method="get" class="d-flex align-items-center flex-wrap gap-2">
+                {% if request.user.is_superuser %}
+                <select name="empresa" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todas las empresas</option>
+                    {% for emp in empresas %}
+                        <option value="{{ emp.id }}" {% if request.GET.empresa == emp.id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+
+                <select name="cliente" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los clientes</option>
+                    {% for cli in clientes %}
+                        <option value="{{ cli.id }}" {% if cliente_id == cli.id|stringformat:"s" %}selected{% endif %}>{{ cli.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="d-flex gap-1">
+                    <a href="?{% if request.GET.empresa %}empresa={{ request.GET.empresa }}&{% endif %}{% if cliente_id %}cliente={{ cliente_id }}&{% endif %}"
+                       class="origen-pill {% if not request.GET.filtro_origen %}activo{% endif %}">Todos</a>
+                    <a href="?{% if request.GET.empresa %}empresa={{ request.GET.empresa }}&{% endif %}{% if cliente_id %}cliente={{ cliente_id }}&{% endif %}filtro_origen=local"
+                       class="origen-pill {% if request.GET.filtro_origen == 'local' %}activo{% endif %}">
+                        <i class="bi bi-shop-window me-1"></i>Locales
+                    </a>
+                    <a href="?{% if request.GET.empresa %}empresa={{ request.GET.empresa }}&{% endif %}{% if cliente_id %}cliente={{ cliente_id }}&{% endif %}filtro_origen=area"
+                       class="origen-pill {% if request.GET.filtro_origen == 'area' %}activo{% endif %}">
+                        <i class="bi bi-building me-1"></i>Áreas
+                    </a>
+                    <a href="?{% if request.GET.empresa %}empresa={{ request.GET.empresa }}&{% endif %}{% if cliente_id %}cliente={{ cliente_id }}&{% endif %}filtro_origen=tipoingreso"
+                       class="origen-pill {% if request.GET.filtro_origen == 'tipoingreso' %}activo{% endif %}">
+                        <i class="bi bi-tag me-1"></i>Otros ingresos
+                    </a>
+                </div>
+
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtrar
+                </button>
+                <a href="{% url 'cartera_vencida_por_origen' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+                <a href="{% url 'exportar_cartera_vencida_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success" title="Exportar a Excel">
+                <i class="bi bi-file-earmark-excel-fill"></i></a>
+            </form>
+        </div>
+
+        <!-- TARJETAS POR ORIGEN -->
+        {% for origen in cartera_vencida %}
+        <div class="origen-card">
+            <div class="origen-header" onclick="toggleOrigen('origen-{{ forloop.counter }}', this)">
+                <div class="origen-nombre">
+                    <i class="bi bi-chevron-down" id="ico-{{ forloop.counter }}"></i>
+                    {% if 'Local' in origen.origen_nombre %}
+                        <i class="bi bi-shop-window text-primary"></i>
+                    {% elif 'Área' in origen.origen_nombre %}
+                        <i class="bi bi-building text-success"></i>
+                    {% else %}
+                        <i class="bi bi-tag text-warning"></i>
+                    {% endif %}
+                    {{ origen.origen_nombre }}
+                    <span class="origen-count">{{ origen.facturas|length }} factura{% if origen.facturas|length != 1 %}s{% endif %}</span>
+                </div>
+                <div class="origen-total">${{ origen.total_vencido|floatformat:2|intcomma }}</div>
             </div>
-<div class="container-fluid mt-4">
-<h3 style="color:darkred;">Gran Total Cartera: ${{ total_cartera|floatformat:2|intcomma }}</h3>
-</div>
-<!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
-    <!-- Scripts -->
+            <div id="origen-{{ forloop.counter }}">
+                <table class="orig-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Folio</th>
+                            <th>Vencimiento</th>
+                            <th class="text-center">Días vencido</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-end">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in origen.facturas %}
+                        <tr>
+                            <td style="font-weight:600;">{{ f.cliente }}</td>
+                            <td style="font-family:monospace;font-size:0.78rem;color:#4a6080;">{{ f.folio }}</td>
+                            <td style="color:#6b7280;">{{ f.fecha_vencimiento|date:"d/m/Y" }}</td>
+                            <td class="text-center">
+                                <span class="dias-badge {% if f.dias_vencidos <= 30 %}d30{% elif f.dias_vencidos <= 60 %}d60{% elif f.dias_vencidos <= 90 %}d90{% elif f.dias_vencidos <= 180 %}d180{% else %}dmas{% endif %}">
+                                    {{ f.dias_vencidos }} días
+                                </span>
+                            </td>
+                            <td class="text-end" style="color:#6b7280;">${{ f.monto|floatformat:2|intcomma }}</td>
+                            <td class="text-end" style="font-weight:700;color:#c0392b;">${{ f.saldo|floatformat:2|intcomma }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="text-end"><strong>Total {{ origen.origen_nombre }}</strong></td>
+                            <td class="text-end"><strong>${{ origen.total_vencido|floatformat:2|intcomma }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-check-circle fs-2 text-success d-block mb-2"></i>
+            No hay cartera vencida con los filtros seleccionados 🎉
+        </div>
+        {% endfor %}
+
+        <!-- TOTAL GENERAL -->
+        {% if cartera_vencida %}
+        <div class="total-general no-print">
+            <div>
+                <div style="font-size:0.78rem;opacity:0.8;">Total cartera vencida</div>
+                <div style="font-size:0.82rem;opacity:0.65;">{{ cartera_vencida|length }} orígenes</div>
+            </div>
+            <div style="font-size:1.6rem;font-weight:800;">${{ total_cartera|floatformat:2|intcomma }}</div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
-
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>
+    function toggleOrigen(id, header) {
+        var body = document.getElementById(id);
+        var icon = header.querySelector('[id^="ico-"]');
+        if (body.style.display === 'none') {
+            body.style.display = '';
+            if (icon) icon.className = 'bi bi-chevron-down';
+        } else {
+            body.style.display = 'none';
+            if (icon) icon.className = 'bi bi-chevron-right';
+        }
+    }
+    </script>
 </body>
 </html>

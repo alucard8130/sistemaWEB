@@ -115,7 +115,7 @@ import weasyprint
 from babel.dates import format_date
 import pytz
 #from django.db.models.functions import TruncMonth
-import datetime
+
 
 
 
@@ -500,7 +500,7 @@ def dashboard_inicio(request):
         m = (mes_actual - i - 1) % 12 + 1
         a = anio_actual - ((i - mes_actual + 1) // 12 + (1 if (i - mes_actual + 1) % 12 >= 0 and i >= mes_actual else 0))
         # Forma más simple y correcta:
-        target = hoy.replace(day=1) - datetime.timedelta(days=30*i)
+        target = hoy.replace(day=1) - timedelta(days=30*i)
         m, a = target.month, target.year
  
         meses_6.append(MESES[m-1])
@@ -526,7 +526,7 @@ def dashboard_inicio(request):
         ingresos_porcobrar_6.append(float(porcobrar))
         gastos_pagados_6.append(float(gpagados))
         gastos_pendientes_6.append(float(gpendientes))
- 
+    
     # Membresía
     membresia_label = 'Premium'
     try:
@@ -535,7 +535,15 @@ def dashboard_inicio(request):
             membresia_label = nivel.capitalize()
     except Exception:
         pass
- 
+
+    mensaje_pago = None
+    if request.GET.get("pago") == "ok":
+        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."    
+
+    mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
+
+    mostrar_wizard = request.user.perfilusuario.mostrar_wizard and not request.session.get("wizard_cerrado", False)
+
     return render(request, 'pantalla_inicio.html', {
         'empresa': empresa,
         'hoy': hoy,
@@ -576,6 +584,10 @@ def dashboard_inicio(request):
         'gastos_pendientes_6': json.dumps(gastos_pendientes_6),
         # Membresía
         'membresia_label': membresia_label,
+        # Recordatorio facturación
+        'mostrar_recordatorio': mostrar_recordatorio,
+        'mostrar_wizard': mostrar_wizard,
+        'mensaje_pago': mensaje_pago,
     })
 
 

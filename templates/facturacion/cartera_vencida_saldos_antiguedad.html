@@ -1,4 +1,4 @@
-{% load static %}
+{% comment %} {% load static %}
 {% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
@@ -192,6 +192,328 @@
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
      <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mostrar overlay al hacer submit en el formulario de filtros
+  var form = document.getElementById('form-filtros');
+  if (form) {
+    form.addEventListener('submit', function() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  }
+
+  // Mantén el overlay para los enlaces con clase reporte-link
+  document.querySelectorAll('a.reporte-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    });
+  });
+});
+</script>
+</body>
+</html> {% endcomment %}
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartera Vencida — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        /* HEADER */
+        .cv-header {
+            background: linear-gradient(135deg, #5a0000 0%, #a93226 60%, #e74c3c 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(90,0,0,0.18);
+            position: relative; overflow: hidden;
+        }
+        .cv-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .cv-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .cv-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+
+        /* KPI STRIP */
+        .kpi-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+        @media (max-width:900px) { .kpi-strip { grid-template-columns:repeat(3,1fr); } }
+        .kpi-box { background:white; border-radius:14px; padding:14px 16px; box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid transparent; cursor:pointer; transition:transform 0.15s, box-shadow 0.15s; }
+        .kpi-box:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.12); }
+        .kpi-box.d30  { border-top-color:#1e8449; }
+        .kpi-box.d60  { border-top-color:#d4ac0d; }
+        .kpi-box.d90  { border-top-color:#e67e22; }
+        .kpi-box.d180 { border-top-color:#d35400; }
+        .kpi-box.dmas { border-top-color:#c0392b; }
+        .kpi-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.07em; color:#6b7280; font-weight:600; }
+        .kpi-val   { font-size:1.1rem; font-weight:700; line-height:1.2; margin:4px 0 2px; }
+        .kpi-sub   { font-size:0.72rem; color:#9ca3af; }
+
+        /* TOOLBAR */
+        .cv-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+
+        /* SECCIÓN RANGO */
+        .rango-section { margin-bottom: 20px; }
+        .rango-header {
+            border-radius: 12px 12px 0 0; padding: 12px 18px;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; user-select: none;
+        }
+        .rango-header.d30  { background:linear-gradient(90deg,#1e8449,#27ae60); color:white; }
+        .rango-header.d60  { background:linear-gradient(90deg,#c8a000,#d4ac0d); color:white; }
+        .rango-header.d90  { background:linear-gradient(90deg,#c0782a,#e67e22); color:white; }
+        .rango-header.d180 { background:linear-gradient(90deg,#a04000,#d35400); color:white; }
+        .rango-header.dmas { background:linear-gradient(90deg,#5a0000,#c0392b); color:white; }
+        .rango-titulo { font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:8px; }
+        .rango-total  { font-weight:700; font-size:1rem; }
+        .rango-count  { background:rgba(255,255,255,0.2); padding:2px 10px; border-radius:20px; font-size:0.78rem; }
+        .rango-body { background:white; border-radius:0 0 12px 12px; box-shadow:0 4px 16px rgba(0,0,0,0.07); overflow:hidden; }
+
+        /* TABLA */
+        table.cv-table { border-collapse:separate; border-spacing:0; width:100%; font-size:0.8rem; }
+        table.cv-table thead th {
+            background:#f8fafc; color:#6b7280; font-weight:600; font-size:0.7rem;
+            text-transform:uppercase; letter-spacing:0.05em;
+            padding:9px 14px; border-bottom:1px solid #e5e7eb;
+        }
+        table.cv-table tbody td { padding:9px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+        table.cv-table tbody tr:hover td { background:#fdf5f5; }
+        table.cv-table tbody tr:last-child td { border-bottom:none; }
+
+        /* Badges */
+        .badge-dias {
+            display:inline-block; padding:2px 8px; border-radius:10px;
+            font-size:0.68rem; font-weight:700; white-space:nowrap;
+        }
+        .badge-dias.d30  { background:#eafaf1; color:#1e8449; }
+        .badge-dias.d60  { background:#fef9e7; color:#c8a000; }
+        .badge-dias.d90  { background:#fef0e7; color:#e67e22; }
+        .badge-dias.d180 { background:#fde8d8; color:#d35400; }
+        .badge-dias.dmas { background:#fdf0f0; color:#c0392b; }
+
+        .badge-tipo {
+            background:#e8f0f8; color:#1a3a5c; padding:2px 8px;
+            border-radius:10px; font-size:0.68rem; font-weight:600;
+        }
+        .badge-otro {
+            background:#f3e8ff; color:#4a1080; padding:2px 8px;
+            border-radius:10px; font-size:0.68rem; font-weight:600;
+        }
+
+        /* Total general */
+        .total-general {
+            background: linear-gradient(135deg, #1a3a5c, #2471a3);
+            color: white; border-radius: 14px; padding: 18px 24px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 16px rgba(15,45,82,0.15); margin-top: 20px;
+        }
+
+        @media print {
+            .no-print { display:none !important; }
+            body { background:white; }
+            .cv-header { background:#5a0000 !important; -webkit-print-color-adjust:exact; }
+            .rango-section { break-inside:avoid; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Block for displaying messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <!-- HEADER -->
+        <div class="cv-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="cv-empresa"><i class="bi bi-building me-1"></i>{{ request.user.perfilusuario.empresa.nombre|default:"Todas las empresas" }}</div>
+                    <div class="cv-titulo"><i class="bi bi-exclamation-triangle me-2"></i>Cartera Vencida — Antigüedad de Saldos</div>
+                    <div style="font-size:0.78rem;opacity:0.8;margin-top:3px;">
+                        <i class="bi bi-calendar3 me-1"></i>Al {{ hoy|date:"d \d\e F Y" }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 no-print">
+                   
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI STRIP -->
+        {% with colores="d30,d60,d90,d180,dmas" %}
+        <div class="kpi-strip">
+            {% for grupo in agrupado %}
+            {% with idx=forloop.counter0 %}
+            <div class="kpi-box {% if idx == 0 %}d30{% elif idx == 1 %}d60{% elif idx == 2 %}d90{% elif idx == 3 %}d180{% else %}dmas{% endif %}"
+                 onclick="document.getElementById('rango-{{ forloop.counter }}').scrollIntoView({behavior:'smooth'})">
+                <div class="kpi-label">{{ grupo.rango }}</div>
+                <div class="kpi-val {% if idx == 0 %}text-success{% elif idx == 1 %}" style="color:#c8a000;"{% elif idx == 2 %}text-warning{% elif idx == 3 %}" style="color:#d35400;"{% else %}text-danger{% endif %}">
+                    ${{ grupo.subtotal|floatformat:0|intcomma }}
+                </div>
+                <div class="kpi-sub">{{ grupo.facturas|length }} facturas</div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+        {% endwith %}
+
+        <!-- TOOLBAR FILTROS -->
+        <div class="cv-toolbar no-print">
+            <form id="form-filtros" method="get" class="d-flex align-items-center flex-wrap gap-2">
+                {% if request.user.is_superuser %}
+                <select name="empresa" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todas las empresas</option>
+                    {% for emp in empresas %}
+                        <option value="{{ emp.id }}" {% if request.GET.empresa == emp.id|stringformat:"s" %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+
+                <select name="cliente" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los clientes</option>
+                    {% for cli in clientes %}
+                        <option value="{{ cli.id }}" {% if request.GET.cliente == cli.id|stringformat:"s" %}selected{% endif %}>{{ cli.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="origen" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los orígenes</option>
+                    <option value="local" {% if request.GET.origen == 'local' %}selected{% endif %}>Locales</option>
+                    <option value="area" {% if request.GET.origen == 'area' %}selected{% endif %}>Áreas comunes</option>
+                    <option value="otros" {% if request.GET.origen == 'otros' %}selected{% endif %}>Otros ingresos</option>
+                </select>
+
+                <select name="tipo_cuota" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">Todos los tipos</option>
+                    {% for tc in tipos_cuota %}
+                        <option value="{{ tc }}" {% if tipo_cuota_seleccionado == tc %}selected{% endif %}>{{ tc|capfirst }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtrar
+                </button>
+                <a href="{% url 'cartera_vencida_saldos_antiguedad' %}" class="btn btn-outline-secondary btn-sm reporte-link" title="Limpiar filtros">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+                <a href="{% url 'exportar_cartera_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success" title="Exportar a Excel">
+                <i class="bi bi-file-earmark-excel-fill"></i></a>
+            </form>
+        </div>
+
+        <!-- SECCIONES POR RANGO -->
+        {% for grupo in agrupado %}
+        {% if grupo.facturas %}
+        <div class="rango-section" id="rango-{{ forloop.counter }}">
+            <div class="rango-header {% if forloop.counter == 1 %}d30{% elif forloop.counter == 2 %}d60{% elif forloop.counter == 3 %}d90{% elif forloop.counter == 4 %}d180{% else %}dmas{% endif %}"
+                 onclick="toggleRango('body-{{ forloop.counter }}', this)">
+                <div class="rango-titulo">
+                    <i class="bi bi-chevron-down" id="icon-{{ forloop.counter }}"></i>
+                    {{ grupo.rango }}
+                    <span class="rango-count">{{ grupo.facturas|length }} facturas</span>
+                </div>
+                <div class="rango-total">${{ grupo.subtotal|floatformat:2|intcomma }}</div>
+            </div>
+            <div class="rango-body" id="body-{{ forloop.counter }}">
+                <table class="cv-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Local / Área</th>
+                            <th>Tipo</th>
+                            <th>Vencimiento</th>
+                            <th class="text-center">Días vencido</th>
+                            <th class="text-end">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in grupo.facturas %}
+                        <tr>
+                            <td style="font-weight:600;">{{ f.cliente.nombre }}</td>
+                            <td>
+                                {% if not f.es_otro %}
+                                    {% if f.local %}
+                                        <span style="font-size:0.78rem;color:#4a6080;">Local {{ f.local.numero }}</span>
+                                    {% elif f.area_comun %}
+                                        <span style="font-size:0.78rem;color:#4a6080;">Área {{ f.area_comun.numero }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="font-size:0.78rem;color:#9ca3af;">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if f.es_otro %}
+                                    <span class="badge-otro">Otro ingreso</span>
+                                {% else %}
+                                    <span class="badge-tipo">{{ f.tipo_cuota|capfirst }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="color:#6b7280;">{{ f.fecha_vencimiento|date:"d/m/Y" }}</td>
+                            <td class="text-center">
+                                <span class="badge-dias {% if f.dias_vencidos <= 30 %}d30{% elif f.dias_vencidos <= 60 %}d60{% elif f.dias_vencidos <= 90 %}d90{% elif f.dias_vencidos <= 180 %}d180{% else %}dmas{% endif %}">
+                                    {{ f.dias_vencidos }} días
+                                </span>
+                            </td>
+                            <td class="text-end" style="font-weight:700;color:#c0392b;">
+                                {% if f.es_otro %}
+                                    ${{ f.saldo|floatformat:2|intcomma }}
+                                {% else %}
+                                    ${{ f.saldo_calculado|floatformat:2|intcomma }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <!-- TOTAL GENERAL -->
+        <div class="total-general no-print">
+            <div>
+                <div style="font-size:0.78rem;opacity:0.8;">Total cartera vencida</div>
+                <div style="font-size:0.85rem;opacity:0.7;">Al {{ hoy|date:"d \d\e F Y" }}</div>
+            </div>
+            <div style="font-size:1.6rem;font-weight:800;">${{ gran_total|floatformat:2|intcomma }}</div>
+        </div>
+
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function toggleRango(bodyId, header) {
+        var body = document.getElementById(bodyId);
+        var icon = header.querySelector('[id^="icon-"]');
+        if (body.style.display === 'none') {
+            body.style.display = '';
+            if (icon) icon.className = 'bi bi-chevron-down';
+        } else {
+            body.style.display = 'none';
+            if (icon) icon.className = 'bi bi-chevron-right';
+        }
+    }
+    </script>
+    <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Mostrar overlay al hacer submit en el formulario de filtros
   var form = document.getElementById('form-filtros');

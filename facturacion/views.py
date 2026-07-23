@@ -45,6 +45,9 @@ from decimal import  ROUND_HALF_UP
 #from django.db.models import Sum
 from collections import OrderedDict
 from calendar import monthrange
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 
 
@@ -652,266 +655,221 @@ def exportar_estado_cuenta_excel(request):
 #emision mensual facturas cuotas 
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
-    # Permitir seleccionar año y mes por GET o POST (solo superusuario puede facturar meses anteriores)
-    if request.method == 'POST':
-        año = int(request.POST.get('anio', datetime.now().year))
-        mes = int(request.POST.get('mes', datetime.now().month))
-    else:
-        año = int(request.GET.get('anio', datetime.now().year))
-        mes = int(request.GET.get('mes', datetime.now().month))
-    
-    hoy = date.today()
+    if request.method != "POST":
+        return redirect("confirmar_facturacion")
 
+    import datetime as dt
+    from django.db.models import Max, Q
 
-    facturas_creadas = 0
-    facturas_a_crear = []
+    hoy = dt.date.today()
+    año = int(request.POST.get("anio", hoy.year))
+    mes = int(request.POST.get("mes", hoy.month))
+
+    if "locales" in request.POST or "areas" in request.POST:
+        facturar_locales = "locales" in request.POST
+        facturar_areas = "areas" in request.POST
 
     if request.user.is_superuser:
-        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False) if facturar_locales else []
-        locales_anuales = LocalComercial.objects.filter(activo=True, cliente__isnull=False, es_cuota_anual=True) if facturar_locales else []
-        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False) if facturar_areas else []
-        areas_anuales = AreaComun.objects.filter(activo=True, cliente__isnull=False, es_cuota_anual=True) if facturar_areas else []
+        empresa_id = request.session.get("empresa_id")
+        empresa = Empresa.objects.filter(id=empresa_id).first()
     else:
         empresa = request.user.perfilusuario.empresa
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False) if facturar_locales else []
-        locales_anuales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True) if facturar_locales else []
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False) if facturar_areas else []
-        areas_anuales = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True) if facturar_areas else []
 
-    fecha_factura = date(año, mes, 1)
+    if not empresa:
+        messages.error(request, "No hay empresa seleccionada.")
+        return redirect("confirmar_facturacion")
 
-    # Pre-carga los folios existentes por empresa y tipo para evitar consultas repetidas
-    folios_locales = set(
-        Factura.objects.filter(
-            empresa__in=[l.empresa for l in locales],
-            folio__startswith="CM-F"
-        ).values_list('empresa_id', 'folio')
-    )
-    folios_areas = set(
-        Factura.objects.filter(
-            empresa__in=[a.empresa for a in areas],
-            folio__startswith="AC-F"
-        ).values_list('empresa_id', 'folio')
-    )
-    folios_deposito = set(
-        Factura.objects.filter(
-            empresa__in=[a.empresa for a in areas],
-            folio__startswith="DG-F"
-        ).values_list('empresa_id', 'folio')
-    )
-    # Locales Anuales (solo enero y solo si no existe para el año)
-    max_folio_local = {}
-    locales_anuales_ids = set(local.id for local in locales_anuales)
-    for local in locales_anuales:
-        existe = Factura.objects.filter(
-            cliente=local.cliente,
-            local=local,
-            fecha_emision__year=año,
-            observaciones='Cuota anual'
-        ).exists()
-        if not existe and mes == 1:  # Solo facturar anuales en enero
-            empresa_id = local.empresa_id
-            if empresa_id not in max_folio_local:
-                max_folio = Factura.objects.filter(
-                    empresa_id=empresa_id,
-                    folio__startswith="CM-F"
-                ).aggregate(max_f=Max('folio'))['max_f']
-                if max_folio:
-                    try:
-                        last_num = int(max_folio.replace("CM-F", ""))
-                    except Exception:
-                        last_num = 0
-                else:
-                    last_num = 0
-                max_folio_local[empresa_id] = last_num
-            max_folio_local[empresa_id] += 1
-            folio = f"CM-F{max_folio_local[empresa_id]:05d}"
-            facturas_a_crear.append(Factura(
-                empresa=local.empresa,
-                cliente=local.cliente,
-                local=local,
-                folio=folio,
-                fecha_emision=fecha_factura,
-                fecha_vencimiento=fecha_factura,
-                monto=local.cuota * 12,  # Monto anual
-                tipo_cuota='mantenimiento',
-                estatus='pendiente',
-                observaciones='Cuota anual'
-            ))
-            facturas_creadas += 1
+    fecha_factura = dt.date(año, mes, 1)
+    facturas_creadas = 0
+    facturas_omitidas = 0
+    facturas_a_crear = []
 
-    # Locales Mensuales (excluye los anuales)
-    for local in locales:
-        if local.id in locales_anuales_ids:
-            continue  # Saltar locales con cuota anual
-        existe = Factura.objects.filter(
-        local=local,
-        tipo_cuota='mantenimiento',
-        estatus__in=['pendiente', 'cobrada'],
+    # Folios máximos — se calculan una sola vez
+    def get_last_num(prefix):
+        max_folio = Factura.objects.filter(
+            empresa=empresa, folio__startswith=prefix
+        ).aggregate(max_f=Max('folio'))['max_f']
+        if max_folio:
+            try:
+                return int(max_folio.replace(prefix, ""))
+            except Exception:
+                return 0
+        return 0
+
+    # ── LOCALES MENSUALES ──
+    if facturar_locales:
+        locales = LocalComercial.objects.filter(
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+        ).select_related('cliente')
+
+        locales_ids = list(locales.values_list('id', flat=True))
+
+        # Una query para saber cuáles ya tienen factura de mantenimiento este mes
+        locales_con_factura = set(Factura.objects.filter(
+            local_id__in=locales_ids,
+            tipo_cuota='mantenimiento',
+            estatus__in=['pendiente', 'cobrada'],
         ).filter(
             Q(fecha_emision__year=año, fecha_emision__month=mes) |
             Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-        ).exists()
-        if not existe:
-            empresa_id = local.empresa_id
-            if empresa_id not in max_folio_local:
-                max_folio = Factura.objects.filter(
-                    empresa_id=empresa_id,
-                    folio__startswith="CM-F"
-                ).aggregate(max_f=Max('folio'))['max_f']
-                if max_folio:
-                    try:
-                        last_num = int(max_folio.replace("CM-F", ""))
-                    except Exception:
-                        last_num = 0
-                else:
-                    last_num = 0
-                max_folio_local[empresa_id] = last_num
-            max_folio_local[empresa_id] += 1
-            folio = f"CM-F{max_folio_local[empresa_id]:05d}"
-            facturas_a_crear.append(Factura(
-                empresa=local.empresa,
-                cliente=local.cliente,
-                local=local,
-                folio=folio,
-                fecha_emision=fecha_factura,
-                fecha_vencimiento=fecha_factura,
-                monto=local.cuota,
-                tipo_cuota='mantenimiento',
-                estatus='pendiente',
-                observaciones='Cuota mensual'
-            ))
-            facturas_creadas += 1
+        ).values_list('local_id', flat=True))
 
-    # Áreas
-    max_folio_area = {}
-    max_folio_deposito = {}
-    # Áreas Anuales (solo enero y solo si no existe para el año)
-    areas_anuales_ids = set(area.id for area in areas_anuales)
-    for area in areas_anuales:
-        existe = Factura.objects.filter(
-            cliente=area.cliente,
-            area_comun=area,
-            fecha_emision__year=año,
-            observaciones='Cuota anual'
-        ).exists()
-        if not existe and mes == 1:  # Solo facturar anuales en enero
-            empresa_id = area.empresa_id
-            if empresa_id not in max_folio_area:
-                max_folio = Factura.objects.filter(
-                    empresa_id=empresa_id,
-                    folio__startswith="AC-F"
-                ).aggregate(max_f=Max('folio'))['max_f']
-                if max_folio:
-                    try:
-                        last_num = int(max_folio.replace("AC-F", ""))
-                    except Exception:
-                        last_num = 0
-                else:
-                    last_num = 0
-                max_folio_area[empresa_id] = last_num
-            max_folio_area[empresa_id] += 1
-            folio = f"AC-F{max_folio_area[empresa_id]:05d}"
-            facturas_a_crear.append(Factura(
-                empresa=area.empresa,
-                cliente=area.cliente,
-                area_comun=area,
-                folio=folio,
-                fecha_emision=fecha_factura,
-                fecha_vencimiento=fecha_factura,
-                monto=area.cuota * 12,  # Monto anual
-                tipo_cuota='renta',
-                estatus='pendiente',
-                observaciones='Cuota anual'
-            ))
-            facturas_creadas += 1
+        last_num_cm = get_last_num("CM-F")
+        last_num_dg = get_last_num("DG-F")
 
-    # Áreas Mensuales (excluye las anuales)
-    for area in areas:
-        if area.id in areas_anuales_ids:
-            continue  # Saltar áreas con cuota anual
-        existe = Factura.objects.filter(
-        area_comun=area,
-        tipo_cuota='renta',
-        estatus__in=['pendiente', 'cobrada'],
-        ).filter(
-            Q(fecha_emision__year=año, fecha_emision__month=mes) |
-            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-        ).exists()
-        if not existe:
-            empresa_id = area.empresa_id
-            if empresa_id not in max_folio_area:
-                max_folio = Factura.objects.filter(
-                    empresa_id=empresa_id,
-                    folio__startswith="AC-F"
-                ).aggregate(max_f=Max('folio'))['max_f']
-                if max_folio:
-                    try:
-                        last_num = int(max_folio.replace("AC-F", ""))
-                    except Exception:
-                        last_num = 0
-                else:
-                    last_num = 0
-                max_folio_area[empresa_id] = last_num
-            max_folio_area[empresa_id] += 1
-            folio = f"AC-F{max_folio_area[empresa_id]:05d}"
-            facturas_a_crear.append(Factura(
-                empresa=area.empresa,
-                cliente=area.cliente,
-                area_comun=area,
-                folio=folio,
-                fecha_emision=fecha_factura,
-                fecha_vencimiento=fecha_factura,
-                monto=area.cuota,
-                tipo_cuota='renta',
-                estatus='pendiente',
-                observaciones='Cuota mensual'
-            ))
-            facturas_creadas += 1
-    
-        # Depósito en garantía por única vez
-        if area.deposito and area.deposito > 0:
-            existe_deposito = Factura.objects.filter(
-                cliente=area.cliente,
-                area_comun=area,
-                tipo_cuota='deposito',
-            ).exists()
-            if not existe_deposito:
-                empresa_id = area.empresa_id
-                if empresa_id not in max_folio_deposito:
-                    max_folio = Factura.objects.filter(
-                        empresa_id=empresa_id,
-                        folio__startswith="DG-F"
-                    ).aggregate(max_f=Max('folio'))['max_f']
-                    if max_folio:
-                        try:
-                            last_num = int(max_folio.replace("DG-F", ""))
-                        except Exception:
-                            last_num = 0
-                    else:
-                        last_num = 0
-                    max_folio_deposito[empresa_id] = last_num
-                max_folio_deposito[empresa_id] += 1
-                folio_deposito = f"DG-F{max_folio_deposito[empresa_id]:05d}"
+        for local in locales:
+            if local.id in locales_con_factura:
+                facturas_omitidas += 1
+            else:
+                last_num_cm += 1
                 facturas_a_crear.append(Factura(
-                    empresa=area.empresa,
-                    cliente=area.cliente,
-                    area_comun=area,
-                    folio=folio_deposito,
+                    empresa=empresa,
+                    cliente=local.cliente,
+                    local=local,
+                    folio=f"CM-F{last_num_cm:05d}",
                     fecha_emision=fecha_factura,
                     fecha_vencimiento=fecha_factura,
-                    monto=area.deposito,
-                    tipo_cuota='deposito',
+                    monto=local.cuota,
+                    tipo_cuota='mantenimiento',
                     estatus='pendiente',
-                    observaciones='Depósito en garantía'
+                    observaciones='Cuota mensual'
                 ))
+                facturas_creadas += 1
+
+        # Locales con cuota anual — solo en enero
+        if mes == 1:
+            locales_anuales = LocalComercial.objects.filter(
+                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+            ).select_related('cliente')
+
+            locales_anuales_ids = list(locales_anuales.values_list('id', flat=True))
+            locales_anuales_con_factura = set(Factura.objects.filter(
+                local_id__in=locales_anuales_ids,
+                tipo_cuota='mantenimiento',
+                estatus__in=['pendiente', 'cobrada'],
+                fecha_emision__year=año,
+            ).values_list('local_id', flat=True))
+
+            for local in locales_anuales:
+                if local.id not in locales_anuales_con_factura:
+                    last_num_cm += 1
+                    facturas_a_crear.append(Factura(
+                        empresa=empresa,
+                        cliente=local.cliente,
+                        local=local,
+                        folio=f"CM-F{last_num_cm:05d}",
+                        fecha_emision=fecha_factura,
+                        fecha_vencimiento=fecha_factura,
+                        monto=local.cuota,
+                        tipo_cuota='mantenimiento',
+                        estatus='pendiente',
+                        observaciones='Cuota anual'
+                    ))
+                    facturas_creadas += 1
+
+    # ── ÁREAS COMUNES MENSUALES ──
+    if facturar_areas:
+        areas = AreaComun.objects.filter(
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+        ).select_related('cliente')
+
+        areas_ids = list(areas.values_list('id', flat=True))
+
+        # Una query para saber cuáles ya tienen factura de renta este mes
+        areas_con_factura = set(Factura.objects.filter(
+            area_comun_id__in=areas_ids,
+            tipo_cuota='renta',
+            estatus__in=['pendiente', 'cobrada'],
+        ).filter(
+            Q(fecha_emision__year=año, fecha_emision__month=mes) |
+            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
+        ).values_list('area_comun_id', flat=True))
+
+        last_num_ac = get_last_num("AC-F")
+        if 'last_num_dg' not in dir():
+            last_num_dg = get_last_num("DG-F")
+
+        for area in areas:
+            if area.id in areas_con_factura:
+                facturas_omitidas += 1
+            else:
+                last_num_ac += 1
+                facturas_a_crear.append(Factura(
+                    empresa=empresa,
+                    cliente=area.cliente,
+                    area_comun=area,
+                    folio=f"AC-F{last_num_ac:05d}",
+                    fecha_emision=fecha_factura,
+                    fecha_vencimiento=fecha_factura,
+                    monto=area.cuota,
+                    tipo_cuota='renta',
+                    estatus='pendiente',
+                    observaciones='Cuota mensual'
+                ))
+                facturas_creadas += 1
+
+            # Depósito en garantía por única vez
+            if area.deposito and area.deposito > 0:
+                existe_deposito = Factura.objects.filter(
+                    cliente=area.cliente,
+                    area_comun=area,
+                    tipo_cuota='deposito',
+                ).exists()
+                if not existe_deposito:
+                    last_num_dg += 1
+                    facturas_a_crear.append(Factura(
+                        empresa=empresa,
+                        cliente=area.cliente,
+                        area_comun=area,
+                        folio=f"DG-F{last_num_dg:05d}",
+                        fecha_emision=fecha_factura,
+                        fecha_vencimiento=fecha_factura,
+                        monto=area.deposito,
+                        tipo_cuota='deposito',
+                        estatus='pendiente',
+                        observaciones='Depósito en garantía'
+                    ))
+
+        # Áreas con cuota anual — solo en enero
+        if mes == 1:
+            areas_anuales = AreaComun.objects.filter(
+                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+            ).select_related('cliente')
+
+            areas_anuales_ids = list(areas_anuales.values_list('id', flat=True))
+            areas_anuales_con_factura = set(Factura.objects.filter(
+                area_comun_id__in=areas_anuales_ids,
+                tipo_cuota='renta',
+                estatus__in=['pendiente', 'cobrada'],
+                fecha_emision__year=año,
+            ).values_list('area_comun_id', flat=True))
+
+            for area in areas_anuales:
+                if area.id not in areas_anuales_con_factura:
+                    last_num_ac += 1
+                    facturas_a_crear.append(Factura(
+                        empresa=empresa,
+                        cliente=area.cliente,
+                        area_comun=area,
+                        folio=f"AC-F{last_num_ac:05d}",
+                        fecha_emision=fecha_factura,
+                        fecha_vencimiento=fecha_factura,
+                        monto=area.cuota,
+                        tipo_cuota='renta',
+                        estatus='pendiente',
+                        observaciones='Cuota anual'
+                    ))
+                    facturas_creadas += 1
 
     # Bulk create
     if facturas_a_crear:
         Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
 
-    messages.success(request, f"{facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}")
-    return redirect('lista_facturas')
+    messages.success(
+        request,
+        f"✅ {facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}. {facturas_omitidas} omitidas (ya existían)."
+    )
+    return redirect("lista_facturas")
 
 
 @login_required
@@ -941,28 +899,30 @@ def confirmar_facturacion(request):
     # Detectar meses faltantes — un mes es faltante si algún local o área no tiene factura
     meses_faltantes_por_anio = {}
     for m in range(1, mes + 1):
-        falta_local = any(
-            not Factura.objects.filter(
-                local=l,
-                tipo_cuota='mantenimiento',
-                estatus__in=['pendiente', 'cobrada'],
-            ).filter(
-                Q(fecha_emision__year=año, fecha_emision__month=m) |
-                Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
-            ).exists()
-            for l in locales
-        )
-        falta_area = any(
-            not Factura.objects.filter(
-                area_comun=a,
-                tipo_cuota='renta',
-                estatus__in=['pendiente', 'cobrada'],
-            ).filter(
-                Q(fecha_emision__year=año, fecha_emision__month=m) |
-                Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
-            ).exists()
-            for a in areas
-        )
+        # Usa esto (1 query):
+        locales_ids = list(locales.values_list('id', flat=True))
+        locales_con_factura = set(Factura.objects.filter(
+            local_id__in=locales_ids,
+            tipo_cuota='mantenimiento',
+            estatus__in=['pendiente', 'cobrada'],
+        ).filter(
+            Q(fecha_emision__year=año, fecha_emision__month=m) |
+            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
+        ).values_list('local_id', flat=True))
+
+        falta_local = len(locales_con_factura) < len(locales_ids)
+
+        areas_ids = list(areas.values_list('id', flat=True))
+        areas_con_factura = set(Factura.objects.filter(
+            area_comun_id__in=areas_ids,
+            tipo_cuota='renta',
+            estatus__in=['pendiente', 'cobrada'],
+        ).filter(
+            Q(fecha_emision__year=año, fecha_emision__month=m) |
+            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
+        ).values_list('area_comun_id', flat=True))
+
+        falta_area = len(areas_con_factura) < len(areas_ids)
         if falta_local or falta_area:
             meses_faltantes_por_anio.setdefault(año, []).append(m)
 
@@ -975,29 +935,8 @@ def confirmar_facturacion(request):
         mes_permitido = mes
 
     # CONTAR locales y áreas no facturados del periodo más antiguo faltante
-    total_locales = sum(
-        not Factura.objects.filter(
-            local=l,
-            tipo_cuota='mantenimiento',
-            estatus__in=['pendiente', 'cobrada'],
-        ).filter(
-            Q(fecha_emision__year=anio_permitido, fecha_emision__month=mes_permitido) |
-            Q(fecha_vencimiento__year=anio_permitido, fecha_vencimiento__month=mes_permitido)
-        ).exists()
-        for l in locales
-    )
-
-    total_areas = sum(
-        not Factura.objects.filter(
-            area_comun=a,
-            tipo_cuota='renta',
-            estatus__in=['pendiente', 'cobrada'],
-        ).filter(
-            Q(fecha_emision__year=anio_permitido, fecha_emision__month=mes_permitido) |
-            Q(fecha_vencimiento__year=anio_permitido, fecha_vencimiento__month=mes_permitido)
-        ).exists()
-        for a in areas
-    )
+    total_locales = len(locales_ids) - len(locales_con_factura)
+    total_areas = len(areas_ids) - len(areas_con_factura)
 
     # Prepara mensaje de periodos faltantes
     faltantes_mensaje = []
@@ -2278,28 +2217,38 @@ def grafico_ingresos_anual(request):
     }
     return render(request, 'facturacion/grafico_ingresos_anual.html', context) 
 
-#reporte antiguedad saldos
+#reporte antiguedad saldos menu cartera
 @login_required
 def cartera_vencida_saldos_antiguedad(request):
     hoy = timezone.now().date()
     filtro = request.GET.get('rango')
     origen = request.GET.get('origen')
-    tipo_cuota = request.GET.get('tipo_cuota')  
+    tipo_cuota = request.GET.get('tipo_cuota')
 
-    # Optimiza con select_related para evitar N+1 queries
+    # Subquery para total pagado por factura
+    total_pagado_sq = Pago.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(
+        total=Sum('monto')
+    ).values('total')
+
     facturas = Factura.objects.filter(
-        estatus='pendiente',
-        fecha_vencimiento__lt=hoy,
-        activo=True
-    ).select_related('cliente', 'empresa', 'local', 'area_comun')
+    estatus='pendiente',
+    fecha_vencimiento__lt=hoy,
+    activo=True
+    ).select_related('cliente', 'empresa', 'local', 'area_comun').annotate(
+        total_pagado_ann=Coalesce(
+        Subquery(total_pagado_sq, output_field=DecimalField()),
+        Value(0, output_field=DecimalField())
+        )
+    )
 
     facturas_otros = FacturaOtrosIngresos.objects.filter(
-        estatus='pendiente',
-        fecha_vencimiento__lt=hoy,
-        activo=True
+    estatus='pendiente',
+    fecha_vencimiento__lt=hoy,
+    activo=True
     ).select_related('cliente', 'empresa', 'tipo_ingreso')
-   
-    # Filtrar por empresa
+
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
@@ -2312,18 +2261,15 @@ def cartera_vencida_saldos_antiguedad(request):
             clientes = Cliente.objects.filter(empresa_id=request.GET['empresa']).order_by('nombre')
         else:
             clientes = Cliente.objects.all().order_by('nombre')
-    
-    # Filtrar por cliente
+
     cliente_id = request.GET.get('cliente')
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
         facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
 
-    # Filtrar por tipo de cuota
     if tipo_cuota:
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
-    # Filtrar por origen
     if origen == 'local':
         facturas = facturas.filter(local__isnull=False)
         facturas_otros = facturas_otros.none()
@@ -2332,43 +2278,50 @@ def cartera_vencida_saldos_antiguedad(request):
         facturas_otros = facturas_otros.none()
     elif origen == 'otros':
         facturas = facturas.none()
-    
-    # Agrupar por antigüedad
-    rangos = [
-        ('0-30 días', 0, 30),
-        ('31-60 días', 31, 60),
-        ('61-90 días', 61, 90),
-        ('91-180 días', 91, 180),
-        ('181+ días', 181, 10000),
-    ]
-    agrupado = []
-    gran_total = 0
 
-    for nombre, desde, hasta in rangos:
-        grupo_facturas = []
-        subtotal = 0
-        # Facturas cuotas
-        for f in facturas:
-            dias = (hoy - f.fecha_vencimiento).days
+    # ── CALCULAR DÍAS UNA SOLA VEZ y agrupar en memoria ──
+    rangos = [
+        ('0-30 días',   0,   30),
+        ('31-60 días',  31,  60),
+        ('61-90 días',  61,  90),
+        ('91-180 días', 91,  180),
+        ('181+ días',   181, 10000),
+    ]
+
+    # Inicializar grupos
+    grupos = {nombre: {'rango': nombre, 'facturas': [], 'subtotal': 0} for nombre, _, _ in rangos}
+
+    def get_rango(dias):
+        for nombre, desde, hasta in rangos:
             if desde <= dias <= hasta:
-                f.dias_vencidos = dias
-                f.es_otro = False
-                grupo_facturas.append(f)
-                subtotal += float(getattr(f, 'saldo_pendiente', f.monto))
-        # Facturas otros ingresos
-        for f in facturas_otros:
-            dias = (hoy - f.fecha_vencimiento).days
-            if desde <= dias <= hasta:
-                f.dias_vencidos = dias
-                f.es_otro = True
-                grupo_facturas.append(f)
-                subtotal += float(getattr(f, 'saldo', f.monto))
-        agrupado.append({
-            'rango': nombre,
-            'facturas': grupo_facturas,
-            'subtotal': subtotal,
-        })
-        gran_total += subtotal
+                return nombre
+        return None
+
+    # Una sola iteración para facturas cuotas
+    for f in facturas:
+        dias = (hoy - f.fecha_vencimiento).days
+        rango = get_rango(dias)
+        if rango:
+            f.dias_vencidos = dias
+            f.es_otro = False
+            grupos[rango]['facturas'].append(f)
+            # Usar el anotado en lugar del property
+            saldo = float(f.monto) - float(f.total_pagado_ann)
+            f.saldo_calculado = saldo
+            grupos[rango]['subtotal'] += saldo
+
+    # Una sola iteración para facturas otros ingresos
+    for f in facturas_otros:
+        dias = (hoy - f.fecha_vencimiento).days
+        rango = get_rango(dias)
+        if rango:
+            f.dias_vencidos = dias
+            f.es_otro = True
+            grupos[rango]['facturas'].append(f)
+            grupos[rango]['subtotal'] += float(getattr(f, 'saldo', f.monto))
+
+    agrupado = [grupos[nombre] for nombre, _, _ in rangos]
+    gran_total = sum(g['subtotal'] for g in agrupado)
 
     tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
 
@@ -2392,15 +2345,32 @@ def exportar_cartera_excel(request):
     empresa_id = request.GET.get('empresa')
     cliente_id = request.GET.get('cliente')
 
+    # ── Subquery saldo facturas cuotas ──
+    total_pagado_sq = Pago.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(total=Sum('monto')).values('total')
+
     facturas = Factura.objects.filter(
-        estatus='pendiente',
-        fecha_vencimiento__lt=hoy,
-        activo=True
+        estatus='pendiente', fecha_vencimiento__lt=hoy, activo=True
+    ).select_related('cliente', 'local', 'area_comun').annotate(
+        total_pagado_ann=Coalesce(
+            Subquery(total_pagado_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        )
     )
+
+    # ── Subquery saldo otros ingresos ──
+    total_cobrado_oi_sq = CobroOtrosIngresos.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(total=Sum('monto')).values('total')
+
     facturas_otros = FacturaOtrosIngresos.objects.filter(
-        estatus='pendiente',
-        fecha_vencimiento__lt=hoy,
-        activo=True
+        estatus='pendiente', fecha_vencimiento__lt=hoy, activo=True
+    ).select_related('cliente', 'tipo_ingreso').annotate(
+        total_cobrado_ann=Coalesce(
+            Subquery(total_cobrado_oi_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        )
     )
 
     if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
@@ -2427,113 +2397,184 @@ def exportar_cartera_excel(request):
     elif origen == 'otros':
         facturas = facturas.none()
 
-    # Agrupación por rangos de antigüedad
+    # ── Agrupación en una sola iteración ──
     rangos = [
-        ('0-30 días', 0, 30),
-        ('31-60 días', 31, 60),
-        ('61-90 días', 61, 90),
-        ('91-180 días', 91, 180),
-        ('181+ días', 181, 10000),
+        ('0-30 días',   0,   30),
+        ('31-60 días',  31,  60),
+        ('61-90 días',  61,  90),
+        ('91-180 días', 91,  180),
+        ('181+ días',   181, 10000),
     ]
-    agrupado = []
-    gran_total = 0
+    grupos = {nombre: {'rango': nombre, 'facturas': [], 'subtotal': 0} for nombre, _, _ in rangos}
 
-    for nombre, desde, hasta in rangos:
-        grupo_facturas = []
-        subtotal = 0
-        for f in facturas:
-            dias = (hoy - f.fecha_vencimiento).days
+    def get_rango(dias):
+        for nombre, desde, hasta in rangos:
             if desde <= dias <= hasta:
-                f.dias_vencidos = dias
-                grupo_facturas.append(f)
-                subtotal += float(getattr(f, 'saldo_pendiente', f.monto))
-        for f in facturas_otros:
-            dias = (hoy - f.fecha_vencimiento).days
-            if desde <= dias <= hasta:
-                f.dias_vencidos = dias
-                grupo_facturas.append(f)
-                subtotal += float(getattr(f, 'saldo', f.monto))
-        agrupado.append({
-            'rango': nombre,
-            'facturas': grupo_facturas,
-            'subtotal': subtotal,
-        })
-        gran_total += subtotal
+                return nombre
+        return None
 
-    # Crear libro y hoja
-    import openpyxl
-    from openpyxl.styles import Font, Alignment
+    for f in facturas:
+        dias = (hoy - f.fecha_vencimiento).days
+        rango = get_rango(dias)
+        if rango:
+            saldo = float(f.monto) - float(f.total_pagado_ann)
+            f.dias_vencidos = dias
+            f.saldo_calculado = saldo
+            f.es_otro = False
+            grupos[rango]['facturas'].append(f)
+            grupos[rango]['subtotal'] += saldo
 
-    wb = openpyxl.Workbook()
+    for f in facturas_otros:
+        dias = (hoy - f.fecha_vencimiento).days
+        rango = get_rango(dias)
+        if rango:
+            saldo = float(f.monto) - float(f.total_cobrado_ann)
+            f.dias_vencidos = dias
+            f.saldo_calculado = saldo
+            f.es_otro = True
+            grupos[rango]['facturas'].append(f)
+            grupos[rango]['subtotal'] += saldo
+
+    agrupado = [grupos[nombre] for nombre, _, _ in rangos]
+    gran_total = sum(g['subtotal'] for g in agrupado)
+
+    # ── EXCEL PROFESIONAL ──
+    wb = Workbook()
     ws = wb.active
     ws.title = "Cartera Vencida"
 
-    bold = Font(bold=True)
-    ws.append(["Reporte de Cartera Vencida por Antigüedad"])
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=8)
-    ws["A1"].font = Font(size=14, bold=True)
-    ws["A1"].alignment = Alignment(horizontal="center")
+    fmt_moneda = '$#,##0.00'
+    colores_rango = {
+        '0-30 días':   ('EAFAF1', '1E8449'),
+        '31-60 días':  ('FEF9E7', 'C8A000'),
+        '61-90 días':  ('FEF0E7', 'E67E22'),
+        '91-180 días': ('FDE8D8', 'D35400'),
+        '181+ días':   ('FDF0F0', 'C0392B'),
+    }
 
-    row = 2
+    thin = Side(style='thin')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    def celda(ws, row, col, value, bold=False, bg=None, color='000000', align='left', fmt=None):
+        c = ws.cell(row=row, column=col, value=value)
+        c.font = Font(name='Arial', bold=bold, color=color, size=10)
+        c.alignment = Alignment(horizontal=align, vertical='center')
+        c.border = border
+        if bg:
+            c.fill = PatternFill('solid', fgColor=bg)
+        if fmt:
+            c.number_format = fmt
+        return c
+
+    # TÍTULO
+    ws.row_dimensions[1].height = 28
+    ws.merge_cells('A1:H1')
+    ws['A1'] = f'Cartera Vencida por Antigüedad — Al {hoy.strftime("%d/%m/%Y")}'
+    ws['A1'].font = Font(name='Arial', bold=True, size=14, color='FFFFFF')
+    ws['A1'].fill = PatternFill('solid', fgColor='5A0000')
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+    ws.row_dimensions[2].height = 20
+    ws.merge_cells('A2:H2')
+    ws['A2'] = f'Gran total: ${gran_total:,.2f}'
+    ws['A2'].font = Font(name='Arial', bold=True, size=12, color='8B0000')
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+
+    row = 4
+
     for grupo in agrupado:
-        ws.append([grupo['rango'], f"Subtotal: ${grupo['subtotal']:.2f}"])
-        ws[f"A{row}"].font = bold
-        ws[f"B{row}"].font = bold
+        if not grupo['facturas']:
+            continue
+
+        bg_claro, color_txt = colores_rango.get(grupo['rango'], ('F0F4F8', '374151'))
+
+        # Header rango
+        ws.row_dimensions[row].height = 20
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
+        ws.cell(row=row, column=1, value=grupo['rango'])
+        ws.cell(row=row, column=1).font = Font(name='Arial', bold=True, color='FFFFFF', size=11)
+        ws.cell(row=row, column=1).fill = PatternFill('solid', fgColor=color_txt)
+        ws.cell(row=row, column=1).alignment = Alignment(horizontal='left', vertical='center')
+        ws.cell(row=row, column=8, value=grupo['subtotal'])
+        ws.cell(row=row, column=8).number_format = fmt_moneda
+        ws.cell(row=row, column=8).font = Font(name='Arial', bold=True, color='FFFFFF', size=11)
+        ws.cell(row=row, column=8).fill = PatternFill('solid', fgColor=color_txt)
+        ws.cell(row=row, column=8).alignment = Alignment(horizontal='right', vertical='center')
         row += 1
-        ws.append([
-            'Folio', 'Tipo de Cuota', 'Cliente', 'Origen',
-            'Monto', 'Saldo Pendiente', 'Fecha Vencimiento', 'Días Vencidos'
-        ])
-        for col in "ABCDEFGH":
-            ws[f"{col}{row}"].font = bold
+
+        # Headers columnas
+        ws.row_dimensions[row].height = 16
+        hdrs = ['Folio', 'Tipo', 'Cliente', 'Origen', 'Monto', 'Saldo', 'Vencimiento', 'Días']
+        for col, h in enumerate(hdrs, 1):
+            celda(ws, row, col, h, bold=True, bg='1F4E79', color='FFFFFF', align='center')
         row += 1
+
+        # Filas
         for f in grupo['facturas']:
-            if isinstance(f, FacturaOtrosIngresos):
-                # Es un "otro ingreso"
-                tipo_cuota = f.tipo_ingreso.nombre if f.tipo_ingreso else 'Otro ingreso'
-                origen_str = tipo_cuota
-                saldo = float(getattr(f, 'saldo', f.monto))
+            ws.row_dimensions[row].height = 15
+            if f.es_otro:
+                tipo = f.tipo_ingreso.nombre if f.tipo_ingreso else 'Otro ingreso'
+                origen_str = tipo
             else:
-                # Es una Factura normal
-                tipo_cuota = f.tipo_cuota
+                tipo = f.tipo_cuota
                 if f.local:
                     origen_str = f"Local {f.local.numero}"
                 elif f.area_comun:
                     origen_str = f"Área {f.area_comun.numero}"
                 else:
-                    origen_str = "-"
-                saldo = float(getattr(f, 'saldo_pendiente', f.monto))
-            ws.append([
-                f.folio,
-                tipo_cuota,
-                f.cliente.nombre,
-                #f.empresa.nombre,
-                origen_str,
-                float(f.monto),
-                saldo,
-                str(f.fecha_vencimiento),
-                f.dias_vencidos
-            ])
+                    origen_str = "—"
+
+            dias = f.dias_vencidos
+            bg_d, color_d = colores_rango.get(grupo['rango'], ('FFFFFF', '000000'))
+
+            celda(ws, row, 1, f.folio, align='center')
+            celda(ws, row, 2, tipo, align='center')
+            celda(ws, row, 3, f.cliente.nombre if f.cliente else '—')
+            celda(ws, row, 4, origen_str)
+            celda(ws, row, 5, float(f.monto), align='right', fmt=fmt_moneda)
+            c_saldo = celda(ws, row, 6, f.saldo_calculado, bold=True, color='C0392B', align='right', fmt=fmt_moneda)
+            celda(ws, row, 7, f.fecha_vencimiento.strftime('%d/%m/%Y'), align='center')
+            c_dias = ws.cell(row=row, column=8, value=dias)
+            c_dias.font = Font(name='Arial', bold=True, color=color_d, size=10)
+            c_dias.fill = PatternFill('solid', fgColor=bg_d)
+            c_dias.alignment = Alignment(horizontal='center', vertical='center')
+            c_dias.border = border
             row += 1
-        # Línea vacía después de cada grupo
-        ws.append([])
-        row += 1
 
-    # Gran total
-    ws.append(["Gran Total", "", "", "", "", "", f"${gran_total:.2f}"])
-    ws[f"A{row}"].font = bold
-    ws[f"G{row}"].font = bold
+        # Subtotal
+        ws.cell(row=row, column=7, value='Subtotal:')
+        ws.cell(row=row, column=7).font = Font(name='Arial', bold=True)
+        ws.cell(row=row, column=8, value=grupo['subtotal'])
+        ws.cell(row=row, column=8).number_format = fmt_moneda
+        ws.cell(row=row, column=8).font = Font(name='Arial', bold=True, color='C0392B')
+        ws.cell(row=row, column=8).fill = PatternFill('solid', fgColor=bg_claro)
+        row += 2
 
-    # Ajustar anchos de columna
-    for col in "ABCDEFGHI":
-        ws.column_dimensions[col].width = 18
+    # GRAN TOTAL
+    ws.row_dimensions[row].height = 22
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
+    ws.cell(row=row, column=1, value='GRAN TOTAL CARTERA VENCIDA')
+    ws.cell(row=row, column=8, value=gran_total)
+    ws.cell(row=row, column=8).number_format = fmt_moneda
+    for col in range(1, 9):
+        c = ws.cell(row=row, column=col)
+        c.font = Font(name='Arial', bold=True, size=12, color='FFFFFF')
+        c.fill = PatternFill('solid', fgColor='1F4E79')
+        c.alignment = Alignment(horizontal='center' if col < 8 else 'right', vertical='center')
+        c.border = Border(left=Side(style='medium'), right=Side(style='medium'),
+                          top=Side(style='medium'), bottom=Side(style='medium'))
 
-    # Respuesta HTTP
-    from django.http import HttpResponse
+    # Anchos columnas
+    anchos = [14, 16, 28, 18, 14, 14, 14, 10]
+    for i, ancho in enumerate(anchos, 1):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+
+    ws.freeze_panes = 'A3'
+
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename=cartera_vencida_antiguedad_saldos.xlsx'
+    response['Content-Disposition'] = f'attachment; filename=cartera_vencida_{hoy.strftime("%Y%m%d")}.xlsx'
     wb.save(response)
     return response
 

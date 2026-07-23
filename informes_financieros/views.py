@@ -20,6 +20,9 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.db.models import F, Value, CharField, Sum, Case, When, IntegerField
+from django.db.models import  OuterRef, Subquery, DecimalField
+from django.db.models.functions import Coalesce
+from openpyxl.utils import get_column_letter
 
 
 @login_o_portal_required 
@@ -1013,7 +1016,6 @@ def cartera_vencida_por_origen(request):
     filtro_origen = request.GET.get("filtro_origen", "")
     cliente_id = request.GET.get("cliente")
 
-    # Determina la empresa activa
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
         empresa_id = str(empresa.id)
@@ -1024,26 +1026,24 @@ def cartera_vencida_por_origen(request):
                 empresa = Empresa.objects.get(id=empresa_id)
             except Empresa.DoesNotExist:
                 empresa = None
-     # Filtra los clientes por empresa
+
     if empresa:
         clientes = Cliente.objects.filter(empresa=empresa)
     else:
         clientes = Cliente.objects.all()
 
-    # Facturas de locales y áreas comunes
+    # ── Subquery para total pagado por factura ──
+    total_pagado_sq = Pago.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(
+        total=Sum('monto')
+    ).values('total')
+
     facturas = Factura.objects.filter(
         estatus="pendiente",
         fecha_vencimiento__lt=hoy,
         monto__gt=0
-    ).select_related('local', 'area_comun', 'cliente')
-
-    if empresa_id:
-        facturas = facturas.filter(empresa_id=empresa_id)
-    if cliente_id and cliente_id.isdigit():
-        facturas = facturas.filter(cliente_id=cliente_id)    
-
-    # Agrupación y anotación en BD
-    facturas_qs = facturas.annotate(
+    ).select_related('local', 'area_comun', 'cliente').annotate(
         origen_id=Case(
             When(local__isnull=False, then=F("local__id")),
             When(area_comun__isnull=False, then=F("area_comun__id")),
@@ -1062,40 +1062,47 @@ def cartera_vencida_por_origen(request):
             default=Value("Sin origen"),
             output_field=CharField(),
         ),
-        # saldo_calc=Case(
-        #     When(saldo__isnull=False, then=F('saldo')),
-        #     default=F('saldo_pendiente'),
-        #     output_field=F('monto').__class__
-        # )
+        total_pagado_ann=Coalesce(
+            Subquery(total_pagado_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        )
     ).order_by("origen_tipo", "origen_nombre", "fecha_vencimiento")
 
-    # Facturas otros ingresos
+    if empresa_id:
+        facturas = facturas.filter(empresa_id=empresa_id)
+    if cliente_id and cliente_id.isdigit():
+        facturas = facturas.filter(cliente_id=cliente_id)
+
+    # ── Subquery para saldo de otros ingresos ──
+    total_cobrado_oi_sq = CobroOtrosIngresos.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(
+        total=Sum('monto')
+    ).values('total')
+
     facturas_oi = FacturaOtrosIngresos.objects.filter(
         estatus="pendiente",
         fecha_vencimiento__lt=hoy,
         monto__gt=0
-    ).select_related('tipo_ingreso', 'cliente')
+    ).select_related('tipo_ingreso', 'cliente').annotate(
+        origen_id=F("tipo_ingreso__id"),
+        origen_tipo=Value("tipoingreso", output_field=CharField()),
+        origen_nombre=F("tipo_ingreso__nombre"),
+        total_cobrado_ann=Coalesce(
+            Subquery(total_cobrado_oi_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        )
+    ).order_by("origen_nombre", "fecha_vencimiento")
 
     if empresa_id:
         facturas_oi = facturas_oi.filter(empresa_id=empresa_id)
     if cliente_id and cliente_id.isdigit():
         facturas_oi = facturas_oi.filter(cliente_id=cliente_id)
 
-    facturas_oi_qs = facturas_oi.annotate(
-        origen_id=F("tipo_ingreso__id"),
-        origen_tipo=Value("tipoingreso", output_field=CharField()),
-        origen_nombre=F("tipo_ingreso__nombre"),
-        # saldo_calc=Case(
-        #     When(saldo__isnull=False, then=F('saldo')),
-        #     default=F('monto'),
-        #     output_field=F('monto').__class__
-        # )
-    ).order_by("origen_nombre", "fecha_vencimiento")
-
-    # Construcción del resultado
+    # ── Construcción del resultado usando anotaciones ──
     origenes_dict = {}
 
-    for f in facturas_qs:
+    for f in facturas:
         if f.origen_tipo == "local":
             origen_id = f"local_{f.origen_id}"
             origen_nombre = f"Local: {f.origen_nombre}"
@@ -1107,77 +1114,60 @@ def cartera_vencida_por_origen(request):
             origen_nombre = "Sin origen"
 
         if origen_id not in origenes_dict:
-            origenes_dict[origen_id] = {
-                "origen_nombre": origen_nombre,
-                "total_vencido": 0,
-                "facturas": []
-            }
-        saldo = float(f.saldo_pendiente or 0)
-        origenes_dict[origen_id]["facturas"].append(
-            {
-                "cliente": f.cliente.nombre if f.cliente else "Desconocido",
-                "factura_id": f.id,
-                "folio": f.folio,
-                "fecha_vencimiento": f.fecha_vencimiento,
-                "dias_vencidos": (hoy - f.fecha_vencimiento).days,
-                "monto": float(f.monto),
-                "saldo": saldo,
-                "concepto": f.observaciones,
-            }
-        )
+            origenes_dict[origen_id] = {"origen_nombre": origen_nombre, "total_vencido": 0, "facturas": []}
+
+        # Usar anotación en lugar del property
+        saldo = float(f.monto) - float(f.total_pagado_ann)
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+            "factura_id": f.id,
+            "folio": f.folio,
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+            "monto": float(f.monto),
+            "saldo": saldo,
+            "concepto": f.observaciones,
+        })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    for f in facturas_oi_qs:
+    for f in facturas_oi:
         origen_id = f"tipoingreso_{f.origen_id}"
         origen_nombre = f"Tipo de Ingreso: {f.origen_nombre}"
         if origen_id not in origenes_dict:
-            origenes_dict[origen_id] = {
-                "origen_nombre": origen_nombre,
-                "total_vencido": 0,
-                "facturas": []
-            }
-        saldo = float(f.saldo or 0)
-        origenes_dict[origen_id]["facturas"].append(
-            {
-                "cliente": f.cliente.nombre if f.cliente else "Desconocido",
-                "factura_id": f.id,
-                "folio": f.folio,
-                "fecha_vencimiento": f.fecha_vencimiento,
-                "dias_vencidos": (hoy - f.fecha_vencimiento).days,
-                "monto": float(f.monto),
-                "saldo": saldo,
-                "concepto": f.observaciones,
-            }
-        )
+            origenes_dict[origen_id] = {"origen_nombre": origen_nombre, "total_vencido": 0, "facturas": []}
+
+        # Usar anotación en lugar del property
+        saldo = float(f.monto) - float(f.total_cobrado_ann)
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+            "factura_id": f.id,
+            "folio": f.folio,
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+            "monto": float(f.monto),
+            "saldo": saldo,
+            "concepto": f.observaciones,
+        })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
     if filtro_origen in ("local", "area", "tipoingreso"):
-        resultado = [
-            origen
-            for key, origen in origenes_dict.items()
-            if key.startswith(filtro_origen + "_")
-        ]
+        resultado = [v for k, v in origenes_dict.items() if k.startswith(filtro_origen + "_")]
     else:
         resultado = list(origenes_dict.values())
 
-    # resultado = list(origenes_dict.values())
-    total_cartera = sum(origen["total_vencido"] for origen in resultado)
-    return render(
-        request,
-        "informes_financieros/cartera_vencida_x_origen.html",
-        {
-            "cartera_vencida": resultado,
-            "total_cartera": total_cartera,
-            "request": request,
-            "cliente_id": cliente_id,
-            'clientes':clientes,
-        },
-    )
+    total_cartera = sum(o["total_vencido"] for o in resultado)
+
+    return render(request, "informes_financieros/cartera_vencida_x_origen.html", {
+        "cartera_vencida": resultado,
+        "total_cartera": total_cartera,
+        "cliente_id": cliente_id,
+        "clientes": clientes,
+        "empresas": Empresa.objects.all() if request.user.is_superuser else None,
+    })
 
 
 @login_required
 def exportar_cartera_vencida_excel(request):
-    empresa_id = request.GET.get("empresa")
     hoy = timezone.now().date()
     filtro_origen = request.GET.get("filtro_origen", "")
 
@@ -1186,173 +1176,256 @@ def exportar_cartera_vencida_excel(request):
     else:
         empresa_id = request.GET.get("empresa") or ""
 
+    # ── Subquery saldo facturas cuotas ──
+    total_pagado_sq = Pago.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(total=Sum('monto')).values('total')
+
     facturas = Factura.objects.filter(
         estatus="pendiente", fecha_vencimiento__lt=hoy, monto__gt=0
-    ).select_related("local", "area_comun", "cliente")
+    ).select_related("local", "area_comun", "cliente").annotate(
+        total_pagado_ann=Coalesce(
+            Subquery(total_pagado_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        )
+    ).order_by("local__numero", "area_comun__numero", "fecha_vencimiento")
+
+    # ── Subquery saldo otros ingresos ──
+    total_cobrado_oi_sq = CobroOtrosIngresos.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(total=Sum('monto')).values('total')
+
     facturas_oi = FacturaOtrosIngresos.objects.filter(
         estatus="pendiente", fecha_vencimiento__lt=hoy, monto__gt=0
-    ).select_related("tipo_ingreso", "cliente")
+    ).select_related("tipo_ingreso", "cliente").annotate(
+        total_cobrado_ann=Coalesce(
+            Subquery(total_cobrado_oi_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        )
+    ).order_by("tipo_ingreso__nombre", "fecha_vencimiento")
 
     if empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
         facturas_oi = facturas_oi.filter(empresa_id=empresa_id)
 
-    # Agrupa igual que la vista HTML
+    # ── Agrupación ──
     origenes_dict = {}
-    for factura in facturas.order_by(
-        "local__numero", "area_comun__numero", "fecha_vencimiento"
-    ):
-        if factura.local:
-            origen_id = f"local_{factura.local.id}"
-            origen_nombre = f"Local: {factura.local.numero}"
-        elif factura.area_comun:
-            origen_id = f"area_{factura.area_comun.id}"
-            origen_nombre = f"Área Común: {factura.area_comun.numero}"
+
+    for f in facturas:
+        if f.local:
+            origen_id = f"local_{f.local.id}"
+            origen_nombre = f"Local: {f.local.numero}"
+        elif f.area_comun:
+            origen_id = f"area_{f.area_comun.id}"
+            origen_nombre = f"Área Común: {f.area_comun.numero}"
         else:
             origen_id = "sin_origen"
             origen_nombre = "Sin origen"
 
         if origen_id not in origenes_dict:
-            origenes_dict[origen_id] = {
-                "origen_nombre": origen_nombre,
-                "total_vencido": 0,
-                "facturas": []
-            }
-        saldo = float(getattr(factura, "saldo", factura.saldo_pendiente))
-        origenes_dict[origen_id]["facturas"].append(
-            {
-                "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
-                "folio": factura.folio,
-                "fecha_vencimiento": factura.fecha_vencimiento,
-                "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
-                "monto": float(factura.monto),
-                "saldo": saldo,
-                "concepto": factura.observaciones,
-            }
-        )
+            origenes_dict[origen_id] = {"origen_nombre": origen_nombre, "total_vencido": 0, "facturas": []}
+
+        saldo = float(f.monto) - float(f.total_pagado_ann)
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+            "folio": f.folio,
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+            "monto": float(f.monto),
+            "saldo": saldo,
+            "concepto": f.observaciones or "",
+        })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    for factura in facturas_oi.order_by("tipo_ingreso__nombre", "fecha_vencimiento"):
-        origen_id = f"tipoingreso_{factura.tipo_ingreso.id}"
-        origen_nombre = f"Tipo de Ingreso: {factura.tipo_ingreso.nombre}"
+    for f in facturas_oi:
+        origen_id = f"tipoingreso_{f.tipo_ingreso.id}"
+        origen_nombre = f"Tipo de Ingreso: {f.tipo_ingreso.nombre}"
 
         if origen_id not in origenes_dict:
-            origenes_dict[origen_id] = {
-                "origen_nombre": origen_nombre,
-                "total_vencido": 0,
-                "facturas": []
-            }
-        saldo = float(getattr(factura, "saldo", factura.saldo))
-        origenes_dict[origen_id]["facturas"].append(
-            {
-                "cliente": factura.cliente.nombre if factura.cliente else "Desconocido",
-                "folio": factura.folio,
-                "fecha_vencimiento": factura.fecha_vencimiento,
-                "dias_vencidos": (hoy - factura.fecha_vencimiento).days,
-                "monto": float(factura.monto),
-                "saldo": saldo,
-                "concepto": factura.observaciones,
-            }
-        )
+            origenes_dict[origen_id] = {"origen_nombre": origen_nombre, "total_vencido": 0, "facturas": []}
+
+        saldo = float(f.monto) - float(f.total_cobrado_ann)
+        origenes_dict[origen_id]["facturas"].append({
+            "cliente": f.cliente.nombre if f.cliente else "Desconocido",
+            "folio": f.folio,
+            "fecha_vencimiento": f.fecha_vencimiento,
+            "dias_vencidos": (hoy - f.fecha_vencimiento).days,
+            "monto": float(f.monto),
+            "saldo": saldo,
+            "concepto": f.observaciones or "",
+        })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    # Aplica el filtro igual que en la vista HTML
     if filtro_origen in ("local", "area", "tipoingreso"):
-        resultado = [
-            origen
-            for key, origen in origenes_dict.items()
-            if key.startswith(filtro_origen + "_")
-        ]
+        resultado = [v for k, v in origenes_dict.items() if k.startswith(filtro_origen + "_")]
     else:
         resultado = list(origenes_dict.values())
 
-    # resultado = list(origenes_dict.values())
-    total_cartera = sum(origen["total_vencido"] for origen in resultado)
+    total_cartera = sum(o["total_vencido"] for o in resultado)
 
-    # --- Excel ---
+    # ── EXCEL PROFESIONAL ──
     wb = Workbook()
     ws = wb.active
     ws.title = "Cartera Vencida"
 
-    bold = Font(bold=True)
-    header_fill = PatternFill("solid", fgColor="BDD7EE")
-    border = Border(
-        left=Side(style="thin", color="000000"),
-        right=Side(style="thin", color="000000"),
-        top=Side(style="thin", color="000000"),
-        bottom=Side(style="thin", color="000000"),
-    )
+    # Estilos
+    fmt_moneda = '$#,##0.00'
+    fmt_num = '#,##0'
 
-    ws.append(["Cartera Vencida por Origen"])
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=7)
-    ws["A1"].font = Font(size=14, bold=True)
-    ws["A1"].alignment = Alignment(horizontal="center")
-
-    row = 2
-    for origen in resultado:
-        ws.append(
-            [origen["origen_nombre"], f"Total vencido: ${origen['total_vencido']:.2f}"]
-        )
-        ws[f"A{row}"].font = bold
-        ws[f"A{row}"].fill = header_fill
-        ws[f"A{row}"].border = border
-        ws[f"B{row}"].font = bold
-        ws[f"B{row}"].fill = header_fill
-        ws[f"B{row}"].border = border
-        row += 1
-        ws.append(
-            [
-                "Cliente",
-                "Folio",
-                "Fecha Vencimiento",
-                "Días Vencidos",
-                "Monto",
-                "Saldo",
-                "Concepto",
-            ]
-        )
-        for col in "ABCDEFG"[:7]:
-            ws[f"{col}{row}"].font = bold
-            ws[f"{col}{row}"].fill = header_fill
-            ws[f"{col}{row}"].border = border
-        row += 1
-        for factura in origen["facturas"]:
-            ws.append(
-                [
-                    factura["cliente"],
-                    factura["folio"],
-                    factura["fecha_vencimiento"].strftime("%Y-%m-%d"),
-                    factura["dias_vencidos"],
-                    factura["monto"],
-                    factura["saldo"],
-                    factura["concepto"] or "",
-                ]
+    def estilo_header_origen():
+        return {
+            'font': Font(name='Arial', bold=True, color='FFFFFF', size=11),
+            'fill': PatternFill('solid', fgColor='8B0000'),
+            'alignment': Alignment(horizontal='left', vertical='center'),
+            'border': Border(
+                left=Side(style='thin'), right=Side(style='thin'),
+                top=Side(style='thin'), bottom=Side(style='thin')
             )
-            for col in "ABCDEFG"[:7]:
-                ws[f"{col}{row}"].border = border
-            row += 1
-        ws.append([])
+        }
+
+    def estilo_header_col():
+        return {
+            'font': Font(name='Arial', bold=True, color='FFFFFF', size=10),
+            'fill': PatternFill('solid', fgColor='1F4E79'),
+            'alignment': Alignment(horizontal='center', vertical='center'),
+            'border': Border(
+                left=Side(style='thin'), right=Side(style='thin'),
+                top=Side(style='thin'), bottom=Side(style='thin')
+            )
+        }
+
+    def estilo_celda(align='left'):
+        return {
+            'font': Font(name='Arial', size=10),
+            'alignment': Alignment(horizontal=align, vertical='center'),
+            'border': Border(
+                left=Side(style='thin'), right=Side(style='thin'),
+                top=Side(style='thin'), bottom=Side(style='thin')
+            )
+        }
+
+    def aplicar_estilos(cell, estilos):
+        for attr, val in estilos.items():
+            setattr(cell, attr, val)
+
+    # TÍTULO
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells('A1:G1')
+    ws['A1'] = f'Cartera Vencida por Origen — Al {hoy.strftime("%d/%m/%Y")}'
+    ws['A1'].font = Font(name='Arial', bold=True, size=14, color='FFFFFF')
+    ws['A1'].fill = PatternFill('solid', fgColor='5A0000')
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+    ws.row_dimensions[2].height = 20
+    ws['A2'] = f'Total cartera: ${total_cartera:,.2f}'
+    ws['A2'].font = Font(name='Arial', bold=True, size=12, color='8B0000')
+    ws.merge_cells('A2:G2')
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+
+    row = 4
+
+    for origen in resultado:
+        # Header del origen
+        ws.row_dimensions[row].height = 22
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        ws.cell(row=row, column=1, value=origen['origen_nombre'])
+        ws.cell(row=row, column=7, value=origen['total_vencido'])
+        ws.cell(row=row, column=7).number_format = fmt_moneda
+
+        for col in range(1, 8):
+            aplicar_estilos(ws.cell(row=row, column=col), estilo_header_origen())
         row += 1
 
-    ws.append(["Gran Total Vencido", total_cartera])
-    ws[f"A{row}"].font = bold
-    ws[f"B{row}"].font = bold
-    ws[f"A{row}"].fill = header_fill
-    ws[f"B{row}"].fill = header_fill
-    ws[f"A{row}"].border = border
-    ws[f"B{row}"].border = border
+        # Headers columnas
+        ws.row_dimensions[row].height = 18
+        headers = ['Cliente', 'Folio', 'Vencimiento', 'Días Vencido', 'Monto', 'Saldo', 'Concepto']
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=row, column=col, value=h)
+            aplicar_estilos(cell, estilo_header_col())
+        row += 1
 
-    ws.column_dimensions["A"].width = 25
-    ws.column_dimensions["B"].width = 15
-    ws.column_dimensions["C"].width = 18
-    ws.column_dimensions["D"].width = 15
-    ws.column_dimensions["E"].width = 12
-    ws.column_dimensions["F"].width = 12
-    ws.column_dimensions["G"].width = 30
+        # Filas
+        for f in origen['facturas']:
+            ws.row_dimensions[row].height = 16
+            dias = f['dias_vencidos']
+
+            # Color semáforo por días
+            if dias <= 30:
+                fill_dias = PatternFill('solid', fgColor='EAFAF1')
+                color_dias = '1E8449'
+            elif dias <= 60:
+                fill_dias = PatternFill('solid', fgColor='FEF9E7')
+                color_dias = 'C8A000'
+            elif dias <= 90:
+                fill_dias = PatternFill('solid', fgColor='FEF0E7')
+                color_dias = 'E67E22'
+            elif dias <= 180:
+                fill_dias = PatternFill('solid', fgColor='FDE8D8')
+                color_dias = 'D35400'
+            else:
+                fill_dias = PatternFill('solid', fgColor='FDF0F0')
+                color_dias = 'C0392B'
+
+            valores = [
+                f['cliente'],
+                f['folio'],
+                f['fecha_vencimiento'].strftime('%d/%m/%Y'),
+                f['dias_vencidos'],
+                f['monto'],
+                f['saldo'],
+                f['concepto'],
+            ]
+            formatos = ['@', '@', '@', fmt_num, fmt_moneda, fmt_moneda, '@']
+            alineaciones = ['left', 'center', 'center', 'center', 'right', 'right', 'left']
+
+            for col, (val, fmt, aln) in enumerate(zip(valores, formatos, alineaciones), 1):
+                cell = ws.cell(row=row, column=col, value=val)
+                aplicar_estilos(cell, estilo_celda(aln))
+                cell.number_format = fmt
+                if col == 4:  # Días vencido con semáforo
+                    cell.fill = fill_dias
+                    cell.font = Font(name='Arial', size=10, bold=True, color=color_dias)
+                if col == 6 and f['saldo'] > 0:  # Saldo en rojo
+                    cell.font = Font(name='Arial', size=10, bold=True, color='C0392B')
+            row += 1
+
+        # Subtotal origen
+        ws.cell(row=row, column=6, value=origen['total_vencido'])
+        ws.cell(row=row, column=6).number_format = fmt_moneda
+        ws.cell(row=row, column=6).font = Font(name='Arial', bold=True, color='8B0000')
+        ws.cell(row=row, column=6).fill = PatternFill('solid', fgColor='FDF0F0')
+        ws.cell(row=row, column=5, value='Subtotal:')
+        ws.cell(row=row, column=5).font = Font(name='Arial', bold=True)
+        row += 2  # Espacio entre orígenes
+
+    # GRAN TOTAL
+    ws.row_dimensions[row].height = 22
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
+    ws.cell(row=row, column=1, value='GRAN TOTAL CARTERA VENCIDA')
+    ws.cell(row=row, column=6, value=total_cartera)
+    ws.cell(row=row, column=6).number_format = fmt_moneda
+
+    for col in range(1, 8):
+        cell = ws.cell(row=row, column=col)
+        cell.font = Font(name='Arial', bold=True, size=12, color='FFFFFF')
+        cell.fill = PatternFill('solid', fgColor='1F4E79')
+        cell.alignment = Alignment(horizontal='center' if col == 1 else 'right', vertical='center')
+        cell.border = Border(
+            left=Side(style='medium'), right=Side(style='medium'),
+            top=Side(style='medium'), bottom=Side(style='medium')
+        )
+
+    # Ancho columnas
+    anchos = [30, 14, 14, 13, 14, 14, 35]
+    for i, ancho in enumerate(anchos, 1):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+
+    # Congelar primera fila
+    ws.freeze_panes = 'A3'
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response["Content-Disposition"] = "attachment; filename=cartera_vencida.xlsx"
+    response["Content-Disposition"] = f'attachment; filename=cartera_vencida_{hoy.strftime("%Y%m%d")}.xlsx'
     wb.save(response)
     return response
