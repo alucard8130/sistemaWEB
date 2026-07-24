@@ -29,9 +29,26 @@
             <div class="alert alert-info mb-4">
                 <i class="bi bi-stars me-1"></i>
                 <strong>¿Cómo funciona?</strong><br>
-                Sube el PDF del estado de cuenta de tu banco. El sistema lo analiza automáticamente con IA, detecta el periodo, extrae todos los abonos e intenta identificar a qué cliente corresponde cada depósito usando la referencia de pago y el nombre del cliente.
+                Sube el archivo del estado de cuenta de tu banco. El sistema lo analiza automáticamente con IA, detecta el periodo, extrae todos los abonos e intenta identificar a qué cliente corresponde cada depósito usando la referencia de pago y el nombre del cliente.
             </div>
 
+            
+            <div class="card mb-3">
+  <div class="card-body">
+    <h5>¿Quieres revisar el archivo antes de subirlo?</h5>
+    <p class="text-muted">
+      Si subes un PDF, puedes convertirlo primero a Excel, descargarlo,
+      revisarlo o corregirlo, y luego subir ese Excel en el formulario de abajo.
+    </p>
+    <form method="post" action="{% url 'convertir_pdf_preview' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="file" name="archivo" accept=".pdf" required>
+      <button type="submit" class="btn btn-secondary">Convertir a Excel y descargar</button>
+    </form>
+  </div>
+</div>
+
+<!-- Aquí sigue tu formulario normal de "subir_estado_cuenta" que ya tienes -->
             <form method="post" enctype="multipart/form-data" id="form-subir">
                 {% csrf_token %}
                 <div class="mb-3">
@@ -45,10 +62,10 @@
                     <div class="form-text">La cuenta a la que corresponde este estado de cuenta.</div>
                 </div>
                 <div class="mb-4">
-                    <label class="form-label">Archivo PDF del estado de cuenta <span class="text-danger">*</span></label>
-                    <input type="file" name="archivo" class="form-control" accept=".pdf" required
-                           id="input-archivo">
-                    <div class="form-text">Solo archivos PDF. Compatible con BBVA, Banorte, Banamex, Santander y otros bancos mexicanos.</div>
+                    <label class="form-label">Archivo del estado de cuenta <span class="text-danger">*</span></label>
+                    <input type="file" name="archivo" accept=".csv,.xls,.xlsx" required>
+                    <small>Formatos aceptados: CSV, Excel (.xls, .xlsx). ¿Tienes un PDF? Conviértelo arriba primero.</small>
+                    <div class="form-text"> Compatible con BBVA, Banorte, Banamex, Santander y otros bancos mexicanos.</div>
                 </div>
 
                 <!-- Loading state -->

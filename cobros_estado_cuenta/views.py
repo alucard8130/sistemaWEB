@@ -1,6 +1,7 @@
 # Create your views here.
 import json
-import base64
+#import base64
+import os
 import anthropic
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -12,10 +13,127 @@ from clientes.models import Cliente
 from facturacion.models import Factura, Pago, FacturaOtrosIngresos, TipoOtroIngreso
 import datetime
 import re
+#import pdfplumber
+import io
+import logging
+import pandas as pd
+from adobe.pdfservices.operation.auth.service_principal_credentials import ServicePrincipalCredentials
+from adobe.pdfservices.operation.exception.exceptions import ServiceApiException, ServiceUsageException, SdkException
+from adobe.pdfservices.operation.pdf_services import PDFServices
+from adobe.pdfservices.operation.pdf_services_media_type import PDFServicesMediaType
+from adobe.pdfservices.operation.pdfjobs.jobs.export_pdf_job import ExportPDFJob
+from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_params import ExportPDFParams
+from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_target_format import ExportPDFTargetFormat
+from adobe.pdfservices.operation.pdfjobs.result.export_pdf_result import ExportPDFResult
+from django.http import HttpResponse
+
+logger = logging.getLogger(__name__)
 
 
-def extraer_movimientos_con_claude(pdf_bytes, empresa):
-    """Llama a Claude API para extraer los movimientos del PDF"""
+def extraer_texto_excel_csv(archivo_bytes, filename):
+    """Convierte CSV o Excel a texto tipo tabla para mandar a Claude."""
+    filename_lower = filename.lower()
+
+    try:
+        if filename_lower.endswith('.csv'):
+            df = None
+            ultimo_error = None
+            for encoding in ('utf-8', 'latin-1', 'cp1252'):
+                try:
+                    df = pd.read_csv(io.BytesIO(archivo_bytes), encoding=encoding, sep=None, engine='python')
+                    break
+                except Exception as e:
+                    ultimo_error = e
+                    continue
+            if df is None:
+                raise ValueError(f"No se pudo leer el CSV: {ultimo_error}")
+        else:
+            df = pd.read_excel(io.BytesIO(archivo_bytes))
+    except Exception as e:
+        raise ValueError(f"No se pudo leer el archivo: {e}")
+
+    df = df.dropna(how='all')  # quitar filas completamente vacías
+
+    if df.empty:
+        raise ValueError("El archivo no contiene datos.")
+
+    return df.to_csv(index=False)
+
+
+def convertir_pdf_a_excel_adobe(pdf_bytes):
+    """
+    Convierte un PDF a Excel usando Adobe PDF Services API.
+    Retorna los bytes del .xlsx resultante. Lanza excepción si falla.
+    """
+    client_id = os.environ.get('ADOBE_CLIENT_ID')
+    client_secret = os.environ.get('ADOBE_CLIENT_SECRET')
+
+    if not client_id or not client_secret:
+        raise ValueError("Credenciales de Adobe (ADOBE_CLIENT_ID / ADOBE_CLIENT_SECRET) no configuradas.")
+
+    credentials = ServicePrincipalCredentials(
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    pdf_services = PDFServices(credentials=credentials)
+
+    input_asset = pdf_services.upload(
+        input_stream=pdf_bytes,
+        mime_type=PDFServicesMediaType.PDF
+    )
+
+    export_pdf_params = ExportPDFParams(target_format=ExportPDFTargetFormat.XLSX)
+    export_pdf_job = ExportPDFJob(input_asset=input_asset, export_pdf_params=export_pdf_params)
+
+    location = pdf_services.submit(export_pdf_job)
+    pdf_services_response = pdf_services.get_job_result(location, ExportPDFResult)
+
+    result_asset = pdf_services_response.get_result().get_asset()
+    stream_asset = pdf_services.get_content(result_asset)
+
+    return stream_asset.get_input_stream()
+
+@login_required
+def convertir_pdf_preview(request):
+    """
+    Convierte un PDF a Excel usando Adobe y lo devuelve para descarga,
+    sin tocar la base de datos ni llamar a la IA. El usuario revisa/edita
+    el Excel y luego lo sube por separado al flujo normal.
+    """
+    if request.method != 'POST':
+        return redirect('subir_estado_cuenta')
+
+    archivo = request.FILES.get('archivo')
+
+    if not archivo:
+        messages.error(request, "Debes subir un archivo PDF.")
+        return redirect('subir_estado_cuenta')
+
+    if not archivo.name.lower().endswith('.pdf'):
+        messages.error(request, "Solo se puede convertir un archivo PDF.")
+        return redirect('subir_estado_cuenta')
+
+    pdf_bytes = archivo.read()
+
+    try:
+        excel_bytes = convertir_pdf_a_excel_adobe(pdf_bytes)
+    except (ServiceApiException, ServiceUsageException, SdkException, ValueError) as e:
+        logger.error(f"Error al convertir PDF a Excel (preview): {e}")
+        messages.error(request, f"No se pudo convertir el archivo: {e}")
+        return redirect('subir_estado_cuenta')
+
+    nombre_salida = archivo.name.rsplit('.', 1)[0] + '_convertido.xlsx'
+
+    response = HttpResponse(
+        excel_bytes,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{nombre_salida}"'
+    return response
+
+
+def extraer_movimientos_con_claude(archivo_bytes, filename, empresa):
+    """Llama a Claude API para extraer los movimientos del archivo (CSV o Excel)"""
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     # Obtener referencias de clientes de esta empresa para el matching
@@ -62,31 +180,25 @@ Reglas:
 - Si detectas el número de local o área en la descripción, úsalo también para identificar al cliente
 """
 
-    pdf_base64 = base64.standard_b64encode(pdf_bytes).decode('utf-8')
+    extension = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
+
+    if extension not in ('csv', 'xls', 'xlsx'):
+        raise ValueError(f"Tipo de archivo no soportado: .{extension}. Solo se aceptan CSV o Excel.")
+
+    texto_tabla = extraer_texto_excel_csv(archivo_bytes, filename)
+    contenido = [
+        {"type": "text", "text": f"Estado de cuenta (datos en formato CSV):\n\n{texto_tabla}"},
+        {"type": "text", "text": prompt}
+    ]
 
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=16000,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "application/pdf",
-                            "data": pdf_base64,
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt
-                    }
-                ]
-            }
-        ]
+        messages=[{"role": "user", "content": contenido}]
     )
+
+    if not response.content:
+        raise ValueError("Claude no devolvió contenido en la respuesta.")
 
     texto = response.content[0].text.strip()
     # Limpiar posibles backticks de markdown
@@ -106,29 +218,6 @@ Reglas:
                 pass
         raise
 
-
-@login_required
-def lista_sesiones(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if request.user.is_superuser:
-        sesiones = SesionEstadoCuenta.objects.all()
-    else:
-        empresa = perfil.empresa if perfil else None
-        sesiones = SesionEstadoCuenta.objects.filter(empresa=empresa)
-
-    return render(request, 'cobros_estado_cuenta/lista_sesiones.html', {
-        'sesiones': sesiones,
-    })
-
-@login_required
-def eliminar_sesion(request, pk):
-    sesion = get_object_or_404(SesionEstadoCuenta, pk=pk)
-    if request.method == 'POST':
-        sesion.delete()
-        messages.success(request, "Estado de cuenta eliminado correctamente.")
-        return redirect('lista_sesiones_estado_cuenta')
-    return render(request, 'cobros_estado_cuenta/eliminar_sesion.html', {'sesion': sesion})
-
 @login_required
 def subir_estado_cuenta(request):
     perfil = getattr(request.user, 'perfilusuario', None)
@@ -141,11 +230,21 @@ def subir_estado_cuenta(request):
         cuenta_id = request.POST.get('cuenta_bancaria_id')
 
         if not archivo:
-            messages.error(request, "Debes subir un archivo PDF.")
+            messages.error(request, "Debes subir un archivo PDF, CSV o Excel.")
             return render(request, 'cobros_estado_cuenta/subir.html', {'cuentas': cuentas})
 
-        if not archivo.name.lower().endswith('.pdf'):
-            messages.error(request, "Solo se aceptan archivos PDF.")
+        if archivo.name.lower().endswith('.pdf'):
+            messages.error(
+                request,
+                "Los archivos PDF deben convertirse a Excel primero. "
+                "Usa la opción 'Convertir a Excel y descargar' arriba, revisa el archivo, y luego súbelo aquí."
+            )
+            return render(request, 'cobros_estado_cuenta/subir.html', {'cuentas': cuentas})
+
+        extensiones_validas = ('.csv', '.xls', '.xlsx')
+
+        if not archivo.name.lower().endswith(extensiones_validas):
+            messages.error(request, "Solo se aceptan archivos CSV o Excel (.xls, .xlsx).")
             return render(request, 'cobros_estado_cuenta/subir.html', {'cuentas': cuentas})
 
         cuenta = None
@@ -153,7 +252,7 @@ def subir_estado_cuenta(request):
             cuenta = get_object_or_404(CuentaBancaria, pk=cuenta_id, empresa=empresa)
 
         # ← Leer bytes ANTES de crear la sesión (antes de que Django mueva el archivo)
-        pdf_bytes = archivo.read()
+        archivo_bytes  = archivo.read()
         archivo.seek(0)  # Reposicionar para que Django pueda guardarlo correctamente
 
         # Crear la sesión
@@ -168,12 +267,20 @@ def subir_estado_cuenta(request):
         try:
             # Leer el PDF y enviarlo a Claude
             #pdf_bytes = archivo.read()
-            datos = extraer_movimientos_con_claude(pdf_bytes, empresa)
-
+            datos = extraer_movimientos_con_claude(archivo_bytes, archivo.name, empresa)
+            # Convertir fechas del encabezado (vienen como string del JSON de Claude)
+            def parse_fecha(valor):
+                if not valor:
+                    return None
+                try:
+                    return datetime.date.fromisoformat(valor)
+                except (ValueError, TypeError):
+                    return None
+                
             # Actualizar la sesión con los datos del encabezado
             sesion.banco_detectado = datos.get('banco', '')
-            sesion.periodo_inicio = datos.get('periodo_inicio')
-            sesion.periodo_fin = datos.get('periodo_fin')
+            sesion.periodo_inicio = parse_fecha(datos.get('periodo_inicio'))
+            sesion.periodo_fin = parse_fecha(datos.get('periodo_fin'))
             sesion.saldo_inicial = datos.get('saldo_inicial')
             sesion.saldo_final = datos.get('saldo_final')
             sesion.total_abonos = datos.get('total_abonos')
@@ -208,12 +315,12 @@ def subir_estado_cuenta(request):
                 MovimientoEstadoCuenta.objects.create(
                     sesion=sesion,
                     fecha=fecha,
-                    descripcion=abono.get('descripcion', ''),
-                    referencia=abono.get('referencia', ''),
+                    descripcion=abono.get('descripcion') or '',
+                    referencia=abono.get('referencia') or '',
                     monto=abono.get('monto', 0),
                     cliente_detectado=cliente,
-                    confianza_match=abono.get('confianza_match', 'ninguna'),
-                    razon_match=abono.get('razon_match', ''),
+                    confianza_match=abono.get('confianza_match') or 'ninguna',
+                    razon_match=abono.get('razon_match') or '',
                     estado='pendiente',
                 )
 
@@ -234,10 +341,45 @@ def subir_estado_cuenta(request):
     return render(request, 'cobros_estado_cuenta/subir.html', {'cuentas': cuentas})
 
 
+###Configuración de vistas para la lista de sesiones y revisión de movimientos
+@login_required
+def lista_sesiones(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if request.user.is_superuser:
+        sesiones = SesionEstadoCuenta.objects.all()
+    else:
+        empresa = perfil.empresa if perfil else None
+        sesiones = SesionEstadoCuenta.objects.filter(empresa=empresa)
+
+    return render(request, 'cobros_estado_cuenta/lista_sesiones.html', {
+        'sesiones': sesiones,
+    })
+
+@login_required
+def eliminar_sesion(request, pk):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if request.user.is_superuser:
+        sesion = get_object_or_404(SesionEstadoCuenta, pk=pk)
+    else:
+        empresa = perfil.empresa if perfil else None
+        sesion = get_object_or_404(SesionEstadoCuenta, pk=pk, empresa=empresa)
+
+    if request.method == 'POST':
+        sesion.delete()
+        messages.success(request, "Estado de cuenta eliminado correctamente.")
+        return redirect('lista_sesiones_estado_cuenta')
+    return render(request, 'cobros_estado_cuenta/eliminar_sesion.html', {'sesion': sesion})
+
+
 @login_required
 def revisar_sesion(request, pk):
-    sesion = get_object_or_404(SesionEstadoCuenta, pk=pk)
     perfil = getattr(request.user, 'perfilusuario', None)
+    if request.user.is_superuser:
+        sesion = get_object_or_404(SesionEstadoCuenta, pk=pk)
+    else:
+        empresa_perfil = perfil.empresa if perfil else None
+        sesion = get_object_or_404(SesionEstadoCuenta, pk=pk, empresa=empresa_perfil)
+        
     empresa = perfil.empresa if perfil and not request.user.is_superuser else sesion.empresa
 
     movimientos = sesion.movimientos.all()
@@ -308,8 +450,13 @@ def revisar_sesion(request, pk):
 
 @login_required
 def aplicar_movimiento(request, movimiento_pk):
-    movimiento = get_object_or_404(MovimientoEstadoCuenta, pk=movimiento_pk)
     perfil = getattr(request.user, 'perfilusuario', None)
+    if request.user.is_superuser:
+        movimiento = get_object_or_404(MovimientoEstadoCuenta, pk=movimiento_pk)
+    else:
+        empresa_perfil = perfil.empresa if perfil else None
+        movimiento = get_object_or_404(MovimientoEstadoCuenta, pk=movimiento_pk, sesion__empresa=empresa_perfil)
+
     empresa = perfil.empresa if perfil and not request.user.is_superuser else movimiento.sesion.empresa
     sesion_cuenta = movimiento.sesion.cuenta_bancaria
 
