@@ -20,6 +20,19 @@
 <body>
 {% include 'navbar.html' %}
 {% include 'loading_overlay.html' %}
+ {% if messages %}
+  {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                <!-- Block for displaying messages -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                    </div>
+                {% endif %}                  
 
 <div class="container-fluid mt-4">
 
@@ -56,16 +69,24 @@
     </div>
 
     <!-- Filtros rápidos -->
-    <div class="d-flex gap-2 mb-3 align-items-center">
-        <span class="text-muted small">Filtrar:</span>
-        <button class="btn btn-sm btn-outline-secondary active" onclick="filtrar('todos', this)">Todos ({{ movimientos.count }})</button>
-        <button class="btn btn-sm btn-outline-warning" onclick="filtrar('pendiente', this)">Pendientes</button>
-        <button class="btn btn-sm btn-outline-success" onclick="filtrar('aplicado', this)">Aplicados</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="filtrar('ignorado', this)">Ignorados</button>
-        <a href="{% url 'lista_sesiones_estado_cuenta' %}" class="btn btn-sm btn-outline-secondary ms-auto">
-            <i class="bi bi-arrow-left me-1"></i> Volver
-        </a>
-    </div>
+<div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+    <span class="text-muted small">Filtrar:</span>
+    <a href="?estado=todos" class="btn btn-sm {% if filtro_actual == 'todos' %}btn-secondary{% else %}btn-outline-secondary{% endif %} reporte-link">
+        Todos ({{ conteos.todos }})
+    </a>
+    <a href="?estado=pendiente" class="btn btn-sm {% if filtro_actual == 'pendiente' %}btn-warning{% else %}btn-outline-warning{% endif %} reporte-link">
+        Pendientes ({{ conteos.pendiente }})
+    </a>
+    <a href="?estado=aplicado" class="btn btn-sm {% if filtro_actual == 'aplicado' %}btn-success{% else %}btn-outline-success{% endif %} reporte-link">
+        Aplicados ({{ conteos.aplicado }})
+    </a>
+    <a href="?estado=ignorado" class="btn btn-sm {% if filtro_actual == 'ignorado' %}btn-secondary{% else %}btn-outline-secondary{% endif %} reporte-link">
+        Ignorados ({{ conteos.ignorado }})
+    </a>
+    <a href="{% url 'lista_sesiones_estado_cuenta' %}" class="btn btn-sm btn-outline-secondary ms-auto reporte-link">
+        <i class="bi bi-arrow-left me-1"></i> Volver
+    </a>
+</div>
 
     <!-- Movimientos -->
     {% for mov in movimientos %}
@@ -107,8 +128,16 @@
                     {% if mov.cliente_detectado %}
                         <div class="small fw-bold mb-1">Cliente detectado:</div>
                         <div class="small">{{ mov.cliente_detectado.nombre }}</div>
-                        {% if mov.cliente_detectado.referencia_pago %}
-                            <div class="small text-muted">{{ mov.cliente_detectado.referencia_pago }}</div>
+                        {% if mov.propiedad_local %}
+                            <div class="small text-muted mt-1">
+                                <i class="bi bi-shop me-1"></i>Local {{ mov.propiedad_local.numero }}
+                            </div>
+                            <div class="small text-muted">{{ mov.propiedad_local.referencia_pago }}</div>
+                        {% elif mov.propiedad_area %}
+                            <div class="small text-muted mt-1">
+                                <i class="bi bi-building me-1"></i>Área {{ mov.propiedad_area.numero }}
+                            </div>
+                            <div class="small text-muted">{{ mov.propiedad_area.referencia_pago }}</div>
                         {% endif %}
                     {% else %}
                         <div class="small text-muted">Sin cliente detectado</div>
@@ -117,7 +146,7 @@
 
                 <!-- Acciones -->
 <div class="col-md-4">
-    {% if mov.estado == 'pendiente' %}
+    {% if mov.estado == 'pendiente' or mov.estado == 'parcial' %}
     <div class="accordion accordion-flush" id="acc-{{ mov.pk }}">
 
         <!-- Opción 1: Asignar a factura existente -->
@@ -134,16 +163,22 @@
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="asignar_factura">
                         <div class="mb-2">
-                            <select name="cliente_id" class="form-select form-select-sm cliente-sel"
-                                    data-mov="{{ mov.pk }}" onchange="cargarFacturas(this)" required>
-                                <option value="">Cliente...</option>
-                                {% for c in clientes %}
-                                    <option value="{{ c.id }}"
-                                        {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
-                                        {{ c.nombre }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            {% if mov.cliente_asignado %}
+                                <input type="hidden" name="cliente_id" value="{{ mov.cliente_asignado.id }}"
+                                       class="cliente-sel" data-mov="{{ mov.pk }}">
+                                <div class="form-control form-control-sm bg-light">{{ mov.cliente_asignado.nombre }}</div>
+                            {% else %}
+                                <select name="cliente_id" class="form-select form-select-sm cliente-sel"
+                                        data-mov="{{ mov.pk }}" onchange="cargarFacturas(this)" required>
+                                    <option value="">Cliente...</option>
+                                    {% for c in clientes %}
+                                        <option value="{{ c.id }}"
+                                            {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
+                                            {{ c.nombre }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
                         </div>
                         <div class="mb-2">
                             <select name="factura_id" class="form-select form-select-sm factura-sel-{{ mov.pk }}"
@@ -152,7 +187,7 @@
                             </select>
                             <input type="hidden" name="tipo_factura" class="tipo-factura-{{ mov.pk }}">
                         </div>
-                        <button type="submit" class="btn btn-success btn-sm w-100">
+                        <button type="submit" class="btn btn-success btn-sm w-100 reporte-link">
                             <i class="bi bi-check me-1"></i> Aplicar cobro
                         </button>
                     </form>
@@ -174,16 +209,24 @@
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="crear_factura_cuota">
                         <div class="mb-2">
-                            <select name="cliente_id" class="form-select form-select-sm cliente-local-sel"
-                                    data-mov="{{ mov.pk }}" onchange="cargarPropiedades(this)" required>
-                                <option value="">Cliente...</option>
-                                {% for c in clientes %}
-                                    <option value="{{ c.id }}"
-                                        {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
-                                        {{ c.nombre }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            {% if mov.cliente_asignado %}
+                                <input type="hidden" name="cliente_id" value="{{ mov.cliente_asignado.id }}"
+                                       class="cliente-local-sel" data-mov="{{ mov.pk }}">
+                                <div class="form-control form-control-sm bg-light">{{ mov.cliente_asignado.nombre }}</div>
+                            {% else %}
+                                <select name="cliente_id" class="form-select form-select-sm cliente-local-sel"
+                                        data-mov="{{ mov.pk }}" onchange="cargarPropiedades(this)" required>
+                                    <option value="">Cliente...</option>
+                                    {% for c in clientes %}
+                                        <option value="{{ c.id }}"
+                                            {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}
+                                            {% if mov.propiedad_local and mov.propiedad_local.cliente_id == c.id %}data-preselect-local="{{ mov.propiedad_local.id }}"{% endif %}
+                                            {% if mov.propiedad_area and mov.propiedad_area.cliente_id == c.id %}data-preselect-area="{{ mov.propiedad_area.id }}"{% endif %}>
+                                            {{ c.nombre }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
                         </div>
                         <div class="mb-2">
                             <select name="tipo_cuota" class="form-select form-select-sm" required>
@@ -209,7 +252,7 @@
                             <input type="date" name="fecha_vencimiento" class="form-control form-control-sm"
                                    value="{{ mov.fecha|date:'Y-m-d' }}" required>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 reporte-link">
                             <i class="bi bi-plus me-1"></i> Crear factura + pago
                         </button>
                     </form>
@@ -231,15 +274,21 @@
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="crear_factura_otros">
                         <div class="mb-2">
-                            <select name="cliente_id" class="form-select form-select-sm" required>
-                                <option value="">Cliente...</option>
-                                {% for c in clientes %}
-                                    <option value="{{ c.id }}"
-                                        {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
-                                        {{ c.nombre }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            {% if mov.cliente_asignado %}
+                                <input type="hidden" name="cliente_id" value="{{ mov.cliente_asignado.id }}">
+                                <div class="form-control form-control-sm bg-light">{{ mov.cliente_asignado.nombre }}</div>
+                            {% else %}
+                                <select name="cliente_id" class="form-select form-select-sm cliente-sel"
+                                        data-mov="{{ mov.pk }}" required>
+                                    <option value="">Cliente...</option>
+                                    {% for c in clientes %}
+                                        <option value="{{ c.id }}"
+                                            {% if mov.cliente_detectado and mov.cliente_detectado.id == c.id %}selected{% endif %}>
+                                            {{ c.nombre }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
                         </div>
                         <div class="mb-2">
                             <select name="tipo_ingreso_id" class="form-select form-select-sm">
@@ -249,7 +298,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 reporte-link">
                             <i class="bi bi-plus me-1"></i> Crear factura + cobro
                         </button>
                     </form>
@@ -273,7 +322,7 @@
                     <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="no_identificado">
-                        <button type="submit" class="btn btn-warning btn-sm w-100">
+                        <button type="submit" class="btn btn-warning btn-sm w-100 reporte-link">
                             <i class="bi bi-question-circle me-1"></i> Registrar como no identificado
                         </button>
                     </form>
@@ -285,7 +334,7 @@
         <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
             {% csrf_token %}
             <input type="hidden" name="accion" value="ignorar">
-            <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+            <button type="submit" class="btn btn-outline-secondary btn-sm w-100 reporte-link">
                 <i class="bi bi-x-circle me-1"></i> Ignorar
             </button>
         </form>
@@ -305,6 +354,11 @@
     {% elif mov.estado == 'ignorado' %}
         <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i> Ignorado</span>
     {% endif %}
+    {% if mov.estado == 'parcial' %}
+    <span class="badge bg-info text-dark">
+        Parcial — resta ${{ mov.saldo_restante|floatformat:2|intcomma }}
+    </span>
+{% endif %}
 </div>
 
             </div>
@@ -317,6 +371,35 @@
     </div>
     {% endfor %}
 
+    {% if page_obj.paginator.num_pages > 1 %}
+<nav aria-label="Paginación de movimientos" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link reporte-link" href="?estado={{ filtro_actual }}&page=1">Primera</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link reporte-link" href="?estado={{ filtro_actual }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+            </li>
+        {% endif %}
+
+        <li class="page-item disabled">
+            <span class="page-link">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link reporte-link" href="?estado={{ filtro_actual }}&page={{ page_obj.next_page_number }}">Siguiente</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link reporte-link" href="?estado={{ filtro_actual }}&page={{ page_obj.paginator.num_pages }}">Última</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 </div>
 
 {% include 'tool_bar.html' %}
@@ -395,10 +478,18 @@ function cargarPropiedades(sel) {
             opt.textContent = `Área ${a.numero}`;
             areaSel.appendChild(opt);
         });
+
+        // Preseleccionar la propiedad que la IA ya detectó, si aplica
+        if (sel.dataset.preselectLocal) {
+            localSel.value = sel.dataset.preselectLocal;
+        }
+        if (sel.dataset.preselectArea) {
+            areaSel.value = sel.dataset.preselectArea;
+        }
     }
 }
 
-// Cargar facturas y propiedades para clientes ya detectados al cargar la página
+// Cargar facturas y propiedades para clientes ya detectados (o ya bloqueados) al cargar la página
 document.querySelectorAll('.cliente-sel').forEach(sel => {
     if (sel.value) cargarFacturas(sel);
 });
@@ -406,19 +497,29 @@ document.querySelectorAll('.cliente-local-sel').forEach(sel => {
     if (sel.value) cargarPropiedades(sel);
 });
 
-function filtrar(estado, btn) {
-    document.querySelectorAll('.movimiento-card').forEach(card => {
-        card.style.display = (estado === 'todos' || card.dataset.estado === estado) ? '' : 'none';
-    });
-    document.querySelectorAll('[onclick^="filtrar"]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-}
 </script>
 <script>
     // Mostrar overlay de carga al enviar formularios
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', () => {
             document.getElementById('loading-overlay').classList.remove('d-none');
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
         });
     });
 </script>

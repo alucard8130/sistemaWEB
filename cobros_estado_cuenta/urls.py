@@ -8,4 +8,6 @@ urlpatterns = [
     path('movimiento/<int:movimiento_pk>/aplicar/', views.aplicar_movimiento, name='aplicar_movimiento_estado_cuenta'),
     path('<int:pk>/eliminar/', views.eliminar_sesion, name='eliminar_sesion_estado_cuenta'),
     path('convertir-preview/', views.convertir_pdf_preview, name='convertir_pdf_preview'),
+    path('procesando/<int:pk>/', views.ver_procesando_sesion, name='procesando_sesion_estado_cuenta'),
+    path('estado-json/<int:pk>/', views.estado_sesion_json, name='estado_sesion_estado_cuenta_json'),
 ]

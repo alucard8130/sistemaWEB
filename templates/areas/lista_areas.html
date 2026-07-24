@@ -215,7 +215,13 @@
                 >
                   <i class="bi bi-slash-circle"></i>
               </a>
-              
+              {% if area.referencia_pago %}
+                <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de Instrucciones de Pago">
+                  <i class="bi bi-qr-code"></i>
+                </a>
+                {% else %}
+                <span class="text-muted">Sin referencia (asigna un cliente primero)</span>
+                {% endif %}
                 <!-- Button to assign client if area is available -->
                 {% if area.status == 'disponible' %}
                 <a

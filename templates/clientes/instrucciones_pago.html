@@ -36,6 +36,20 @@
         .aviso { margin-top: 18px; background: #fff8e1; border-left: 4px solid #f9a825; padding: 12px 16px; border-radius: 6px; }
         .footer { text-align: center; color: #888; font-size: 0.9em; margin-top: 32px; border-top: 1px solid #eee; padding-top: 16px; }
         .sin-cuentas { color: #e53935; margin-top: 8px; }
+
+        /* Nuevo: separador entre propiedades y su etiqueta */
+        .propiedad-bloque { margin-top: 40px; }
+        .propiedad-bloque:first-of-type { margin-top: 0; }
+        .propiedad-titulo {
+            background: #1a237e;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px 8px 0 0;
+            font-size: 1.05em;
+            font-weight: bold;
+            margin-top: 32px;
+        }
+        .propiedad-separador { border: none; border-top: 2px dashed #dce3f0; margin: 32px 0; }
     </style>
 </head>
 <body>
@@ -45,12 +59,6 @@
         <div class="empresa-header">
             <div class="empresa-nombre">{{ cliente.empresa.nombre }}</div>
             <div class="subtitulo">Instrucciones para Pago de Cuotas</div>
-        </div>
-
-        <!-- Referencia de pago -->
-        <div class="referencia-box">
-            <div class="referencia-label">Referencia de pago para transferencias o depósitos:</div>
-            <div class="referencia">{{ cliente.referencia_pago }}</div>
         </div>
 
         <!-- Datos del cliente -->
@@ -66,66 +74,94 @@
         </div>
         {% endif %}
 
-        <!-- Cuentas bancarias con QR -->
-        <div class="section-title">Datos Bancarios</div>
-        <p style="color:#555; font-size:0.95em; margin-top:0;">
-            Puedes realizar tu pago a cualquiera de las siguientes cuentas.
-            Usa siempre tu <strong>referencia de pago</strong> para identificar tu depósito.
+        <p style="color:#555; font-size:0.95em;">
+            A continuación encontrarás una referencia de pago distinta para cada
+            propiedad a tu nombre. <strong>Usa siempre la referencia correspondiente
+            a la propiedad que estás pagando</strong> para que tu abono se identifique
+            correctamente.
         </p>
 
-        {% for cuenta in cuentas_con_qr %}
-        <div class="cuenta-card">
-            <table class="cuenta-tabla">
-                <tr>
-                    <!-- Datos de la cuenta -->
-                    <td style="vertical-align: top; padding-right: 16px;">
-                        <div class="banco-titulo">
-                            {{ cuenta.banco }}
-                            {% if cuenta.tipo_cuenta %}
-                            <span class="tipo-cuenta">— {{ cuenta.tipo_cuenta }}</span>
-                            {% endif %}
-                        </div>
-                        <table class="cuenta-datos">
-                            <tr>
-                                <td>Cuenta:</td>
-                                <td>{{ cuenta.numero_cuenta }}</td>
-                            </tr>
-                            <tr>
-                                <td>CLABE:</td>
-                                <td style="letter-spacing: 1px;">{{ cuenta.clabe }}</td>
-                            </tr>
-                            <tr>
-                                <td>Titular:</td>
-                                <td>{{ cliente.empresa.nombre }}</td>
-                            </tr>
-                        </table>
-                    </td>
-                    <!-- QR SPEI por cuenta -->
-                    <td style="vertical-align: top; text-align: center; width: 130px;">
-                        <img
-                            src="data:image/png;base64,{{ cuenta.qr_base64 }}"
-                            alt="QR SPEI {{ cuenta.banco }}"
-                            style="width: 110px; height: 110px;"
-                        >
-                        <div style="font-size: 0.75em; color: #888; margin-top: 4px;">
-                            Escanear para pagar
-                        </div>
-                    </td>
-                </tr>
-            </table>
+        {% for propiedad in propiedades %}
+        <div class="propiedad-bloque">
+
+            <div class="propiedad-titulo">
+                {{ propiedad.tipo_label }} — {{ propiedad.numero }}
+            </div>
+
+            <!-- Referencia de pago de esta propiedad -->
+            <div class="referencia-box">
+                <div class="referencia-label">Referencia de pago para transferencias o depósitos:</div>
+                <div class="referencia">{{ propiedad.referencia_pago }}</div>
+            </div>
+
+            <!-- Cuentas bancarias con QR para esta propiedad -->
+            <div class="section-title">Datos Bancarios</div>
+            <p style="color:#555; font-size:0.95em; margin-top:0;">
+                Puedes realizar tu pago a cualquiera de las siguientes cuentas.
+                Usa siempre la <strong>referencia de pago</strong> de arriba para
+                identificar tu depósito.
+            </p>
+
+            {% for cuenta in propiedad.cuentas_con_qr %}
+            <div class="cuenta-card">
+                <table class="cuenta-tabla">
+                    <tr>
+                        <!-- Datos de la cuenta -->
+                        <td style="vertical-align: top; padding-right: 16px;">
+                            <div class="banco-titulo">
+                                {{ cuenta.banco }}
+                                {% if cuenta.tipo_cuenta %}
+                                <span class="tipo-cuenta">— {{ cuenta.tipo_cuenta }}</span>
+                                {% endif %}
+                            </div>
+                            <table class="cuenta-datos">
+                                <tr>
+                                    <td>Cuenta:</td>
+                                    <td>{{ cuenta.numero_cuenta }}</td>
+                                </tr>
+                                <tr>
+                                    <td>CLABE:</td>
+                                    <td style="letter-spacing: 1px;">{{ cuenta.clabe }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Titular:</td>
+                                    <td>{{ cliente.empresa.nombre }}</td>
+                                </tr>
+                            </table>
+                        </td>
+                        <!-- QR SPEI por cuenta -->
+                        <td style="vertical-align: top; text-align: center; width: 130px;">
+                            <img
+                                src="data:image/png;base64,{{ cuenta.qr_base64 }}"
+                                alt="QR SPEI {{ cuenta.banco }}"
+                                style="width: 110px; height: 110px;"
+                            >
+                            <div style="font-size: 0.75em; color: #888; margin-top: 4px;">
+                                Escanear para pagar
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            {% empty %}
+            <p class="sin-cuentas">
+                No hay cuentas bancarias configuradas para este condominio.
+                Contacta a tu administrador.
+            </p>
+            {% endfor %}
+
         </div>
-        {% empty %}
-        <p class="sin-cuentas">
-            No hay cuentas bancarias configuradas para este condominio.
-            Contacta a tu administrador.
-        </p>
+
+        {% if not forloop.last %}
+        <hr class="propiedad-separador">
+        {% endif %}
         {% endfor %}
 
-        <!-- Aviso -->
+        <!-- Aviso general -->
         <div class="aviso">
             <p style="margin:0;">Al realizar su depósito o transferencia, indique la
-            <strong>referencia de pago</strong> y el monto correspondiente para que
-            su abono sea identificado correctamente.</p>
+            <strong>referencia de pago de la propiedad correspondiente</strong> y el
+            monto correspondiente para que su abono sea identificado correctamente.</p>
         </div>
 
         <!-- Footer -->

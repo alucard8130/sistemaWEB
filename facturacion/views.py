@@ -3365,10 +3365,7 @@ def registrar_cobro_otros_ingresos(request, factura_id):
             else:
                     cobro.monto = monto_cobro
                     cobro.save()
-                    total_cobrado = sum([c.monto for c in factura.cobros.all()])
-                    if total_cobrado >= float(factura.monto):
-                        factura.estatus = "cobrada"
-                        factura.save()
+                    factura.actualizar_estatus()
                     messages.success(request, "Cobro registrado correctamente.")
                     return redirect("lista_facturas_otros_ingresos")
     else:

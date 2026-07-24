@@ -28,7 +28,7 @@ from areas.views import (
     contrato_formulario, generar_contrato, lista_areas, crear_area, editar_area, eliminar_area,
     areas_inactivas, reactivar_area)
 from clientes.views import (
-    actualizar_factura_global, carga_masiva_clientes, clientes_inactivos, instrucciones_pago_pdf, lista_clientes, crear_cliente, 
+    actualizar_factura_global, carga_masiva_clientes, clientes_inactivos, instrucciones_pago_pdf, instrucciones_pago_propiedad_pdf, lista_clientes, crear_cliente, 
     editar_cliente, eliminar_cliente, plantilla_clientes_excel, reactivar_cliente)
 from proveedores.views import carga_masiva_proveedores, eliminar_proveedor, plantilla_proveedores_excel
 from publicidad.views import anuncios_api, solicitud_publicidad_api
@@ -213,6 +213,8 @@ urlpatterns = [
     path('planes/plus/', views.info_plus, name='info_plus'),
     path('traspasos/', include('traspasos.urls')),
     path("reporte/", reporte_caja_chica, name="reporte_caja_chica"),
+    path('clientes/<int:cliente_id>/instrucciones-pago/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
+    path('propiedades/<str:tipo>/<int:propiedad_id>/instrucciones-pago/', instrucciones_pago_propiedad_pdf, name='instrucciones_pago_propiedad_pdf'),
 ]
 
     

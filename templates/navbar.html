@@ -22,8 +22,9 @@
       <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
         <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="welcome-logo" style="max-width:35px; margin: 0 auto;">
       </a>
+    
 
-      <a href="{% url 'dashboard_inicio' %}" class="btn btn-sm btn-light-shadow reporte-link" title="Inicio">
+      <a href="{% url 'dashboard_inicio' %}" class="btn btn-sm btn-light reporte-link" title="Inicio">
         <i class="bi bi-house me-1"></i>
       </a>
 
@@ -163,11 +164,11 @@
               <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
                   <li><a class="dropdown-item reporte-link" href="{% url 'lista_sesiones_estado_cuenta' %}">
-                      <i class="bi bi-bank me-1"></i> Cobros Automaticos
+                      <i class="bi bi-bank me-1"></i> Cobro cuotas por IA
                   </a></li>
               {% else %}
                   <li><a class="dropdown-item disabled" href="#">
-                      <i class="bi bi-bank me-1"></i> Cobros Automaticos (PREMIUM)
+                      <i class="bi bi-bank me-1"></i> Cobro cuotas por IA (PREMIUM)
                   </a></li>
               {% endif %}
               {% comment %} {% if request.user.perfilusuario.empresa.es_premium %}

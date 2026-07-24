@@ -49,11 +49,37 @@ class MovimientoEstadoCuenta(models.Model):
     descripcion = models.TextField()
     referencia = models.CharField(max_length=255, blank=True)
     monto = models.DecimalField(max_digits=12, decimal_places=2)
+
+    # NUEVO: cuánto del monto ya se ha repartido entre facturas
+    monto_aplicado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # NUEVO: una vez que se aplica la primera parte, el resto del saldo solo
+    # puede seguir asignándose a facturas de este mismo cliente
+    cliente_asignado = models.ForeignKey(
+        'clientes.Cliente', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='movimientos_asignados_edc'
+    )
+
     # Matching con cliente
     cliente_detectado = models.ForeignKey(
         'clientes.Cliente', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='movimientos_estado_cuenta'
     )
+    # NUEVO: propiedad detectada por la IA
+    propiedad_tipo = models.CharField(
+        max_length=10,
+        choices=[('local', 'Local Comercial'), ('area', 'Área Común')],
+        blank=True, null=True
+    )
+    propiedad_local = models.ForeignKey(
+        'locales.LocalComercial', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='movimientos_estado_cuenta'
+    )
+    propiedad_area = models.ForeignKey(
+        'areas.AreaComun', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='movimientos_estado_cuenta'
+    )
+    
     confianza_match = models.CharField(
         max_length=20,
         choices=[('alta', 'Alta'), ('media', 'Media'), ('baja', 'Baja'), ('ninguna', 'Sin match')],
@@ -72,8 +98,29 @@ class MovimientoEstadoCuenta(models.Model):
         null=True, blank=True
     )
 
+    @property
+    def saldo_restante(self):
+        return self.monto - self.monto_aplicado
+    
     class Meta:
         ordering = ['fecha', 'monto']
 
     def __str__(self):
         return f"{self.fecha} ${self.monto} — {self.descripcion[:50]}"
+
+
+class AplicacionMovimientoEstadoCuenta(models.Model):
+    """Cada parte de un movimiento que se fue repartiendo entre distintas facturas."""
+    movimiento = models.ForeignKey(MovimientoEstadoCuenta, on_delete=models.CASCADE, related_name='aplicaciones')
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+    pago = models.ForeignKey('facturacion.Pago', on_delete=models.SET_NULL, null=True, blank=True)
+    cobro_otros_ingresos = models.ForeignKey('facturacion.CobroOtrosIngresos', on_delete=models.SET_NULL, null=True, blank=True)
+    factura_cuota = models.ForeignKey('facturacion.Factura', on_delete=models.SET_NULL, null=True, blank=True)
+    factura_otros = models.ForeignKey('facturacion.FacturaOtrosIngresos', on_delete=models.SET_NULL, null=True, blank=True)
+    fecha_aplicacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['fecha_aplicacion']
+
+    def __str__(self):
+        return f"{self.movimiento_id} — ${self.monto}"

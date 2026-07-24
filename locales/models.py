@@ -1,6 +1,6 @@
 
 from django.db import models
-from clientes.models import Cliente
+#from clientes.models import Cliente
 from empresas.models import Empresa
 
 # Create your models here.
@@ -25,6 +25,7 @@ class LocalComercial(models.Model):
     activo = models.BooleanField(default=True)
     observaciones = models.CharField(blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota anual?")
+    
     TIPO_CHOICES = [
         ('local', 'Local Comercial'),
         ('casa', 'Casa'),
@@ -34,7 +35,18 @@ class LocalComercial(models.Model):
         ('terreno', 'Terreno'),
     ]
     tipo_propiedad = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
 
+    def save(self, *args, **kwargs):
+        if not self.referencia_pago and self.cliente_id:
+            from clientes.utils import generar_referencia_pago_propiedad
+            nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'L', self.numero)
+            intentos = 0
+            while LocalComercial.objects.filter(referencia_pago=nueva_ref).exists() and intentos < 5:
+                nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'L', self.numero)
+                intentos += 1
+            self.referencia_pago = nueva_ref
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.numero}"

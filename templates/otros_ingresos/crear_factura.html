@@ -127,8 +127,8 @@
           <input type="text" name="nombre" class="form-control" placeholder="Nombre del tipo de ingreso" required>
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Guardar</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary reporte-link">Guardar</button>
+          <button type="button" class="btn btn-secondary reporte-link" data-bs-dismiss="modal">Cancelar</button>
         </div>
       </form>
     </div>
@@ -196,6 +196,23 @@
         });
     }
 });
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
+    });
     </script>
 </body>
 </html>

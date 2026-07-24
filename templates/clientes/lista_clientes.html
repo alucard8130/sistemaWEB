@@ -87,7 +87,6 @@
                         <th>Email</th>
                         <th>Factura Global</th>                        
                         <th>Acciones</th>
-                        <th>Referencia Pago</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -133,11 +132,7 @@
                             </a>
                            
                         </td>
-                        <td class="text-nowrap">
-                         <a href="{% url 'instrucciones_pago_pdf' cliente.pk %}" class="btn btn-sm btn-outline-secondary" title="Descargar Instrucciones de Pago">
-                                <i class="bi bi-file-earmark-pdf"></i>
-                            </a>
-                        </td>
+                        
                     </tr>
                     {% empty %}
                     <tr>

@@ -164,7 +164,13 @@
                                     
                                     <i class="bi bi-slash-circle"></i>
                                 </a>
-                                
+                                {% if local.referencia_pago %}
+                                <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='local' propiedad_id=local.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de instrucciones de pago para esta propiedad">
+                                    <i class="bi bi-qr-code"></i>
+                                </a>
+                                {% else %}  
+                                <span class="text-muted">Sin referencia (asigna un cliente primero)</span>
+                                {% endif %}
                             </td>
                         </tr>
                     {% empty %}

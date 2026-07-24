@@ -1,7 +1,7 @@
 
 from django import forms
 from django.db import models
-from clientes.models import Cliente
+#from clientes.models import Cliente
 from empresas.models import Empresa
 from django.utils import timezone
 
@@ -40,7 +40,19 @@ class AreaComun(models.Model):
     fecha_baja = models.DateTimeField(blank=True, null=True)
     observaciones = models.CharField(blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota global? un solo pago")
-    
+    referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.referencia_pago and self.cliente_id:
+            from clientes.utils import generar_referencia_pago_propiedad
+            nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'A', self.numero)
+            intentos = 0
+            while AreaComun.objects.filter(referencia_pago=nueva_ref).exists() and intentos < 5:
+                nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'A', self.numero)
+                intentos += 1
+            self.referencia_pago = nueva_ref
+        super().save(*args, **kwargs)
+        
     @property
     def estado_vigencia(self):
         if self.fecha_fin and self.fecha_fin < timezone.now().date():

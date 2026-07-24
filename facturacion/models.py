@@ -1,5 +1,7 @@
 
 # Create your models here.
+from decimal import Decimal
+
 from django.db import models
 from django.conf import settings
 from empresas.models import CuentaBancaria, Empresa
@@ -130,14 +132,13 @@ class FacturaOtrosIngresos(models.Model):
     @property
     def saldo(self):
         if self.estatus == 'cancelada':
-            return 0
+            return Decimal('0')
         if self.estatus in ('cobrada', 'pendiente'):
-            #total_cobrado = sum(c.monto for c in self.cobros.all())
-            return float(self.monto) - float(self.total_cobrado)
-        return 0
+            return self.monto - self.total_cobrado
+        return Decimal('0')
 
     @property
-    def total_cobrado(self):
+    def total_cobrado(self):    
         return sum(c.monto for c in self.cobros.all())
     
     def actualizar_estatus(self):
