@@ -22,10 +22,20 @@
 </style>
 </head>
 <body>
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
 <div class="container py-4">
 
     <div class="mb-3">
-        <a href="{% url 'dashboard_inicio' %}" class="text-decoration-none text-muted small">
+        <a href="{% url 'dashboard_inicio' %}" class="text-decoration-none text-muted small reporte-link">
             <i class="bi bi-arrow-left"></i> Volver al inicio
         </a>
     </div>
@@ -36,7 +46,7 @@
             <p class="text-muted mb-0">Corte al {{ hoy|date:"d/m/Y" }}</p>
         </div>
 
-    <form method="get" class="d-flex align-items-center gap-3">
+    <form method="get" class="d-flex align-items-center gap-3" id="form-filtros">
         <input type="hidden" name="filtros" value="1">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" name="incluir_cuotas" value="1"
@@ -50,7 +60,7 @@
         </div>
     </form>
     </div>
-
+            
     <!-- KPIs principales -->
     <div class="row g-3 mb-4">
         <div class="col-md-4">
@@ -193,6 +203,24 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function mostrarOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('d-none');
+        overlay.style.display = 'flex';
+    }
+
+    // Mostrar overlay de carga al enviar cualquier formulario (ej. checkboxes de filtro)
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', mostrarOverlay);
+    });
+
+    // Mostrar overlay también al navegar con links marcados como "reporte-link"
+    document.querySelectorAll('a.reporte-link').forEach(link => {
+        link.addEventListener('click', mostrarOverlay);
+    });
+</script>
 <script>
     const nombresMes = {{ nombres_mes|safe }};
     const tendenciaAnual = [
