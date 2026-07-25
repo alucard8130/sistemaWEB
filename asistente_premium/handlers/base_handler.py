@@ -14,6 +14,11 @@ class BaseHandler(ABC):
     intencion_aliases = []       # Ej: ['alta_cliente', 'nuevo_cliente']
     descripcion = ""
     emoji = "❓"
+
+    # NUEVO: si es True, el handler NO aparece en el menú de "no entiendo"
+    # ni en el menú principal genérico -- solo se puede llegar a él con
+    # datos precargados desde un flujo específico (ej. subida de archivo).
+    oculto_en_menu = False
     
     # Campos requeridos y opcionales
     campos_requeridos = []

@@ -4,6 +4,7 @@ from asistente_premium.handlers.solicitud_gasto_handler import SolicitudGastoHan
 from .tipo_gasto_handler import TipoGastoHandler
 from .base_handler import BaseHandler
 from .cliente_handler import ClienteHandler
+from .actualizar_cliente_constancia_handler import ActualizarClienteConstanciaHandler
 from .proveedor_handler import ProveedorHandler
 from .empleado_handler import EmpleadoHandler
 from .buscar_factura_handler import BuscarFacturaHandler
@@ -20,8 +21,9 @@ HANDLERS_REGISTRY = {
     'crear_tipo_gasto': TipoGastoHandler,
     'buscar_factura': BuscarFacturaHandler,
     'asignar_pago': AsignarPagoHandler,
-    'registrar_cobro': AsignarPagoHandler,  # ← alias directo
+    'registrar_cobro': AsignarPagoHandler,  
     'crear_solicitud_gasto': SolicitudGastoHandler,
+    'actualizar_cliente_constancia': ActualizarClienteConstanciaHandler
 }
 
 def obtener_handler(intencion: str, usuario, empresa=None):

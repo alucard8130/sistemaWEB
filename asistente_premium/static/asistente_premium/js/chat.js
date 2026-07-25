@@ -37,7 +37,7 @@ async function enviarMensaje(mensaje, intencion = null) {
             empresa_id: config.empresaId
         };
 
-        if (window._datosComprobante && intencion === 'crear_solicitud_gasto') {
+        if (window._datosComprobante && ['crear_solicitud_gasto', 'crear_cliente', 'actualizar_cliente_constancia'].includes(intencion)) {
             body.datos_comprobante = window._datosComprobante;
             window._datosComprobante = null;
         }
@@ -196,6 +196,7 @@ async function iniciarCheckoutStripe(nivelRequerido) {
 async function cancelarConversacion() {
     if (!currentConversationId) {
         reiniciarChat();
+        mostrarMenuPrincipal('❌ Solicitud cancelada. ¿En qué más puedo ayudarte?');
         return;
     }
     if (isWaitingForResponse) return;
@@ -287,9 +288,21 @@ function agregarMensajeAsistente(texto, opciones = [], campoInfo = null) {
     if (opciones.length > 0) {
         html += '<div class="message-options">';
         opciones.forEach(opcion => {
+            // NUEVO: si la opción es de cancelar, usa la función real de
+            // cancelar en vez de mandar "cancelar" como mensaje de texto
+            // (evita caer en el menú genérico de "no entiendo").
+            if (opcion.accion === 'cancelar') {
+                html += `
+                    <button class="option-btn" onclick="cancelarConversacion()">
+                        ${escapeHtml(opcion.texto)}
+                    </button>
+                `;
+                return;
+            }
+
             const valor = typeof opcion.valor === 'string' ? opcion.valor : opcion.texto;
             const intencionArg = opcion.intencion ? `'${escapeHtml(opcion.intencion)}'` : 'null';
-            
+
             if (opcion.intencion) {
                 html += `
                     <button class="option-btn" onclick="enviarMensajeConSeguimiento('${escapeHtml(valor)}', ${intencionArg})">
@@ -393,9 +406,9 @@ const MENU_OPCIONES = [
     { requerido: 'plus', emoji: '\ud83d\udcb5', texto: 'Alta Cuenta Bancaria', mensaje: 'Quiero dar de alta una cuenta bancaria' },
     { requerido: 'plus', emoji: '\ud83d\udcb3', texto: 'Alta Cuenta de Gastos', mensaje: 'Quiero dar de alta una cuenta de gastos' },
     { requerido: 'premium', emoji: '\ud83d\udd0d', texto: 'Buscar Factura Cuotas y asignar cobro', mensaje: 'Quiero buscar una factura' },
-    //{ requerido: 'premium', emoji: '\ud83d\udcb0', texto: 'Registrar Cobro de Cuotas', mensaje: 'Quiero registrar un cobro' },
     { requerido: 'plus', emoji: '\ud83e\uddfe', texto: 'Solicitud de gasto ', mensaje: 'Quiero registrar una solicitud de gasto' },
     { requerido: 'premium', emoji: '\ud83d\udcce', texto: 'Subir comprobante y generar solicitud de gasto', mensaje: 'subir_comprobante' },
+    { requerido: 'premium', emoji: '📄', texto: 'Subir Constancia Fiscal (Cliente)', mensaje: 'subir_constancia_fiscal' },
 ];
 
 const NIVEL_ORDEN_JS = { demo: 0, plus: 1, premium: 2 };
@@ -420,9 +433,10 @@ function mostrarMenuPrincipal(mensaje = '\u00bfEn que mas puedo ayudarte?') {
 
     const botonesHtml = disponibles.map(op => {
         // El botón de subir comprobante activa el input de archivo
-        if (op.mensaje === 'subir_comprobante') {
+        if (op.mensaje === 'subir_comprobante' || op.mensaje === 'subir_constancia_fiscal') {
+            const inputId = op.mensaje === 'subir_comprobante' ? 'comprobanteInput' : 'constanciaInput';
             return `
-                <button class="quick-action-btn" onclick="document.getElementById('comprobanteInput').click()">
+                <button class="quick-action-btn" onclick="document.getElementById('${inputId}').click()">
                     <span class="emoji">${op.emoji}</span>
                     <span>${escapeHtml(op.texto)}</span>
                 </button>
@@ -529,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `¿Quieres que cree la solicitud de gasto con estos datos?`,
                         [
                             { texto: '✅ Sí, crear solicitud', valor: 'Quiero registrar una solicitud de gasto', intencion: 'crear_solicitud_gasto' },
-                            { texto: '❌ No, cancelar', valor: 'cancelar', intencion: null }
+                            { texto: '❌ No, cancelar', accion: 'cancelar' }
                         ]
                     );
                     window._datosComprobante = d;
@@ -543,5 +557,79 @@ document.addEventListener('DOMContentLoaded', function() {
 
             e.target.value = '';
         });
+        // Subida de constancia fiscal
+    const constanciaInput = document.getElementById('constanciaInput');
+    if (constanciaInput) {
+        constanciaInput.addEventListener('change', async function(e) {
+            const archivo = e.target.files[0];
+            if (!archivo) return;
+
+            agregarMensajeUsuario(`📎 Analizando constancia fiscal: ${archivo.name}...`);
+            mostrarLoading();
+
+            const formData = new FormData();
+            formData.append('constancia', archivo);
+
+            try {
+                const resp = await fetch('/asistente/api/conversaciones/procesar_constancia_fiscal/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': config.csrfToken },
+                    body: formData
+                });
+                const data = await resp.json();
+                cerrarLoading();
+
+                if (!data.exito) {
+                    agregarMensajeError(`❌ No pude leer la constancia: ${data.error || 'Error desconocido'}`);
+                    e.target.value = '';
+                    return;
+                }
+
+                const d = data.datos;
+
+                if (data.modo === 'actualizar') {
+                    const campos = data.campos_a_actualizar || {};
+                    const camposTexto = Object.keys(campos).length > 0
+                        ? Object.entries(campos).map(
+                            ([k, v]) => `• ${k}: ${v.anterior} → ${v.nuevo}`
+                          ).join('\n')
+                        : '(no hay cambios, los datos ya coinciden)';
+
+                    agregarMensajeAsistente(
+                        `✅ Ya existe un cliente con RFC ${d.rfc}: ${data.cliente_nombre}\n\n` +
+                        `Esto se actualizaría:\n${camposTexto}\n\n` +
+                        `¿Actualizo el cliente con estos datos?`,
+                        [
+                            { texto: '✅ Sí, actualizar', valor: 'Actualizar cliente con constancia', intencion: 'actualizar_cliente_constancia' },
+                            { texto: '❌ No, cancelar', accion: 'cancelar' }
+                        ]
+                    );
+                    window._datosComprobante = { cliente_id: data.cliente_id, ...d };
+
+                } else {
+                    agregarMensajeAsistente(
+                        `✅ Constancia analizada — no existe un cliente con este RFC, se creará uno nuevo:\n\n` +
+                        `🏢 Nombre: ${d.nombre || 'No detectado'}\n` +
+                        `🆔 RFC: ${d.rfc}\n` +
+                        `📋 Régimen fiscal: ${d.regimen_fiscal || 'No detectado'}\n` +
+                        `📮 C.P.: ${d.codigo_postal || 'No detectado'}\n\n` +
+                        `¿Quieres que cree el cliente con estos datos?`,
+                        [
+                            { texto: '✅ Sí, crear cliente', valor: 'Quiero dar de alta un cliente', intencion: 'crear_cliente' },
+                            { texto: '❌ No, cancelar', accion: 'cancelar' }
+                        ]
+                    );
+                    window._datosComprobante = d;
+                }
+
+            } catch (err) {
+                cerrarLoading();
+                agregarMensajeError('❌ Error al procesar el archivo.');
+            }
+
+            e.target.value = '';
+        });
+    }
+        
     }
 });

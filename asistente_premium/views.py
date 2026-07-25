@@ -3,13 +3,17 @@ from django.views.generic import TemplateView
 from django.utils.decorators import method_decorator
 from django.conf import settings
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+
+from clientes.models import Cliente
 from .models import ConversacionAsistente
 from .serializers import ConversacionSerializer, MensajeSerializer
 from .services import AsistenteService
-
+import anthropic
+import base64
+import json
 
 @method_decorator(xframe_options_exempt, name="dispatch")
 class ChatView(TemplateView):
@@ -126,9 +130,7 @@ class ConversacionAsistenteViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def procesar_comprobante(self, request):
         """Recibe un archivo PDF/imagen, extrae datos con Claude y los devuelve"""
-        import anthropic
-        import base64
-
+        
         if not request.user.is_authenticated:
             return Response({"error": "No autenticado"}, status=401)
 
@@ -232,3 +234,133 @@ class ConversacionAsistenteViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             return Response({"exito": False, "error": str(e)}, status=500)
+
+
+
+@api_view(['POST'])
+def procesar_constancia_fiscal(request):
+    """Recibe la Constancia de Situación Fiscal (PDF/imagen), extrae los
+    datos con Claude, y determina si corresponde crear un cliente nuevo o
+    completar uno existente (buscado por RFC)."""
+    
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=401)
+
+    perfil = getattr(request.user, 'perfilusuario', None)
+    empresa = perfil.empresa if perfil else None
+    if not empresa:
+        return Response({"error": "No tienes una empresa asignada."}, status=400)
+
+    archivo = request.FILES.get("constancia")
+    if not archivo:
+        return Response({"error": "No se recibió archivo"}, status=400)
+
+    contenido = archivo.read()
+    contenido_b64 = base64.standard_b64encode(contenido).decode("utf-8")
+
+    nombre_archivo = archivo.name.lower()
+    if nombre_archivo.endswith(".pdf"):
+        media_type = "application/pdf"
+        tipo_bloque = "document"
+    elif nombre_archivo.endswith(".png"):
+        media_type = "image/png"
+        tipo_bloque = "image"
+    elif nombre_archivo.endswith((".jpg", ".jpeg")):
+        media_type = "image/jpeg"
+        tipo_bloque = "image"
+    else:
+        return Response({"error": "Formato no soportado. Usa PDF, PNG o JPG"}, status=400)
+
+    prompt_extraccion = """Analiza esta Constancia de Situación Fiscal (CSF) emitida por el SAT (México)
+y extrae los siguientes datos. Responde SOLO en JSON válido, sin markdown:
+
+{
+  "tipo_persona": "Fisica" o "Moral",
+  "rfc": "RFC completo",
+  "nombre_razon_social": "nombre completo o razón social",
+  "regimen_fiscal_codigo": "código de 3 dígitos del régimen fiscal principal/vigente (el que no tenga fecha de baja, o el más reciente si hay varios)",
+  "codigo_postal": "código postal del domicilio fiscal",
+  "direccion": "domicilio fiscal completo concatenado en una sola línea: tipo y nombre de vialidad, número exterior/interior, colonia, municipio/alcaldía, entidad federativa"
+}
+
+Si algún dato no aparece en el documento, pon null. No inventes datos."""
+
+    try:
+        from django.conf import settings
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+        if tipo_bloque == "document":
+            bloque_archivo = {
+                "type": "document",
+                "source": {"type": "base64", "media_type": media_type, "data": contenido_b64},
+            }
+        else:
+            bloque_archivo = {
+                "type": "image",
+                "source": {"type": "base64", "media_type": media_type, "data": contenido_b64},
+            }
+
+        respuesta = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=800,
+            messages=[{
+                "role": "user",
+                "content": [bloque_archivo, {"type": "text", "text": prompt_extraccion}],
+            }],
+        )
+
+        texto = respuesta.content[0].text.strip()
+        texto = texto.replace("```json", "").replace("```", "").strip()
+        datos_extraidos = json.loads(texto)
+
+    except Exception as e:
+        return Response({"exito": False, "error": str(e)}, status=500)
+
+    rfc = (datos_extraidos.get('rfc') or '').strip().upper()
+    if not rfc:
+        return Response({
+            "exito": False,
+            "error": "No se pudo leer el RFC en el documento. Revisa que sea legible e inténtalo de nuevo."
+        })
+
+    tipo_contribuyente = None
+    if datos_extraidos.get('tipo_persona') in ('Fisica', 'Moral'):
+        tipo_contribuyente = datos_extraidos.get('tipo_persona')
+
+    datos_normalizados = {
+        'nombre': datos_extraidos.get('nombre_razon_social'),
+        'rfc': rfc,
+        'tipo_contribuyente': tipo_contribuyente,
+        'regimen_fiscal': datos_extraidos.get('regimen_fiscal_codigo'),
+        'codigo_postal': datos_extraidos.get('codigo_postal'),
+        'direccion_domicilio': datos_extraidos.get('direccion'),
+    }
+
+    cliente_existente = Cliente.objects.filter(empresa=empresa, rfc=rfc).first()
+
+    if cliente_existente:
+        campos_a_actualizar = {}
+        for campo, valor_nuevo in datos_normalizados.items():
+            if campo == 'rfc' or not valor_nuevo:
+                continue
+            valor_actual = getattr(cliente_existente, campo, None)
+            if valor_actual != valor_nuevo:
+                campos_a_actualizar[campo] = {
+                    'anterior': valor_actual or '(vacío)',
+                    'nuevo': valor_nuevo,
+                }
+
+        return Response({
+            "exito": True,
+            "modo": "actualizar",
+            "cliente_id": cliente_existente.id,
+            "cliente_nombre": cliente_existente.nombre,
+            "datos": datos_normalizados,
+            "campos_a_actualizar": campos_a_actualizar,
+        })
+    else:
+        return Response({
+            "exito": True,
+            "modo": "crear",
+            "datos": datos_normalizados,
+        })     

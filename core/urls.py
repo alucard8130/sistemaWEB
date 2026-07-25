@@ -33,6 +33,7 @@ from clientes.views import (
 from proveedores.views import carga_masiva_proveedores, eliminar_proveedor, plantilla_proveedores_excel
 from publicidad.views import anuncios_api, solicitud_publicidad_api
 from publicidad.views import anuncios_publicos
+
 #from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView,)
 
 urlpatterns = [

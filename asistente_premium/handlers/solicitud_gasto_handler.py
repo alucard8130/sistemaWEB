@@ -5,6 +5,7 @@ from gastos.models import Gasto, TipoGasto
 from proveedores.models import Proveedor
 from datetime import date
 from django.db.models import Q
+from .proveedor_handler import ProveedorHandler
 
 
 class SolicitudGastoHandler(BaseHandler):
@@ -30,14 +31,19 @@ class SolicitudGastoHandler(BaseHandler):
 
         campos = []
 
-        # Solo pedir proveedor si no se encontró automáticamente por RFC
-        proveedor_auto = self._buscar_proveedor_automatico(self.datos)
+        
+        # 1) Intentar encontrar/crear/actualizar el proveedor por RFC del comprobante
+        proveedor_auto = self._buscar_o_crear_proveedor_automatico(self.datos)
+        # 2) Si no hubo RFC utilizable, intentar el match viejo por nombre (sin crear)
+        if not proveedor_auto:
+            proveedor_auto = self._buscar_proveedor_automatico(self.datos)
+
         if proveedor_auto:
             self.datos['proveedor_id'] = proveedor_auto
         else:
             campos.append({
                 'nombre': 'proveedor_id',
-                'label': '¿A qué proveedor corresponde este gasto? (No encontré el proveedor en el catálogo por RFC)',
+                'label': '¿A qué proveedor corresponde este gasto? (No pude identificarlo automáticamente)',
                 'tipo': 'select',
                 'requerido': True,
                 'opciones': prov_opciones
@@ -113,6 +119,46 @@ class SolicitudGastoHandler(BaseHandler):
                 return str(prov.id)
 
         return None
+
+    def _buscar_o_crear_proveedor_automatico(self, datos: Dict) -> Optional[str]:
+        """
+        Busca el proveedor por RFC del comprobante. Si existe, lo devuelve
+        (y actualiza su nombre si cambió respecto al comprobante). Si no
+        existe pero sí hay RFC válido y nombre, lo crea automáticamente.
+        Devuelve None si no hay RFC utilizable (deja que el flujo caiga al
+        fallback por nombre / o a preguntarle al usuario).
+        """
+        rfc = (datos.get('rfc_proveedor') or '').strip().upper()
+        nombre_comprobante = (datos.get('proveedor_nombre_comprobante') or '').strip()
+
+        if not rfc or not ProveedorHandler._validar_rfc(rfc):
+            return None
+
+        nombre_normalizado = (
+            ProveedorHandler._formatear_nombre(nombre_comprobante) if nombre_comprobante else None
+        )
+
+        proveedor = Proveedor.objects.filter(empresa=self.empresa, rfc=rfc).first()
+
+        if proveedor:
+            if nombre_normalizado and proveedor.nombre != nombre_normalizado:
+                proveedor.nombre = nombre_normalizado
+                proveedor.save(update_fields=['nombre'])
+                self.datos['_proveedor_actualizado'] = True
+            return str(proveedor.id)
+
+        if not nombre_normalizado:
+            return None  # no hay suficientes datos para crear con confianza
+
+        proveedor_nuevo = Proveedor.objects.create(
+            empresa=self.empresa,
+            nombre=nombre_normalizado,
+            rfc=rfc,
+            activo=True,
+        )
+        self.datos['_proveedor_auto_creado'] = True
+        return str(proveedor_nuevo.id)
+        
     
     def validar(self) -> bool:
         self.limpiar_errores()
@@ -147,6 +193,7 @@ class SolicitudGastoHandler(BaseHandler):
 
         return True
 
+
     def procesar(self, datos: Dict[str, Any]) -> Dict[str, Any]:
         self.establecer_datos(datos)
        
@@ -156,9 +203,11 @@ class SolicitudGastoHandler(BaseHandler):
             if tipo_id:
                 self.datos['tipo_gasto_id'] = tipo_id
 
-        # Asignar proveedor automático por RFC si no está seleccionado
+        # Asignar/crear/actualizar proveedor automático por RFC si no está seleccionado
         if not self.datos.get('proveedor_id'):
-            proveedor_id = self._buscar_proveedor_automatico(self.datos)
+            proveedor_id = self._buscar_o_crear_proveedor_automatico(self.datos)
+            if not proveedor_id:
+                proveedor_id = self._buscar_proveedor_automatico(self.datos)
             if proveedor_id:
                 self.datos['proveedor_id'] = proveedor_id
 
@@ -203,11 +252,18 @@ class SolicitudGastoHandler(BaseHandler):
                 estatus='pendiente',
                 observaciones='Creado por Sherlock'
             )
+            nota_proveedor = ""
+            if self.datos.get('_proveedor_auto_creado'):
+                nota_proveedor = f" (proveedor '{proveedor.nombre}' creado automáticamente)"
+            elif self.datos.get('_proveedor_actualizado'):
+                nota_proveedor = f" (nombre del proveedor actualizado a '{proveedor.nombre}')"
+
             return {
                 'exito': True,
-                'mensaje': f"✅ Solicitud de gasto creada correctamente por ${float(self.datos['monto']):,.2f} — Proveedor: {proveedor.nombre}",
+                'mensaje': f"✅ Solicitud de gasto creada correctamente por ${float(self.datos['monto']):,.2f} — Proveedor: {proveedor.nombre}{nota_proveedor}",
                 'objeto_id': gasto.id,
             }
+        
         except Exception as e:
             return {
                 'exito': False,

@@ -150,7 +150,7 @@ class ProveedorHandler(BaseHandler):
             proveedor = Proveedor.objects.create(
                 empresa=self.empresa,
                 nombre=self.datos.get('nombre'),
-                rfc=self.datos.get('rfc'),
+                rfc=self.datos.get('rfc') or None,
                 email=self.datos.get('email'),
                 telefono=self.datos.get('telefono'),
                 direccion=self.datos.get('direccion'),

@@ -2,6 +2,9 @@
 
 from django.db import migrations, models
 
+def vaciar_rfc_a_null(apps, schema_editor):
+    Proveedor = apps.get_model('proveedores', 'Proveedor')
+    Proveedor.objects.filter(rfc='').update(rfc=None)
 
 class Migration(migrations.Migration):
 
@@ -10,9 +13,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(vaciar_rfc_a_null, migrations.RunPython.noop),
         migrations.AlterField(
             model_name='proveedor',
             name='rfc',
-            field=models.CharField(max_length=13),
+            field=models.CharField(max_length=13, blank=True, null=True),
+        ),
+        migrations.AlterUniqueTogether(
+            name='proveedor',
+            unique_together={('empresa', 'rfc')},
         ),
     ]

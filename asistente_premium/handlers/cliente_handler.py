@@ -8,7 +8,7 @@ from clientes.models import Cliente
 class ClienteHandler(BaseHandler):
     """Handler para crear/actualizar clientes"""
     
-    intencion_principal = 'cliente'
+    intencion_principal = 'crear_cliente'
     intencion_aliases = ['alta_cliente', 'nuevo_cliente', 'agrega_cliente', 'registra_cliente', 
                          'registra_nuevo_cliente', 'genera_cliente', 'genera_nuevo_cliente',
                          'registrar_cliente','registrar_nuevo_cliente','generar_cliente',
@@ -16,11 +16,11 @@ class ClienteHandler(BaseHandler):
     descripcion = "Crear un nuevo cliente"
     emoji = "👥"
     
-    campos_requeridos = ['nombre', 'rfc']
-    campos_opcionales = [
-        'email', 'telefono', 'tipo_contribuyente', 
-        'regimen_fiscal', 'codigo_postal', 'direccion_domicilio'
+    campos_requeridos = [
+        'nombre', 'rfc', 'tipo_contribuyente', 'regimen_fiscal',
+        'codigo_postal', 'direccion_domicilio', 'uso_cfdi',
     ]
+    campos_opcionales = ['email', 'telefono']
     
     def obtener_campos(self) -> List[Dict]:
         """Retorna campos específicos para clientes"""
@@ -40,24 +40,10 @@ class ClienteHandler(BaseHandler):
                 'validacion': 'rfc_mexicano'
             },
             {
-                'nombre': 'email',
-                'label': '¿Cuál es el email del cliente? (opcional)',
-                'tipo': 'email',
-                'requerido': False,
-                'validacion': 'email'
-            },
-            {
-                'nombre': 'telefono',
-                'label': '¿Cuál es el teléfono? (opcional)',
-                'tipo': 'tel',
-                'requerido': False,
-                'validacion': 'telefono'
-            },
-            {
                 'nombre': 'tipo_contribuyente',
                 'label': '¿Qué tipo de contribuyente es?',
                 'tipo': 'select',
-                'requerido': False,
+                'requerido': True,
                 'opciones': [
                     ('Fisica', 'Persona Física'),
                     ('Moral', 'Persona Moral'),
@@ -68,7 +54,7 @@ class ClienteHandler(BaseHandler):
                 'nombre': 'regimen_fiscal',
                 'label': '¿Cuál es su régimen fiscal?',
                 'tipo': 'select',
-                'requerido': False,
+                'requerido': True,
                 'opciones': [
                     ('601', 'General de Ley Personas Morales'),
                     ('603', 'Personas Morales con Fines no Lucrativos'),
@@ -82,32 +68,54 @@ class ClienteHandler(BaseHandler):
             },
             {
                 'nombre': 'codigo_postal',
-                'label': '¿Cuál es el código postal? (opcional)',
+                'label': '¿Cuál es el código postal?',
                 'tipo': 'text',
-                'requerido': False,
+                'requerido': True,
             },
             {
                 'nombre': 'direccion_domicilio',
-                'label': '¿Cuál es la dirección? (opcional)',
+                'label': '¿Cuál es la dirección del domicilio fiscal?',
                 'tipo': 'textarea',
+                'requerido': True,
+            },
+            {
+                'nombre': 'uso_cfdi',
+                'label': '¿Cuál es el uso de CFDI?',
+                'tipo': 'select',
+                'requerido': True,
+                'opciones': [
+                    ('G03', 'Gastos en general'),
+                    ('S01', 'Sin efectos fiscales'),
+                ]
+            },
+            {
+                'nombre': 'email',
+                'label': '¿Cuál es el email del cliente? (opcional)',
+                'tipo': 'email',
                 'requerido': False,
-            }
+                'validacion': 'email'
+            },
+            {
+                'nombre': 'telefono',
+                'label': '¿Cuál es el teléfono? (opcional)',
+                'tipo': 'tel',
+                'requerido': False,
+                'validacion': 'telefono'
+            },
         ]
     
     def validar(self) -> bool:
         """Valida los datos del cliente"""
         self.limpiar_errores()
-        
-        # Validar nombre
+
         if not self.datos.get('nombre'):
             self.agregar_error('nombre', 'El nombre es requerido')
             return False
-        
+
         if len(self.datos['nombre']) < 2:
             self.agregar_error('nombre', 'El nombre debe tener al menos 2 caracteres')
             return False
-        
-        # Validar RFC: ahora es obligatorio
+
         if not self.datos.get('rfc'):
             self.agregar_error('rfc', 'El RFC es requerido')
             return False
@@ -116,17 +124,28 @@ class ClienteHandler(BaseHandler):
             self.agregar_error('rfc', 'RFC inválido')
             return False
 
-        # Evitar duplicados: mismo RFC ya registrado para esta empresa
         if Cliente.objects.filter(empresa=self.empresa, rfc=self.datos['rfc']).exists():
             self.agregar_error('rfc', 'Ya existe un cliente registrado con este RFC')
             return False
-        
-        # Validar email si existe
+
+        # NUEVO: validar los campos obligatorios que ya exige ClienteForm
+        campos_obligatorios_extra = {
+            'tipo_contribuyente': 'El tipo de contribuyente es requerido',
+            'regimen_fiscal': 'El régimen fiscal es requerido',
+            'codigo_postal': 'El código postal es requerido',
+            'direccion_domicilio': 'La dirección del domicilio fiscal es requerida',
+            'uso_cfdi': 'El uso de CFDI es requerido',
+        }
+        for campo, mensaje in campos_obligatorios_extra.items():
+            if not self.datos.get(campo):
+                self.agregar_error(campo, mensaje)
+                return False
+
         if self.datos.get('email'):
             if not self._validar_email(self.datos['email']):
                 self.agregar_error('email', 'Email inválido')
                 return False
-        
+
         return True
 
     def _normalizar_datos(self):
@@ -183,14 +202,14 @@ class ClienteHandler(BaseHandler):
         """Crea el cliente con los datos recopilados"""
         self.establecer_datos(datos)
         self._normalizar_datos()
-        
+
         if not self.validar():
             return {
                 'exito': False,
                 'errores': self.errores,
                 'mensaje': '❌ Hay errores en los datos ingresados'
             }
-        
+
         try:
             cliente = Cliente.objects.create(
                 empresa=self.empresa,
@@ -205,32 +224,29 @@ class ClienteHandler(BaseHandler):
                 uso_cfdi=self.datos.get('uso_cfdi', 'G03'),
                 activo=True
             )
-            
+
             return {
                 'exito': True,
                 'mensaje': f"✅ ¡Cliente '{cliente.nombre}' creado exitosamente!",
                 'objeto_id': cliente.id,
                 'objeto_nombre': cliente.nombre
             }
-        
+
         except Exception as e:
             return {
                 'exito': False,
                 'mensaje': f"❌ Error al crear cliente: {str(e)}",
                 'errores': {'general': str(e)}
             }
-    
+
     @staticmethod
     def _validar_rfc(rfc: str) -> bool:
-        """Valida formato RFC mexicano"""
         import re
-        # Patrón RFC: 3-4 letras + 6 dígitos + 3 alfanuméricos
         pattern = r'^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$'
         return bool(re.match(pattern, rfc.upper()))
-    
+
     @staticmethod
     def _validar_email(email: str) -> bool:
-        """Valida formato email"""
         import re
         pattern = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$'
         return bool(re.match(pattern, email))
