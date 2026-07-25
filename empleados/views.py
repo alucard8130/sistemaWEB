@@ -30,15 +30,53 @@ def empleado_editar(request, pk):
     empleado = get_object_or_404(Empleado, pk=pk)
     if not request.user.is_superuser and empleado.empresa != request.user.perfilusuario.empresa:
         return redirect('empleado_lista')
+    # Guardamos los valores originales para comparar después de validar el form
+    hora_entrada_original = empleado.hora_entrada_esperada
+    hora_salida_original = empleado.hora_salida_esperada
 
     if request.method == 'POST':
         form = EmpleadoForm(request.POST, instance=empleado, user=request.user)
         if form.is_valid():
+            nuevo_entrada = form.cleaned_data.get('hora_entrada_esperada')
+            nuevo_salida = form.cleaned_data.get('hora_salida_esperada')
+
+            intenta_cambiar_horario = (
+                nuevo_entrada != hora_entrada_original or
+                nuevo_salida != hora_salida_original
+            )
+
+            if intenta_cambiar_horario and empleado.horario_bloqueado and not request.user.is_superuser:
+                # Bloqueado: se ignora el cambio de horario, se guarda el resto normal
+                form.instance.hora_entrada_esperada = hora_entrada_original
+                form.instance.hora_salida_esperada = hora_salida_original
+                messages.warning(
+                    request,
+                    "El horario esperado de este empleado ya fue editado antes y está bloqueado. "
+                    "Solo un superusuario puede volver a modificarlo. Se guardaron los demás cambios."
+                )
+                form.save()
+                return redirect('empleado_lista')
+            
             form.save()
+
+            # Si de verdad cambió el horario (y se permitió el cambio), bloquear para el futuro
+            if intenta_cambiar_horario:
+                empleado.refresh_from_db()
+                empleado.horario_bloqueado = True
+                empleado.save(update_fields=['horario_bloqueado'])
+                if not request.user.is_superuser:
+                    messages.info(
+                        request,
+                        "El horario fue actualizado. A partir de ahora, solo un superusuario "
+                        "podrá volver a modificarlo."
+                    )
+
             return redirect('empleado_lista')
     else:
         form = EmpleadoForm(instance=empleado, user=request.user)
-    return render(request, 'empleados/editar.html', {'form': form, 'empleado': empleado})
+    return render(request, 'empleados/editar.html', {'form': form, 
+                            'empleado': empleado,
+                            'horario_bloqueado_para_usuario': empleado.horario_bloqueado and not request.user.is_superuser,})
 
 @login_required
 def empleado_lista(request):

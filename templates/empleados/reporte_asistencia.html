@@ -99,10 +99,12 @@
                 <thead>
                     <tr class="table-light">
                         <th class="ps-3">Empleado</th>
+                        <th class="text-center">Ubicación actual</th>
                         <th>Departamento</th>
                         <th class="text-center">Días asistidos</th>
                         <th class="text-center">Retardos</th>
                         <th class="text-center">Faltas</th>
+                        <th class="text-center">Prom. comida</th>
                         <th style="width: 160px;">% Asistencia</th>
                         <th></th>
                     </tr>
@@ -112,6 +114,21 @@
                     <tr class="fila-empleado {% if detalle_empleado.id == fila.empleado.id %}fila-seleccionada{% endif %}"
                         onclick="window.location.href='?{{ request.GET.urlencode }}&empleado_id={{ fila.empleado.id }}'">
                         <td class="ps-3 fw-semibold">{{ fila.empleado.nombre }}</td>
+                        <td class="text-center">
+                            {% if fila.ubicacion_en_vivo %}
+                                {% if fila.ubicacion_en_vivo.vigente %}
+                                    {% if fila.ubicacion_en_vivo.dentro_de_zona %}
+                                        <span class="badge bg-success">Dentro de zona</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Fuera de zona</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin datos</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">Sin datos</span>
+                            {% endif %}
+                        </td>
                         <td>{{ fila.empleado.get_departamento_display }}</td>
                         <td class="text-center">{{ fila.dias_asistidos }}</td>
                         <td class="text-center">
@@ -119,6 +136,13 @@
                         </td>
                         <td class="text-center">
                             {% if fila.faltas > 0 %}<span class="badge bg-danger">{{ fila.faltas }}</span>{% else %}0{% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if fila.promedio_minutos_comida %}
+                                <span class="text-muted small">{{ fila.promedio_minutos_comida }} min</span>
+                            {% else %}
+                                <span class="text-muted small">—</span>
+                            {% endif %}
                         </td>
                         <td>
                             {% if fila.porcentaje_asistencia != None %}
@@ -135,7 +159,7 @@
                         <td class="text-end pe-3"><i class="bi bi-chevron-right text-muted"></i></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted py-4">No hay empleados activos para este filtro.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">No hay empleados activos para este filtro.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -155,10 +179,11 @@
 
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="tabRegistros">
+                    <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>
                             <tr class="text-muted small">
-                                <th>Fecha</th><th>Entrada</th><th>Salida</th><th>Ubicación</th>
+                                <th>Fecha</th><th>Entrada</th><th>Sal. comer</th><th>Reg. comer</th><th>Min. comida</th><th>Salida</th><th>Ubicación</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -166,6 +191,17 @@
                             <tr>
                                 <td>{{ r.fecha|date:"D d/m" }}</td>
                                 <td>{{ r.hora_entrada|time:"H:i"|default:"—" }}</td>
+                                <td>{{ r.hora_inicio_comida|time:"H:i"|default:"—" }}</td>
+                                <td>{{ r.hora_fin_comida|time:"H:i"|default:"—" }}</td>
+                                <td>
+                                    {% if r.minutos_comida %}
+                                        {{ r.minutos_comida }} min
+                                    {% elif r.en_comida %}
+                                        <span class="badge bg-info text-dark">En comida</span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
                                 <td>{{ r.hora_salida|time:"H:i"|default:"—" }}</td>
                                 <td>
                                     {% if r.dentro_de_rango_entrada == False %}
@@ -178,10 +214,11 @@
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-3">Sin checadas en este periodo.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-3">Sin checadas en este periodo.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <div class="tab-pane fade" id="tabIncidencias">

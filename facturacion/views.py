@@ -11,6 +11,7 @@ from clientes.models import Cliente
 from conciliaciones.utils import validar_periodo_abierto
 from empresas.models import CuentaBancaria, Empresa
 #from facturacion.utils import debe_mostrar_recordatorio_facturacion
+from facturacion.utils import calcular_cartera_vencida, calcular_total_vencida_rapido, variacion
 from locales.models import LocalComercial
 from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, PagoPorIdentificarForm, TipoOtroIngresoForm
 from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
@@ -48,6 +49,7 @@ from calendar import monthrange
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+
 
 
 
@@ -1449,16 +1451,7 @@ def dashboard_saldos(request):
             filtro_empresa = Q()
         else:
             filtro_empresa = Q(empresa_id=empresa_id)
-    # else:
-    #     try:
-    #         empresa = request.user.perfilusuario.empresa
-    #         empresas = Empresa.objects.filter(id=empresa.id)
-    #         empresa_id = empresa.id
-    #         filtro_empresa = Q(empresa_id=empresa_id)
-    #     except Exception:
-    #         messages.error(request, "No tienes una empresa asignada. Contacta al administrador.")
-    #         return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})   
-
+ 
     else:
         try:
             if getattr(request, 'is_portal_acceso', False):
@@ -3810,55 +3803,127 @@ def consulta_facturas(request):
         'empresa': empresa,
     })
 
-#@login_required
-# def exportar_consulta_facturas_excel(request):
-#     local_id = request.GET.get('local_id')
-#     area_id = request.GET.get('area_id')
 
-#     if request.user.is_superuser:
-#         facturas = Factura.objects.all()
-#     else:
-#         empresa = request.user.perfilusuario.empresa
-#         facturas = Factura.objects.filter(empresa=empresa)
 
-#     if local_id:
-#         facturas = facturas.filter(local_id=local_id)
-#     if area_id:
-#         facturas = facturas.filter(area_comun_id=area_id)
 
-#     facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun')
+#####reportes cartera vencida###################
 
-#     # Crear libro y hoja
-#     wb = openpyxl.Workbook()
-#     ws = wb.active
-#     ws.title = "Consulta Facturas"
-#     # Encabezados
-#     ws.append([
-#         'Folio', 'Empresa', 'Cliente', 'Local', 'Área común', 'Monto',
-#         'Saldo', 'Fecha emisión', 'Fecha vencimiento', 'Estatus', 'Observaciones'
-#     ])
-#     # Contenido
-#     for factura in facturas:
-#         ws.append([
-#             factura.folio,
-#             factura.empresa.nombre,
-#             factura.cliente.nombre,
-#             factura.local.numero if factura.local else '',
-#             factura.area_comun.numero if factura.area_comun else '',
-#             float(factura.monto),
-#             float(factura.saldo_pendiente),
-#             factura.fecha_emision,
-#             factura.fecha_vencimiento,
-#             factura.estatus,
-#             factura.observaciones or ''
-#         ])
-#     # Respuesta HTTP
-#     response = HttpResponse(
-#         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-#     )
-#     response['Content-Disposition'] = 'attachment; filename=consulta_facturas.xlsx'
-#     wb.save(response)
-#     return response    
+@login_required
+def reporte_cartera_vencida(request):
+    empresa = request.user.perfilusuario.empresa
+    hoy = date.today()
+
+    if 'filtros' in request.GET:
+        # El formulario ya se envió al menos una vez: un checkbox
+        # ausente significa que el usuario lo desmarcó a propósito.
+        incluir_cuotas = 'incluir_cuotas' in request.GET
+        incluir_otros = 'incluir_otros' in request.GET
+    else:
+        # Primera carga de la página (sin filtros en la URL todavía):
+        # ambos activados por default.
+        incluir_cuotas = True
+        incluir_otros = True
+
+    if not incluir_cuotas and not incluir_otros:
+        incluir_cuotas = True  # evita un reporte vacío por accidente
+
+    # --- Cortes de fecha ---
+    primer_dia_mes_actual = hoy.replace(day=1)
+    ultimo_dia_mes_anterior = primer_dia_mes_actual - timedelta(days=1)
+
+    try:
+        fecha_mismo_dia_anio_anterior = hoy.replace(year=hoy.year - 1)
+    except ValueError:
+        fecha_mismo_dia_anio_anterior = hoy.replace(year=hoy.year - 1, day=28)
+
+    # --- Cálculos ---
+    actual = calcular_cartera_vencida(empresa, hoy, incluir_cuotas, incluir_otros)
+    mes_anterior = calcular_cartera_vencida(empresa, ultimo_dia_mes_anterior, incluir_cuotas, incluir_otros)
+    periodo_anterior = calcular_cartera_vencida(empresa, fecha_mismo_dia_anio_anterior, incluir_cuotas, incluir_otros)
+
+    diff_mes, pct_mes = variacion(actual['total'], mes_anterior['total'])
+    diff_periodo, pct_periodo = variacion(actual['total'], periodo_anterior['total'])
+
+   # --- Top 10 clientes con mayor cartera vencida (a hoy) ---
+    top_clientes_base = sorted(
+        actual['por_cliente'].values(), key=lambda x: x['saldo'], reverse=True
+    )[:10]
+
+    # NUEVO: cruzar cada cliente del top contra los otros dos cortes
+    top_clientes = []
+    for fila in top_clientes_base:
+        cliente = fila['cliente']
+        saldo_actual_cliente = fila['saldo']
+
+        saldo_mes_ant_cliente = mes_anterior['por_cliente'].get(
+            cliente.id, {'saldo': Decimal('0')}
+        )['saldo']
+        saldo_periodo_ant_cliente = periodo_anterior['por_cliente'].get(
+            cliente.id, {'saldo': Decimal('0')}
+        )['saldo']
+
+        diff_mes_cliente, pct_mes_cliente = variacion(saldo_actual_cliente, saldo_mes_ant_cliente)
+        diff_periodo_cliente, pct_periodo_cliente = variacion(saldo_actual_cliente, saldo_periodo_ant_cliente)
+
+        top_clientes.append({
+            'cliente': cliente,
+            'saldo': saldo_actual_cliente,
+            'saldo_mes_anterior': saldo_mes_ant_cliente,
+            'diff_mes': diff_mes_cliente,
+            'pct_mes': pct_mes_cliente,
+            'saldo_periodo_anterior': saldo_periodo_ant_cliente,
+            'diff_periodo': diff_periodo_cliente,
+            'pct_periodo': pct_periodo_cliente,
+        })
+
+    # --- Tendencia de los últimos 6 meses (para la gráfica) ---
+    min_fecha_cuotas = Factura.objects.filter(empresa=empresa, activo=True).aggregate(m=Min('fecha_vencimiento'))['m']
+    min_fecha_otros = FacturaOtrosIngresos.objects.filter(empresa=empresa, activo=True).aggregate(m=Min('fecha_vencimiento'))['m']
+
+    fechas_min = [f for f in [min_fecha_cuotas, min_fecha_otros] if f]
+    anio_minimo = min(f.year for f in fechas_min) if fechas_min else hoy.year
+
+    anios_disponibles = list(range(anio_minimo, hoy.year + 1))
+    anios_a_mostrar = anios_disponibles[-4:]  # últimos 4 (o menos si no hay tantos)
+
+    NOMBRES_MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+    tendencia_anual = []
+    for anio in anios_a_mostrar:
+        valores_mes = []
+        for mes_num in range(1, 13):
+            fecha_referencia = date(anio, mes_num, 1)
+            if fecha_referencia > hoy:
+                valores_mes.append(None)  # mes futuro, sin dato todavía
+                continue
+            ultimo_dia = monthrange(anio, mes_num)[1]
+            fecha_corte_mes = min(date(anio, mes_num, ultimo_dia), hoy)
+            total_mes = calcular_total_vencida_rapido(empresa, fecha_corte_mes, incluir_cuotas, incluir_otros)
+            valores_mes.append(float(total_mes))
+
+        tendencia_anual.append({
+            'anio': anio,
+            'valores': valores_mes,
+        })
+
+    contexto = {
+        'hoy': hoy,
+        'incluir_cuotas': incluir_cuotas,
+        'incluir_otros': incluir_otros,
+        'total_actual': actual['total'],
+        'total_mes_anterior': mes_anterior['total'],
+        'diff_mes': diff_mes,
+        'pct_mes': pct_mes,
+        'total_periodo_anterior': periodo_anterior['total'],
+        'diff_periodo': diff_periodo,
+        'pct_periodo': pct_periodo,
+        'fecha_mismo_dia_anio_anterior': fecha_mismo_dia_anio_anterior,
+        'ultimo_dia_mes_anterior': ultimo_dia_mes_anterior,
+        'top_clientes': top_clientes,
+        'nombres_mes': NOMBRES_MES,
+        'tendencia_anual': tendencia_anual,
+    }
+    return render(request, 'cartera/reporte_cartera_vencida.html', contexto)
 
 
 

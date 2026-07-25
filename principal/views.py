@@ -139,30 +139,53 @@ def dashboard_inicio(request):
     if not empresa:
         return render(request, 'dashboard.html', {'empresa': None})
  
-    # ── INGRESOS DEL MES ──
-    ingresos_mes = Pago.objects.filter(
+    # ── INGRESOS DEL MES (cuotas + otros ingresos) ──
+    ingresos_mes_cuotas = Pago.objects.filter(
         factura__empresa=empresa,
         fecha_pago__year=anio_actual,
         fecha_pago__month=mes_actual
     ).exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or Decimal('0')
- 
-    # Mes anterior para delta
+
+    ingresos_mes_otros = CobroOtrosIngresos.objects.filter(
+        factura__empresa=empresa,
+        fecha_cobro__year=anio_actual,
+        fecha_cobro__month=mes_actual
+    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+
+    ingresos_mes = ingresos_mes_cuotas + ingresos_mes_otros
+
+    # Mes anterior para delta (cuotas + otros ingresos)
     mes_ant = mes_actual - 1 if mes_actual > 1 else 12
     anio_ant = anio_actual if mes_actual > 1 else anio_actual - 1
-    ingresos_mes_ant = Pago.objects.filter(
+
+    ingresos_mes_ant_cuotas = Pago.objects.filter(
         factura__empresa=empresa,
         fecha_pago__year=anio_ant,
         fecha_pago__month=mes_ant
     ).exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or Decimal('0')
+
+    ingresos_mes_ant_otros = CobroOtrosIngresos.objects.filter(
+        factura__empresa=empresa,
+        fecha_cobro__year=anio_ant,
+        fecha_cobro__month=mes_ant
+    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+
+    ingresos_mes_ant = ingresos_mes_ant_cuotas + ingresos_mes_ant_otros
+
     delta_ingresos = round(float((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100), 1) if ingresos_mes_ant > 0 else None
 
-    # Subquery para pagos parciales
+    # Subquery para pagos parciales (cuotas)
     total_pagado_sq = Pago.objects.filter(
         factura=OuterRef('pk')
     ).values('factura').annotate(total=Sum('monto')).values('total')
 
-    # Por cobrar del mes (facturas pendientes con vencimiento en el mes)
-    por_cobrar_mes = Factura.objects.filter(
+    # Subquery para cobros parciales (otros ingresos)
+    total_cobrado_otros_sq = CobroOtrosIngresos.objects.filter(
+        factura=OuterRef('pk')
+    ).values('factura').annotate(total=Sum('monto')).values('total')
+
+    # Por cobrar del mes -- cuotas (facturas pendientes con vencimiento en el mes)
+    por_cobrar_mes_cuotas = Factura.objects.filter(
         empresa=empresa,
         estatus='pendiente',
         activo=True,
@@ -177,7 +200,26 @@ def dashboard_inicio(request):
             output_field=DecimalField()
         )
     ).aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
- 
+
+    # Por cobrar del mes -- otros ingresos
+    por_cobrar_mes_otros = FacturaOtrosIngresos.objects.filter(
+        empresa=empresa,
+        estatus='pendiente',
+        activo=True,
+        fecha_vencimiento__year=anio_actual,
+        fecha_vencimiento__month=mes_actual).annotate(
+        total_cobrado_ann=Coalesce(
+            Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        ),
+        saldo_real=ExpressionWrapper(
+            F('monto') - F('total_cobrado_ann'),
+            output_field=DecimalField()
+        )
+    ).aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
+
+    por_cobrar_mes = por_cobrar_mes_cuotas + por_cobrar_mes_otros
+
     total_posible_ingresos = ingresos_mes + por_cobrar_mes
     pct_cobrado = round(float(ingresos_mes / total_posible_ingresos * 100)) if total_posible_ingresos > 0 else 0
     pct_por_cobrar = 100 - pct_cobrado
@@ -223,9 +265,27 @@ def dashboard_inicio(request):
             output_field=DecimalField()
         )
     )
-    
-    cartera_vencida = facturas_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
-    facturas_vencidas_count = facturas_pend_qs.count()
+    # Subquery para cobros parciales (otros ingresos) -- ya la tienes definida arriba también
+    # total_cobrado_otros_sq ya está definido arriba
+
+    facturas_otros_pend_qs = FacturaOtrosIngresos.objects.filter(
+        empresa=empresa, estatus='pendiente', activo=True
+    ).annotate(
+        total_cobrado_ann=Coalesce(
+            Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
+            Value(0, output_field=DecimalField())
+        ),
+        saldo_real=ExpressionWrapper(
+            F('monto') - F('total_cobrado_ann'),
+            output_field=DecimalField()
+        )
+    )
+
+    cartera_vencida_cuotas = facturas_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
+    cartera_vencida_otros = facturas_otros_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
+    cartera_vencida = cartera_vencida_cuotas + cartera_vencida_otros
+
+    facturas_vencidas_count = facturas_pend_qs.count() + facturas_otros_pend_qs.count()
  
     # Antigüedad por días desde fecha_vencimiento
    
@@ -234,17 +294,24 @@ def dashboard_inicio(request):
     fecha_90 = hoy - timedelta(days=90)
     fecha_180 = hoy - timedelta(days=180)
  
-    saldo_0_30   = facturas_pend_qs.filter(fecha_vencimiento__gte=fecha_30).aggregate(t=Sum('monto'))['t'] or 0
-    saldo_31_60  = facturas_pend_qs.filter(fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60).aggregate(t=Sum('monto'))['t'] or 0
-    saldo_61_90  = facturas_pend_qs.filter(fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90).aggregate(t=Sum('monto'))['t'] or 0
-    saldo_91_180 = facturas_pend_qs.filter(fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180).aggregate(t=Sum('monto'))['t'] or 0
-    saldo_181_mas = facturas_pend_qs.filter(fecha_vencimiento__lt=fecha_180).aggregate(t=Sum('monto'))['t'] or 0
-    saldo_31_90  = float(saldo_31_60) + float(saldo_61_90)
+    def _suma_bucket(qs_cuotas, qs_otros, **filtros):
+        total_cuotas = qs_cuotas.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
+        total_otros = qs_otros.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
+        return total_cuotas + total_otros
+
+    saldo_0_30 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__gte=fecha_30)
+    saldo_31_60 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60)
+    saldo_61_90 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90)
+    saldo_91_180 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180)
+    saldo_181_mas = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_180)
+
+    saldo_31_90 = float(saldo_31_60) + float(saldo_61_90)
     saldo_90_mas = float(saldo_91_180) + float(saldo_181_mas)
- 
-    # ── TOP DEUDORES ──
+
+    # ── TOP DEUDORES (cuotas + otros ingresos combinados) ──
     top_deudores = []
-    for f in facturas_pend_qs.select_related('cliente', 'local', 'area_comun').order_by('-monto')[:5]:
+
+    for f in facturas_pend_qs.select_related('cliente', 'local', 'area_comun').order_by('-monto')[:10]:
         dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
         top_deudores.append({
             'cliente__nombre': f.cliente.nombre if f.cliente else '—',
@@ -253,6 +320,18 @@ def dashboard_inicio(request):
             'saldo': float(f.monto),
             'dias_vencido': max(dias, 0),
         })
+
+    for f in facturas_otros_pend_qs.select_related('cliente', 'tipo_ingreso').order_by('-monto')[:10]:
+        dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
+        top_deudores.append({
+            'cliente__nombre': f.cliente.nombre if f.cliente else '—',
+            'local__numero': None,
+            'area_comun__numero': f.tipo_ingreso.nombre if f.tipo_ingreso else 'Otro ingreso',
+            'saldo': float(f.monto),
+            'dias_vencido': max(dias, 0),
+        })
+
+    top_deudores = sorted(top_deudores, key=lambda x: x['saldo'], reverse=True)[:5]
  
     # ── DATOS 6 MESES ──
     meses_6 = []
@@ -271,14 +350,27 @@ def dashboard_inicio(request):
  
         meses_6.append(MESES[m-1])
  
-        cobrado = Pago.objects.filter(
+        cobrado_cuotas = Pago.objects.filter(
             factura__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m
         ).exclude(forma_pago='nota_credito').aggregate(t=Sum('monto'))['t'] or 0
- 
-        porcobrar = Factura.objects.filter(
+
+        cobrado_otros = CobroOtrosIngresos.objects.filter(
+            factura__empresa=empresa, fecha_cobro__year=a, fecha_cobro__month=m
+        ).aggregate(t=Sum('monto'))['t'] or 0
+
+        cobrado = float(cobrado_cuotas) + float(cobrado_otros)
+
+        porcobrar_cuotas = Factura.objects.filter(
             empresa=empresa, estatus='pendiente', activo=True,
             fecha_vencimiento__year=a, fecha_vencimiento__month=m
         ).aggregate(t=Sum('monto'))['t'] or 0
+
+        porcobrar_otros = FacturaOtrosIngresos.objects.filter(
+            empresa=empresa, estatus='pendiente', activo=True,
+            fecha_vencimiento__year=a, fecha_vencimiento__month=m
+        ).aggregate(t=Sum('monto'))['t'] or 0
+
+        porcobrar = float(porcobrar_cuotas) + float(porcobrar_otros)
  
         gpagados = PagoGasto.objects.filter(
             gasto__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m, monto__gt=0
@@ -317,6 +409,10 @@ def dashboard_inicio(request):
         # Ingresos
         'ingresos_mes': ingresos_mes,
         'por_cobrar_mes': por_cobrar_mes,
+        'ingresos_mes_cuotas': ingresos_mes_cuotas,
+        'ingresos_mes_otros': ingresos_mes_otros,
+        'por_cobrar_mes_cuotas': por_cobrar_mes_cuotas,
+        'por_cobrar_mes_otros': por_cobrar_mes_otros,
         'total_posible_ingresos': total_posible_ingresos,
         'pct_cobrado': pct_cobrado,
         'pct_por_cobrar': pct_por_cobrar,

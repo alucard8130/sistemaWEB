@@ -16,6 +16,8 @@
         --entrada-oscuro: #1ea595;
         --salida: #f2a93b;
         --salida-oscuro: #c98a26;
+        --comida: #a78bfa;
+        --comida-oscuro: #7c5cf0;
         --exito: #34d399;
         --error: #f87171;
         --mono: 'DM Mono', 'IBM Plex Mono', 'Courier New', monospace;
@@ -119,12 +121,14 @@
     .registro-hoy {
         margin-top: 18px;
         display: flex;
-        gap: 10px;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
     .registro-item {
         flex: 1;
-        padding: 12px 8px;
+        min-width: 70px;
+        padding: 12px 6px;
         border-radius: 10px;
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid var(--panel-border);
@@ -139,7 +143,7 @@
 
     .registro-hora {
         font-family: var(--mono);
-        font-size: 18px;
+        font-size: 16px;
         margin-top: 4px;
     }
 
@@ -168,8 +172,30 @@
         box-shadow: 0 8px 24px rgba(242, 169, 59, 0.28);
     }
 
+    .boton-marcar.comida {
+        background: linear-gradient(135deg, var(--comida) 0%, var(--comida-oscuro) 100%);
+        box-shadow: 0 8px 24px rgba(167, 139, 250, 0.28);
+    }
+
     .boton-marcar:active { transform: scale(0.97); }
     .boton-marcar:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+    .boton-secundario {
+        margin-top: 10px;
+        width: 100%;
+        padding: 14px;
+        border: 1px solid var(--panel-border);
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--texto);
+        transition: transform 0.15s ease, opacity 0.2s ease;
+    }
+
+    .boton-secundario:active { transform: scale(0.97); }
+    .boton-secundario:disabled { opacity: 0.5; cursor: default; transform: none; }
 
     .mensaje-completo {
         margin-top: 24px;
@@ -178,6 +204,17 @@
         background: rgba(52, 211, 153, 0.08);
         border: 1px solid rgba(52, 211, 153, 0.25);
         color: var(--exito);
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .mensaje-comida {
+        margin-top: 24px;
+        padding: 16px;
+        border-radius: 14px;
+        background: rgba(167, 139, 250, 0.1);
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        color: var(--comida);
         font-size: 14px;
         font-weight: 500;
     }
@@ -211,7 +248,7 @@
     <div class="checador">
         <div class="marca-empresa"><h2><strong>{{ empleado.empresa.nombre }}</strong></h2></div>
         <div class="marca-empresa">CHECADOR VIRTUAL GESAC</div>
-        
+
 
         <div class="reloj" id="reloj">--:--:--</div>
         <div class="fecha" id="fechaHoy"></div>
@@ -233,6 +270,18 @@
                     </div>
                 </div>
                 <div class="registro-item">
+                    <div class="registro-label">Sal. comer</div>
+                    <div class="registro-hora {% if not registro.hora_inicio_comida %}vacio{% endif %}" id="horaInicioComidaMostrada">
+                        {% if registro.hora_inicio_comida %}{{ registro.hora_inicio_comida|time:"H:i" }}{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div class="registro-item">
+                    <div class="registro-label">Reg. comer</div>
+                    <div class="registro-hora {% if not registro.hora_fin_comida %}vacio{% endif %}" id="horaFinComidaMostrada">
+                        {% if registro.hora_fin_comida %}{{ registro.hora_fin_comida|time:"H:i" }}{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div class="registro-item">
                     <div class="registro-label">Salida</div>
                     <div class="registro-hora {% if not registro.hora_salida %}vacio{% endif %}" id="horaSalidaMostrada">
                         {% if registro.hora_salida %}{{ registro.hora_salida|time:"H:i" }}{% else %}—{% endif %}
@@ -245,8 +294,16 @@
             {% else %}
                 {% if puede_marcar_entrada %}
                     <button class="boton-marcar entrada" id="btnEntrada" onclick="marcar('entrada')">Marcar entrada</button>
-                {% elif puede_marcar_salida %}
-                    <button class="boton-marcar salida" id="btnSalida" onclick="marcar('salida')">Marcar salida</button>
+                {% else %}
+                    {% if puede_marcar_fin_comida %}
+                        <div class="mensaje-comida">🍽️ Estás en tu horario de comida</div>
+                        <button class="boton-marcar comida" id="btnFinComida" onclick="marcar('fin_comida')">Registrar regreso de comer</button>
+                    {% elif puede_marcar_salida %}
+                        <button class="boton-marcar salida" id="btnSalida" onclick="marcar('salida')">Marcar salida</button>
+                        {% if puede_marcar_inicio_comida %}
+                            <button class="boton-secundario" id="btnInicioComida" onclick="marcar('inicio_comida')">🍽️ Marcar salida a comer</button>
+                        {% endif %}
+                    {% endif %}
                 {% endif %}
             {% endif %}
 
@@ -299,9 +356,23 @@
             actualizarEstadoUbicacion('error', 'Tu navegador no soporta ubicación');
         }
 
-        // ---------- Marcar entrada/salida ----------
+        // ---------- Marcar entrada/comida/salida ----------
+        const BOTONES_POR_TIPO = {
+            entrada: 'btnEntrada',
+            salida: 'btnSalida',
+            inicio_comida: 'btnInicioComida',
+            fin_comida: 'btnFinComida',
+        };
+
+        const CAMPOS_HORA_POR_TIPO = {
+            entrada: 'horaEntradaMostrada',
+            salida: 'horaSalidaMostrada',
+            inicio_comida: 'horaInicioComidaMostrada',
+            fin_comida: 'horaFinComidaMostrada',
+        };
+
         async function marcar(tipo) {
-            const boton = document.getElementById(tipo === 'entrada' ? 'btnEntrada' : 'btnSalida');
+            const boton = document.getElementById(BOTONES_POR_TIPO[tipo]);
             const feedback = document.getElementById('feedback');
 
             if (!boton) return;
@@ -330,10 +401,12 @@
                 feedback.textContent = datos.mensaje;
                 feedback.className = 'feedback exito';
 
-                const campoHora = tipo === 'entrada' ? 'horaEntradaMostrada' : 'horaSalidaMostrada';
+                const campoHora = CAMPOS_HORA_POR_TIPO[tipo];
                 const elHora = document.getElementById(campoHora);
-                elHora.textContent = datos.hora;
-                elHora.classList.remove('vacio');
+                if (elHora) {
+                    elHora.textContent = datos.hora;
+                    elHora.classList.remove('vacio');
+                }
 
                 setTimeout(() => window.location.reload(), 1200);
 
@@ -344,6 +417,31 @@
                 boton.textContent = textoOriginal;
             }
         }
+        // ---------- Ping de ubicación en vivo (para que el admin vea el estatus) ----------
+        function enviarPingUbicacion() {
+            if (!('geolocation' in navigator)) return;
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    fetch(`/asistencia/marcar/${TOKEN}/ubicacion/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF
+                        },
+                        body: JSON.stringify({
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude
+                        })
+                    }).catch(() => {});
+                },
+                () => {},
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        enviarPingUbicacion();
+        setInterval(enviarPingUbicacion, 20000);
     </script>
+    
 </body>
 </html>

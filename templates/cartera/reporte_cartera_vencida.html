@@ -1,0 +1,248 @@
+{% load humanize %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cartera Vencida · GESAC</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    body { background: #f4f5f8; }
+    .card-reporte { border: none; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .kpi-valor { font-size: 2rem; font-weight: 700; }
+    .kpi-label { font-size: 0.8rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.05em; }
+    .variacion-sube { color: #dc3545; }
+    .variacion-baja { color: #198754; }
+    .variacion-neutral { color: #6c757d; }
+    .badge-fila { font-size: 0.75rem; }
+    .fila-cliente:hover { background: #f8f7ff; }
+</style>
+</head>
+<body>
+<div class="container py-4">
+
+    <div class="mb-3">
+        <a href="{% url 'dashboard_inicio' %}" class="text-decoration-none text-muted small">
+            <i class="bi bi-arrow-left"></i> Volver al inicio
+        </a>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="mb-0"><i class="bi bi-exclamation-triangle text-danger"></i> Cartera Vencida</h3>
+            <p class="text-muted mb-0">Corte al {{ hoy|date:"d/m/Y" }}</p>
+        </div>
+
+    <form method="get" class="d-flex align-items-center gap-3">
+        <input type="hidden" name="filtros" value="1">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="incluir_cuotas" value="1"
+                id="chkCuotas" {% if incluir_cuotas %}checked{% endif %} onchange="this.form.submit()">
+            <label class="form-check-label small" for="chkCuotas">Cuotas</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="incluir_otros" value="1"
+                id="chkOtros" {% if incluir_otros %}checked{% endif %} onchange="this.form.submit()">
+            <label class="form-check-label small" for="chkOtros">Otros ingresos</label>
+        </div>
+    </form>
+    </div>
+
+    <!-- KPIs principales -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card card-reporte h-100">
+                <div class="card-body">
+                    <div class="kpi-label">Cartera vencida actual</div>
+                    <div class="kpi-valor text-dark">${{ total_actual|floatformat:2|intcomma }}</div>
+                    <div class="text-muted small mt-1">Al día de hoy</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card card-reporte h-100">
+                <div class="card-body">
+                    <div class="kpi-label">Vs. mes anterior</div>
+                    <div class="kpi-valor {% if diff_mes > 0 %}variacion-sube{% elif diff_mes < 0 %}variacion-baja{% else %}variacion-neutral{% endif %}">
+                        {% if diff_mes > 0 %}<i class="bi bi-arrow-up-short"></i>
+                        {% elif diff_mes < 0 %}<i class="bi bi-arrow-down-short"></i>
+                        {% else %}<i class="bi bi-dash"></i>{% endif %}
+                        {% if pct_mes != None %}{{ pct_mes }}%{% else %}—{% endif %}
+                    </div>
+                    <div class="text-muted small mt-1">
+                        ${{ total_mes_anterior|floatformat:2|intcomma }} al {{ ultimo_dia_mes_anterior|date:"d/m/Y" }}
+                        <br>
+                        {% if diff_mes > 0 %}
+                            <span class="variacion-sube">+${{ diff_mes|floatformat:2|intcomma }}</span>
+                        {% elif diff_mes < 0 %}
+                            <span class="variacion-baja">-${{ diff_mes|cut:"-"|floatformat:2|intcomma }}</span>
+                        {% else %}
+                            Sin cambio
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card card-reporte h-100">
+                <div class="card-body">
+                    <div class="kpi-label">Vs. mismo periodo año anterior</div>
+                    <div class="kpi-valor {% if diff_periodo > 0 %}variacion-sube{% elif diff_periodo < 0 %}variacion-baja{% else %}variacion-neutral{% endif %}">
+                        {% if diff_periodo > 0 %}<i class="bi bi-arrow-up-short"></i>
+                        {% elif diff_periodo < 0 %}<i class="bi bi-arrow-down-short"></i>
+                        {% else %}<i class="bi bi-dash"></i>{% endif %}
+                        {% if pct_periodo != None %}{{ pct_periodo }}%{% else %}—{% endif %}
+                    </div>
+                    <div class="text-muted small mt-1">
+                        ${{ total_periodo_anterior|floatformat:2|intcomma }} al {{ fecha_mismo_dia_anio_anterior|date:"d/m/Y" }}
+                        <br>
+                        {% if diff_periodo > 0 %}
+                            <span class="variacion-sube">+${{ diff_periodo|floatformat:2|intcomma }}</span>
+                        {% elif diff_periodo < 0 %}
+                            <span class="variacion-baja">-${{ diff_periodo|cut:"-"|floatformat:2|intcomma }}</span>
+                        {% else %}
+                            Sin cambio
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Gráfica de tendencia: comparativa por año -->
+        <div class="col-lg-7">
+            <div class="card card-reporte h-100">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="bi bi-graph-up text-primary"></i> Tendencia — comparativa por año</h6>
+                    <canvas id="graficaTendencia" height="220"></canvas>
+                    <p class="text-muted small mt-2 mb-0">
+                        Haz clic en un año de la leyenda para ocultarlo/mostrarlo.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+       <!-- Top clientes -->
+        <div class="col-lg-5">
+            <div class="card card-reporte h-100">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="bi bi-people text-primary"></i> Top clientes con mayor cartera vencida</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Cliente</th>
+                                    <th class="text-end">Actual</th>
+                                    <th class="text-end">Vs. mes ant.</th>
+                                    <th class="text-end">Vs. mismo periodo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fila in top_clientes %}
+                                <tr class="fila-cliente">
+                                    <td class="small">{{ fila.cliente.nombre }}</td>
+                                    <td class="text-end fw-semibold text-danger small">
+                                        ${{ fila.saldo|floatformat:2|intcomma }}
+                                    </td>
+                                    <td class="text-end small">
+                                        {% if fila.pct_mes != None %}
+                                            <span class="{% if fila.diff_mes > 0 %}variacion-sube{% elif fila.diff_mes < 0 %}variacion-baja{% else %}variacion-neutral{% endif %}">
+                                                {% if fila.diff_mes > 0 %}<i class="bi bi-arrow-up-short"></i>
+                                                {% elif fila.diff_mes < 0 %}<i class="bi bi-arrow-down-short"></i>
+                                                {% else %}<i class="bi bi-dash"></i>{% endif %}
+                                                {{ fila.pct_mes }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Nuevo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end small">
+                                        {% if fila.pct_periodo != None %}
+                                            <span class="{% if fila.diff_periodo > 0 %}variacion-sube{% elif fila.diff_periodo < 0 %}variacion-baja{% else %}variacion-neutral{% endif %}">
+                                                {% if fila.diff_periodo > 0 %}<i class="bi bi-arrow-up-short"></i>
+                                                {% elif fila.diff_periodo < 0 %}<i class="bi bi-arrow-down-short"></i>
+                                                {% else %}<i class="bi bi-dash"></i>{% endif %}
+                                                {{ fila.pct_periodo }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Nuevo</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        No hay cartera vencida actualmente. 🎉
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const nombresMes = {{ nombres_mes|safe }};
+    const tendenciaAnual = [
+        {% for serie in tendencia_anual %}
+        {
+            anio: {{ serie.anio }},
+            valores: [{% for v in serie.valores %}{% if v == None %}null{% else %}{{ v }}{% endif %}{% if not forloop.last %},{% endif %}{% endfor %}]
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const coloresPorAnio = ['#dc3545', '#0d6efd', '#fd7e14', '#6f42c1'];
+
+    const datasets = tendenciaAnual.map((serie, i) => ({
+        label: serie.anio.toString(),
+        data: serie.valores,
+        borderColor: coloresPorAnio[i % coloresPorAnio.length],
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 3,
+        spanGaps: false,
+    }));
+
+    const ctx = document.getElementById('graficaTendencia').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: nombresMes,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true, position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: $` + ctx.parsed.y.toLocaleString('es-MX', {minimumFractionDigits: 2})
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => '$' + value.toLocaleString('es-MX')
+                    }
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>

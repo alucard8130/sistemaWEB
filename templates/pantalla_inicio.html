@@ -339,15 +339,15 @@ if (premiumBtn) {
             </div>
             {% endif %}
             <div class="ing-breakdown">
-                <div class="ing-row">
-                    <span class="label">💰 Cobrado</span>
+                <div class="ing-row" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#modalCobradoDetalle" title="Ver desglose">
+                    <span class="label">💰 Cobrado <i class="bi bi-info-circle text-muted" style="font-size:0.7em;"></i></span>
                     <div class="ing-bar-wrap">
                         <div class="ing-bar-fill" style="background:#1e8449; width:{{ pct_cobrado }}%;"></div>
                     </div>
                     <span class="monto text-success">${{ ingresos_mes|floatformat:0|intcomma }}</span>
                 </div>
-                <div class="ing-row">
-                    <span class="label">⏳ Por cobrar</span>
+                <div class="ing-row" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#modalPorCobrarDetalle" title="Ver desglose">
+                    <span class="label">⏳ Por cobrar <i class="bi bi-info-circle text-muted" style="font-size:0.7em;"></i></span>
                     <div class="ing-bar-wrap">
                         <div class="ing-bar-fill" style="background:#d4ac0d; width:{{ pct_por_cobrar }}%;"></div>
                     </div>
@@ -360,6 +360,65 @@ if (premiumBtn) {
             </div>
         </div>
 
+<!-- Modal: detalle de Cobrado -->
+<div class="modal fade" id="modalCobradoDetalle" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cash-coin text-success me-1"></i> Cobrado — {{ mes_nombre }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td>Cuotas</td>
+                            <td class="text-end fw-semibold">${{ ingresos_mes_cuotas|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td>Otros ingresos</td>
+                            <td class="text-end fw-semibold">${{ ingresos_mes_otros|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr style="border-top:2px solid #dee2e6;">
+                            <td class="fw-bold">Total cobrado</td>
+                            <td class="text-end fw-bold text-success">${{ ingresos_mes|floatformat:2|intcomma }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: detalle de Por Cobrar -->
+<div class="modal fade" id="modalPorCobrarDetalle" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-hourglass-split text-warning me-1"></i> Por cobrar — {{ mes_nombre }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td>Cuotas</td>
+                            <td class="text-end fw-semibold">${{ por_cobrar_mes_cuotas|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td>Otros ingresos</td>
+                            <td class="text-end fw-semibold">${{ por_cobrar_mes_otros|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr style="border-top:2px solid #dee2e6;">
+                            <td class="fw-bold">Total por cobrar</td>
+                            <td class="text-end fw-bold" style="color:#d4ac0d;">${{ por_cobrar_mes|floatformat:2|intcomma }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
         <!-- GASTOS -->
         <div class="kpi-card gto">
             <i class="bi bi-arrow-up-circle-fill kpi-icon text-danger"></i>
