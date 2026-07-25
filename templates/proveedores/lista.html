@@ -19,6 +19,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .badge-sin-repse { color: #6c757d; font-size: 0.8rem; }
+        tr.fila-inactiva { opacity: 0.55; }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -26,29 +30,42 @@
     <!-- Main content -->
 
     <div class="container-fluid mt-2">
-            <div class="card shadow-sm">
-                <div class="card-body">  
-        <h3>Proveedores</h3>
-        
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h3 class="mb-0">Proveedores</h3>
+                    <span class="text-muted small">
+                        {{ proveedores.paginator.count }} proveedor{{ proveedores.paginator.count|pluralize:"es" }} registrado{{ proveedores.paginator.count|pluralize:"s" }}
+                    </span>
+                </div>
+            </div>
         </div>
-        </div>
+
         <div class="card shadow-sm mb-1">
             <div class="card-body">
-        <form method="get" class="mb-3">
-            <div class="input-group">
-                <input type="text" name="proveedor" class="form-control" placeholder="Buscar proveedor..." value="{{ proveedor_nombre }}">
-                <button type="submit" class="btn btn-primary">Buscar</button>
+                <form method="get" class="mb-0" id="form-filtros">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" name="proveedor" class="form-control"
+                               placeholder="Buscar por nombre o RFC..." value="{{ proveedor_nombre }}">
+                        <button type="submit" class="btn btn-primary">Buscar</button>
+                        {% if proveedor_nombre %}
+                            <a href="{% url 'lista_proveedores' %}" class="btn btn-outline-secondary reporte-link" title="Quitar filtro">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </form>
             </div>
-        </form>
         </div>
-        </div>
-        <a href="{% url 'proveedor_crear' %}" class="btn btn-outline-success" align="right" title="Nuevo Proveedor">
-                    <i class="bi bi-plus-lg"></i> Nuevo Proveedor
-                </a>   
-     
+
+        <a href="{% url 'proveedor_crear' %}" class="btn btn-outline-success reporte-link" title="Nuevo Proveedor">
+            <i class="bi bi-plus-lg"></i> Nuevo Proveedor
+        </a>
+
         <!-- Suppliers table -->
-        <div class="table-responsive rounded-3 border" style='font-size:0.9rem;'>
-            <table class="table align-middle mb-0 shadow-sm">
+        <div class="table-responsive rounded-3 border mt-2" style='font-size:0.9rem;'>
+            <table class="table align-middle mb-0 shadow-sm table-hover">
                 <thead>
                     <tr>
                         <th>Nombre</th>
@@ -61,34 +78,19 @@
                         <th>Empresa</th>
                         {% endif %}
                         <th>Estatus REPSE</th>
+                        <th>Estatus</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for proveedor in proveedores %}
-                    <tr>
+                    <tr class="{% if not proveedor.activo %}fila-inactiva{% endif %}">
                         <td>{{ proveedor.nombre }}</td>
-                        <td>{{ proveedor.rfc }}</td>
-                        {% if proveedor.repse_numero == None %}
-                            <td></td>
-                        {% else %}
-                        <td>{{ proveedor.repse_numero }}</td>
-                        {% endif %}
-                        {% if proveedor.repse_vigencia|date:"d/b/y"|upper == None %}
-                            <td></td>
-                        {% else %}
-                        <td>{{ proveedor.repse_vigencia|date:"d/b/y"|upper }}</td>
-                        {% endif %}
-                        {% if proveedor.telefono == None %}
-                            <td></td>
-                        {% else %}
-                        <td>{{ proveedor.telefono }}</td>
-                        {% endif %}
-                        {% if proveedor.email == None %}
-                            <td></td>
-                        {% else %}
-                        <td>{{ proveedor.email }}</td>
-                        {% endif %}
+                        <td>{{ proveedor.rfc|default:"—" }}</td>
+                        <td>{{ proveedor.repse_numero|default:"—" }}</td>
+                        <td>{{ proveedor.repse_vigencia|date:"d/b/y"|upper|default:"—" }}</td>
+                        <td>{{ proveedor.telefono|default:"—" }}</td>
+                        <td>{{ proveedor.email|default:"—" }}</td>
                         {% if request.user.is_superuser %}
                             <td>{{ proveedor.empresa.nombre }}</td>
                         {% endif %}
@@ -100,72 +102,99 @@
                                     <span class="badge bg-success">Vigente</span>
                                 {% endif %}
                             {% else %}
-                                <span class="badge bg-secondary"></span>
+                                <span class="badge-sin-repse">Sin REPSE</span>
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'proveedor_crear' %}" class="btn btn-crear reporte-link "title="Registra Nuevo proveedor">
-            <i class="bi bi-plus-circle me-1"></i> 
-        </a>
-                            <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-outline-primary  reporte-link" title="Editar Proveedor">
-               
+                            {% if proveedor.activo %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            <a href="{% url 'proveedor_editar' proveedor.id %}" class="btn btn-outline-primary btn-sm reporte-link" title="Editar Proveedor">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-outline-danger  reporte-link" title="Eliminar Proveedor">
+                            <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-outline-danger btn-sm reporte-link"
+                               title="Eliminar Proveedor"
+                               onclick="return confirm('¿Seguro que quieres eliminar a &quot;{{ proveedor.nombre|escapejs }}&quot;? Esta acción no se puede deshacer.');">
                                 <i class="bi bi-trash3"></i>
-       
                             </a>
-
                         </td>
                     </tr>
                     {% empty %}
                     <tr class="no-data-row">
-                        <td colspan="9">No hay proveedores registrados.</td>
+                        <td colspan="10" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                            {% if proveedor_nombre %}
+                                No se encontraron proveedores para "{{ proveedor_nombre }}".
+                            {% else %}
+                                No hay proveedores registrados.
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
-    {% if proveedores.has_other_pages %}
-        <nav>
-            <ul class="pagination">
-                {% if proveedores.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ proveedores.previous_page_number }}">Anterior</a></li>
-                {% endif %}
-                <li class="page-item disabled"><span class="page-link">Página {{ proveedores.number }} de {{ proveedores.paginator.num_pages }}</span></li>
-                {% if proveedores.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ proveedores.next_page_number }}">Siguiente</a></li>
-                {% endif %}
-            </ul>
-        </nav>
+
+        {% if proveedores.has_other_pages %}
+            <nav class="mt-3">
+                <ul class="pagination">
+                    {% if proveedores.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link reporte-link" href="?page=1{% if proveedor_nombre %}&proveedor={{ proveedor_nombre }}{% endif %}">Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link reporte-link" href="?page={{ proveedores.previous_page_number }}{% if proveedor_nombre %}&proveedor={{ proveedor_nombre }}{% endif %}">Anterior</a>
+                        </li>
+                    {% endif %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Página {{ proveedores.number }} de {{ proveedores.paginator.num_pages }}</span>
+                    </li>
+                    {% if proveedores.has_next %}
+                        <li class="page-item">
+                            <a class="page-link reporte-link" href="?page={{ proveedores.next_page_number }}{% if proveedor_nombre %}&proveedor={{ proveedor_nombre }}{% endif %}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link reporte-link" href="?page={{ proveedores.paginator.num_pages }}{% if proveedor_nombre %}&proveedor={{ proveedor_nombre }}{% endif %}">Última</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
         {% endif %}
+    </div>
 
     <!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
+    {% include 'tool_bar.html' %}
 
     <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar overlay al hacer submit en el formulario de filtros
+            var form = document.getElementById('form-filtros');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
 
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>
+            // Mantén el overlay para los enlaces con clase reporte-link
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    // Si el link de eliminar fue cancelado por el confirm(),
+                    // el atributo onclick ya regresó false y el navegador
+                    // no sigue el href -- este listener nunca llega a
+                    // mostrar el overlay en ese caso (comportamiento correcto).
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.shortcuts import render, redirect,get_object_or_404
+from django.db.models import Q
+from django.shortcuts import render, redirect, get_object_or_404
 from unidecode import unidecode
 from empresas.models import Empresa
 from .forms import ProveedorForm, ProveedorCargaMasivaForm
@@ -46,7 +47,9 @@ def proveedor_lista(request):
         proveedores = Proveedor.objects.filter(empresa=empresa, activo=True).order_by('nombre')
     
     if proveedor_nombre:
-        proveedores = proveedores.filter(nombre__icontains=proveedor_nombre)
+        proveedores = proveedores.filter(
+            Q(nombre__icontains=proveedor_nombre) | Q(rfc__icontains=proveedor_nombre)
+        )
     #paginación
     
     paginator = Paginator(proveedores, 10)  # Mostrar 10 proveedores por página

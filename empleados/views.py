@@ -1,12 +1,15 @@
 
 import csv
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
-from facturacion.models import Factura
-from gastos.models import Gasto
+from empresas.models import Empresa
+
+
 from .forms import EmpleadoForm, IncidenciaForm
 from .models import Empleado, Incidencia
 
@@ -80,15 +83,33 @@ def empleado_editar(request, pk):
 
 @login_required
 def empleado_lista(request):
+    query = request.GET.get('q', '').strip()
     empresa_id = request.session.get("empresa_id")
+
     if request.user.is_superuser and empresa_id:
+        empresa = Empresa.objects.filter(id=empresa_id).first()
         empleados = Empleado.objects.filter(empresa_id=empresa_id, activo=True).order_by('nombre')
     elif request.user.is_superuser:
+        empresa = None
         empleados = Empleado.objects.filter(activo=True).order_by('nombre')
     else:
         empresa = request.user.perfilusuario.empresa
         empleados = Empleado.objects.filter(empresa=empresa, activo=True).order_by('nombre')
-    return render(request, 'empleados/lista.html', {'empleados': empleados, 'empresa': empresa})
+
+    if query:
+        empleados = empleados.filter(
+            Q(nombre__icontains=query) | Q(rfc__icontains=query)
+        )
+
+    paginator = Paginator(empleados, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'empleados/lista.html', {
+        'empleados': page_obj,
+        'empresa': empresa,
+        'q': query,
+    })
 
 
 @login_required

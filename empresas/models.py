@@ -25,7 +25,7 @@ class Empresa(models.Model):
     # --- Ubicación para validar asistencia por GPS ---
     lat_oficina = models.DecimalField(max_digits=30, decimal_places=20, null=True, blank=True,help_text="Latitud de la oficina/caseta donde se debe marcar asistencia")
     lng_oficina = models.DecimalField(max_digits=30, decimal_places=20, null=True, blank=True,help_text="Longitud de la oficina/caseta donde se debe marcar asistencia")
-    radio_permitido_metros = models.PositiveIntegerField(default=150,help_text="Radio permitido (en metros) alrededor de la ubicación para marcar asistencia válida")
+    radio_permitido_metros = models.PositiveIntegerField(default=50,help_text="Radio permitido (en metros) alrededor de la ubicación para marcar asistencia válida")
 
     def __str__(self):
         return self.nombre

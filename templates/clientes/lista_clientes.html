@@ -19,6 +19,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
     <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .badge-sin-clasificacion { color: #6c757d; font-size: 0.8rem; }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}    
@@ -62,15 +65,20 @@
         <form id="form-filtros" method="get" class="mb-3 d-flex" role="search">
             <input type="text" name="q" class="form-control me-2" placeholder="Buscar cliente por nombre o RFC" value="{{ q|default:'' }}">
             <button type="submit" class="btn btn-outline-primary">Buscar</button>
+            {% if q %}
+                <a href="{% url 'lista_clientes' %}" class="btn btn-outline-secondary ms-2 reporte-link" title="Quitar filtro">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            {% endif %}
         </form>
             <div>
-                <a href="{% url 'crear_cliente' %}" class="btn btn-outline-success" title="Nuevo Cliente">
+                <a href="{% url 'crear_cliente' %}" class="btn btn-outline-success reporte-link" title="Nuevo Cliente">
                     <i class="bi bi-plus-lg"></i> Nuevo Cliente
                 </a>
             </div>
         <!-- Client table -->
-        <div class="table-responsive rounded-3 border" style="font-size:0.9rem;"> 
-            <table class="table align-middle mb-0 shadow-sm">
+        <div class="table-responsive rounded-3 border mt-2" style="font-size:0.9rem;"> 
+            <table class="table align-middle mb-0 shadow-sm table-hover">
                 <thead>
                     <tr>  
                         {% if request.user.is_superuser %}
@@ -97,21 +105,19 @@
                         {% endif %}
                         <td>{{ cliente.id }}</td>
                         <td>{{ cliente.nombre }}</td>
-                        <td>{{ cliente.rfc }}</td>
-                        {% if cliente.tipo_contribuyente == None %}
-                            <td></td>
-                        {% else %}
-                            <td>{{ cliente.tipo_contribuyente }}</td>
-                        {% endif %}
-                        <td>{{ cliente.regimen_fiscal }}</td>
+                        <td>{{ cliente.rfc|default:"—" }}</td>
+                        <td>
+                            {% if cliente.tipo_contribuyente %}
+                                {{ cliente.tipo_contribuyente }}
+                            {% else %}
+                                <span class="badge-sin-clasificacion">Sin clasificación</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ cliente.regimen_fiscal|default:"—" }}</td>
                         {% comment %} <td>{{ cliente.direccion_domicilio }}</td> {% endcomment %}
-                        <td>{{ cliente.codigo_postal }}</td>
-                        <td>{{ cliente.uso_cfdi }}</td>
-                         {% if cliente.email == None or cliente.email == '' %}
-                            <td></td>
-                        {% else %}
-                            <td>{{ cliente.email }}</td>
-                        {% endif %}                
+                        <td>{{ cliente.codigo_postal|default:"—" }}</td>
+                        <td>{{ cliente.uso_cfdi|default:"—" }}</td>
+                        <td>{{ cliente.email|default:"—" }}</td>
                         <td>
                             <form method="post" action="{% url 'actualizar_factura_global' cliente.id %}">
                             {% csrf_token %}
@@ -121,45 +127,60 @@
                             </form>
                         </td>        
                         <td class="text-nowrap">
-                            <a href="{% url 'crear_cliente' %}" class="btn btn-sm btn-outline-success reporte-link" title="Nuevo Cliente">
-                                <i class="bi bi-plus-lg"></i>
-                            </a>
                             <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar cliente">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar cliente">
+                            <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-danger reporte-link"
+                               title="Inactivar cliente"
+                               onclick="return confirm('¿Seguro que quieres inactivar a &quot;{{ cliente.nombre|escapejs }}&quot;?');">
                                 <i class="bi bi-slash-circle"></i>
                             </a>
-                           
                         </td>
                         
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="12" class="text-center text-muted">No hay clientes registrados.</td>
+                        <td colspan="12" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                            {% if q %}
+                                No se encontraron clientes para "{{ q }}".
+                            {% else %}
+                                No hay clientes registrados.
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            <nav aria-label="Paginación">
-                <ul class="pagination">
+            {% if clientes.has_other_pages %}
+            <nav aria-label="Paginación" class="p-2">
+                <ul class="pagination mb-0">
                     {% if clientes.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?q={{ q }}&page={{ clientes.previous_page_number }}">Anterior</a>
-                    </li>
+                        <li class="page-item">
+                            <a class="page-link reporte-link" href="?q={{ q|urlencode }}&page=1">Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link reporte-link" href="?q={{ q|urlencode }}&page={{ clientes.previous_page_number }}">Anterior</a>
+                        </li>
                     {% else %}
-                    <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                        <li class="page-item disabled"><span class="page-link">Primera</span></li>
+                        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
                     {% endif %}
                     <li class="page-item disabled"><span class="page-link">Página {{ clientes.number }} de {{ clientes.paginator.num_pages }}</span></li>
                     {% if clientes.has_next %}
-                    <li class="page-item">   
-                        <a class="page-link" href="?q={{ q }}&page={{ clientes.next_page_number }}">Siguiente</a>
-                    </li>
+                        <li class="page-item">   
+                            <a class="page-link reporte-link" href="?q={{ q|urlencode }}&page={{ clientes.next_page_number }}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link reporte-link" href="?q={{ q|urlencode }}&page={{ clientes.paginator.num_pages }}">Última</a>
+                        </li>
                     {% else %}
-                    <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                        <li class="page-item disabled"><span class="page-link">Última</span></li>
                     {% endif %}
                 </ul>
             </nav>
+            {% endif %}
         </div>
     </div>
 
