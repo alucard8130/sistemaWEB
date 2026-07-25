@@ -91,7 +91,7 @@ class Pago(models.Model):
         ('otro', 'Otro'),
     ]
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos',null=True, blank=True)
-    fecha_pago = models.DateField(blank=True, null=True)
+    fecha_pago = models.DateField()
     monto = models.DecimalField(max_digits=20, decimal_places=2)
     forma_pago = models.CharField(max_length=100, choices=FORMAS_PAGO, default='transferencia')
     comprobante = models.FileField(upload_to='comprobantes/', blank=True, null=True)
