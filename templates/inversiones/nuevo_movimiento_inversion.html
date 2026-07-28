@@ -1,0 +1,137 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movimiento de Inversión — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="container mt-4" style="max-width: 700px;">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-piggy-bank me-2"></i>Movimiento de Inversión</h5>
+        </div>
+        <div class="card-body">
+
+            <form method="post" id="formInversion">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Cuenta de inversión <span class="text-danger">*</span></label>
+                        <select name="cuenta_inversion" class="form-select" required>
+                            <option value="">Selecciona la cuenta de inversión</option>
+                            {% for cuenta in cuentas_inversion %}
+                            <option value="{{ cuenta.id }}">
+                                {{ cuenta.banco }} — {{ cuenta.numero_cuenta }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if not cuentas_inversion %}
+                        <div class="form-text text-danger">
+                            No tienes ninguna cuenta con tipo "Inversión" dada de alta.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Tipo de movimiento <span class="text-danger">*</span></label>
+                        <select name="tipo_movimiento" id="tipoMovimiento" class="form-select" onchange="actualizarFormulario()" required>
+                            <option value="">Selecciona el tipo...</option>
+                            <option value="incremento">Incremento de inversión (contraparte → inversión)</option>
+                            <option value="rendimiento">Rendimiento (crece el saldo de la inversión, sin tocar otra cuenta)</option>
+                            <option value="retiro">Retiro / Liquidación (inversión → contraparte)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12" id="bloqueContraparte">
+                        <label class="form-label">Cuenta contraparte <span class="text-danger">*</span></label>
+                        <select name="cuenta_contraparte" class="form-select">
+                            <option value="">Selecciona la otra cuenta</option>
+                            {% for cuenta in cuentas_todas %}
+                            <option value="{{ cuenta.id }}">
+                                {{ cuenta.banco }} — {{ cuenta.numero_cuenta }} ({{ cuenta.get_tipo_cuenta_display }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">La cuenta desde la que sale, o hacia la que entra, el dinero.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Monto <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" name="monto" class="form-control"
+                                   step="0.01" min="0.01" required placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Fecha <span class="text-danger">*</span></label>
+                        <input type="date" name="fecha" class="form-control"
+                               value="{{ fecha_hoy }}" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Nota adicional (opcional)</label>
+                        <input type="text" name="concepto" class="form-control"
+                               placeholder="Ej: rendimiento del trimestre, retiro por escasez de caja...">
+                    </div>
+
+                    
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-info text-white px-4">
+                        <i class="bi bi-check-circle me-1"></i> Registrar movimiento
+                    </button>
+                    <a href="{% url 'reporte_inversion' %}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function actualizarFormulario() {
+    const tipo = document.getElementById('tipoMovimiento').value;
+    const bloqueContraparte = document.getElementById('bloqueContraparte');
+    const bloqueRetencion = document.getElementById('bloqueRetencion');
+    const selectContraparte = bloqueContraparte.querySelector('select[name="cuenta_contraparte"]');
+
+    if (tipo === 'rendimiento') {
+        // El rendimiento no involucra otra cuenta -- se oculta y se
+        // quita el "required" para que el formulario no lo exija.
+        bloqueContraparte.style.display = 'none';
+        selectContraparte.removeAttribute('required');
+        selectContraparte.value = '';
+
+        bloqueRetencion.style.display = 'block';
+    } else {
+        bloqueContraparte.style.display = 'block';
+        selectContraparte.setAttribute('required', 'required');
+
+        bloqueRetencion.style.display = 'none';
+    }
+}
+</script>
+</body>
+</html>

@@ -1,34 +1,61 @@
-
 # Create your views here.
-#from django.forms import CharField
-from django.shortcuts import render, redirect,get_object_or_404
+# from django.forms import CharField
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from numpy import rint
 from acceso_empresas.decorators import login_o_portal_required
 from areas.models import AreaComun
 from clientes.models import Cliente
-#import empresas
-from conciliaciones.utils import validar_periodo_abierto
+
+# import empresas
+
+
+from conciliaciones.utils import  validar_periodo_abierto
 from empresas.models import CuentaBancaria, Empresa
-#from facturacion.utils import debe_mostrar_recordatorio_facturacion
-from facturacion.utils import calcular_cartera_vencida, calcular_total_vencida_rapido, variacion
+
+# from facturacion.utils import debe_mostrar_recordatorio_facturacion
+from facturacion.utils import (
+    calcular_cartera_vencida,
+    calcular_total_vencida_rapido,
+    variacion,
+)
+from gastos.models import Gasto, PagoGasto, TipoGasto
 from locales.models import LocalComercial
-from .forms import FacturaEditForm, FacturaForm, FacturaOtrosIngresosForm, MotivoReversaCobroForm, PagoForm,FacturaCargaMasivaForm, CobroForm, PagoPorIdentificarForm, TipoOtroIngresoForm
-from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
-from principal.models import AuditoriaCambio #PerfilUsuario
+from proveedores.models import Proveedor
+from traspasos.models import TraspasoBancario
+from .forms import (
+    FacturaEditForm,
+    FacturaForm,
+    FacturaOtrosIngresosForm,
+    MotivoReversaCobroForm,
+    PagoForm,
+    FacturaCargaMasivaForm,
+    CobroForm,
+    PagoPorIdentificarForm,
+    TipoOtroIngresoForm,
+)
+from .models import (
+    CobroOtrosIngresos,
+    Factura,
+    FacturaOtrosIngresos,
+    Pago,
+    TipoOtroIngreso,
+)
+from principal.models import AuditoriaCambio  # PerfilUsuario
 from django.utils.timezone import now
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from datetime import date, timedelta
-from django.db.models import Q,  Value, Case, When ,CharField #FloatField
+from django.db.models import Q, Value, Case, When, CharField  # FloatField
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 import openpyxl
 from django.http import HttpResponse
-#from django.db.models import Q
-#from facturacion.models import Pago
+
+# from django.db.models import Q
+# from facturacion.models import Pago
 from decimal import Decimal, InvalidOperation
 from unidecode import unidecode
 from django.db.models.functions import TruncMonth, TruncYear
@@ -41,14 +68,16 @@ from presupuestos.models import PresupuestoIngreso
 from collections import defaultdict
 import json
 from django.http import JsonResponse
-from django.db.models import Max,Min
-from decimal import  ROUND_HALF_UP
-#from django.db.models import Sum
+from django.db.models import Max, Min
+from decimal import ROUND_HALF_UP
+
+# from django.db.models import Sum
 from collections import OrderedDict
 from calendar import monthrange
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from datetime import date as date_cls
 
 
 
@@ -59,29 +88,29 @@ def crear_factura(request):
     conflicto_tipo = ""
     superuser_auth_ok = False
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = FacturaForm(request.POST, request.FILES, user=request.user)
-        superuser_username = request.POST.get('superuser_username')
-        superuser_password = request.POST.get('superuser_password')
+        superuser_username = request.POST.get("superuser_username")
+        superuser_password = request.POST.get("superuser_password")
 
         if form.is_valid():
             factura = form.save(commit=False)
-            tipo = form.cleaned_data.get('tipo_origen')
-            if tipo == 'local':
+            tipo = form.cleaned_data.get("tipo_origen")
+            if tipo == "local":
                 factura.area_comun = None
-            elif tipo == 'area_comun':
+            elif tipo == "area_comun":
                 factura.local = None
             cliente = factura.cliente
 
             # ---- Validación duplicado ----
-            if factura.tipo_cuota in ('mantenimiento', 'renta'):
+            if factura.tipo_cuota in ("mantenimiento", "renta"):
                 mes = factura.fecha_vencimiento.month
                 anio = factura.fecha_vencimiento.year
                 duplicado_qs = Factura.objects.filter(
                     tipo_cuota=factura.tipo_cuota,
                     fecha_vencimiento__year=anio,
                     fecha_vencimiento__month=mes,
-                    estatus__in=['pendiente', 'cobrada'],
+                    estatus__in=["pendiente", "cobrada"],
                 )
                 if factura.local:
                     duplicado_qs = duplicado_qs.filter(local=factura.local)
@@ -90,21 +119,27 @@ def crear_factura(request):
 
                 if duplicado_qs.exists():
                     dup = duplicado_qs.first()
-                    form.add_error(None, 
+                    form.add_error(
+                        None,
                         f"Ya existe una factura de {factura.get_tipo_cuota_display()} "
                         f"para {mes:02d}/{anio} — Folio: {dup.folio} ({dup.estatus}). "
-                        f"No se puede duplicar."
+                        f"No se puede duplicar.",
                     )
-                    return render(request, 'facturacion/crear_factura.html', {
-                        'form': form,
-                        'pedir_superuser': False,
-                        'next': request.POST.get('next') or reverse('lista_facturas'),
-                    })    
-            
-            #validar observaciones
+                    return render(
+                        request,
+                        "facturacion/crear_factura.html",
+                        {
+                            "form": form,
+                            "pedir_superuser": False,
+                            "next": request.POST.get("next")
+                            or reverse("lista_facturas"),
+                        },
+                    )
+
+            # validar observaciones
             if factura.observaciones is None:
                 factura.observaciones = "factura manual"
-            
+
             # ---- Validación local ----
             if factura.local:
                 local_cliente = factura.local.cliente
@@ -121,23 +156,30 @@ def crear_factura(request):
 
             # ---- Lógica de autorización ----
             if conflicto:
-         
                 if request.user.is_superuser:
                     superuser_auth_ok = True
-                    #print("[DEBUG] Usuario actual es superuser, pasa conflicto.")
+                    # print("[DEBUG] Usuario actual es superuser, pasa conflicto.")
 
                 elif superuser_username and superuser_password:
                     from django.contrib.auth import authenticate
-                    superuser = authenticate(username=superuser_username, password=superuser_password)
+
+                    superuser = authenticate(
+                        username=superuser_username, password=superuser_password
+                    )
                     if superuser and superuser.is_superuser:
                         superuser_auth_ok = True
-                       # print("[DEBUG] Autenticación por superuser exitosa.")
+                    # print("[DEBUG] Autenticación por superuser exitosa.")
                     else:
-                        form.add_error(None, "usuario sin permisos. No se creó la factura.")
-                        #print("[DEBUG] Autenticación superuser fallida.")
+                        form.add_error(
+                            None, "usuario sin permisos. No se creó la factura."
+                        )
+                        # print("[DEBUG] Autenticación superuser fallida.")
                 else:
-                    form.add_error(None, f"El cliente del {conflicto_tipo} seleccionado no coincide. Contacta al administrador del sistema para autorizar el cambio.")
-                    #print("[DEBUG] Conflicto detectado sin autorización.")
+                    form.add_error(
+                        None,
+                        f"El cliente del {conflicto_tipo} seleccionado no coincide. Contacta al administrador del sistema para autorizar el cambio.",
+                    )
+                    # print("[DEBUG] Conflicto detectado sin autorización.")
             else:
                 superuser_auth_ok = True  # Si no hay conflicto, siempre debe pasar
 
@@ -149,24 +191,25 @@ def crear_factura(request):
                             factura.empresa = factura.cliente.empresa
                         else:
                             factura.empresa = request.user.perfilusuario.empresa
-                        
-                        factura.estatus = 'pendiente'
-                        
+
+                        factura.estatus = "pendiente"
+
                         if not factura.fecha_emision:
                             factura.fecha_emision = factura.fecha_vencimiento
                         factura.save()
                         # Generar folio
-                        if tipo == 'local':
+                        if tipo == "local":
                             prefix = "CM-F"
-                        elif tipo == 'area_comun':
+                        elif tipo == "area_comun":
                             prefix = "AC-F"
-                       
+
                         # Busca el último folio para la empresa y tipo
                         last_folio = (
-                            Factura.objects
-                            .filter(empresa=factura.empresa, folio__startswith=prefix)
-                            .order_by('-folio')
-                            .values_list('folio', flat=True)
+                            Factura.objects.filter(
+                                empresa=factura.empresa, folio__startswith=prefix
+                            )
+                            .order_by("-folio")
+                            .values_list("folio", flat=True)
                             .first()
                         )
 
@@ -180,114 +223,136 @@ def crear_factura(request):
 
                         factura.folio = f"{prefix}{last_num + 1:05d}"
                         factura.save()
-                        
+
                         # Asignar cliente a local/área si está vacío o si hay conflicto autorizado
-                        if factura.local and (factura.local.cliente is None or request.user.is_superuser or superuser_auth_ok):
+                        if factura.local and (
+                            factura.local.cliente is None
+                            or request.user.is_superuser
+                            or superuser_auth_ok
+                        ):
                             factura.local.cliente = cliente
                             factura.local.save()
-                        if factura.area_comun and (factura.area_comun.cliente is None or request.user.is_superuser or superuser_auth_ok):
+                        if factura.area_comun and (
+                            factura.area_comun.cliente is None
+                            or request.user.is_superuser
+                            or superuser_auth_ok
+                        ):
                             factura.area_comun.cliente = cliente
                             factura.area_comun.save()
 
-                        messages.success(request, f"Registro Exitoso. Folio: {factura.folio}")
-                        next_url = request.POST.get('next') or request.GET.get('next')
+                        messages.success(
+                            request, f"Registro Exitoso. Folio: {factura.folio}"
+                        )
+                        next_url = request.POST.get("next") or request.GET.get("next")
                         if next_url:
                             return redirect(next_url)
-                        return redirect('lista_facturas')
-                    
+                        return redirect("lista_facturas")
+
                 except Exception as e:
                     form.add_error(None, f"Error al guardar: {e}")
-                    
+
         else:
             messages.error(request, "Por favor corrige los errores en el formulario.")
-        
+
     else:
-        #form = FacturaForm(user=request.user)
+        # form = FacturaForm(user=request.user)
         initial = {}
-        for campo in ['cliente', 'local', 'area_comun', 'tipo_cuota', 'tipo_origen']:
+        for campo in ["cliente", "local", "area_comun", "tipo_cuota", "tipo_origen"]:
             valor = request.GET.get(campo)
             if valor:
                 initial[campo] = valor
         form = FacturaForm(initial=initial, user=request.user)
 
-    next_url = request.GET.get('next') or reverse('lista_facturas')    
-    return render(request, 'facturacion/crear_factura.html', {
-        'form': form,
-        'pedir_superuser': conflicto and not superuser_auth_ok and request.method == 'POST',
-        'next': next_url,
-    })
+    next_url = request.GET.get("next") or reverse("lista_facturas")
+    return render(
+        request,
+        "facturacion/crear_factura.html",
+        {
+            "form": form,
+            "pedir_superuser": conflicto
+            and not superuser_auth_ok
+            and request.method == "POST",
+            "next": next_url,
+        },
+    )
 
 
-#deshabilite la funcion porque estan borrando facturas para que no crezca la cartera, eso esta mal
+# deshabilite la funcion porque estan borrando facturas para que no crezca la cartera, eso esta mal
 @login_required
 def eliminar_factura(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
 
     # Solo permitir si está pendiente y no tiene pagos parciales
-    pagos_validos = factura.pagos.exclude(forma_pago='nota_credito')
+    pagos_validos = factura.pagos.exclude(forma_pago="nota_credito")
     tiene_pagos = pagos_validos.exists()
-    puede_eliminar = factura.estatus == 'pendiente' and not tiene_pagos
+    puede_eliminar = factura.estatus == "pendiente" and not tiene_pagos
 
     if not puede_eliminar:
-        messages.error(request, "Solo puedes eliminar facturas pendientes y sin pagos registrados.")
-        next_url = request.GET.get('next')
+        messages.error(
+            request, "Solo puedes eliminar facturas pendientes y sin pagos registrados."
+        )
+        next_url = request.GET.get("next")
         if next_url:
             return redirect(next_url)
         return redirect("lista_facturas")
 
-
-    if request.method == 'POST':
-        motivo = request.POST.get('motivo')
+    if request.method == "POST":
+        motivo = request.POST.get("motivo")
         if not motivo:
-            messages.error(request, "Debe proporcionar un motivo para eliminar la factura.")
-            #return redirect('lista_facturas')
-            next_url = request.GET.get('next')
+            messages.error(
+                request, "Debe proporcionar un motivo para eliminar la factura."
+            )
+            # return redirect('lista_facturas')
+            next_url = request.GET.get("next")
             if next_url:
                 return redirect(next_url)
             return redirect("lista_facturas")
 
-
         factura.delete()
         messages.success(request, f"Factura {factura.folio} eliminada exitosamente.")
-        next_url = request.GET.get('next')
+        next_url = request.GET.get("next")
         if next_url:
             return redirect(next_url)
         return redirect("lista_facturas")
 
-    return render(request, 'facturacion/eliminar_factura.html', {
-        'factura': factura
-    })
+    return render(request, "facturacion/eliminar_factura.html", {"factura": factura})
 
 
-#estados de cuenta cuotas y adeudos
-#consulta de facturas por local, area, empresa, tipo de cuota, año y búsqueda por folio o nombre de cliente
-#registrar cobros a facturas
+# estados de cuenta cuotas y adeudos
+# consulta de facturas por local, area, empresa, tipo de cuota, año y búsqueda por folio o nombre de cliente
+# registrar cobros a facturas
 @login_required
 def lista_facturas(request):
-    empresa_id = request.GET.get('empresa')
-    local_id = request.GET.get('local_id')
-    area_id = request.GET.get('area_id')
-    tipo_cuota = request.GET.get('tipo_cuota')
-    query = request.GET.get('q', '')
-    anio = request.GET.get('anio')
+    empresa_id = request.GET.get("empresa")
+    local_id = request.GET.get("local_id")
+    area_id = request.GET.get("area_id")
+    tipo_cuota = request.GET.get("tipo_cuota")
+    query = request.GET.get("q", "")
+    anio = request.GET.get("anio")
 
     if request.user.is_superuser:
-        facturas = Factura.objects.all().order_by('-fecha_vencimiento')
+        facturas = Factura.objects.all().order_by("-fecha_vencimiento")
         empresas = Empresa.objects.all()
-        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
-        areas = AreaComun.objects.filter(activo=True).order_by('numero')
+        locales = LocalComercial.objects.filter(activo=True).order_by("numero")
+        areas = AreaComun.objects.filter(activo=True).order_by("numero")
     else:
         empresa = request.user.perfilusuario.empresa
-        facturas = Factura.objects.filter(empresa=empresa).order_by('-fecha_vencimiento')
+        facturas = Factura.objects.filter(empresa=empresa).order_by(
+            "-fecha_vencimiento"
+        )
         empresas = None
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by(
+            "numero"
+        )
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by(
+            "numero"
+        )
 
     # Si no hay ningún filtro, no mostrar nada
-    if not (local_id or area_id or empresa_id  or query):
+    if not (local_id or area_id or empresa_id or query):
         facturas = Factura.objects.none()
 
-    else:    
+    else:
         if empresa_id:
             facturas = facturas.filter(empresa_id=empresa_id)
         if local_id:
@@ -295,7 +360,7 @@ def lista_facturas(request):
         if area_id:
             facturas = facturas.filter(area_comun_id=area_id)
         if tipo_cuota:
-             facturas = facturas.filter(tipo_cuota=tipo_cuota)
+            facturas = facturas.filter(tipo_cuota=tipo_cuota)
         if query:
             facturas = facturas.filter(
                 Q(folio__icontains=query) | Q(cliente__nombre__icontains=query)
@@ -303,17 +368,25 @@ def lista_facturas(request):
         if anio:
             facturas = facturas.filter(fecha_vencimiento__year=anio)
 
-    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos').order_by('-fecha_vencimiento')
+    facturas = (
+        facturas.select_related("cliente", "empresa", "local", "area_comun")
+        .prefetch_related("pagos")
+        .order_by("-fecha_vencimiento")
+    )
 
     # Opciones únicas de tipo_cuota para el filtro
-    tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
-    
+    tipos_cuota = (
+        Factura.objects.values_list("tipo_cuota", flat=True)
+        .distinct()
+        .order_by("tipo_cuota")
+    )
+
     # Paginación
     paginator = Paginator(facturas, 15)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
-    
-    anios_disponibles = Factura.objects.dates('fecha_vencimiento', 'year').distinct()
+
+    anios_disponibles = Factura.objects.dates("fecha_vencimiento", "year").distinct()
     total_saldo = sum(f.saldo_pendiente for f in facturas)
 
     # --- KPIs de adeudo ---
@@ -328,29 +401,41 @@ def lista_facturas(request):
     facturas_list = list(facturas)
 
     # Último día del mes actual y anterior
-    ultimo_dia_mes_actual = date(anio_actual, mes_actual, monthrange(anio_actual, mes_actual)[1])
-    ultimo_dia_mes_anterior = date(anio_mes_anterior, mes_anterior, monthrange(anio_mes_anterior, mes_anterior)[1])
+    ultimo_dia_mes_actual = date(
+        anio_actual, mes_actual, monthrange(anio_actual, mes_actual)[1]
+    )
+    ultimo_dia_mes_anterior = date(
+        anio_mes_anterior, mes_anterior, monthrange(anio_mes_anterior, mes_anterior)[1]
+    )
 
     # Último día del mes actual pero del año anterior
-    ultimo_dia_mes_actual_anio_anterior = date(anio_anterior, mes_actual, monthrange(anio_anterior, mes_actual)[1])
+    ultimo_dia_mes_actual_anio_anterior = date(
+        anio_anterior, mes_actual, monthrange(anio_anterior, mes_actual)[1]
+    )
 
     # Acumulado hasta el mes actual
     adeudo_acumulado_mes_actual = sum(
-        f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_actual
+        f.saldo_pendiente
+        for f in facturas_list
+        if f.fecha_vencimiento <= ultimo_dia_mes_actual
     )
-    #print(f"[DEBUG] Adeudo acumulado mes actual: {adeudo_acumulado_mes_actual}")
+    # print(f"[DEBUG] Adeudo acumulado mes actual: {adeudo_acumulado_mes_actual}")
 
     # Acumulado hasta el mes anterior
     adeudo_acumulado_mes_anterior = sum(
-        f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_anterior
+        f.saldo_pendiente
+        for f in facturas_list
+        if f.fecha_vencimiento <= ultimo_dia_mes_anterior
     )
-    #print(f"[DEBUG] Adeudo acumulado mes anterior: {adeudo_acumulado_mes_anterior}")
+    # print(f"[DEBUG] Adeudo acumulado mes anterior: {adeudo_acumulado_mes_anterior}")
 
-      # Acumulado hasta el mes actual del año anterior
-    adeudo_acumulado_mes_actual_anio_anterior = sum(    
-        f.saldo_pendiente for f in facturas_list if f.fecha_vencimiento <= ultimo_dia_mes_actual_anio_anterior
+    # Acumulado hasta el mes actual del año anterior
+    adeudo_acumulado_mes_actual_anio_anterior = sum(
+        f.saldo_pendiente
+        for f in facturas_list
+        if f.fecha_vencimiento <= ultimo_dia_mes_actual_anio_anterior
     )
-    #print(f"[DEBUG] Adeudo acumulado mes actual anio anterior: {adeudo_acumulado_mes_actual_anio_anterior}")        
+    # print(f"[DEBUG] Adeudo acumulado mes actual anio anterior: {adeudo_acumulado_mes_actual_anio_anterior}")
 
     # Variación acumulada
     def variacion(actual, anterior):
@@ -358,9 +443,12 @@ def lista_facturas(request):
             return 100 if anterior > 0 else 0
         return ((actual - anterior) / actual) * 100
 
-    var_acumulado_mes = variacion(adeudo_acumulado_mes_actual, adeudo_acumulado_mes_anterior)
-    var_acumulado_mes_actual_anio_anterior = variacion(adeudo_acumulado_mes_actual, adeudo_acumulado_mes_actual_anio_anterior)
-
+    var_acumulado_mes = variacion(
+        adeudo_acumulado_mes_actual, adeudo_acumulado_mes_anterior
+    )
+    var_acumulado_mes_actual_anio_anterior = variacion(
+        adeudo_acumulado_mes_actual, adeudo_acumulado_mes_actual_anio_anterior
+    )
 
     # --- Tendencia mensual de adeudo (últimos 12 meses) ---
     trend_dict = OrderedDict()
@@ -375,50 +463,60 @@ def lista_facturas(request):
         if key in trend_dict:
             trend_dict[key] += f.saldo_pendiente
 
-    trend_labels = [DateFormat(date(int(k.split('-')[0]), int(k.split('-')[1]), 1)).format('M Y') for k in trend_dict]
+    trend_labels = [
+        DateFormat(date(int(k.split("-")[0]), int(k.split("-")[1]), 1)).format("M Y")
+        for k in trend_dict
+    ]
     trend_data = list(trend_dict.values())
-    
 
-    return render(request, 'facturacion/lista_facturas.html', {
-        'facturas': page_obj,
-        'empresas': empresas,
-        'empresa_seleccionada': int(empresa_id) if empresa_id else None,
-        'locales': locales,
-        'areas': areas,
-        'local_id': local_id,
-        'area_id': area_id,
-        'tipos_cuota': tipos_cuota,
-        'tipo_cuota_seleccionada': tipo_cuota,
-        'q': query,
-        'anios_disponibles': anios_disponibles,
-        'anio_seleccionado': int(anio) if anio else None,
-        'total_saldo': total_saldo,
-        'trend_labels': trend_labels,
-        'trend_data': trend_data,
-        'adeudo_acumulado_mes_actual': adeudo_acumulado_mes_actual,
-        'adeudo_acumulado_mes_actual_anio_anterior': adeudo_acumulado_mes_actual_anio_anterior,
-        'adeudo_acumulado_mes_anterior': adeudo_acumulado_mes_anterior,
-        'var_acumulado_mes': var_acumulado_mes,
-        'var_acumulado_mes_actual_anio_anterior': var_acumulado_mes_actual_anio_anterior, 
-        'anios': list(range(hoy.year - 2, hoy.year + 2)),
-    })
+    return render(
+        request,
+        "facturacion/lista_facturas.html",
+        {
+            "facturas": page_obj,
+            "empresas": empresas,
+            "empresa_seleccionada": int(empresa_id) if empresa_id else None,
+            "locales": locales,
+            "areas": areas,
+            "local_id": local_id,
+            "area_id": area_id,
+            "tipos_cuota": tipos_cuota,
+            "tipo_cuota_seleccionada": tipo_cuota,
+            "q": query,
+            "anios_disponibles": anios_disponibles,
+            "anio_seleccionado": int(anio) if anio else None,
+            "total_saldo": total_saldo,
+            "trend_labels": trend_labels,
+            "trend_data": trend_data,
+            "adeudo_acumulado_mes_actual": adeudo_acumulado_mes_actual,
+            "adeudo_acumulado_mes_actual_anio_anterior": adeudo_acumulado_mes_actual_anio_anterior,
+            "adeudo_acumulado_mes_anterior": adeudo_acumulado_mes_anterior,
+            "var_acumulado_mes": var_acumulado_mes,
+            "var_acumulado_mes_actual_anio_anterior": var_acumulado_mes_actual_anio_anterior,
+            "anios": list(range(hoy.year - 2, hoy.year + 2)),
+        },
+    )
 
 
-#reporte de verificación de facturación por local y área, mostrando los meses con facturas pendientes o cobradas, y los meses faltantes
+# reporte de verificación de facturación por local y área, mostrando los meses con facturas pendientes o cobradas, y los meses faltantes
 @login_required
 def verificacion_facturacion(request):
     hoy = date.today()
-    anio = int(request.GET.get('anio', hoy.year))
+    anio = int(request.GET.get("anio", hoy.year))
     mes_actual = hoy.month
-    tipo_cuota = request.GET.get('tipo_cuota', 'todos')
+    tipo_cuota = request.GET.get("tipo_cuota", "todos")
 
-    if tipo_cuota not in ('todos', 'mantenimiento', 'renta'):
-        tipo_cuota = 'todos'
+    if tipo_cuota not in ("todos", "mantenimiento", "renta"):
+        tipo_cuota = "todos"
 
     if request.user.is_superuser:
-        empresa_id = request.GET.get('empresa')
+        empresa_id = request.GET.get("empresa")
         empresas = Empresa.objects.all()
-        empresa = Empresa.objects.filter(id=empresa_id).first() if empresa_id else empresas.first()
+        empresa = (
+            Empresa.objects.filter(id=empresa_id).first()
+            if empresa_id
+            else empresas.first()
+        )
     else:
         empresa = request.user.perfilusuario.empresa
         empresas = None
@@ -426,31 +524,33 @@ def verificacion_facturacion(request):
     meses_cerrados = list(range(1, mes_actual))
     mes_corriente = mes_actual
 
-    locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
-    areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+    locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by(
+        "numero"
+    )
+    areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by("numero")
 
     # Filtrar facturas según tipo
-    if tipo_cuota == 'todos':
+    if tipo_cuota == "todos":
         facturas_qs = Factura.objects.filter(
             empresa=empresa,
-            tipo_cuota__in=['mantenimiento', 'renta'],
+            tipo_cuota__in=["mantenimiento", "renta"],
             fecha_vencimiento__year=anio,
-            estatus__in=['pendiente', 'cobrada']
+            estatus__in=["pendiente", "cobrada"],
         )
     else:
         facturas_qs = Factura.objects.filter(
             empresa=empresa,
             tipo_cuota=tipo_cuota,
             fecha_vencimiento__year=anio,
-            estatus__in=['pendiente', 'cobrada']
+            estatus__in=["pendiente", "cobrada"],
         )
 
     # Controlar qué tablas mostrar
-    mostrar_locales = tipo_cuota in ('todos', 'mantenimiento')
-    mostrar_areas = tipo_cuota in ('todos', 'renta')
+    mostrar_locales = tipo_cuota in ("todos", "mantenimiento")
+    mostrar_areas = tipo_cuota in ("todos", "renta")
 
     meses_local = {}
-    meses_area  = {}
+    meses_area = {}
 
     for f in facturas_qs:
         mes = f.fecha_vencimiento.month
@@ -459,7 +559,20 @@ def verificacion_facturacion(request):
         if f.area_comun_id:
             meses_area.setdefault(f.area_comun_id, set()).add(mes)
 
-    MESES_NOMBRES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    MESES_NOMBRES = [
+        "Ene",
+        "Feb",
+        "Mar",
+        "Abr",
+        "May",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dic",
+    ]
 
     # Armar resultado locales
     resultado_locales = []
@@ -472,20 +585,31 @@ def verificacion_facturacion(request):
                 tiene = m in meses_con_factura
                 if not tiene:
                     faltantes += 1
-                meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
-            meses_info.append({
-                'mes': mes_corriente,
-                'nombre': MESES_NOMBRES[mes_corriente-1],
-                'tiene': mes_corriente in meses_con_factura,
-                'corriente': True
-            })
-            resultado_locales.append({
-                'propiedad': local,
-                'tipo': 'local',
-                'meses': meses_info,
-                'faltantes': faltantes,
-                'ok': faltantes == 0,
-            })
+                meses_info.append(
+                    {
+                        "mes": m,
+                        "nombre": MESES_NOMBRES[m - 1],
+                        "tiene": tiene,
+                        "corriente": False,
+                    }
+                )
+            meses_info.append(
+                {
+                    "mes": mes_corriente,
+                    "nombre": MESES_NOMBRES[mes_corriente - 1],
+                    "tiene": mes_corriente in meses_con_factura,
+                    "corriente": True,
+                }
+            )
+            resultado_locales.append(
+                {
+                    "propiedad": local,
+                    "tipo": "local",
+                    "meses": meses_info,
+                    "faltantes": faltantes,
+                    "ok": faltantes == 0,
+                }
+            )
 
     # Armar resultado áreas
     resultado_areas = []
@@ -498,76 +622,91 @@ def verificacion_facturacion(request):
                 tiene = m in meses_con_factura
                 if not tiene:
                     faltantes += 1
-                meses_info.append({'mes': m, 'nombre': MESES_NOMBRES[m-1], 'tiene': tiene, 'corriente': False})
-            meses_info.append({
-                'mes': mes_corriente,
-                'nombre': MESES_NOMBRES[mes_corriente-1],
-                'tiene': mes_corriente in meses_con_factura,
-                'corriente': True
-            })
-            resultado_areas.append({
-                'propiedad': area,
-                'tipo': 'area',
-                'meses': meses_info,
-                'faltantes': faltantes,
-                'ok': faltantes == 0,
-            })
+                meses_info.append(
+                    {
+                        "mes": m,
+                        "nombre": MESES_NOMBRES[m - 1],
+                        "tiene": tiene,
+                        "corriente": False,
+                    }
+                )
+            meses_info.append(
+                {
+                    "mes": mes_corriente,
+                    "nombre": MESES_NOMBRES[mes_corriente - 1],
+                    "tiene": mes_corriente in meses_con_factura,
+                    "corriente": True,
+                }
+            )
+            resultado_areas.append(
+                {
+                    "propiedad": area,
+                    "tipo": "area",
+                    "meses": meses_info,
+                    "faltantes": faltantes,
+                    "ok": faltantes == 0,
+                }
+            )
 
     # Totales resumen
     total_locales = len(resultado_locales)
-    locales_ok = sum(1 for r in resultado_locales if r['ok'])
+    locales_ok = sum(1 for r in resultado_locales if r["ok"])
     locales_con_brecha = total_locales - locales_ok
 
     total_areas = len(resultado_areas)
-    areas_ok = sum(1 for r in resultado_areas if r['ok'])
+    areas_ok = sum(1 for r in resultado_areas if r["ok"])
     areas_con_brecha = total_areas - areas_ok
 
-    return render(request, 'facturacion/verificacion_facturacion.html', {
-        'empresa': empresa,
-        'empresas': empresas,
-        'anio': anio,
-        'tipo_cuota': tipo_cuota,
-        'meses_cerrados': meses_cerrados,
-        'mes_corriente': mes_corriente,
-        'mes_corriente_nombre': MESES_NOMBRES[mes_corriente-1],
-        'resultado_locales': resultado_locales,
-        'resultado_areas': resultado_areas,
-        'total_locales': total_locales,
-        'locales_ok': locales_ok,
-        'locales_con_brecha': locales_con_brecha,
-        'total_areas': total_areas,
-        'areas_ok': areas_ok,
-        'areas_con_brecha': areas_con_brecha,
-        'MESES_NOMBRES': MESES_NOMBRES,
-        'mostrar_locales': mostrar_locales,
-        'mostrar_areas': mostrar_areas,
-        'anios': list(range(hoy.year - 2, hoy.year + 2)),
-    })
+    return render(
+        request,
+        "facturacion/verificacion_facturacion.html",
+        {
+            "empresa": empresa,
+            "empresas": empresas,
+            "anio": anio,
+            "tipo_cuota": tipo_cuota,
+            "meses_cerrados": meses_cerrados,
+            "mes_corriente": mes_corriente,
+            "mes_corriente_nombre": MESES_NOMBRES[mes_corriente - 1],
+            "resultado_locales": resultado_locales,
+            "resultado_areas": resultado_areas,
+            "total_locales": total_locales,
+            "locales_ok": locales_ok,
+            "locales_con_brecha": locales_con_brecha,
+            "total_areas": total_areas,
+            "areas_ok": areas_ok,
+            "areas_con_brecha": areas_con_brecha,
+            "MESES_NOMBRES": MESES_NOMBRES,
+            "mostrar_locales": mostrar_locales,
+            "mostrar_areas": mostrar_areas,
+            "anios": list(range(hoy.year - 2, hoy.year + 2)),
+        },
+    )
 
 
-
-
-#exporta a excel el estado de cuenta de facturas cuotas pendientes con saldo mayor a cero, filtradas por local, area, empresa y año
+# exporta a excel el estado de cuenta de facturas cuotas pendientes con saldo mayor a cero, filtradas por local, area, empresa y año
 def exportar_estado_cuenta_excel(request):
-    local_id = request.GET.get('local_id')
-    area_id = request.GET.get('area_id')
-    empresa_id = request.GET.get('empresa')
-    anio = request.GET.get('anio')
+    local_id = request.GET.get("local_id")
+    area_id = request.GET.get("area_id")
+    empresa_id = request.GET.get("empresa")
+    anio = request.GET.get("anio")
 
     if request.user.is_superuser:
         facturas = Factura.objects.select_related(
-            'cliente', 'empresa', 'local', 'area_comun'
-        ).prefetch_related('pagos')
+            "cliente", "empresa", "local", "area_comun"
+        ).prefetch_related("pagos")
         if empresa_id:
             facturas = facturas.filter(empresa_id=empresa_id)
     else:
         empresa = request.user.perfilusuario.empresa
-        facturas = Factura.objects.select_related(
-            'cliente', 'empresa', 'local', 'area_comun'
-        ).prefetch_related('pagos').filter(empresa=empresa)
+        facturas = (
+            Factura.objects.select_related("cliente", "empresa", "local", "area_comun")
+            .prefetch_related("pagos")
+            .filter(empresa=empresa)
+        )
 
     # Solo pendientes con saldo mayor a cero
-    facturas = facturas.filter(estatus='pendiente')
+    facturas = facturas.filter(estatus="pendiente")
 
     if local_id:
         facturas = facturas.filter(local_id=local_id)
@@ -576,7 +715,7 @@ def exportar_estado_cuenta_excel(request):
     if anio:
         facturas = facturas.filter(fecha_vencimiento__year=anio)
 
-    facturas = facturas.order_by('-fecha_vencimiento')
+    facturas = facturas.order_by("-fecha_vencimiento")
 
     # Filtrar las que tengan saldo pendiente > 0
     facturas_con_saldo = [f for f in facturas if f.saldo_pendiente > 0]
@@ -586,53 +725,80 @@ def exportar_estado_cuenta_excel(request):
     ws.title = "Estado de Cuenta"
 
     # Encabezados
-    ws.append([
-        'Folio', 'Cliente', 'Local/Área', 'Tipo Cuota',
-        'Período', 'Importe', 'Saldo Pendiente', 'Descripción'
-    ])
+    ws.append(
+        [
+            "Folio",
+            "Cliente",
+            "Local/Área",
+            "Tipo Cuota",
+            "Período",
+            "Importe",
+            "Saldo Pendiente",
+            "Descripción",
+        ]
+    )
 
     # Estilo encabezados
     from openpyxl.styles import Font, PatternFill, Alignment
-    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+
+    header_fill = PatternFill(
+        start_color="1F4E79", end_color="1F4E79", fill_type="solid"
+    )
     header_font = Font(color="FFFFFF", bold=True)
     for cell in ws[1]:
         cell.fill = header_fill
         cell.font = header_font
-        cell.alignment = Alignment(horizontal='center')
+        cell.alignment = Alignment(horizontal="center")
 
     # Contenido
     for factura in facturas_con_saldo:
         local_area = (
-            factura.local.numero if factura.local
-            else factura.area_comun.numero if factura.area_comun
-            else '—'
+            factura.local.numero
+            if factura.local
+            else factura.area_comun.numero
+            if factura.area_comun
+            else "—"
         )
-        ws.append([
-            factura.folio,
-            factura.cliente.nombre,
-            local_area,
-            factura.tipo_cuota,
-            factura.fecha_vencimiento.strftime('%b/%y').upper() if factura.fecha_vencimiento else '',
-            float(factura.monto),
-            float(factura.saldo_pendiente),
-            factura.observaciones or '',
-        ])
+        ws.append(
+            [
+                factura.folio,
+                factura.cliente.nombre,
+                local_area,
+                factura.tipo_cuota,
+                factura.fecha_vencimiento.strftime("%b/%y").upper()
+                if factura.fecha_vencimiento
+                else "",
+                float(factura.monto),
+                float(factura.saldo_pendiente),
+                factura.observaciones or "",
+            ]
+        )
 
     # Ajustar ancho columnas
     for col in ws.columns:
-        max_length = max(len(str(cell.value or '')) for cell in col)
+        max_length = max(len(str(cell.value or "")) for cell in col)
         ws.column_dimensions[col[0].column_letter].width = max(max_length + 4, 12)
 
     # Total al final
     ws.append([])
-    ws.append(['', '', '', '', 'TOTAL ADEUDO',
-                '', sum(float(f.saldo_pendiente) for f in facturas_con_saldo), ''])
+    ws.append(
+        [
+            "",
+            "",
+            "",
+            "",
+            "TOTAL ADEUDO",
+            "",
+            sum(float(f.saldo_pendiente) for f in facturas_con_saldo),
+            "",
+        ]
+    )
     total_row = ws.max_row
     ws.cell(total_row, 5).font = Font(bold=True)
     ws.cell(total_row, 7).font = Font(bold=True, color="DC3545")
 
     # Nombre del archivo
-    nombre = 'estado_cuenta'
+    nombre = "estado_cuenta"
     if local_id:
         try:
             local = LocalComercial.objects.get(pk=local_id)
@@ -647,14 +813,14 @@ def exportar_estado_cuenta_excel(request):
             pass
 
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = f'attachment; filename={nombre}.xlsx'
+    response["Content-Disposition"] = f"attachment; filename={nombre}.xlsx"
     wb.save(response)
     return response
 
 
-#emision mensual facturas cuotas 
+# emision mensual facturas cuotas
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     if request.method != "POST":
@@ -690,7 +856,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     def get_last_num(prefix):
         max_folio = Factura.objects.filter(
             empresa=empresa, folio__startswith=prefix
-        ).aggregate(max_f=Max('folio'))['max_f']
+        ).aggregate(max_f=Max("folio"))["max_f"]
         if max_folio:
             try:
                 return int(max_folio.replace(prefix, ""))
@@ -702,19 +868,23 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     if facturar_locales:
         locales = LocalComercial.objects.filter(
             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
-        ).select_related('cliente')
+        ).select_related("cliente")
 
-        locales_ids = list(locales.values_list('id', flat=True))
+        locales_ids = list(locales.values_list("id", flat=True))
 
         # Una query para saber cuáles ya tienen factura de mantenimiento este mes
-        locales_con_factura = set(Factura.objects.filter(
-            local_id__in=locales_ids,
-            tipo_cuota='mantenimiento',
-            estatus__in=['pendiente', 'cobrada'],
-        ).filter(
-            Q(fecha_emision__year=año, fecha_emision__month=mes) |
-            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-        ).values_list('local_id', flat=True))
+        locales_con_factura = set(
+            Factura.objects.filter(
+                local_id__in=locales_ids,
+                tipo_cuota="mantenimiento",
+                estatus__in=["pendiente", "cobrada"],
+            )
+            .filter(
+                Q(fecha_emision__year=año, fecha_emision__month=mes)
+                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
+            )
+            .values_list("local_id", flat=True)
+        )
 
         last_num_cm = get_last_num("CM-F")
         last_num_dg = get_last_num("DG-F")
@@ -724,38 +894,8 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 facturas_omitidas += 1
             else:
                 last_num_cm += 1
-                facturas_a_crear.append(Factura(
-                    empresa=empresa,
-                    cliente=local.cliente,
-                    local=local,
-                    folio=f"CM-F{last_num_cm:05d}",
-                    fecha_emision=fecha_factura,
-                    fecha_vencimiento=fecha_factura,
-                    monto=local.cuota,
-                    tipo_cuota='mantenimiento',
-                    estatus='pendiente',
-                    observaciones='Cuota mensual'
-                ))
-                facturas_creadas += 1
-
-        # Locales con cuota anual — solo en enero
-        if mes == 1:
-            locales_anuales = LocalComercial.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
-            ).select_related('cliente')
-
-            locales_anuales_ids = list(locales_anuales.values_list('id', flat=True))
-            locales_anuales_con_factura = set(Factura.objects.filter(
-                local_id__in=locales_anuales_ids,
-                tipo_cuota='mantenimiento',
-                estatus__in=['pendiente', 'cobrada'],
-                fecha_emision__year=año,
-            ).values_list('local_id', flat=True))
-
-            for local in locales_anuales:
-                if local.id not in locales_anuales_con_factura:
-                    last_num_cm += 1
-                    facturas_a_crear.append(Factura(
+                facturas_a_crear.append(
+                    Factura(
                         empresa=empresa,
                         cliente=local.cliente,
                         local=local,
@@ -763,32 +903,72 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                         fecha_emision=fecha_factura,
                         fecha_vencimiento=fecha_factura,
                         monto=local.cuota,
-                        tipo_cuota='mantenimiento',
-                        estatus='pendiente',
-                        observaciones='Cuota anual'
-                    ))
+                        tipo_cuota="mantenimiento",
+                        estatus="pendiente",
+                        observaciones="Cuota mensual",
+                    )
+                )
+                facturas_creadas += 1
+
+        # Locales con cuota anual — solo en enero
+        if mes == 1:
+            locales_anuales = LocalComercial.objects.filter(
+                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+            ).select_related("cliente")
+
+            locales_anuales_ids = list(locales_anuales.values_list("id", flat=True))
+            locales_anuales_con_factura = set(
+                Factura.objects.filter(
+                    local_id__in=locales_anuales_ids,
+                    tipo_cuota="mantenimiento",
+                    estatus__in=["pendiente", "cobrada"],
+                    fecha_emision__year=año,
+                ).values_list("local_id", flat=True)
+            )
+
+            for local in locales_anuales:
+                if local.id not in locales_anuales_con_factura:
+                    last_num_cm += 1
+                    facturas_a_crear.append(
+                        Factura(
+                            empresa=empresa,
+                            cliente=local.cliente,
+                            local=local,
+                            folio=f"CM-F{last_num_cm:05d}",
+                            fecha_emision=fecha_factura,
+                            fecha_vencimiento=fecha_factura,
+                            monto=local.cuota,
+                            tipo_cuota="mantenimiento",
+                            estatus="pendiente",
+                            observaciones="Cuota anual",
+                        )
+                    )
                     facturas_creadas += 1
 
     # ── ÁREAS COMUNES MENSUALES ──
     if facturar_areas:
         areas = AreaComun.objects.filter(
             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
-        ).select_related('cliente')
+        ).select_related("cliente")
 
-        areas_ids = list(areas.values_list('id', flat=True))
+        areas_ids = list(areas.values_list("id", flat=True))
 
         # Una query para saber cuáles ya tienen factura de renta este mes
-        areas_con_factura = set(Factura.objects.filter(
-            area_comun_id__in=areas_ids,
-            tipo_cuota='renta',
-            estatus__in=['pendiente', 'cobrada'],
-        ).filter(
-            Q(fecha_emision__year=año, fecha_emision__month=mes) |
-            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-        ).values_list('area_comun_id', flat=True))
+        areas_con_factura = set(
+            Factura.objects.filter(
+                area_comun_id__in=areas_ids,
+                tipo_cuota="renta",
+                estatus__in=["pendiente", "cobrada"],
+            )
+            .filter(
+                Q(fecha_emision__year=año, fecha_emision__month=mes)
+                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
+            )
+            .values_list("area_comun_id", flat=True)
+        )
 
         last_num_ac = get_last_num("AC-F")
-        if 'last_num_dg' not in dir():
+        if "last_num_dg" not in dir():
             last_num_dg = get_last_num("DG-F")
 
         for area in areas:
@@ -796,60 +976,8 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                 facturas_omitidas += 1
             else:
                 last_num_ac += 1
-                facturas_a_crear.append(Factura(
-                    empresa=empresa,
-                    cliente=area.cliente,
-                    area_comun=area,
-                    folio=f"AC-F{last_num_ac:05d}",
-                    fecha_emision=fecha_factura,
-                    fecha_vencimiento=fecha_factura,
-                    monto=area.cuota,
-                    tipo_cuota='renta',
-                    estatus='pendiente',
-                    observaciones='Cuota mensual'
-                ))
-                facturas_creadas += 1
-
-            # Depósito en garantía por única vez
-            if area.deposito and area.deposito > 0:
-                existe_deposito = Factura.objects.filter(
-                    cliente=area.cliente,
-                    area_comun=area,
-                    tipo_cuota='deposito',
-                ).exists()
-                if not existe_deposito:
-                    last_num_dg += 1
-                    facturas_a_crear.append(Factura(
-                        empresa=empresa,
-                        cliente=area.cliente,
-                        area_comun=area,
-                        folio=f"DG-F{last_num_dg:05d}",
-                        fecha_emision=fecha_factura,
-                        fecha_vencimiento=fecha_factura,
-                        monto=area.deposito,
-                        tipo_cuota='deposito',
-                        estatus='pendiente',
-                        observaciones='Depósito en garantía'
-                    ))
-
-        # Áreas con cuota anual — solo en enero
-        if mes == 1:
-            areas_anuales = AreaComun.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
-            ).select_related('cliente')
-
-            areas_anuales_ids = list(areas_anuales.values_list('id', flat=True))
-            areas_anuales_con_factura = set(Factura.objects.filter(
-                area_comun_id__in=areas_anuales_ids,
-                tipo_cuota='renta',
-                estatus__in=['pendiente', 'cobrada'],
-                fecha_emision__year=año,
-            ).values_list('area_comun_id', flat=True))
-
-            for area in areas_anuales:
-                if area.id not in areas_anuales_con_factura:
-                    last_num_ac += 1
-                    facturas_a_crear.append(Factura(
+                facturas_a_crear.append(
+                    Factura(
                         empresa=empresa,
                         cliente=area.cliente,
                         area_comun=area,
@@ -857,10 +985,70 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
                         fecha_emision=fecha_factura,
                         fecha_vencimiento=fecha_factura,
                         monto=area.cuota,
-                        tipo_cuota='renta',
-                        estatus='pendiente',
-                        observaciones='Cuota anual'
-                    ))
+                        tipo_cuota="renta",
+                        estatus="pendiente",
+                        observaciones="Cuota mensual",
+                    )
+                )
+                facturas_creadas += 1
+
+            # Depósito en garantía por única vez
+            if area.deposito and area.deposito > 0:
+                existe_deposito = Factura.objects.filter(
+                    cliente=area.cliente,
+                    area_comun=area,
+                    tipo_cuota="deposito",
+                ).exists()
+                if not existe_deposito:
+                    last_num_dg += 1
+                    facturas_a_crear.append(
+                        Factura(
+                            empresa=empresa,
+                            cliente=area.cliente,
+                            area_comun=area,
+                            folio=f"DG-F{last_num_dg:05d}",
+                            fecha_emision=fecha_factura,
+                            fecha_vencimiento=fecha_factura,
+                            monto=area.deposito,
+                            tipo_cuota="deposito",
+                            estatus="pendiente",
+                            observaciones="Depósito en garantía",
+                        )
+                    )
+
+        # Áreas con cuota anual — solo en enero
+        if mes == 1:
+            areas_anuales = AreaComun.objects.filter(
+                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+            ).select_related("cliente")
+
+            areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
+            areas_anuales_con_factura = set(
+                Factura.objects.filter(
+                    area_comun_id__in=areas_anuales_ids,
+                    tipo_cuota="renta",
+                    estatus__in=["pendiente", "cobrada"],
+                    fecha_emision__year=año,
+                ).values_list("area_comun_id", flat=True)
+            )
+
+            for area in areas_anuales:
+                if area.id not in areas_anuales_con_factura:
+                    last_num_ac += 1
+                    facturas_a_crear.append(
+                        Factura(
+                            empresa=empresa,
+                            cliente=area.cliente,
+                            area_comun=area,
+                            folio=f"AC-F{last_num_ac:05d}",
+                            fecha_emision=fecha_factura,
+                            fecha_vencimiento=fecha_factura,
+                            monto=area.cuota,
+                            tipo_cuota="renta",
+                            estatus="pendiente",
+                            observaciones="Cuota anual",
+                        )
+                    )
                     facturas_creadas += 1
 
     # Bulk create
@@ -869,7 +1057,7 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
 
     messages.success(
         request,
-        f"✅ {facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}. {facturas_omitidas} omitidas (ya existían)."
+        f"✅ {facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}. {facturas_omitidas} omitidas (ya existían).",
     )
     return redirect("lista_facturas")
 
@@ -885,44 +1073,70 @@ def confirmar_facturacion(request):
 
     # FILTRAR locales y áreas activos con cliente
     if request.user.is_superuser:
-        locales = LocalComercial.objects.filter(activo=True, cliente__isnull=False, es_cuota_anual=False)
-        areas = AreaComun.objects.filter(activo=True, cliente__isnull=False, es_cuota_anual=False)
+        locales = LocalComercial.objects.filter(
+            activo=True, cliente__isnull=False, es_cuota_anual=False
+        )
+        areas = AreaComun.objects.filter(
+            activo=True, cliente__isnull=False, es_cuota_anual=False
+        )
         filtro_facturas = Q()
     else:
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False)
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False)
+        locales = LocalComercial.objects.filter(
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+        )
+        areas = AreaComun.objects.filter(
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+        )
         filtro_facturas = Q(empresa=empresa)
 
     nombres_meses = [
-        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
     ]
 
     # Detectar meses faltantes — un mes es faltante si algún local o área no tiene factura
     meses_faltantes_por_anio = {}
     for m in range(1, mes + 1):
         # Usa esto (1 query):
-        locales_ids = list(locales.values_list('id', flat=True))
-        locales_con_factura = set(Factura.objects.filter(
-            local_id__in=locales_ids,
-            tipo_cuota='mantenimiento',
-            estatus__in=['pendiente', 'cobrada'],
-        ).filter(
-            Q(fecha_emision__year=año, fecha_emision__month=m) |
-            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
-        ).values_list('local_id', flat=True))
+        locales_ids = list(locales.values_list("id", flat=True))
+        locales_con_factura = set(
+            Factura.objects.filter(
+                local_id__in=locales_ids,
+                tipo_cuota="mantenimiento",
+                estatus__in=["pendiente", "cobrada"],
+            )
+            .filter(
+                Q(fecha_emision__year=año, fecha_emision__month=m)
+                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
+            )
+            .values_list("local_id", flat=True)
+        )
 
         falta_local = len(locales_con_factura) < len(locales_ids)
 
-        areas_ids = list(areas.values_list('id', flat=True))
-        areas_con_factura = set(Factura.objects.filter(
-            area_comun_id__in=areas_ids,
-            tipo_cuota='renta',
-            estatus__in=['pendiente', 'cobrada'],
-        ).filter(
-            Q(fecha_emision__year=año, fecha_emision__month=m) |
-            Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
-        ).values_list('area_comun_id', flat=True))
+        areas_ids = list(areas.values_list("id", flat=True))
+        areas_con_factura = set(
+            Factura.objects.filter(
+                area_comun_id__in=areas_ids,
+                tipo_cuota="renta",
+                estatus__in=["pendiente", "cobrada"],
+            )
+            .filter(
+                Q(fecha_emision__year=año, fecha_emision__month=m)
+                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
+            )
+            .values_list("area_comun_id", flat=True)
+        )
 
         falta_area = len(areas_con_factura) < len(areas_ids)
         if falta_local or falta_area:
@@ -943,42 +1157,48 @@ def confirmar_facturacion(request):
     # Prepara mensaje de periodos faltantes
     faltantes_mensaje = []
     for anio_f, meses_f in sorted(meses_faltantes_por_anio.items()):
-        meses_nombres = ", ".join([nombres_meses[m-1] for m in meses_f])
+        meses_nombres = ", ".join([nombres_meses[m - 1] for m in meses_f])
         faltantes_mensaje.append(f"{anio_f}: {meses_nombres}")
 
-    if request.method == 'POST':
-        anio = int(request.POST.get('anio', anio_permitido))
-        mes_post = int(request.POST.get('mes', mes_permitido))
-        facturar_locales = 'locales' in request.POST
-        facturar_areas = 'areas' in request.POST
+    if request.method == "POST":
+        anio = int(request.POST.get("anio", anio_permitido))
+        mes_post = int(request.POST.get("mes", mes_permitido))
+        facturar_locales = "locales" in request.POST
+        facturar_areas = "areas" in request.POST
 
         # Solo permite facturar el periodo más antiguo faltante
         if (anio, mes_post) != (anio_permitido, mes_permitido):
-            messages.error(request, "Solo puedes facturar el periodo más antiguo pendiente.")
-            return redirect('confirmar_facturacion')
+            messages.error(
+                request, "Solo puedes facturar el periodo más antiguo pendiente."
+            )
+            return redirect("confirmar_facturacion")
 
         request.POST = request.POST.copy()
-        request.POST['anio'] = anio
-        request.POST['mes'] = mes_post
+        request.POST["anio"] = anio
+        request.POST["mes"] = mes_post
         return facturar_mes_actual(request, facturar_locales, facturar_areas)
 
-    return render(request, 'facturacion/confirmar_facturacion.html', {
-        'total_locales': total_locales,
-        'total_areas': total_areas,
-        'anio': anio_permitido,
-        'mes': mes_permitido,
-        'anio_permitido': anio_permitido,
-        'mes_permitido': mes_permitido,
-        'faltantes_mensaje': faltantes_mensaje,
-    })
+    return render(
+        request,
+        "facturacion/confirmar_facturacion.html",
+        {
+            "total_locales": total_locales,
+            "total_areas": total_areas,
+            "anio": anio_permitido,
+            "mes": mes_permitido,
+            "anio_permitido": anio_permitido,
+            "mes_permitido": mes_permitido,
+            "faltantes_mensaje": faltantes_mensaje,
+        },
+    )
 
 
-#vistas registro de cobros por cuotas
+# vistas registro de cobros por cuotas
 @login_required
 @transaction.atomic
 def registrar_pago(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
-    empresa= factura.empresa
+    empresa = factura.empresa
 
     if factura.estatus == "pagada" or factura.saldo_pendiente <= 0:
         messages.warning(
@@ -991,31 +1211,40 @@ def registrar_pago(request, factura_id):
         form = PagoForm(request.POST, request.FILES, empresa=empresa)
         if form.is_valid():
             pago = form.save(commit=False)
-            pago.factura = factura  
+            pago.factura = factura
             pago.registrado_por = request.user
-            
+
             # Validar período cerrado
             fecha_pago = pago.fecha_pago
             cuenta_bancaria = pago.cuenta_bancaria
             if fecha_pago and cuenta_bancaria:
-                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha_pago)
+                periodo_valido, error_periodo = validar_periodo_abierto(
+                    cuenta_bancaria, fecha_pago
+                )
                 if not periodo_valido:
                     form.add_error(None, error_periodo)
-                    return render(request, 'facturacion/registrar_pago.html', {
-                        'form': form,
-                        'factura': factura,
-                        'saldo': factura.saldo_pendiente,
-                    })
+                    return render(
+                        request,
+                        "facturacion/registrar_pago.html",
+                        {
+                            "form": form,
+                            "factura": factura,
+                            "saldo": factura.saldo_pendiente,
+                        },
+                    )
 
             if pago.forma_pago == "nota_credito":
                 pago.save()
                 factura.estatus = "cancelada"
                 factura.monto = 0  # Saldo pendiente a 0
                 factura.save()
-                messages.success(request,"La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",)
-                next_url = request.GET.get('next')
+                messages.success(
+                    request,
+                    "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",
+                )
+                next_url = request.GET.get("next")
                 if next_url:
-                     return redirect(next_url)
+                    return redirect(next_url)
                 return redirect("lista_facturas")
 
             # Permitir pagar hasta el saldo pendiente, considerando decimales
@@ -1040,11 +1269,14 @@ def registrar_pago(request, factura_id):
                 else:
                     factura.estatus = "pendiente"
                 factura.save()
-                factura.actualizar_estatus()  
-                messages.success(request,f"Cobro registrado Factura:{factura.folio}. Saldo restante: ${factura.saldo_pendiente:.2f}",)
-                next_url = request.GET.get('next')
+                factura.actualizar_estatus()
+                messages.success(
+                    request,
+                    f"Cobro registrado Factura:{factura.folio}. Saldo restante: ${factura.saldo_pendiente:.2f}",
+                )
+                next_url = request.GET.get("next")
                 if next_url:
-                     return redirect(next_url)
+                    return redirect(next_url)
                 return redirect("lista_facturas")
     else:
         form = PagoForm(empresa=empresa)
@@ -1059,31 +1291,45 @@ def registrar_pago(request, factura_id):
         },
     )
 
+
 @login_required
 def facturas_detalle(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
-    cobros = factura.pagos.all().order_by('fecha_pago')
+    cobros = factura.pagos.all().order_by("fecha_pago")
     reversados_ids = set()
     for cobro in cobros:
-        if cobro.monto < 0 and cobro.observaciones and "Reversa de pago ID" in cobro.observaciones:
+        if (
+            cobro.monto < 0
+            and cobro.observaciones
+            and "Reversa de pago ID" in cobro.observaciones
+        ):
             # Extrae el ID del pago original
             try:
-                id_original = int(cobro.observaciones.split("Reversa de pago ID")[1].split(".")[0].strip())
+                id_original = int(
+                    cobro.observaciones.split("Reversa de pago ID")[1]
+                    .split(".")[0]
+                    .strip()
+                )
                 reversados_ids.add(id_original)
             except Exception:
                 pass
-    return render(request, 'facturacion/facturas_detalle.html', {
-        'factura': factura,
-        'cobros': cobros,
-        'reversados_ids': reversados_ids,
-    })
+    return render(
+        request,
+        "facturacion/facturas_detalle.html",
+        {
+            "factura": factura,
+            "cobros": cobros,
+            "reversados_ids": reversados_ids,
+        },
+    )
 
-#reversa cobros erroneos
+
+# reversa cobros erroneos
 @login_required
 def reversa_cobro_erroneo(request, pago_id, factura_id):
     pago = get_object_or_404(Pago, id=pago_id)
     factura = get_object_or_404(Factura, id=factura_id)
-    next_url = request.GET.get('next')
+    next_url = request.GET.get("next")
 
     if request.method == "POST":
         form = MotivoReversaCobroForm(request.POST)
@@ -1103,44 +1349,57 @@ def reversa_cobro_erroneo(request, pago_id, factura_id):
             factura.save()
 
             messages.success(request, "Pago reversado correctamente.")
-            return redirect(next_url or 'facturas_detalle', pk=factura.id)
+            return redirect(next_url or "facturas_detalle", pk=factura.id)
     else:
         form = MotivoReversaCobroForm()
 
-    return render(request, "facturacion/reversa_cobro_erroneo.html", {
-        "form": form,
-        "pago": pago,
-        "factura": factura,
-        "next": next_url,
-    })
+    return render(
+        request,
+        "facturacion/reversa_cobro_erroneo.html",
+        {
+            "form": form,
+            "pago": pago,
+            "factura": factura,
+            "next": next_url,
+        },
+    )
+
 
 #####MODULO REGISTRO DE DEPOSITOS POR IDENTIFICAR##############################
-#registro de depositos por identificar
+# registro de depositos por identificar
 @login_required
 def registrar_deposito_por_identificar(request):
-    empresa= request.user.perfilusuario.empresa
-    if request.method == 'POST':
+    empresa = request.user.perfilusuario.empresa
+    if request.method == "POST":
         form = PagoPorIdentificarForm(request.POST, request.FILES, empresa=empresa)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.registrado_por = request.user
             pago.identificado = False
             pago.factura = None
-            pago.empresa= request.user.perfilusuario.empresa
+            pago.empresa = request.user.perfilusuario.empresa
             # Validar período cerrado
             fecha = pago.fecha_pago
             cuenta_bancaria = pago.cuenta_bancaria
             if fecha and cuenta_bancaria:
-                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
+                periodo_valido, error_periodo = validar_periodo_abierto(
+                    cuenta_bancaria, fecha
+                )
                 if not periodo_valido:
                     form.add_error(None, error_periodo)
-                    return render(request, 'facturacion/registrar_deposito_por_identificar.html', {'form': form})
-        
+                    return render(
+                        request,
+                        "facturacion/registrar_deposito_por_identificar.html",
+                        {"form": form},
+                    )
+
             pago.save()
-            return redirect('lista_depositos_por_identificar')
+            return redirect("lista_depositos_por_identificar")
     else:
         form = PagoPorIdentificarForm(empresa=empresa)
-    return render(request, 'facturacion/registrar_deposito_por_identificar.html', {'form': form})    
+    return render(
+        request, "facturacion/registrar_deposito_por_identificar.html", {"form": form}
+    )
 
 
 @login_required
@@ -1148,75 +1407,93 @@ def identificar_deposito(request, pago_id):
     pago = get_object_or_404(Pago, id=pago_id, factura__isnull=True, identificado=False)
 
     # Siempre carga todos los clientes, locales y áreas de la empresa
-    clientes = Cliente.objects.filter(empresa=pago.empresa).only('id', 'nombre')
-    locales = LocalComercial.objects.filter(empresa=pago.empresa).only('id', 'numero')
-    areas = AreaComun.objects.filter(empresa=pago.empresa).only('id', 'numero')
+    clientes = Cliente.objects.filter(empresa=pago.empresa).only("id", "nombre")
+    locales = LocalComercial.objects.filter(empresa=pago.empresa).only("id", "numero")
+    areas = AreaComun.objects.filter(empresa=pago.empresa).only("id", "numero")
 
     # Obtén los filtros seleccionados
-    cliente_id = request.GET.get('cliente')
-    local_id = request.GET.get('local')
-    area_id = request.GET.get('area')
+    cliente_id = request.GET.get("cliente")
+    local_id = request.GET.get("local")
+    area_id = request.GET.get("area")
 
     # Carga todas las facturas pendientes de la empresa
-    #facturas = Factura.objects.filter(empresa=pago.empresa, estatus='pendiente')
+    # facturas = Factura.objects.filter(empresa=pago.empresa, estatus='pendiente')
     facturas = Factura.objects.none()  # Por defecto, no mostrar nada
 
     # Solo filtra y muestra si al menos un filtro está seleccionado
     if cliente_id or local_id or area_id:
-        facturas = Factura.objects.filter(empresa=pago.empresa, estatus='pendiente')
+        facturas = Factura.objects.filter(empresa=pago.empresa, estatus="pendiente")
         if cliente_id:
             facturas = facturas.filter(cliente_id=cliente_id)
         if local_id:
             facturas = facturas.filter(local_id=local_id)
         if area_id:
             facturas = facturas.filter(area_comun_id=area_id)
-        facturas = facturas.order_by('cliente__nombre', 'fecha_vencimiento')
+        facturas = facturas.order_by("cliente__nombre", "fecha_vencimiento")
 
     # Asignación de depósito a factura
-    if request.method == 'POST' and 'factura_id' in request.POST:
-        factura_id = request.POST.get('factura_id')
+    if request.method == "POST" and "factura_id" in request.POST:
+        factura_id = request.POST.get("factura_id")
         factura = get_object_or_404(Factura, id=factura_id)
         saldo_pendiente = Decimal(str(factura.saldo_pendiente))
 
         if pago.monto > saldo_pendiente:
             pago.monto -= saldo_pendiente
-            pago.observaciones = (pago.observaciones or '') + f'Deposito parcialmente asignado a {factura.folio} el {timezone.now().date()}'
+            pago.observaciones = (
+                (pago.observaciones or "")
+                + f"Deposito parcialmente asignado a {factura.folio} el {timezone.now().date()}"
+            )
             pago.save()
             Pago.objects.create(
                 factura=factura,
                 monto=saldo_pendiente,
                 fecha_pago=pago.fecha_pago,
                 forma_pago=pago.forma_pago,
-                observaciones=f'Depósito identificado asignado el {timezone.now().date()}',
+                observaciones=f"Depósito identificado asignado el {timezone.now().date()}",
                 registrado_por=pago.registrado_por,
                 identificado=True,
                 empresa=pago.empresa,
             )
-            messages.success(request, f'Se asignaron ${saldo_pendiente:.2f} a la factura {factura.folio}. El depósito sigue con saldo disponible.')
+            messages.success(
+                request,
+                f"Se asignaron ${saldo_pendiente:.2f} a la factura {factura.folio}. El depósito sigue con saldo disponible.",
+            )
         else:
             pago.factura = factura
             pago.identificado = True
-            pago.observaciones = (pago.observaciones or '') + f'Deposito identificado el {timezone.now().date()}'
+            pago.observaciones = (
+                pago.observaciones or ""
+            ) + f"Deposito identificado el {timezone.now().date()}"
             pago.save()
-            messages.success(request, f'El depósito fue asignado completamente a la factura {factura.folio}.')
+            messages.success(
+                request,
+                f"El depósito fue asignado completamente a la factura {factura.folio}.",
+            )
         factura.actualizar_estatus()
-        return redirect('lista_depositos_por_identificar')
+        return redirect("lista_depositos_por_identificar")
 
-    return render(request, 'facturacion/identificar_deposito.html', {
-        'pago': pago,
-        'facturas': facturas,
-        'clientes': clientes,
-        'locales': locales,
-        'areas': areas,
-    })
+    return render(
+        request,
+        "facturacion/identificar_deposito.html",
+        {
+            "pago": pago,
+            "facturas": facturas,
+            "clientes": clientes,
+            "locales": locales,
+            "areas": areas,
+        },
+    )
+
 
 @login_required
 def lista_depositos_por_identificar(request):
-    empresa= request.user.perfilusuario.empresa
-    pagos = Pago.objects.filter(identificado=False, factura__isnull=True, empresa=empresa).order_by('-fecha_pago')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
-    
+    empresa = request.user.perfilusuario.empresa
+    pagos = Pago.objects.filter(
+        identificado=False, factura__isnull=True, empresa=empresa
+    ).order_by("-fecha_pago")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
     if fecha_inicio:
         try:
             fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
@@ -1229,39 +1506,62 @@ def lista_depositos_por_identificar(request):
             pagos = pagos.filter(fecha_pago__lte=fecha_f)
         except Exception:
             pass
-    total_depositos = pagos.aggregate(total=Sum('monto'))['total'] or 0        
-    return render(request, 'facturacion/lista_depositos_por_identificar.html', 
-                  {'pagos': pagos,
-                   'fecha_inicio': fecha_inicio,
-                   'fecha_fin': fecha_fin,
-                    'total_depositos': total_depositos,
-                   })
+    total_depositos = pagos.aggregate(total=Sum("monto"))["total"] or 0
+    return render(
+        request,
+        "facturacion/lista_depositos_por_identificar.html",
+        {
+            "pagos": pagos,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "total_depositos": total_depositos,
+        },
+    )
 
 
-#pagos_por_origen.html
-#reporte depositos cuotas
+# pagos_por_origen.html
+# reporte depositos cuotas
 @login_required
 def pagos_por_origen(request):
-    empresa_id = request.GET.get('empresa')
-    local_id = request.GET.get('local_id')
-    area_id = request.GET.get('area_id')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
-    tipo_cuota= request.GET.get('tipo_cuota')
-    forma_pago = request.GET.get('forma_pago')
-    cuenta_bancaria = request.GET.get('cuenta_bancaria')    
-    
+    empresa_id = request.GET.get("empresa")
+    local_id = request.GET.get("local_id")
+    area_id = request.GET.get("area_id")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    tipo_cuota = request.GET.get("tipo_cuota")
+    forma_pago = request.GET.get("forma_pago")
+    cuenta_bancaria = request.GET.get("cuenta_bancaria")
+
     if request.user.is_superuser:
-        pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente','cuenta_bancaria').all().order_by('-fecha_pago')
+        pagos = (
+            Pago.objects.select_related(
+                "factura",
+                "factura__empresa",
+                "factura__local",
+                "factura__area_comun",
+                "factura__cliente",
+                "cuenta_bancaria",
+            )
+            .all()
+            .order_by("-fecha_pago")
+        )
         empresas = Empresa.objects.all()
-        locales = LocalComercial.objects.filter(activo=True).order_by('numero')
-        areas = AreaComun.objects.filter(activo=True).order_by('numero')
+        locales = LocalComercial.objects.filter(activo=True).order_by("numero")
+        areas = AreaComun.objects.filter(activo=True).order_by("numero")
     else:
         empresa = request.user.perfilusuario.empresa
-        pagos = Pago.objects.select_related('factura','cuenta_bancaria').filter(factura__empresa=empresa).order_by('-fecha_pago')
+        pagos = (
+            Pago.objects.select_related("factura", "cuenta_bancaria")
+            .filter(factura__empresa=empresa)
+            .order_by("-fecha_pago")
+        )
         empresas = None
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by('numero')
-        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).order_by(
+            "numero"
+        )
+        areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by(
+            "numero"
+        )
 
     filtros_aplicados = any(
         [
@@ -1290,19 +1590,17 @@ def pagos_por_origen(request):
     if cuenta_bancaria:
         pagos_base = pagos_base.filter(cuenta_bancaria=cuenta_bancaria)
 
-
     # Primera carga
     if not filtros_aplicados:
         fecha_inicio = date.today().replace(month=1, day=1).strftime("%Y-%m-%d")
         fecha_fin = date.today().strftime("%Y-%m-%d")
 
-
     if empresa_id:
-        pagos = pagos.filter(factura__empresa_id=empresa_id).order_by('fecha_pago')
+        pagos = pagos.filter(factura__empresa_id=empresa_id).order_by("fecha_pago")
     if local_id:
-        pagos = pagos.filter(factura__local_id=local_id).order_by('fecha_pago')
+        pagos = pagos.filter(factura__local_id=local_id).order_by("fecha_pago")
     if area_id:
-        pagos = pagos.filter(factura__area_comun_id=area_id).order_by('fecha_pago')
+        pagos = pagos.filter(factura__area_comun_id=area_id).order_by("fecha_pago")
 
     if fecha_inicio and fecha_fin:
         try:
@@ -1313,17 +1611,17 @@ def pagos_por_origen(request):
             pass
 
     if tipo_cuota:
-        pagos = pagos.filter(factura__tipo_cuota=tipo_cuota).order_by('fecha_pago')
+        pagos = pagos.filter(factura__tipo_cuota=tipo_cuota).order_by("fecha_pago")
     if forma_pago:
-        pagos = pagos.filter(forma_pago=forma_pago).order_by('fecha_pago')
+        pagos = pagos.filter(forma_pago=forma_pago).order_by("fecha_pago")
     if cuenta_bancaria:
-        pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria).order_by('fecha_pago')
+        pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria).order_by("fecha_pago")
 
-    pagos_validos = pagos.exclude(forma_pago='nota_credito')
-    total_pagos = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
-    pagos_por_tipo = pagos.values('factura__tipo_cuota').annotate(total=Sum('monto'))
-    pagos_por_forma = pagos.values('forma_pago').annotate(total=Sum('monto'))
-    pagos_por_cuenta = pagos.values('cuenta_bancaria').annotate(total=Sum('monto'))
+    pagos_validos = pagos.exclude(forma_pago="nota_credito")
+    total_pagos = pagos_validos.aggregate(total=Sum("monto"))["total"] or 0
+    pagos_por_tipo = pagos.values("factura__tipo_cuota").annotate(total=Sum("monto"))
+    pagos_por_forma = pagos.values("forma_pago").annotate(total=Sum("monto"))
+    pagos_por_cuenta = pagos.values("cuenta_bancaria").annotate(total=Sum("monto"))
 
     # Fechas
     hoy = date.today()
@@ -1333,15 +1631,33 @@ def pagos_por_origen(request):
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
     anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
 
-    #ingresos acumulados de todo el tiempo
-    ingresos_acumulados = pagos_validos.aggregate(total=Sum('monto'))['total'] or 0
+    # ingresos acumulados de todo el tiempo
+    ingresos_acumulados = pagos_validos.aggregate(total=Sum("monto"))["total"] or 0
 
-
-    pagos_anio_actual = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_anio_anterior = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_mes_actual = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
-    pagos_mes_anterior = pagos_base.exclude(forma_pago='nota_credito').filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
-
+    pagos_anio_actual = (
+        pagos_base.exclude(forma_pago="nota_credito")
+        .filter(fecha_pago__year=anio_actual)
+        .aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
+    pagos_anio_anterior = (
+        pagos_base.exclude(forma_pago="nota_credito")
+        .filter(fecha_pago__year=anio_anterior)
+        .aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
+    pagos_mes_actual = (
+        pagos_base.exclude(forma_pago="nota_credito")
+        .filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual)
+        .aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
+    pagos_mes_anterior = (
+        pagos_base.exclude(forma_pago="nota_credito")
+        .filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior)
+        .aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
     # Variaciones
     def variacion(actual, anterior):
@@ -1377,86 +1693,91 @@ def pagos_por_origen(request):
     forma_labels = list(forma_dict.keys())
     forma_data = list(forma_dict.values())
 
-
     if request.user.is_superuser:
         cuentas_bancarias = CuentaBancaria.objects.all()
     else:
         cuentas_bancarias = CuentaBancaria.objects.filter(empresa=empresa)
 
-    #paginacion
+    # paginacion
     paginator = Paginator(pagos, 15)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'facturacion/pagos_por_origen.html', {
-        'pagos': page_obj,
-        'total_pagos': total_pagos,
-        'empresas': empresas,
-        'empresa_seleccionada': int(empresa_id) if empresa_id else None,
-        'locales': locales,
-        'areas': areas,
-        'local_id': local_id,
-        'area_id': area_id,
-        #'pagos': page_obj,
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
-        'tipo_cuota': tipo_cuota,
-        'forma_pago': forma_pago,
-        'cuenta_bancaria': cuenta_bancaria,
-        'TIPO_CUOTA_CHOICES': Factura.TIPO_CUOTA_CHOICES,
-        'pagos_por_tipo': list(pagos_por_tipo),
-        'pagos_por_forma': list(pagos_por_forma),
-        'tipo_labels': tipo_labels,
-        'tipo_data': tipo_data,
-        'forma_labels': forma_labels,
-        'forma_data': forma_data,
-        'pagos_anio_actual': pagos_anio_actual,
-        'pagos_mes_actual': pagos_mes_actual,
-        'pagos_anio_anterior': pagos_anio_anterior,
-        'pagos_mes_anterior': pagos_mes_anterior,
-        'var_anio': var_anio,
-        'var_mes': var_mes,
-        'ingresos_acumulados': ingresos_acumulados,
-        'pagos_por_cuenta': list(pagos_por_cuenta),
-        'FORMAS_PAGO': Pago.FORMAS_PAGO,
-        #'cuenta_labels': cuenta_labels,
-        #'cuenta_data': cuenta_data,
-        'cuentas_bancarias': cuentas_bancarias,
+    return render(
+        request,
+        "facturacion/pagos_por_origen.html",
+        {
+            "pagos": page_obj,
+            "total_pagos": total_pagos,
+            "empresas": empresas,
+            "empresa_seleccionada": int(empresa_id) if empresa_id else None,
+            "locales": locales,
+            "areas": areas,
+            "local_id": local_id,
+            "area_id": area_id,
+            #'pagos': page_obj,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "tipo_cuota": tipo_cuota,
+            "forma_pago": forma_pago,
+            "cuenta_bancaria": cuenta_bancaria,
+            "TIPO_CUOTA_CHOICES": Factura.TIPO_CUOTA_CHOICES,
+            "pagos_por_tipo": list(pagos_por_tipo),
+            "pagos_por_forma": list(pagos_por_forma),
+            "tipo_labels": tipo_labels,
+            "tipo_data": tipo_data,
+            "forma_labels": forma_labels,
+            "forma_data": forma_data,
+            "pagos_anio_actual": pagos_anio_actual,
+            "pagos_mes_actual": pagos_mes_actual,
+            "pagos_anio_anterior": pagos_anio_anterior,
+            "pagos_mes_anterior": pagos_mes_anterior,
+            "var_anio": var_anio,
+            "var_mes": var_mes,
+            "ingresos_acumulados": ingresos_acumulados,
+            "pagos_por_cuenta": list(pagos_por_cuenta),
+            "FORMAS_PAGO": Pago.FORMAS_PAGO,
+            #'cuenta_labels': cuenta_labels,
+            #'cuenta_data': cuenta_data,
+            "cuentas_bancarias": cuentas_bancarias,
+        },
+    )
 
-    })
 
-#dashboard/saldos.html
-#dashboard cartera vencida
-@login_o_portal_required 
+# dashboard/saldos.html
+# dashboard cartera vencida
+@login_o_portal_required
 def dashboard_saldos(request):
     hoy = timezone.now().date()
-    cliente_id = request.GET.get('cliente')
-    origen = request.GET.get('origen')
-    tipo_cuota = request.GET.get('tipo_cuota')
-    
-    mes = request.GET.get('mes')
-    anio = request.GET.get('anio')
+    cliente_id = request.GET.get("cliente")
+    origen = request.GET.get("origen")
+    tipo_cuota = request.GET.get("tipo_cuota")
+
+    mes = request.GET.get("mes")
+    anio = request.GET.get("anio")
     mes = int(mes) if mes and mes.isdigit() else None
     anio = int(anio) if anio and anio.isdigit() else None
-        
+
     es_super = request.user.is_superuser
 
     # Empresa según usuario
     if es_super:
         empresas = Empresa.objects.all()
         if not empresas.exists():
-            return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})
-        empresa_id = request.GET.get('empresa')
+            return render(
+                request, "dashboard/saldos.html", {"empresas": [], "facturas": []}
+            )
+        empresa_id = request.GET.get("empresa")
         if not empresa_id or empresa_id == "todas":
             filtro_empresa = Q()
         else:
             filtro_empresa = Q(empresa_id=empresa_id)
- 
+
     else:
         try:
-            if getattr(request, 'is_portal_acceso', False):
+            if getattr(request, "is_portal_acceso", False):
                 # Usuario del portal de acceso externo
-                empresa_id = request.session.get('empresa_id')
+                empresa_id = request.session.get("empresa_id")
                 empresa = Empresa.objects.get(id=empresa_id)
             else:
                 # Usuario normal del sistema
@@ -1465,19 +1786,23 @@ def dashboard_saldos(request):
             empresa_id = empresa.id
             filtro_empresa = Q(empresa_id=empresa_id)
         except Exception:
-            messages.error(request, "No tienes una empresa asignada. Contacta al administrador.")
-            return render(request, 'dashboard/saldos.html', {'empresas': [], 'facturas': []})
-    
+            messages.error(
+                request, "No tienes una empresa asignada. Contacta al administrador."
+            )
+            return render(
+                request, "dashboard/saldos.html", {"empresas": [], "facturas": []}
+            )
+
     # Filtrado base de facturas pendientes
-    facturas = Factura.objects.filter(estatus='pendiente').filter(filtro_empresa)
+    facturas = Factura.objects.filter(estatus="pendiente").filter(filtro_empresa)
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
-    if origen == 'local':
+    if origen == "local":
         facturas = facturas.filter(local__isnull=False)
-        
-    elif origen == 'area':
+
+    elif origen == "area":
         facturas = facturas.filter(area_comun__isnull=False)
-        
+
     if tipo_cuota:
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
@@ -1486,21 +1811,31 @@ def dashboard_saldos(request):
     if mes:
         facturas = facturas.filter(fecha_vencimiento__month=mes)
 
-
     # Subconsulta: total pagado por factura
-    pagos_subquery = Pago.objects.filter(factura=OuterRef('pk')) \
-        .values('factura') \
-        .annotate(total_pagado_dash=Coalesce(Sum('monto'), Value(0, output_field=DecimalField()))) \
-        .values('total_pagado_dash')
-    facturas = facturas.annotate(
-        total_pagado_dash=Coalesce(Subquery(pagos_subquery), Value(0, output_field=DecimalField())),
-        saldo_pendiente_dash=ExpressionWrapper(
-            F('monto') - Coalesce(Subquery(pagos_subquery), Value(0, output_field=DecimalField())),
-            output_field=DecimalField()
+    pagos_subquery = (
+        Pago.objects.filter(factura=OuterRef("pk"))
+        .values("factura")
+        .annotate(
+            total_pagado_dash=Coalesce(
+                Sum("monto"), Value(0, output_field=DecimalField())
+            )
         )
+        .values("total_pagado_dash")
+    )
+    facturas = facturas.annotate(
+        total_pagado_dash=Coalesce(
+            Subquery(pagos_subquery), Value(0, output_field=DecimalField())
+        ),
+        saldo_pendiente_dash=ExpressionWrapper(
+            F("monto")
+            - Coalesce(Subquery(pagos_subquery), Value(0, output_field=DecimalField())),
+            output_field=DecimalField(),
+        ),
     )
     # --- Facturas otros ingresos ---
-    facturas_otros = FacturaOtrosIngresos.objects.filter(estatus='pendiente', activo=True)
+    facturas_otros = FacturaOtrosIngresos.objects.filter(
+        estatus="pendiente", activo=True
+    )
     if not es_super:
         facturas_otros = facturas_otros.filter(empresa=empresa)
     if empresa_id:
@@ -1512,30 +1847,96 @@ def dashboard_saldos(request):
     if mes:
         facturas_otros = facturas_otros.filter(fecha_vencimiento__month=mes)
 
-    cobros_subquery = CobroOtrosIngresos.objects.filter(factura=OuterRef('pk')) \
-        .values('factura') \
-        .annotate(total_cobrado_dash=Coalesce(Sum('monto'), Value(0, output_field=DecimalField()))) \
-        .values('total_cobrado_dash')
-    facturas_otros = facturas_otros.annotate(
-        total_cobrado_dash=Coalesce(Subquery(cobros_subquery), Value(0, output_field=DecimalField())),
-        saldo_pendiente_dash=ExpressionWrapper(
-            F('monto') - Coalesce(Subquery(cobros_subquery), Value(0, output_field=DecimalField())),
-            output_field=DecimalField()
-        )   
+    cobros_subquery = (
+        CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"))
+        .values("factura")
+        .annotate(
+            total_cobrado_dash=Coalesce(
+                Sum("monto"), Value(0, output_field=DecimalField())
+            )
+        )
+        .values("total_cobrado_dash")
     )
-    
-    saldo_0_30 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0 
-    saldo_31_60 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0 
-    saldo_61_90 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_91_180 = facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_181_mas = facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    
-    saldo_0_30_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_31_60_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=60), fecha_vencimiento__lte=hoy - timedelta(days=30)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_61_90_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=90), fecha_vencimiento__lte=hoy - timedelta(days=60)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_91_180_otros = facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=180), fecha_vencimiento__lte=hoy - timedelta(days=90)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
-    saldo_181_mas_otros = facturas_otros.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(total=Sum('saldo_pendiente_dash'))['total'] or 0
+    facturas_otros = facturas_otros.annotate(
+        total_cobrado_dash=Coalesce(
+            Subquery(cobros_subquery), Value(0, output_field=DecimalField())
+        ),
+        saldo_pendiente_dash=ExpressionWrapper(
+            F("monto")
+            - Coalesce(
+                Subquery(cobros_subquery), Value(0, output_field=DecimalField())
+            ),
+            output_field=DecimalField(),
+        ),
+    )
 
+    saldo_0_30 = (
+        facturas.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(
+            total=Sum("saldo_pendiente_dash")
+        )["total"]
+        or 0
+    )
+    saldo_31_60 = (
+        facturas.filter(
+            fecha_vencimiento__gt=hoy - timedelta(days=60),
+            fecha_vencimiento__lte=hoy - timedelta(days=30),
+        ).aggregate(total=Sum("saldo_pendiente_dash"))["total"]
+        or 0
+    )
+    saldo_61_90 = (
+        facturas.filter(
+            fecha_vencimiento__gt=hoy - timedelta(days=90),
+            fecha_vencimiento__lte=hoy - timedelta(days=60),
+        ).aggregate(total=Sum("saldo_pendiente_dash"))["total"]
+        or 0
+    )
+    saldo_91_180 = (
+        facturas.filter(
+            fecha_vencimiento__gt=hoy - timedelta(days=180),
+            fecha_vencimiento__lte=hoy - timedelta(days=90),
+        ).aggregate(total=Sum("saldo_pendiente_dash"))["total"]
+        or 0
+    )
+    saldo_181_mas = (
+        facturas.filter(fecha_vencimiento__lte=hoy - timedelta(days=180)).aggregate(
+            total=Sum("saldo_pendiente_dash")
+        )["total"]
+        or 0
+    )
+
+    saldo_0_30_otros = (
+        facturas_otros.filter(fecha_vencimiento__gt=hoy - timedelta(days=30)).aggregate(
+            total=Sum("saldo_pendiente_dash")
+        )["total"]
+        or 0
+    )
+    saldo_31_60_otros = (
+        facturas_otros.filter(
+            fecha_vencimiento__gt=hoy - timedelta(days=60),
+            fecha_vencimiento__lte=hoy - timedelta(days=30),
+        ).aggregate(total=Sum("saldo_pendiente_dash"))["total"]
+        or 0
+    )
+    saldo_61_90_otros = (
+        facturas_otros.filter(
+            fecha_vencimiento__gt=hoy - timedelta(days=90),
+            fecha_vencimiento__lte=hoy - timedelta(days=60),
+        ).aggregate(total=Sum("saldo_pendiente_dash"))["total"]
+        or 0
+    )
+    saldo_91_180_otros = (
+        facturas_otros.filter(
+            fecha_vencimiento__gt=hoy - timedelta(days=180),
+            fecha_vencimiento__lte=hoy - timedelta(days=90),
+        ).aggregate(total=Sum("saldo_pendiente_dash"))["total"]
+        or 0
+    )
+    saldo_181_mas_otros = (
+        facturas_otros.filter(
+            fecha_vencimiento__lte=hoy - timedelta(days=180)
+        ).aggregate(total=Sum("saldo_pendiente_dash"))["total"]
+        or 0
+    )
 
     if origen == "todos":
         saldo_0_30_total = (saldo_0_30 or 0) + (saldo_0_30_otros or 0)
@@ -1548,115 +1949,127 @@ def dashboard_saldos(request):
         saldo_31_60_total = saldo_31_60 if origen != "otros" else saldo_31_60_otros
         saldo_61_90_total = saldo_61_90 if origen != "otros" else saldo_61_90_otros
         saldo_91_180_total = saldo_91_180 if origen != "otros" else saldo_91_180_otros
-        saldo_181_mas_total = saldo_181_mas if origen != "otros" else saldo_181_mas_otros
+        saldo_181_mas_total = (
+            saldo_181_mas if origen != "otros" else saldo_181_mas_otros
+        )
 
         # --- Top 10 adeudos por local/área/otros ingresos ---
     if origen == "otros":
         top_adeudos = (
-            facturas_otros
-            .annotate(
+            facturas_otros.annotate(
                 nombre_otro=Coalesce(
-                    F('tipo_ingreso__nombre'),
-                    Value('Otro ingreso'),
-                    output_field=CharField()
+                    F("tipo_ingreso__nombre"),
+                    Value("Otro ingreso"),
+                    output_field=CharField(),
                 ),
-                nombre_cliente=F('cliente__nombre')
+                nombre_cliente=F("cliente__nombre"),
             )
-            .values('nombre_otro', 'nombre_cliente')
-            .annotate(total=Sum('saldo_pendiente_dash'))
-            .order_by('-total')[:10]
+            .values("nombre_otro", "nombre_cliente")
+            .annotate(total=Sum("saldo_pendiente_dash"))
+            .order_by("-total")[:10]
         )
-        top_labels = [x['nombre_otro'] for x in top_adeudos]
-        top_data = [float(x['total']) for x in top_adeudos]
-        top_clientes = [x['nombre_cliente'] for x in top_adeudos]
+        top_labels = [x["nombre_otro"] for x in top_adeudos]
+        top_data = [float(x["total"]) for x in top_adeudos]
+        top_clientes = [x["nombre_cliente"] for x in top_adeudos]
     elif origen == "todos":
         # Top locales/áreas
         top_local_area = (
-            facturas
-            .annotate(
+            facturas.annotate(
                 nombre_local_area=Coalesce(
-                    F('local__numero'),
-                    F('area_comun__numero'),
-                    output_field=CharField()
+                    F("local__numero"),
+                    F("area_comun__numero"),
+                    output_field=CharField(),
                 ),
                 tipo_origen=Case(
-                    When(local__isnull=False, then=Value('Local')),
-                    When(area_comun__isnull=False, then=Value('Área')),
-                    default=Value(''),
-                    output_field=CharField()
+                    When(local__isnull=False, then=Value("Local")),
+                    When(area_comun__isnull=False, then=Value("Área")),
+                    default=Value(""),
+                    output_field=CharField(),
                 ),
-                nombre_cliente=F('cliente__nombre')
+                nombre_cliente=F("cliente__nombre"),
             )
-            .values('nombre_local_area', 'tipo_origen', 'nombre_cliente')
-            .annotate(total=Sum('saldo_pendiente_dash'))
+            .values("nombre_local_area", "tipo_origen", "nombre_cliente")
+            .annotate(total=Sum("saldo_pendiente_dash"))
         )
         # Top otros ingresos
         top_otros = (
-            facturas_otros
-            .annotate(
+            facturas_otros.annotate(
                 nombre_otro=Coalesce(
-                    F('tipo_ingreso__nombre'),
-                    Value('Otro ingreso'),
-                    output_field=CharField()
+                    F("tipo_ingreso__nombre"),
+                    Value("Otro ingreso"),
+                    output_field=CharField(),
                 ),
-                nombre_cliente=F('cliente__nombre')
+                nombre_cliente=F("cliente__nombre"),
             )
-            .values('nombre_otro', 'nombre_cliente')
-            .annotate(total=Sum('saldo_pendiente_dash'))
+            .values("nombre_otro", "nombre_cliente")
+            .annotate(total=Sum("saldo_pendiente_dash"))
         )
         # Unir ambos y ordenar
         top_combined = [
-            {'label': f"{x['tipo_origen']} {x['nombre_local_area']}".strip(), 'total': float(x['total']), 'cliente': x['nombre_cliente']}
+            {
+                "label": f"{x['tipo_origen']} {x['nombre_local_area']}".strip(),
+                "total": float(x["total"]),
+                "cliente": x["nombre_cliente"],
+            }
             for x in top_local_area
         ] + [
-            {'label': x['nombre_otro'], 'total': float(x['total']), 'cliente': x['nombre_cliente']}
+            {
+                "label": x["nombre_otro"],
+                "total": float(x["total"]),
+                "cliente": x["nombre_cliente"],
+            }
             for x in top_otros
         ]
-        top_combined = sorted(top_combined, key=lambda x: x['total'], reverse=True)[:10]
-        top_labels = [x['label'] for x in top_combined]
-        top_data = [x['total'] for x in top_combined]
-        top_clientes = [x['cliente'] for x in top_combined]
+        top_combined = sorted(top_combined, key=lambda x: x["total"], reverse=True)[:10]
+        top_labels = [x["label"] for x in top_combined]
+        top_data = [x["total"] for x in top_combined]
+        top_clientes = [x["cliente"] for x in top_combined]
     else:
         top_adeudos = (
-            facturas
-            .annotate(
+            facturas.annotate(
                 nombre_local_area=Coalesce(
-                    F('local__numero'),
-                    F('area_comun__numero'),
-                    output_field=CharField()
+                    F("local__numero"),
+                    F("area_comun__numero"),
+                    output_field=CharField(),
                 ),
                 tipo_origen=Case(
-                    When(local__isnull=False, then=Value('Local')),
-                    When(area_comun__isnull=False, then=Value('Área')),
-                    default=Value(''),
-                    output_field=CharField()
+                    When(local__isnull=False, then=Value("Local")),
+                    When(area_comun__isnull=False, then=Value("Área")),
+                    default=Value(""),
+                    output_field=CharField(),
                 ),
-                nombre_cliente=F('cliente__nombre')
+                nombre_cliente=F("cliente__nombre"),
             )
-            .values('nombre_local_area', 'tipo_origen', 'nombre_cliente')
-            .annotate(total=Sum('saldo_pendiente_dash'))
-            .order_by('-total')[:10]
+            .values("nombre_local_area", "tipo_origen", "nombre_cliente")
+            .annotate(total=Sum("saldo_pendiente_dash"))
+            .order_by("-total")[:10]
         )
         top_labels = [
-            f"{x['tipo_origen']} {x['nombre_local_area']}" if x['nombre_local_area'] else x['tipo_origen']
+            f"{x['tipo_origen']} {x['nombre_local_area']}"
+            if x["nombre_local_area"]
+            else x["tipo_origen"]
             for x in top_adeudos
         ]
-        top_data = [float(x['total']) for x in top_adeudos]
-        top_clientes = [x['nombre_cliente'] for x in top_adeudos]
-    
-    #clientes = Cliente.objects.filter(empresa__in=empresas)
+        top_data = [float(x["total"]) for x in top_adeudos]
+        top_clientes = [x["nombre_cliente"] for x in top_adeudos]
+
+    # clientes = Cliente.objects.filter(empresa__in=empresas)
     if origen == "otros":
         clientes = Cliente.objects.filter(
-            id__in=facturas_otros.values_list('cliente_id', flat=True).distinct()
+            id__in=facturas_otros.values_list("cliente_id", flat=True).distinct()
         )
     else:
         clientes = Cliente.objects.filter(empresa__in=empresas)
 
     # Obtén el rango de años de las facturas y facturas_otros
-    min_year = Factura.objects.aggregate(min=Min('fecha_vencimiento'))['min']
-    max_year = Factura.objects.aggregate(max=Max('fecha_vencimiento'))['max']
-    min_year_otros = FacturaOtrosIngresos.objects.aggregate(min=Min('fecha_vencimiento'))['min']
-    max_year_otros = FacturaOtrosIngresos.objects.aggregate(max=Max('fecha_vencimiento'))['max']
+    min_year = Factura.objects.aggregate(min=Min("fecha_vencimiento"))["min"]
+    max_year = Factura.objects.aggregate(max=Max("fecha_vencimiento"))["max"]
+    min_year_otros = FacturaOtrosIngresos.objects.aggregate(
+        min=Min("fecha_vencimiento")
+    )["min"]
+    max_year_otros = FacturaOtrosIngresos.objects.aggregate(
+        max=Max("fecha_vencimiento")
+    )["max"]
 
     years = set()
     if min_year and max_year:
@@ -1665,95 +2078,109 @@ def dashboard_saldos(request):
         years.update(range(min_year_otros.year, max_year_otros.year + 1))
     anios_facturas = sorted(years)
 
-    tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
+    tipos_cuota = (
+        Factura.objects.values_list("tipo_cuota", flat=True)
+        .distinct()
+        .order_by("tipo_cuota")
+    )
 
-    return render(request, 'dashboard/saldos.html', {
-        'facturas': facturas,
-        'clientes': clientes,
-        'empresas': empresas,
-        'empresa_id': str(empresa_id) if empresa_id else "",
-        'cliente_id': int(cliente_id) if cliente_id else None,
-        'saldo_0_30': saldo_0_30,
-        'saldo_31_60': saldo_31_60,
-        'saldo_61_90': saldo_61_90,
-        'saldo_91_180': saldo_91_180,
-        'saldo_181_mas': saldo_181_mas,
-        'saldo_0_30_otros': saldo_0_30_otros,
-        'saldo_31_60_otros': saldo_31_60_otros,
-        'saldo_61_90_otros': saldo_61_90_otros,
-        'saldo_91_180_otros': saldo_91_180_otros,
-        'saldo_181_mas_otros': saldo_181_mas_otros,
-        'origen': origen,
-        'es_super': es_super,
-        'top_labels': top_labels,
-        'top_data': top_data,
-        'facturas_otros': facturas_otros,
-        'top_clientes': top_clientes,
-        'saldo_0_30_total': saldo_0_30_total,
-        'saldo_31_60_total': saldo_31_60_total,
-        'saldo_61_90_total': saldo_61_90_total,
-        'saldo_91_180_total': saldo_91_180_total,
-        'saldo_181_mas_total': saldo_181_mas_total,
-        'tipos_cuota': tipos_cuota,
-        'tipo_cuota_seleccionada': tipo_cuota,
-        'meses': range(1,13),
-        'anios_facturas': anios_facturas,
-        'mes': mes,
-        'anio': anio,
-    })
+    return render(
+        request,
+        "dashboard/saldos.html",
+        {
+            "facturas": facturas,
+            "clientes": clientes,
+            "empresas": empresas,
+            "empresa_id": str(empresa_id) if empresa_id else "",
+            "cliente_id": int(cliente_id) if cliente_id else None,
+            "saldo_0_30": saldo_0_30,
+            "saldo_31_60": saldo_31_60,
+            "saldo_61_90": saldo_61_90,
+            "saldo_91_180": saldo_91_180,
+            "saldo_181_mas": saldo_181_mas,
+            "saldo_0_30_otros": saldo_0_30_otros,
+            "saldo_31_60_otros": saldo_31_60_otros,
+            "saldo_61_90_otros": saldo_61_90_otros,
+            "saldo_91_180_otros": saldo_91_180_otros,
+            "saldo_181_mas_otros": saldo_181_mas_otros,
+            "origen": origen,
+            "es_super": es_super,
+            "top_labels": top_labels,
+            "top_data": top_data,
+            "facturas_otros": facturas_otros,
+            "top_clientes": top_clientes,
+            "saldo_0_30_total": saldo_0_30_total,
+            "saldo_31_60_total": saldo_31_60_total,
+            "saldo_61_90_total": saldo_61_90_total,
+            "saldo_91_180_total": saldo_91_180_total,
+            "saldo_181_mas_total": saldo_181_mas_total,
+            "tipos_cuota": tipos_cuota,
+            "tipo_cuota_seleccionada": tipo_cuota,
+            "meses": range(1, 13),
+            "anios_facturas": anios_facturas,
+            "mes": mes,
+            "anio": anio,
+        },
+    )
 
-#pagos.html
-#dashboard Ingresos 
+
+# pagos.html
+# dashboard Ingresos
 @login_required
 def dashboard_pagos(request):
     anio_actual = datetime.now().year
-    anio = request.GET.get('anio')
-    mes= request.GET.get('mes')
-    anio_seleccionado = request.GET.get('anio', anio_actual)
+    anio = request.GET.get("anio")
+    mes = request.GET.get("mes")
+    anio_seleccionado = request.GET.get("anio", anio_actual)
     es_super = request.user.is_superuser
-    
 
     if es_super:
-        #empresas = Empresa.objects.all()
-        empresas = Empresa.objects.only('id', 'nombre')
-        empresa_id = request.GET.get('empresa')
+        # empresas = Empresa.objects.all()
+        empresas = Empresa.objects.only("id", "nombre")
+        empresa_id = request.GET.get("empresa")
         if not empresa_id or empresa_id == "todas":
             filtro_empresa = Q()
             empresa = None
         else:
             filtro_empresa = Q(factura__empresa_id=empresa_id)
-            empresa = Empresa.objects.only('id', 'nombre').get(pk=empresa_id)
+            empresa = Empresa.objects.only("id", "nombre").get(pk=empresa_id)
     else:
         empresa = request.user.perfilusuario.empresa
-        empresas = Empresa.objects.filter(id=empresa.id).only('id', 'nombre')
+        empresas = Empresa.objects.filter(id=empresa.id).only("id", "nombre")
         empresa_id = empresa.id
         filtro_empresa = Q(factura__empresa_id=empresa_id)
 
-    cliente_id = request.GET.get('cliente')
-    origen = request.GET.get('origen')
-    anio = request.GET.get('anio')
-    mes = request.GET.get('mes')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
-
+    cliente_id = request.GET.get("cliente")
+    origen = request.GET.get("origen")
+    anio = request.GET.get("anio")
+    mes = request.GET.get("mes")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
 
     filtro = Q(factura__activo=True) & filtro_empresa
 
     if cliente_id:
         filtro &= Q(factura__cliente_id=cliente_id)
-    if origen == 'local':
+    if origen == "local":
         filtro &= Q(factura__local__isnull=False)
-    elif origen == 'area':
+    elif origen == "area":
         filtro &= Q(factura__area_comun__isnull=False)
 
-    pagos = Pago.objects.exclude(forma_pago='nota_credito').filter(filtro).select_related('factura', 'factura__empresa', 'factura__cliente')
- 
+    pagos = (
+        Pago.objects.exclude(forma_pago="nota_credito")
+        .filter(filtro)
+        .select_related("factura", "factura__empresa", "factura__cliente")
+    )
+
     # Cobros de otros ingresos
     otros_cobros = CobroOtrosIngresos.objects.select_related(
-    'factura', 'factura__empresa', 'factura__cliente', 'factura__tipo_ingreso').all()
-  
+        "factura", "factura__empresa", "factura__cliente", "factura__tipo_ingreso"
+    ).all()
+
     if not request.user.is_superuser:
-        otros_cobros = otros_cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
+        otros_cobros = otros_cobros.filter(
+            factura__empresa=request.user.perfilusuario.empresa
+        )
     if empresa_id:
         otros_cobros = otros_cobros.filter(factura__empresa_id=empresa_id)
     if cliente_id:
@@ -1763,24 +2190,23 @@ def dashboard_pagos(request):
     if mes:
         otros_cobros = otros_cobros.filter(fecha_cobro__month=mes)
 
-                
     # --- AJUSTE CLAVE ---
-    if origen == 'local' or origen == 'area':
+    if origen == "local" or origen == "area":
         otros_cobros = CobroOtrosIngresos.objects.none()
         otros_por_mes = []
         otros_por_anio = []
-    else:  
+    else:
         otros_por_mes = list(
-            otros_cobros.annotate(mes=TruncMonth('fecha_cobro'))
-            .values('mes')
-            .annotate(total=Sum('monto'))
-            .order_by('mes')
+            otros_cobros.annotate(mes=TruncMonth("fecha_cobro"))
+            .values("mes")
+            .annotate(total=Sum("monto"))
+            .order_by("mes")
         )
         otros_por_anio = list(
-            otros_cobros.annotate(anio=TruncYear('fecha_cobro'))
-            .values('anio')
-            .annotate(total=Sum('monto'))
-            .order_by('anio')
+            otros_cobros.annotate(anio=TruncYear("fecha_cobro"))
+            .values("anio")
+            .annotate(total=Sum("monto"))
+            .order_by("anio")
         )
 
     # Filtros de fechas para pagos
@@ -1789,67 +2215,68 @@ def dashboard_pagos(request):
     if mes:
         pagos = pagos.filter(fecha_pago__month=mes)
 
-    if origen == 'otros':
-        pagos = Pago.objects.none() 
+    if origen == "otros":
+        pagos = Pago.objects.none()
         pagos_por_mes = []
         pagos_por_anio = []
     else:
         pagos_por_mes = list(
-            pagos.annotate(mes=TruncMonth('fecha_pago'))
-            .values('mes')
-            .annotate(total=Sum('monto'))
-            .order_by('mes')
+            pagos.annotate(mes=TruncMonth("fecha_pago"))
+            .values("mes")
+            .annotate(total=Sum("monto"))
+            .order_by("mes")
         )
         pagos_por_anio = list(
-            pagos.annotate(anio=TruncYear('fecha_pago'))
-            .values('anio')
-            .annotate(total=Sum('monto'))
-            .order_by('anio')
+            pagos.annotate(anio=TruncYear("fecha_pago"))
+            .values("anio")
+            .annotate(total=Sum("monto"))
+            .order_by("anio")
         )
     # Otros ingresos por mes y año para los gráficos
     otros_por_mes = list(
-        otros_cobros.annotate(mes=TruncMonth('fecha_cobro'))
-        .values('mes')
-        .annotate(total=Sum('monto'))
-        .order_by('mes')
+        otros_cobros.annotate(mes=TruncMonth("fecha_cobro"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
     )
     otros_por_anio = list(
-        otros_cobros.annotate(anio=TruncYear('fecha_cobro'))
-        .values('anio')
-        .annotate(total=Sum('monto'))
-        .order_by('anio')
+        otros_cobros.annotate(anio=TruncYear("fecha_cobro"))
+        .values("anio")
+        .annotate(total=Sum("monto"))
+        .order_by("anio")
     )
 
-
     # Unifica meses de ambos queryset
-    meses_cuotas = {p['mes']: p['total'] for p in pagos_por_mes}
-    meses_otros = {o['mes']: o['total'] for o in otros_por_mes}
+    meses_cuotas = {p["mes"]: p["total"] for p in pagos_por_mes}
+    meses_otros = {o["mes"]: o["total"] for o in otros_por_mes}
     todos_los_meses = sorted(set(list(meses_cuotas.keys()) + list(meses_otros.keys())))
 
     # Prepara datos alineados
-    labels_meses = [DateFormat(m).format('F Y') for m in todos_los_meses]
+    labels_meses = [DateFormat(m).format("F Y") for m in todos_los_meses]
     data_cuotas = [meses_cuotas.get(m, 0) for m in todos_los_meses]
     data_otros = [meses_otros.get(m, 0) for m in todos_los_meses]
 
     # --- PRESUPUESTO DE INGRESOS POR MES ---
-    
+
     presup_qs = PresupuestoIngreso.objects.all()
     if anio:
         presup_qs = presup_qs.filter(anio=anio)
     if empresa:
         presup_qs = presup_qs.filter(empresa=empresa)
-    
+
     presup_dict = {}
-    for p in presup_qs.only('anio', 'mes', 'origen', 'tipo_otro', 'monto_presupuestado'):
+    for p in presup_qs.only(
+        "anio", "mes", "origen", "tipo_otro", "monto_presupuestado"
+    ):
         key = (p.anio, p.mes)
         presup_dict.setdefault(key, 0)
-        if origen == 'local' and p.origen == 'local':
+        if origen == "local" and p.origen == "local":
             presup_dict[key] += float(p.monto_presupuestado)
-        elif origen == 'area' and p.origen == 'area':
+        elif origen == "area" and p.origen == "area":
             presup_dict[key] += float(p.monto_presupuestado)
-        elif origen == 'otros' and p.origen == 'otros':
+        elif origen == "otros" and p.origen == "otros":
             presup_dict[key] += float(p.monto_presupuestado)
-        elif origen in (None, '', 'todos', 'Todo', 'Todos'):  # Todos los orígenes
+        elif origen in (None, "", "todos", "Todo", "Todos"):  # Todos los orígenes
             presup_dict[key] += float(p.monto_presupuestado)
 
     # Prepara datos de presupuesto alineados
@@ -1859,51 +2286,68 @@ def dashboard_pagos(request):
         data_presupuesto.append(presup_dict.get(key, 0))
 
         # Obtén todos los años presentes en pagos y presupuesto
-    anios_pagos = pagos.values_list('fecha_pago__year', flat=True).distinct()
-    anios_otros = otros_cobros.values_list('fecha_cobro__year', flat=True).distinct()
-    anios_presupuesto = PresupuestoIngreso.objects.values_list('anio', flat=True).distinct()
-    todos_los_anios = sorted(set(list(anios_pagos) + list(anios_otros) + list(anios_presupuesto)))
-    
+    anios_pagos = pagos.values_list("fecha_pago__year", flat=True).distinct()
+    anios_otros = otros_cobros.values_list("fecha_cobro__year", flat=True).distinct()
+    anios_presupuesto = PresupuestoIngreso.objects.values_list(
+        "anio", flat=True
+    ).distinct()
+    todos_los_anios = sorted(
+        set(list(anios_pagos) + list(anios_otros) + list(anios_presupuesto))
+    )
 
     # Suma ingresos reales por año
-    data_cuotas_anio = { (p['anio'].year if hasattr(p['anio'], 'year') else p['anio']): float(p['total']) for p in pagos_por_anio }
-    data_otros_anio = { (o['anio'].year if hasattr(o['anio'], 'year') else o['anio']): float(o['total']) for o in otros_por_anio }
+    data_cuotas_anio = {
+        (p["anio"].year if hasattr(p["anio"], "year") else p["anio"]): float(p["total"])
+        for p in pagos_por_anio
+    }
+    data_otros_anio = {
+        (o["anio"].year if hasattr(o["anio"], "year") else o["anio"]): float(o["total"])
+        for o in otros_por_anio
+    }
 
     # Suma presupuesto anual por año
     presup_anual_qs = PresupuestoIngreso.objects.all()
     if empresa:
         presup_anual_qs = presup_anual_qs.filter(empresa=empresa)
     presup_anual_dict = {}
-    for p in presup_anual_qs.only('anio', 'origen', 'tipo_otro', 'monto_presupuestado'):
+    for p in presup_anual_qs.only("anio", "origen", "tipo_otro", "monto_presupuestado"):
         key = (p.anio, p.origen, p.tipo_otro or "")
-        presup_anual_dict.setdefault(p.anio, {}).setdefault((p.origen, p.tipo_otro or ""), 0)
-        presup_anual_dict[p.anio][(p.origen, p.tipo_otro or "")] += float(p.monto_presupuestado)
+        presup_anual_dict.setdefault(p.anio, {}).setdefault(
+            (p.origen, p.tipo_otro or ""), 0
+        )
+        presup_anual_dict[p.anio][(p.origen, p.tipo_otro or "")] += float(
+            p.monto_presupuestado
+        )
 
     data_presupuesto_anio = []
     for anio_ in todos_los_anios:
-        if origen == 'local':
-            total_presup = presup_anual_dict.get(anio_, {}).get(('local', ''), 0)
-        elif origen == 'area':
-            total_presup = presup_anual_dict.get(anio_, {}).get(('area', ''), 0)
-        elif origen == 'otros':
+        if origen == "local":
+            total_presup = presup_anual_dict.get(anio_, {}).get(("local", ""), 0)
+        elif origen == "area":
+            total_presup = presup_anual_dict.get(anio_, {}).get(("area", ""), 0)
+        elif origen == "otros":
             total_presup = sum(
-                v for (o, _), v in presup_anual_dict.get(anio_, {}).items() if o == 'otros'
+                v
+                for (o, _), v in presup_anual_dict.get(anio_, {}).items()
+                if o == "otros"
             )
-        else:  
-            presup_local = presup_anual_dict.get(anio_, {}).get(('local', ''), 0)
-            presup_area = presup_anual_dict.get(anio_, {}).get(('area', ''), 0)
+        else:
+            presup_local = presup_anual_dict.get(anio_, {}).get(("local", ""), 0)
+            presup_area = presup_anual_dict.get(anio_, {}).get(("area", ""), 0)
             presup_otros = sum(
-                v for (o, _), v in presup_anual_dict.get(anio_, {}).items() if o == 'otros'
+                v
+                for (o, _), v in presup_anual_dict.get(anio_, {}).items()
+                if o == "otros"
             )
             total_presup = presup_local + presup_area + presup_otros
         data_presupuesto_anio.append(total_presup)
 
     labels_anios = [str(a) for a in todos_los_anios]
     data_cuotas_anio_list = [data_cuotas_anio.get(a, 0) for a in todos_los_anios]
-    data_otros_anio_list = [data_otros_anio.get(a, 0) for a in todos_los_anios]    
+    data_otros_anio_list = [data_otros_anio.get(a, 0) for a in todos_los_anios]
 
-        # --- FACTURAS POR COBRAR POR MES ---
-    facturas_pendientes = Factura.objects.filter(estatus='pendiente', activo=True)
+    # --- FACTURAS POR COBRAR POR MES ---
+    facturas_pendientes = Factura.objects.filter(estatus="pendiente", activo=True)
     if empresa:
         facturas_pendientes = facturas_pendientes.filter(empresa=empresa)
     if cliente_id:
@@ -1912,40 +2356,47 @@ def dashboard_pagos(request):
         facturas_pendientes = facturas_pendientes.filter(fecha_emision__year=anio)
     if mes:
         facturas_pendientes = facturas_pendientes.filter(fecha_emision__month=mes)
-    if origen == 'local':
+    if origen == "local":
         facturas_pendientes = facturas_pendientes.filter(local__isnull=False)
-    elif origen == 'area':
+    elif origen == "area":
         facturas_pendientes = facturas_pendientes.filter(area_comun__isnull=False)
-        
+
         # Anota el total pagado por factura
-    facturas_pendientes = facturas_pendientes.annotate(
-    pagado=Coalesce(Sum('pagos__monto'), 0.0, output_field=DecimalField())
-).annotate(
-    saldo_pendiente_db=ExpressionWrapper(
-        F('monto') - F('pagado'),
-        output_field=DecimalField()
+    facturas_pendientes = (
+        facturas_pendientes.annotate(
+            pagado=Coalesce(Sum("pagos__monto"), 0.0, output_field=DecimalField())
+        )
+        .annotate(
+            saldo_pendiente_db=ExpressionWrapper(
+                F("monto") - F("pagado"), output_field=DecimalField()
+            )
+        )
+        .only("monto", "fecha_vencimiento")
     )
-).only('monto', 'fecha_vencimiento')
-            
-    meses_facturas = sorted(set(
-    f.fecha_vencimiento.replace(day=1)
-    for f in facturas_pendientes
-    if f.fecha_vencimiento is not None
-    ))
-    anios_facturas = sorted(set(
-        f.fecha_vencimiento.year
-        for f in facturas_pendientes
-        if f.fecha_vencimiento is not None
-    ))
 
+    meses_facturas = sorted(
+        set(
+            f.fecha_vencimiento.replace(day=1)
+            for f in facturas_pendientes
+            if f.fecha_vencimiento is not None
+        )
+    )
+    anios_facturas = sorted(
+        set(
+            f.fecha_vencimiento.year
+            for f in facturas_pendientes
+            if f.fecha_vencimiento is not None
+        )
+    )
 
-        # Por mes: solo facturas emitidas en ese mes, no vencidas
+    # Por mes: solo facturas emitidas en ese mes, no vencidas
     meses_por_cobrar = {}
     for mes in todos_los_meses:
         total = sum(
             float(f.monto) - float(f.pagado)
             for f in facturas_pendientes
-            if f.fecha_vencimiento.year == mes.year and f.fecha_vencimiento.month == mes.month
+            if f.fecha_vencimiento.year == mes.year
+            and f.fecha_vencimiento.month == mes.month
         )
         meses_por_cobrar[mes] = total
     data_por_cobrar = [meses_por_cobrar.get(m, 0) for m in todos_los_meses]
@@ -1963,86 +2414,97 @@ def dashboard_pagos(request):
 
     # Otros ingresos por tipo y mes (optimizado)
     otros_tipos_por_mes = [defaultdict(float) for _ in range(len(todos_los_meses))]
-    otros_cobros_values = otros_cobros.values('fecha_cobro', 'factura__tipo_ingreso', 'monto')
+    otros_cobros_values = otros_cobros.values(
+        "fecha_cobro", "factura__tipo_ingreso", "monto"
+    )
     for oc in otros_cobros_values:
         for idx, mes in enumerate(todos_los_meses):
-            if oc['fecha_cobro'].year == mes.year and oc['fecha_cobro'].month == mes.month:
-                tipo = oc['factura__tipo_ingreso'] or 'Otro'
-                otros_tipos_por_mes[idx][tipo] += float(oc['monto'])
+            if (
+                oc["fecha_cobro"].year == mes.year
+                and oc["fecha_cobro"].month == mes.month
+            ):
+                tipo = oc["factura__tipo_ingreso"] or "Otro"
+                otros_tipos_por_mes[idx][tipo] += float(oc["monto"])
                 break
 
     # Convierte a lista de listas de strings para el tooltip
     otros_tipos_tooltip = [
         [f"{tipo}: ${monto:,.2f}" for tipo, monto in tipos.items()]
         for tipos in otros_tipos_por_mes
-]
-    clientes = Cliente.objects.filter(empresa__in=empresas).only('id', 'nombre')
+    ]
+    clientes = Cliente.objects.filter(empresa__in=empresas).only("id", "nombre")
 
-    total_pagos = pagos.aggregate(total=Sum('monto'))['total'] or 0
-    total_otros = otros_cobros.aggregate(total=Sum('monto'))['total'] or 0
+    total_pagos = pagos.aggregate(total=Sum("monto"))["total"] or 0
+    total_otros = otros_cobros.aggregate(total=Sum("monto"))["total"] or 0
     total_general = total_pagos + total_otros
 
-    return render(request, 'dashboard/pagos.html', {
-        'pagos': pagos,
-        'empresas': empresas,
-        'empresa_id': str(empresa_id) if empresa_id else "",
-        'clientes': clientes,
-        'cliente_id': int(cliente_id) if cliente_id else None,
-        'origen': origen,
-        'es_super': es_super,
-        'pagos_por_mes': pagos_por_mes,
-        'pagos_por_anio': pagos_por_anio,
-        'otros_por_mes': otros_por_mes,
-        'otros_por_anio': otros_por_anio,
-        'anio': anio,
-        'mes': mes,
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
-        'otros_cobros': otros_cobros,
-        'total_pagos': total_pagos,
-        'total_otros': total_otros,
-        'total_general': total_general,
-        'labels_meses': labels_meses,
-        'data_cuotas': data_cuotas, 
-        'data_otros': data_otros,
-        'data_presupuesto': data_presupuesto,
-        'data_cuotas_anio': data_cuotas_anio_list,
-        'data_otros_anio': data_otros_anio_list,
-        'data_presupuesto_anio': data_presupuesto_anio,
-        'labels_anios': labels_anios,
-        'data_por_cobrar': data_por_cobrar,
-        'data_por_cobrar_anio': data_por_cobrar_anio,
-        'meses_facturas': meses_facturas,
-        'anios_facturas': anios_facturas,
-        'otros_tipos_tooltip': json.dumps(otros_tipos_tooltip),
-        'anio_actual': anio_actual,
-        'anio_seleccionado': anio_seleccionado,
-    })
+    return render(
+        request,
+        "dashboard/pagos.html",
+        {
+            "pagos": pagos,
+            "empresas": empresas,
+            "empresa_id": str(empresa_id) if empresa_id else "",
+            "clientes": clientes,
+            "cliente_id": int(cliente_id) if cliente_id else None,
+            "origen": origen,
+            "es_super": es_super,
+            "pagos_por_mes": pagos_por_mes,
+            "pagos_por_anio": pagos_por_anio,
+            "otros_por_mes": otros_por_mes,
+            "otros_por_anio": otros_por_anio,
+            "anio": anio,
+            "mes": mes,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "otros_cobros": otros_cobros,
+            "total_pagos": total_pagos,
+            "total_otros": total_otros,
+            "total_general": total_general,
+            "labels_meses": labels_meses,
+            "data_cuotas": data_cuotas,
+            "data_otros": data_otros,
+            "data_presupuesto": data_presupuesto,
+            "data_cuotas_anio": data_cuotas_anio_list,
+            "data_otros_anio": data_otros_anio_list,
+            "data_presupuesto_anio": data_presupuesto_anio,
+            "labels_anios": labels_anios,
+            "data_por_cobrar": data_por_cobrar,
+            "data_por_cobrar_anio": data_por_cobrar_anio,
+            "meses_facturas": meses_facturas,
+            "anios_facturas": anios_facturas,
+            "otros_tipos_tooltip": json.dumps(otros_tipos_tooltip),
+            "anio_actual": anio_actual,
+            "anio_seleccionado": anio_seleccionado,
+        },
+    )
+
 
 ####GRAFICO INGRESOS CUOTAS Y OTROS INGRESOS POR MES########
 @login_required
 def grafico_ingresos_mensuales(request):
-    empresa = request.user.perfilusuario.empresa if not request.user.is_superuser else None
-    anio = int(request.GET.get('anio', datetime.now().year))
-    tipo_ingreso = request.GET.get('tipo_ingreso', '')
-    mes= request.GET.get('mes', '')
+    empresa = (
+        request.user.perfilusuario.empresa if not request.user.is_superuser else None
+    )
+    anio = int(request.GET.get("anio", datetime.now().year))
+    tipo_ingreso = request.GET.get("tipo_ingreso", "")
+    mes = request.GET.get("mes", "")
 
     # Pagos de cuotas de mantenimiento (locales)
     pagos_local = Pago.objects.filter(
-        factura__tipo_cuota__in=['mantenimiento','extraordinaria'],
+        factura__tipo_cuota__in=["mantenimiento", "extraordinaria"],
         factura__activo=True,
-        fecha_pago__year=anio
+        fecha_pago__year=anio,
     )
     # Pagos de cuotas de área común
     pagos_area = Pago.objects.filter(
-        factura__tipo_cuota__in=['renta','deposito'],
+        factura__tipo_cuota__in=["renta", "deposito"],
         factura__activo=True,
-        fecha_pago__year=anio
+        fecha_pago__year=anio,
     )
     # Cobros de otros ingresos
     cobros_otros = CobroOtrosIngresos.objects.filter(
-        factura__activo=True,
-        fecha_cobro__year=anio
+        factura__activo=True, fecha_cobro__year=anio
     )
 
     if empresa:
@@ -2056,18 +2518,35 @@ def grafico_ingresos_mensuales(request):
         pagos_area = pagos_area.filter(fecha_pago__month=mes_int)
         cobros_otros = cobros_otros.filter(fecha_cobro__month=mes_int)
     else:
-        mes = ''
+        mes = ""
 
-    pagos_local = pagos_local.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    pagos_area = pagos_area.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    cobros_otros = cobros_otros.annotate(mes=TruncMonth('fecha_cobro')).values('mes').annotate(total=Sum('monto')).order_by('mes')
+    pagos_local = (
+        pagos_local.annotate(mes=TruncMonth("fecha_pago"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
+    pagos_area = (
+        pagos_area.annotate(mes=TruncMonth("fecha_pago"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
+    cobros_otros = (
+        cobros_otros.annotate(mes=TruncMonth("fecha_cobro"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
 
     # Unificar meses
-    meses = sorted(set(
-        [x['mes'] for x in pagos_local if x['mes']] +
-        [x['mes'] for x in pagos_area if x['mes']] +
-        [x['mes'] for x in cobros_otros if x['mes']]
-    ))
+    meses = sorted(
+        set(
+            [x["mes"] for x in pagos_local if x["mes"]]
+            + [x["mes"] for x in pagos_area if x["mes"]]
+            + [x["mes"] for x in cobros_otros if x["mes"]]
+        )
+    )
 
     # Obtén los presupuestos del año y empresa actual
     presup_qs = PresupuestoIngreso.objects.filter(anio=anio)
@@ -2079,183 +2558,210 @@ def grafico_ingresos_mensuales(request):
     for p in presup_qs:
         mes_p = int(p.mes)
         # Si quieres filtrar por tipo_ingreso, ajusta aquí:
-        if tipo_ingreso == 'locales' and p.origen != 'local':
+        if tipo_ingreso == "locales" and p.origen != "local":
             continue
-        if tipo_ingreso == 'areas' and p.origen != 'area':
+        if tipo_ingreso == "areas" and p.origen != "area":
             continue
-        if tipo_ingreso == 'otros' and p.origen != 'otros':
+        if tipo_ingreso == "otros" and p.origen != "otros":
             continue
-        presup_dict[mes_p] = presup_dict.get(mes_p, 0.0) + float(p.monto_presupuestado or 0)
-        
-    labels = [DateFormat(m).format('F Y') for m in meses]
-    local_dict = {x['mes']: float(x['total'] or 0) for x in pagos_local if x['mes']}
-    area_dict = {x['mes']: float(x['total'] or 0) for x in pagos_area if x['mes']}
-    otros_dict = {x['mes']: float(x['total'] or 0) for x in cobros_otros if x['mes']}
+        presup_dict[mes_p] = presup_dict.get(mes_p, 0.0) + float(
+            p.monto_presupuestado or 0
+        )
+
+    labels = [DateFormat(m).format("F Y") for m in meses]
+    local_dict = {x["mes"]: float(x["total"] or 0) for x in pagos_local if x["mes"]}
+    area_dict = {x["mes"]: float(x["total"] or 0) for x in pagos_area if x["mes"]}
+    otros_dict = {x["mes"]: float(x["total"] or 0) for x in cobros_otros if x["mes"]}
 
     data_local = [local_dict.get(m, 0) for m in meses]
     data_area = [area_dict.get(m, 0) for m in meses]
     data_otros = [otros_dict.get(m, 0) for m in meses]
     presup_data = [presup_dict.get(m.month, 0) for m in meses]
 
-    
-    if tipo_ingreso == 'locales':
+    if tipo_ingreso == "locales":
         data_area = [0 for _ in meses]
         data_otros = [0 for _ in meses]
-    elif tipo_ingreso == 'areas':
+    elif tipo_ingreso == "areas":
         data_local = [0 for _ in meses]
         data_otros = [0 for _ in meses]
-    elif tipo_ingreso == 'otros':
+    elif tipo_ingreso == "otros":
         data_local = [0 for _ in meses]
         data_area = [0 for _ in meses]
 
-    totales_mes = [data_local[i] + data_area[i] + data_otros[i] for i in range(len(data_local))]
+    totales_mes = [
+        data_local[i] + data_area[i] + data_otros[i] for i in range(len(data_local))
+    ]
 
     meses_lista = [
-    {'num': 1, 'nombre': 'Enero'},
-    {'num': 2, 'nombre': 'Febrero'},
-    {'num': 3, 'nombre': 'Marzo'},
-    {'num': 4, 'nombre': 'Abril'},
-    {'num': 5, 'nombre': 'Mayo'},
-    {'num': 6, 'nombre': 'Junio'},
-    {'num': 7, 'nombre': 'Julio'},
-    {'num': 8, 'nombre': 'Agosto'},
-    {'num': 9, 'nombre': 'Septiembre'},
-    {'num': 10, 'nombre': 'Octubre'},
-    {'num': 11, 'nombre': 'Noviembre'},
-    {'num': 12, 'nombre': 'Diciembre'},
-]
+        {"num": 1, "nombre": "Enero"},
+        {"num": 2, "nombre": "Febrero"},
+        {"num": 3, "nombre": "Marzo"},
+        {"num": 4, "nombre": "Abril"},
+        {"num": 5, "nombre": "Mayo"},
+        {"num": 6, "nombre": "Junio"},
+        {"num": 7, "nombre": "Julio"},
+        {"num": 8, "nombre": "Agosto"},
+        {"num": 9, "nombre": "Septiembre"},
+        {"num": 10, "nombre": "Octubre"},
+        {"num": 11, "nombre": "Noviembre"},
+        {"num": 12, "nombre": "Diciembre"},
+    ]
 
     context = {
-        'labels': json.dumps(labels),
-        'data_local': json.dumps(data_local),
-        'data_area': json.dumps(data_area),
-        'data_otros': json.dumps(data_otros),
-        'totales_mes': json.dumps(totales_mes),
-        'data_presupuesto': json.dumps(presup_data),
-        'anio': anio,
-        'tipo_ingreso': tipo_ingreso,
-        'meses_lista': meses_lista,
-        'mes': mes,
+        "labels": json.dumps(labels),
+        "data_local": json.dumps(data_local),
+        "data_area": json.dumps(data_area),
+        "data_otros": json.dumps(data_otros),
+        "totales_mes": json.dumps(totales_mes),
+        "data_presupuesto": json.dumps(presup_data),
+        "anio": anio,
+        "tipo_ingreso": tipo_ingreso,
+        "meses_lista": meses_lista,
+        "mes": mes,
     }
 
-    return render(request, 'facturacion/grafico_ingresos_mensual.html', context)   
+    return render(request, "facturacion/grafico_ingresos_mensual.html", context)
 
 
 ###GRAFICO INGRESOS CUOTAS Y OTROS INGRESOS POR AÑO########
 @login_required
 def grafico_ingresos_anual(request):
-    empresa = request.user.perfilusuario.empresa if not request.user.is_superuser else None
-    
+    empresa = (
+        request.user.perfilusuario.empresa if not request.user.is_superuser else None
+    )
 
     # Pagos de cuotas de mantenimiento (locales)
     pagos_local = Pago.objects.filter(
-        factura__tipo_cuota__in=['mantenimiento','extraordinaria'],
-        factura__activo=True
+        factura__tipo_cuota__in=["mantenimiento", "extraordinaria"],
+        factura__activo=True,
     )
     pagos_area = Pago.objects.filter(
-        factura__tipo_cuota__in=['renta','deposito'],
-        factura__activo=True
+        factura__tipo_cuota__in=["renta", "deposito"], factura__activo=True
     )
-    cobros_otros = CobroOtrosIngresos.objects.filter(
-        factura__activo=True
-    )
+    cobros_otros = CobroOtrosIngresos.objects.filter(factura__activo=True)
 
     if empresa:
         pagos_local = pagos_local.filter(factura__empresa=empresa)
         pagos_area = pagos_area.filter(factura__empresa=empresa)
         cobros_otros = cobros_otros.filter(factura__empresa=empresa)
 
-
-    pagos_local = pagos_local.annotate(anio=TruncYear('fecha_pago')).values('anio').annotate(total=Sum('monto')).order_by('anio')
-    pagos_area = pagos_area.annotate(anio=TruncYear('fecha_pago')).values('anio').annotate(total=Sum('monto')).order_by('anio')
-    cobros_otros = cobros_otros.annotate(anio=TruncYear('fecha_cobro')).values('anio').annotate(total=Sum('monto')).order_by('anio')
+    pagos_local = (
+        pagos_local.annotate(anio=TruncYear("fecha_pago"))
+        .values("anio")
+        .annotate(total=Sum("monto"))
+        .order_by("anio")
+    )
+    pagos_area = (
+        pagos_area.annotate(anio=TruncYear("fecha_pago"))
+        .values("anio")
+        .annotate(total=Sum("monto"))
+        .order_by("anio")
+    )
+    cobros_otros = (
+        cobros_otros.annotate(anio=TruncYear("fecha_cobro"))
+        .values("anio")
+        .annotate(total=Sum("monto"))
+        .order_by("anio")
+    )
 
     # Unificar años
-    anios = sorted(set(
-        [x['anio'].year for x in pagos_local if x['anio']] +
-        [x['anio'].year for x in pagos_area if x['anio']] +
-        [x['anio'].year for x in cobros_otros if x['anio']]
-    ))
+    anios = sorted(
+        set(
+            [x["anio"].year for x in pagos_local if x["anio"]]
+            + [x["anio"].year for x in pagos_area if x["anio"]]
+            + [x["anio"].year for x in cobros_otros if x["anio"]]
+        )
+    )
 
     # Obtén los presupuestos del año y empresa actual
     presup_qs = PresupuestoIngreso.objects.all()
     if empresa:
         presup_qs = presup_qs.filter(empresa=empresa)
 
-    #suma el presupuesto por anio
+    # suma el presupuesto por anio
     presup_anual_dict = {}
-    for p in presup_qs.only('anio', 'origen', 'tipo_otro', 'monto_presupuestado'):
+    for p in presup_qs.only("anio", "origen", "tipo_otro", "monto_presupuestado"):
         presup_anual_dict.setdefault(p.anio, 0)
-        presup_anual_dict[p.anio] += float(p.monto_presupuestado or 0)  
+        presup_anual_dict[p.anio] += float(p.monto_presupuestado or 0)
 
-
-    local_dict = {x['anio'].year: float(x['total'] or 0) for x in pagos_local if x['anio']}
-    area_dict = {x['anio'].year: float(x['total'] or 0) for x in pagos_area if x['anio']}
-    otros_dict = {x['anio'].year: float(x['total'] or 0) for x in cobros_otros if x['anio']}
+    local_dict = {
+        x["anio"].year: float(x["total"] or 0) for x in pagos_local if x["anio"]
+    }
+    area_dict = {
+        x["anio"].year: float(x["total"] or 0) for x in pagos_area if x["anio"]
+    }
+    otros_dict = {
+        x["anio"].year: float(x["total"] or 0) for x in cobros_otros if x["anio"]
+    }
 
     data_local = [local_dict.get(a, 0) for a in anios]
     data_area = [area_dict.get(a, 0) for a in anios]
     data_otros = [otros_dict.get(a, 0) for a in anios]
     data_presupuesto_anio = [presup_anual_dict.get(a, 0) for a in anios]
-    totales_anio = [data_local[i] + data_area[i] + data_otros[i] for i in range(len(anios))]
-
+    totales_anio = [
+        data_local[i] + data_area[i] + data_otros[i] for i in range(len(anios))
+    ]
 
     context = {
-        'anios': json.dumps(anios),
-        'data_local': json.dumps(data_local),
-        'data_area': json.dumps(data_area),
-        'data_otros': json.dumps(data_otros),
-        'totales_anio': json.dumps(totales_anio),
-        'data_presupuesto_anio': json.dumps(data_presupuesto_anio),
+        "anios": json.dumps(anios),
+        "data_local": json.dumps(data_local),
+        "data_area": json.dumps(data_area),
+        "data_otros": json.dumps(data_otros),
+        "totales_anio": json.dumps(totales_anio),
+        "data_presupuesto_anio": json.dumps(data_presupuesto_anio),
     }
-    return render(request, 'facturacion/grafico_ingresos_anual.html', context) 
+    return render(request, "facturacion/grafico_ingresos_anual.html", context)
 
-#reporte antiguedad saldos menu cartera
+
+# reporte antiguedad saldos menu cartera
 @login_required
 def cartera_vencida_saldos_antiguedad(request):
     hoy = timezone.now().date()
-    filtro = request.GET.get('rango')
-    origen = request.GET.get('origen')
-    tipo_cuota = request.GET.get('tipo_cuota')
+    filtro = request.GET.get("rango")
+    origen = request.GET.get("origen")
+    tipo_cuota = request.GET.get("tipo_cuota")
 
     # Subquery para total pagado por factura
-    total_pagado_sq = Pago.objects.filter(
-        factura=OuterRef('pk')
-    ).values('factura').annotate(
-        total=Sum('monto')
-    ).values('total')
+    total_pagado_sq = (
+        Pago.objects.filter(factura=OuterRef("pk"))
+        .values("factura")
+        .annotate(total=Sum("monto"))
+        .values("total")
+    )
 
-    facturas = Factura.objects.filter(
-    estatus='pendiente',
-    fecha_vencimiento__lt=hoy,
-    activo=True
-    ).select_related('cliente', 'empresa', 'local', 'area_comun').annotate(
-        total_pagado_ann=Coalesce(
-        Subquery(total_pagado_sq, output_field=DecimalField()),
-        Value(0, output_field=DecimalField())
+    facturas = (
+        Factura.objects.filter(
+            estatus="pendiente", fecha_vencimiento__lt=hoy, activo=True
+        )
+        .select_related("cliente", "empresa", "local", "area_comun")
+        .annotate(
+            total_pagado_ann=Coalesce(
+                Subquery(total_pagado_sq, output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            )
         )
     )
 
     facturas_otros = FacturaOtrosIngresos.objects.filter(
-    estatus='pendiente',
-    fecha_vencimiento__lt=hoy,
-    activo=True
-    ).select_related('cliente', 'empresa', 'tipo_ingreso')
+        estatus="pendiente", fecha_vencimiento__lt=hoy, activo=True
+    ).select_related("cliente", "empresa", "tipo_ingreso")
 
-    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+    if not request.user.is_superuser and hasattr(request.user, "perfilusuario"):
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
         facturas_otros = facturas_otros.filter(empresa=empresa)
-        clientes = Cliente.objects.filter(empresa=empresa).order_by('nombre')
+        clientes = Cliente.objects.filter(empresa=empresa).order_by("nombre")
     else:
-        if request.GET.get('empresa'):
-            facturas = facturas.filter(empresa_id=request.GET['empresa'])
-            facturas_otros = facturas_otros.filter(empresa_id=request.GET['empresa'])
-            clientes = Cliente.objects.filter(empresa_id=request.GET['empresa']).order_by('nombre')
+        if request.GET.get("empresa"):
+            facturas = facturas.filter(empresa_id=request.GET["empresa"])
+            facturas_otros = facturas_otros.filter(empresa_id=request.GET["empresa"])
+            clientes = Cliente.objects.filter(
+                empresa_id=request.GET["empresa"]
+            ).order_by("nombre")
         else:
-            clientes = Cliente.objects.all().order_by('nombre')
+            clientes = Cliente.objects.all().order_by("nombre")
 
-    cliente_id = request.GET.get('cliente')
+    cliente_id = request.GET.get("cliente")
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
         facturas_otros = facturas_otros.filter(cliente_id=cliente_id)
@@ -2263,26 +2769,29 @@ def cartera_vencida_saldos_antiguedad(request):
     if tipo_cuota:
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
-    if origen == 'local':
+    if origen == "local":
         facturas = facturas.filter(local__isnull=False)
         facturas_otros = facturas_otros.none()
-    elif origen == 'area':
+    elif origen == "area":
         facturas = facturas.filter(area_comun__isnull=False)
         facturas_otros = facturas_otros.none()
-    elif origen == 'otros':
+    elif origen == "otros":
         facturas = facturas.none()
 
     # ── CALCULAR DÍAS UNA SOLA VEZ y agrupar en memoria ──
     rangos = [
-        ('0-30 días',   0,   30),
-        ('31-60 días',  31,  60),
-        ('61-90 días',  61,  90),
-        ('91-180 días', 91,  180),
-        ('181+ días',   181, 10000),
+        ("0-30 días", 0, 30),
+        ("31-60 días", 31, 60),
+        ("61-90 días", 61, 90),
+        ("91-180 días", 91, 180),
+        ("181+ días", 181, 10000),
     ]
 
     # Inicializar grupos
-    grupos = {nombre: {'rango': nombre, 'facturas': [], 'subtotal': 0} for nombre, _, _ in rangos}
+    grupos = {
+        nombre: {"rango": nombre, "facturas": [], "subtotal": 0}
+        for nombre, _, _ in rangos
+    }
 
     def get_rango(dias):
         for nombre, desde, hasta in rangos:
@@ -2297,11 +2806,11 @@ def cartera_vencida_saldos_antiguedad(request):
         if rango:
             f.dias_vencidos = dias
             f.es_otro = False
-            grupos[rango]['facturas'].append(f)
+            grupos[rango]["facturas"].append(f)
             # Usar el anotado en lugar del property
             saldo = float(f.monto) - float(f.total_pagado_ann)
             f.saldo_calculado = saldo
-            grupos[rango]['subtotal'] += saldo
+            grupos[rango]["subtotal"] += saldo
 
     # Una sola iteración para facturas otros ingresos
     for f in facturas_otros:
@@ -2310,63 +2819,86 @@ def cartera_vencida_saldos_antiguedad(request):
         if rango:
             f.dias_vencidos = dias
             f.es_otro = True
-            grupos[rango]['facturas'].append(f)
-            grupos[rango]['subtotal'] += float(getattr(f, 'saldo', f.monto))
+            grupos[rango]["facturas"].append(f)
+            grupos[rango]["subtotal"] += float(getattr(f, "saldo", f.monto))
 
     agrupado = [grupos[nombre] for nombre, _, _ in rangos]
-    gran_total = sum(g['subtotal'] for g in agrupado)
+    gran_total = sum(g["subtotal"] for g in agrupado)
 
-    tipos_cuota = Factura.objects.values_list('tipo_cuota', flat=True).distinct().order_by('tipo_cuota')
+    tipos_cuota = (
+        Factura.objects.values_list("tipo_cuota", flat=True)
+        .distinct()
+        .order_by("tipo_cuota")
+    )
 
-    return render(request, 'facturacion/cartera_vencida_saldos_antiguedad.html', {
-        'agrupado': agrupado,
-        'gran_total': gran_total,
-        'hoy': hoy,
-        'empresas': Empresa.objects.all(),
-        'clientes': clientes,
-        'rango_seleccionado': filtro,
-        'tipo_cuota_seleccionado': tipo_cuota,
-        'tipos_cuota': tipos_cuota,
-    })
+    return render(
+        request,
+        "facturacion/cartera_vencida_saldos_antiguedad.html",
+        {
+            "agrupado": agrupado,
+            "gran_total": gran_total,
+            "hoy": hoy,
+            "empresas": Empresa.objects.all(),
+            "clientes": clientes,
+            "rango_seleccionado": filtro,
+            "tipo_cuota_seleccionado": tipo_cuota,
+            "tipos_cuota": tipos_cuota,
+        },
+    )
+
 
 @login_required
 def exportar_cartera_excel(request):
     hoy = timezone.now().date()
-    filtro = request.GET.get('rango')
-    origen = request.GET.get('origen')
-    tipo_cuota = request.GET.get('tipo_cuota')
-    empresa_id = request.GET.get('empresa')
-    cliente_id = request.GET.get('cliente')
+    filtro = request.GET.get("rango")
+    origen = request.GET.get("origen")
+    tipo_cuota = request.GET.get("tipo_cuota")
+    empresa_id = request.GET.get("empresa")
+    cliente_id = request.GET.get("cliente")
 
     # ── Subquery saldo facturas cuotas ──
-    total_pagado_sq = Pago.objects.filter(
-        factura=OuterRef('pk')
-    ).values('factura').annotate(total=Sum('monto')).values('total')
+    total_pagado_sq = (
+        Pago.objects.filter(factura=OuterRef("pk"))
+        .values("factura")
+        .annotate(total=Sum("monto"))
+        .values("total")
+    )
 
-    facturas = Factura.objects.filter(
-        estatus='pendiente', fecha_vencimiento__lt=hoy, activo=True
-    ).select_related('cliente', 'local', 'area_comun').annotate(
-        total_pagado_ann=Coalesce(
-            Subquery(total_pagado_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField())
+    facturas = (
+        Factura.objects.filter(
+            estatus="pendiente", fecha_vencimiento__lt=hoy, activo=True
+        )
+        .select_related("cliente", "local", "area_comun")
+        .annotate(
+            total_pagado_ann=Coalesce(
+                Subquery(total_pagado_sq, output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            )
         )
     )
 
     # ── Subquery saldo otros ingresos ──
-    total_cobrado_oi_sq = CobroOtrosIngresos.objects.filter(
-        factura=OuterRef('pk')
-    ).values('factura').annotate(total=Sum('monto')).values('total')
+    total_cobrado_oi_sq = (
+        CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"))
+        .values("factura")
+        .annotate(total=Sum("monto"))
+        .values("total")
+    )
 
-    facturas_otros = FacturaOtrosIngresos.objects.filter(
-        estatus='pendiente', fecha_vencimiento__lt=hoy, activo=True
-    ).select_related('cliente', 'tipo_ingreso').annotate(
-        total_cobrado_ann=Coalesce(
-            Subquery(total_cobrado_oi_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField())
+    facturas_otros = (
+        FacturaOtrosIngresos.objects.filter(
+            estatus="pendiente", fecha_vencimiento__lt=hoy, activo=True
+        )
+        .select_related("cliente", "tipo_ingreso")
+        .annotate(
+            total_cobrado_ann=Coalesce(
+                Subquery(total_cobrado_oi_sq, output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            )
         )
     )
 
-    if not request.user.is_superuser and hasattr(request.user, 'perfilusuario'):
+    if not request.user.is_superuser and hasattr(request.user, "perfilusuario"):
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
         facturas_otros = facturas_otros.filter(empresa=empresa)
@@ -2381,24 +2913,27 @@ def exportar_cartera_excel(request):
     if tipo_cuota:
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
-    if origen == 'local':
+    if origen == "local":
         facturas = facturas.filter(local__isnull=False)
         facturas_otros = facturas_otros.none()
-    elif origen == 'area':
+    elif origen == "area":
         facturas = facturas.filter(area_comun__isnull=False)
         facturas_otros = facturas_otros.none()
-    elif origen == 'otros':
+    elif origen == "otros":
         facturas = facturas.none()
 
     # ── Agrupación en una sola iteración ──
     rangos = [
-        ('0-30 días',   0,   30),
-        ('31-60 días',  31,  60),
-        ('61-90 días',  61,  90),
-        ('91-180 días', 91,  180),
-        ('181+ días',   181, 10000),
+        ("0-30 días", 0, 30),
+        ("31-60 días", 31, 60),
+        ("61-90 días", 61, 90),
+        ("91-180 días", 91, 180),
+        ("181+ días", 181, 10000),
     ]
-    grupos = {nombre: {'rango': nombre, 'facturas': [], 'subtotal': 0} for nombre, _, _ in rangos}
+    grupos = {
+        nombre: {"rango": nombre, "facturas": [], "subtotal": 0}
+        for nombre, _, _ in rangos
+    }
 
     def get_rango(dias):
         for nombre, desde, hasta in rangos:
@@ -2414,8 +2949,8 @@ def exportar_cartera_excel(request):
             f.dias_vencidos = dias
             f.saldo_calculado = saldo
             f.es_otro = False
-            grupos[rango]['facturas'].append(f)
-            grupos[rango]['subtotal'] += saldo
+            grupos[rango]["facturas"].append(f)
+            grupos[rango]["subtotal"] += saldo
 
     for f in facturas_otros:
         dias = (hoy - f.fecha_vencimiento).days
@@ -2425,88 +2960,109 @@ def exportar_cartera_excel(request):
             f.dias_vencidos = dias
             f.saldo_calculado = saldo
             f.es_otro = True
-            grupos[rango]['facturas'].append(f)
-            grupos[rango]['subtotal'] += saldo
+            grupos[rango]["facturas"].append(f)
+            grupos[rango]["subtotal"] += saldo
 
     agrupado = [grupos[nombre] for nombre, _, _ in rangos]
-    gran_total = sum(g['subtotal'] for g in agrupado)
+    gran_total = sum(g["subtotal"] for g in agrupado)
 
     # ── EXCEL PROFESIONAL ──
     wb = Workbook()
     ws = wb.active
     ws.title = "Cartera Vencida"
 
-    fmt_moneda = '$#,##0.00'
+    fmt_moneda = "$#,##0.00"
     colores_rango = {
-        '0-30 días':   ('EAFAF1', '1E8449'),
-        '31-60 días':  ('FEF9E7', 'C8A000'),
-        '61-90 días':  ('FEF0E7', 'E67E22'),
-        '91-180 días': ('FDE8D8', 'D35400'),
-        '181+ días':   ('FDF0F0', 'C0392B'),
+        "0-30 días": ("EAFAF1", "1E8449"),
+        "31-60 días": ("FEF9E7", "C8A000"),
+        "61-90 días": ("FEF0E7", "E67E22"),
+        "91-180 días": ("FDE8D8", "D35400"),
+        "181+ días": ("FDF0F0", "C0392B"),
     }
 
-    thin = Side(style='thin')
+    thin = Side(style="thin")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    def celda(ws, row, col, value, bold=False, bg=None, color='000000', align='left', fmt=None):
+    def celda(
+        ws, row, col, value, bold=False, bg=None, color="000000", align="left", fmt=None
+    ):
         c = ws.cell(row=row, column=col, value=value)
-        c.font = Font(name='Arial', bold=bold, color=color, size=10)
-        c.alignment = Alignment(horizontal=align, vertical='center')
+        c.font = Font(name="Arial", bold=bold, color=color, size=10)
+        c.alignment = Alignment(horizontal=align, vertical="center")
         c.border = border
         if bg:
-            c.fill = PatternFill('solid', fgColor=bg)
+            c.fill = PatternFill("solid", fgColor=bg)
         if fmt:
             c.number_format = fmt
         return c
 
     # TÍTULO
     ws.row_dimensions[1].height = 28
-    ws.merge_cells('A1:H1')
-    ws['A1'] = f'Cartera Vencida por Antigüedad — Al {hoy.strftime("%d/%m/%Y")}'
-    ws['A1'].font = Font(name='Arial', bold=True, size=14, color='FFFFFF')
-    ws['A1'].fill = PatternFill('solid', fgColor='5A0000')
-    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells("A1:H1")
+    ws["A1"] = f"Cartera Vencida por Antigüedad — Al {hoy.strftime('%d/%m/%Y')}"
+    ws["A1"].font = Font(name="Arial", bold=True, size=14, color="FFFFFF")
+    ws["A1"].fill = PatternFill("solid", fgColor="5A0000")
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
 
     ws.row_dimensions[2].height = 20
-    ws.merge_cells('A2:H2')
-    ws['A2'] = f'Gran total: ${gran_total:,.2f}'
-    ws['A2'].font = Font(name='Arial', bold=True, size=12, color='8B0000')
-    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells("A2:H2")
+    ws["A2"] = f"Gran total: ${gran_total:,.2f}"
+    ws["A2"].font = Font(name="Arial", bold=True, size=12, color="8B0000")
+    ws["A2"].alignment = Alignment(horizontal="center", vertical="center")
 
     row = 4
 
     for grupo in agrupado:
-        if not grupo['facturas']:
+        if not grupo["facturas"]:
             continue
 
-        bg_claro, color_txt = colores_rango.get(grupo['rango'], ('F0F4F8', '374151'))
+        bg_claro, color_txt = colores_rango.get(grupo["rango"], ("F0F4F8", "374151"))
 
         # Header rango
         ws.row_dimensions[row].height = 20
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
-        ws.cell(row=row, column=1, value=grupo['rango'])
-        ws.cell(row=row, column=1).font = Font(name='Arial', bold=True, color='FFFFFF', size=11)
-        ws.cell(row=row, column=1).fill = PatternFill('solid', fgColor=color_txt)
-        ws.cell(row=row, column=1).alignment = Alignment(horizontal='left', vertical='center')
-        ws.cell(row=row, column=8, value=grupo['subtotal'])
+        ws.cell(row=row, column=1, value=grupo["rango"])
+        ws.cell(row=row, column=1).font = Font(
+            name="Arial", bold=True, color="FFFFFF", size=11
+        )
+        ws.cell(row=row, column=1).fill = PatternFill("solid", fgColor=color_txt)
+        ws.cell(row=row, column=1).alignment = Alignment(
+            horizontal="left", vertical="center"
+        )
+        ws.cell(row=row, column=8, value=grupo["subtotal"])
         ws.cell(row=row, column=8).number_format = fmt_moneda
-        ws.cell(row=row, column=8).font = Font(name='Arial', bold=True, color='FFFFFF', size=11)
-        ws.cell(row=row, column=8).fill = PatternFill('solid', fgColor=color_txt)
-        ws.cell(row=row, column=8).alignment = Alignment(horizontal='right', vertical='center')
+        ws.cell(row=row, column=8).font = Font(
+            name="Arial", bold=True, color="FFFFFF", size=11
+        )
+        ws.cell(row=row, column=8).fill = PatternFill("solid", fgColor=color_txt)
+        ws.cell(row=row, column=8).alignment = Alignment(
+            horizontal="right", vertical="center"
+        )
         row += 1
 
         # Headers columnas
         ws.row_dimensions[row].height = 16
-        hdrs = ['Folio', 'Tipo', 'Cliente', 'Origen', 'Monto', 'Saldo', 'Vencimiento', 'Días']
+        hdrs = [
+            "Folio",
+            "Tipo",
+            "Cliente",
+            "Origen",
+            "Monto",
+            "Saldo",
+            "Vencimiento",
+            "Días",
+        ]
         for col, h in enumerate(hdrs, 1):
-            celda(ws, row, col, h, bold=True, bg='1F4E79', color='FFFFFF', align='center')
+            celda(
+                ws, row, col, h, bold=True, bg="1F4E79", color="FFFFFF", align="center"
+            )
         row += 1
 
         # Filas
-        for f in grupo['facturas']:
+        for f in grupo["facturas"]:
             ws.row_dimensions[row].height = 15
             if f.es_otro:
-                tipo = f.tipo_ingreso.nombre if f.tipo_ingreso else 'Otro ingreso'
+                tipo = f.tipo_ingreso.nombre if f.tipo_ingreso else "Otro ingreso"
                 origen_str = tipo
             else:
                 tipo = f.tipo_cuota
@@ -2518,70 +3074,94 @@ def exportar_cartera_excel(request):
                     origen_str = "—"
 
             dias = f.dias_vencidos
-            bg_d, color_d = colores_rango.get(grupo['rango'], ('FFFFFF', '000000'))
+            bg_d, color_d = colores_rango.get(grupo["rango"], ("FFFFFF", "000000"))
 
-            celda(ws, row, 1, f.folio, align='center')
-            celda(ws, row, 2, tipo, align='center')
-            celda(ws, row, 3, f.cliente.nombre if f.cliente else '—')
+            celda(ws, row, 1, f.folio, align="center")
+            celda(ws, row, 2, tipo, align="center")
+            celda(ws, row, 3, f.cliente.nombre if f.cliente else "—")
             celda(ws, row, 4, origen_str)
-            celda(ws, row, 5, float(f.monto), align='right', fmt=fmt_moneda)
-            c_saldo = celda(ws, row, 6, f.saldo_calculado, bold=True, color='C0392B', align='right', fmt=fmt_moneda)
-            celda(ws, row, 7, f.fecha_vencimiento.strftime('%d/%m/%Y'), align='center')
+            celda(ws, row, 5, float(f.monto), align="right", fmt=fmt_moneda)
+            c_saldo = celda(
+                ws,
+                row,
+                6,
+                f.saldo_calculado,
+                bold=True,
+                color="C0392B",
+                align="right",
+                fmt=fmt_moneda,
+            )
+            celda(ws, row, 7, f.fecha_vencimiento.strftime("%d/%m/%Y"), align="center")
             c_dias = ws.cell(row=row, column=8, value=dias)
-            c_dias.font = Font(name='Arial', bold=True, color=color_d, size=10)
-            c_dias.fill = PatternFill('solid', fgColor=bg_d)
-            c_dias.alignment = Alignment(horizontal='center', vertical='center')
+            c_dias.font = Font(name="Arial", bold=True, color=color_d, size=10)
+            c_dias.fill = PatternFill("solid", fgColor=bg_d)
+            c_dias.alignment = Alignment(horizontal="center", vertical="center")
             c_dias.border = border
             row += 1
 
         # Subtotal
-        ws.cell(row=row, column=7, value='Subtotal:')
-        ws.cell(row=row, column=7).font = Font(name='Arial', bold=True)
-        ws.cell(row=row, column=8, value=grupo['subtotal'])
+        ws.cell(row=row, column=7, value="Subtotal:")
+        ws.cell(row=row, column=7).font = Font(name="Arial", bold=True)
+        ws.cell(row=row, column=8, value=grupo["subtotal"])
         ws.cell(row=row, column=8).number_format = fmt_moneda
-        ws.cell(row=row, column=8).font = Font(name='Arial', bold=True, color='C0392B')
-        ws.cell(row=row, column=8).fill = PatternFill('solid', fgColor=bg_claro)
+        ws.cell(row=row, column=8).font = Font(name="Arial", bold=True, color="C0392B")
+        ws.cell(row=row, column=8).fill = PatternFill("solid", fgColor=bg_claro)
         row += 2
 
     # GRAN TOTAL
     ws.row_dimensions[row].height = 22
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
-    ws.cell(row=row, column=1, value='GRAN TOTAL CARTERA VENCIDA')
+    ws.cell(row=row, column=1, value="GRAN TOTAL CARTERA VENCIDA")
     ws.cell(row=row, column=8, value=gran_total)
     ws.cell(row=row, column=8).number_format = fmt_moneda
     for col in range(1, 9):
         c = ws.cell(row=row, column=col)
-        c.font = Font(name='Arial', bold=True, size=12, color='FFFFFF')
-        c.fill = PatternFill('solid', fgColor='1F4E79')
-        c.alignment = Alignment(horizontal='center' if col < 8 else 'right', vertical='center')
-        c.border = Border(left=Side(style='medium'), right=Side(style='medium'),
-                          top=Side(style='medium'), bottom=Side(style='medium'))
+        c.font = Font(name="Arial", bold=True, size=12, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="1F4E79")
+        c.alignment = Alignment(
+            horizontal="center" if col < 8 else "right", vertical="center"
+        )
+        c.border = Border(
+            left=Side(style="medium"),
+            right=Side(style="medium"),
+            top=Side(style="medium"),
+            bottom=Side(style="medium"),
+        )
 
     # Anchos columnas
     anchos = [14, 16, 28, 18, 14, 14, 14, 10]
     for i, ancho in enumerate(anchos, 1):
         ws.column_dimensions[get_column_letter(i)].width = ancho
 
-    ws.freeze_panes = 'A3'
+    ws.freeze_panes = "A3"
 
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = f'attachment; filename=cartera_vencida_{hoy.strftime("%Y%m%d")}.xlsx'
+    response["Content-Disposition"] = (
+        f"attachment; filename=cartera_vencida_{hoy.strftime('%Y%m%d')}.xlsx"
+    )
     wb.save(response)
     return response
 
+
 @login_required
 def exportar_pagos_excel(request):
-    empresa_id = request.GET.get('empresa')
-    local_id = request.GET.get('local_id')
-    area_id = request.GET.get('area_id')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
-    tipo_cuota = request.GET.get('tipo_cuota')
-    cuenta_bancaria = request.GET.get('cuenta_bancaria')
+    empresa_id = request.GET.get("empresa")
+    local_id = request.GET.get("local_id")
+    area_id = request.GET.get("area_id")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    tipo_cuota = request.GET.get("tipo_cuota")
+    cuenta_bancaria = request.GET.get("cuenta_bancaria")
 
-    pagos = Pago.objects.select_related('factura', 'factura__empresa', 'factura__local', 'factura__area_comun', 'factura__cliente').all()
+    pagos = Pago.objects.select_related(
+        "factura",
+        "factura__empresa",
+        "factura__local",
+        "factura__area_comun",
+        "factura__cliente",
+    ).all()
     if not request.user.is_superuser:
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
     if empresa_id:
@@ -2601,7 +3181,7 @@ def exportar_pagos_excel(request):
         pagos = pagos.filter(factura__tipo_cuota=tipo_cuota)
 
     if cuenta_bancaria:
-        pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria).order_by('fecha_pago')    
+        pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria).order_by("fecha_pago")
 
     # Crear libro y hoja
     wb = openpyxl.Workbook()
@@ -2609,39 +3189,60 @@ def exportar_pagos_excel(request):
     ws.title = "Ingresos"
 
     # Encabezados
-    ws.append([
-        'Local/Área','Cliente','Monto Cobro','Banco','Numero Cuenta','Tipo Cuota','Forma de Cobro','Folio Factura', 'Empresa',  
-        'Fecha Cobro', 'Observaciones'
-    ])
+    ws.append(
+        [
+            "Local/Área",
+            "Cliente",
+            "Monto Cobro",
+            "Banco",
+            "Numero Cuenta",
+            "Tipo Cuota",
+            "Forma de Cobro",
+            "Folio Factura",
+            "Empresa",
+            "Fecha Cobro",
+            "Observaciones",
+        ]
+    )
 
     # Contenido
     for pago in pagos:
         factura = pago.factura
-        local_area = factura.local.numero if factura.local else factura.area_comun.numero if factura.area_comun else '-'
-        ws.append([
-            local_area,
-            factura.cliente.nombre,
-            float(pago.monto),
-            pago.cuenta_bancaria.banco if pago.cuenta_bancaria else '',
-            pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else '',
-            factura.get_tipo_cuota_display() if hasattr(factura, 'get_tipo_cuota_display') else factura.tipo_cuota,
-            pago.forma_pago,
-            factura.folio,
-            factura.empresa.nombre,
-            pago.fecha_pago,
-            pago.observaciones or '',
-        ])
+        local_area = (
+            factura.local.numero
+            if factura.local
+            else factura.area_comun.numero
+            if factura.area_comun
+            else "-"
+        )
+        ws.append(
+            [
+                local_area,
+                factura.cliente.nombre,
+                float(pago.monto),
+                pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
+                pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
+                factura.get_tipo_cuota_display()
+                if hasattr(factura, "get_tipo_cuota_display")
+                else factura.tipo_cuota,
+                pago.forma_pago,
+                factura.folio,
+                factura.empresa.nombre,
+                pago.fecha_pago,
+                pago.observaciones or "",
+            ]
+        )
 
     # Respuesta
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename=pagos.xlsx'
+    response["Content-Disposition"] = "attachment; filename=pagos.xlsx"
     wb.save(response)
     return response
 
 
-def buscar_por_id_o_nombre(modelo, valor, campo='nombre', empresa=None):
+def buscar_por_id_o_nombre(modelo, valor, campo="nombre", empresa=None):
     """Busca por ID, si falla busca por nombre (sin acentos, insensible a mayúsculas y espacios)."""
     if not valor:
         return None
@@ -2651,12 +3252,14 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre', empresa=None):
     try:
         obj = modelo.objects.get(pk=int(val))
         if empresa is not None:
-            obj_emp_id = getattr(obj, 'empresa_id', None)
-            if obj_emp_id is None and getattr(obj, 'empresa', None):
-                obj_emp_id = getattr(obj, 'empresa').id
-            empresa_id = empresa.id if hasattr(empresa, 'id') else empresa
+            obj_emp_id = getattr(obj, "empresa_id", None)
+            if obj_emp_id is None and getattr(obj, "empresa", None):
+                obj_emp_id = getattr(obj, "empresa").id
+            empresa_id = empresa.id if hasattr(empresa, "id") else empresa
             if obj_emp_id != empresa_id:
-                raise Exception(f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada")
+                raise Exception(
+                    f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada"
+                )
         return obj
     except ValueError:
         # no era un entero -> seguir buscando por campo
@@ -2667,20 +3270,20 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre', empresa=None):
 
     # normalizar y buscar entre todos los registros
     def _norm(v):
-        return unidecode(str(v)).strip().lower() if v is not None else ''
+        return unidecode(str(v)).strip().lower() if v is not None else ""
 
     todos = modelo.objects.all()
     candidatos = [obj for obj in todos if _norm(getattr(obj, campo)) == val]
 
     if empresa is not None:
         # obtener id de empresa buscada
-        empresa_id = empresa.id if hasattr(empresa, 'id') else empresa
+        empresa_id = empresa.id if hasattr(empresa, "id") else empresa
 
         def _obj_empresa_id(o):
-            eid = getattr(o, 'empresa_id', None)
-            if eid is None and getattr(o, 'empresa', None):
+            eid = getattr(o, "empresa_id", None)
+            if eid is None and getattr(o, "empresa", None):
                 try:
-                    return getattr(o, 'empresa').id
+                    return getattr(o, "empresa").id
                 except Exception:
                     return None
             return eid
@@ -2690,20 +3293,33 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre', empresa=None):
         if len(candidatos_same) == 1:
             return candidatos_same[0]
         if len(candidatos_same) > 1:
-            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos_same])
-            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__} para la misma empresa: {conflicto}")
+            conflicto = "; ".join(
+                [
+                    f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'"
+                    for obj in candidatos_same
+                ]
+            )
+            raise Exception(
+                f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__} para la misma empresa: {conflicto}"
+            )
         # no hay coincidencias en la misma empresa:
         if candidatos:
             # existen coincidencias en otras empresas -> no considerarlo conflicto para esta empresa
             return None
-        raise Exception(f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada")
+        raise Exception(
+            f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada"
+        )
     else:
         # comportamiento global (sin empresa)
         if len(candidatos) == 1:
             return candidatos[0]
         if len(candidatos) > 1:
-            conflicto = "; ".join([f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos])
-            raise Exception(f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}")
+            conflicto = "; ".join(
+                [f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos]
+            )
+            raise Exception(
+                f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}"
+            )
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
 
 
@@ -2714,38 +3330,63 @@ def plantilla_facturas_excel(request):
     ws.title = "Plantilla Facturas"
 
     # Encabezados (ajusta según tu modelo)
-    ws.append([
-        'folio', 'condominio', 'cliente', 'Num.local', 'Num.area',  'tipo cuota',
-        'monto','fecha emision', 'fecha vencimiento', 'observaciones'
-    ])
+    ws.append(
+        [
+            "folio",
+            "condominio",
+            "cliente",
+            "Num.local",
+            "Num.area",
+            "tipo cuota",
+            "monto",
+            "fecha emision",
+            "fecha vencimiento",
+            "observaciones",
+        ]
+    )
     # Fila de ejemplo (puedes poner valores ficticios)
-    ws.append([
-        'FAC001', 'Condominio Torre Reforma AC', 'Juan Pérez', 'L-101', '','mantenimiento', '1500.00', '2025-06-10', '2025-07-10', 'carga inicial'
-    ])
+    ws.append(
+        [
+            "FAC001",
+            "Condominio Torre Reforma AC",
+            "Juan Pérez",
+            "L-101",
+            "",
+            "mantenimiento",
+            "1500.00",
+            "2025-06-10",
+            "2025-07-10",
+            "carga inicial",
+        ]
+    )
 
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename=plantilla_facturas.xlsx'
+    response["Content-Disposition"] = "attachment; filename=plantilla_facturas.xlsx"
     wb.save(response)
-    return response        
+    return response
+
 
 @login_required
 def editar_factura(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
     empresa = factura.empresa
-     # Bloqueo si la factura está pagada
-    if factura.estatus == 'pagada':
+    # Bloqueo si la factura está pagada
+    if factura.estatus == "pagada":
         messages.warning(request, "Esta factura ya está pagada y no puede ser editada.")
-        return redirect('lista_facturas')    
+        return redirect("lista_facturas")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = FacturaEditForm(request.POST, instance=factura, empresa=empresa)
         if form.is_valid():
             factura_original = Factura.objects.get(pk=factura_id)
             factura_modificada = form.save(commit=False)
             # Si la fecha viene vacía, conserva la original
-            if not factura_modificada.fecha_vencimiento or str(factura_modificada.fecha_vencimiento).strip() == "":
+            if (
+                not factura_modificada.fecha_vencimiento
+                or str(factura_modificada.fecha_vencimiento).strip() == ""
+            ):
                 factura_modificada.fecha_vencimiento = factura.fecha_vencimiento
             # Comparar y guardar auditoría
             for field in form.changed_data:
@@ -2753,7 +3394,7 @@ def editar_factura(request, factura_id):
                 valor_nuevo = getattr(factura_modificada, field)
                 if str(valor_anterior) != str(valor_nuevo):
                     AuditoriaCambio.objects.create(
-                        modelo='factura',
+                        modelo="factura",
                         objeto_id=factura.pk,
                         campo=field,
                         valor_anterior=valor_anterior,
@@ -2762,31 +3403,38 @@ def editar_factura(request, factura_id):
                     )
             factura_modificada.save()
             messages.success(request, "Factura actualizada correctamente.")
-            next_url = request.GET.get('next')
+            next_url = request.GET.get("next")
             if next_url:
                 return redirect(next_url)
-            
-            return redirect('lista_facturas')
+
+            return redirect("lista_facturas")
     else:
         form = FacturaEditForm(instance=factura, empresa=empresa)
-    return render(request, 'facturacion/editar_factura.html', {
-        'form': form,
-        'factura': factura,
-    })
+    return render(
+        request,
+        "facturacion/editar_factura.html",
+        {
+            "form": form,
+            "factura": factura,
+        },
+    )
+
 
 @login_required
 def exportar_lista_facturas_excel(request):
-    empresa_id = request.GET.get('empresa')
-    local_id = request.GET.get('local_id')
-    area_id = request.GET.get('area_id')
-    tipo_cuota = request.GET.get('tipo_cuota')
-    query=request.GET.get('q','')
-    
-    facturas = Factura.objects.all().select_related('cliente', 'empresa', 'local', 'area_comun')
-    
+    empresa_id = request.GET.get("empresa")
+    local_id = request.GET.get("local_id")
+    area_id = request.GET.get("area_id")
+    tipo_cuota = request.GET.get("tipo_cuota")
+    query = request.GET.get("q", "")
+
+    facturas = Factura.objects.all().select_related(
+        "cliente", "empresa", "local", "area_comun"
+    )
+
     if not request.user.is_superuser:
-        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)  
-    
+        facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
+
     if empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
     if local_id:
@@ -2797,47 +3445,65 @@ def exportar_lista_facturas_excel(request):
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
     if query:
         facturas = facturas.filter(
-            Q(folio__icontains=query) |
-            Q(cliente__nombre__icontains=query) 
+            Q(folio__icontains=query) | Q(cliente__nombre__icontains=query)
         )
     # Crear libro y hoja
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Lista de Facturas"
     # Encabezados
-    ws.append([
-        'Folio', 'Empresa', 'Cliente', "Tipo Cuota",'Local/Área', 'Monto',
-        'Saldo', 'Periodo', 'Estatus', 'Observaciones'
-    ])
+    ws.append(
+        [
+            "Folio",
+            "Empresa",
+            "Cliente",
+            "Tipo Cuota",
+            "Local/Área",
+            "Monto",
+            "Saldo",
+            "Periodo",
+            "Estatus",
+            "Observaciones",
+        ]
+    )
     # Contenido
     for factura in facturas:
-        local_area = factura.local.numero if factura.local else (factura.area_comun.numero if factura.area_comun else '-')
-        ws.append([
-            factura.folio,
-            factura.empresa.nombre,
-            factura.cliente.nombre,
-            factura.get_tipo_cuota_display() if hasattr(factura, 'get_tipo_cuota_display') else factura.tipo_cuota,
-            local_area,
-            float(factura.monto),
-            float(factura.saldo_pendiente),
-            factura.fecha_vencimiento,
-            factura.estatus,
-            factura.observaciones or ''
-        ])
+        local_area = (
+            factura.local.numero
+            if factura.local
+            else (factura.area_comun.numero if factura.area_comun else "-")
+        )
+        ws.append(
+            [
+                factura.folio,
+                factura.empresa.nombre,
+                factura.cliente.nombre,
+                factura.get_tipo_cuota_display()
+                if hasattr(factura, "get_tipo_cuota_display")
+                else factura.tipo_cuota,
+                local_area,
+                float(factura.monto),
+                float(factura.saldo_pendiente),
+                factura.fecha_vencimiento,
+                factura.estatus,
+                factura.observaciones or "",
+            ]
+        )
     # Respuesta HTTP
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename=lista_facturas.xlsx'
+    response["Content-Disposition"] = "attachment; filename=lista_facturas.xlsx"
     wb.save(response)
     return response
 
+
 @staff_member_required
 def carga_masiva_facturas_cobradas(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = FacturaCargaMasivaForm(request.POST, request.FILES)
         if form.is_valid():
-            archivo = request.FILES['archivo']
+            archivo = request.FILES["archivo"]
             wb = openpyxl.load_workbook(archivo)
             ws = wb.active
             errores = []
@@ -2846,54 +3512,91 @@ def carga_masiva_facturas_cobradas(request):
                 if row is None:
                     continue
                 if len(row) != COLUMNAS_ESPERADAS:
-                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                    errores.append(
+                        f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})"
+                    )
                     continue
-                folio, empresa_val, cliente_val, local_val, area_val, tipo_cuota, monto, fecha_emision, fecha_vencimiento, observaciones = row
+                (
+                    folio,
+                    empresa_val,
+                    cliente_val,
+                    local_val,
+                    area_val,
+                    tipo_cuota,
+                    monto,
+                    fecha_emision,
+                    fecha_vencimiento,
+                    observaciones,
+                ) = row
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     if not empresa:
-                        errores.append(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        errores.append(
+                            f"Fila {i}: No se encontró la empresa '{empresa_val}'"
+                        )
                         continue
 
                     # Validar folio único por empresa
-                    if Factura.objects.filter(folio=str(folio), empresa=empresa).exists():
-                        errores.append(f"Fila {i}: El folio '{folio}' ya existe para la empresa '{empresa}'.")
+                    if Factura.objects.filter(
+                        folio=str(folio), empresa=empresa
+                    ).exists():
+                        errores.append(
+                            f"Fila {i}: El folio '{folio}' ya existe para la empresa '{empresa}'."
+                        )
                         continue
 
                     # Validar local o área
-                    local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
-                    area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
+                    local = (
+                        buscar_por_id_o_nombre(
+                            LocalComercial, local_val, campo="numero"
+                        )
+                        if local_val
+                        else None
+                    )
+                    area = (
+                        buscar_por_id_o_nombre(AreaComun, area_val, campo="numero")
+                        if area_val
+                        else None
+                    )
                     if local_val and not local:
-                        errores.append(f"Fila {i}: No se encontró el local '{local_val}'")
+                        errores.append(
+                            f"Fila {i}: No se encontró el local '{local_val}'"
+                        )
                         continue
                     if area_val and not area:
                         errores.append(f"Fila {i}: No se encontró el área '{area_val}'")
                         continue
 
                     # Buscar o crear cliente
-                    #cliente, _ = Cliente.objects.get_or_create(
-                     #   nombre=cliente_val,
-                     # 3  empresa=empresa
-                    #)
+                    # cliente, _ = Cliente.objects.get_or_create(
+                    #   nombre=cliente_val,
+                    # 3  empresa=empresa
+                    # )
 
                     # Buscar o crear cliente (manejo de duplicados)
-                    clientes = Cliente.objects.filter(nombre=cliente_val, empresa=empresa)
-                    #if clientes.count() == 1:
-                    if clientes.exists():    
+                    clientes = Cliente.objects.filter(
+                        nombre=cliente_val, empresa=empresa
+                    )
+                    # if clientes.count() == 1:
+                    if clientes.exists():
                         cliente = clientes.first()
-                    #elif clientes.count() == 0:
-                     #   cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)
+                    # elif clientes.count() == 0:
+                    #   cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)
                     else:
-                        cliente = Cliente.objects.create(nombre=cliente_val, empresa=empresa)
+                        cliente = Cliente.objects.create(
+                            nombre=cliente_val, empresa=empresa
+                        )
 
                     # Validar y convertir monto
                     try:
                         cuota_decimal = Decimal(monto)
                     except (InvalidOperation, TypeError, ValueError):
-                        errores.append(f"Fila {i}: El valor de monto '{monto}' no es válido.")
+                        errores.append(
+                            f"Fila {i}: El valor de monto '{monto}' no es válido."
+                        )
                         continue
 
-                    factura=Factura.objects.create(
+                    factura = Factura.objects.create(
                         folio=str(folio),
                         empresa=empresa,
                         cliente=cliente,
@@ -2904,42 +3607,53 @@ def carga_masiva_facturas_cobradas(request):
                         fecha_emision=fecha_emision,
                         fecha_vencimiento=fecha_vencimiento,
                         observaciones=observaciones or "",
-                        estatus='cobrada',  # Establecer estatus como 'cobrada'
+                        estatus="cobrada",  # Establecer estatus como 'cobrada'
                     )
                     Pago.objects.create(
                         factura=Factura.objects.get(folio=str(folio), empresa=empresa),
                         monto=cuota_decimal,
-                        forma_pago='transferencia', 
+                        forma_pago="transferencia",
                         fecha_pago=fecha_emision,
                         registrado_por=request.user,
                         observaciones=observaciones or "",
                     )
-                    
-                    #factura.actualizar_estatus()  # ✅ Correcto
 
-                    print(f"[DEBUG] Factura creada: {folio} para {cliente.nombre} ({empresa.nombre})")
+                    # factura.actualizar_estatus()  # ✅ Correcto
+
+                    print(
+                        f"[DEBUG] Factura creada: {folio} para {cliente.nombre} ({empresa.nombre})"
+                    )
                 except ValueError as ve:
-                    errores.append(f"Fila {i}: Error de valor - {str(ve)}")     
+                    errores.append(f"Fila {i}: Error de valor - {str(ve)}")
                 except Exception as e:
                     import traceback
-                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+
+                    errores.append(
+                        f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}"
+                    )
 
             if errores:
-                messages.error(request, "Algunas facturas no se cargaron:<br>" + "<br>".join(errores))
+                messages.error(
+                    request,
+                    "Algunas facturas no se cargaron:<br>" + "<br>".join(errores),
+                )
             else:
                 messages.success(request, "¡Facturas cargadas exitosamente!")
-            return redirect('carga_masiva_facturas_cobradas')
+            return redirect("carga_masiva_facturas_cobradas")
     else:
         form = FacturaCargaMasivaForm()
-    return render(request, 'facturacion/carga_masiva_facturas_cobradas.html', {'form': form})
+    return render(
+        request, "facturacion/carga_masiva_facturas_cobradas.html", {"form": form}
+    )
 
-#carga masiva cuentas x cobrar (cartera vencida)
+
+# carga masiva cuentas x cobrar (cartera vencida)
 @login_required
 def carga_masiva_facturas(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = FacturaCargaMasivaForm(request.POST, request.FILES)
         if form.is_valid():
-            archivo = request.FILES['archivo']
+            archivo = request.FILES["archivo"]
             wb = openpyxl.load_workbook(archivo, data_only=True)
             ws = wb.active
             errores = []
@@ -2951,28 +3665,41 @@ def carga_masiva_facturas(request):
             if header:
                 hdrs = [str(h).strip().lower() if h is not None else "" for h in header]
                 for idx, h in enumerate(hdrs):
-                    if h in ('folio', 'folio factura', 'número', 'numero'):
-                        headers_map['folio'] = idx
-                    if h in ('empresa', 'condominio'):
-                        headers_map['empresa'] = idx
-                    if h in ('cliente', 'cliente nombre', 'nombre'):
-                        headers_map['cliente'] = idx
-                    if h in ('rfc', 'rfc cliente', 'cliente rfc'):
-                        headers_map['rfc'] = idx
-                    if h in ('local', 'num.local', 'num local', 'local numero', 'número local'):
-                        headers_map['local'] = idx
-                    if h in ('area', 'area comun', 'área', 'num.area', 'num area', 'numero area'):
-                        headers_map['area'] = idx
-                    if h in ('tipo_cuota', 'tipo cuota', 'tipo'):
-                        headers_map['tipo_cuota'] = idx
-                    if h in ('monto', 'importe', 'cantidad'):
-                        headers_map['monto'] = idx
-                    if h in ('fecha_emision', 'fecha emision', 'fecha emisión'):
-                        headers_map['fecha_emision'] = idx
-                    if h in ('fecha_vencimiento', 'fecha vencimiento', 'vencimiento'):
-                        headers_map['fecha_vencimiento'] = idx
-                    if h in ('observaciones', 'obs', 'comentarios'):
-                        headers_map['observaciones'] = idx
+                    if h in ("folio", "folio factura", "número", "numero"):
+                        headers_map["folio"] = idx
+                    if h in ("empresa", "condominio"):
+                        headers_map["empresa"] = idx
+                    if h in ("cliente", "cliente nombre", "nombre"):
+                        headers_map["cliente"] = idx
+                    if h in ("rfc", "rfc cliente", "cliente rfc"):
+                        headers_map["rfc"] = idx
+                    if h in (
+                        "local",
+                        "num.local",
+                        "num local",
+                        "local numero",
+                        "número local",
+                    ):
+                        headers_map["local"] = idx
+                    if h in (
+                        "area",
+                        "area comun",
+                        "área",
+                        "num.area",
+                        "num area",
+                        "numero area",
+                    ):
+                        headers_map["area"] = idx
+                    if h in ("tipo_cuota", "tipo cuota", "tipo"):
+                        headers_map["tipo_cuota"] = idx
+                    if h in ("monto", "importe", "cantidad"):
+                        headers_map["monto"] = idx
+                    if h in ("fecha_emision", "fecha emision", "fecha emisión"):
+                        headers_map["fecha_emision"] = idx
+                    if h in ("fecha_vencimiento", "fecha vencimiento", "vencimiento"):
+                        headers_map["fecha_vencimiento"] = idx
+                    if h in ("observaciones", "obs", "comentarios"):
+                        headers_map["observaciones"] = idx
 
             # helper para leer celda con fallback positional si no hay encabezado
             def cell(row, key, pos):
@@ -2984,49 +3711,85 @@ def carga_masiva_facturas(request):
             # Iterar filas a partir de la 2
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 # saltar filas vacías
-                if not row or all((c is None or (isinstance(c, str) and c.strip() == "")) for c in row):
+                if not row or all(
+                    (c is None or (isinstance(c, str) and c.strip() == "")) for c in row
+                ):
                     continue
 
                 try:
                     # obtener valores (posicional por defecto)
-                    folio = cell(row, 'folio', 0)
-                    empresa_val = cell(row, 'empresa', 1)
-                    cliente_val = cell(row, 'cliente', 2)
-                    rfc_val = cell(row, 'rfc', 10)
-                    local_val = cell(row, 'local', 3)
-                    area_val = cell(row, 'area', 4)
-                    tipo_cuota = cell(row, 'tipo_cuota', 5)
-                    monto = cell(row, 'monto', 6)
-                    fecha_emision = cell(row, 'fecha_emision', 7)
-                    fecha_vencimiento = cell(row, 'fecha_vencimiento', 8)
-                    observaciones = cell(row, 'observaciones', 9)
+                    folio = cell(row, "folio", 0)
+                    empresa_val = cell(row, "empresa", 1)
+                    cliente_val = cell(row, "cliente", 2)
+                    rfc_val = cell(row, "rfc", 10)
+                    local_val = cell(row, "local", 3)
+                    area_val = cell(row, "area", 4)
+                    tipo_cuota = cell(row, "tipo_cuota", 5)
+                    monto = cell(row, "monto", 6)
+                    fecha_emision = cell(row, "fecha_emision", 7)
+                    fecha_vencimiento = cell(row, "fecha_vencimiento", 8)
+                    observaciones = cell(row, "observaciones", 9)
 
                     # Normalizaciones simples
                     folio = str(folio).strip() if folio is not None else ""
-                    cliente_nombre = str(cliente_val).strip() if cliente_val is not None else ""
-                    tipo_cuota = str(tipo_cuota).strip() if tipo_cuota is not None else ""
-                    observaciones = str(observaciones).strip() if observaciones is not None else ""
-                    rfc_val = str(rfc_val).strip().upper() if rfc_val not in (None, "") else None
+                    cliente_nombre = (
+                        str(cliente_val).strip() if cliente_val is not None else ""
+                    )
+                    tipo_cuota = (
+                        str(tipo_cuota).strip() if tipo_cuota is not None else ""
+                    )
+                    observaciones = (
+                        str(observaciones).strip() if observaciones is not None else ""
+                    )
+                    rfc_val = (
+                        str(rfc_val).strip().upper()
+                        if rfc_val not in (None, "")
+                        else None
+                    )
 
                     # Determinar empresa
                     if request.user.is_superuser:
-                        empresa = buscar_por_id_o_nombre(Empresa, empresa_val) if empresa_val else None
+                        empresa = (
+                            buscar_por_id_o_nombre(Empresa, empresa_val)
+                            if empresa_val
+                            else None
+                        )
                         if not empresa:
-                            raise Exception(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                            raise Exception(
+                                f"Fila {i}: No se encontró la empresa '{empresa_val}'"
+                            )
                     else:
-                        perfil = getattr(request.user, 'perfilusuario', None)
-                        if not perfil or not getattr(perfil, 'empresa', None):
-                            raise Exception("No se pudo determinar la empresa del usuario")
+                        perfil = getattr(request.user, "perfilusuario", None)
+                        if not perfil or not getattr(perfil, "empresa", None):
+                            raise Exception(
+                                "No se pudo determinar la empresa del usuario"
+                            )
                         empresa = perfil.empresa
 
                     # Validar folio único por empresa (si se proporcionó)
                     if folio:
-                        if Factura.objects.filter(folio=str(folio), empresa=empresa).exists():
-                            raise Exception(f"El folio '{folio}' ya existe para la empresa '{empresa.nombre}'.")
+                        if Factura.objects.filter(
+                            folio=str(folio), empresa=empresa
+                        ).exists():
+                            raise Exception(
+                                f"El folio '{folio}' ya existe para la empresa '{empresa.nombre}'."
+                            )
 
                     # Validar local/area si se informaron
-                    local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero', empresa=empresa) if local_val else None
-                    area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero', empresa=empresa) if area_val else None
+                    local = (
+                        buscar_por_id_o_nombre(
+                            LocalComercial, local_val, campo="numero", empresa=empresa
+                        )
+                        if local_val
+                        else None
+                    )
+                    area = (
+                        buscar_por_id_o_nombre(
+                            AreaComun, area_val, campo="numero", empresa=empresa
+                        )
+                        if area_val
+                        else None
+                    )
                     # local = buscar_por_id_o_nombre(LocalComercial, local_val, campo='numero') if local_val else None
                     # area = buscar_por_id_o_nombre(AreaComun, area_val, campo='numero') if area_val else None
                     if local_val and not local:
@@ -3036,13 +3799,17 @@ def carga_masiva_facturas(request):
 
                     # ===== BÚSQUEDA/CREACIÓN DE CLIENTE - PRIORIDAD RFC =====
                     if not cliente_nombre and not rfc_val:
-                        raise Exception("Nombre de cliente vacío y no se proporcionó RFC")
+                        raise Exception(
+                            "Nombre de cliente vacío y no se proporcionó RFC"
+                        )
 
                     cliente = None
 
                     # 1) Si RFC viene en columna, buscar por RFC primero
                     if rfc_val:
-                        cliente = Cliente.objects.filter(empresa=empresa, rfc__iexact=rfc_val).first()
+                        cliente = Cliente.objects.filter(
+                            empresa=empresa, rfc__iexact=rfc_val
+                        ).first()
                         if cliente:
                             # actualizar nombre si está vacío
                             if not cliente.nombre and cliente_nombre:
@@ -3051,27 +3818,40 @@ def carga_masiva_facturas(request):
                     # 2) Si no se encontró por RFC, intentar extraer RFC del campo cliente (ej. "Nombre | RFC")
                     if not cliente and isinstance(cliente_val, str):
                         potential_rfc = None
-                        if '|' in cliente_val:
-                            parts = [p.strip() for p in cliente_val.split('|') if p.strip()]
+                        if "|" in cliente_val:
+                            parts = [
+                                p.strip() for p in cliente_val.split("|") if p.strip()
+                            ]
                             if len(parts) >= 2:
                                 cliente_nombre = parts[0]
                                 potential_rfc = parts[1]
-                        elif ',' in cliente_val:
-                            parts = [p.strip() for p in cliente_val.split(',') if p.strip()]
+                        elif "," in cliente_val:
+                            parts = [
+                                p.strip() for p in cliente_val.split(",") if p.strip()
+                            ]
                             if len(parts) >= 2:
                                 cliente_nombre = parts[0]
                                 potential_rfc = parts[1]
                         if potential_rfc:
                             potential_rfc = potential_rfc.upper()
-                            cliente = Cliente.objects.filter(empresa=empresa, rfc__iexact=potential_rfc).first()
+                            cliente = Cliente.objects.filter(
+                                empresa=empresa, rfc__iexact=potential_rfc
+                            ).first()
                             if cliente and not rfc_val:
                                 rfc_val = potential_rfc
 
                     # 3) Si sigue sin cliente, buscar por nombre (preferir registros con RFC)
                     if not cliente:
-                        clientes_qs = Cliente.objects.filter(nombre__iexact=cliente_nombre, empresa=empresa)
+                        clientes_qs = Cliente.objects.filter(
+                            nombre__iexact=cliente_nombre, empresa=empresa
+                        )
                         if clientes_qs.exists():
-                            cliente = clientes_qs.filter(rfc__isnull=False).exclude(rfc='').first() or clientes_qs.first()
+                            cliente = (
+                                clientes_qs.filter(rfc__isnull=False)
+                                .exclude(rfc="")
+                                .first()
+                                or clientes_qs.first()
+                            )
 
                     # 4) Si no existe cliente, crear uno nuevo (incluye RFC si lo tenemos)
                     if not cliente:
@@ -3083,13 +3863,20 @@ def carga_masiva_facturas(request):
                         )
                     else:
                         # Si encontramos cliente por nombre pero tenemos RFC en archivo y cliente no tiene RFC, actualizarlo
-                        if rfc_val and (not getattr(cliente, 'rfc', None) or cliente.rfc.strip() == ''):
+                        if rfc_val and (
+                            not getattr(cliente, "rfc", None)
+                            or cliente.rfc.strip() == ""
+                        ):
                             cliente.rfc = rfc_val
                             cliente.save()
 
                     # Validar monto
                     try:
-                        cuota_decimal = Decimal(str(monto)) if monto is not None and str(monto).strip() != "" else Decimal('0.00')
+                        cuota_decimal = (
+                            Decimal(str(monto))
+                            if monto is not None and str(monto).strip() != ""
+                            else Decimal("0.00")
+                        )
                     except (InvalidOperation, TypeError, ValueError):
                         raise Exception(f"El valor de monto '{monto}' no es válido.")
 
@@ -3108,11 +3895,14 @@ def carga_masiva_facturas(request):
                         # intento con dateutil si está disponible
                         try:
                             from dateutil.parser import parse as _parse
+
                             return _parse(s, dayfirst=True).date()
                         except Exception:
                             raise Exception(f"Fecha inválida: '{v}'")
 
-                    fecha_emision_parsed = parse_date(fecha_emision) or timezone.now().date()
+                    fecha_emision_parsed = (
+                        parse_date(fecha_emision) or timezone.now().date()
+                    )
                     fecha_vencimiento_parsed = parse_date(fecha_vencimiento)
 
                     # Crear factura dentro de transacción por fila
@@ -3123,34 +3913,39 @@ def carga_masiva_facturas(request):
                             cliente=cliente,
                             local=local,
                             area_comun=area,
-                            tipo_cuota=tipo_cuota or '',
+                            tipo_cuota=tipo_cuota or "",
                             monto=cuota_decimal,
                             fecha_emision=fecha_emision_parsed,
                             fecha_vencimiento=fecha_vencimiento_parsed,
                             observaciones=observaciones or "",
-                            estatus='pendiente',
+                            estatus="pendiente",
                         )
                     exitos += 1
                 except Exception as e:
                     import traceback
+
                     errores.append(f"Fila {i}: {str(e)}")
             # mensajes
             if exitos:
                 messages.success(request, f"¡{exitos} facturas cargadas correctamente!")
             if errores:
                 from django.utils.safestring import mark_safe
+
                 msg = "<br>".join(errores[:80])
                 if len(errores) > 80:
-                    msg += f"<br>...y {len(errores)-80} errores más."
-                messages.error(request, mark_safe("Algunas facturas no se cargaron:<br>" + msg))
-            return redirect('carga_masiva_facturas')
+                    msg += f"<br>...y {len(errores) - 80} errores más."
+                messages.error(
+                    request, mark_safe("Algunas facturas no se cargaron:<br>" + msg)
+                )
+            return redirect("carga_masiva_facturas")
     else:
         form = FacturaCargaMasivaForm()
-    return render(request, 'facturacion/carga_masiva_facturas.html', {'form': form})
+    return render(request, "facturacion/carga_masiva_facturas.html", {"form": form})
+
 
 @login_required
 def crear_factura_otros_ingresos(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = FacturaOtrosIngresosForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             factura = form.save(commit=False)
@@ -3162,16 +3957,16 @@ def crear_factura_otros_ingresos(request):
                     with transaction.atomic():
                         # Solo busca folios de la empresa actual
                         last_folio = (
-                            FacturaOtrosIngresos.objects
-                            .select_for_update()
+                            FacturaOtrosIngresos.objects.select_for_update()
                             .filter(empresa=factura.empresa, folio__startswith=prefix)
-                            .order_by('-folio')
-                            .values_list('folio', flat=True)
+                            .order_by("-folio")
+                            .values_list("folio", flat=True)
                             .first()
                         )
                         # Extrae el número solo si el folio es válido
                         import re
-                        if last_folio and re.match(r'^OI-F\d{5}$', last_folio):
+
+                        if last_folio and re.match(r"^OI-F\d{5}$", last_folio):
                             last_num = int(last_folio.replace(prefix, ""))
                         else:
                             last_num = 0
@@ -3185,90 +3980,113 @@ def crear_factura_otros_ingresos(request):
                     continue
             if guardado:
                 messages.success(request, "Registro Exitoso. Folio: " + factura.folio)
-                next_url = request.POST.get('next') or request.GET.get('next')
+                next_url = request.POST.get("next") or request.GET.get("next")
                 if next_url:
                     return redirect(next_url)
-                return redirect('lista_facturas_otros_ingresos')
+                return redirect("lista_facturas_otros_ingresos")
             else:
-                form.add_error(None, "No se pudo generar un folio único para esta empresa. Intenta de nuevo.")
+                form.add_error(
+                    None,
+                    "No se pudo generar un folio único para esta empresa. Intenta de nuevo.",
+                )
     else:
-        cliente_id = request.GET.get('cliente')
+        cliente_id = request.GET.get("cliente")
         initial = {}
         if cliente_id:
-            initial['cliente'] = cliente_id
+            initial["cliente"] = cliente_id
         form = FacturaOtrosIngresosForm(initial=initial, user=request.user)
     try:
-        tipos_ingreso = TipoOtroIngreso.objects.filter(empresa=request.user.perfilusuario.empresa)
+        tipos_ingreso = TipoOtroIngreso.objects.filter(
+            empresa=request.user.perfilusuario.empresa
+        )
     except Exception:
         tipos_ingreso = []
 
-    next_url = request.GET.get('next') or reverse('lista_facturas_otros_ingresos')
-    return render(request, 'otros_ingresos/crear_factura.html', {'form': form, 'tipos_ingreso': tipos_ingreso, 'next_url': next_url})
-    
+    next_url = request.GET.get("next") or reverse("lista_facturas_otros_ingresos")
+    return render(
+        request,
+        "otros_ingresos/crear_factura.html",
+        {"form": form, "tipos_ingreso": tipos_ingreso, "next_url": next_url},
+    )
+
 
 @login_required
 def eliminar_factura_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
 
     # Solo permitir si está pendiente y no tiene cobros registrados
-    cobros_validos = factura.cobros.exclude(forma_cobro='nota_credito')
+    cobros_validos = factura.cobros.exclude(forma_cobro="nota_credito")
     tiene_cobros = cobros_validos.exists()
-    puede_eliminar = factura.estatus == 'pendiente' and not tiene_cobros 
+    puede_eliminar = factura.estatus == "pendiente" and not tiene_cobros
 
     if not puede_eliminar:
-        messages.error(request, "Solo puedes eliminar facturas de otros ingresos pendientes y sin cobros registrados.")
-        next_url = request.GET.get('next')
+        messages.error(
+            request,
+            "Solo puedes eliminar facturas de otros ingresos pendientes y sin cobros registrados.",
+        )
+        next_url = request.GET.get("next")
         if next_url:
             return redirect(next_url)
-        return redirect('lista_facturas_otros_ingresos')
+        return redirect("lista_facturas_otros_ingresos")
 
-    if request.method == 'POST':
-        motivo = request.POST.get('motivo')
+    if request.method == "POST":
+        motivo = request.POST.get("motivo")
         if not motivo:
-            messages.error(request, "Debe proporcionar un motivo para eliminar la factura.")
-            next_url = request.GET.get('next')
+            messages.error(
+                request, "Debe proporcionar un motivo para eliminar la factura."
+            )
+            next_url = request.GET.get("next")
             if next_url:
                 return redirect(next_url)
-            return redirect('lista_facturas_otros_ingresos')
-
+            return redirect("lista_facturas_otros_ingresos")
 
         factura.delete()
-        messages.success(request, f"Factura {factura.folio} de otros ingresos eliminada exitosamente.")
-        next_url = request.GET.get('next')
+        messages.success(
+            request,
+            f"Factura {factura.folio} de otros ingresos eliminada exitosamente.",
+        )
+        next_url = request.GET.get("next")
         if next_url:
             return redirect(next_url)
-        return redirect('lista_facturas_otros_ingresos')
+        return redirect("lista_facturas_otros_ingresos")
 
-    return render(request, 'otros_ingresos/eliminar_factura_otros_ingresos.html', {
-        'factura': factura
-    })
-    
+    return render(
+        request,
+        "otros_ingresos/eliminar_factura_otros_ingresos.html",
+        {"factura": factura},
+    )
+
 
 @login_required
 def lista_facturas_otros_ingresos(request):
     empresa_id = request.session.get("empresa_id")
-    tipo_ingreso=request.GET.get('tipo_ingreso')
-    cliente_id=request.GET.get('cliente_id')
-    estatus_filtro = request.GET.get('estatus')
-    periodo_filtro = request.GET.get('periodo')  # formato: 2026-07
-    
-    facturas = FacturaOtrosIngresos.objects.select_related('cliente', 'empresa', 'tipo_ingreso').all().order_by('-fecha_vencimiento')
+    tipo_ingreso = request.GET.get("tipo_ingreso")
+    cliente_id = request.GET.get("cliente_id")
+    estatus_filtro = request.GET.get("estatus")
+    periodo_filtro = request.GET.get("periodo")  # formato: 2026-07
 
-    # Filtrar por empresa si no es superusuario 
+    facturas = (
+        FacturaOtrosIngresos.objects.select_related(
+            "cliente", "empresa", "tipo_ingreso"
+        )
+        .all()
+        .order_by("-fecha_vencimiento")
+    )
+
+    # Filtrar por empresa si no es superusuario
     if request.user.is_superuser and empresa_id:
         facturas = facturas.filter(empresa_id=empresa_id)
-        clientes=Cliente.objects.filter(empresa_id=empresa_id)
-        tipos_ingreso=TipoOtroIngreso.objects.filter(empresa_id=empresa_id)
+        clientes = Cliente.objects.filter(empresa_id=empresa_id)
+        tipos_ingreso = TipoOtroIngreso.objects.filter(empresa_id=empresa_id)
     elif not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
         facturas = facturas.filter(empresa=empresa)
-        clientes=Cliente.objects.filter(empresa=empresa)
-        tipos_ingreso=TipoOtroIngreso.objects.filter(empresa=empresa)
+        clientes = Cliente.objects.filter(empresa=empresa)
+        tipos_ingreso = TipoOtroIngreso.objects.filter(empresa=empresa)
     else:
-        clientes=Cliente.objects.all()
-        tipos_ingreso=TipoOtroIngreso.objects.all()
-            
-   
+        clientes = Cliente.objects.all()
+        tipos_ingreso = TipoOtroIngreso.objects.all()
+
     # Filtros
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
@@ -3278,34 +4096,37 @@ def lista_facturas_otros_ingresos(request):
         facturas = facturas.filter(estatus=estatus_filtro)
     if periodo_filtro:
         try:
-            anio, mes = periodo_filtro.split('-')
+            anio, mes = periodo_filtro.split("-")
             facturas = facturas.filter(
-                fecha_vencimiento__year=anio,
-                fecha_vencimiento__month=mes
+                fecha_vencimiento__year=anio, fecha_vencimiento__month=mes
             )
         except ValueError:
             pass
-    
+
     # Paginación
-    paginator = Paginator(facturas, 10)  
-    page_obj = paginator.get_page(request.GET.get('page'))
+    paginator = Paginator(facturas, 10)
+    page_obj = paginator.get_page(request.GET.get("page"))
 
-    return render(request, 'otros_ingresos/lista_facturas.html', {
-        'facturas': page_obj,
-        'clientes': clientes,
-        'tipos_ingreso': tipos_ingreso,
-        'cliente_id': cliente_id,
-        'tipo_ingreso_seleccionado': tipo_ingreso,
-        'estatus_filtro': estatus_filtro,
-        'periodo_filtro': periodo_filtro,
-    })
+    return render(
+        request,
+        "otros_ingresos/lista_facturas.html",
+        {
+            "facturas": page_obj,
+            "clientes": clientes,
+            "tipos_ingreso": tipos_ingreso,
+            "cliente_id": cliente_id,
+            "tipo_ingreso_seleccionado": tipo_ingreso,
+            "estatus_filtro": estatus_filtro,
+            "periodo_filtro": periodo_filtro,
+        },
+    )
 
 
-#registrar cobro de otros ingresos
+# registrar cobro de otros ingresos
 @login_required
 def registrar_cobro_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
-    empresa= factura.empresa
+    empresa = factura.empresa
 
     if factura.estatus == "cobrada" or factura.saldo <= 0:
         messages.warning(
@@ -3324,43 +4145,49 @@ def registrar_cobro_otros_ingresos(request, factura_id):
             fecha_cobro = cobro.fecha_cobro
             cuenta_bancaria = cobro.cuenta_bancaria
             if fecha_cobro and cuenta_bancaria:
-                periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha_cobro)
+                periodo_valido, error_periodo = validar_periodo_abierto(
+                    cuenta_bancaria, fecha_cobro
+                )
                 if not periodo_valido:
                     form.add_error(None, error_periodo)
-                    return render(request, 'otros_ingresos/registrar_cobro.html', {
-                        'form': form,
-                        'factura': factura,
-                        'saldo_pendiente': factura.saldo,
-                    })
+                    return render(
+                        request,
+                        "otros_ingresos/registrar_cobro.html",
+                        {
+                            "form": form,
+                            "factura": factura,
+                            "saldo_pendiente": factura.saldo,
+                        },
+                    )
 
             if cobro.forma_cobro == "nota_credito":
-                    cobro.save()
-                    factura.estatus = "cancelada"
-                    factura.monto = 0
-                    factura.save()
-                    messages.success(
-                        request,
-                        "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",
-                    )
-                    return redirect("lista_facturas_otros_ingresos")
-            
+                cobro.save()
+                factura.estatus = "cancelada"
+                factura.monto = 0
+                factura.save()
+                messages.success(
+                    request,
+                    "La factura ha sido cancelada por nota de crédito. el saldo pendiente es $0.00",
+                )
+                return redirect("lista_facturas_otros_ingresos")
+
             monto_cobro = Decimal(str(cobro.monto)).quantize(
-                    Decimal("0.01"), rounding=ROUND_HALF_UP
-                )
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
             saldo_pendiente = Decimal(str(factura.saldo)).quantize(
-                    Decimal("0.01"), rounding=ROUND_HALF_UP
-                )
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
             if monto_cobro > saldo_pendiente:
-                    messages.error(
-                        request,
-                        f"El monto del cobro no puede ser mayor al saldo pendiente de la factura (${saldo_pendiente:.2f}).",
-                    )
+                messages.error(
+                    request,
+                    f"El monto del cobro no puede ser mayor al saldo pendiente de la factura (${saldo_pendiente:.2f}).",
+                )
             else:
-                    cobro.monto = monto_cobro
-                    cobro.save()
-                    factura.actualizar_estatus()
-                    messages.success(request, "Cobro registrado correctamente.")
-                    return redirect("lista_facturas_otros_ingresos")
+                cobro.monto = monto_cobro
+                cobro.save()
+                factura.actualizar_estatus()
+                messages.success(request, "Cobro registrado correctamente.")
+                return redirect("lista_facturas_otros_ingresos")
     else:
         form = CobroForm(empresa=empresa)
 
@@ -3370,35 +4197,49 @@ def registrar_cobro_otros_ingresos(request, factura_id):
         {
             "form": form,
             "factura": factura,
-            'saldo_pendiente': factura.saldo,
+            "saldo_pendiente": factura.saldo,
         },
     )
+
 
 @login_required
 def detalle_factura_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
-    cobros = factura.cobros.all().order_by('fecha_cobro')
+    cobros = factura.cobros.all().order_by("fecha_cobro")
     reversados_ids = set()
     for cobro in cobros:
-        if cobro.monto < 0 and cobro.observaciones and "Reversa de pago ID" in cobro.observaciones:
+        if (
+            cobro.monto < 0
+            and cobro.observaciones
+            and "Reversa de pago ID" in cobro.observaciones
+        ):
             # Extrae el ID del pago original
             try:
-                id_original = int(cobro.observaciones.split("Reversa de pago ID")[1].split(".")[0].strip())
+                id_original = int(
+                    cobro.observaciones.split("Reversa de pago ID")[1]
+                    .split(".")[0]
+                    .strip()
+                )
                 reversados_ids.add(id_original)
             except Exception:
                 pass
-    return render(request, 'otros_ingresos/detalle_factura.html', {
-        'factura': factura,
-        'cobros': cobros,
-        'reversados_ids': reversados_ids,
-    })
+    return render(
+        request,
+        "otros_ingresos/detalle_factura.html",
+        {
+            "factura": factura,
+            "cobros": cobros,
+            "reversados_ids": reversados_ids,
+        },
+    )
 
-#reversar cobro otros ingresos
+
+# reversar cobro otros ingresos
 @login_required
 def reversa_cobro_erroneo_otros_ingresos(request, pago_id, factura_id):
     cobro = get_object_or_404(CobroOtrosIngresos, id=pago_id)
     factura = get_object_or_404(FacturaOtrosIngresos, id=factura_id)
-    next_url = request.GET.get('next')
+    next_url = request.GET.get("next")
 
     if request.method == "POST":
         form = MotivoReversaCobroForm(request.POST)
@@ -3418,45 +4259,54 @@ def reversa_cobro_erroneo_otros_ingresos(request, pago_id, factura_id):
             factura.save()
 
             messages.success(request, "Cobro cancelado correctamente.")
-            return redirect(next_url or 'detalle_factura_otros_ingresos', pk=factura.id)
+            return redirect(next_url or "detalle_factura_otros_ingresos", pk=factura.id)
     else:
         form = MotivoReversaCobroForm()
 
-    return render(request, "otros_ingresos/reversa_cobro_erroneo_oi.html", {
-        "form": form,
-        "cobro": cobro,
-        "factura": factura,
-        "next": next_url,
-    })    
+    return render(
+        request,
+        "otros_ingresos/reversa_cobro_erroneo_oi.html",
+        {
+            "form": form,
+            "cobro": cobro,
+            "factura": factura,
+            "next": next_url,
+        },
+    )
+
 
 @login_required
-def reporte_cobros_otros_ingresos(request):    
-    empresa_id = request.GET.get('empresa')
-    cliente_id = request.GET.get('cliente')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
-    tipo_ingreso_id = request.GET.get('tipo_ingreso')
-    cuenta_bancaria_id = request.GET.get('cuenta_bancaria')    
+def reporte_cobros_otros_ingresos(request):
+    empresa_id = request.GET.get("empresa")
+    cliente_id = request.GET.get("cliente")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    tipo_ingreso_id = request.GET.get("tipo_ingreso")
+    cuenta_bancaria_id = request.GET.get("cuenta_bancaria")
 
-    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente', 'factura__tipo_ingreso')
+    cobros = CobroOtrosIngresos.objects.select_related(
+        "factura", "factura__empresa", "factura__cliente", "factura__tipo_ingreso"
+    )
 
     # Filtros
     if not request.user.is_superuser:
         cobros = cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
     if empresa_id:
-        cobros = cobros.filter(factura__empresa_id=empresa_id).order_by('-fecha_cobro')
+        cobros = cobros.filter(factura__empresa_id=empresa_id).order_by("-fecha_cobro")
     if cliente_id:
-        cobros = cobros.filter(factura__cliente_id=cliente_id).order_by('-fecha_cobro')
+        cobros = cobros.filter(factura__cliente_id=cliente_id).order_by("-fecha_cobro")
     if fecha_inicio and fecha_fin:
-        cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin]).order_by('-fecha_cobro')
-        
+        cobros = cobros.filter(fecha_cobro__range=[fecha_inicio, fecha_fin]).order_by(
+            "-fecha_cobro"
+        )
+
     if tipo_ingreso_id and tipo_ingreso_id.isdigit():
         cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id)
-    
+
     if cuenta_bancaria_id and cuenta_bancaria_id.isdigit():
         cobros = cobros.filter(cuenta_bancaria_id=cuenta_bancaria_id)
 
-    total_cobrado = cobros.aggregate(total=Sum('monto'))['total'] or 0
+    total_cobrado = cobros.aggregate(total=Sum("monto"))["total"] or 0
 
     anio_actual = date.today().year
     cobros_chart = cobros.filter(fecha_cobro__year=anio_actual)
@@ -3464,27 +4314,34 @@ def reporte_cobros_otros_ingresos(request):
     # Cobros por tipo de ingreso
     tipo_dict = defaultdict(float)
     for c in cobros_chart:
-        tipo = c.factura.tipo_ingreso.nombre if c.factura and c.factura.tipo_ingreso else 'Otro'
-        tipo_dict[tipo] += float(c.monto)   
+        tipo = (
+            c.factura.tipo_ingreso.nombre
+            if c.factura and c.factura.tipo_ingreso
+            else "Otro"
+        )
+        tipo_dict[tipo] += float(c.monto)
     tipo_labels = list(tipo_dict.keys())
     tipo_data = list(tipo_dict.values())
 
     # Cobros por forma de cobro
     forma_dict = defaultdict(float)
     for c in cobros_chart:
-        forma = c.get_forma_cobro_display() if hasattr(c, 'get_forma_cobro_display') else c.forma_cobro
+        forma = (
+            c.get_forma_cobro_display()
+            if hasattr(c, "get_forma_cobro_display")
+            else c.forma_cobro
+        )
         forma_dict[forma] += float(c.monto)
     forma_labels = list(forma_dict.keys())
     forma_data = list(forma_dict.values())
 
-    #cobros por cuenta bancaria
+    # cobros por cuenta bancaria
     # cuenta_dict = defaultdict(float)
     # for c in cobros_chart:
     #     cuenta = c.cuenta_bancaria.banco if c.cuenta_bancaria else 'Sin cuenta'
     #     cuenta_dict[cuenta] += float(c.monto)
     # cuenta_labels = list(cuenta_dict.keys())
     # cuenta_data = list(cuenta_dict.values())
-
 
     # KPIs comparativos año/mes actual vs anterior
     hoy = date.today()
@@ -3494,10 +4351,30 @@ def reporte_cobros_otros_ingresos(request):
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
     anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
 
-    cobros_anio_actual = cobros.filter(fecha_cobro__year=anio_actual).aggregate(total=Sum('monto'))['total'] or 0
-    cobros_anio_anterior = cobros.filter(fecha_cobro__year=anio_anterior).aggregate(total=Sum('monto'))['total'] or 0
-    cobros_mes_actual = cobros.filter(fecha_cobro__year=anio_actual, fecha_cobro__month=mes_actual).aggregate(total=Sum('monto'))['total'] or 0
-    cobros_mes_anterior = cobros.filter(fecha_cobro__year=anio_mes_anterior, fecha_cobro__month=mes_anterior).aggregate(total=Sum('monto'))['total'] or 0
+    cobros_anio_actual = (
+        cobros.filter(fecha_cobro__year=anio_actual).aggregate(total=Sum("monto"))[
+            "total"
+        ]
+        or 0
+    )
+    cobros_anio_anterior = (
+        cobros.filter(fecha_cobro__year=anio_anterior).aggregate(total=Sum("monto"))[
+            "total"
+        ]
+        or 0
+    )
+    cobros_mes_actual = (
+        cobros.filter(
+            fecha_cobro__year=anio_actual, fecha_cobro__month=mes_actual
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
+    cobros_mes_anterior = (
+        cobros.filter(
+            fecha_cobro__year=anio_mes_anterior, fecha_cobro__month=mes_anterior
+        ).aggregate(total=Sum("monto"))["total"]
+        or 0
+    )
 
     def variacion(actual, anterior):
         if anterior == 0:
@@ -3508,51 +4385,67 @@ def reporte_cobros_otros_ingresos(request):
     var_mes = variacion(cobros_mes_actual, cobros_mes_anterior)
 
     # Paginación
-    paginator = Paginator(cobros.order_by('-fecha_cobro'), 15)
-    page_number = request.GET.get('page')
+    paginator = Paginator(cobros.order_by("-fecha_cobro"), 15)
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    empresas = Empresa.objects.all() if request.user.is_superuser else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
-    clientes = Cliente.objects.filter(empresa__in=empresas).order_by('nombre')
-    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa__in=empresas).order_by('nombre')
-    cuentas_bancarias = CuentaBancaria.objects.filter(empresa__in=empresas).order_by('banco')
+    empresas = (
+        Empresa.objects.all()
+        if request.user.is_superuser
+        else Empresa.objects.filter(id=request.user.perfilusuario.empresa.id)
+    )
+    clientes = Cliente.objects.filter(empresa__in=empresas).order_by("nombre")
+    tipos_ingreso = TipoOtroIngreso.objects.filter(empresa__in=empresas).order_by(
+        "nombre"
+    )
+    cuentas_bancarias = CuentaBancaria.objects.filter(empresa__in=empresas).order_by(
+        "banco"
+    )
 
-    return render(request, 'otros_ingresos/reporte_cobros.html', {
-        'cobros': page_obj,
-        'empresas': empresas,
-        'clientes': clientes,
-        'empresa_id': empresa_id,
-        'cliente_id': cliente_id,
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
-        'total_cobrado': total_cobrado,
-        'tipo_ingreso_id': tipo_ingreso_id,
-        'tipos_ingreso': tipos_ingreso,
-        'tipo_labels': tipo_labels,
-        'tipo_data': tipo_data,
-        'forma_labels': forma_labels,
-        'forma_data': forma_data,
-        'var_anio': var_anio,
-        'var_mes': var_mes,
-        'cobros_anio_actual': cobros_anio_actual,
-        'cobros_anio_anterior': cobros_anio_anterior,
-        'cobros_mes_actual': cobros_mes_actual,
-        'cobros_mes_anterior': cobros_mes_anterior,
-        'cuentas_bancarias': cuentas_bancarias,
-    })
+    return render(
+        request,
+        "otros_ingresos/reporte_cobros.html",
+        {
+            "cobros": page_obj,
+            "empresas": empresas,
+            "clientes": clientes,
+            "empresa_id": empresa_id,
+            "cliente_id": cliente_id,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "total_cobrado": total_cobrado,
+            "tipo_ingreso_id": tipo_ingreso_id,
+            "tipos_ingreso": tipos_ingreso,
+            "tipo_labels": tipo_labels,
+            "tipo_data": tipo_data,
+            "forma_labels": forma_labels,
+            "forma_data": forma_data,
+            "var_anio": var_anio,
+            "var_mes": var_mes,
+            "cobros_anio_actual": cobros_anio_actual,
+            "cobros_anio_anterior": cobros_anio_anterior,
+            "cobros_mes_actual": cobros_mes_actual,
+            "cobros_mes_anterior": cobros_mes_anterior,
+            "cuentas_bancarias": cuentas_bancarias,
+        },
+    )
 
 
 @login_required
 def exportar_cobros_otros_ingresos_excel(request):
-    empresa_id = request.GET.get('empresa')
-    cliente_id = request.GET.get('cliente')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
-    tipo_ingreso_id = request.GET.get('tipo_ingreso')
-    cuenta_bancaria = request.GET.get('cuenta_bancaria')
+    empresa_id = request.GET.get("empresa")
+    cliente_id = request.GET.get("cliente")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+    tipo_ingreso_id = request.GET.get("tipo_ingreso")
+    cuenta_bancaria = request.GET.get("cuenta_bancaria")
 
-    cobros = CobroOtrosIngresos.objects.select_related('factura', 'factura__empresa', 'factura__cliente','factura__tipo_ingreso',)
-    
+    cobros = CobroOtrosIngresos.objects.select_related(
+        "factura",
+        "factura__empresa",
+        "factura__cliente",
+        "factura__tipo_ingreso",
+    )
 
     if not request.user.is_superuser:
         cobros = cobros.filter(factura__empresa=request.user.perfilusuario.empresa)
@@ -3572,7 +4465,7 @@ def exportar_cobros_otros_ingresos_excel(request):
     if tipo_ingreso_id and tipo_ingreso_id.isdigit():
         cobros = cobros.filter(factura__tipo_ingreso_id=tipo_ingreso_id)
 
-    if cuenta_bancaria and cuenta_bancaria.isdigit():   
+    if cuenta_bancaria and cuenta_bancaria.isdigit():
         cobros = cobros.filter(cuenta_bancaria_id=cuenta_bancaria)
 
     wb = openpyxl.Workbook()
@@ -3580,45 +4473,61 @@ def exportar_cobros_otros_ingresos_excel(request):
     ws.title = "Cobros Otros Ingresos"
 
     headers = [
-        "Fecha cobro", "Empresa", "Cliente", "Tipo ingreso", "Monto", "Cuenta bancaria",'Numero Cta', "Forma cobro",
-        "Factura", "Comprobante", "Observaciones"
+        "Fecha cobro",
+        "Empresa",
+        "Cliente",
+        "Tipo ingreso",
+        "Monto",
+        "Cuenta bancaria",
+        "Numero Cta",
+        "Forma cobro",
+        "Factura",
+        "Comprobante",
+        "Observaciones",
     ]
     ws.append(headers)
 
     for cobro in cobros:
-        ws.append([
-            cobro.fecha_cobro,
-            cobro.factura.empresa.nombre,
-            cobro.factura.cliente.nombre,
-            cobro.factura.tipo_ingreso.nombre if cobro.factura.tipo_ingreso else '',
-            float(cobro.monto),
-            cobro.cuenta_bancaria.banco if cobro.cuenta_bancaria else '',
-            cobro.cuenta_bancaria.numero_cuenta if cobro.cuenta_bancaria else '',
-            cobro.get_forma_cobro_display(),
-            cobro.factura.folio,
-            cobro.comprobante.url if cobro.comprobante else '',
-            cobro.observaciones or ''
-        ])
+        ws.append(
+            [
+                cobro.fecha_cobro,
+                cobro.factura.empresa.nombre,
+                cobro.factura.cliente.nombre,
+                cobro.factura.tipo_ingreso.nombre if cobro.factura.tipo_ingreso else "",
+                float(cobro.monto),
+                cobro.cuenta_bancaria.banco if cobro.cuenta_bancaria else "",
+                cobro.cuenta_bancaria.numero_cuenta if cobro.cuenta_bancaria else "",
+                cobro.get_forma_cobro_display(),
+                cobro.factura.folio,
+                cobro.comprobante.url if cobro.comprobante else "",
+                cobro.observaciones or "",
+            ]
+        )
 
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
     response = HttpResponse(
         output.read(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response['Content-Disposition'] = 'attachment; filename="cobros_otros_ingresos.xlsx"'
+    response["Content-Disposition"] = (
+        'attachment; filename="cobros_otros_ingresos.xlsx"'
+    )
     return response
+
 
 @login_required
 def exportar_lista_facturas_otros_ingresos_excel(request):
-    empresa_id = request.GET.get('empresa')
-    cliente_id = request.GET.get('cliente_id')  # <-- usa cliente_id para consistencia
-    tipo_ingreso = request.GET.get('tipo_ingreso')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
+    empresa_id = request.GET.get("empresa")
+    cliente_id = request.GET.get("cliente_id")  # <-- usa cliente_id para consistencia
+    tipo_ingreso = request.GET.get("tipo_ingreso")
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
 
-    facturas = FacturaOtrosIngresos.objects.select_related('empresa', 'cliente', 'tipo_ingreso').all()
+    facturas = FacturaOtrosIngresos.objects.select_related(
+        "empresa", "cliente", "tipo_ingreso"
+    ).all()
 
     if not request.user.is_superuser:
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
@@ -3640,55 +4549,76 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
     ws = wb.active
     ws.title = "Facturas Otros Ingresos"
 
-    ws.append([
-        'Folio', 'Empresa', 'Cliente', 'Tipo ingreso', 'Monto', 'Saldo',
-        'Periodo', 'Estatus', 'Observaciones'
-    ])
+    ws.append(
+        [
+            "Folio",
+            "Empresa",
+            "Cliente",
+            "Tipo ingreso",
+            "Monto",
+            "Saldo",
+            "Periodo",
+            "Estatus",
+            "Observaciones",
+        ]
+    )
 
     for factura in facturas:
-        ws.append([
-            factura.folio,
-            factura.empresa.nombre,
-            factura.cliente.nombre,
-            factura.tipo_ingreso.nombre if factura.tipo_ingreso else '',
-            float(factura.monto),
-            float(factura.saldo),
-            factura.fecha_vencimiento if factura.fecha_vencimiento else '',
-            factura.estatus,
-            factura.observaciones or ''
-        ])
+        ws.append(
+            [
+                factura.folio,
+                factura.empresa.nombre,
+                factura.cliente.nombre,
+                factura.tipo_ingreso.nombre if factura.tipo_ingreso else "",
+                float(factura.monto),
+                float(factura.saldo),
+                factura.fecha_vencimiento if factura.fecha_vencimiento else "",
+                factura.estatus,
+                factura.observaciones or "",
+            ]
+        )
 
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename=lista_facturas_otros_ingresos.xlsx'
+    response["Content-Disposition"] = (
+        "attachment; filename=lista_facturas_otros_ingresos.xlsx"
+    )
     wb.save(response)
     return response
 
 
 @login_required
 def crear_tipo_otro_ingreso(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = TipoOtroIngresoForm(request.POST)
         if form.is_valid():
             tipo_ingreso = form.save(commit=False)
             tipo_ingreso.empresa = request.user.perfilusuario.empresa
             tipo_ingreso.save()
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': True, 'id': tipo_ingreso.id, 'nombre': tipo_ingreso.nombre})
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "id": tipo_ingreso.id,
+                        "nombre": tipo_ingreso.nombre,
+                    }
+                )
             messages.success(request, "Tipo de ingreso creado correctamente.")
         else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'Error al crear el tipo de ingreso.'})
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse(
+                    {"success": False, "error": "Error al crear el tipo de ingreso."}
+                )
             messages.error(request, "Error al crear el tipo de ingreso.")
-    return redirect(request.META.get('HTTP_REFERER', 'crear_factura_otros_ingresos'))
+    return redirect(request.META.get("HTTP_REFERER", "crear_factura_otros_ingresos"))
 
 
 @login_required
 def tipos_otro_ingreso_json(request):
     tipos = TipoOtroIngreso.objects.filter(empresa=request.user.perfilusuario.empresa)
-    data = [{'id': t.id, 'nombre': t.nombre} for t in tipos]
-    return JsonResponse({'tipos': data})
+    data = [{"id": t.id, "nombre": t.nombre} for t in tipos]
+    return JsonResponse({"tipos": data})
 
 
 @login_required
@@ -3705,6 +4635,7 @@ def recibo_factura(request, factura_id):
             "empresa": empresa,
         },
     )
+
 
 @login_required
 def recibo_pago(request, pago_id):
@@ -3723,6 +4654,7 @@ def recibo_pago(request, pago_id):
         },
     )
 
+
 @login_required
 def recibo_factura_otras_cuotas(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
@@ -3737,6 +4669,7 @@ def recibo_factura_otras_cuotas(request, factura_id):
             "empresa": empresa,
         },
     )
+
 
 @login_required
 def recibo_pago_otras_cuotas(request, pago_id):
@@ -3755,24 +4688,33 @@ def recibo_pago_otras_cuotas(request, pago_id):
         },
     )
 
-#consulta de facturas para visitantes
-#revisar donde se renderiza la vista de consulta_facturas.html y si se necesita agregar filtros por local o area
+
+# consulta de facturas para visitantes
+# revisar donde se renderiza la vista de consulta_facturas.html y si se necesita agregar filtros por local o area
 @login_required
 def consulta_facturas(request):
-    local_id = request.GET.get('local_id')
-    area_id = request.GET.get('area_id')
+    local_id = request.GET.get("local_id")
+    area_id = request.GET.get("area_id")
 
     # Obtén los locales y áreas asignados al visitante
-    locales = LocalComercial.objects.filter(visitantes=request.user, activo=True).order_by('numero')
-    areas = AreaComun.objects.filter(visitantes=request.user, activo=True).order_by('numero')
+    locales = LocalComercial.objects.filter(
+        visitantes=request.user, activo=True
+    ).order_by("numero")
+    areas = AreaComun.objects.filter(visitantes=request.user, activo=True).order_by(
+        "numero"
+    )
 
     empresa = None
     if locales.exists():
         empresa = locales.first().empresa
-        facturas = Factura.objects.filter(local__in=locales, empresa=empresa).order_by('-fecha_vencimiento')
+        facturas = Factura.objects.filter(local__in=locales, empresa=empresa).order_by(
+            "-fecha_vencimiento"
+        )
     elif areas.exists():
         empresa = areas.first().empresa
-        facturas = Factura.objects.filter(area_comun__in=areas, empresa=empresa).order_by('-fecha_vencimiento')
+        facturas = Factura.objects.filter(
+            area_comun__in=areas, empresa=empresa
+        ).order_by("-fecha_vencimiento")
     else:
         facturas = Factura.objects.none()
 
@@ -3782,42 +4724,49 @@ def consulta_facturas(request):
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id)
 
-    facturas = facturas.select_related('cliente', 'empresa', 'local', 'area_comun').prefetch_related('pagos')
+    facturas = facturas.select_related(
+        "cliente", "empresa", "local", "area_comun"
+    ).prefetch_related("pagos")
 
-    total_pendiente = sum(f.saldo_pendiente for f in facturas if f.estatus == 'pendiente')
-    total_cobrado = sum(f.monto for f in facturas if f.estatus == 'cobrada')
+    total_pendiente = sum(
+        f.saldo_pendiente for f in facturas if f.estatus == "pendiente"
+    )
+    total_cobrado = sum(f.monto for f in facturas if f.estatus == "cobrada")
 
     # Paginación
     paginator = Paginator(facturas, 25)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'facturacion/consulta_facturas.html', {
-        'facturas': page_obj,
-        'locales': locales,
-        'areas': areas,
-        'local_id': local_id,
-        'area_id': area_id,
-        'total_pendiente': total_pendiente,
-        'total_cobrado': total_cobrado,
-        'empresa': empresa,
-    })
-
-
+    return render(
+        request,
+        "facturacion/consulta_facturas.html",
+        {
+            "facturas": page_obj,
+            "locales": locales,
+            "areas": areas,
+            "local_id": local_id,
+            "area_id": area_id,
+            "total_pendiente": total_pendiente,
+            "total_cobrado": total_cobrado,
+            "empresa": empresa,
+        },
+    )
 
 
 #####reportes cartera vencida###################
+
 
 @login_required
 def reporte_cartera_vencida(request):
     empresa = request.user.perfilusuario.empresa
     hoy = date.today()
 
-    if 'filtros' in request.GET:
+    if "filtros" in request.GET:
         # El formulario ya se envió al menos una vez: un checkbox
         # ausente significa que el usuario lo desmarcó a propósito.
-        incluir_cuotas = 'incluir_cuotas' in request.GET
-        incluir_otros = 'incluir_otros' in request.GET
+        incluir_cuotas = "incluir_cuotas" in request.GET
+        incluir_otros = "incluir_otros" in request.GET
     else:
         # Primera carga de la página (sin filtros en la URL todavía):
         # ambos activados por default.
@@ -3838,47 +4787,61 @@ def reporte_cartera_vencida(request):
 
     # --- Cálculos ---
     actual = calcular_cartera_vencida(empresa, hoy, incluir_cuotas, incluir_otros)
-    mes_anterior = calcular_cartera_vencida(empresa, ultimo_dia_mes_anterior, incluir_cuotas, incluir_otros)
-    periodo_anterior = calcular_cartera_vencida(empresa, fecha_mismo_dia_anio_anterior, incluir_cuotas, incluir_otros)
+    mes_anterior = calcular_cartera_vencida(
+        empresa, ultimo_dia_mes_anterior, incluir_cuotas, incluir_otros
+    )
+    periodo_anterior = calcular_cartera_vencida(
+        empresa, fecha_mismo_dia_anio_anterior, incluir_cuotas, incluir_otros
+    )
 
-    diff_mes, pct_mes = variacion(actual['total'], mes_anterior['total'])
-    diff_periodo, pct_periodo = variacion(actual['total'], periodo_anterior['total'])
+    diff_mes, pct_mes = variacion(actual["total"], mes_anterior["total"])
+    diff_periodo, pct_periodo = variacion(actual["total"], periodo_anterior["total"])
 
-   # --- Top 10 clientes con mayor cartera vencida (a hoy) ---
+    # --- Top 10 clientes con mayor cartera vencida (a hoy) ---
     top_clientes_base = sorted(
-        actual['por_cliente'].values(), key=lambda x: x['saldo'], reverse=True
+        actual["por_cliente"].values(), key=lambda x: x["saldo"], reverse=True
     )[:10]
 
     # NUEVO: cruzar cada cliente del top contra los otros dos cortes
     top_clientes = []
     for fila in top_clientes_base:
-        cliente = fila['cliente']
-        saldo_actual_cliente = fila['saldo']
+        cliente = fila["cliente"]
+        saldo_actual_cliente = fila["saldo"]
 
-        saldo_mes_ant_cliente = mes_anterior['por_cliente'].get(
-            cliente.id, {'saldo': Decimal('0')}
-        )['saldo']
-        saldo_periodo_ant_cliente = periodo_anterior['por_cliente'].get(
-            cliente.id, {'saldo': Decimal('0')}
-        )['saldo']
+        saldo_mes_ant_cliente = mes_anterior["por_cliente"].get(
+            cliente.id, {"saldo": Decimal("0")}
+        )["saldo"]
+        saldo_periodo_ant_cliente = periodo_anterior["por_cliente"].get(
+            cliente.id, {"saldo": Decimal("0")}
+        )["saldo"]
 
-        diff_mes_cliente, pct_mes_cliente = variacion(saldo_actual_cliente, saldo_mes_ant_cliente)
-        diff_periodo_cliente, pct_periodo_cliente = variacion(saldo_actual_cliente, saldo_periodo_ant_cliente)
+        diff_mes_cliente, pct_mes_cliente = variacion(
+            saldo_actual_cliente, saldo_mes_ant_cliente
+        )
+        diff_periodo_cliente, pct_periodo_cliente = variacion(
+            saldo_actual_cliente, saldo_periodo_ant_cliente
+        )
 
-        top_clientes.append({
-            'cliente': cliente,
-            'saldo': saldo_actual_cliente,
-            'saldo_mes_anterior': saldo_mes_ant_cliente,
-            'diff_mes': diff_mes_cliente,
-            'pct_mes': pct_mes_cliente,
-            'saldo_periodo_anterior': saldo_periodo_ant_cliente,
-            'diff_periodo': diff_periodo_cliente,
-            'pct_periodo': pct_periodo_cliente,
-        })
+        top_clientes.append(
+            {
+                "cliente": cliente,
+                "saldo": saldo_actual_cliente,
+                "saldo_mes_anterior": saldo_mes_ant_cliente,
+                "diff_mes": diff_mes_cliente,
+                "pct_mes": pct_mes_cliente,
+                "saldo_periodo_anterior": saldo_periodo_ant_cliente,
+                "diff_periodo": diff_periodo_cliente,
+                "pct_periodo": pct_periodo_cliente,
+            }
+        )
 
     # --- Tendencia de los últimos 6 meses (para la gráfica) ---
-    min_fecha_cuotas = Factura.objects.filter(empresa=empresa, activo=True).aggregate(m=Min('fecha_vencimiento'))['m']
-    min_fecha_otros = FacturaOtrosIngresos.objects.filter(empresa=empresa, activo=True).aggregate(m=Min('fecha_vencimiento'))['m']
+    min_fecha_cuotas = Factura.objects.filter(empresa=empresa, activo=True).aggregate(
+        m=Min("fecha_vencimiento")
+    )["m"]
+    min_fecha_otros = FacturaOtrosIngresos.objects.filter(
+        empresa=empresa, activo=True
+    ).aggregate(m=Min("fecha_vencimiento"))["m"]
 
     fechas_min = [f for f in [min_fecha_cuotas, min_fecha_otros] if f]
     anio_minimo = min(f.year for f in fechas_min) if fechas_min else hoy.year
@@ -3886,7 +4849,20 @@ def reporte_cartera_vencida(request):
     anios_disponibles = list(range(anio_minimo, hoy.year + 1))
     anios_a_mostrar = anios_disponibles[-4:]  # últimos 4 (o menos si no hay tantos)
 
-    NOMBRES_MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    NOMBRES_MES = [
+        "Ene",
+        "Feb",
+        "Mar",
+        "Abr",
+        "May",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dic",
+    ]
 
     tendencia_anual = []
     for anio in anios_a_mostrar:
@@ -3898,32 +4874,36 @@ def reporte_cartera_vencida(request):
                 continue
             ultimo_dia = monthrange(anio, mes_num)[1]
             fecha_corte_mes = min(date(anio, mes_num, ultimo_dia), hoy)
-            total_mes = calcular_total_vencida_rapido(empresa, fecha_corte_mes, incluir_cuotas, incluir_otros)
+            total_mes = calcular_total_vencida_rapido(
+                empresa, fecha_corte_mes, incluir_cuotas, incluir_otros
+            )
             valores_mes.append(float(total_mes))
 
-        tendencia_anual.append({
-            'anio': anio,
-            'valores': valores_mes,
-        })
+        tendencia_anual.append(
+            {
+                "anio": anio,
+                "valores": valores_mes,
+            }
+        )
 
     contexto = {
-        'hoy': hoy,
-        'incluir_cuotas': incluir_cuotas,
-        'incluir_otros': incluir_otros,
-        'total_actual': actual['total'],
-        'total_mes_anterior': mes_anterior['total'],
-        'diff_mes': diff_mes,
-        'pct_mes': pct_mes,
-        'total_periodo_anterior': periodo_anterior['total'],
-        'diff_periodo': diff_periodo,
-        'pct_periodo': pct_periodo,
-        'fecha_mismo_dia_anio_anterior': fecha_mismo_dia_anio_anterior,
-        'ultimo_dia_mes_anterior': ultimo_dia_mes_anterior,
-        'top_clientes': top_clientes,
-        'nombres_mes': NOMBRES_MES,
-        'tendencia_anual': tendencia_anual,
+        "hoy": hoy,
+        "incluir_cuotas": incluir_cuotas,
+        "incluir_otros": incluir_otros,
+        "total_actual": actual["total"],
+        "total_mes_anterior": mes_anterior["total"],
+        "diff_mes": diff_mes,
+        "pct_mes": pct_mes,
+        "total_periodo_anterior": periodo_anterior["total"],
+        "diff_periodo": diff_periodo,
+        "pct_periodo": pct_periodo,
+        "fecha_mismo_dia_anio_anterior": fecha_mismo_dia_anio_anterior,
+        "ultimo_dia_mes_anterior": ultimo_dia_mes_anterior,
+        "top_clientes": top_clientes,
+        "nombres_mes": NOMBRES_MES,
+        "tendencia_anual": tendencia_anual,
     }
-    return render(request, 'cartera/reporte_cartera_vencida.html', contexto)
+    return render(request, "cartera/reporte_cartera_vencida.html", contexto)
 
 
 

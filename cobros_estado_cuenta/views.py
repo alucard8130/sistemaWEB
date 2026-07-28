@@ -1,4 +1,5 @@
 # Create your views here.
+from decimal import Decimal
 import json
 #import base64
 import os
@@ -8,6 +9,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
+
+from gastos.models import Gasto, PagoGasto, TipoGasto
+from proveedores.models import Proveedor
 from .models import AplicacionMovimientoEstadoCuenta, SesionEstadoCuenta, MovimientoEstadoCuenta
 from empresas.models import CuentaBancaria
 from clientes.models import Cliente
@@ -513,6 +517,22 @@ def subir_estado_cuenta(request):
             messages.error(request, "Solo se aceptan archivos CSV o Excel (.xls, .xlsx).")
             return render(request, 'cobros_estado_cuenta/subir.html', {'cuentas': cuentas})
 
+        # Límite de 1 estado de cuenta por día (día calendario), por empresa —
+        # protege el consumo de tokens de la IA.
+        hoy = datetime.date.today()
+        subidas_hoy = SesionEstadoCuenta.objects.filter(
+            empresa=empresa,
+            fecha_registro__date=hoy,
+        ).count()
+
+        if subidas_hoy >= 1:
+            messages.error(
+                request,
+                "Ya alcanzaste el límite de 1 estado de cuenta por día. "
+                "Podrás subir otro a partir de mañana."
+            )
+            return render(request, 'cobros_estado_cuenta/subir.html', {'cuentas': cuentas})
+
         cuenta = None
         if cuenta_id:
             cuenta = get_object_or_404(CuentaBancaria, pk=cuenta_id, empresa=empresa)
@@ -673,6 +693,8 @@ def revisar_sesion(request, pk):
         'tipos_ingreso': tipos_ingreso,
         'facturas_por_cliente_json': json.dumps(facturas_por_cliente),
         'propiedades_por_cliente_json': json.dumps(propiedades_por_cliente),
+        'proveedores_bancos': Proveedor.objects.filter(empresa=empresa, activo=True).order_by('nombre'),
+        'tipos_gasto': TipoGasto.objects.filter(empresa=empresa).order_by('nombre'),
     })
 
 @login_required
@@ -1015,6 +1037,6 @@ def aplicar_movimiento(request, movimiento_pk):
         if guardado:
             messages.success(request, f"Factura {folio} creada y cobro de ${monto_a_usar:,.2f} registrado.")
         else:
-            messages.error(request, "No se pudo generar el folio. Intenta de nuevo.")
+            messages.error(request, "No se pudo generar el folio. Intenta de nuevo.")  
 
-    return redirect('revisar_sesion_estado_cuenta', pk=movimiento.sesion.pk)
+    return redirect('revisar_sesion_estado_cuenta', pk=movimiento.sesion.pk) 

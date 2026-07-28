@@ -10,4 +10,5 @@ urlpatterns = [
     # Saldos por período
     path('saldos/', views.saldos_periodo, name='saldos_periodo'),
     path('saldos/cerrar/<int:periodo_id>/', views.cerrar_periodo, name='cerrar_periodo'),
+    path('cuentas/reiniciar-saldos/', views.reiniciar_saldos_cuentas, name='reiniciar_saldos_cuentas'),
 ]

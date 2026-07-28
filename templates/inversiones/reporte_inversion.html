@@ -1,0 +1,199 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saldo de Inversión · GESAC</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+    body { background: #f4f5f8; }
+    .card-reporte { border: none; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .kpi-valor { font-size: 1.8rem; font-weight: 700; }
+    .kpi-valor-sm { font-size: 1.3rem; font-weight: 700; }
+    .kpi-label { font-size: 0.75rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.04em; }
+    .variacion-sube { color: #dc3545; }
+    .variacion-baja { color: #198754; }
+    .variacion-neutral { color: #6c757d; }
+    .mini-kpi-box { background: #f8f9fa; border-radius: 10px; padding: 12px 14px; height: 100%; }
+</style>
+</head>
+<body>
+{% include 'navbar.html' %}
+<div class="container py-4">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h3 class="mb-0"><i class="bi bi-piggy-bank text-info"></i> Saldo de Inversión</h3>
+        <div class="d-flex gap-2">
+            <a href="{% url 'registrar_retencion_inversion' %}" class="btn btn-warning">
+                <i class="bi bi-receipt"></i> Registrar retención de ISR
+            </a>
+            <a href="{% url 'nuevo_movimiento_inversion' %}" class="btn btn-info text-white">
+                <i class="bi bi-plus-lg"></i> Registrar movimiento de inversión
+            </a>
+        </div>
+    </div>
+
+    {% for item in resumen_por_cuenta %}
+    <div class="card card-reporte mb-4">
+        <div class="card-body">
+            <h5 class="mb-3">
+                <i class="bi bi-bank2 text-muted"></i>
+                {{ item.cuenta.banco }} — {{ item.cuenta.numero_cuenta }}
+                <span class="badge bg-info text-white">Inversión</span>
+            </h5>
+
+            <!-- Totales acumulados -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <div class="kpi-label">Incrementos</div>
+                    <div class="kpi-valor text-primary">${{ item.total_incrementos|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-label">Rendimientos acumulados</div>
+                    <div class="kpi-valor text-success">${{ item.total_rendimiento|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-label">Retiros / Liquidaciones</div>
+                    <div class="kpi-valor text-danger">${{ item.total_retiro|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-label">Saldo actual</div>
+                    <div class="kpi-valor text-dark">${{ item.saldo_actual|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- KPIs de variación -->
+            <div class="row g-3 mb-2">
+                <div class="col-md-3">
+                    <div class="mini-kpi-box">
+                        <div class="kpi-label">Saldo vs. mes anterior</div>
+                        <div class="kpi-valor-sm {% if item.diff_saldo_mes > 0 %}variacion-baja{% elif item.diff_saldo_mes < 0 %}variacion-sube{% else %}variacion-neutral{% endif %}">
+                            {% if item.diff_saldo_mes > 0 %}<i class="bi bi-arrow-up-short"></i>
+                            {% elif item.diff_saldo_mes < 0 %}<i class="bi bi-arrow-down-short"></i>
+                            {% else %}<i class="bi bi-dash"></i>{% endif %}
+                            {% if item.pct_saldo_mes != None %}{{ item.pct_saldo_mes }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="text-muted small">${{ item.saldo_mes_anterior|floatformat:2|intcomma }} al {{ ultimo_dia_mes_anterior|date:"d/m/Y" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-kpi-box">
+                        <div class="kpi-label">Saldo vs. mismo periodo año ant.</div>
+                        <div class="kpi-valor-sm {% if item.diff_saldo_anio > 0 %}variacion-baja{% elif item.diff_saldo_anio < 0 %}variacion-sube{% else %}variacion-neutral{% endif %}">
+                            {% if item.diff_saldo_anio > 0 %}<i class="bi bi-arrow-up-short"></i>
+                            {% elif item.diff_saldo_anio < 0 %}<i class="bi bi-arrow-down-short"></i>
+                            {% else %}<i class="bi bi-dash"></i>{% endif %}
+                            {% if item.pct_saldo_anio != None %}{{ item.pct_saldo_anio }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="text-muted small">${{ item.saldo_anio_anterior|floatformat:2|intcomma }} al {{ fecha_mismo_dia_anio_anterior|date:"d/m/Y" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-kpi-box">
+                        <div class="kpi-label">Rendimiento del mes vs. ant.</div>
+                        <div class="kpi-valor-sm {% if item.diff_rend_mes > 0 %}variacion-baja{% elif item.diff_rend_mes < 0 %}variacion-sube{% else %}variacion-neutral{% endif %}">
+                            {% if item.diff_rend_mes > 0 %}<i class="bi bi-arrow-up-short"></i>
+                            {% elif item.diff_rend_mes < 0 %}<i class="bi bi-arrow-down-short"></i>
+                            {% else %}<i class="bi bi-dash"></i>{% endif %}
+                            {% if item.pct_rend_mes != None %}{{ item.pct_rend_mes }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="text-muted small">${{ item.rendimiento_mes_actual|floatformat:2|intcomma }} este mes</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-kpi-box">
+                        <div class="kpi-label">Rendimiento del año (YTD) vs. ant.</div>
+                        <div class="kpi-valor-sm {% if item.diff_rend_anio > 0 %}variacion-baja{% elif item.diff_rend_anio < 0 %}variacion-sube{% else %}variacion-neutral{% endif %}">
+                            {% if item.diff_rend_anio > 0 %}<i class="bi bi-arrow-up-short"></i>
+                            {% elif item.diff_rend_anio < 0 %}<i class="bi bi-arrow-down-short"></i>
+                            {% else %}<i class="bi bi-dash"></i>{% endif %}
+                            {% if item.pct_rend_anio != None %}{{ item.pct_rend_anio }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="text-muted small">${{ item.rendimiento_ytd_actual|floatformat:2|intcomma }} en {{ hoy.year }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="text-muted small mt-4 mb-2">Últimos movimientos</h6>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr class="text-muted small">
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Detalle</th>
+                            <th class="text-end">Monto</th>
+                            <th>Nota</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in item.movimientos %}
+                        <tr>
+                            <td class="small">{{ m.fecha|date:"d/m/Y" }}</td>
+                            <td class="small">
+                                <span class="badge bg-{{ m.badge }}">{{ m.tipo }}</span>
+                            </td>
+                            <td class="small text-muted">
+                                {% if m.entra %}
+                                    <i class="bi bi-arrow-down-circle text-success"></i>
+                                {% else %}
+                                    <i class="bi bi-arrow-up-circle text-danger"></i>
+                                {% endif %}
+                                {{ m.direccion }}
+                            </td>
+                            <td class="text-end small {% if m.entra %}text-success{% else %}text-danger{% endif %}">
+                                {% if m.entra %}+{% else %}-{% endif %}${{ m.monto|floatformat:2|intcomma }}
+                            </td>
+                        
+                             <td class="small text-muted">{{ m.concepto|default:"—" }}</td>
+                            <td class="text-end">
+                                {% if m.puede_cancelar %}
+                                <form method="post" action="{% url 'cancelar_movimiento_inversion' m.id %}"
+                                      onsubmit="return confirm('¿Cancelar este movimiento de ${{ m.monto|floatformat:2 }}? Esta acción revierte el saldo de ambas cuentas.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancelar movimiento">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-3">Sin movimientos todavía.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card card-reporte">
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-piggy-bank fs-1 d-block mb-2"></i>
+            No tienes ninguna cuenta bancaria de tipo "Inversión" con movimientos todavía.
+            <br>
+            <a href="{% url 'nuevo_movimiento_inversion' %}">Registra tu primer movimiento</a>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% include 'tool_bar.html' %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

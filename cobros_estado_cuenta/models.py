@@ -2,6 +2,7 @@
 # Create your models here.
 from django.db import models
 from django.contrib.auth.models import User
+from django.conf import settings
 from empresas.models import Empresa, CuentaBancaria
 
 
@@ -124,3 +125,5 @@ class AplicacionMovimientoEstadoCuenta(models.Model):
 
     def __str__(self):
         return f"{self.movimiento_id} — ${self.monto}"
+
+

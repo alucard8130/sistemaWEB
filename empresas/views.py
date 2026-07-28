@@ -118,3 +118,6 @@ def cuenta_bancaria_editar(request, pk):
         'cuenta': cuenta,
         'empresa': cuenta.empresa,
     })
+
+
+

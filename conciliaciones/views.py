@@ -18,6 +18,7 @@ from .models import SaldoCuentaPeriodo
 from empresas.models import CuentaBancaria, Empresa
 import datetime
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 
 ################################# VISTAS PARA CARGAR ESTADOS DE CUENTA Y CONCILIAR ########################################
@@ -623,7 +624,7 @@ def resultado_conciliacion(request, estado_id):
     )
 
 
-#################################  VISTAS PARA SALDOS DE CUENTA POR PERIODO  ########################################
+#################################  VISTAS PARA SALDOS DE CUENTA BANCARIA POR PERIODO  ########################################
 @login_required
 def saldos_periodo(request):
     es_super = request.user.is_superuser
@@ -726,3 +727,54 @@ def cerrar_periodo(request, periodo_id):
     movimientos = calcular_saldo_cuenta_periodo(periodo.cuenta, periodo.anio, periodo.mes)
 
     return render(request, "conciliacion/cerrar_periodo.html", {"periodo": periodo,"movimientos": movimientos,})
+
+
+@login_required
+def reiniciar_saldos_cuentas(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if request.user.is_superuser:
+        empresa_id = request.session.get('empresa_id')
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+    else:
+        empresa = perfil.empresa if perfil else None
+
+    cuentas = CuentaBancaria.objects.filter(empresa=empresa, activa=True)
+
+    if request.method == 'POST':
+        confirmacion = request.POST.get('confirmacion', '').strip()
+        password = request.POST.get('password', '')
+
+        if confirmacion != 'REINICIAR':
+            messages.error(request, "Debes escribir exactamente REINICIAR para confirmar.")
+            return redirect('conciliaciones:reiniciar_saldos_cuentas')
+
+        superusuario = User.objects.filter(is_superuser=True).first()
+        if not superusuario or not superusuario.check_password(password):
+            messages.error(request, "Contraseña incorrecta. No se realizó ningún cambio.")
+            return redirect('conciliaciones:reiniciar_saldos_cuentas')
+
+        with transaction.atomic():
+            eliminados = SaldoCuentaPeriodo.objects.filter(empresa=empresa).delete()
+
+            for cuenta in cuentas:
+                nuevo_saldo_raw = request.POST.get(f'saldo_inicial_{cuenta.id}', '').strip()
+                if nuevo_saldo_raw:
+                    try:
+                        nuevo_saldo = Decimal(nuevo_saldo_raw)
+                        cuenta.saldo_inicial = nuevo_saldo
+                        cuenta.saldo_final = None
+                        cuenta.save()
+                    except Exception:
+                        pass
+
+        messages.success(
+            request,
+            f"✅ Se reinició el caché de saldos por periodo ({eliminados[0]} registros eliminados) "
+            f"y se actualizaron los saldos iniciales."
+        )
+        return redirect('conciliaciones:saldos_periodo')
+
+    return render(request, 'conciliacion/reiniciar_saldos.html', {
+        'cuentas': cuentas,
+    })
+    

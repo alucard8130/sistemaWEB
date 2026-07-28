@@ -30,6 +30,20 @@ class TraspasoBancario(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True
     )
     fecha_registro = models.DateTimeField(auto_now_add=True)
+    # NUEVO — solo para trazabilidad/reporte de inversión
+    es_inversion = models.BooleanField(default=False)
+    retencion_isr = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    gasto_generado = models.ForeignKey(
+        'gastos.Gasto', on_delete=models.SET_NULL, null=True, blank=True  # ajusta la app real
+    )
+    # NUEVO
+    TIPO_MOVIMIENTO_INVERSION_CHOICES = [
+        ('incremento', 'Incremento de inversión'),
+        ('retiro', 'Retiro / Liquidación de inversión'),
+    ]
+    tipo_movimiento_inversion = models.CharField(
+        max_length=30, choices=TIPO_MOVIMIENTO_INVERSION_CHOICES, blank=True, null=True
+    )
 
     def __str__(self):
         return f"Traspaso {self.fecha} — ${self.monto} de {self.cuenta_origen} a {self.cuenta_destino}"

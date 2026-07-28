@@ -58,7 +58,7 @@
           </li>
           {% else %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Configuración">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Catalogos">
               Catálogos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -79,7 +79,7 @@
           </li>
           {% endif %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Configuración">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Bancos">
               Bancos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -88,6 +88,7 @@
               <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:saldos_periodo' %}"><i class="bi bi-calendar me-2"></i>Saldos por período</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:reiniciar_saldos_cuentas' %}"><i class="bi bi-arrow-counterclockwise me-2"></i>Reiniciar saldos</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_traspasos' %}"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios</a></li>
               {% else %}
@@ -156,6 +157,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}?tipo=local" title="Reporte Depositos por Cuotas de mantenimiento y areas comunes"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Cuotas</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}" title="Reporte de Depositos Otros Ingresos"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Otros Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Reporte Inversiones</a></li> 
               {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'dashboard_pagos' %}" title="Dashboard de Ingresos Consolidados">Graficos Ingresos</a></li>{% endcomment %}
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales"><i class="bi bi-bar-chart me-2"></i>Grafico de Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>

@@ -194,3 +194,39 @@ def validar_periodo_abierto(cuenta, fecha, user=None):
             )
 
     return True, None
+
+
+def _saldo_inversion_a_fecha(cuenta, fecha_corte):
+    """Saldo de una cuenta de inversión reconstruido a una fecha de corte
+    exacta, sumando incrementos/rendimientos y restando retiros."""
+    entrantes = TraspasoBancario.objects.filter(
+        cuenta_destino=cuenta, es_inversion=True, estado='completado', fecha__lte=fecha_corte
+    ).aggregate(t=Sum('monto'))['t'] or Decimal('0')
+
+    salientes = TraspasoBancario.objects.filter(
+        cuenta_origen=cuenta, es_inversion=True, estado='completado', fecha__lte=fecha_corte
+    ).aggregate(t=Sum('monto'))['t'] or Decimal('0')
+
+    rendimientos = CobroOtrosIngresos.objects.filter(
+        cuenta_bancaria=cuenta, factura__tipo_ingreso__nombre='Rendimientos Financieros', fecha_cobro__lte=fecha_corte
+    ).aggregate(t=Sum('monto'))['t'] or Decimal('0')
+
+    return (cuenta.saldo_inicial or Decimal('0')) + entrantes + rendimientos - salientes
+
+
+def _rendimiento_en_rango(cuenta, fecha_inicio, fecha_fin):
+    """Suma de rendimientos generados en un rango de fechas (no acumulado)."""
+    return CobroOtrosIngresos.objects.filter(
+        cuenta_bancaria=cuenta, factura__tipo_ingreso__nombre='Rendimientos Financieros',
+        fecha_cobro__gte=fecha_inicio, fecha_cobro__lte=fecha_fin
+    ).aggregate(t=Sum('monto'))['t'] or Decimal('0')
+
+
+def _variacion(actual, anterior):
+    """Devuelve (diferencia_absoluta, porcentaje) -- porcentaje None si anterior es 0."""
+    diferencia = actual - anterior
+    if anterior and anterior != 0:
+        porcentaje = round(float(diferencia) / float(anterior) * 100, 1)
+    else:
+        porcentaje = None
+    return diferencia, porcentaje

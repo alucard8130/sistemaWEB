@@ -88,6 +88,7 @@ class Pago(models.Model):
         ('deposito', 'Depósito'),
         ('efectivo', 'Efectivo'),
         ('stripe', 'Stripe'),
+        ('rendimiento_inversion', 'Rendimiento de Inversión'),
         ('otro', 'Otro'),
     ]
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos',null=True, blank=True)

@@ -329,6 +329,7 @@
                 </div>
             </div>
         </div>
+        
 
         <!-- Ignorar -->
         <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
@@ -496,7 +497,11 @@ document.querySelectorAll('.cliente-sel').forEach(sel => {
 document.querySelectorAll('.cliente-local-sel').forEach(sel => {
     if (sel.value) cargarPropiedades(sel);
 });
-
+function toggleRetencion(sel) {
+    const movPk = sel.dataset.mov;
+    const bloque = document.querySelector(`.retencion-bloque-${movPk}`);
+    bloque.style.display = sel.value === 'rendimiento' ? 'block' : 'none';
+}
 </script>
 <script>
     // Mostrar overlay de carga al enviar formularios
