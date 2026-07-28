@@ -1,0 +1,108 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Amenidades</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-2">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Amenidades</h3>
+            <a href="{% url 'crear_amenidad' %}" class="btn btn-outline-success reporte-link">
+                <i class="bi bi-plus-lg"></i> Nueva Amenidad
+            </a>
+        </div>
+
+        <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
+            <table class="table align-middle mb-0 shadow-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Horario</th>
+                        <th>Capacidad</th>
+                        <th>Duración máx.</th>
+                        <th>Costo</th>
+                        <th>Anticipación mín.</th>
+                        <th>Estatus</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for amenidad in amenidades %}
+                    <tr class="{% if not amenidad.activa %}text-muted{% endif %}">
+                        <td>{{ amenidad.nombre }}</td>
+                        <td>{{ amenidad.hora_apertura|time:"H:i" }} - {{ amenidad.hora_cierre|time:"H:i" }}</td>
+                        <td>{{ amenidad.capacidad_maxima|default:"—" }}</td>
+                        <td>{{ amenidad.duracion_maxima_horas }} hrs</td>
+                        <td>
+                            {% if amenidad.costo_reservacion > 0 %}
+                                ${{ amenidad.costo_reservacion|floatformat:2|intcomma }}
+                            {% else %}
+                                <span class="text-success">Gratis</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ amenidad.dias_anticipacion_minima }} día(s)</td>
+                        <td>
+                            {% if amenidad.activa %}
+                                <span class="badge bg-success">Activa</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactiva</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            <a href="{% url 'editar_amenidad' amenidad.id %}" class="btn btn-sm btn-outline-primary reporte-link" title="Editar">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            {% if amenidad.activa %}
+                            <a href="{% url 'eliminar_amenidad' amenidad.id %}" class="btn btn-sm btn-outline-danger reporte-link" title="Desactivar">
+                                <i class="bi bi-slash-circle"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="bi bi-calendar-x fs-3 d-block mb-2"></i>
+                            No has registrado ninguna amenidad todavía.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

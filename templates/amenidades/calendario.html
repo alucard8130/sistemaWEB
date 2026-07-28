@@ -1,0 +1,124 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calendario de Reservaciones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .leyenda-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        #calendar { background: #fff; border-radius: 12px; padding: 12px; }
+        .fc-event { cursor: pointer; font-size: 0.78em; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-2">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h3 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Calendario de Reservaciones</h3>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div>
+                    <span class="leyenda-dot" style="background:#198754;"></span>Confirmada
+                    <span class="leyenda-dot ms-3" style="background:#adb5bd;"></span>Cancelada
+                </div>
+                <select id="filtroAmenidad" class="form-select form-select-sm" style="width:auto;">
+                    <option value="">Todas las amenidades</option>
+                    {% for a in amenidades %}
+                        <option value="{{ a.id }}">{{ a.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <a href="{% url 'lista_amenidades_config' %}" class="btn btn-outline-secondary btn-sm reporte-link">
+                    <i class="bi bi-gear"></i> Configurar Amenidades
+                </a>
+            </div>
+        </div>
+
+        <div id="calendar"></div>
+    </div>
+
+    <!-- Modal de detalle -->
+    <div class="modal fade" id="modalDetalle" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calendar-event me-1"></i> Detalle de la reservación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr><td class="text-muted">Amenidad</td><td id="detAmenidad" class="fw-bold"></td></tr>
+                            <tr><td class="text-muted">Propiedad</td><td id="detPropiedad"></td></tr>
+                            <tr><td class="text-muted">Cliente</td><td id="detCliente"></td></tr>
+                            <tr><td class="text-muted">Estatus</td><td id="detEstado"></td></tr>
+                            <tr><td class="text-muted">Invitados</td><td id="detInvitados"></td></tr>
+                            <tr><td class="text-muted">Observaciones</td><td id="detObservaciones"></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const calendarEl = document.getElementById('calendar');
+            const filtroAmenidad = document.getElementById('filtroAmenidad');
+            const modalDetalle = new bootstrap.Modal(document.getElementById('modalDetalle'));
+
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', list: 'Lista' },
+                events: function (info, successCallback, failureCallback) {
+                    const amenidadId = filtroAmenidad.value;
+                    let url = "{% url 'api_eventos_reservaciones' %}";
+                    if (amenidadId) url += `?amenidad_id=${amenidadId}`;
+
+                    fetch(url)
+                        .then(res => res.json())
+                        .then(data => successCallback(data))
+                        .catch(err => failureCallback(err));
+                },
+                eventClick: function (info) {
+                    const props = info.event.extendedProps;
+                    document.getElementById('detAmenidad').textContent = props.amenidad;
+                    document.getElementById('detPropiedad').textContent = props.propiedad;
+                    document.getElementById('detCliente').textContent = props.cliente;
+                    document.getElementById('detEstado').textContent = props.estado;
+                    document.getElementById('detInvitados').textContent = props.invitados;
+                    document.getElementById('detObservaciones').textContent = props.observaciones;
+                    modalDetalle.show();
+                }
+            });
+
+            calendar.render();
+
+            filtroAmenidad.addEventListener('change', function () {
+                calendar.refetchEvents();
+            });
+        });
+    </script>
+</body>
+</html>

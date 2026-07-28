@@ -6,14 +6,8 @@ from numpy import rint
 from acceso_empresas.decorators import login_o_portal_required
 from areas.models import AreaComun
 from clientes.models import Cliente
-
-# import empresas
-
-
 from conciliaciones.utils import  validar_periodo_abierto
 from empresas.models import CuentaBancaria, Empresa
-
-# from facturacion.utils import debe_mostrar_recordatorio_facturacion
 from facturacion.utils import (
     calcular_cartera_vencida,
     calcular_total_vencida_rapido,
@@ -1519,6 +1513,8 @@ def lista_depositos_por_identificar(request):
     )
 
 
+
+#################################REPORTES
 # pagos_por_origen.html
 # reporte depositos cuotas
 @login_required
@@ -4691,67 +4687,67 @@ def recibo_pago_otras_cuotas(request, pago_id):
 
 # consulta de facturas para visitantes
 # revisar donde se renderiza la vista de consulta_facturas.html y si se necesita agregar filtros por local o area
-@login_required
-def consulta_facturas(request):
-    local_id = request.GET.get("local_id")
-    area_id = request.GET.get("area_id")
+# @login_required
+# def consulta_facturas(request):
+#     local_id = request.GET.get("local_id")
+#     area_id = request.GET.get("area_id")
 
-    # Obtén los locales y áreas asignados al visitante
-    locales = LocalComercial.objects.filter(
-        visitantes=request.user, activo=True
-    ).order_by("numero")
-    areas = AreaComun.objects.filter(visitantes=request.user, activo=True).order_by(
-        "numero"
-    )
+#     # Obtén los locales y áreas asignados al visitante
+#     locales = LocalComercial.objects.filter(
+#         visitantes=request.user, activo=True
+#     ).order_by("numero")
+#     areas = AreaComun.objects.filter(visitantes=request.user, activo=True).order_by(
+#         "numero"
+#     )
 
-    empresa = None
-    if locales.exists():
-        empresa = locales.first().empresa
-        facturas = Factura.objects.filter(local__in=locales, empresa=empresa).order_by(
-            "-fecha_vencimiento"
-        )
-    elif areas.exists():
-        empresa = areas.first().empresa
-        facturas = Factura.objects.filter(
-            area_comun__in=areas, empresa=empresa
-        ).order_by("-fecha_vencimiento")
-    else:
-        facturas = Factura.objects.none()
+#     empresa = None
+#     if locales.exists():
+#         empresa = locales.first().empresa
+#         facturas = Factura.objects.filter(local__in=locales, empresa=empresa).order_by(
+#             "-fecha_vencimiento"
+#         )
+#     elif areas.exists():
+#         empresa = areas.first().empresa
+#         facturas = Factura.objects.filter(
+#             area_comun__in=areas, empresa=empresa
+#         ).order_by("-fecha_vencimiento")
+#     else:
+#         facturas = Factura.objects.none()
 
-    # Filtros adicionales
-    if local_id:
-        facturas = facturas.filter(local_id=local_id)
-    if area_id:
-        facturas = facturas.filter(area_comun_id=area_id)
+#     # Filtros adicionales
+#     if local_id:
+#         facturas = facturas.filter(local_id=local_id)
+#     if area_id:
+#         facturas = facturas.filter(area_comun_id=area_id)
 
-    facturas = facturas.select_related(
-        "cliente", "empresa", "local", "area_comun"
-    ).prefetch_related("pagos")
+#     facturas = facturas.select_related(
+#         "cliente", "empresa", "local", "area_comun"
+#     ).prefetch_related("pagos")
 
-    total_pendiente = sum(
-        f.saldo_pendiente for f in facturas if f.estatus == "pendiente"
-    )
-    total_cobrado = sum(f.monto for f in facturas if f.estatus == "cobrada")
+#     total_pendiente = sum(
+#         f.saldo_pendiente for f in facturas if f.estatus == "pendiente"
+#     )
+#     total_cobrado = sum(f.monto for f in facturas if f.estatus == "cobrada")
 
-    # Paginación
-    paginator = Paginator(facturas, 25)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+#     # Paginación
+#     paginator = Paginator(facturas, 25)
+#     page_number = request.GET.get("page")
+#     page_obj = paginator.get_page(page_number)
 
-    return render(
-        request,
-        "facturacion/consulta_facturas.html",
-        {
-            "facturas": page_obj,
-            "locales": locales,
-            "areas": areas,
-            "local_id": local_id,
-            "area_id": area_id,
-            "total_pendiente": total_pendiente,
-            "total_cobrado": total_cobrado,
-            "empresa": empresa,
-        },
-    )
+#     return render(
+#         request,
+#         "facturacion/consulta_facturas.html",
+#         {
+#             "facturas": page_obj,
+#             "locales": locales,
+#             "areas": areas,
+#             "local_id": local_id,
+#             "area_id": area_id,
+#             "total_pendiente": total_pendiente,
+#             "total_cobrado": total_cobrado,
+#             "empresa": empresa,
+#         },
+#     )
 
 
 #####reportes cartera vencida###################

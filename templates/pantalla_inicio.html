@@ -590,13 +590,16 @@ if (premiumBtn) {
                 <div class="invalid-feedback">Este campo es obligatorio.</div>
               </div>
               <div class="col-6">
-                <label class="form-label">RFC <span class="text-danger">*</span></label>
-                <input type="text" name="rfc_empresa" class="form-control" required maxlength="13" placeholder="Ej: AAA010101AAA">
+                <label class="form-label">RFC {% if empresa.segmento != 'habitacional' %}<span class="text-danger">*</span>{% endif %}</label>
+                <input type="text" name="rfc_empresa" class="form-control" {% if empresa.segmento != 'habitacional' %}required{% endif %} maxlength="13" placeholder="Ej: AAA010101AAA">
                 <div class="invalid-feedback">Este campo es obligatorio.</div>
+                {% if empresa.segmento == 'habitacional' %}
+                <div class="form-text">Opcional si tu condominio no tiene capacidad fiscal ni timbra facturas.</div>
+                {% endif %}
               </div>
               <div class="col-6">
-                <label class="form-label">Régimen fiscal <span class="text-danger">*</span></label>
-                <select name="regimen_fiscal" class="form-select" required>
+                <label class="form-label">Régimen fiscal {% if empresa.segmento != 'habitacional' %}<span class="text-danger">*</span>{% endif %}</label>
+                <select name="regimen_fiscal" class="form-select" {% if empresa.segmento != 'habitacional' %}required{% endif %}>
                   <option value="">Selecciona un régimen</option>
                   {% for value, label in regimen_choices %}
                     <option value="{{ value }}">{{ value }} — {{ label }}</option>
@@ -636,62 +639,88 @@ if (premiumBtn) {
           <!-- Paso 2: Datos bancarios -->
           <div class="wizard-step d-none" id="step-2">
             <h6 class="fw-bold mb-3 text-primary">Cuenta bancaria principal</h6>
-            <p class="text-muted small mb-3">
-              Esta cuenta se usará para generar reportes financieros y documentos de pago.
-              Puedes agregar más cuentas después desde el módulo de configuración.
-            </p>
-            <div class="row g-3">
-              <div class="col-6">
-                <label class="form-label">Banco <span class="text-danger">*</span></label>
-                <select name="cuenta_bancaria" class="form-select" required>
-                  <option value="">Selecciona un banco</option>
-                  {% for value, label in bancos_choices %}
-                    <option value="{{ value }}">{{ label }}</option>
-                  {% endfor %}
-                </select>
-                <div class="invalid-feedback">Este campo es obligatorio.</div>
+            {% if cuentas_existentes %}
+            <div class="mb-3">
+              <label class="form-label">¿Qué cuenta bancaria quieres usar?</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="modo_cuenta" id="modoExistente" value="existente" checked onchange="toggleModoCuenta()">
+                <label class="form-check-label" for="modoExistente">Usar una cuenta ya registrada</label>
               </div>
-              <div class="col-6">
-                <label class="form-label">No.cuenta <span class="text-danger">*</span></label>
-                <input type="text" name="numero_cuenta" class="form-control" required>
-                <div class="invalid-feedback">Este campo es obligatorio.</div>
-              </div>
-              <div class="col-6">
-                <label class="form-label">CLABE <span class="text-danger">*</span></label>
-                <input type="text" name="clabe" class="form-control" maxlength="18"
-                       placeholder="18 dígitos" required
-                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-                <div class="invalid-feedback">Este campo es obligatorio.</div>
-              </div>
-              <div class="col-6">
-                <label class="form-label">Moneda <span class="text-danger">*</span></label>
-                <select name="moneda" class="form-select" required>
-                  <option value="">Selecciona una moneda</option>
-                  {% for value, label in moneda_choices %}
-                    <option value="{{ value }}">{{ label }}</option>
-                  {% endfor %}
-                </select>
-                <div class="invalid-feedback">Este campo es obligatorio.</div>
-              </div>
-              <div class="col-6">
-                <label class="form-label">Tipo de cuenta <span class="text-danger">*</span></label>
-                <select name="tipo_cuenta" class="form-select" required>
-                  <option value="">Selecciona un tipo</option>
-                  {% for value, label in tipo_cuenta_choices %}
-                    <option value="{{ value }}">{{ label }}</option>
-                  {% endfor %}
-                </select>
-                <div class="invalid-feedback">Este campo es obligatorio.</div>
-              </div>
-              <div class="col-6">
-                <label class="form-label">Saldo inicial</label>
-                <div class="input-group">
-                  <span class="input-group-text">$</span>
-                  <input type="number" name="saldo_inicial" class="form-control" step="0.01" min="0" value="0">
-                </div>
-                <div class="form-text">Puede ser 0 si la cuenta es nueva.</div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="modo_cuenta" id="modoNueva" value="nueva" onchange="toggleModoCuenta()">
+                <label class="form-check-label" for="modoNueva">Registrar una cuenta nueva</label>
               </div>
             </div>
+
+            <div id="bloqueCuentaExistente" class="mb-3">
+              <label class="form-label">Cuenta bancaria <span class="text-danger">*</span></label>
+              <select name="cuenta_existente_id" class="form-select">
+                {% for cuenta in cuentas_existentes %}
+                  <option value="{{ cuenta.id }}">{{ cuenta.banco }} — {{ cuenta.numero_cuenta }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+
+            <div id="bloqueCuentaNueva" class="{% if cuentas_existentes %}d-none{% endif %}">
+              <p class="text-muted small mb-3">
+                Esta cuenta se usará para generar reportes financieros y documentos de pago.
+                Puedes agregar más cuentas después desde el módulo de configuración.
+              </p>
+              <div class="row g-3">
+                <div class="col-6">
+                  <label class="form-label">Banco <span class="text-danger">*</span></label>
+                  <select name="cuenta_bancaria" class="form-select">
+                    <option value="">Selecciona un banco</option>
+                    {% for value, label in bancos_choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">Este campo es obligatorio.</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">No.cuenta <span class="text-danger">*</span></label>
+                  <input type="text" name="numero_cuenta" class="form-control">
+                  <div class="invalid-feedback">Este campo es obligatorio.</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">CLABE <span class="text-danger">*</span></label>
+                  <input type="text" name="clabe" class="form-control" maxlength="18"
+                         placeholder="18 dígitos"
+                         oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                  <div class="invalid-feedback">Este campo es obligatorio.</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Moneda <span class="text-danger">*</span></label>
+                  <select name="moneda" class="form-select">
+                    <option value="">Selecciona una moneda</option>
+                    {% for value, label in moneda_choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">Este campo es obligatorio.</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Tipo de cuenta <span class="text-danger">*</span></label>
+                  <select name="tipo_cuenta" class="form-select">
+                    <option value="">Selecciona un tipo</option>
+                    {% for value, label in tipo_cuenta_choices %}
+                      <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">Este campo es obligatorio.</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Saldo inicial</label>
+                  <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" name="saldo_inicial" class="form-control" step="0.01" min="0" value="0">
+                  </div>
+                  <div class="form-text">Puede ser 0 si la cuenta es nueva.</div>
+                </div>
+              </div>
+            </div>
+
             <div class="d-flex justify-content-between mt-4">
               <button type="button" class="btn btn-outline-secondary" onclick="nextStep(1)">
                 <i class="bi bi-arrow-left me-1"></i> Atrás
@@ -709,11 +738,21 @@ if (premiumBtn) {
 </div>
 
 <script>
+const esHabitacional = {% if empresa.segmento == 'habitacional' %}true{% else %}false{% endif %};
+const hayCuentasExistentes = {% if cuentas_existentes %}true{% else %}false{% endif %};
+
+function toggleModoCuenta() {
+  const esExistente = document.getElementById('modoExistente').checked;
+  document.getElementById('bloqueCuentaExistente').classList.toggle('d-none', !esExistente);
+  document.getElementById('bloqueCuentaNueva').classList.toggle('d-none', esExistente);
+}
+
 function nextStep(step) {
   if (step === 2) {
-    const campos = [
-      'nombre_empresa', 'rfc_empresa', 'regimen_fiscal', 'codigo_postal', 'email_empresa'
-    ];
+    const camposBase = ['nombre_empresa', 'codigo_postal', 'email_empresa'];
+    const camposFiscales = esHabitacional ? [] : ['rfc_empresa', 'regimen_fiscal'];
+    const campos = camposBase.concat(camposFiscales);
+
     let valido = true;
     campos.forEach(function(name) {
       const el = document.querySelector(`[name="${name}"]`);
@@ -740,6 +779,11 @@ function nextStep(step) {
 }
 
 document.getElementById('wizardForm').addEventListener('submit', function(e) {
+  // Si el usuario eligió usar una cuenta existente, no validamos los
+  // campos de creación de cuenta nueva.
+  const usaExistente = hayCuentasExistentes && document.getElementById('modoExistente') && document.getElementById('modoExistente').checked;
+  if (usaExistente) return;
+
   const campos2 = ['cuenta_bancaria', 'numero_cuenta', 'clabe', 'moneda', 'tipo_cuenta'];
   let valido = true;
 
@@ -850,7 +894,8 @@ function cerrarModal() {
           <div class="plus-feature">Registro de depositos no identificados</div>
           <div class="plus-feature">Módulo de comunicación y votaciones</div>
           <div class="plus-feature">Avisos y notificaciones a condóminos</div>
-          <div class="plus-feature">Control de propiedades y áreas comunes</div>
+          <div class="plus-feature">Control de propiedades y areas comunes</div>
+          <div class="plus-feature">Control y reserva de amenidades</div>
           <div class="plus-feature">Control de cuotas, ingresos y gastos</div>
           <div class="plus-feature">Control de solicitudes de gastos</div>
           <div class="plus-feature">Cartera vencida y envío de avisos de adeudos automáticos</div>

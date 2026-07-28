@@ -1,0 +1,123 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Amenidades</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            font-family: 'Rubik', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255,255,255,0.85);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.18);
+        }
+        .glass-header {
+            background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%);
+            color: white;
+            border-radius: 18px 18px 0 0;
+            padding: 1.2rem;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .glass-footer {
+            background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%);
+            color: white;
+            border-radius: 0 0 18px 18px;
+            padding: 0.8rem;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        .btn-gradient {
+            background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%);
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .btn-gradient:hover { background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%); color: #fff; }
+        .amenidad-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(33,147,176,0.1);
+            padding: 1.5rem;
+            height: 100%;
+            transition: transform 0.15s;
+        }
+        .amenidad-card:hover { transform: translateY(-4px); }
+        .amenidad-icon { font-size: 2.2rem; color: #2193b0; }
+    </style>
+</head>
+<body>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid py-4" style="max-width: 1400px; margin: 0 auto;">
+        <div class="d-flex justify-content-between mb-1">
+            <a href="{% url 'visitante_consulta_facturas' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver a mi estado de cuenta
+            </a>
+            <a href="{% url 'mis_reservaciones' %}" class="btn btn-gradient">
+                <i class="bi bi-journal-check"></i> Mis reservaciones
+            </a>
+        </div>
+
+        <div class="glass-header mb-4 mt-3">
+            <i class="bi bi-calendar-event me-2"></i> Amenidades — {{ empresa.nombre }}
+        </div>
+
+        <div class="glass-card p-4">
+            <p class="text-muted">Selecciona una amenidad para ver su disponibilidad y reservarla.</p>
+            <div class="row g-3">
+                {% for amenidad in amenidades %}
+                <div class="col-md-4">
+                    <div class="amenidad-card">
+                        <div class="amenidad-icon mb-2"><i class="bi bi-star-fill"></i></div>
+                        <h5 class="fw-bold">{{ amenidad.nombre }}</h5>
+                        <p class="text-muted small mb-2">{{ amenidad.descripcion|default:"" }}</p>
+                        <p class="small mb-1">
+                            <i class="bi bi-clock"></i> {{ amenidad.hora_apertura|time:"H:i" }} - {{ amenidad.hora_cierre|time:"H:i" }}
+                        </p>
+                        {% if amenidad.capacidad_maxima %}
+                        <p class="small mb-1"><i class="bi bi-people"></i> Capacidad: {{ amenidad.capacidad_maxima }} personas</p>
+                        {% endif %}
+                        {% if amenidad.costo_reservacion > 0 %}
+                        <p class="small mb-2 text-warning fw-bold">
+                            <i class="bi bi-cash-coin"></i> Costo: ${{ amenidad.costo_reservacion|floatformat:2|intcomma }}
+                        </p>
+                        {% else %}
+                        <p class="small mb-2 text-success fw-bold"><i class="bi bi-check-circle"></i> Sin costo</p>
+                        {% endif %}
+                        <a href="{% url 'reservar_amenidad' amenidad.id %}" class="btn btn-gradient btn-sm w-100 mt-2">
+                            <i class="bi bi-calendar-plus"></i> Reservar
+                        </a>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center text-muted py-5">
+                    <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+                    Tu condominio aún no tiene amenidades configuradas para reservar.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="glass-footer mt-4 text-center">
+            © {% now "Y" %} GESAC. Todos los derechos reservados.
+        </div>
+    </div>
+</body>
+</html>

@@ -14,16 +14,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from datetime import timedelta
 
-
-# def _get_usuario_acceso(request):
-#     """Obtiene el UsuarioAcceso desde la sesión"""
-#     ua_id = request.session.get('ua_id')
-#     if not ua_id:
-#         return None
-#     try:
-#         return UsuarioAcceso.objects.get(pk=ua_id, activo=True)
-#     except UsuarioAcceso.DoesNotExist:
-#         return None
+####################APP ACCESO PORTAL EMPRESAS DE ADMINISTRACION Y MIEMBROS DEL COMITE####################
 
 
 def requiere_acceso(f):

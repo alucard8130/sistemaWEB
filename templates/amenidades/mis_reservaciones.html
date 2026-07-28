@@ -1,0 +1,83 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mis Reservaciones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); font-family: 'Rubik', sans-serif; }
+        .glass-card { background: rgba(255,255,255,0.85); border-radius: 18px; box-shadow: 0 8px 32px 0 rgba(31,38,135,0.15); }
+        .glass-header { background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%); color: white; border-radius: 18px 18px 0 0; padding: 1.2rem; font-weight: 700; }
+        .btn-gradient { background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%); color: #fff; border: none; font-weight: 600; }
+        .btn-gradient:hover { background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%); color: #fff; }
+        .table-modern th { background: #2193b0; color: #fff; }
+    </style>
+</head>
+<body>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid py-4" style="max-width: 1200px; margin: 0 auto;">
+        <div class="d-flex justify-content-between mb-3">
+            <a href="{% url 'lista_amenidades' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Amenidades
+            </a>
+        </div>
+
+        <div class="glass-card">
+            <div class="glass-header">
+                <i class="bi bi-journal-check me-2"></i> Mis Reservaciones
+            </div>
+            <div class="p-4">
+                <div class="table-responsive">
+                    <table class="table table-modern align-middle">
+                        <thead>
+                            <tr>
+                                <th>Amenidad</th>
+                                <th>Fecha</th>
+                                <th>Horario</th>
+                                <th>Estatus</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in reservaciones %}
+                            <tr>
+                                <td>{{ r.amenidad.nombre }}</td>
+                                <td>{{ r.fecha|date:"d/m/Y" }}</td>
+                                <td>{{ r.hora_inicio|time:"H:i" }} - {{ r.hora_fin|time:"H:i" }}</td>
+                                <td>
+                                    {% if r.estado == 'confirmada' %}
+                                        <span class="badge bg-success">Confirmada</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Cancelada</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if r.estado == 'confirmada' %}
+                                    <a href="{% url 'cancelar_reservacion' r.id %}" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-x-circle"></i> Cancelar
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted py-4">No tienes reservaciones todavía.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

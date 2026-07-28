@@ -92,7 +92,7 @@ class SeguimientoTicket(models.Model):
     def __str__(self):
         return f"Seguimiento {self.fecha} - {self.usuario}"    
 
-# Modulo de acceso para visitantes    
+# Modulo de acceso para condominos, inquilinos y prpietarios de locales comerciales 
 class VisitanteAcceso(models.Model):
     nombre=models.CharField(max_length=100, blank=True,null=True, verbose_name="Nombre Completo")
     username = models.CharField(max_length=50, unique=True)
@@ -172,15 +172,3 @@ class CapturarEmailForm(forms.Form):
     email = forms.EmailField(label="Email del cliente", required=True)
 
 
-#changelog y mejoras del sistema
-# class MejoraSistema(models.Model):
-#     fecha = models.DateField(auto_now_add=True)
-#     titulo = models.CharField(max_length=200)
-#     descripcion = models.TextField()
-#     visible = models.BooleanField(default=True)  # Para ocultar si es necesario
-
-#     class Meta:
-#         ordering = ['-fecha']
-
-#     def __str__(self):
-#         return f"{self.fecha} - {self.titulo}"    

@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "acceso_empresas",
     "asistente_premium",
     "traspasos",
+    "amenidades",
 ]
 
 
@@ -75,9 +76,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    #'core.middleware.EmpresaSeleccionMiddleware',
-
 ]
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 ROOT_URLCONF = "core.urls"
@@ -112,12 +112,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 #desarrollo sqlite
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 #desarrollo postgres
 # DATABASES = {
@@ -132,11 +132,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # }
 
 #produccion
-DATABASES = {
-    "default": dj_database_url.config(
-        default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
-    )
-}
+# DATABASES = {
+#     "default": dj_database_url.config(
+#         default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
+#     )
+# }
 
 
 

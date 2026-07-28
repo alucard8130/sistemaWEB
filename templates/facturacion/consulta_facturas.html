@@ -201,10 +201,16 @@
     </div>            
         <div class="glass-header mb-4 d-flex justify-content-between align-items-center">
             <span><i class="bi bi-building icon-lg me-2"></i> {{ facturas.0.empresa.nombre|default:"Condómino" }}</span>
-            <a href="{% url 'visitante_logout' %}" class="btn btn-gradient btn-lg">
-                <i class="bi bi-box-arrow-right"></i> Salir
-            </a>
-            
+            <div class="d-flex gap-2">
+                {% if empresa.segmento == 'habitacional' %}
+                <a href="{% url 'lista_amenidades' %}" class="btn btn-gradient btn-lg">
+                    <i class="bi bi-calendar-event"></i> Amenidades
+                </a>
+                {% endif %}
+                <a href="{% url 'visitante_logout' %}" class="btn btn-gradient btn-lg">
+                    <i class="bi bi-box-arrow-right"></i> Salir
+                </a>
+            </div>
         </div>
         <div class="glass-card p-4 mb-2">
             <h2 class="mb-3 text-primary"><i class="bi bi-person-badge"></i> Estado de Cuenta - {{ nombre_cliente }}</h2>

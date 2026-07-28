@@ -130,6 +130,20 @@
             </ul>
           </li>
           {% endif %}
+          {% if empresa_actual.segmento == 'habitacional' %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Amenidades">
+              Amenidades <i style="font-size: 1.5em;"></i>
+            </a>
+            <ul class="dropdown-menu">
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'calendario_reservaciones' %}"><i class="bi bi-calendar3 me-2"></i>Calendario Reservaciones</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_amenidades_config' %}"><i class="bi bi-calendar-event me-2"></i>Amenidades</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'crear_amenidad' %}"><i class="bi bi-plus-circle me-2"></i>Nueva Amenidad</a></li>
+            </ul>
+          </li>
+          {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Facturacion y Pagos">
               Facturación <i style="font-size: 1.5em;"></i>

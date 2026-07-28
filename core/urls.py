@@ -6,10 +6,11 @@ from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, resetear_empresa, toggle_activo_visitante, toggle_reporte_visitante
 #from areas import views
+from amenidades.views import api_eventos_reservaciones, calendario_reservaciones, cancelar_reservacion, crear_amenidad, editar_amenidad, eliminar_amenidad, lista_amenidades, lista_amenidades_config, mis_reservaciones, reservar_amenidad
 from caja_chica.views import (comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, 
                               fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica, reporte_caja_chica)
 from empleados.views import (exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista)
-from facturacion.views import (consulta_facturas, identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
+from facturacion.views import (identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
 from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
 from principal import views
@@ -127,7 +128,7 @@ urlpatterns = [
     path('incidencias/exportar/', exportar_incidencias_excel, name='exportar_incidencias_excel'),
     path('incidencias/<int:pk>/editar/', incidencia_editar, name='incidencia_editar'),
     path('incidencias/<int:pk>/cancelar/', incidencia_cancelar, name='incidencia_cancelar'),
-    path('consulta-facturas/', consulta_facturas, name='consulta_facturas'),
+    #path('consulta-facturas/', consulta_facturas, name='consulta_facturas'),
     #path('consulta-facturas/exportar/', exportar_consulta_facturas_excel, name='exportar_consulta_facturas_excel'),
     path('visitante/registro/', registro_visitante, name='registro_visitante'),
     path('visitante/login/', visitante_login, name='visitante_login'),
@@ -216,6 +217,16 @@ urlpatterns = [
     path("reporte/", reporte_caja_chica, name="reporte_caja_chica"),
     path('clientes/<int:cliente_id>/instrucciones-pago/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
     path('propiedades/<str:tipo>/<int:propiedad_id>/instrucciones-pago/', instrucciones_pago_propiedad_pdf, name='instrucciones_pago_propiedad_pdf'),
+    path('amenidades/', lista_amenidades, name='lista_amenidades'),
+    path('amenidades/<int:amenidad_id>/reservar/', reservar_amenidad, name='reservar_amenidad'),
+    path('amenidades/mis-reservaciones/', mis_reservaciones, name='mis_reservaciones'),
+    path('amenidades/reservacion/<int:reservacion_id>/cancelar/', cancelar_reservacion, name='cancelar_reservacion'),
+    path('amenidades/config/', lista_amenidades_config, name='lista_amenidades_config'),
+    path('amenidades/config/nueva/', crear_amenidad, name='crear_amenidad'),
+    path('amenidades/config/<int:amenidad_id>/editar/', editar_amenidad, name='editar_amenidad'),
+    path('amenidades/config/<int:amenidad_id>/eliminar/', eliminar_amenidad, name='eliminar_amenidad'),
+    path('amenidades/calendario/', calendario_reservaciones, name='calendario_reservaciones'),
+    path('amenidades/api/eventos/', api_eventos_reservaciones, name='api_eventos_reservaciones'),
 ]
 
     

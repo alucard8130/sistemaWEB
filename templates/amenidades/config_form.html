@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if amenidad %}Editar{% else %}Nueva{% endif %} Amenidad</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container mt-4" style="max-width: 700px;">
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    {% if amenidad %}Editar Amenidad: {{ amenidad.nombre }}{% else %}Nueva Amenidad{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="form-amenidad">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" name="nombre" class="form-control" placeholder="Ej: Alberca, Salón de eventos, Gimnasio"
+                                   value="{% if amenidad %}{{ amenidad.nombre }}{% endif %}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea name="descripcion" class="form-control" rows="2">{% if amenidad %}{{ amenidad.descripcion }}{% endif %}</textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Hora de apertura</label>
+                            <input type="time" name="hora_apertura" class="form-control"
+                                   value="{% if amenidad %}{{ amenidad.hora_apertura|time:'H:i' }}{% else %}08:00{% endif %}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hora de cierre</label>
+                            <input type="time" name="hora_cierre" class="form-control"
+                                   value="{% if amenidad %}{{ amenidad.hora_cierre|time:'H:i' }}{% else %}22:00{% endif %}">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Capacidad máxima (opcional)</label>
+                            <input type="number" name="capacidad_maxima" class="form-control" min="1"
+                                   value="{% if amenidad and amenidad.capacidad_maxima %}{{ amenidad.capacidad_maxima }}{% endif %}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Duración máxima (horas)</label>
+                            <input type="number" name="duracion_maxima_horas" class="form-control" min="1"
+                                   value="{% if amenidad %}{{ amenidad.duracion_maxima_horas }}{% else %}4{% endif %}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Anticipación mínima (días)</label>
+                            <input type="number" name="dias_anticipacion_minima" class="form-control" min="0"
+                                   value="{% if amenidad %}{{ amenidad.dias_anticipacion_minima }}{% else %}1{% endif %}">
+                        </div>
+
+                        <div class="col-12"><hr></div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Costo de reservación (opcional)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="costo_reservacion" class="form-control"
+                                       value="{% if amenidad %}{{ amenidad.costo_reservacion }}{% else %}0{% endif %}">
+                            </div>
+                            <div class="form-text">Si es 0, la amenidad es gratuita (incluida en la cuota de mantenimiento).</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Monto de depósito (opcional)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" name="monto_deposito" class="form-control"
+                                       value="{% if amenidad %}{{ amenidad.monto_deposito }}{% else %}0{% endif %}">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="requiere_deposito" id="requiere_deposito"
+                                       {% if amenidad and amenidad.requiere_deposito %}checked{% endif %}>
+                                <label class="form-check-label" for="requiere_deposito">Requiere depósito de garantía</label>
+                            </div>
+                        </div>
+
+                        {% if amenidad %}
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="activa" id="activa"
+                                       {% if amenidad.activa %}checked{% endif %}>
+                                <label class="form-check-label" for="activa">Amenidad activa (visible para reservar)</label>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-check-circle me-1"></i> Guardar
+                        </button>
+                        <a href="{% url 'lista_amenidades_config' %}" class="btn btn-outline-secondary reporte-link">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('form-amenidad');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

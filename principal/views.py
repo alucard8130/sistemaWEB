@@ -137,7 +137,7 @@ def dashboard_inicio(request):
         empresa = request.user.perfilusuario.empresa
  
     if not empresa:
-        return render(request, 'dashboard.html', {'empresa': None})
+        return render(request, 'pantalla_inicio.html', {'empresa': None})
  
     # ── INGRESOS DEL MES (cuotas + otros ingresos) ──
     ingresos_mes_cuotas = Pago.objects.filter(
@@ -401,6 +401,8 @@ def dashboard_inicio(request):
     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
 
     mostrar_wizard = request.user.perfilusuario.mostrar_wizard and not request.session.get("wizard_cerrado", False)
+    # NUEVO: cuentas bancarias ya existentes (por si vienen del periodo demo)
+    cuentas_existentes = CuentaBancaria.objects.filter(empresa=empresa, activa=True)
 
     return render(request, 'pantalla_inicio.html', {
         'empresa': empresa,
@@ -450,6 +452,11 @@ def dashboard_inicio(request):
         'mostrar_recordatorio': mostrar_recordatorio,
         'mostrar_wizard': mostrar_wizard,
         'mensaje_pago': mensaje_pago,
+        'cuentas_existentes': cuentas_existentes,
+        'regimen_choices': Empresa.REGIMEN_CHOICES,
+        'bancos_choices': CuentaBancaria.BANCOS_CHOICES,
+        'moneda_choices': CuentaBancaria.TIPO_MONEDA,
+        'tipo_cuenta_choices': CuentaBancaria.TIPO_CUENTA,
     })
 
 
@@ -925,7 +932,7 @@ def enviar_correo_evento(request, evento_id):
             )
     return JsonResponse({"ok": False}, status=400)
 
-
+###########################APP REGISTRO DE USUARIO GESAC########################
 # registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
 def registro_usuario(request):
     mensaje = ""
@@ -946,7 +953,7 @@ def registro_usuario(request):
             user = User.objects.create_user(
                 username=username, password=password, email=email, first_name=nombre
             )
-            nombre_empresa_demo = "CONDOMINIO DEMO AC" if segmento == "habitacional" else "EMPRESA DEMO AC"
+            nombre_empresa_demo = "CONDOMINIO DEMO" if segmento == "habitacional" else "EMPRESA DEMO"
             empresa = Empresa.objects.create(
                 nombre=nombre_empresa_demo,
                 rfc=f"DEMO{uuid4().hex[:8].upper()}",
@@ -957,6 +964,25 @@ def registro_usuario(request):
             if not user.is_superuser:
                 perfil.tipo_usuario = "demo"
             perfil.save()
+
+            # --- Correo de aviso al admin: nuevo usuario registrado ---
+         
+            resumen = (
+                f"Nuevo usuario registrado en GESAC:\n\n"
+                f"Nombre: {nombre}\n"
+                f"Usuario: {username}\n"
+                f"Email: {email}\n"
+                f"Segmento: {segmento}\n"
+                f"Empresa demo asignada: {empresa.nombre}\n"
+            )
+            send_mail(
+                "Nuevo registro en GESAC",
+                resumen,
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.EMAIL_HOST_USER],
+                fail_silently=True,
+            )
+
             messages.success(
                 request,
                 "¡Registro exitoso! Por favor inicia sesión con tus credenciales.",
@@ -1435,46 +1461,56 @@ def cerrar_wizard(request):
 def guardar_datos_empresa(request):
     perfil = request.user.perfilusuario
     empresa = perfil.empresa
-    nuevo_rfc = request.POST.get("rfc_empresa", "").strip()
+    nuevo_rfc = request.POST.get("rfc_empresa", "").strip().upper()
+
+    if not nuevo_rfc:
+        from uuid import uuid4
+        nuevo_rfc = f"SINRFC{uuid4().hex[:7].upper()}"
 
     if Empresa.objects.filter(rfc=nuevo_rfc).exclude(id=empresa.id).exists():
         messages.error(request, "El RFC ingresado ya está registrado en otra empresa.")
         return redirect("dashboard_inicio")
 
-    # Datos generales de la empresa
     empresa.nombre = request.POST.get("nombre_empresa", "").strip()
     empresa.rfc = nuevo_rfc
-    empresa.regimen_fiscal = request.POST.get("regimen_fiscal", "").strip()
+    empresa.regimen_fiscal = request.POST.get("regimen_fiscal", "").strip() or None
     empresa.direccion = request.POST.get("direccion_empresa", "").strip()
     empresa.email = request.POST.get("email_empresa", "").strip()
     empresa.telefono = request.POST.get("telefono_empresa", "").strip()
     empresa.codigo_postal = request.POST.get("codigo_postal", "").strip()
     empresa.save()
 
-    # Datos bancarios — crear cuenta en CuentaBancaria si vienen datos
-    banco = request.POST.get("cuenta_bancaria", "").strip()
-    numero_cuenta = request.POST.get("numero_cuenta", "").strip()
-    clabe = request.POST.get("clabe", "").strip()
-    try:
-        saldo_inicial = float(request.POST.get("saldo_inicial", 0) or 0)
-    except ValueError:
-        saldo_inicial = 0.0
+    # --- NUEVO: si el usuario eligió usar una cuenta ya existente, no crear otra ---
+    modo_cuenta = request.POST.get("modo_cuenta")
+    cuenta_existente_id = request.POST.get("cuenta_existente_id")
 
-    if banco and numero_cuenta:
-        # Solo crear si no existe ya una cuenta con ese número para esta empresa
-        if not CuentaBancaria.objects.filter(
-            empresa=empresa, numero_cuenta=numero_cuenta
-        ).exists():
-            CuentaBancaria.objects.create(
-                empresa=empresa,
-                banco=banco,
-                numero_cuenta=numero_cuenta,
-                clabe=clabe,
-                moneda=request.POST.get("moneda", "MXN"),
-                tipo_cuenta=request.POST.get("tipo_cuenta", ""),
-                saldo_inicial=saldo_inicial,
-                activa=True,
-            )
+    if modo_cuenta == "existente" and cuenta_existente_id:
+        # Confirma que la cuenta elegida sí pertenece a esta empresa (seguridad)
+        CuentaBancaria.objects.filter(id=cuenta_existente_id, empresa=empresa).exists()
+        # No hay nada más que hacer: ya existe, solo se usa.
+    else:
+        banco = request.POST.get("cuenta_bancaria", "").strip()
+        numero_cuenta = request.POST.get("numero_cuenta", "").strip()
+        clabe = request.POST.get("clabe", "").strip()
+        try:
+            saldo_inicial = float(request.POST.get("saldo_inicial", 0) or 0)
+        except ValueError:
+            saldo_inicial = 0.0
+
+        if banco and numero_cuenta:
+            if not CuentaBancaria.objects.filter(
+                empresa=empresa, numero_cuenta=numero_cuenta
+            ).exists():
+                CuentaBancaria.objects.create(
+                    empresa=empresa,
+                    banco=banco,
+                    numero_cuenta=numero_cuenta,
+                    clabe=clabe,
+                    moneda=request.POST.get("moneda", "MXN"),
+                    tipo_cuenta=request.POST.get("tipo_cuenta", ""),
+                    saldo_inicial=saldo_inicial,
+                    activa=True,
+                )
 
     perfil.mostrar_wizard = False
     perfil.save()
