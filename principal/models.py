@@ -106,6 +106,10 @@ class VisitanteAcceso(models.Model):
     activo= models.BooleanField(default=True, verbose_name="Activo")
     es_admin= models.BooleanField(default=False, verbose_name="Es administrador")
     membresia_tipo=models.CharField(max_length=20,choices=[('basica','Básica'),('plus','Plus'),('premium','Premium')], default='basica', verbose_name="Tipo de membresía")
+    usuario_acceso_origen = models.OneToOneField(
+        'acceso_empresas.UsuarioAcceso',  # ajusta 'acceso_empresas' al app_label real donde vive UsuarioAcceso
+        on_delete=models.CASCADE, null=True, blank=True, related_name='visitante_vinculado'
+    )
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)

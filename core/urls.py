@@ -15,7 +15,7 @@ from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, rep
 from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
 from principal import views
 from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
-from principal.views import (actualizar_ticket, agregar_seguimiento, api_areas_por_empresa, api_avisos_empresa, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_reporte_ingresos_vs_gastos, aviso_crear, aviso_eliminar, 
+from principal.views import (actualizar_ticket, agregar_seguimiento, api_amenidades_lista, api_areas_por_empresa, api_avisos_empresa, api_cancelar_reservacion, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_mis_reservaciones, api_reporte_ingresos_vs_gastos, api_reservar_amenidad, aviso_crear, aviso_eliminar, 
                              avisos_lista, cancelar_suscripcion_premium, cerrar_wizard, consulta_cfdis_facturama, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_sesion_pago_premium,  crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, membresia_pago_exitoso, 
                              lista_tickets, crear_ticket, registro_visitante, resultados_votacion, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
                              eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
@@ -178,6 +178,10 @@ urlpatterns = [
     path('api/visitante/estado-resultados/', api_estado_resultados, name='api_estado_resultados'),
     path('api/publicidad/anuncios/', anuncios_api, name='anuncios_api'),
     path('api/publicidad/solicitud/', solicitud_publicidad_api, name='solicitud_publicidad_api'),
+    path('api/amenidades/', api_amenidades_lista, name='api_amenidades_lista'),
+    path('api/amenidades/<int:amenidad_id>/reservar/', api_reservar_amenidad, name='api_reservar_amenidad'),
+    path('api/mis-reservaciones/', api_mis_reservaciones, name='api_mis_reservaciones'),
+    path('api/reservaciones/<int:reservacion_id>/cancelar/', api_cancelar_reservacion, name='api_cancelar_reservacion'),
     path('gastos_caja_chica/exportar/', exportar_gastos_caja_chica_excel, name='exportar_gastos_caja_chica_excel'),
     path('vales_caja_chica/exportar/', exportar_vales_caja_chica_excel, name='exportar_vales_caja_chica_excel'),
     path('fondeos/exportar/', exportar_fondeos_excel, name='exportar_fondeos_excel'),   
