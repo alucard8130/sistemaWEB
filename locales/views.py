@@ -71,6 +71,8 @@ def lista_locales(request):
 def crear_local(request):
     user = request.user
     perfil = getattr(user, 'perfilusuario', None)
+    empresa_usuario = perfil.empresa if perfil and not user.is_superuser else None
+    es_habitacional = empresa_usuario.segmento == 'habitacional' if empresa_usuario else False
     
     if request.method == 'POST':
         form = LocalComercialForm(request.POST, user=user)
@@ -115,7 +117,7 @@ def crear_local(request):
         if not user.is_superuser and perfil and perfil.empresa:
             form.fields['empresa'].initial = perfil.empresa
 
-    return render(request, 'locales/crear_local.html', {'form': form})
+    return render(request, 'locales/crear_local.html', {'form': form, 'es_habitacional': es_habitacional})
 
 @login_required
 def editar_local(request, pk):
@@ -128,19 +130,6 @@ def editar_local(request, pk):
     if request.method == 'POST':
         form = LocalComercialForm(request.POST, instance=local, user=user)
         if form.is_valid():
-            local_original = LocalComercial.objects.get(pk=pk)
-            local_modificado = form.save(commit=False)
-            for field in form.changed_data:
-                valor_anterior = getattr(local_original, field)
-                valor_nuevo = getattr(local_modificado, field)
-                AuditoriaCambio.objects.create(
-                    modelo='local',
-                    objeto_id=local.pk,
-                    campo=field,
-                    valor_anterior=valor_anterior,
-                    valor_nuevo=valor_nuevo,
-                    usuario=request.user,
-                )
             form.save()
             messages.success(request, "Local actualizado correctamente.")
             return redirect('lista_locales')
@@ -236,6 +225,10 @@ def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
 
 @login_required
 def carga_masiva_locales(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    empresa_usuario = perfil.empresa if perfil and not request.user.is_superuser else None
+    es_habitacional = empresa_usuario.segmento == 'habitacional' if empresa_usuario else False
+
     if request.method == 'POST':
         form = LocalCargaMasivaForm(request.POST, request.FILES)
         if form.is_valid():
@@ -245,7 +238,6 @@ def carga_masiva_locales(request):
             errores = []
             exitos = 0
 
-            # detectar encabezado y mapear columnas (si existe)
             header = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
             headers_map = {}
             if header:
@@ -275,6 +267,8 @@ def carga_masiva_locales(request):
                         headers_map['status'] = idx
                     if h in ('observaciones', 'obs', 'comentarios'):
                         headers_map['observaciones'] = idx
+                    if h in ('tipo_propiedad', 'tipo propiedad', 'tipo'):
+                        headers_map['tipo_propiedad'] = idx
 
             def cell(row, key, pos):
                 if key in headers_map:
@@ -282,14 +276,14 @@ def carga_masiva_locales(request):
                     return row[i] if i < len(row) else None
                 return row[pos] if pos < len(row) else None
 
-            # iterar filas
+            tipos_validos_habitacional = ('casa', 'departamento', 'terreno')
+            tipos_validos_comercial = ('local', 'oficina', 'bodega', 'terreno')
+
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                # saltar filas totalmente vacías
                 if not row or all((c is None or (isinstance(c, str) and c.strip() == "")) for c in row):
                     continue
 
                 try:
-                    # leer valores (fallback posicional si no hay headers)
                     empresa_val = cell(row, 'empresa', 0)
                     propietario_val = cell(row, 'propietario', 1)
                     nombre_cliente = cell(row, 'cliente', 2)
@@ -302,42 +296,50 @@ def carga_masiva_locales(request):
                     giro = cell(row, 'giro', 9)
                     status = cell(row, 'status', 10)
                     observaciones = cell(row, 'observaciones', 11)
+                    tipo_propiedad_val = cell(row, 'tipo_propiedad', None)
 
-                    # determinar empresa (superuser puede especificar, sino usar perfil)
                     if request.user.is_superuser:
                         empresa = buscar_por_id_o_nombre(Empresa, empresa_val) if empresa_val else None
                         if not empresa:
                             raise Exception(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                        es_habitacional_fila = empresa.segmento == 'habitacional'
                     else:
-                        perfil = getattr(request.user, 'perfilusuario', None)
                         if not perfil or not getattr(perfil, 'empresa', None):
                             raise Exception("No se pudo determinar la empresa del usuario")
                         empresa = perfil.empresa
+                        es_habitacional_fila = es_habitacional
 
-                    # número requerido
                     if not numero:
                         raise Exception("Número vacío")
 
-                    # validar unicidad del número por empresa
                     if LocalComercial.objects.filter(empresa=empresa, numero=str(numero)).exists():
-                        raise Exception(f"El número de local '{numero}' ya existe para la empresa '{empresa.nombre}'.")
+                        raise Exception(f"El número '{numero}' ya existe para la empresa '{empresa.nombre}'.")
 
-                    # validar cuota
                     try:
                         cuota_decimal = Decimal(str(cuota)) if cuota not in (None, "") else Decimal('0.00')
                     except (InvalidOperation, TypeError, ValueError):
                         raise Exception(f"El valor de cuota '{cuota}' no es válido.")
 
-                    # normalizar rfc y nombre
+                    # --- Determinar tipo_propiedad, validado contra el segmento ---
+                    tipo_propiedad = str(tipo_propiedad_val).strip().lower() if tipo_propiedad_val not in (None, "") else None
+                    tipos_validos = tipos_validos_habitacional if es_habitacional_fila else tipos_validos_comercial
+
+                    if tipo_propiedad and tipo_propiedad not in tipos_validos:
+                        raise Exception(
+                            f"'{tipo_propiedad}' no es válido para una empresa "
+                            f"{'habitacional' if es_habitacional_fila else 'comercial'}. "
+                            f"Usa uno de: {', '.join(tipos_validos)}."
+                        )
+                    if not tipo_propiedad:
+                        tipo_propiedad = 'departamento' if es_habitacional_fila else 'local'
+
                     rfc_norm = str(rfc_cliente).strip().upper() if rfc_cliente not in (None, "") else None
                     nombre_norm = str(nombre_cliente).strip() if nombre_cliente not in (None, "") else ""
 
-                    # BUSCAR/CREAR CLIENTE priorizando RFC
                     cliente = None
                     if rfc_norm:
                         cliente = Cliente.objects.filter(empresa=empresa, rfc__iexact=rfc_norm).first()
                         if cliente:
-                            # actualizar datos faltantes
                             updated = False
                             if nombre_norm and (not getattr(cliente, 'nombre', None) or cliente.nombre.strip() == ""):
                                 cliente.nombre = nombre_norm; updated = True
@@ -346,7 +348,6 @@ def carga_masiva_locales(request):
                             if updated:
                                 cliente.save()
                         else:
-                            # crear con RFC
                             cliente = Cliente.objects.create(
                                 empresa=empresa,
                                 nombre=nombre_norm or f"Cliente {rfc_norm}",
@@ -355,7 +356,6 @@ def carga_masiva_locales(request):
                                 activo=True,
                             )
                     else:
-                        # sin RFC: buscar por nombre (preferir registro con RFC)
                         if not nombre_norm:
                             raise Exception("Nombre de cliente vacío y no se proporcionó RFC")
                         qs = Cliente.objects.filter(empresa=empresa, nombre__iexact=nombre_norm)
@@ -369,7 +369,6 @@ def carga_masiva_locales(request):
                                 activo=True,
                             )
 
-                    # crear local dentro de transacción para cada fila
                     from django.db import transaction
                     with transaction.atomic():
                         LocalComercial.objects.create(
@@ -378,9 +377,12 @@ def carga_masiva_locales(request):
                             cliente=cliente,
                             numero=str(numero),
                             cuota=cuota_decimal,
-                            ubicacion=ubicacion or "",
-                            superficie_m2=Decimal(superficie_m2) if superficie_m2 not in (None, "") else None,
-                            giro=giro or "",
+                            tipo_propiedad=tipo_propiedad,
+                            # Giro y ubicación no aplican a habitacional -- se guardan
+                            # vacíos aunque la plantilla los traiga (por si acaso)
+                            ubicacion="" if es_habitacional_fila else (ubicacion or ""),
+                            superficie_m2=Decimal(str(superficie_m2)) if superficie_m2 not in (None, "") else None,
+                            giro="" if es_habitacional_fila else (giro or ""),
                             status=status or "ocupado",
                             observaciones=observaciones or ""
                         )
@@ -388,38 +390,59 @@ def carga_masiva_locales(request):
                     exitos += 1
 
                 except Exception as e:
-                    import traceback
-                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}")
 
-            # mensajes
             if exitos:
-                messages.success(request, f"¡{exitos} locales cargados exitosamente!")
+                messages.success(request, f"¡{exitos} propiedades cargadas exitosamente!")
             if errores:
                 from django.utils.safestring import mark_safe
                 msg = "<br>".join(errores[:80])
                 if len(errores) > 80:
                     msg += f"<br>...y {len(errores)-80} errores más."
-                messages.error(request, mark_safe("Algunos locales no se cargaron:<br>" + msg))
+                messages.error(request, mark_safe("Algunas propiedades no se cargaron:<br>" + msg))
 
             return redirect('carga_masiva_locales')
     else:
         form = LocalCargaMasivaForm()
-    return render(request, 'locales/carga_masiva_locales.html', {'form': form})
+    return render(request, 'locales/carga_masiva_locales.html', {'form': form, 'es_habitacional': es_habitacional})
+
 
 @login_required
 def plantilla_locales_excel(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    empresa = perfil.empresa if perfil and not request.user.is_superuser else None
+    es_habitacional = empresa.segmento == 'habitacional' if empresa else False
+
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Plantilla Locales"
-    ws.append([
-        'condominio','propietario', 'cliente', 'rfc','email','numero',  'cuota','ubicacion', 'superficie_m2','giro', 'status', 'observaciones'
-    ])
-    ws.append([
-        'plaza en condominio AC','Tiendas Soriana SA de CV','Juan Pérez','XXX-XXX-XXX','email@ejemplo.com', '101', '120.3', 'planta baja', '30.5','venta ropa', 'ocupado', 'carga inicial'
-    ])
+
+    if es_habitacional:
+        ws.title = "Plantilla Viviendas"
+        ws.append([
+            'condominio', 'propietario', 'cliente', 'rfc', 'email', 'numero',
+            'cuota', 'tipo_propiedad', 'superficie_m2', 'status', 'observaciones'
+        ])
+        ws.append([
+            'Condominio Las Palmas AC', 'Juan Pérez', 'Juan Pérez', 'XXX-XXX-XXX',
+            'email@ejemplo.com', 'Depto-25A', '1500.00', 'departamento', '85.5',
+            'ocupado', 'carga inicial'
+        ])
+    else:
+        ws.title = "Plantilla Locales"
+        ws.append([
+            'condominio', 'propietario', 'cliente', 'rfc', 'email', 'numero',
+            'cuota', 'ubicacion', 'superficie_m2', 'giro', 'status', 'observaciones'
+        ])
+        ws.append([
+            'plaza en condominio AC', 'Tiendas Soriana SA de CV', 'Juan Pérez',
+            'XXX-XXX-XXX', 'email@ejemplo.com', '101', '120.3', 'planta baja',
+            '30.5', 'venta ropa', 'ocupado', 'carga inicial'
+        ])
+
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename=plantilla_locales.xlsx'
+    nombre_archivo = 'plantilla_viviendas.xlsx' if es_habitacional else 'plantilla_locales.xlsx'
+    response['Content-Disposition'] = f'attachment; filename={nombre_archivo}'
     wb.save(response)
     return response

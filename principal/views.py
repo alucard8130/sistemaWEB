@@ -934,7 +934,11 @@ def registro_usuario(request):
         username = request.POST["username"]
         password = request.POST["password"]
         email = request.POST["email"]
+        segmento = request.POST.get("segmento", "comercial")  # NUEVO
         # telefono = request.POST['telefono']
+
+        if segmento not in ("comercial", "habitacional"):
+            segmento = "comercial"
 
         if User.objects.filter(username=username).exists():
             mensaje = "El nombre de usuario ya está en uso. Por favor elige otro."
@@ -942,13 +946,12 @@ def registro_usuario(request):
             user = User.objects.create_user(
                 username=username, password=password, email=email, first_name=nombre
             )
+            nombre_empresa_demo = "CONDOMINIO DEMO AC" if segmento == "habitacional" else "EMPRESA DEMO AC"
             empresa = Empresa.objects.create(
-                nombre="EMPRESA DEMO AC", rfc=f"DEMO{uuid4().hex[:8].upper()}"
+                nombre=nombre_empresa_demo,
+                rfc=f"DEMO{uuid4().hex[:8].upper()}",
+                segmento=segmento,
             )
-            # PerfilUsuario.objects.create(
-            #     usuario=user, empresa=empresa, tipo_usuario="demo"
-            # )
-            # Asigna la empresa y tipo_usuario al perfil creado por la señal
             perfil = user.perfilusuario
             perfil.empresa = empresa
             if not user.is_superuser:

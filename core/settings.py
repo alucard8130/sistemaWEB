@@ -92,6 +92,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                'empresas.context_processors.empresa_actual',  #nuevo context processor para exponer la empresa actual en todos los templates
             ],
         },
     },

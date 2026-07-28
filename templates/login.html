@@ -75,8 +75,16 @@
             <!-- Columna izquierda: branding -->
             <div class="col-lg-4 hero-left d-none d-lg-flex">
                 <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="brand-logo">
+                    <div class="d-flex gap-2 mb-3">
+                    <span class="badge rounded-pill px-3 py-2" style="background: rgba(255,255,255,0.12); font-size: 0.8em; font-weight: 500;">
+                        <i class="bi bi-shop me-1"></i>Comercial
+                    </span>
+                    <span class="badge rounded-pill px-3 py-2" style="background: rgba(255,255,255,0.12); font-size: 0.8em; font-weight: 500;">
+                        <i class="bi bi-houses me-1"></i>Residencial
+                    </span>
+                </div>
                 <h1>SISTEMA WEB ADMINISTRATIVO CONDOMINAL</h1>
-                <p class="tagline">La plataforma todo-en-uno con INTELIGENCIA ARTIFICIAL para cobranza, facturación fiscal y reportes financieros de condominios, plazas y propiedades en renta. y Mucho más.</p>
+                <p class="tagline">La plataforma todo-en-uno con INTELIGENCIA ARTIFICIAL para cobranza, facturación fiscal y reportes financieros de condominios residenciales y comerciales, plazas y propiedades en renta. y Mucho más.</p>
 
                 <div class="mt-4">
                     <a href="{% url 'registro_usuario' %}" class="btn btn-small px-4 py-2 animate__animated animate__pulse animate__infinite btn-verde-fuerte">
@@ -117,7 +125,7 @@
                     <!-- Login del sistema -->
                     <div class="login-box mb-5" style="padding: 32px 40px; max-width: 100% !important; width: 100% !important;">
                         <h4 class="fw-bold mb-4 text-center border-bottom pb-3">
-                            <i class="bi bi-shield-lock me-2"></i>Acceso usuarios operativos
+                            <i class="bi bi-shield-lock me-2"></i>Acceso usuarios comerciales y residenciales
                         </h4>
                         <!-- Mensajes de Django (registro exitoso, etc.) -->
     {% if messages %}

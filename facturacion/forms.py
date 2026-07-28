@@ -16,60 +16,59 @@ class FacturaForm(forms.ModelForm):
 
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun','tipo_cuota', 'fecha_vencimiento', 'monto','observaciones']
-        labels = {'observaciones': 'Comentario'}
+        fields = ['cliente', 'local', 'area_comun', 'tipo_cuota', 'fecha_vencimiento', 'monto', 'observaciones']
         widgets = {
-            'cliente': forms.Select(attrs={
-                'class': 'form-select'
-                }),
-            'local': forms.Select(attrs={
-                'class': 'form-select'
-                }),
-            'area_comun': forms.Select(attrs={
-                'class': 'form-select'
-            }),
-             'tipo_cuota': forms.Select(attrs={
-                'class': 'form-select'                
-                }),
-            'fecha_vencimiento': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
-                }),
-            'monto': forms.NumberInput(attrs={
-                'class': 'form-control',                                                                                                                                                                
-                'placeholder': 'Monto'
-                }),
-            'observaciones': forms.Textarea(attrs={
-                'rows': 2,
-                'class': 'form-control',
-                'placeholder': 'Comentario'
-                }),
+            'cliente': forms.Select(attrs={'class': 'form-select'}),
+            'local': forms.Select(attrs={'class': 'form-select'}),
+            'area_comun': forms.Select(attrs={'class': 'form-select'}),
+            'tipo_cuota': forms.Select(attrs={'class': 'form-select'}),
+            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'monto': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Monto'}),
+            'observaciones': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Comentario'}),
         }
-        labels = {'cliente': 'Arrendatario/Inquilino',
-                  
-                  }
+        labels = {
+            'cliente': 'Arrendatario/Inquilino',
+            'observaciones': 'Comentario',
+        }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # campos no requeridos
         self.fields['local'].required = False
         self.fields['area_comun'].required = False
 
+        empresa_usuario = None
 
         if self.user and not self.user.is_superuser:
-            empresa = self.user.perfilusuario.empresa
-            self.fields['cliente'].queryset = self.fields['cliente'].queryset.filter(empresa=empresa)
-            self.fields['local'].queryset = self.fields['local'].queryset.filter(empresa=empresa)
-            self.fields['area_comun'].queryset = self.fields['area_comun'].queryset.filter(empresa=empresa)
+            empresa_usuario = self.user.perfilusuario.empresa
+            self.fields['cliente'].queryset = self.fields['cliente'].queryset.filter(empresa=empresa_usuario)
+            self.fields['local'].queryset = self.fields['local'].queryset.filter(empresa=empresa_usuario)
+            self.fields['area_comun'].queryset = self.fields['area_comun'].queryset.filter(empresa=empresa_usuario)
+
+        # --- NUEVO: ajustes según segmento de la empresa ---
+        # --- Ajustes según segmento de la empresa ---
+        if empresa_usuario and empresa_usuario.segmento == 'habitacional':
+            self.fields['cliente'].label = "Propietario / Residente"
+
+            # "Renta" no aplica a viviendas -- se quita de las opciones
+            self.fields['tipo_cuota'].choices = [
+                c for c in Factura.TIPO_CUOTA_CHOICES if c[0] != 'renta'
+            ]
+
+            # Las amenidades no generan factura ni nada fiscal -- solo se
+            # puede facturar contra la vivienda.
+            self.fields['tipo_origen'].choices = [
+                ('local', 'Vivienda'),
+            ]
+            self.fields['area_comun'].widget = forms.HiddenInput()
 
     def clean(self):
         cleaned_data = super().clean()
         monto = cleaned_data.get('monto')
-        local= cleaned_data.get('local')
+        local = cleaned_data.get('local')
         area_comun = cleaned_data.get('area_comun')
-        
+
         if not local and not area_comun:
             self.add_error(None, 'Debe seleccionar al menos un Local o Área Común.')
 
@@ -81,7 +80,9 @@ class FacturaForm(forms.ModelForm):
         fecha_vencimiento = self.cleaned_data.get('fecha_vencimiento')
         if not fecha_vencimiento:
             raise forms.ValidationError("La fecha de la factura es obligatoria.")
-        return fecha_vencimiento        
+        return fecha_vencimiento
+
+         
       
 class PagoForm(forms.ModelForm):
     class Meta:

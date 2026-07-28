@@ -26,13 +26,15 @@
 
     <div class="container-fluid mt-4" style="background-color: #fdf6f0;">
         <h3 class="mb-4 text-center" style="color: #6b4c4c;">
-            Confirmar carga mensual de cuotas
+            Confirmar carga masiva mensual de cuotas
         </h3>
 
         <div class="alert cuotas-pendientes" style="background-color: #e8f0fe; color: #2c3e50; border-left: 5px solid #aecbfa;">
             <ul class="mb-0">
-                <li><strong>{{ total_locales }}</strong> cuotas locales comerciales por cargar</li>
+                <li><strong>{{ total_locales }}</strong> {% if empresa_actual.segmento == 'habitacional' %}cuotas de viviendas{% else %}cuotas locales comerciales{% endif %} por cargar</li>
+                {% if empresa_actual.segmento != 'habitacional' %}
                 <li><strong>{{ total_areas }}</strong> cuotas áreas comunes por cargar</li>
+                {% endif %}
             </ul>
         </div>
          {% if faltantes_mensaje %}
@@ -46,7 +48,7 @@
       
         {% if total_locales == 0 and total_areas == 0 %}
             <div class="alert cuotas-todas" style="background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba;">
-                Ya se han facturado todos los locales y áreas este mes.
+                Ya se generaron las cuotas de todas las propiedades de este mes.
             </div>
         {% else %}  
         <div class="alert alert-info text-center">
@@ -64,8 +66,10 @@
         <div class="alert alert-warning" role="alert">
             <i class="bi bi-exclamation-triangle-fill"></i>
             <strong>Atención:</strong>
-            <p>Si estás en periodo de incremento de cuotas propiedades , recuerda antes actualizar los importes en: <a href="{% url 'incrementar_c_locales' %}">Incrementar cuotas Propiedades</a>.</p>
+            <p>Si estás en periodo de incremento de cuotas propiedades, recuerda antes actualizar los importes en: <a href="{% url 'incrementar_c_locales' %}">Incrementar cuotas Propiedades</a>.</p>
+            {% if empresa_actual.segmento != 'habitacional' %}
             <P>Si estás en periodo de incremento de cuotas por áreas comunes, recuerda antes actualizar los importes en: <a href="{% url 'incrementar_c_areas' %}">Incrementar cuotas Áreas Comunes</a>.</P>
+            {% endif %}
         </div>
         <form id="form-facturacion" method="post" class="p-3 mt-3 rounded" style="background-color: #ffffff; border: 1px solid #f0e6e6;">
             {% csrf_token %}
@@ -92,15 +96,17 @@
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="locales" id="locales" checked {% if total_locales == 0 %}disabled{% endif %}>
                 <label class="form-check-label" for="locales" style="color: #4d4d4d;">
-                    Cargar Locales Comerciales
+                    {% if empresa_actual.segmento == 'habitacional' %}Cargar Viviendas{% else %}Cargar Locales Comerciales{% endif %}
                 </label>
             </div>
+            {% if empresa_actual.segmento != 'habitacional' %}
             <div class="form-check mb-4">
                 <input class="form-check-input" type="checkbox" name="areas" id="areas" checked {% if total_areas == 0 %}disabled{% endif %}>
                 <label class="form-check-label" for="areas" style="color: #4d4d4d;">
                     Cargar Áreas Comunes
                 </label>
             </div>
+            {% endif %}
             <button type="submit" class="btn" style="background-color: #f7c59f; color: #fff;">
                 Generar carga
             </button>

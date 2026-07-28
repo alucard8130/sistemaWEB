@@ -129,7 +129,9 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        {% if empresa_actual.segmento != 'habitacional' %}
                         <div class="col-12 col-md-3">
+                            
                             <label class="form-label form-label-sm mb-1">Área común</label>
                             <select name="area_id" id="area_id" class="form-select form-select-sm">
                                 <option value="">Todas</option>
@@ -140,6 +142,7 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        {% endif %}
                         <div class="col-6 col-md-2">
                             <label class="form-label form-label-sm mb-1">Año</label>
                             <select name="anio" class="form-select form-select-sm">
@@ -182,7 +185,7 @@
                         <th>Folio</th>
                         {% if request.user.is_superuser %}<th>Empresa</th>{% endif %}
                         <th>Cliente</th>
-                        <th>Local/Área</th>
+                        <th>Propiedad</th>
                         <th class="text-end">Importe</th>
                         <th class="text-end">Saldo</th>
                         <th>Tipo Cuota</th>

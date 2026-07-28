@@ -9,6 +9,10 @@ class Empresa(models.Model):
         ('621', 'Incorporación Fiscal'),
         ('626', 'Régimen Simplificado de Confianza'),
     ]
+    SEGMENTO_CHOICES = [
+        ('comercial', 'Comercial (plaza / centro comercial)'),
+        ('habitacional', 'Habitacional (condominio residencial)'),
+    ]
     nombre = models.CharField(max_length=100)
     rfc = models.CharField(max_length=13, unique=True)
     regimen_fiscal = models.CharField(max_length=100, choices=REGIMEN_CHOICES, blank=True, null=True,default='603')
@@ -26,10 +30,20 @@ class Empresa(models.Model):
     lat_oficina = models.DecimalField(max_digits=30, decimal_places=20, null=True, blank=True,help_text="Latitud de la oficina/caseta donde se debe marcar asistencia")
     lng_oficina = models.DecimalField(max_digits=30, decimal_places=20, null=True, blank=True,help_text="Longitud de la oficina/caseta donde se debe marcar asistencia")
     radio_permitido_metros = models.PositiveIntegerField(default=50,help_text="Radio permitido (en metros) alrededor de la ubicación para marcar asistencia válida")
-
+    segmento = models.CharField(
+        max_length=20, choices=SEGMENTO_CHOICES, default='comercial',
+        help_text="Determina la terminología y opciones que ve la empresa en el sistema (Local/Renta vs. Vivienda/Amenidad)."
+    )
+    
     def __str__(self):
         return self.nombre
     
+    @property
+    def es_habitacional(self):
+        return self.segmento == 'habitacional'
+
+    
+
 class CuentaBancaria(models.Model):
     BANCOS_CHOICES = [
         ('BANAMEX', 'Banamex'),

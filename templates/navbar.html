@@ -114,7 +114,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_locales' %}"><i class="bi bi-upload me-2"></i>Carga Masiva</a></li>
             </ul>
           </li>
-
+           {% if empresa_actual.segmento != 'habitacional' %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Áreas Comunes">
               Areas <i style="font-size: 1.5em;"></i>
@@ -129,7 +129,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_areas' %}"><i class="bi bi-upload me-2"></i>Carga Masiva</a></li>
             </ul>
           </li>
-
+          {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Facturacion y Pagos">
               Facturación <i style="font-size: 1.5em;"></i>
