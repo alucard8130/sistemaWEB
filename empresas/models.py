@@ -42,7 +42,6 @@ class Empresa(models.Model):
     def es_habitacional(self):
         return self.segmento == 'habitacional'
 
-    
 
 class CuentaBancaria(models.Model):
     BANCOS_CHOICES = [
@@ -86,7 +85,11 @@ class CuentaBancaria(models.Model):
     saldo_inicial = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     saldo_final = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     activa = models.BooleanField(default=True)
+    cuenta_contable = models.ForeignKey(
+        'gastos.CuentaContable', on_delete=models.SET_NULL, null=True, blank=True, related_name='cuentas_bancarias'
+    )
 
     def __str__(self):
         return f"{self.banco} - {self.numero_cuenta}"
+
 

@@ -65,14 +65,14 @@ def empresa_eliminar(request, pk):
 def cuenta_bancaria_crear(request):
     empresa = request.user.perfilusuario.empresa  # Ajusta según tu modelo de perfil
     if request.method == 'POST':
-        form = CuentaBancariaForm(request.POST)
+        form = CuentaBancariaForm(request.POST, empresa=empresa)
         if form.is_valid():
             cuenta = form.save(commit=False)
             cuenta.empresa = empresa
             cuenta.save()
             return redirect('cuentas_bancarias_lista')
     else:
-        form = CuentaBancariaForm()
+        form = CuentaBancariaForm(empresa=empresa)
     return render(request, 'empresas/cuenta_bancaria_crear.html', {'form': form, 'empresa': empresa})
 
 @login_required
@@ -99,19 +99,18 @@ def cuenta_bancaria_eliminar(request, pk):
 @login_required
 def cuenta_bancaria_editar(request, pk):
     cuenta = get_object_or_404(CuentaBancaria, pk=pk)
-    # Seguridad: solo puede editar cuentas de su propia empresa
     if not request.user.is_superuser and cuenta.empresa != request.user.perfilusuario.empresa:
         messages.error(request, "No tienes permiso para editar esta cuenta.")
         return redirect('cuentas_bancarias_lista')
 
     if request.method == 'POST':
-        form = CuentaBancariaForm(request.POST, instance=cuenta)
+        form = CuentaBancariaForm(request.POST, instance=cuenta, empresa=cuenta.empresa)
         if form.is_valid():
             form.save()
             messages.success(request, f"Cuenta {cuenta.banco} actualizada correctamente.")
             return redirect('cuentas_bancarias_lista')
     else:
-        form = CuentaBancariaForm(instance=cuenta)
+        form = CuentaBancariaForm(instance=cuenta, empresa=cuenta.empresa)
 
     return render(request, 'empresas/cuenta_bancaria_editar.html', {
         'form': form,

@@ -1,0 +1,114 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Catálogo de Cuentas Contables</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .nivel-0 { font-weight: 700; background: #f8f9fa; }
+        .nivel-1 { font-weight: 600; }
+        .nivel-2 { color: #495057; }
+        .nivel-3 { color: #6c757d; font-size: 0.9em; }
+        .codigo-cell { font-family: monospace; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message|safe }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-2">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h3 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Catálogo de Cuentas Contables</h3>
+            <div class="d-flex gap-2">
+                <a href="{% url 'plantilla_catalogo_cuentas_excel' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-download"></i> Descargar Plantilla
+                </a>
+                <a href="{% url 'carga_masiva_catalogo_cuentas' %}" class="btn btn-outline-success reporte-link">
+                    <i class="bi bi-upload"></i> Cargar Catálogo
+                </a>
+                <a href="{% url 'homologar_tipos_gasto' %}" class="btn btn-primary reporte-link">
+                    <i class="bi bi-link-45deg"></i> Homologar Tipos de Gasto
+                </a>
+            </div>
+        </div>
+
+        <div class="table-responsive rounded-3 border" style="font-size:0.88rem;">
+            <table class="table align-middle mb-0 shadow-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Naturaleza</th>
+                        <th>Estatus</th>
+                        <th>Tipos de gasto homologados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in cuentas %}
+                    <tr class="nivel-{{ fila.nivel }}">
+                        <td class="codigo-cell">
+                            <span style="display:inline-block; width:{{ fila.nivel }}0px;"></span>
+                            {{ fila.obj.codigo }}
+                        </td>
+                        <td>{{ fila.obj.nombre }}</td>
+                        <td>
+                            {% if fila.obj.naturaleza == 'deudora' %}
+                                <span class="badge bg-primary-subtle text-primary">Deudora</span>
+                            {% else %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis">Acreedora</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if fila.obj.activa %}
+                                <span class="badge bg-success">Activa</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactiva</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">
+                            {{ fila.obj.tipos_gasto.count }} tipo(s)
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            <i class="bi bi-diagram-3 fs-3 d-block mb-2"></i>
+                            Todavía no has cargado tu catálogo de cuentas contables.
+                            <br>
+                            <a href="{% url 'carga_masiva_catalogo_cuentas' %}" class="reporte-link">Cárgalo aquí</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

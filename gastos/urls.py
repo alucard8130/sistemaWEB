@@ -23,6 +23,19 @@ urlpatterns = [
     path('exportar_gastos_lista_excel/', views.exportar_gastos_lista_excel, name='exportar_gastos_lista_excel'),
     path('exportar_reporte_pagos_gastos_excel/', views.exportar_reporte_pagos_gastos_excel, name='exportar_reporte_pagos_gastos_excel'),
     path('gastos/grafico-gastos-anual/', views.grafico_gastos_anual, name='grafico_gastos_anual'),
+    path('catalogo-cuentas/', views.lista_catalogo_cuentas, name='lista_catalogo_cuentas'),
+    path('catalogo-cuentas/carga-masiva/', views.carga_masiva_catalogo_cuentas, name='carga_masiva_catalogo_cuentas'),
+    path('catalogo-cuentas/plantilla/', views.plantilla_catalogo_cuentas_excel, name='plantilla_catalogo_cuentas_excel'),
+    path('catalogo-cuentas/homologar/', views.homologar_tipos_gasto, name='homologar_tipos_gasto'),
+    path('catalogo-cuentas/homologar/<int:tipo_gasto_id>/asignar/', views.asignar_cuenta_contable, name='asignar_cuenta_contable'),
+    path('catalogo-cuentas/revisar/<int:sesion_id>/', views.revisar_carga_catalogo, name='revisar_carga_catalogo'),
+    path('catalogo-cuentas/confirmar/<int:sesion_id>/', views.confirmar_carga_catalogo, name='confirmar_carga_catalogo'),
+    path('catalogo-cuentas/exportar-poliza/', views.exportar_poliza_gastos, name='exportar_poliza_gastos'),
+    path('catalogo-cuentas/homologar-cuotas/', views.homologar_tipos_cuota, name='homologar_tipos_cuota'),
+    path('catalogo-cuentas/homologar-cuotas/<int:homologacion_id>/asignar/', views.asignar_cuenta_contable_cuota, name='asignar_cuenta_contable_cuota'),
+    path('catalogo-cuentas/homologar-otros-ingresos/', views.homologar_tipos_otro_ingreso, name='homologar_tipos_otro_ingreso'),
+    path('catalogo-cuentas/homologar-otros-ingresos/<int:tipo_id>/asignar/', views.asignar_cuenta_contable_otro_ingreso, name='asignar_cuenta_contable_otro_ingreso'),
+    path('catalogo-cuentas/exportar-poliza-ingresos/', views.exportar_poliza_ingresos, name='exportar_poliza_ingresos'),
 
 
 ]

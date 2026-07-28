@@ -1,12 +1,77 @@
 
 # Create your models here.
 from django.db import models
+from django.conf import settings
 from django.db.models import Sum
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
 from proveedores.models import Proveedor
 from django.contrib.auth.models import User
 
+
+class CuentaContable(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='cuentas_contables')
+    codigo = models.CharField(max_length=30)
+    nombre = models.CharField(max_length=150)
+    cuenta_padre = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='subcuentas'
+    )
+    NATURALEZA_CHOICES = [
+        ('deudora', 'Deudora'),
+        ('acreedora', 'Acreedora'),
+    ]
+    naturaleza = models.CharField(max_length=10, choices=NATURALEZA_CHOICES, default='deudora')
+    activa = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('empresa', 'codigo')
+        ordering = ['codigo']
+
+    def __str__(self):
+        return f"{self.codigo} — {self.nombre}"
+
+    @property
+    def es_cuenta_mayor(self):
+        return self.cuenta_padre_id is None
+    
+class CargaCatalogoSesion(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    ESTADO_CHOICES = [
+        ('pendiente_revision', 'Pendiente de revisión'),
+        ('aplicada', 'Aplicada'),
+        ('cancelada', 'Cancelada'),
+    ]
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente_revision')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    registrado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+class CargaCatalogoFila(models.Model):
+    sesion = models.ForeignKey(CargaCatalogoSesion, on_delete=models.CASCADE, related_name='filas')
+    fila_excel = models.PositiveIntegerField()
+    codigo = models.CharField(max_length=30)
+    nombre_cuenta = models.CharField(max_length=150)
+    codigo_padre = models.CharField(max_length=30, blank=True, null=True)
+    naturaleza = models.CharField(max_length=10, default='deudora')
+    grupo_nombre = models.CharField(max_length=100, blank=True, null=True)
+    subgrupo_nombre = models.CharField(max_length=100, blank=True, null=True)
+
+    # NUEVO
+    uso_especial = models.CharField(max_length=30, blank=True, null=True)
+
+    tipo_gasto_sugerido = models.ForeignKey('TipoGasto', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    similitud_pct = models.PositiveIntegerField(default=0)
+
+    ACCION_CHOICES = [
+        ('crear_nuevo', 'Crear nuevo tipo de gasto'),
+        ('usar_existente', 'Usar tipo de gasto existente'),
+        ('solo_cuenta', 'Solo cargar la cuenta (sin tipo de gasto)'),
+    ]
+    accion = models.CharField(max_length=20, choices=ACCION_CHOICES, blank=True, null=True)
+    tipo_gasto_elegido = models.ForeignKey('TipoGasto', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+
+    class Meta:
+        ordering = ['fila_excel']
 
 
 class GrupoGasto(models.Model):
@@ -28,10 +93,13 @@ class TipoGasto(models.Model):
     subgrupo = models.ForeignKey(SubgrupoGasto, on_delete=models.CASCADE, related_name='tipos')
     nombre = models.CharField(max_length=100)
     descripcion = models.CharField(max_length=255, blank=True)
+    # NUEVO — homologación con el catálogo de cuentas contables del cliente
+    cuenta_contable = models.ForeignKey(
+        CuentaContable, on_delete=models.SET_NULL, null=True, blank=True, related_name='tipos_gasto'
+    )
 
     def __str__(self):
         return f"{self.subgrupo.nombre}/{self.nombre}"
-
 
 class Gasto(models.Model):
     empresa = models.ForeignKey(Empresa,on_delete=models.CASCADE,null=True,blank=True)
@@ -98,4 +166,5 @@ class PagoGasto(models.Model):
 
     def __str__(self):
         return f'Pago de ${self.monto} para solicitud {self.gasto.id}'
+
 

@@ -1,9 +1,11 @@
 # from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
+import difflib
 from io import BytesIO
 import json
 import unicodedata
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from openpyxl import Workbook
@@ -13,11 +15,11 @@ from caja_chica.models import GastoCajaChica, ValeCaja
 from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
-
-# from facturacion.models import Pago
+from facturacion.models import CobroOtrosIngresos, Factura, Pago, TipoCuotaHomologacion, TipoOtroIngreso
 from presupuestos.models import Presupuesto
 from proveedores.models import Proveedor
 from .forms import (
+    CargaMasivaCuentasForm,
     GastoForm,
     GastosCargaMasivaForm,
     MotivoReversaPagoForm,
@@ -25,27 +27,623 @@ from .forms import (
     SubgrupoGastoForm,
     TipoGastoForm,
 )
-from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
+from .models import CargaCatalogoFila, CargaCatalogoSesion, CuentaContable, Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
 from datetime import datetime
-# from django.utils.timezone import localtime
-# from django.db.models.functions import TruncMonth
 from django.db.models import F, DecimalField, Value
-#import calendar
 from django.db.models import Q, Sum, Count, Case, When, FloatField
 from django.utils.dateparse import parse_date
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
 from django.db.models.functions import Coalesce, TruncMonth, TruncYear
-# from caja_chica.models import GastoCajaChica, ValeCaja
 from num2words import num2words
-# from django.utils import timezone
-# from django.db.models import Count
 from django.utils.dateformat import DateFormat
 from datetime import date
 from django.contrib import messages as django_messages
+from openpyxl.styles import Font, PatternFill
 
 
+###################VISTAS 
+@login_required
+def plantilla_catalogo_cuentas_excel(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Catálogo de Cuentas"
+    ws.append(['codigo', 'nombre_cuenta', 'codigo_padre', 'naturaleza', 'grupo_gasto', 'subgrupo_gasto', 'uso_especial'])
+    ws.append(['500', 'Gastos de Operación', '', 'deudora', '', '', ''])
+    ws.append(['500-01', 'Mantenimiento y Conservación', '500', 'deudora', '', '', ''])
+    ws.append(['500-01-001', 'Mantenimiento de Áreas Comunes', '500-01', 'deudora', 'Mantenimiento', 'Áreas Comunes', ''])
+    ws.append(['400', 'Ingresos por Cuotas', '', 'acreedora', '', '', ''])
+    ws.append(['400-01', 'Cuotas de Mantenimiento', '400', 'acreedora', '', '', 'cuota_mantenimiento'])
+    ws.append(['400-02', 'Cuotas de Áreas Comunes', '400', 'acreedora', '', '', 'cuota_renta'])
+    ws.append(['400-03', 'Depósitos en Garantía', '400', 'acreedora', '', '', 'cuota_deposito'])
+    ws.append(['400-04', 'Cuotas Extraordinarias', '400', 'acreedora', '', '', 'cuota_extraordinaria'])
+    ws.append(['700', 'Otros Ingresos', '', 'acreedora', '', '', ''])
+    ws.append(['700-01', 'Intereses', '700', 'acreedora', '', '', 'cuota_intereses'])
+    ws.append(['700-02', 'Multas', '700', 'acreedora', '', '', 'cuota_penalidad'])
+    ws.append(['700-03', 'Renta de Estacionamiento', '700', 'acreedora', '', '', 'otro_ingreso'])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=plantilla_catalogo_cuentas.xlsx'
+    wb.save(response)
+    return response
+
+
+def _empresa_del_usuario(request):
+    if request.user.is_superuser:
+        empresa_id = request.session.get('empresa_id')
+        from empresas.models import Empresa
+        return Empresa.objects.filter(id=empresa_id).first() if empresa_id else None
+    perfil = getattr(request.user, 'perfilusuario', None)
+    return perfil.empresa if perfil else None
+
+
+def _mejor_coincidencia_tipo_gasto(nombre_cuenta, tipos_existentes):
+    """Compara el nombre de la cuenta contra los tipos de gasto ya
+    existentes de la empresa, y regresa (tipo_gasto, porcentaje) del
+    más parecido, o (None, 0) si ninguno se acerca lo suficiente."""
+    mejor_tipo = None
+    mejor_pct = 0
+    nombre_norm = nombre_cuenta.strip().lower()
+
+    for tipo in tipos_existentes:
+        ratio = difflib.SequenceMatcher(None, nombre_norm, tipo.nombre.strip().lower()).ratio()
+        pct = round(ratio * 100)
+        if pct > mejor_pct:
+            mejor_pct = pct
+            mejor_tipo = tipo
+
+    if mejor_pct >= 70:  # umbral -- ajustable
+        return mejor_tipo, mejor_pct
+    return None, 0
+
+
+@login_required
+def carga_masiva_catalogo_cuentas(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    if request.method == 'POST':
+        form = CargaMasivaCuentasForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo']
+            wb = openpyxl.load_workbook(archivo, data_only=True)
+            ws = wb.active
+
+            tipos_existentes = list(TipoGasto.objects.filter(empresa=empresa).select_related('subgrupo'))
+
+            sesion = CargaCatalogoSesion.objects.create(empresa=empresa, registrado_por=request.user)
+            errores = []
+
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if not row or all((c is None or (isinstance(c, str) and c.strip() == "")) for c in row):
+                    continue
+
+                try:
+                    codigo = str(row[0]).strip() if row[0] not in (None, "") else None
+                    nombre_cuenta = str(row[1]).strip() if len(row) > 1 and row[1] not in (None, "") else None
+                    codigo_padre = str(row[2]).strip() if len(row) > 2 and row[2] not in (None, "") else None
+                    naturaleza = str(row[3]).strip().lower() if len(row) > 3 and row[3] not in (None, "") else 'deudora'
+                    grupo_nombre = str(row[4]).strip() if len(row) > 4 and row[4] not in (None, "") else None
+                    subgrupo_nombre = str(row[5]).strip() if len(row) > 5 and row[5] not in (None, "") else None
+                    uso_especial = str(row[6]).strip().lower() if len(row) > 6 and row[6] not in (None, "") else None
+
+                    if naturaleza not in ('deudora', 'acreedora'):
+                        naturaleza = 'deudora'
+
+                    if not codigo or not nombre_cuenta:
+                        raise Exception("Código o nombre de cuenta vacío.")
+
+                    tipo_sugerido, pct = (None, 0)
+                    if grupo_nombre and subgrupo_nombre:
+                        tipo_sugerido, pct = _mejor_coincidencia_tipo_gasto(nombre_cuenta, tipos_existentes)
+
+                    CargaCatalogoFila.objects.create(
+                        sesion=sesion,
+                        fila_excel=i,
+                        codigo=codigo,
+                        nombre_cuenta=nombre_cuenta,
+                        codigo_padre=codigo_padre,
+                        naturaleza=naturaleza,
+                        grupo_nombre=grupo_nombre,
+                        subgrupo_nombre=subgrupo_nombre,
+                        uso_especial=uso_especial,
+                        tipo_gasto_sugerido=tipo_sugerido,
+                        similitud_pct=pct,
+                    )
+
+                except Exception as e:
+                    errores.append(f"Fila {i}: {str(e)}")
+
+            if errores:
+                from django.utils.safestring import mark_safe
+                msg = "<br>".join(errores[:50])
+                messages.warning(request, mark_safe("Algunas filas se omitieron:<br>" + msg))
+
+            return redirect('revisar_carga_catalogo', sesion_id=sesion.id)
+    else:
+        form = CargaMasivaCuentasForm()
+
+    return render(request, 'gastos/carga_masiva_catalogo_cuentas.html', {'form': form})
+
+
+@login_required
+def revisar_carga_catalogo(request, sesion_id):
+    empresa = _empresa_del_usuario(request)
+    sesion = get_object_or_404(CargaCatalogoSesion, pk=sesion_id, empresa=empresa, estado='pendiente_revision')
+
+    tipos_existentes = TipoGasto.objects.filter(empresa=empresa).select_related('subgrupo', 'subgrupo__grupo').order_by('nombre')
+
+    filas_con_tipo = sesion.filas.exclude(grupo_nombre__isnull=True).exclude(grupo_nombre='')
+    filas_solo_cuenta = sesion.filas.filter(grupo_nombre__isnull=True) | sesion.filas.filter(grupo_nombre='')
+
+    return render(request, 'gastos/revisar_carga_catalogo.html', {
+        'sesion': sesion,
+        'filas_con_tipo': filas_con_tipo,
+        'filas_solo_cuenta': filas_solo_cuenta,
+        'tipos_existentes': tipos_existentes,
+    })
+
+
+@login_required
+def confirmar_carga_catalogo(request, sesion_id):
+    empresa = _empresa_del_usuario(request)
+    sesion = get_object_or_404(CargaCatalogoSesion, pk=sesion_id, empresa=empresa, estado='pendiente_revision')
+
+    if request.method != 'POST':
+        return redirect('revisar_carga_catalogo', sesion_id=sesion_id)
+
+    cuentas_creadas = 0
+    tipos_creados = 0
+    tipos_homologados = 0
+
+    with transaction.atomic():
+        # --- Primera pasada: crear/actualizar TODAS las cuentas contables ---
+        cuentas_por_codigo = {}
+        for fila in sesion.filas.all():
+            cuenta, _ = CuentaContable.objects.update_or_create(
+                empresa=empresa, codigo=fila.codigo,
+                defaults={'nombre': fila.nombre_cuenta, 'naturaleza': fila.naturaleza, 'activa': True}
+            )
+            cuentas_por_codigo[fila.codigo] = cuenta
+            cuentas_creadas += 1
+
+        # --- Segunda pasada: jerarquía ---
+        for fila in sesion.filas.exclude(codigo_padre__isnull=True).exclude(codigo_padre=''):
+            padre = cuentas_por_codigo.get(fila.codigo_padre) or CuentaContable.objects.filter(
+                empresa=empresa, codigo=fila.codigo_padre
+            ).first()
+            if padre:
+                cuenta = cuentas_por_codigo[fila.codigo]
+                cuenta.cuenta_padre = padre
+                cuenta.save(update_fields=['cuenta_padre'])
+
+        # --- Tercera pasada: decisiones de tipo de gasto, según lo elegido en el form ---
+        for fila in sesion.filas.exclude(grupo_nombre__isnull=True).exclude(grupo_nombre=''):
+            accion = request.POST.get(f'accion_{fila.id}')
+            cuenta = cuentas_por_codigo[fila.codigo]
+
+            if accion == 'usar_existente':
+                tipo_id = request.POST.get(f'tipo_existente_{fila.id}')
+                if tipo_id:
+                    tipo = TipoGasto.objects.filter(id=tipo_id, empresa=empresa).first()
+                    if tipo and not tipo.cuenta_contable_id:
+                        tipo.cuenta_contable = cuenta
+                        tipo.save(update_fields=['cuenta_contable'])
+                        tipos_homologados += 1
+
+            elif accion == 'crear_nuevo':
+                grupo, _ = GrupoGasto.objects.get_or_create(nombre=fila.grupo_nombre)
+                subgrupo, _ = SubgrupoGasto.objects.get_or_create(grupo=grupo, nombre=fila.subgrupo_nombre)
+                tipo, creado = TipoGasto.objects.get_or_create(
+                    empresa=empresa, subgrupo=subgrupo, nombre=fila.nombre_cuenta,
+                    defaults={'cuenta_contable': cuenta}
+                )
+                if creado:
+                    tipos_creados += 1
+                elif not tipo.cuenta_contable_id:
+                    tipo.cuenta_contable = cuenta
+                    tipo.save(update_fields=['cuenta_contable'])
+                    tipos_homologados += 1
+
+            # accion == 'solo_cuenta' -> no se crea ni homologa ningún TipoGasto
+
+        # --- Cuarta pasada: homologaciones especiales (cuotas y otros ingresos) ---
+        TIPOS_CUOTA_VALIDOS = dict(Factura.TIPO_CUOTA_CHOICES).keys()
+        otros_ingresos_homologados = 0
+        cuotas_homologadas = 0
+
+        for fila in sesion.filas.exclude(uso_especial__isnull=True).exclude(uso_especial=''):
+            cuenta = cuentas_por_codigo[fila.codigo]
+
+            if fila.uso_especial.startswith('cuota_'):
+                tipo_cuota_valor = fila.uso_especial.replace('cuota_', '', 1)
+                if tipo_cuota_valor in TIPOS_CUOTA_VALIDOS:
+                    homologacion, _ = TipoCuotaHomologacion.objects.get_or_create(
+                        empresa=empresa, tipo_cuota=tipo_cuota_valor
+                    )
+                    if not homologacion.cuenta_contable_id:
+                        homologacion.cuenta_contable = cuenta
+                        homologacion.save(update_fields=['cuenta_contable'])
+                        cuotas_homologadas += 1
+
+            elif fila.uso_especial == 'otro_ingreso':
+                tipo_oi, creado = TipoOtroIngreso.objects.get_or_create(
+                    empresa=empresa, nombre=fila.nombre_cuenta,
+                    defaults={'cuenta_contable': cuenta}
+                )
+                if not creado and not tipo_oi.cuenta_contable_id:
+                    tipo_oi.cuenta_contable = cuenta
+                    tipo_oi.save(update_fields=['cuenta_contable'])
+                if creado or not tipo_oi.cuenta_contable_id:
+                    otros_ingresos_homologados += 1
+
+        sesion.estado = 'aplicada'
+        sesion.save(update_fields=['estado'])
+
+    messages.success(
+        request,
+        f"✅ {cuentas_creadas} cuentas cargadas, {tipos_creados} tipos de gasto nuevos, "
+        f"{tipos_homologados} tipos de gasto homologados, {cuotas_homologadas} tipos de cuota "
+        f"homologados, {otros_ingresos_homologados} tipos de otro ingreso homologados."
+    )
+    return redirect('lista_catalogo_cuentas')
+
+
+@login_required
+def lista_catalogo_cuentas(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    cuentas_qs = list(
+        CuentaContable.objects.filter(empresa=empresa)
+        .prefetch_related('tipos_gasto')
+        .order_by('codigo')
+    )
+    cuentas_por_id = {c.id: c for c in cuentas_qs}
+
+    def calcular_nivel(cuenta):
+        nivel = 0
+        actual_id = cuenta.cuenta_padre_id
+        visitados = set()
+        while actual_id and actual_id not in visitados:
+            visitados.add(actual_id)
+            nivel += 1
+            padre = cuentas_por_id.get(actual_id)
+            actual_id = padre.cuenta_padre_id if padre else None
+        return nivel
+
+    cuentas = [{'obj': c, 'nivel': calcular_nivel(c)} for c in cuentas_qs]
+
+    return render(request, 'gastos/lista_catalogo_cuentas.html', {'cuentas': cuentas})
+
+
+@login_required
+def homologar_tipos_gasto(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    tipos_gasto = TipoGasto.objects.filter(empresa=empresa).select_related(
+        'subgrupo', 'subgrupo__grupo', 'cuenta_contable'
+    ).order_by('subgrupo__grupo__nombre', 'subgrupo__nombre', 'nombre')
+
+    cuentas_disponibles = CuentaContable.objects.filter(empresa=empresa, activa=True).order_by('codigo')
+
+    return render(request, 'gastos/homologar_tipos_gasto.html', {
+        'tipos_gasto': tipos_gasto,
+        'cuentas_disponibles': cuentas_disponibles,
+    })
+
+
+@login_required
+def asignar_cuenta_contable(request, tipo_gasto_id):
+    empresa = _empresa_del_usuario(request)
+    tipo = get_object_or_404(TipoGasto, pk=tipo_gasto_id, empresa=empresa)
+
+    if request.method == 'POST':
+        cuenta_id = request.POST.get('cuenta_contable_id')
+        if cuenta_id:
+            cuenta = get_object_or_404(CuentaContable, pk=cuenta_id, empresa=empresa)
+            tipo.cuenta_contable = cuenta
+        else:
+            tipo.cuenta_contable = None
+        tipo.save(update_fields=['cuenta_contable'])
+        messages.success(request, f"'{tipo.nombre}' homologado correctamente.")
+
+    return redirect('homologar_tipos_gasto')
+
+
+@login_required
+def exportar_poliza_gastos(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    if request.method == 'POST' or request.GET.get('fecha_inicio'):
+        fecha_inicio_str = request.POST.get('fecha_inicio') or request.GET.get('fecha_inicio')
+        fecha_fin_str = request.POST.get('fecha_fin') or request.GET.get('fecha_fin')
+
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            messages.error(request, "Fechas inválidas.")
+            return redirect('exportar_poliza_gastos')
+
+        pagos = PagoGasto.objects.filter(
+            gasto__empresa=empresa,
+            fecha_pago__gte=fecha_inicio,
+            fecha_pago__lte=fecha_fin,
+        ).select_related('gasto', 'gasto__tipo_gasto', 'gasto__tipo_gasto__cuenta_contable', 'gasto__proveedor').order_by('fecha_pago')
+
+        wb = openpyxl.Workbook()
+
+        # --- Hoja 1: Póliza (solo los homologados) ---
+        ws = wb.active
+        ws.title = "Póliza"
+        ws.append(['Fecha', 'Cuenta', 'Concepto', 'Cargo', 'Abono'])
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="2471A3", end_color="2471A3", fill_type="solid")
+
+        total_exportado = 0
+        pagos_sin_homologar = []
+
+        for pago in pagos:
+            cuenta_contable = getattr(pago.gasto.tipo_gasto, 'cuenta_contable', None) if pago.gasto.tipo_gasto else None
+            if not cuenta_contable:
+                pagos_sin_homologar.append(pago)
+                continue
+
+            concepto = f"{pago.gasto.tipo_gasto.nombre}"
+            if pago.gasto.proveedor:
+                concepto += f" — {pago.gasto.proveedor.nombre}"
+            if pago.gasto.descripcion:
+                concepto += f" — {pago.gasto.descripcion}"
+
+            ws.append([
+                pago.fecha_pago.strftime('%d/%m/%Y'),
+                f"{cuenta_contable.codigo} — {cuenta_contable.nombre}",
+                concepto[:200],
+                float(pago.monto),
+                '',
+            ])
+            total_exportado += float(pago.monto)
+
+        ws.append(['', '', 'TOTAL', total_exportado, ''])
+        for cell in ws[ws.max_row]:
+            cell.font = Font(bold=True)
+
+        for col_letra, ancho in [('A', 12), ('B', 35), ('C', 45), ('D', 14), ('E', 14)]:
+            ws.column_dimensions[col_letra].width = ancho
+
+        # --- Hoja 2: Gastos sin homologar (para que sepa qué falta) ---
+        if pagos_sin_homologar:
+            ws2 = wb.create_sheet("Sin homologar")
+            ws2.append(['Fecha', 'Tipo de Gasto', 'Proveedor', 'Monto'])
+            for cell in ws2[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="C0392B", end_color="C0392B", fill_type="solid")
+
+            for pago in pagos_sin_homologar:
+                ws2.append([
+                    pago.fecha_pago.strftime('%d/%m/%Y'),
+                    pago.gasto.tipo_gasto.nombre if pago.gasto.tipo_gasto else '—',
+                    pago.gasto.proveedor.nombre if pago.gasto.proveedor else '—',
+                    float(pago.monto),
+                ])
+            for col_letra, ancho in [('A', 12), ('B', 30), ('C', 30), ('D', 14)]:
+                ws2.column_dimensions[col_letra].width = ancho
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=poliza_gastos_{fecha_inicio}_{fecha_fin}.xlsx'
+        wb.save(response)
+        return response
+
+    return render(request, 'gastos/exportar_poliza.html', {})
+
+
+@login_required
+def exportar_poliza_ingresos(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    if request.method == 'POST' or request.GET.get('fecha_inicio'):
+        fecha_inicio_str = request.POST.get('fecha_inicio') or request.GET.get('fecha_inicio')
+        fecha_fin_str = request.POST.get('fecha_fin') or request.GET.get('fecha_fin')
+
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            messages.error(request, "Fechas inválidas.")
+            return redirect('exportar_poliza_ingresos')
+
+        # --- Pagos de cuotas ---
+        pagos_cuotas = Pago.objects.filter(
+            factura__empresa=empresa,
+            fecha_pago__gte=fecha_inicio,
+            fecha_pago__lte=fecha_fin,
+        ).exclude(forma_pago='nota_credito').select_related(
+            'factura', 'cuenta_bancaria', 'cuenta_bancaria__cuenta_contable', 'factura__cliente'
+        )
+
+        # --- Cobros de otros ingresos ---
+        cobros_otros = CobroOtrosIngresos.objects.filter(
+            factura__empresa=empresa,
+            fecha_cobro__gte=fecha_inicio,
+            fecha_cobro__lte=fecha_fin,
+        ).select_related(
+            'factura', 'factura__tipo_ingreso', 'cuenta_bancaria', 'cuenta_bancaria__cuenta_contable', 'factura__cliente'
+        )
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Póliza Ingresos"
+        ws.append(['Fecha', 'Cuenta', 'Concepto', 'Cargo', 'Abono'])
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="1E8449", end_color="1E8449", fill_type="solid")
+
+        total_exportado = 0
+        pendientes_homologar = []
+
+        homologaciones_cuota = {
+            h.tipo_cuota: h.cuenta_contable
+            for h in TipoCuotaHomologacion.objects.filter(empresa=empresa).select_related('cuenta_contable')
+        }
+
+        for pago in pagos_cuotas:
+            cuenta_banco = getattr(pago.cuenta_bancaria, 'cuenta_contable', None) if pago.cuenta_bancaria else None
+            cuenta_ingreso = homologaciones_cuota.get(pago.factura.tipo_cuota)
+
+            if not cuenta_banco or not cuenta_ingreso:
+                pendientes_homologar.append({
+                    'fecha': pago.fecha_pago, 'tipo': pago.factura.get_tipo_cuota_display(),
+                    'monto': pago.monto, 'falta': 'Cuenta bancaria' if not cuenta_banco else 'Tipo de cuota',
+                })
+                continue
+
+            concepto = f"Cuota {pago.factura.get_tipo_cuota_display()} — {pago.factura.cliente.nombre} — Folio {pago.factura.folio}"[:200]
+
+            ws.append([pago.fecha_pago.strftime('%d/%m/%Y'), f"{cuenta_banco.codigo} — {cuenta_banco.nombre}", concepto, float(pago.monto), ''])
+            ws.append([pago.fecha_pago.strftime('%d/%m/%Y'), f"{cuenta_ingreso.codigo} — {cuenta_ingreso.nombre}", concepto, '', float(pago.monto)])
+
+            total_exportado += float(pago.monto)
+
+        for cobro in cobros_otros:
+            cuenta_banco = getattr(cobro.cuenta_bancaria, 'cuenta_contable', None) if cobro.cuenta_bancaria else None
+            cuenta_ingreso = getattr(cobro.factura.tipo_ingreso, 'cuenta_contable', None) if cobro.factura.tipo_ingreso else None
+
+            if not cuenta_banco or not cuenta_ingreso:
+                pendientes_homologar.append({
+                    'fecha': cobro.fecha_cobro, 'tipo': cobro.factura.tipo_ingreso.nombre if cobro.factura.tipo_ingreso else '—',
+                    'monto': cobro.monto, 'falta': 'Cuenta bancaria' if not cuenta_banco else 'Tipo de otro ingreso',
+                })
+                continue
+
+            concepto = f"{cobro.factura.tipo_ingreso.nombre} — {cobro.factura.cliente.nombre} — Folio {cobro.factura.folio}"[:200]
+
+            ws.append([cobro.fecha_cobro.strftime('%d/%m/%Y'), f"{cuenta_banco.codigo} — {cuenta_banco.nombre}", concepto, float(cobro.monto), ''])
+            ws.append([cobro.fecha_cobro.strftime('%d/%m/%Y'), f"{cuenta_ingreso.codigo} — {cuenta_ingreso.nombre}", concepto, '', float(cobro.monto)])
+
+            total_exportado += float(cobro.monto)
+
+        ws.append(['', '', 'TOTAL (Cargo = Abono)', total_exportado, total_exportado])
+        for cell in ws[ws.max_row]:
+            cell.font = Font(bold=True)
+
+        for col_letra, ancho in [('A', 12), ('B', 35), ('C', 50), ('D', 14), ('E', 14)]:
+            ws.column_dimensions[col_letra].width = ancho
+
+        if pendientes_homologar:
+            ws2 = wb.create_sheet("Sin homologar")
+            ws2.append(['Fecha', 'Tipo', 'Monto', 'Falta homologar'])
+            for cell in ws2[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="C0392B", end_color="C0392B", fill_type="solid")
+            for p in pendientes_homologar:
+                ws2.append([p['fecha'].strftime('%d/%m/%Y'), p['tipo'], float(p['monto']), p['falta']])
+            for col_letra, ancho in [('A', 12), ('B', 30), ('C', 14), ('D', 20)]:
+                ws2.column_dimensions[col_letra].width = ancho
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=poliza_ingresos_{fecha_inicio}_{fecha_fin}.xlsx'
+        wb.save(response)
+        return response
+
+    return render(request, 'gastos/exportar_poliza_ingresos.html', {})
+
+
+
+@login_required
+def homologar_tipos_cuota(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    # Asegura que exista una fila por cada tipo de cuota posible
+    for tipo_valor, _ in Factura.TIPO_CUOTA_CHOICES:
+        TipoCuotaHomologacion.objects.get_or_create(empresa=empresa, tipo_cuota=tipo_valor)
+
+    homologaciones = TipoCuotaHomologacion.objects.filter(empresa=empresa).select_related('cuenta_contable')
+    cuentas_disponibles = CuentaContable.objects.filter(empresa=empresa, activa=True).order_by('codigo')
+
+    return render(request, 'gastos/homologar_tipos_cuota.html', {
+        'homologaciones': homologaciones,
+        'cuentas_disponibles': cuentas_disponibles,
+    })
+
+
+@login_required
+def asignar_cuenta_contable_cuota(request, homologacion_id):
+    empresa = _empresa_del_usuario(request)
+    homologacion = get_object_or_404(TipoCuotaHomologacion, pk=homologacion_id, empresa=empresa)
+
+    if request.method == 'POST':
+        cuenta_id = request.POST.get('cuenta_contable_id')
+        if cuenta_id:
+            cuenta = get_object_or_404(CuentaContable, pk=cuenta_id, empresa=empresa)
+            homologacion.cuenta_contable = cuenta
+        else:
+            homologacion.cuenta_contable = None
+        homologacion.save(update_fields=['cuenta_contable'])
+        messages.success(request, f"'{homologacion.get_tipo_cuota_display()}' homologado correctamente.")
+
+    return redirect('homologar_tipos_cuota')
+
+
+@login_required
+def homologar_tipos_otro_ingreso(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    tipos_otro_ingreso = TipoOtroIngreso.objects.filter(empresa=empresa).select_related('cuenta_contable').order_by('nombre')
+    cuentas_disponibles = CuentaContable.objects.filter(empresa=empresa, activa=True).order_by('codigo')
+
+    return render(request, 'gastos/homologar_tipos_otro_ingreso.html', {
+        'tipos_otro_ingreso': tipos_otro_ingreso,
+        'cuentas_disponibles': cuentas_disponibles,
+    })
+
+
+@login_required
+def asignar_cuenta_contable_otro_ingreso(request, tipo_id):
+    empresa = _empresa_del_usuario(request)
+    tipo = get_object_or_404(TipoOtroIngreso, pk=tipo_id, empresa=empresa)
+
+    if request.method == 'POST':
+        cuenta_id = request.POST.get('cuenta_contable_id')
+        if cuenta_id:
+            cuenta = get_object_or_404(CuentaContable, pk=cuenta_id, empresa=empresa)
+            tipo.cuenta_contable = cuenta
+        else:
+            tipo.cuenta_contable = None
+        tipo.save(update_fields=['cuenta_contable'])
+        messages.success(request, f"'{tipo.nombre}' homologado correctamente.")
+
+    return redirect('homologar_tipos_otro_ingreso')
+
+
+    
 @login_required
 def subgrupo_gasto_crear(request):
     if request.method == "POST":

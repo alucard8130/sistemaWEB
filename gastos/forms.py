@@ -8,6 +8,13 @@ from django import forms
 from .models import PagoGasto
 from unidecode import unidecode
 
+
+
+class CargaMasivaCuentasForm(forms.Form):
+    archivo = forms.FileField(label='Archivo Excel (.xlsx)')
+
+    
+
 class SubgrupoGastoForm(forms.ModelForm):
     class Meta:
         model = SubgrupoGasto

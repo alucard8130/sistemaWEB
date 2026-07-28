@@ -1,11 +1,11 @@
 
 # Create your models here.
 from decimal import Decimal
-
 from django.db import models
 from django.conf import settings
-from empresas.models import CuentaBancaria, Empresa
+from empresas.models import CuentaBancaria
 from clientes.models import Cliente
+from empresas.models import Empresa
 from locales.models import LocalComercial
 from areas.models import AreaComun
 from django.db.models import Sum
@@ -77,6 +77,22 @@ class Factura(models.Model):
         else:
             self.estatus = 'pendiente'  # O podrías poner un "parcial" si agregas esa opción
         self.save()
+
+# En facturacion/models.py, junto a la clase Factura
+
+class TipoCuotaHomologacion(models.Model):
+    empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='homologaciones_cuota')
+    tipo_cuota = models.CharField(max_length=100, choices=Factura.TIPO_CUOTA_CHOICES)
+    cuenta_contable = models.ForeignKey(
+        'gastos.CuentaContable', on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+    )
+
+    class Meta:
+        unique_together = ('empresa', 'tipo_cuota')
+
+    def __str__(self):
+        return f"{self.get_tipo_cuota_display()} → {self.cuenta_contable}"
+    
 
 class Pago(models.Model):
 
@@ -178,7 +194,11 @@ class CobroOtrosIngresos(models.Model):
 class TipoOtroIngreso(models.Model):
     nombre = models.CharField(max_length=100)
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    cuenta_contable = models.ForeignKey(
+        'gastos.CuentaContable', on_delete=models.SET_NULL, null=True, blank=True, related_name='tipos_otro_ingreso'
+    )
 
     def __str__(self):
         return self.nombre
     
+
