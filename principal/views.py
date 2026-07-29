@@ -3459,6 +3459,40 @@ def visitante_registro_api(request):
     )
 
 
+
+# def visitante_login_api(request):
+#     username = request.data.get("username")
+#     password = request.data.get("password")
+#     try:
+#         visitante = VisitanteAcceso.objects.get(username=username)
+#         if visitante.check_password(password):
+#             # Obtén todas las empresas asociadas al visitante
+#             empresas = visitante.empresas.all().distinct()
+#             empresas_data = [
+#                 {
+#                     "id": e.id,
+#                     "nombre": e.nombre,
+#                     "email": e.email,
+#                     "stripe_public_key": e.stripe_public_key,
+#                 }
+#                 for e in empresas
+#             ]
+#             es_admin = getattr(visitante, "es_admin", False)
+#             # Crea o recupera el token
+#             token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
+#             return Response(
+#                 {
+#                     "ok": True,
+#                     "visitante_id": visitante.id,
+#                     "empresas": empresas_data,
+#                     "token": token.key,
+#                     "es_admin": es_admin,
+#                 }
+#             )
+#         else:
+#             return Response({"ok": False, "error": "Contraseña incorrecta"}, status=400)
+#     except VisitanteAcceso.DoesNotExist:
+#         return Response({"ok": False, "error": "Usuario no encontrado"}, status=404)
 # API login visitante
 @api_view(["POST"])
 def visitante_login_api(request):
@@ -3467,7 +3501,6 @@ def visitante_login_api(request):
     try:
         visitante = VisitanteAcceso.objects.get(username=username)
         if visitante.check_password(password):
-            # Obtén todas las empresas asociadas al visitante
             empresas = visitante.empresas.all().distinct()
             empresas_data = [
                 {
@@ -3475,11 +3508,11 @@ def visitante_login_api(request):
                     "nombre": e.nombre,
                     "email": e.email,
                     "stripe_public_key": e.stripe_public_key,
+                    "segmento": e.segmento,  # NUEVO
                 }
                 for e in empresas
             ]
             es_admin = getattr(visitante, "es_admin", False)
-            # Crea o recupera el token
             token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
             return Response(
                 {
