@@ -81,6 +81,12 @@
                                 {{ form.superficie_m2.errors }}
                             </div>
                             <div class="mb-3">
+                                {{ form.proindiviso.label_tag }}
+                                {{ form.proindiviso }}
+                                {{ form.proindiviso.errors }}
+                                <div class="form-text">Porcentaje de proindiviso de esta propiedad (opcional).</div>
+                            </div>
+                            <div class="mb-3">
                                 {{ form.tipo_propiedad.label_tag }}
                                 {{ form.tipo_propiedad }}
                                 <div class="invalid-feedback">Este campo es obligatorio.</div>

@@ -115,6 +115,7 @@
                         {% endif %}
                         <th> Tipo Inmueble</th>
                         <th>Superficie (m²)</th>
+                        <th>% Indiviso</th>
                         <th>Cuota</th>
                         <th>Fact Anual</th>
                         <th>Giro</th>
@@ -134,6 +135,7 @@
                             {% endif %}
                             <td>{{ local.get_tipo_propiedad_display }}</td>
                             <td>{{ local.superficie_m2|floatformat:2|intcomma }}</td>
+                            <td>{{ local.proindiviso|floatformat:4|intcomma }}</td>
                             <td>${{ local.cuota|floatformat:2|intcomma }}</td>
                             <td>
                                 {% if local.es_cuota_anual %}

@@ -1,6 +1,5 @@
 
 from django.db import models
-#from clientes.models import Cliente
 from empresas.models import Empresa
 
 # Create your models here.
@@ -23,7 +22,7 @@ class LocalComercial(models.Model):
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     fecha_baja = models.DateTimeField(blank=True, null=True)
     activo = models.BooleanField(default=True)
-    observaciones = models.CharField(blank=True, null=True)
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota anual?")
     
     TIPO_CHOICES = [
@@ -36,6 +35,11 @@ class LocalComercial(models.Model):
     ]
     tipo_propiedad = models.CharField(max_length=20, choices=TIPO_CHOICES)
     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
+    proindiviso = models.DecimalField(
+        max_digits=7, decimal_places=4, null=True, blank=True,
+        help_text="Porcentaje de proindiviso de la propiedad (%)"
+    )
+
 
     def save(self, *args, **kwargs):
         if not self.referencia_pago and self.cliente_id:

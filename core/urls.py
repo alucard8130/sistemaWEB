@@ -231,6 +231,7 @@ urlpatterns = [
     path('amenidades/config/<int:amenidad_id>/eliminar/', eliminar_amenidad, name='eliminar_amenidad'),
     path('amenidades/calendario/', calendario_reservaciones, name='calendario_reservaciones'),
     path('amenidades/api/eventos/', api_eventos_reservaciones, name='api_eventos_reservaciones'),
+    path('catalogos/', include('catalogos.urls')),
 ]
 
     

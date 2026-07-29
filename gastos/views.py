@@ -43,7 +43,7 @@ from django.contrib import messages as django_messages
 from openpyxl.styles import Font, PatternFill
 
 
-###################VISTAS 
+###################CATALOGOS CONTABLES GASTOS E INGRESOS############################
 @login_required
 def plantilla_catalogo_cuentas_excel(request):
     wb = openpyxl.Workbook()
@@ -643,7 +643,7 @@ def asignar_cuenta_contable_otro_ingreso(request, tipo_id):
     return redirect('homologar_tipos_otro_ingreso')
 
 
-    
+#####################TIPOS DE GASTO, SUBGRUPOS Y GRUPOS###############################################    
 @login_required
 def subgrupo_gasto_crear(request):
     if request.method == "POST":

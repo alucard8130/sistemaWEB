@@ -20,7 +20,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models import Sum, Avg
 from django.db import transaction
-
+from django.utils.safestring import mark_safe
 
 @login_required
 def lista_locales(request):
@@ -236,7 +236,8 @@ def carga_masiva_locales(request):
             wb = openpyxl.load_workbook(archivo, data_only=True)
             ws = wb.active
             errores = []
-            exitos = 0
+            creados = 0
+            actualizados = 0
 
             header = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
             headers_map = {}
@@ -261,6 +262,8 @@ def carga_masiva_locales(request):
                         headers_map['ubicacion'] = idx
                     if h in ('superficie', 'superficie_m2', 'm2'):
                         headers_map['superficie_m2'] = idx
+                    if h in ('proindiviso', 'pro indiviso', '% proindiviso'):
+                        headers_map['proindiviso'] = idx    
                     if h in ('giro',):
                         headers_map['giro'] = idx
                     if h in ('status', 'estatus'):
@@ -278,6 +281,7 @@ def carga_masiva_locales(request):
 
             tipos_validos_habitacional = ('casa', 'departamento', 'terreno')
             tipos_validos_comercial = ('local', 'oficina', 'bodega', 'terreno')
+            estatus_validos = ('ocupado', 'disponible', 'mantenimiento')
 
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if not row or all((c is None or (isinstance(c, str) and c.strip() == "")) for c in row):
@@ -293,46 +297,59 @@ def carga_masiva_locales(request):
                     cuota = cell(row, 'cuota', 6)
                     ubicacion = cell(row, 'ubicacion', 7)
                     superficie_m2 = cell(row, 'superficie_m2', 8)
-                    giro = cell(row, 'giro', 9)
-                    status = cell(row, 'status', 10)
-                    observaciones = cell(row, 'observaciones', 11)
+                    proindiviso_val = cell(row, 'proindiviso', 9)
+                    giro = cell(row, 'giro', 10)
+                    status = cell(row, 'status', 11)
+                    observaciones = cell(row, 'observaciones', 12)
                     tipo_propiedad_val = cell(row, 'tipo_propiedad', None)
 
                     if request.user.is_superuser:
                         empresa = buscar_por_id_o_nombre(Empresa, empresa_val) if empresa_val else None
                         if not empresa:
-                            raise Exception(f"Fila {i}: No se encontró la empresa '{empresa_val}'")
+                            raise Exception(f"No se encontró la empresa '{empresa_val}'.")
                         es_habitacional_fila = empresa.segmento == 'habitacional'
                     else:
                         if not perfil or not getattr(perfil, 'empresa', None):
-                            raise Exception("No se pudo determinar la empresa del usuario")
+                            raise Exception("No se pudo determinar la empresa del usuario.")
                         empresa = perfil.empresa
                         es_habitacional_fila = es_habitacional
 
                     if not numero:
-                        raise Exception("Número vacío")
-
-                    if LocalComercial.objects.filter(empresa=empresa, numero=str(numero)).exists():
-                        raise Exception(f"El número '{numero}' ya existe para la empresa '{empresa.nombre}'.")
+                        raise Exception("La columna 'numero' está vacía.")
+                    numero_str = str(numero).strip()
 
                     try:
-                        cuota_decimal = Decimal(str(cuota)) if cuota not in (None, "") else Decimal('0.00')
+                        cuota_decimal = Decimal(str(cuota)) if cuota not in (None, "") else None
                     except (InvalidOperation, TypeError, ValueError):
-                        raise Exception(f"El valor de cuota '{cuota}' no es válido.")
+                        raise Exception(f"El valor de cuota '{cuota}' no es un número válido.")
 
-                    # --- Determinar tipo_propiedad, validado contra el segmento ---
+                    try:
+                        proindiviso_decimal = Decimal(str(proindiviso_val)) if proindiviso_val not in (None, "") else None
+                    except (InvalidOperation, TypeError, ValueError):
+                        raise Exception(f"El valor de proindiviso '{proindiviso_val}' no es un número válido.")
+
+
+                    # --- Validar tipo_propiedad contra el segmento ---
                     tipo_propiedad = str(tipo_propiedad_val).strip().lower() if tipo_propiedad_val not in (None, "") else None
                     tipos_validos = tipos_validos_habitacional if es_habitacional_fila else tipos_validos_comercial
 
                     if tipo_propiedad and tipo_propiedad not in tipos_validos:
                         raise Exception(
-                            f"'{tipo_propiedad}' no es válido para una empresa "
+                            f"Tipo de propiedad '{tipo_propiedad}' no válido para empresa "
                             f"{'habitacional' if es_habitacional_fila else 'comercial'}. "
                             f"Usa uno de: {', '.join(tipos_validos)}."
                         )
                     if not tipo_propiedad:
                         tipo_propiedad = 'departamento' if es_habitacional_fila else 'local'
 
+                    # --- Validar status si viene capturado ---
+                    status_norm = str(status).strip().lower() if status not in (None, "") else None
+                    if status_norm and status_norm not in estatus_validos:
+                        raise Exception(
+                            f"Estatus '{status_norm}' no válido. Usa uno de: {', '.join(estatus_validos)}."
+                        )
+
+                    # --- Cliente: buscar/crear igual que antes ---
                     rfc_norm = str(rfc_cliente).strip().upper() if rfc_cliente not in (None, "") else None
                     nombre_norm = str(nombre_cliente).strip() if nombre_cliente not in (None, "") else ""
 
@@ -355,51 +372,74 @@ def carga_masiva_locales(request):
                                 email=email_cliente or None,
                                 activo=True,
                             )
-                    else:
-                        if not nombre_norm:
-                            raise Exception("Nombre de cliente vacío y no se proporcionó RFC")
+                    elif nombre_norm:
                         qs = Cliente.objects.filter(empresa=empresa, nombre__iexact=nombre_norm)
                         if qs.exists():
                             cliente = qs.filter(rfc__isnull=False).exclude(rfc='').first() or qs.first()
                         else:
                             cliente = Cliente.objects.create(
-                                empresa=empresa,
-                                nombre=nombre_norm,
-                                email=email_cliente or None,
-                                activo=True,
+                                empresa=empresa, nombre=nombre_norm, email=email_cliente or None, activo=True,
                             )
+                    # Si no hay ni RFC ni nombre, cliente queda None -- se permite (propiedad sin asignar)
 
-                    from django.db import transaction
+                    # --- Crear O actualizar la propiedad (idempotente) ---
                     with transaction.atomic():
-                        LocalComercial.objects.create(
-                            empresa=empresa,
-                            propietario=propietario_val or "",
-                            cliente=cliente,
-                            numero=str(numero),
-                            cuota=cuota_decimal,
-                            tipo_propiedad=tipo_propiedad,
-                            # Giro y ubicación no aplican a habitacional -- se guardan
-                            # vacíos aunque la plantilla los traiga (por si acaso)
-                            ubicacion="" if es_habitacional_fila else (ubicacion or ""),
-                            superficie_m2=Decimal(str(superficie_m2)) if superficie_m2 not in (None, "") else None,
-                            giro="" if es_habitacional_fila else (giro or ""),
-                            status=status or "ocupado",
-                            observaciones=observaciones or ""
+                        propiedad, creada = LocalComercial.objects.get_or_create(
+                            empresa=empresa, numero=numero_str,
+                            defaults={
+                                'propietario': propietario_val or "",
+                                'cliente': cliente,
+                                'cuota': cuota_decimal or Decimal('0.00'),
+                                'tipo_propiedad': tipo_propiedad,
+                                'ubicacion': "" if es_habitacional_fila else (ubicacion or ""),
+                                'superficie_m2': Decimal(str(superficie_m2)) if superficie_m2 not in (None, "") else None,
+                                'proindiviso': proindiviso_decimal,
+                                'giro': "" if es_habitacional_fila else (giro or ""),
+                                'status': status_norm or "ocupado",
+                                'observaciones': observaciones or "",
+                            }
                         )
-
-                    exitos += 1
+                        if creada:
+                            creados += 1
+                        else:
+                            # Actualiza solo los campos que vienen con dato en el Excel,
+                            # para no borrar información que ya tenías capturada manualmente.
+                            if propietario_val:
+                                propiedad.propietario = propietario_val
+                            if cliente:
+                                propiedad.cliente = cliente
+                            if cuota_decimal is not None:
+                                propiedad.cuota = cuota_decimal
+                            if tipo_propiedad_val:
+                                propiedad.tipo_propiedad = tipo_propiedad
+                            if not es_habitacional_fila and ubicacion:
+                                propiedad.ubicacion = ubicacion
+                            if superficie_m2 not in (None, ""):
+                                propiedad.superficie_m2 = Decimal(str(superficie_m2))
+                            if proindiviso_decimal is not None:
+                                propiedad.proindiviso = proindiviso_decimal    
+                            if not es_habitacional_fila and giro:
+                                propiedad.giro = giro
+                            if status_norm:
+                                propiedad.status = status_norm
+                            if observaciones:
+                                propiedad.observaciones = observaciones
+                            propiedad.save()
+                            actualizados += 1
 
                 except Exception as e:
-                    errores.append(f"Fila {i}: {str(e) or repr(e)}")
+                    errores.append(f"Fila {i}: {str(e)}")
 
-            if exitos:
-                messages.success(request, f"¡{exitos} propiedades cargadas exitosamente!")
+            if creados or actualizados:
+                messages.success(
+                    request,
+                    f"✅ {creados} propiedades nuevas creadas, {actualizados} propiedades existentes actualizadas."
+                )
             if errores:
-                from django.utils.safestring import mark_safe
                 msg = "<br>".join(errores[:80])
                 if len(errores) > 80:
                     msg += f"<br>...y {len(errores)-80} errores más."
-                messages.error(request, mark_safe("Algunas propiedades no se cargaron:<br>" + msg))
+                messages.error(request, mark_safe("Algunas filas tuvieron problemas:<br>" + msg))
 
             return redirect('carga_masiva_locales')
     else:
@@ -420,23 +460,23 @@ def plantilla_locales_excel(request):
         ws.title = "Plantilla Viviendas"
         ws.append([
             'condominio', 'propietario', 'cliente', 'rfc', 'email', 'numero',
-            'cuota', 'tipo_propiedad', 'superficie_m2', 'status', 'observaciones'
+            'cuota', 'tipo_propiedad', 'superficie_m2', 'proindiviso', 'status', 'observaciones'
         ])
         ws.append([
             'Condominio Las Palmas AC', 'Juan Pérez', 'Juan Pérez', 'XXX-XXX-XXX',
-            'email@ejemplo.com', 'Depto-25A', '1500.00', 'departamento', '85.5',
+            '1500.00', 'departamento', '85.5', '0.1234',
             'ocupado', 'carga inicial'
         ])
     else:
         ws.title = "Plantilla Locales"
         ws.append([
             'condominio', 'propietario', 'cliente', 'rfc', 'email', 'numero',
-            'cuota', 'ubicacion', 'superficie_m2', 'giro', 'status', 'observaciones'
+            'cuota', 'ubicacion', 'superficie_m2', 'proindiviso', 'giro', 'status', 'observaciones'
         ])
         ws.append([
             'plaza en condominio AC', 'Tiendas Soriana SA de CV', 'Juan Pérez',
             'XXX-XXX-XXX', 'email@ejemplo.com', '101', '120.3', 'planta baja',
-            '30.5', 'venta ropa', 'ocupado', 'carga inicial'
+            '30.5', '50.56', 'venta ropa', 'ocupado', 'carga inicial'
         ])
 
     response = HttpResponse(
