@@ -232,7 +232,7 @@
             </a>
             <ul class="dropdown-menu">
               <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}"><i class="bi bi-list-ul me-2"></i>Incidencias</a></li>
-              {% if empresa.es_premium %}
+              {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}"><i class="bi bi-file-text me-2"></i>Reporte Asistencia</a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-text me-2"></i>Reporte Asistencia (PREMIUM)</a></li>
