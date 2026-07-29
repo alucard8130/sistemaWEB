@@ -798,7 +798,7 @@ window.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 
-{% comment %} {% if mostrar_recordatorio %}
+{% if mostrar_recordatorio %}
 <div id="modalRecordatorio" class="modal-overlay">
   <div class="modal-content">
     <h3>¡Atención!</h3>
@@ -830,7 +830,7 @@ function cerrarModal() {
   document.getElementById('modalRecordatorio').style.display = 'none';
 }
 </script>
-{% endif %} {% endcomment %}
+{% endif %}
 
 <!-- Modal Información Plus -->
 <div class="modal fade" id="modalInfoPlus" tabindex="-1" aria-labelledby="modalInfoPlusLabel" aria-hidden="true">
