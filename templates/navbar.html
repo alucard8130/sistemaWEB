@@ -47,7 +47,6 @@
               <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
               <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
               <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Empresa</a></li>
-              {% comment %} <li><a class="dropdown-item" href="{% url 'seleccionar_empresa' %}">Cambiar Empresa</a></li> {% endcomment %}
               <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
               <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
               <li><hr class="dropdown-divider"></li>
@@ -100,8 +99,6 @@
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item disabled" href="#"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios (PLUS)</a></li>
               {% endif %}
-              {% comment %} <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_traspasos' %}"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios</a></li> {% endcomment %}
             </ul>
           </li>
           <li class="nav-item dropdown">
@@ -110,7 +107,6 @@
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'crear_local' %}">Nueva Propiedad</a></li>{% endcomment %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_locales' %}"><i class="bi bi-building me-2"></i>Propiedades</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'locales_inactivos' %}"><i class="bi bi-building me-2"></i>Propiedades Inactivas</a></li>
               <li><hr class="dropdown-divider"></li>
@@ -125,7 +121,6 @@
             </a>
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'crear_area' %}">Nueva Área común</a></li>{% endcomment %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_areas' %}"><i class="bi bi-building me-2"></i>Áreas Comunes</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'areas_inactivas' %}"><i class="bi bi-building me-2"></i>Áreas Inactivas</a></li>
               <li><hr class="dropdown-divider"></li>
@@ -157,10 +152,8 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'facturar_mes' %}" title="Genera Masivamente las facturas por cuotas de mantenimiento y areas comunes"><i class="bi bi-calendar-check me-2"></i>Generacion Mensual Cuotas</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas' %}" title="Busca facturas de cuotas y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Cuotas Mantto y Areas</a></li>
-              {% comment %}<li><a class="dropdown-item" href="{% url 'crear_factura' %}" title="Crear una nueva factura de cuotas">Nueva Factura Cuotas</a></li>{% endcomment %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas_otros_ingresos' %}" title="Busca facturas de otros ingresos y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Otros Ingresos</a></li>
-              {% comment %}<li><a class="dropdown-item" href="{% url 'crear_factura_otros_ingresos' %}" title="Crear una nueva factura de otros ingresos">Nueva Factura Otros Ingresos</a></li>{% endcomment %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'verificacion_facturacion' %}" title="Verificación de facturación por local y área"><i class="bi bi-check2-circle me-2"></i>Verificación Facturación</a></li>
             </ul>
@@ -187,7 +180,6 @@
               {% endif %}
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales"><i class="bi bi-bar-chart me-2"></i>Grafico de Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
-              {% comment %}<li><a class="dropdown-item reporte-link" href="{% url 'registrar_deposito_por_identificar' %}" title="Registrar Deposito no identificado">Registrar Deposito no identificado</a></li>{% endcomment %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado"><i class="bi bi-question-circle me-2"></i>Depositos no identificados</a></li>
               <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
@@ -210,7 +202,6 @@
                     <i class="bi bi-p-circle me-1"></i> Cortes Z (Estacionamiento) (PREMIUM)
                 </a></li>
               {% endif %}
-              {% comment %}<li><a class="dropdown-item" href="{% url 'conciliaciones:resultado' estado_id=1 %}">Resultado Conciliación</a></li>{% endcomment %}
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
               {% endif %}
