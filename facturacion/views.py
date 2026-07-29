@@ -72,6 +72,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from datetime import date as date_cls
+import datetime as dt
 
 
 
@@ -815,13 +816,247 @@ def exportar_estado_cuenta_excel(request):
 
 
 # emision mensual facturas cuotas
+#@login_required
+# def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
+#     if request.method != "POST":
+#         return redirect("confirmar_facturacion")
+
+#     hoy = dt.date.today()
+#     año = int(request.POST.get("anio", hoy.year))
+#     mes = int(request.POST.get("mes", hoy.month))
+
+#     if "locales" in request.POST or "areas" in request.POST:
+#         facturar_locales = "locales" in request.POST
+#         facturar_areas = "areas" in request.POST
+
+#     if request.user.is_superuser:
+#         empresa_id = request.session.get("empresa_id")
+#         empresa = Empresa.objects.filter(id=empresa_id).first()
+#     else:
+#         empresa = request.user.perfilusuario.empresa
+
+#     if not empresa:
+#         messages.error(request, "No hay empresa seleccionada.")
+#         return redirect("confirmar_facturacion")
+
+#     fecha_factura = dt.date(año, mes, 1)
+#     facturas_creadas = 0
+#     facturas_omitidas = 0
+#     facturas_a_crear = []
+
+#     # Folios máximos — se calculan una sola vez
+#     def get_last_num(prefix):
+#         max_folio = Factura.objects.filter(
+#             empresa=empresa, folio__startswith=prefix
+#         ).aggregate(max_f=Max("folio"))["max_f"]
+#         if max_folio:
+#             try:
+#                 return int(max_folio.replace(prefix, ""))
+#             except Exception:
+#                 return 0
+#         return 0
+
+#     # ── LOCALES MENSUALES ──
+#     if facturar_locales:
+#         locales = LocalComercial.objects.filter(
+#             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+#         ).select_related("cliente")
+
+#         locales_ids = list(locales.values_list("id", flat=True))
+
+#         # Una query para saber cuáles ya tienen factura de mantenimiento este mes
+#         locales_con_factura = set(
+#             Factura.objects.filter(
+#                 local_id__in=locales_ids,
+#                 tipo_cuota="mantenimiento",
+#                 estatus__in=["pendiente", "cobrada"],
+#             )
+#             .filter(
+#                 Q(fecha_emision__year=año, fecha_emision__month=mes)
+#                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
+#             )
+#             .values_list("local_id", flat=True)
+#         )
+
+#         last_num_cm = get_last_num("CM-F")
+#         last_num_dg = get_last_num("DG-F")
+
+#         for local in locales:
+#             if local.id in locales_con_factura:
+#                 facturas_omitidas += 1
+#             else:
+#                 last_num_cm += 1
+#                 facturas_a_crear.append(
+#                     Factura(
+#                         empresa=empresa,
+#                         cliente=local.cliente,
+#                         local=local,
+#                         folio=f"CM-F{last_num_cm:05d}",
+#                         fecha_emision=fecha_factura,
+#                         fecha_vencimiento=fecha_factura,
+#                         monto=local.cuota,
+#                         tipo_cuota="mantenimiento",
+#                         estatus="pendiente",
+#                         observaciones="Cuota mensual",
+#                     )
+#                 )
+#                 facturas_creadas += 1
+
+#         # Locales con cuota anual — solo en enero
+#         if mes == 1:
+#             locales_anuales = LocalComercial.objects.filter(
+#                 empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+#             ).select_related("cliente")
+
+#             locales_anuales_ids = list(locales_anuales.values_list("id", flat=True))
+#             locales_anuales_con_factura = set(
+#                 Factura.objects.filter(
+#                     local_id__in=locales_anuales_ids,
+#                     tipo_cuota="mantenimiento",
+#                     estatus__in=["pendiente", "cobrada"],
+#                     fecha_emision__year=año,
+#                 ).values_list("local_id", flat=True)
+#             )
+
+#             for local in locales_anuales:
+#                 if local.id not in locales_anuales_con_factura:
+#                     last_num_cm += 1
+#                     facturas_a_crear.append(
+#                         Factura(
+#                             empresa=empresa,
+#                             cliente=local.cliente,
+#                             local=local,
+#                             folio=f"CM-F{last_num_cm:05d}",
+#                             fecha_emision=fecha_factura,
+#                             fecha_vencimiento=fecha_factura,
+#                             monto=local.cuota,
+#                             tipo_cuota="mantenimiento",
+#                             estatus="pendiente",
+#                             observaciones="Cuota anual",
+#                         )
+#                     )
+#                     facturas_creadas += 1
+
+#     # ── ÁREAS COMUNES MENSUALES ──
+#     if facturar_areas:
+#         areas = AreaComun.objects.filter(
+#             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+#         ).select_related("cliente")
+
+#         areas_ids = list(areas.values_list("id", flat=True))
+
+#         # Una query para saber cuáles ya tienen factura de renta este mes
+#         areas_con_factura = set(
+#             Factura.objects.filter(
+#                 area_comun_id__in=areas_ids,
+#                 tipo_cuota="renta",
+#                 estatus__in=["pendiente", "cobrada"],
+#             )
+#             .filter(
+#                 Q(fecha_emision__year=año, fecha_emision__month=mes)
+#                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
+#             )
+#             .values_list("area_comun_id", flat=True)
+#         )
+
+#         last_num_ac = get_last_num("AC-F")
+#         if "last_num_dg" not in dir():
+#             last_num_dg = get_last_num("DG-F")
+
+#         for area in areas:
+#             if area.id in areas_con_factura:
+#                 facturas_omitidas += 1
+#             else:
+#                 last_num_ac += 1
+#                 facturas_a_crear.append(
+#                     Factura(
+#                         empresa=empresa,
+#                         cliente=area.cliente,
+#                         area_comun=area,
+#                         folio=f"AC-F{last_num_ac:05d}",
+#                         fecha_emision=fecha_factura,
+#                         fecha_vencimiento=fecha_factura,
+#                         monto=area.cuota,
+#                         tipo_cuota="renta",
+#                         estatus="pendiente",
+#                         observaciones="Cuota mensual",
+#                     )
+#                 )
+#                 facturas_creadas += 1
+
+#             # Depósito en garantía por única vez
+#             if area.deposito and area.deposito > 0:
+#                 existe_deposito = Factura.objects.filter(
+#                     cliente=area.cliente,
+#                     area_comun=area,
+#                     tipo_cuota="deposito",
+#                 ).exists()
+#                 if not existe_deposito:
+#                     last_num_dg += 1
+#                     facturas_a_crear.append(
+#                         Factura(
+#                             empresa=empresa,
+#                             cliente=area.cliente,
+#                             area_comun=area,
+#                             folio=f"DG-F{last_num_dg:05d}",
+#                             fecha_emision=fecha_factura,
+#                             fecha_vencimiento=fecha_factura,
+#                             monto=area.deposito,
+#                             tipo_cuota="deposito",
+#                             estatus="pendiente",
+#                             observaciones="Depósito en garantía",
+#                         )
+#                     )
+
+#         # Áreas con cuota anual — solo en enero
+#         if mes == 1:
+#             areas_anuales = AreaComun.objects.filter(
+#                 empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+#             ).select_related("cliente")
+
+#             areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
+#             areas_anuales_con_factura = set(
+#                 Factura.objects.filter(
+#                     area_comun_id__in=areas_anuales_ids,
+#                     tipo_cuota="renta",
+#                     estatus__in=["pendiente", "cobrada"],
+#                     fecha_emision__year=año,
+#                 ).values_list("area_comun_id", flat=True)
+#             )
+
+#             for area in areas_anuales:
+#                 if area.id not in areas_anuales_con_factura:
+#                     last_num_ac += 1
+#                     facturas_a_crear.append(
+#                         Factura(
+#                             empresa=empresa,
+#                             cliente=area.cliente,
+#                             area_comun=area,
+#                             folio=f"AC-F{last_num_ac:05d}",
+#                             fecha_emision=fecha_factura,
+#                             fecha_vencimiento=fecha_factura,
+#                             monto=area.cuota,
+#                             tipo_cuota="renta",
+#                             estatus="pendiente",
+#                             observaciones="Cuota anual",
+#                         )
+#                     )
+#                     facturas_creadas += 1
+
+#     # Bulk create
+#     if facturas_a_crear:
+#         Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
+
+#     messages.success(
+#         request,
+#         f"✅ {facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}. {facturas_omitidas} omitidas (ya existían).",
+#     )
+#     return redirect("lista_facturas")
+
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     if request.method != "POST":
         return redirect("confirmar_facturacion")
-
-    import datetime as dt
-    from django.db.models import Max, Q
 
     hoy = dt.date.today()
     año = int(request.POST.get("anio", hoy.year))
@@ -841,213 +1076,11 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
         messages.error(request, "No hay empresa seleccionada.")
         return redirect("confirmar_facturacion")
 
+    from .utils import generar_facturas_mes
     fecha_factura = dt.date(año, mes, 1)
-    facturas_creadas = 0
-    facturas_omitidas = 0
-    facturas_a_crear = []
-
-    # Folios máximos — se calculan una sola vez
-    def get_last_num(prefix):
-        max_folio = Factura.objects.filter(
-            empresa=empresa, folio__startswith=prefix
-        ).aggregate(max_f=Max("folio"))["max_f"]
-        if max_folio:
-            try:
-                return int(max_folio.replace(prefix, ""))
-            except Exception:
-                return 0
-        return 0
-
-    # ── LOCALES MENSUALES ──
-    if facturar_locales:
-        locales = LocalComercial.objects.filter(
-            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
-        ).select_related("cliente")
-
-        locales_ids = list(locales.values_list("id", flat=True))
-
-        # Una query para saber cuáles ya tienen factura de mantenimiento este mes
-        locales_con_factura = set(
-            Factura.objects.filter(
-                local_id__in=locales_ids,
-                tipo_cuota="mantenimiento",
-                estatus__in=["pendiente", "cobrada"],
-            )
-            .filter(
-                Q(fecha_emision__year=año, fecha_emision__month=mes)
-                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-            )
-            .values_list("local_id", flat=True)
-        )
-
-        last_num_cm = get_last_num("CM-F")
-        last_num_dg = get_last_num("DG-F")
-
-        for local in locales:
-            if local.id in locales_con_factura:
-                facturas_omitidas += 1
-            else:
-                last_num_cm += 1
-                facturas_a_crear.append(
-                    Factura(
-                        empresa=empresa,
-                        cliente=local.cliente,
-                        local=local,
-                        folio=f"CM-F{last_num_cm:05d}",
-                        fecha_emision=fecha_factura,
-                        fecha_vencimiento=fecha_factura,
-                        monto=local.cuota,
-                        tipo_cuota="mantenimiento",
-                        estatus="pendiente",
-                        observaciones="Cuota mensual",
-                    )
-                )
-                facturas_creadas += 1
-
-        # Locales con cuota anual — solo en enero
-        if mes == 1:
-            locales_anuales = LocalComercial.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
-            ).select_related("cliente")
-
-            locales_anuales_ids = list(locales_anuales.values_list("id", flat=True))
-            locales_anuales_con_factura = set(
-                Factura.objects.filter(
-                    local_id__in=locales_anuales_ids,
-                    tipo_cuota="mantenimiento",
-                    estatus__in=["pendiente", "cobrada"],
-                    fecha_emision__year=año,
-                ).values_list("local_id", flat=True)
-            )
-
-            for local in locales_anuales:
-                if local.id not in locales_anuales_con_factura:
-                    last_num_cm += 1
-                    facturas_a_crear.append(
-                        Factura(
-                            empresa=empresa,
-                            cliente=local.cliente,
-                            local=local,
-                            folio=f"CM-F{last_num_cm:05d}",
-                            fecha_emision=fecha_factura,
-                            fecha_vencimiento=fecha_factura,
-                            monto=local.cuota,
-                            tipo_cuota="mantenimiento",
-                            estatus="pendiente",
-                            observaciones="Cuota anual",
-                        )
-                    )
-                    facturas_creadas += 1
-
-    # ── ÁREAS COMUNES MENSUALES ──
-    if facturar_areas:
-        areas = AreaComun.objects.filter(
-            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
-        ).select_related("cliente")
-
-        areas_ids = list(areas.values_list("id", flat=True))
-
-        # Una query para saber cuáles ya tienen factura de renta este mes
-        areas_con_factura = set(
-            Factura.objects.filter(
-                area_comun_id__in=areas_ids,
-                tipo_cuota="renta",
-                estatus__in=["pendiente", "cobrada"],
-            )
-            .filter(
-                Q(fecha_emision__year=año, fecha_emision__month=mes)
-                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-            )
-            .values_list("area_comun_id", flat=True)
-        )
-
-        last_num_ac = get_last_num("AC-F")
-        if "last_num_dg" not in dir():
-            last_num_dg = get_last_num("DG-F")
-
-        for area in areas:
-            if area.id in areas_con_factura:
-                facturas_omitidas += 1
-            else:
-                last_num_ac += 1
-                facturas_a_crear.append(
-                    Factura(
-                        empresa=empresa,
-                        cliente=area.cliente,
-                        area_comun=area,
-                        folio=f"AC-F{last_num_ac:05d}",
-                        fecha_emision=fecha_factura,
-                        fecha_vencimiento=fecha_factura,
-                        monto=area.cuota,
-                        tipo_cuota="renta",
-                        estatus="pendiente",
-                        observaciones="Cuota mensual",
-                    )
-                )
-                facturas_creadas += 1
-
-            # Depósito en garantía por única vez
-            if area.deposito and area.deposito > 0:
-                existe_deposito = Factura.objects.filter(
-                    cliente=area.cliente,
-                    area_comun=area,
-                    tipo_cuota="deposito",
-                ).exists()
-                if not existe_deposito:
-                    last_num_dg += 1
-                    facturas_a_crear.append(
-                        Factura(
-                            empresa=empresa,
-                            cliente=area.cliente,
-                            area_comun=area,
-                            folio=f"DG-F{last_num_dg:05d}",
-                            fecha_emision=fecha_factura,
-                            fecha_vencimiento=fecha_factura,
-                            monto=area.deposito,
-                            tipo_cuota="deposito",
-                            estatus="pendiente",
-                            observaciones="Depósito en garantía",
-                        )
-                    )
-
-        # Áreas con cuota anual — solo en enero
-        if mes == 1:
-            areas_anuales = AreaComun.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
-            ).select_related("cliente")
-
-            areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
-            areas_anuales_con_factura = set(
-                Factura.objects.filter(
-                    area_comun_id__in=areas_anuales_ids,
-                    tipo_cuota="renta",
-                    estatus__in=["pendiente", "cobrada"],
-                    fecha_emision__year=año,
-                ).values_list("area_comun_id", flat=True)
-            )
-
-            for area in areas_anuales:
-                if area.id not in areas_anuales_con_factura:
-                    last_num_ac += 1
-                    facturas_a_crear.append(
-                        Factura(
-                            empresa=empresa,
-                            cliente=area.cliente,
-                            area_comun=area,
-                            folio=f"AC-F{last_num_ac:05d}",
-                            fecha_emision=fecha_factura,
-                            fecha_vencimiento=fecha_factura,
-                            monto=area.cuota,
-                            tipo_cuota="renta",
-                            estatus="pendiente",
-                            observaciones="Cuota anual",
-                        )
-                    )
-                    facturas_creadas += 1
-
-    # Bulk create
-    if facturas_a_crear:
-        Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
+    facturas_creadas, facturas_omitidas = generar_facturas_mes(
+        empresa, año, mes, facturar_locales, facturar_areas
+    )
 
     messages.success(
         request,

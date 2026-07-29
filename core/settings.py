@@ -105,8 +105,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+####################BASE DE DATOS########################
 
 #desarrollo sqlite
 # DATABASES = {
@@ -135,6 +134,9 @@ DATABASES = {
     )
 }
 
+
+
+#######################EMAIL CONFIGURATION########################
 
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
