@@ -305,26 +305,6 @@ if (premiumBtn) {
         </div>
     </div>
 
-    <!-- ACCESOS RÁPIDOS -->
-    {% comment %} <div class="quick-grid">
-        <a href="{% url 'facturar_mes' %}" class="quick-btn">
-            <div class="icon" style="background:#e8f4ff;"><i class="bi bi-receipt text-primary"></i></div>
-            <span>Generar facturas</span>
-        </a>
-        <a href="{% url 'lista_facturas' %}" class="quick-btn">
-            <div class="icon" style="background:#eafaf1;"><i class="bi bi-cash-coin text-success"></i></div>
-            <span>Registrar cobro</span>
-        </a>
-        <a href="{% url 'gasto_nuevo' %}" class="quick-btn">
-            <div class="icon" style="background:#fdf0f0;"><i class="bi bi-receipt-cutoff text-danger"></i></div>
-            <span>Nueva solicitud gasto</span>
-        </a>
-        <a href="{% url 'dashboard_saldos' %}" class="quick-btn">
-            <div class="icon" style="background:#fef9e7;"><i class="bi bi-exclamation-triangle" style="color:#d4ac0d;"></i></div>
-            <span>Ver cartera vencida</span>
-        </a>
-    </div> {% endcomment %}
-
     <!-- KPI GRID -->
     <div class="kpi-grid">
 
@@ -817,7 +797,8 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endif %}
-{% if mostrar_recordatorio %}
+
+{% comment %} {% if mostrar_recordatorio %}
 <div id="modalRecordatorio" class="modal-overlay">
   <div class="modal-content">
     <h3>¡Atención!</h3>
@@ -849,7 +830,7 @@ function cerrarModal() {
   document.getElementById('modalRecordatorio').style.display = 'none';
 }
 </script>
-{% endif %}
+{% endif %} {% endcomment %}
 
 <!-- Modal Información Plus -->
 <div class="modal fade" id="modalInfoPlus" tabindex="-1" aria-labelledby="modalInfoPlusLabel" aria-hidden="true">
