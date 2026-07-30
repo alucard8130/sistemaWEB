@@ -2943,13 +2943,6 @@ def timbrar_factura(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
     empresa = factura.empresa
     next_url = request.GET.get("next") or request.POST.get("next")
-    # # Solo permite timbrar si la empresa es PREMIUM
-    # if not empresa.es_premium:
-    #     messages.error(
-    #         request, "El timbrado solo está disponible en la versión PREMIUM del sistema."
-    #     )
-    #     return redirect("lista_facturas")
-
     if (
         not request.user.is_superuser
         and factura.empresa != request.user.perfilusuario.empresa
@@ -3342,15 +3335,6 @@ def descargar_cfdi_facturama(request, id):
 @login_required
 def timbrar_factura_otros_ingresos(request, pk):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=pk)
-    # empresa = factura.empresa
-
-    # # Solo permite timbrar si la empresa es PLUS
-    # if not empresa.es_plus:
-    #     messages.error(
-    #         request, "El timbrado solo está disponible en la versión PLUS del sistema."
-    #     )
-    #     return redirect("lista_facturas_otros_ingresos")
-
     if factura.uuid:
         messages.info(request, "La factura ya está timbrada.")
         return redirect("lista_facturas_otros_ingresos")
@@ -3548,39 +3532,6 @@ def visitante_registro_api(request):
 
 
 
-# def visitante_login_api(request):
-#     username = request.data.get("username")
-#     password = request.data.get("password")
-#     try:
-#         visitante = VisitanteAcceso.objects.get(username=username)
-#         if visitante.check_password(password):
-#             # Obtén todas las empresas asociadas al visitante
-#             empresas = visitante.empresas.all().distinct()
-#             empresas_data = [
-#                 {
-#                     "id": e.id,
-#                     "nombre": e.nombre,
-#                     "email": e.email,
-#                     "stripe_public_key": e.stripe_public_key,
-#                 }
-#                 for e in empresas
-#             ]
-#             es_admin = getattr(visitante, "es_admin", False)
-#             # Crea o recupera el token
-#             token, _ = VisitanteToken.objects.get_or_create(visitante=visitante)
-#             return Response(
-#                 {
-#                     "ok": True,
-#                     "visitante_id": visitante.id,
-#                     "empresas": empresas_data,
-#                     "token": token.key,
-#                     "es_admin": es_admin,
-#                 }
-#             )
-#         else:
-#             return Response({"ok": False, "error": "Contraseña incorrecta"}, status=400)
-#     except VisitanteAcceso.DoesNotExist:
-#         return Response({"ok": False, "error": "Usuario no encontrado"}, status=404)
 # API login visitante
 @api_view(["POST"])
 def visitante_login_api(request):
@@ -3666,7 +3617,6 @@ def api_reporte_ingresos_vs_gastos(request):
         return Response({"error": "Acceso denegado"}, status=403)
 
     if getattr(visitante, "es_admin", False):
-        # if getattr(visitante, "es_admin", False) or request.GET.get("empresa_id"):
         empresa_id = request.GET.get("empresa_id")
         if not empresa_id:
             return Response({"error": "Debe seleccionar una empresa"}, status=400)
@@ -3713,10 +3663,6 @@ def api_reporte_ingresos_vs_gastos(request):
             mes = int(mes)
             anio = int(anio)
             fecha_inicio = date(anio, mes, 1)
-            # if mes == 12:
-            #     fecha_fin = date(anio, 12, 31)
-            # else:
-            #     fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
             fecha_fin = (
                 date(anio, mes + 1, 1) - timedelta(days=1)
                 if mes < 12
@@ -3735,7 +3681,6 @@ def api_reporte_ingresos_vs_gastos(request):
     # Convierte a date si es string
     if isinstance(fecha_inicio, str):
         try:
-            # fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
             fecha_inicio = date.fromisoformat(fecha_inicio)
         except Exception:
             fecha_inicio = None
@@ -3744,14 +3689,9 @@ def api_reporte_ingresos_vs_gastos(request):
 
     if isinstance(fecha_fin, str):
         try:
-            # fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
             fecha_fin = date.fromisoformat(fecha_fin)
         except Exception:
             fecha_fin = None
-    # else:
-    #     fecha_fin_dt = fecha_fin
-
-    # Para mostrar el mes y año en letras
     try:
         locale.setlocale(locale.LC_TIME, "es_MX.UTF-8")
     except locale.Error:
@@ -3760,15 +3700,6 @@ def api_reporte_ingresos_vs_gastos(request):
         except locale.Error:
             locale.setlocale(locale.LC_TIME, "C")  # Fallback seguro
 
-    # mes_letra = ""
-    # if (
-    #     fecha_inicio_dt
-    #     and fecha_fin_dt
-    #     and fecha_inicio_dt == fecha_fin_dt.replace(day=1)
-    # ):
-    #     mes_letra = fecha_inicio_dt.strftime("%B %Y").capitalize()
-    # elif fecha_inicio_dt and fecha_fin_dt:
-    #     mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
     mes_letra = ""
     if fecha_inicio and fecha_fin:
@@ -3793,7 +3724,7 @@ def api_reporte_ingresos_vs_gastos(request):
 
     # PAGOS POR IDENTIFICAR
     pagos_por_identificar = Pago.objects.filter(
-        factura__isnull=True, identificado=False
+        factura__isnull=True, identificado=False,empresa=empresa
     )
 
     # Aplica filtros de fecha
@@ -4005,6 +3936,9 @@ def api_dashboard_saldos_visitante(request):
         except ValueError:
             pass
 
+    # NUEVO — evita N+1 al serializar cliente/empresa/local/área_comun
+    facturas = facturas.select_related("cliente", "empresa", "local", "area_comun")
+
     pagos_subquery = (
         Pago.objects.filter(factura=OuterRef("pk"))
         .values("factura")
@@ -4076,6 +4010,9 @@ def api_dashboard_saldos_visitante(request):
             facturas_otros = facturas_otros.filter(fecha_vencimiento__month=mes)
         except ValueError:
             pass
+
+    # NUEVO — evita N+1 al serializar cliente/empresa/tipo_ingreso
+    facturas_otros = facturas_otros.select_related("cliente", "empresa", "tipo_ingreso")  
 
     cobros_subquery = (
         CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"))
