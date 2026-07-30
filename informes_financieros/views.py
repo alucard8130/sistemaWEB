@@ -633,15 +633,8 @@ def estado_resultados(request):
     if isinstance(tipos, list)
     )
 
-    # Justo después de calcular total_gastos en la vista
-    # print(f"DEBUG total_gastos: {total_gastos}")
-    # print(f"DEBUG total_ingresos: {total_ingresos}")
-    # print(f"DEBUG saldo_inicial: {saldo_inicial}")
-    # print(f"DEBUG saldo_final_flujo: {saldo_inicial + total_ingresos - total_gastos}")
-
     # --- SALDO FINAL FLUJO ---
     saldo_final_flujo = saldo_inicial + total_ingresos - total_gastos
-    #saldo_final_bancos_menos_caja = saldo_final_flujo - saldo_caja_chica
     saldo = total_ingresos - total_gastos
 
 
@@ -659,8 +652,6 @@ def estado_resultados(request):
             "saldo": saldo,
             "saldo_inicial": saldo_inicial,
             "saldo_final_flujo": saldo_final_flujo,
-            #"saldo_caja_chica": saldo_caja_chica,
-            #"saldo_final_bancos_menos_caja": saldo_final_bancos_menos_caja,
             "fecha_inicio": fecha_inicio.strftime('%Y-%m-%d') if fecha_inicio else '',
             "fecha_fin": fecha_fin.strftime('%Y-%m-%d') if fecha_fin else '',
             "mes": str(mes or ""),
@@ -676,8 +667,6 @@ def estado_resultados(request):
 
 @login_o_portal_required 
 def exportar_estado_resultados_excel(request):
-    from collections import OrderedDict
-
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     mes = request.GET.get("mes")
@@ -709,8 +698,6 @@ def exportar_estado_resultados_excel(request):
     # --- Querysets base ---
     pagos = Pago.objects.exclude(forma_pago="nota_credito")
     cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
-    gastos_caja_chica = GastoCajaChica.objects.all()
-    vales_caja_chica = ValeCaja.objects.all()
 
     # --- Periodo ---
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
@@ -751,8 +738,6 @@ def exportar_estado_resultados_excel(request):
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
-        gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
-        vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
 
     gastos_modo = PagoGasto.objects.all()
     if empresa_id:
@@ -791,13 +776,18 @@ def exportar_estado_resultados_excel(request):
                         CobroOtrosIngresos.objects
                         .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
                         .aggregate(t=Sum("monto"))["t"] or 0
+                    ) + float(
+                        Pago.objects.filter(
+                            factura__isnull=True, identificado=False, empresa_id=empresa_id,
+                            fecha_pago__gte=fi, fecha_pago__lte=ff,
+                        ).aggregate(t=Sum("monto"))["t"] or 0
                     )
                     gto = float(
                     PagoGasto.objects
                     .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
                     .aggregate(t=Sum("monto"))["t"] or 0
                     ) + float(
-                        FondeoCajaChica.objects  # ← usar fondeos, NO gastos individuales
+                        FondeoCajaChica.objects
                         .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
                         .aggregate(t=Sum("importe_cheque"))["t"] or 0
                     )
@@ -808,14 +798,10 @@ def exportar_estado_resultados_excel(request):
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         cobros_otros = cobros_otros.filter(fecha_cobro__gte=fecha_inicio)
         gastos_modo = gastos_modo.filter(fecha_pago__gte=fecha_inicio)
-        gastos_caja_chica = gastos_caja_chica.filter(fecha__gte=fecha_inicio)
-        vales_caja_chica = vales_caja_chica.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin)
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos_modo = gastos_modo.filter(fecha_pago__lte=fecha_fin)
-        gastos_caja_chica = gastos_caja_chica.filter(fecha__lte=fecha_fin)
-        vales_caja_chica = vales_caja_chica.filter(fecha__lte=fecha_fin)
 
     # --- Depósitos no identificados ---
     pagos_por_identificar = Pago.objects.filter(factura__isnull=True, identificado=False)
@@ -856,7 +842,7 @@ def exportar_estado_resultados_excel(request):
     ingresos_por_origen["Depósitos no identificados"] = total_pagos_por_identificar
     total_ingresos = float(sum(ingresos_por_origen.values()))
 
-    # --- GASTOS ---
+    # --- GASTOS (Caja Chica = 1 sola línea de Fondeos, igual que la vista web) ---
     def agregar_a_estructura_excel(estructura, qs, grupo_key, subgrupo_key, tipo_key, monto_key):
         for g in qs.values(grupo_key, subgrupo_key, tipo_key).annotate(total=Sum(monto_key)):
             grupo = (g[grupo_key] or "Sin grupo").strip().title()
@@ -871,21 +857,28 @@ def exportar_estado_resultados_excel(request):
         "gasto__tipo_gasto__subgrupo__grupo__nombre",
         "gasto__tipo_gasto__subgrupo__nombre",
         "gasto__tipo_gasto__nombre", "monto")
-    agregar_a_estructura_excel(estructura_gastos, gastos_caja_chica,
-        "tipo_gasto__subgrupo__grupo__nombre",
-        "tipo_gasto__subgrupo__nombre",
-        "tipo_gasto__nombre", "importe")
-    agregar_a_estructura_excel(estructura_gastos, vales_caja_chica,
-        "tipo_gasto__subgrupo__grupo__nombre",
-        "tipo_gasto__subgrupo__nombre",
-        "tipo_gasto__nombre", "importe")
+
+    filtros_fondeo = {}
+    if empresa_id:
+        filtros_fondeo["empresa_id"] = empresa_id
+    if fecha_inicio:
+        filtros_fondeo["fecha__gte"] = fecha_inicio
+    if fecha_fin:
+        filtros_fondeo["fecha__lte"] = fecha_fin
+
+    fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo)
+    total_fondeos = float(fondeos_periodo.aggregate(t=Sum("importe_cheque"))["t"] or 0)
+    if total_fondeos > 0:
+        estructura_gastos.setdefault("Caja Chica", OrderedDict())
+        estructura_gastos["Caja Chica"]["Fondeos"] = [{"tipo": "Fondeo de caja chica", "total": total_fondeos}]
 
     for grupo in estructura_gastos:
         for subgrupo in estructura_gastos[grupo]:
             tipos_dict = estructura_gastos[grupo][subgrupo]
-            estructura_gastos[grupo][subgrupo] = [
-                {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
-            ]
+            if isinstance(tipos_dict, dict):
+                estructura_gastos[grupo][subgrupo] = [
+                    {"tipo": tipo, "total": total} for tipo, total in tipos_dict.items()
+                ]
 
     total_gastos = sum(
         sum(t["total"] for t in tipos)
