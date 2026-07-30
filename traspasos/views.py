@@ -365,7 +365,7 @@ def nuevo_movimiento_inversion(request):
                             factura=factura_oi,
                             fecha_cobro=fecha,
                             monto=monto,
-                            forma_cobro="rendimiento_inversion",
+                            forma_cobro="transferencia",
                             cuenta_bancaria=cuenta_inversion,
                             registrado_por=request.user,
                             observaciones="Aplicado automáticamente desde movimiento de inversión",
