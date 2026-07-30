@@ -13,11 +13,11 @@ class LocalComercial(models.Model):
     cuota = models.DecimalField(max_digits=100, decimal_places=2)
     giro = models.CharField(max_length=255, blank=True, null=True)
     STATUS_CHOICES = [
-        ('ocupado', 'Ocupado'),
-        ('disponible', 'Disponible'),
-        ('mantenimiento', 'Remodelacion'),
-        ('legal', 'Juicio'), 
-        ('venta', 'Venta'),
+        ('ocupado', 'Ocup.'),
+        ('disponible', 'Disp.'),
+        ('mantenimiento', 'en Remod.'),
+        ('legal', 'en Juicio'), 
+        ('venta', 'en Venta'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ocupado')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
