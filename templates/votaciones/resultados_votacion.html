@@ -3,66 +3,105 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Resultados de la votación</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .voto-list-item {
+            font-size: 0.85rem;
+        }
+        .voto-list-item .pct {
+            font-size: 0.72rem;
+            color: #6c757d;
+            margin-left: 6px;
+        }
+        table.tabla-votos td, table.tabla-votos th {
+            font-size: 0.78rem;
+            padding: 0.45rem 0.6rem;
+        }
+        @media (max-width: 576px) {
+            table.tabla-votos td, table.tabla-votos th {
+                font-size: 0.72rem;
+            }
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <div class="container mt-4">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container mt-4 px-3">
         <div class="row justify-content-center">
             <div class="col-lg-9 col-md-11">
                 <div class="card shadow-sm border-0 rounded-3">
                     <div class="card-header bg-info text-white">
-                        <h4 class="mb-0">
+                        <h4 class="mb-0" style="font-size:1.15rem;">
                             <i class="bi bi-bar-chart-line me-2"></i>
                             Resultados de la votación
                         </h4>
                     </div>
                     <div class="card-body">
                         <h5 class="mb-3">{{ tema.titulo }}</h5>
-                        <p class="mb-4">{{ tema.descripcion }}</p>
+                        <p class="mb-4 text-muted">{{ tema.descripcion }}</p>
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <ul class="list-group mb-3">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center voto-list-item">
                                         Sí
-                                        <span class="badge bg-success rounded-pill">{{ si }}</span>
+                                        <span>
+                                            <span class="badge bg-success rounded-pill">{{ si }}</span>
+                                            <span class="pct">{% if total %}{% widthratio si total 100 %}%{% endif %}</span>
+                                        </span>
                                     </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center voto-list-item">
                                         No
-                                        <span class="badge bg-danger rounded-pill">{{ no }}</span>
+                                        <span>
+                                            <span class="badge bg-danger rounded-pill">{{ no }}</span>
+                                            <span class="pct">{% if total %}{% widthratio no total 100 %}%{% endif %}</span>
+                                        </span>
                                     </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center voto-list-item">
                                         Abstención
-                                        <span class="badge bg-warning text-dark rounded-pill">{{ abstencion }}</span>
+                                        <span>
+                                            <span class="badge bg-warning text-dark rounded-pill">{{ abstencion }}</span>
+                                            <span class="pct">{% if total %}{% widthratio abstencion total 100 %}%{% endif %}</span>
+                                        </span>
                                     </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center voto-list-item">
                                         Pendientes
-                                        <span class="badge bg-secondary rounded-pill">{{ pendientes }}</span>
+                                        <span>
+                                            <span class="badge bg-secondary rounded-pill">{{ pendientes }}</span>
+                                            <span class="pct">{% if total %}{% widthratio pendientes total 100 %}%{% endif %}</span>
+                                        </span>
                                     </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center voto-list-item fw-bold">
                                         Total
                                         <span class="badge bg-primary rounded-pill">{{ total }}</span>
                                     </li>
                                 </ul>
                             </div>
                             <div class="col-md-6 d-flex align-items-center justify-content-center">
-                                <canvas id="graficoVotos" width="250" height="250"></canvas>
+                                <div style="max-width: 250px; width: 100%;">
+                                    <canvas id="graficoVotos"></canvas>
+                                </div>
                             </div>
                         </div>
 
                         <h6 class="mt-4 mb-2">Detalle de votos</h6>
                         <div class="table-responsive rounded-3 border">
-                            <table class="table table-sm align-middle mb-0 shadow-sm">
+                            <table class="table tabla-votos table-sm align-middle mb-0 shadow-sm">
                                 <thead>
                                     <tr>
                                         <th>Email</th>
@@ -87,6 +126,10 @@
                                         </td>
                                         <td>{{ v.fecha_voto|date:"d/m/Y H:i"|default:"-" }}</td>
                                     </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">Sin votos registrados todavía.</td>
+                                    </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -102,10 +145,8 @@
         </div>
     </div>
 
-    <!-- Footer -->
-{% include "tool_bar.html" %}
+    {% include "tool_bar.html" %}
 
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     const ctx = document.getElementById('graficoVotos').getContext('2d');
@@ -116,17 +157,19 @@
             datasets: [{
                 data: [{{ si }}, {{ no }}, {{ abstencion }}, {{ pendientes }}],
                 backgroundColor: ['#4caf50', '#f44336', '#ffc107', '#bdbdbd'],
+                borderWidth: 2,
+                borderColor: '#fff',
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
             plugins: {
                 legend: {
                     position: 'bottom',
+                    labels: { font: { size: 11 }, boxWidth: 12 }
                 },
-                title: {
-                    display: false
-                }
+                title: { display: false }
             }
         }
     });

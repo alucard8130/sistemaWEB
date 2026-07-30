@@ -1,293 +1,312 @@
-{% load static %} {% load humanize %}
+{% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
   <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 28/08/2025
-      Description: List of registered common areas
-    -->
+ 
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>Lista áreas</title>
-    <!-- Bootstrap base styles -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <!-- Bootstrap icons -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
-      rel="stylesheet"
-    />
-    <!-- Google Font Rubik -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Rubik&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Customised CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+    <style>
+        .kpi-card {
+            border: none;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            flex: 1 1 320px;
+            min-width: 260px;
+            overflow: hidden;
+        }
+        .kpi-card .card-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 100%);
+            border: none;
+            font-weight: 600;
+            font-size: 0.78rem;
+            padding: 0.5rem 0.85rem;
+        }
+        .kpi-card .list-group-item {
+            font-size: 0.72rem;
+            padding: 0.4rem 0.85rem;
+            border-color: #f1f5f9;
+        }
+        .kpi-card .list-group-item strong { color: #0f2d52; }
+
+        .areas-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+        .areas-toolbar form { flex: 1 1 260px; display: flex; gap: 8px; }
+        .areas-toolbar form input { min-width: 0; }
+
+        @media (max-width: 576px) {
+            .kpi-card { min-width: 100%; }
+            .areas-toolbar { flex-direction: column; }
+            .areas-toolbar a.btn { width: 100%; }
+        }
+
+        table.tabla-areas td, table.tabla-areas th {
+            white-space: nowrap;
+            padding: 0.4rem 0.5rem;
+            font-size: 0.76rem;
+        }
+        table.tabla-areas .btn-sm {
+            padding: 0.15rem 0.4rem;
+            font-size: 0.72rem;
+        }
+        table.tabla-areas .badge {
+            font-size: 0.68rem;
+        }
+        .col-giro {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap !important;
+        }
+    </style>
   </head>
   <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    <!-- Block for displaying messages -->
-      {% if messages %} {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-      {% endfor %} {% endif %}
-      {% if error %}
-          <div class="alert alert-danger text-center">{{ error }}</div>
-      {% endif %}
 
-    <!-- Main content -->
-    <div class="container-fluid mt-2">
-<!-- Tarjeta informativa fija arriba de la tabla, centrada y con ancho limitado -->
-<div class="mb-2 d-flex justify-content-left mt-2" style="gap: 15px; flex-wrap: wrap;">
-  <div class="card shadow-lg border-primary" style="max-width: 410px; width: 100%; max-height: 200px; font-size: 13px;">
-    <div class="card-header bg-primary text-white">
-      <i class="bi bi-bar-chart-fill me-2"></i>Indicadores KPIs 
-    </div>
-    <div class="card-body"> 
-      <ul class="list-group list-group-flush">
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Areas Comunes:</span>
-          <strong>{{ total_areas }}</strong>
-        </li>   
-        <li class="list-group-item d-flex justify-content-between">
-          <span> Total Cuotas mensuales:</span>
-          <strong>${{ total_cuotas|floatformat:2|intcomma }}</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Promedio Cuotas:</span>
-          <strong>${{ promedio_cuotas|floatformat:2|intcomma }}</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Promedio Precio x m²:</span>
-          <strong>${{ promedio_precio_m2|floatformat:2|intcomma }}</strong>
-        </li>
-      </ul>
-    </div>
-  </div>
-{% comment %} </div> {% endcomment %}
-{% comment %} <div class="mb-1 d-flex justify-content-left"> {% endcomment %}
-  <div class="card shadow-lg border-primary" style="max-width: 410px; width: 100%; max-height: 200px; font-size: 13px;">
-    <div class="card-header bg-primary text-white">
-      <i class="bi bi-bar-chart-fill me-2"></i>KPIs Superficie 
-    </div>
-    <div class="card-body">
-      <ul class="list-group list-group-flush">
-      
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Total Superficie (GLA):</span>
-          <strong>{{ superficie_total|floatformat:2|intcomma }} m²</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span> Contratos Vigentes:</span>
-          <strong>{{ status_vigente}}</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Contratos Vencidos:</span>
-          <strong>{{ status_vencido}}</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Porcentaje Vencido:</span>
-          <strong>{{ porcentaje_vencido|floatformat:0|intcomma }}%</strong>
-        </li>
-      </ul>
-    </div>
-  </div>
-</div>
-      <form id="form-filtros" method="get" class="mb-3 d-flex" role="search">
-        <input
-          type="text"
-          name="q"
-          class="form-control me-2"
-          placeholder="Buscar área por número o cliente"
-          value="{{ q|default:'' }}"
-        />
-        <button type="submit" class="btn btn-outline-primary">Buscar</button>
-      </form>
-      <a href="{% url 'crear_area' %}" class="btn btn-outline-success" align="right" title="Nueva Area Comun">
-                    <i class="bi bi-plus-lg"></i> Nueva Area Comun
-                </a>  
-      <!-- Area table -->
-      <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
-        <table class="table align-middle mb-0 shadow-sm">
-          <thead>
-            <tr>
-              <th>Número</th>
-              <th>Cliente</th>
-              {% if request.user.is_superuser %}
-              <th>Empresa</th>
-              {% endif %}
-              <th>Superficie</th>
-              {% comment %} <th>Ubicación</th> {% endcomment %}
-              <th>Cuota</th>
-              <th>Anual</th>
-              <th>Depósito</th>
-              <th>Giro</th>
-              <th>Tipo</th>
-              <th>Fecha Ini</th>
-              <th>Fecha Fin</th>
-              <th>Vigencia</th>
-              <th>Facturas</th>
-              <th>Contrato</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for area in areas %}
-            <tr>
-              <td>{{ area.numero }}</td>
-              <td>{{ area.cliente.nombre }}</td>
-              {% if request.user.is_superuser %}
-              <td>{{ area.empresa.nombre }}</td>
-              {% endif %}
-              <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
-              {% comment %} <td>{% if area.ubicacion %}{{ area.ubicacion }}{% endif %}</td> {% endcomment %}
-              <td>${{ area.cuota|floatformat:2|intcomma }}</td>
-              <td>
-                  {% if area.es_cuota_anual %}
-                      <span class="badge bg-info">Si</span>
-                  {% else %}
-                      <span class="badge bg-success"></span>
-                  {% endif %}
-              </td>
-              <td>${{ area.deposito|floatformat:2|intcomma }}</td>
-              <td>{{ area.giro }}</td>
-              <td>{{ area.tipo_area }}</td>
-              <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
-              <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
-              <td>
-                {% if area.estado_vigencia == "Vencido" %}
-                <span class="badge bg-danger" title="Edita Fechas para Renovar Contrato">{{ area.estado_vigencia }}</span>
-                {% else %}
-                <span class="badge bg-success">{{ area.estado_vigencia }}</span>
-                {% endif %}
-              </td>
-              <td><a
-                  href="{% url 'lista_facturas' %}?area_id={{ area.id }}"
-                  class="btn btn-outline-primary btn-sm reporte-link"
-                  title="Muestra las facturas relacionadas a esta área y registrar nuevos pagos"
-                >
-                  <i class="bi bi-receipt"></i>
-                </a>
-              </td>
-              <td>
-                {% if area.empresa.es_premium %}        
-                  {% if area.estado_vigencia == "Vigente" %}
-                 <button 
-    onclick="window.open('{% url 'contrato_formulario' area.pk %}', 'contrato_{{ area.pk }}', 'width=1000,height=800,scrollbars=yes')"
-    class="btn btn-sm btn-outline-primary m-1" 
-    title="Generar contrato">
-    <i class="bi bi-file-earmark-text"></i>
-</button>
-                  {% else %}
-                  <span class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
-                  
-                    <i class="bi bi-file-earmark-text"></i>
-                  </span>
-                  {% endif %}
-                {% else %}
-                  <a href="#" class="btn btn-sm btn-primary m-1" title=" Contrato solo PREMIUM">
-                    
-                                        <i class="bi bi-file-earmark-text"></i>
-                                    </a>
-                {% endif %}
-              </td>
-              <td style="white-space: nowrap">
-                <!-- registrar nueva area-->
-               <a href="{% url 'crear_area' %}" class="btn btn-sm btn-outline-success me-1 reporte-link" title="Registrar nueva área">
-                  <i class="bi bi-plus-circle"></i>
-                </a>
-                <a
-                  href="{% url 'editar_area' area.pk %}"
-                  class="btn btn-sm btn-outline-primary me-1 reporte-link"
-                  title="Editar area"
-                >
-                  <i class="bi bi-pencil-square"></i>
-                </a>
-                <a
-                  href="{% url 'eliminar_area' area.pk %}"
-                  class="btn btn-sm btn-outline-danger reporte-link"
-                  title="Inactivar area"
-                >
-                  <i class="bi bi-slash-circle"></i>
-              </a>
-              {% if area.referencia_pago %}
-                <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de Instrucciones de Pago">
-                  <i class="bi bi-qr-code"></i>
-                </a>
-                {% else %}
-                <span class="text-muted">Sin referencia (asigna un cliente primero)</span>
-                {% endif %}
-                <!-- Button to assign client if area is available -->
-                {% if area.status == 'disponible' %}
-                <a
-                  href="{% url 'asignar_cliente' area.pk %}"
-                  class="btn btn-outline-success btn-sm reporte-link"
-                  title="Asignar cliente a área"
-                >
-                  <i class="bi bi-person-plus"></i>
-                </a>
-                {% endif %}
-              </td>
-            </tr>
-            {% empty %}
-            <tr class="no-data-row">
-              <td colspan="9">No hay áreas registradas.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        <nav aria-label="Paginación">
-  <ul class="pagination">
-    {% if areas.has_previous %}
-      <li class="page-item">
-        <a class="page-link" href="?q={{ q }}&page={{ areas.previous_page_number }}">Anterior</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
     {% endif %}
-    <li class="page-item disabled"><span class="page-link">Página {{ areas.number }} de {{ areas.paginator.num_pages }}</span></li>
-    {% if areas.has_next %}
-      <li class="page-item">
-        <a class="page-link" href="?q={{ q }}&page={{ areas.next_page_number }}">Siguiente</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+    {% if error %}
+        <div class="alert alert-danger text-center">{{ error }}</div>
     {% endif %}
-  </ul>
-</nav>
-      </div>
+
+    <div class="container-fluid mt-2 px-3">
+
+        <!-- Tarjetas KPI -->
+        <div class="mb-3 areas-toolbar" style="gap:15px;">
+            <div class="kpi-card card">
+                <div class="card-header text-white">
+                    <i class="bi bi-bar-chart-fill me-2"></i>Indicadores KPIs
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Areas Comunes:</span>
+                            <strong>{{ total_areas }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total Cuotas mensuales:</span>
+                            <strong>${{ total_cuotas|floatformat:2|intcomma }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Promedio Cuotas:</span>
+                            <strong>${{ promedio_cuotas|floatformat:2|intcomma }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Promedio Precio x m²:</span>
+                            <strong>${{ promedio_precio_m2|floatformat:2|intcomma }}</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="kpi-card card">
+                <div class="card-header text-white">
+                    <i class="bi bi-file-earmark-text me-2"></i>KPIs Contratos
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total Superficie (GLA):</span>
+                            <strong>{{ superficie_total|floatformat:2|intcomma }} m²</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Contratos Vigentes:</span>
+                            <strong>{{ status_vigente }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Contratos Vencidos:</span>
+                            <strong>{{ status_vencido }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Porcentaje Vencido:</span>
+                            <strong>{{ porcentaje_vencido|floatformat:0 }}%</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de búsqueda + acción -->
+        <div class="areas-toolbar mb-3">
+            <form id="form-filtros" method="get" role="search">
+                <input type="text" name="q" class="form-control" placeholder="Buscar área por número o cliente" value="{{ q|default:'' }}" />
+                <button type="submit" class="btn btn-outline-primary flex-shrink-0">
+                    <i class="bi bi-search"></i><span class="d-none d-sm-inline ms-1">Buscar</span>
+                </button>
+            </form>
+            <a href="{% url 'crear_area' %}" class="btn btn-outline-success flex-shrink-0" title="Nueva Area Comun">
+                <i class="bi bi-plus-lg"></i> Nueva Area Comun
+            </a>
+        </div>
+
+        <!-- Tabla de áreas -->
+        <div class="table-responsive rounded-3 border" style="font-size:0.76rem;">
+            <table class="table tabla-areas align-middle mb-0 shadow-sm">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Cliente</th>
+                        {% if request.user.is_superuser %}
+                        <th>Empresa</th>
+                        {% endif %}
+                        <th>Tipo</th>
+                        <th>Sup.(m²)</th>
+                        <th>Cuota</th>
+                        <th>D.G.</th>
+                        <th>Fact.Anual</th>
+                        <th>Giro</th>
+                        <th>Fecha Ini</th>
+                        <th>Fecha Fin</th>
+                        <th>Vigencia</th>
+                        <th>Facturas</th>
+                        <th>Contrato</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for area in areas %}
+                    <tr>
+                        <td>{{ area.numero }}</td>
+                        <td>{{ area.cliente.nombre }}</td>
+                        {% if request.user.is_superuser %}
+                        <td>{{ area.empresa.nombre }}</td>
+                        {% endif %}
+                        <td>{{ area.get_tipo_area_display }}</td>
+                        <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
+                        <td>${{ area.cuota|floatformat:2|intcomma }}</td>
+                        <td>${{ area.deposito|floatformat:2|intcomma }}</td>
+                        <td>
+                            {% if area.es_cuota_anual %}
+                                <span class="badge bg-info">Si</span>
+                            {% else %}
+                                <span class="badge bg-success">No</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-giro" title="{{ area.giro|default:'' }}">{{ area.giro|default:""|truncatechars:15 }}</td>
+                        
+                        <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
+                        <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
+                        <td>
+                            {% if area.estado_vigencia == "Vencido" %}
+                            <span class="badge bg-danger" title="Edita Fechas para Renovar Contrato">{{ area.estado_vigencia }}</span>
+                            {% else %}
+                            <span class="badge bg-success">{{ area.estado_vigencia }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'lista_facturas' %}?area_id={{ area.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas relacionadas a esta área y registrar nuevos pagos">
+                                <i class="bi bi-receipt"></i>
+                            </a>
+                        </td>
+                        <td>
+                            {% if area.empresa.es_premium %}
+                                {% if area.estado_vigencia == "Vigente" %}
+                                <button onclick="window.open('{% url 'contrato_formulario' area.pk %}', 'contrato_{{ area.pk }}', 'width=1000,height=800,scrollbars=yes')" class="btn btn-sm btn-outline-primary m-1" title="Generar contrato">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </button>
+                                {% else %}
+                                <span class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </span>
+                                {% endif %}
+                            {% else %}
+                                <a href="#" class="btn btn-sm btn-primary m-1" title="Contrato solo PREMIUM">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            {% comment %} <a href="{% url 'crear_area' %}" class="btn btn-sm btn-outline-success me-1 reporte-link" title="Registrar nueva área">
+                                <i class="bi bi-plus-circle"></i>
+                            </a> {% endcomment %}
+                            <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar area">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar area">
+                                <i class="bi bi-slash-circle"></i>
+                            </a>
+                            {% if area.referencia_pago %}
+                            <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de Instrucciones de Pago">
+                                <i class="bi bi-qr-code"></i>
+                            </a>
+                            {% else %}
+                            <span class="text-muted small" title="Asigna un cliente primero">Sin referencia</span>
+                            {% endif %}
+                            {% if area.status == 'disponible' %}
+                            <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-outline-success btn-sm reporte-link" title="Asignar cliente a área">
+                                <i class="bi bi-person-plus"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="no-data-row">
+                        <td colspan="{% if request.user.is_superuser %}14{% else %}13{% endif %}" class="text-center text-muted py-4">
+                            <i class="bi bi-building fs-3 d-block mb-2"></i>
+                            No hay áreas registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <nav aria-label="Paginación" class="p-2">
+                <ul class="pagination pagination-sm mb-0 flex-wrap">
+                    {% if areas.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ q }}&page={{ areas.previous_page_number }}">Anterior</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ areas.number }} de {{ areas.paginator.num_pages }}</span></li>
+                    {% if areas.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ q }}&page={{ areas.next_page_number }}">Siguiente</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
     </div>
 
-    <!-- 🔹 Footer -->
     {% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
     <script src="{% static 'js/script.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
-
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('form-filtros');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
   </body>
 </html>

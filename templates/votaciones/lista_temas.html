@@ -3,40 +3,47 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Votaciones - Temas Generales</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        table.tabla-temas td, table.tabla-temas th {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.6rem;
+        }
+        @media (max-width: 576px) {
+            table.tabla-temas td, table.tabla-temas th {
+                font-size: 0.74rem;
+            }
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <!-- Block for displaying messages -->
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         {% endfor %}
     {% endif %}
 
-    <div class="container-fluid mt-4">
-        <h2>Asuntos generales enviados a votación</h2>
-        <div class="row">
-            <div class="col-auto">
-                <a href="{% url 'crear_tema_y_enviar' %}" class="btn btn-crear mb-3">
-                    <i class="bi bi-plus-circle me-1"></i>
-                    Nuevo asunto general
-                </a>
-            </div>
+    <div class="container-fluid mt-4 px-3">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h4 class="mb-0"><i class="bi bi-envelope-check me-2"></i>Asuntos generales enviados a votación</h4>
+            <a href="{% url 'crear_tema_y_enviar' %}" class="btn btn-outline-success reporte-link">
+                <i class="bi bi-plus-circle me-1"></i>Nuevo asunto general
+            </a>
         </div>
 
         <div class="table-responsive rounded-3 border">
-            <table class="table align-middle mb-0 shadow-sm">
+            <table class="table tabla-temas align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
                         <th>Título</th>
@@ -54,22 +61,25 @@
                             <td>{{ tema.creado_por.get_full_name|default:tema.creado_por.username }}</td>
                             <td>{{ tema.fecha_creacion|date:"d/m/Y H:i" }}</td>
                             <td class="text-nowrap">
-                                <a href="{% url 'resultados_votacion' tema.id %}" class="btn btn-outline-info btn-sm" title="Ver resultados">
+                                <a href="{% url 'resultados_votacion' tema.id %}" class="btn btn-outline-info btn-sm reporte-link" title="Ver resultados">
                                     <i class="bi bi-bar-chart-line"></i>
                                 </a>
-                                <a href="{% url 'crear_tema_y_enviar' %}?tema_id={{ tema.id }}" class="btn btn-outline-primary btn-sm" title="Reenviar votación">
-                                        <i class="bi bi-envelope-arrow-up"></i>
-                                    </a>
-                                <a href="{% url 'eliminar_tema' tema.id %}" class="btn btn-outline-danger btn-sm"
-                                title="Eliminar asunto"
-                                onclick="return confirm('¿Estás seguro de que deseas eliminar este asunto?');">
+                                <a href="{% url 'crear_tema_y_enviar' %}?tema_id={{ tema.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Reenviar votación">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </a>
+                                <a href="{% url 'eliminar_tema' tema.id %}" class="btn btn-outline-danger btn-sm reporte-link"
+                                   title="Eliminar asunto"
+                                   onclick="return confirm('¿Estás seguro de que deseas eliminar este asunto?');">
                                     <i class="bi bi-trash"></i>
                                 </a>
                             </td>
                         </tr>
                     {% empty %}
                         <tr class="no-data-row">
-                            <td colspan="5">No hay asuntos generales registrados.</td>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-envelope fs-3 d-block mb-2"></i>
+                                No hay asuntos generales registrados.
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -77,10 +87,18 @@
         </div>
     </div>
 
-    <!-- Footer -->
-{% include "tool_bar.html" %}
-    <!-- Scripts -->
+    {% include "tool_bar.html" %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
 </body>
 </html>

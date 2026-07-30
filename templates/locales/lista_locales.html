@@ -1,124 +1,177 @@
+
 {% load static %}
 {% load humanize %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 19/08/2025
-        Description: list of properties
-    -->
+
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Lista Propiedades</title>
-    <!-- Bootstrap base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .kpi-card {
+            border: none;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            flex: 1 1 320px;
+            min-width: 260px;
+            overflow: hidden;
+        }
+        .kpi-card .list-group-item {
+            font-size: 0.72rem;
+            padding: 0.4rem 0.85rem;
+            border-color: #f1f5f9;
+        }
+        .kpi-card .list-group-item strong { color: #0f2d52; }
+        .kpi-card .card-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 100%);
+            border: none;
+            font-weight: 600;
+            font-size: 0.78rem;
+            padding: 0.5rem 0.85rem;
+        }
+
+        .propiedades-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+        .propiedades-toolbar form { flex: 1 1 260px; display: flex; gap: 8px; }
+        .propiedades-toolbar form input { min-width: 0; }
+
+        @media (max-width: 576px) {
+            .kpi-card { min-width: 100%; }
+            .propiedades-toolbar { flex-direction: column; }
+            .propiedades-toolbar a.btn { width: 100%; }
+        }
+
+        table.tabla-propiedades td, table.tabla-propiedades th {
+            white-space: nowrap;
+            padding: 0.4rem 0.5rem;
+            font-size: 0.76rem;
+        }
+        table.tabla-propiedades .btn-sm {
+            padding: 0.15rem 0.4rem;
+            font-size: 0.72rem;
+        }
+        table.tabla-propiedades .badge {
+            font-size: 0.68rem;
+        }
+        .col-giro {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap !important;
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
- <!-- Block for displaying messages -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-        <div class="container-fluid mt-2">
-  <!-- Tarjeta informativa fija arriba de la tabla, centrada y con ancho limitado -->
-<div class="mb-2 d-flex justify-content-left mt-2" style="gap: 15px; flex-wrap: wrap;">
-  <div class="card shadow-lg border-primary" style="max-width: 410px; width: 100%; max-height: 200px; font-size: 13px;">
-    <div class="card-header bg-primary text-white">
-      <i class="bi bi-bar-chart-fill me-2"></i>Indicadores KPIs 
-    </div>
-    <div class="card-body"> 
-      <ul class="list-group list-group-flush">
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Propiedades:</span>
-          <strong>{{ locales_totales_activos }}</strong>
-        </li>   
-        <li class="list-group-item d-flex justify-content-between">
-          <span> Total Cuotas mensuales:</span>
-          <strong>${{ total_cuotas|floatformat:2|intcomma }}</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Promedio Cuotas:</span>
-          <strong>${{ promedio_cuotas|floatformat:2|intcomma }}</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Promedio Precio x m²:</span>
-          <strong>${{ promedio_precio_m2|floatformat:2|intcomma }}</strong>
-        </li>
-      </ul>
-    </div>
-  </div>
-{% comment %} </div> {% endcomment %}
-{% comment %} <div class="mb-1 d-flex justify-content-left"> {% endcomment %}
-  <div class="card shadow-lg border-primary" style="max-width: 410px; width: 100%; max-height: 200px; font-size: 13px;">
-    <div class="card-header bg-primary text-white">
-      <i class="bi bi-bar-chart-fill me-2"></i>KPIs Superficie 
-    </div>
-    <div class="card-body">
-      <ul class="list-group list-group-flush">
-      
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Total Superficie (GLA):</span>
-          <strong>{{ total_superficie|floatformat:2|intcomma }} m²</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span> Superficie ocupada:</span>
-          <strong>{{ superficie_ocupada|floatformat:2|intcomma }} m²</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Superficie disponible:</span>
-          <strong>{{ superficie_disponible|floatformat:2|intcomma }} m²</strong>
-        </li>
-        <li class="list-group-item d-flex justify-content-between">
-          <span>Ocupación:</span>
-          <strong>{{ porcentaje_ocupacion|floatformat:2|intcomma }}%</strong>
-        </li>
-      </ul>
-    </div>
-  </div>
-</div>
-    <!-- Main content -->
-    <div class="container-fluid mt-4">
-        {% comment %} <a href="{% url 'crear_local' %}" class="btn btn-crear mb-3 reporte-link">
-            <i class="bi bi-plus-circle me-1"></i>Nueva propiedad
-        </a> {% endcomment %}
-        <form id ="form-filtros" method="get" class="mb-3 d-flex" role="search">
-            <input type="text" name="q" class="form-control me-2" placeholder="Buscar propiedad por número, o cliente" value="{{ q|default:'' }}">
-            <button type="submit" class="btn btn-outline-primary">Buscar</button>
-        </form>
-     
-                <a href="{% url 'crear_local' %}" class="btn btn-outline-success" align="right" title="Nueva Propiedad">
-                    <i class="bi bi-plus-lg"></i> Nueva Propiedad
-                </a> 
 
-        <!-- Propiedad table -->
-        <div class="table-responsive rounded-3 border" style="font-size:0.9rem;">
-            <table class="table align-middle mb-0 shadow-sm">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-2 px-3">
+
+        <!-- Tarjetas KPI -->
+        <div class="mb-3 propiedades-toolbar" style="gap:15px;">
+            <div class="kpi-card card">
+                <div class="card-header text-white">
+                    <i class="bi bi-bar-chart-fill me-2"></i>Indicadores KPIs
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Propiedades:</span>
+                            <strong>{{ locales_totales_activos }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total Cuotas mensuales:</span>
+                            <strong>${{ total_cuotas|floatformat:2|intcomma }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Promedio Cuotas:</span>
+                            <strong>${{ promedio_cuotas|floatformat:2|intcomma }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Promedio Precio x m²:</span>
+                            <strong>${{ promedio_precio_m2|floatformat:2|intcomma }}</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="kpi-card card">
+                <div class="card-header text-white">
+                    <i class="bi bi-rulers me-2"></i>KPIs Superficie
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total Superficie (GLA):</span>
+                            <strong>{{ total_superficie|floatformat:2|intcomma }} m²</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Superficie ocupada:</span>
+                            <strong>{{ superficie_ocupada|floatformat:2|intcomma }} m²</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Superficie disponible:</span>
+                            <strong>{{ superficie_disponible|floatformat:2|intcomma }} m²</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Ocupación:</span>
+                            <strong>{{ porcentaje_ocupacion|floatformat:2 }}%</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de búsqueda + acción -->
+        <div class="propiedades-toolbar mb-3">
+            <form id="form-filtros" method="get" role="search">
+                <input type="text" name="q" class="form-control" placeholder="Buscar propiedad por número, o cliente" value="{{ q|default:'' }}">
+                <button type="submit" class="btn btn-outline-primary flex-shrink-0">
+                    <i class="bi bi-search"></i><span class="d-none d-sm-inline ms-1">Buscar</span>
+                </button>
+            </form>
+            <a href="{% url 'crear_local' %}" class="btn btn-outline-success flex-shrink-0" title="Nueva Propiedad">
+                <i class="bi bi-plus-lg"></i> Nueva Propiedad
+            </a>
+        </div>
+
+        <!-- Tabla de propiedades -->
+        <div class="table-responsive rounded-3 border" style="font-size:0.76rem;">
+            <table class="table tabla-propiedades align-middle mb-0 shadow-sm">
                 <thead>
                     <tr>
                         <th>Número</th>
                         <th>Propietario</th>
                         <th>Cliente</th>
-                        
                         {% if request.user.is_superuser %}
                             <th>Empresa</th>
                         {% endif %}
-                        <th> Tipo Inmueble</th>
-                        <th>Superficie (m²)</th>
-                        <th>% Indiviso</th>
+                        <th>Tipo</th>
+                        <th>Sup.(m²)</th>
+                        <th>% Ind.</th>
                         <th>Cuota</th>
-                        <th>Fact Anual</th>
+                        <th>Fact.Anual</th>
+                        {% if empresa_actual.segmento != 'habitacional' %}
                         <th>Giro</th>
+                        {% endif %}
                         <th>Status</th>
                         <th>Facturas</th>
                         <th>Acciones</th>
@@ -135,101 +188,95 @@
                             {% endif %}
                             <td>{{ local.get_tipo_propiedad_display }}</td>
                             <td>{{ local.superficie_m2|floatformat:2|intcomma }}</td>
-                            <td>{{ local.proindiviso|floatformat:4|intcomma }}</td>
+                            <td>{% if local.proindiviso %}{{ local.proindiviso|floatformat:4 }}%{% else %}—{% endif %}</td>
                             <td>${{ local.cuota|floatformat:2|intcomma }}</td>
                             <td>
                                 {% if local.es_cuota_anual %}
                                     <span class="badge bg-info" title="Cuota Anual">Si</span>
                                 {% else %}
                                     <span class="badge bg-success" title="Cuota Anual">No</span>
-                                {% endif %}   
+                                {% endif %}
                             </td>
-                            {% if local.giro == None or local.giro == '' %}
-                                <td></td>
-                            {% else %}
-                                <td>{{ local.giro }}</td>
+                            {% if empresa_actual.segmento != 'habitacional' %}
+                            <td class="col-giro" title="{{ local.giro|default:'' }}">{{ local.giro|default:""|truncatechars:15 }}</td>
                             {% endif %}
-                            <td> {{ local.get_status_display }}</td> 
-                            <td><a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas asociadas a esta propiedad y registra nuevos pagos">
-                                    
-                                    <i class="bi bi-receipt"></i> 
+                            <td>{{ local.get_status_display }}</td>
+                            <td>
+                                <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas asociadas a esta propiedad y registra nuevos pagos">
+                                    <i class="bi bi-receipt"></i>
                                 </a>
                             </td>
-                            <td style="white-space: nowrap;">
-                                   <a href="{% url 'crear_local' %}?cliente_id={{ local.cliente.id }}" class="btn btn-sm btn-outline-success ms-1 reporte-link" title="Registrar nueva propiedad">
+                            <td class="text-nowrap">
+                                {% comment %} <a href="{% url 'crear_local' %}?cliente_id={{ local.cliente.id }}" class="btn btn-sm btn-outline-success ms-1 reporte-link" title="Registrar nueva propiedad">
                                     <i class="bi bi-plus-circle"></i>
-                                </a>
+                                </a> {% endcomment %}
                                 <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar propiedad">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
                                 <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar propiedad">
-                                    
                                     <i class="bi bi-slash-circle"></i>
                                 </a>
                                 {% if local.referencia_pago %}
                                 <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='local' propiedad_id=local.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de instrucciones de pago para esta propiedad">
                                     <i class="bi bi-qr-code"></i>
                                 </a>
-                                {% else %}  
-                                <span class="text-muted">Sin referencia (asigna un cliente primero)</span>
+                                {% else %}
+                                <span class="text-muted small" title="Asigna un cliente primero">Sin referencia</span>
                                 {% endif %}
                             </td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="9">No hay propiedades registradas.</td>
+                            <td colspan="{% if request.user.is_superuser and empresa_actual.segmento != 'habitacional' %}13{% elif request.user.is_superuser or empresa_actual.segmento != 'habitacional' %}12{% else %}11{% endif %}" class="text-center text-muted py-4">
+                                <i class="bi bi-building fs-3 d-block mb-2"></i>
+                                No hay propiedades registradas.
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            <nav aria-label="Paginación">
-  <ul class="pagination">
-    {% if locales.has_previous %}
-      <li class="page-item">
-        <a class="page-link" href="?q={{ q }}&page={{ locales.previous_page_number }}">Anterior</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
-    {% endif %}
-    <li class="page-item disabled"><span class="page-link">Página {{ locales.number }} de {{ locales.paginator.num_pages }}</span></li>
-    {% if locales.has_next %}
-      <li class="page-item">
-        <a class="page-link" href="?q={{ q }}&page={{ locales.next_page_number }}">Siguiente</a>
-      </li>
-    {% else %}
-      <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
-    {% endif %}
-  </ul>
-</nav>
+
+            <nav aria-label="Paginación" class="p-2">
+                <ul class="pagination pagination-sm mb-0 flex-wrap">
+                    {% if locales.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ q }}&page={{ locales.previous_page_number }}">Anterior</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ locales.number }} de {{ locales.paginator.num_pages }}</span></li>
+                    {% if locales.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ q }}&page={{ locales.next_page_number }}">Siguiente</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
         </div>
     </div>
 
-    <!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
-
-    <!-- Scripts -->
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
-  var form = document.getElementById('form-filtros');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  }
-
-  // Mantén el overlay para los enlaces con clase reporte-link
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    });
-  });
-});
-</script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('form-filtros');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
 </body>
 </html>
-

@@ -2544,25 +2544,36 @@ def stripe_webhook_membresia(request):
 ####################### Módulo de votaciones por correo electrónico##########################
 def enviar_votacion(tema, lista_correos, request):
     empresa = None
-    if hasattr(request.user, "perfilusuario"):
+    if hasattr(request.user, "perfilusuario") and request.user.perfilusuario:
         empresa = request.user.perfilusuario.empresa
-    else:
-        empresa = None
-
     nombre_empresa = empresa.nombre if empresa else "Tu empresa"
 
+    enviados = 0
+    reenviados = 0
+    ya_votaron_omitidos = 0
+    fallidos = []
+
     for correo in lista_correos:
-        token = uuid4().hex
-        votacion = VotacionCorreo.objects.create(tema=tema, email=correo, token=token)
-        url_si = request.build_absolute_uri(
-            reverse("votar_tema_correo", args=[token, "si"])
+        correo = correo.strip()
+        if not correo:
+            continue
+
+        # Evita duplicados: reutiliza el registro y el token si ya existía
+        votacion, creado = VotacionCorreo.objects.get_or_create(
+            tema=tema, email=correo,
+            defaults={"token": uuid4().hex},
         )
-        url_no = request.build_absolute_uri(
-            reverse("votar_tema_correo", args=[token, "no"])
-        )
-        url_abstencion = request.build_absolute_uri(
-            reverse("votar_tema_correo", args=[token, "abstencion"])
-        )
+
+        # Si ya votó, no le reenviamos nada -- ya ejerció su voto
+        if votacion.ya_voto():
+            ya_votaron_omitidos += 1
+            continue
+
+        token = votacion.token
+        url_si = request.build_absolute_uri(reverse("votar_tema_correo", args=[token, "si"]))
+        url_no = request.build_absolute_uri(reverse("votar_tema_correo", args=[token, "no"]))
+        url_abstencion = request.build_absolute_uri(reverse("votar_tema_correo", args=[token, "abstencion"]))
+
         asunto = f"Votación: {tema.titulo} - {nombre_empresa}"
         mensaje = (
             f"Buen día,<br><br>"
@@ -2575,33 +2586,78 @@ def enviar_votacion(tema, lista_correos, request):
             f"<a href='{url_abstencion}' style='padding:10px 20px; background:#ffc107; color:black; text-decoration:none;'>Abstención</a><br><br>"
             f"Gracias por tu participación.<br>"
         )
-        send_mail(
-            subject=asunto,
-            message="Te invitamos a votar. Si no ves los botones, copia y pega los enlaces en tu navegador:\nSí: {0}\nNo: {1}".format(
-                url_si, url_no
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[correo],
-            html_message=mensaje,
+        mensaje_plano = (
+            "Te invitamos a votar. Si no ves los botones, copia y pega los enlaces en tu navegador:\n"
+            f"Sí: {url_si}\nNo: {url_no}\nAbstención: {url_abstencion}"
         )
+
+        try:
+            send_mail(
+                subject=asunto,
+                message=mensaje_plano,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[correo],
+                html_message=mensaje,
+                fail_silently=False,
+            )
+            if creado:
+                enviados += 1
+            else:
+                reenviados += 1
+        except Exception as e:
+            fallidos.append(f"{correo}: {str(e)}")
+
+    return {
+        "enviados": enviados,
+        "reenviados": reenviados,
+        "ya_votaron_omitidos": ya_votaron_omitidos,
+        "fallidos": fallidos,
+    }
 
 
 def votar_tema_correo(request, token, respuesta):
     votacion = get_object_or_404(VotacionCorreo, token=token)
-    if votacion.voto is not None:
-        return HttpResponse("Ya has votado.")
+
     if respuesta not in ["si", "no", "abstencion"]:
-        return HttpResponse("Respuesta inválida.")
+        return render(request, "votaciones/voto_confirmacion.html", {
+            "estado": "error",
+            "mensaje": "El enlace de votación no es válido.",
+        })
+
+    if votacion.ya_voto():
+        return render(request, "votaciones/voto_confirmacion.html", {
+            "estado": "ya_voto",
+            "tema": votacion.tema,
+            "voto_registrado": votacion.get_voto_display(),
+        })
+
     votacion.voto = respuesta
     votacion.fecha_voto = timezone.now()
     votacion.save()
-    return HttpResponse("¡Gracias por tu voto!")
+
+    return render(request, "votaciones/voto_confirmacion.html", {
+        "estado": "exito",
+        "tema": votacion.tema,
+        "voto_registrado": votacion.get_voto_display(),
+    })
 
 
 def resultados_votacion(request, tema_id):
-    empresa = request.user.perfilusuario.empresa
+    if request.user.is_superuser:
+        empresa_id = request.session.get("empresa_id")
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        if not empresa:
+            messages.error(request, "Selecciona una empresa primero.")
+            return redirect("lista_temas")
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        empresa = perfil.empresa if perfil else None
+        if not empresa:
+            messages.error(request, "No se pudo determinar tu empresa.")
+            return redirect("lista_temas")
+
     tema = get_object_or_404(TemaGeneral, id=tema_id, empresa=empresa)
-    votos = VotacionCorreo.objects.filter(tema=tema)
+    votos = VotacionCorreo.objects.filter(tema=tema).order_by("email")
     total = votos.count()
     si = votos.filter(voto="si").count()
     no = votos.filter(voto="no").count()
@@ -2631,11 +2687,24 @@ def lista_temas(request):
 
 @login_required
 def crear_tema_y_enviar(request):
-    empresa = request.user.perfilusuario.empresa
+    if request.user.is_superuser:
+        empresa_id = request.session.get("empresa_id")
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        if not empresa:
+            messages.error(request, "Selecciona una empresa primero.")
+            return redirect("lista_temas")
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        empresa = perfil.empresa if perfil else None
+        if not empresa:
+            messages.error(request, "No se pudo determinar tu empresa.")
+            return redirect("lista_temas")
+
     tema_id = request.GET.get("tema_id")
     tema = None
     if tema_id:
         tema = get_object_or_404(TemaGeneral, id=tema_id, empresa=empresa)
+
     if request.method == "POST":
         if tema:
             form = TemaGeneralForm(request.POST, instance=tema)
@@ -2646,18 +2715,37 @@ def crear_tema_y_enviar(request):
             tema.creado_por = request.user
             tema.empresa = empresa
             tema.save()
-            # Procesa los correos
+
             lista_correos = [
                 c.strip() for c in form.cleaned_data["correos"].split(",") if c.strip()
             ]
-            enviar_votacion(tema, lista_correos, request)
-            messages.success(request, "Asunto creado y correos enviados.")
+            resumen = enviar_votacion(tema, lista_correos, request)
+
+            partes = []
+            if resumen["enviados"]:
+                partes.append(f"{resumen['enviados']} invitación(es) nueva(s) enviada(s)")
+            if resumen["reenviados"]:
+                partes.append(f"{resumen['reenviados']} recordatorio(s) reenviado(s)")
+            if resumen["ya_votaron_omitidos"]:
+                partes.append(f"{resumen['ya_votaron_omitidos']} ya habían votado (sin reenvío)")
+
+            mensaje_final = "✅ Asunto guardado. " + (", ".join(partes) if partes else "No había correos nuevos que notificar.")
+            messages.success(request, mensaje_final)
+
+            if resumen["fallidos"]:
+                from django.utils.safestring import mark_safe
+                fallos_html = "<br>".join(resumen["fallidos"][:15])
+                if len(resumen["fallidos"]) > 15:
+                    fallos_html += f"<br>...y {len(resumen['fallidos'])-15} más."
+                messages.warning(request, mark_safe(f"⚠️ {len(resumen['fallidos'])} correo(s) no se pudieron enviar:<br>{fallos_html}"))
+
             return redirect("lista_temas")
     else:
         if tema:
-            # Precarga los correos anteriores si existen votaciones previas
             correos_previos = ", ".join(
-                VotacionCorreo.objects.filter(tema=tema).values_list("email", flat=True)
+                VotacionCorreo.objects.filter(tema=tema)
+                .values_list("email", flat=True)
+                .distinct()
             )
             form = TemaGeneralForm(instance=tema, initial={"correos": correos_previos})
         else:
@@ -2674,7 +2762,7 @@ def eliminar_tema(request, tema_id):
     return redirect("lista_temas")
 
 
-# modulo avisos y notificaciones-->
+# modulo avisos y notificaciones  app GESAC-->
 @login_required
 def avisos_lista(request):
     empresa = request.user.perfilusuario.empresa

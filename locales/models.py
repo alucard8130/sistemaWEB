@@ -15,7 +15,9 @@ class LocalComercial(models.Model):
     STATUS_CHOICES = [
         ('ocupado', 'Ocupado'),
         ('disponible', 'Disponible'),
-        ('mantenimiento', 'Mantenimiento'),
+        ('mantenimiento', 'Remodelacion'),
+        ('legal', 'Juicio'), 
+        ('venta', 'Venta'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ocupado')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -26,7 +28,7 @@ class LocalComercial(models.Model):
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota anual?")
     
     TIPO_CHOICES = [
-        ('local', 'Local Comercial'),
+        ('local', 'Local'),
         ('casa', 'Casa'),
         ('departamento', 'Departamento'),
         ('oficina', 'Oficina'),

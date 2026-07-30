@@ -134,6 +134,8 @@ class VisitanteToken(models.Model):
         if not self.key:
             self.key = self.generate_key()
         return super().save(*args, **kwargs)
+  
+
     
 # Modulo de votaciones por correo electrónico    
 class TemaGeneral(models.Model):
