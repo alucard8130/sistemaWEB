@@ -28,6 +28,7 @@ from empresas.models import Empresa, CuentaBancaria
 import datetime
 from decimal import Decimal
 from django.db.models import Sum
+from django.core.paginator import Paginator
 
 
 @login_required
@@ -481,7 +482,6 @@ def reporte_inversion(request):
 
     hoy = datetime.date.today()
 
-    # --- Cortes de fecha reutilizados para todas las cuentas ---
     primer_dia_mes_actual = hoy.replace(day=1)
     ultimo_dia_mes_anterior = primer_dia_mes_actual - datetime.timedelta(days=1)
     primer_dia_mes_anterior = ultimo_dia_mes_anterior.replace(day=1)
@@ -508,7 +508,6 @@ def reporte_inversion(request):
         total_retiro = salientes.filter(tipo_movimiento_inversion='retiro').aggregate(t=Sum('monto'))['t'] or Decimal('0')
         total_rendimiento = rendimientos_qs.aggregate(t=Sum('monto'))['t'] or Decimal('0')
 
-        # --- Saldo actual y sus comparativas ---
         saldo_actual = _saldo_inversion_a_fecha(cuenta, hoy)
         saldo_mes_anterior = _saldo_inversion_a_fecha(cuenta, ultimo_dia_mes_anterior)
         saldo_anio_anterior = _saldo_inversion_a_fecha(cuenta, fecha_mismo_dia_anio_anterior)
@@ -516,7 +515,6 @@ def reporte_inversion(request):
         diff_saldo_mes, pct_saldo_mes = _variacion(saldo_actual, saldo_mes_anterior)
         diff_saldo_anio, pct_saldo_anio = _variacion(saldo_actual, saldo_anio_anterior)
 
-        # --- Rendimientos del periodo y sus comparativas ---
         rendimiento_mes_actual = _rendimiento_en_rango(cuenta, primer_dia_mes_actual, hoy)
         rendimiento_mes_anterior = _rendimiento_en_rango(cuenta, primer_dia_mes_anterior, ultimo_dia_mes_anterior)
         diff_rend_mes, pct_rend_mes = _variacion(rendimiento_mes_actual, rendimiento_mes_anterior)
@@ -525,10 +523,10 @@ def reporte_inversion(request):
         rendimiento_ytd_anterior = _rendimiento_en_rango(cuenta, primer_dia_anio_anterior, fecha_mismo_dia_anio_anterior)
         diff_rend_anio, pct_rend_anio = _variacion(rendimiento_ytd_actual, rendimiento_ytd_anterior)
 
-        # --- Historial de movimientos, sin cambios respecto a antes ---
+        # --- Historial COMPLETO (ya no se recorta a [:20] aquí) ---
         movimientos = []
         for t in entrantes:
-             movimientos.append({
+            movimientos.append({
                 'id': t.id, 'puede_cancelar': True,
                 'fecha': t.fecha, 'tipo': 'Incremento', 'badge': 'primary',
                 'direccion': f"de {t.cuenta_origen}", 'entra': True,
@@ -550,21 +548,30 @@ def reporte_inversion(request):
             })
         movimientos.sort(key=lambda m: m['fecha'], reverse=True)
 
+        # --- NUEVO: paginación independiente por cuenta ---
+        # Cada cuenta usa su propio parámetro de página en la URL
+        # (?pagina_5=2, ?pagina_8=3, etc.) para no interferir entre sí.
+        param_pagina = f'pagina_{cuenta.id}'
+        numero_pagina = request.GET.get(param_pagina, 1)
+        paginator = Paginator(movimientos, 15)  # 15 movimientos por página
+        movimientos_pagina = paginator.get_page(numero_pagina)
+
         resumen_por_cuenta.append({
             'cuenta': cuenta,
             'total_incrementos': total_incrementos,
             'total_rendimiento': total_rendimiento,
             'total_retiro': total_retiro,
             'saldo_actual': saldo_actual,
-            'saldo_mes_anterior': saldo_mes_anterior, 
-            'saldo_anio_anterior': saldo_anio_anterior, 
+            'saldo_mes_anterior': saldo_mes_anterior,
+            'saldo_anio_anterior': saldo_anio_anterior,
             'diff_saldo_mes': diff_saldo_mes, 'pct_saldo_mes': pct_saldo_mes,
             'diff_saldo_anio': diff_saldo_anio, 'pct_saldo_anio': pct_saldo_anio,
             'rendimiento_mes_actual': rendimiento_mes_actual,
             'diff_rend_mes': diff_rend_mes, 'pct_rend_mes': pct_rend_mes,
             'rendimiento_ytd_actual': rendimiento_ytd_actual,
             'diff_rend_anio': diff_rend_anio, 'pct_rend_anio': pct_rend_anio,
-            'movimientos': movimientos[:20],
+            'movimientos_pagina': movimientos_pagina,  # NUEVO -- reemplaza a 'movimientos'
+            'param_pagina': param_pagina,               # NUEVO -- para armar los links en el template
         })
 
     return render(request, 'inversiones/reporte_inversion.html', {
