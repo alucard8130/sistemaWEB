@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 #SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 #DEBUG = True
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,gesacadmin.com").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,www.gesacadmin.com").split(",")
 #ALLOWED_HOSTS = ["192.168.0.159", '*']  # For development purposes, change this in production
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
