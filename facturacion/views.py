@@ -815,244 +815,7 @@ def exportar_estado_cuenta_excel(request):
     return response
 
 
-# emision mensual facturas cuotas
-#@login_required
-# def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
-#     if request.method != "POST":
-#         return redirect("confirmar_facturacion")
-
-#     hoy = dt.date.today()
-#     año = int(request.POST.get("anio", hoy.year))
-#     mes = int(request.POST.get("mes", hoy.month))
-
-#     if "locales" in request.POST or "areas" in request.POST:
-#         facturar_locales = "locales" in request.POST
-#         facturar_areas = "areas" in request.POST
-
-#     if request.user.is_superuser:
-#         empresa_id = request.session.get("empresa_id")
-#         empresa = Empresa.objects.filter(id=empresa_id).first()
-#     else:
-#         empresa = request.user.perfilusuario.empresa
-
-#     if not empresa:
-#         messages.error(request, "No hay empresa seleccionada.")
-#         return redirect("confirmar_facturacion")
-
-#     fecha_factura = dt.date(año, mes, 1)
-#     facturas_creadas = 0
-#     facturas_omitidas = 0
-#     facturas_a_crear = []
-
-#     # Folios máximos — se calculan una sola vez
-#     def get_last_num(prefix):
-#         max_folio = Factura.objects.filter(
-#             empresa=empresa, folio__startswith=prefix
-#         ).aggregate(max_f=Max("folio"))["max_f"]
-#         if max_folio:
-#             try:
-#                 return int(max_folio.replace(prefix, ""))
-#             except Exception:
-#                 return 0
-#         return 0
-
-#     # ── LOCALES MENSUALES ──
-#     if facturar_locales:
-#         locales = LocalComercial.objects.filter(
-#             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
-#         ).select_related("cliente")
-
-#         locales_ids = list(locales.values_list("id", flat=True))
-
-#         # Una query para saber cuáles ya tienen factura de mantenimiento este mes
-#         locales_con_factura = set(
-#             Factura.objects.filter(
-#                 local_id__in=locales_ids,
-#                 tipo_cuota="mantenimiento",
-#                 estatus__in=["pendiente", "cobrada"],
-#             )
-#             .filter(
-#                 Q(fecha_emision__year=año, fecha_emision__month=mes)
-#                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-#             )
-#             .values_list("local_id", flat=True)
-#         )
-
-#         last_num_cm = get_last_num("CM-F")
-#         last_num_dg = get_last_num("DG-F")
-
-#         for local in locales:
-#             if local.id in locales_con_factura:
-#                 facturas_omitidas += 1
-#             else:
-#                 last_num_cm += 1
-#                 facturas_a_crear.append(
-#                     Factura(
-#                         empresa=empresa,
-#                         cliente=local.cliente,
-#                         local=local,
-#                         folio=f"CM-F{last_num_cm:05d}",
-#                         fecha_emision=fecha_factura,
-#                         fecha_vencimiento=fecha_factura,
-#                         monto=local.cuota,
-#                         tipo_cuota="mantenimiento",
-#                         estatus="pendiente",
-#                         observaciones="Cuota mensual",
-#                     )
-#                 )
-#                 facturas_creadas += 1
-
-#         # Locales con cuota anual — solo en enero
-#         if mes == 1:
-#             locales_anuales = LocalComercial.objects.filter(
-#                 empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
-#             ).select_related("cliente")
-
-#             locales_anuales_ids = list(locales_anuales.values_list("id", flat=True))
-#             locales_anuales_con_factura = set(
-#                 Factura.objects.filter(
-#                     local_id__in=locales_anuales_ids,
-#                     tipo_cuota="mantenimiento",
-#                     estatus__in=["pendiente", "cobrada"],
-#                     fecha_emision__year=año,
-#                 ).values_list("local_id", flat=True)
-#             )
-
-#             for local in locales_anuales:
-#                 if local.id not in locales_anuales_con_factura:
-#                     last_num_cm += 1
-#                     facturas_a_crear.append(
-#                         Factura(
-#                             empresa=empresa,
-#                             cliente=local.cliente,
-#                             local=local,
-#                             folio=f"CM-F{last_num_cm:05d}",
-#                             fecha_emision=fecha_factura,
-#                             fecha_vencimiento=fecha_factura,
-#                             monto=local.cuota,
-#                             tipo_cuota="mantenimiento",
-#                             estatus="pendiente",
-#                             observaciones="Cuota anual",
-#                         )
-#                     )
-#                     facturas_creadas += 1
-
-#     # ── ÁREAS COMUNES MENSUALES ──
-#     if facturar_areas:
-#         areas = AreaComun.objects.filter(
-#             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
-#         ).select_related("cliente")
-
-#         areas_ids = list(areas.values_list("id", flat=True))
-
-#         # Una query para saber cuáles ya tienen factura de renta este mes
-#         areas_con_factura = set(
-#             Factura.objects.filter(
-#                 area_comun_id__in=areas_ids,
-#                 tipo_cuota="renta",
-#                 estatus__in=["pendiente", "cobrada"],
-#             )
-#             .filter(
-#                 Q(fecha_emision__year=año, fecha_emision__month=mes)
-#                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
-#             )
-#             .values_list("area_comun_id", flat=True)
-#         )
-
-#         last_num_ac = get_last_num("AC-F")
-#         if "last_num_dg" not in dir():
-#             last_num_dg = get_last_num("DG-F")
-
-#         for area in areas:
-#             if area.id in areas_con_factura:
-#                 facturas_omitidas += 1
-#             else:
-#                 last_num_ac += 1
-#                 facturas_a_crear.append(
-#                     Factura(
-#                         empresa=empresa,
-#                         cliente=area.cliente,
-#                         area_comun=area,
-#                         folio=f"AC-F{last_num_ac:05d}",
-#                         fecha_emision=fecha_factura,
-#                         fecha_vencimiento=fecha_factura,
-#                         monto=area.cuota,
-#                         tipo_cuota="renta",
-#                         estatus="pendiente",
-#                         observaciones="Cuota mensual",
-#                     )
-#                 )
-#                 facturas_creadas += 1
-
-#             # Depósito en garantía por única vez
-#             if area.deposito and area.deposito > 0:
-#                 existe_deposito = Factura.objects.filter(
-#                     cliente=area.cliente,
-#                     area_comun=area,
-#                     tipo_cuota="deposito",
-#                 ).exists()
-#                 if not existe_deposito:
-#                     last_num_dg += 1
-#                     facturas_a_crear.append(
-#                         Factura(
-#                             empresa=empresa,
-#                             cliente=area.cliente,
-#                             area_comun=area,
-#                             folio=f"DG-F{last_num_dg:05d}",
-#                             fecha_emision=fecha_factura,
-#                             fecha_vencimiento=fecha_factura,
-#                             monto=area.deposito,
-#                             tipo_cuota="deposito",
-#                             estatus="pendiente",
-#                             observaciones="Depósito en garantía",
-#                         )
-#                     )
-
-#         # Áreas con cuota anual — solo en enero
-#         if mes == 1:
-#             areas_anuales = AreaComun.objects.filter(
-#                 empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
-#             ).select_related("cliente")
-
-#             areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
-#             areas_anuales_con_factura = set(
-#                 Factura.objects.filter(
-#                     area_comun_id__in=areas_anuales_ids,
-#                     tipo_cuota="renta",
-#                     estatus__in=["pendiente", "cobrada"],
-#                     fecha_emision__year=año,
-#                 ).values_list("area_comun_id", flat=True)
-#             )
-
-#             for area in areas_anuales:
-#                 if area.id not in areas_anuales_con_factura:
-#                     last_num_ac += 1
-#                     facturas_a_crear.append(
-#                         Factura(
-#                             empresa=empresa,
-#                             cliente=area.cliente,
-#                             area_comun=area,
-#                             folio=f"AC-F{last_num_ac:05d}",
-#                             fecha_emision=fecha_factura,
-#                             fecha_vencimiento=fecha_factura,
-#                             monto=area.cuota,
-#                             tipo_cuota="renta",
-#                             estatus="pendiente",
-#                             observaciones="Cuota anual",
-#                         )
-#                     )
-#                     facturas_creadas += 1
-
-#     # Bulk create
-#     if facturas_a_crear:
-#         Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
-
-#     messages.success(
-#         request,
-#         f"✅ {facturas_creadas} facturas generadas para {fecha_factura.strftime('%B %Y')}. {facturas_omitidas} omitidas (ya existían).",
-#     )
-#     return redirect("lista_facturas")
-
+#emision de facturas de cuotas de mantenimiento y renta para el mes actual, con opción de facturar locales y/o áreas
 @login_required
 def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     if request.method != "POST":
@@ -1653,10 +1416,18 @@ def pagos_por_origen(request):
     pagos_por_cuenta = pagos.values("cuenta_bancaria").annotate(total=Sum("monto"))
 
     # Fechas
+     # Fechas -- año/mes de referencia basado en el filtro, no siempre "hoy"
     hoy = date.today()
-    anio_actual = hoy.year
+    if fecha_fin:
+        try:
+            fecha_referencia = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        except Exception:
+            fecha_referencia = hoy
+    else:
+        fecha_referencia = hoy
+    anio_actual = fecha_referencia.year
     anio_anterior = anio_actual - 1
-    mes_actual = hoy.month
+    mes_actual = fecha_referencia.month
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
     anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
 
@@ -1697,7 +1468,7 @@ def pagos_por_origen(request):
     var_anio = variacion(pagos_anio_actual, pagos_anio_anterior)
     var_mes = variacion(pagos_mes_actual, pagos_mes_anterior)
 
-    anio_actual = date.today().year
+
     pagos_chart = pagos
 
     # Agrupa por tipo_cuota (clave) y suma montos
@@ -3175,6 +2946,7 @@ def exportar_cartera_excel(request):
 
 
 @login_required
+#actualizado 31 julio 2026
 def exportar_pagos_excel(request):
     empresa_id = request.GET.get("empresa")
     local_id = request.GET.get("local_id")
@@ -3182,6 +2954,7 @@ def exportar_pagos_excel(request):
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     tipo_cuota = request.GET.get("tipo_cuota")
+    forma_pago = request.GET.get("forma_pago")  # NUEVO -- faltaba por completo
     cuenta_bancaria = request.GET.get("cuenta_bancaria")
 
     pagos = Pago.objects.select_related(
@@ -3190,6 +2963,7 @@ def exportar_pagos_excel(request):
         "factura__local",
         "factura__area_comun",
         "factura__cliente",
+        "cuenta_bancaria",
     ).all()
     if not request.user.is_superuser:
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
@@ -3199,6 +2973,13 @@ def exportar_pagos_excel(request):
         pagos = pagos.filter(factura__local_id=local_id)
     if area_id:
         pagos = pagos.filter(factura__area_comun_id=area_id)
+
+    # NUEVO -- mismo default de fechas que la pantalla (enero a hoy si no hay filtros)
+    filtros_aplicados = any([empresa_id, local_id, area_id, fecha_inicio, fecha_fin, tipo_cuota, forma_pago, cuenta_bancaria])
+    if not filtros_aplicados:
+        fecha_inicio = date.today().replace(month=1, day=1).strftime("%Y-%m-%d")
+        fecha_fin = date.today().strftime("%Y-%m-%d")
+
     if fecha_inicio and fecha_fin:
         try:
             fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
@@ -3208,61 +2989,54 @@ def exportar_pagos_excel(request):
             pass
     if tipo_cuota:
         pagos = pagos.filter(factura__tipo_cuota=tipo_cuota)
-
+    if forma_pago:  # NUEVO
+        pagos = pagos.filter(forma_pago=forma_pago)
     if cuenta_bancaria:
-        pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria).order_by("fecha_pago")
+        pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria)
+
+    # NUEVO -- orden garantizado siempre, sin importar qué filtros se apliquen
+    pagos = pagos.order_by("fecha_pago")
+
+    # NUEVO -- excluye notas de crédito, igual que el total mostrado en pantalla
+    pagos = pagos.exclude(forma_pago="nota_credito")
 
     # Crear libro y hoja
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Ingresos"
 
-    # Encabezados
-    ws.append(
-        [
-            "Local/Área",
-            "Cliente",
-            "Monto Cobro",
-            "Banco",
-            "Numero Cuenta",
-            "Tipo Cuota",
-            "Forma de Cobro",
-            "Folio Factura",
-            "Empresa",
-            "Fecha Cobro",
-            "Observaciones",
-        ]
-    )
+    ws.append([
+        "Local/Área", "Cliente", "Monto Cobro", "Banco", "Numero Cuenta",
+        "Tipo Cuota", "Forma de Cobro", "Folio Factura", "Empresa",
+        "Fecha Cobro", "Observaciones",
+    ])
 
-    # Contenido
+    total_general = 0
     for pago in pagos:
         factura = pago.factura
         local_area = (
-            factura.local.numero
-            if factura.local
-            else factura.area_comun.numero
-            if factura.area_comun
+            factura.local.numero if factura.local
+            else factura.area_comun.numero if factura.area_comun
             else "-"
         )
-        ws.append(
-            [
-                local_area,
-                factura.cliente.nombre,
-                float(pago.monto),
-                pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
-                pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
-                factura.get_tipo_cuota_display()
-                if hasattr(factura, "get_tipo_cuota_display")
-                else factura.tipo_cuota,
-                pago.forma_pago,
-                factura.folio,
-                factura.empresa.nombre,
-                pago.fecha_pago,
-                pago.observaciones or "",
-            ]
-        )
+        ws.append([
+            local_area,
+            factura.cliente.nombre,
+            float(pago.monto),
+            pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
+            pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
+            factura.get_tipo_cuota_display() if hasattr(factura, "get_tipo_cuota_display") else factura.tipo_cuota,
+            pago.get_forma_pago_display(),  # antes: pago.forma_pago (mostraba la clave, no el texto legible)
+            factura.folio,
+            factura.empresa.nombre,
+            pago.fecha_pago,
+            pago.observaciones or "",
+        ])
+        total_general += float(pago.monto)
 
-    # Respuesta
+    # NUEVO -- fila de total, para poder comparar directo contra el KPI de pantalla
+    ws.append(["", "", "", "", "", "", "", "", "", "TOTAL:", total_general])
+
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
@@ -4337,7 +4111,17 @@ def reporte_cobros_otros_ingresos(request):
 
     total_cobrado = cobros.aggregate(total=Sum("monto"))["total"] or 0
 
-    anio_actual = date.today().year
+    # Año/mes de referencia basado en el filtro, no siempre "hoy"
+    hoy = date.today()
+    if fecha_fin:
+        try:
+            fecha_referencia = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        except Exception:
+            fecha_referencia = hoy
+    else:
+        fecha_referencia = hoy
+
+    anio_actual = fecha_referencia.year
     cobros_chart = cobros.filter(fecha_cobro__year=anio_actual)
 
     # Cobros por tipo de ingreso
@@ -4364,19 +4148,10 @@ def reporte_cobros_otros_ingresos(request):
     forma_labels = list(forma_dict.keys())
     forma_data = list(forma_dict.values())
 
-    # cobros por cuenta bancaria
-    # cuenta_dict = defaultdict(float)
-    # for c in cobros_chart:
-    #     cuenta = c.cuenta_bancaria.banco if c.cuenta_bancaria else 'Sin cuenta'
-    #     cuenta_dict[cuenta] += float(c.monto)
-    # cuenta_labels = list(cuenta_dict.keys())
-    # cuenta_data = list(cuenta_dict.values())
-
-    # KPIs comparativos año/mes actual vs anterior
-    hoy = date.today()
-    anio_actual = hoy.year
+ 
+    # KPIs comparativos año/mes actual vs anterior (usa fecha_referencia ya calculada)
     anio_anterior = anio_actual - 1
-    mes_actual = hoy.month
+    mes_actual = fecha_referencia.month
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
     anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
 
@@ -4461,6 +4236,7 @@ def reporte_cobros_otros_ingresos(request):
 
 
 @login_required
+#actualizado 31/07/26
 def exportar_cobros_otros_ingresos_excel(request):
     empresa_id = request.GET.get("empresa")
     cliente_id = request.GET.get("cliente")

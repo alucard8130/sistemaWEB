@@ -1165,7 +1165,7 @@ def reversa_pago_gasto(request, pago_id, gasto_id):
 
 
 @login_required
-# template/gastos/reporte_pagos.html
+# template/gastos/reporte_pagos.html actualizado 31/07/26
 def reporte_pagos_gastos(request):
     es_super = request.user.is_superuser
     pagos = PagoGasto.objects.select_related(
@@ -1242,12 +1242,18 @@ def reporte_pagos_gastos(request):
         pagos = pagos.filter(gasto__empleado_id=empleado_id)
     if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
+
+
+    # Corregido -- inicializadas en None para que nunca truene con UnboundLocalError 31/07/26
+    fecha_inicio_dt = None
+    fecha_fin_dt = None
     if fecha_inicio:
         fecha_inicio_dt = parse_date(fecha_inicio)
+    if fecha_fin:
+        fecha_fin_dt = parse_date(fecha_fin)
+
     if fecha_inicio_dt:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio_dt)
-    if fecha_fin:
-         fecha_fin_dt = parse_date(fecha_fin)
     if fecha_fin_dt:
         pagos = pagos.filter(fecha_pago__lte=fecha_fin_dt)
 
@@ -1256,10 +1262,18 @@ def reporte_pagos_gastos(request):
         pagos = pagos.filter(cuenta_bancaria_id=cuenta_bancaria)
     
 
+    #actualizar KPIs y totales según el período de referencia 31/07/26
     hoy = datetime.now().date()
-    anio_actual = hoy.year
+    if fecha_fin:
+        try:
+            fecha_referencia = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        except Exception:
+            fecha_referencia = hoy
+    else:
+        fecha_referencia = hoy
+    anio_actual = fecha_referencia.year
     anio_anterior = anio_actual - 1
-    mes_actual = hoy.month
+    mes_actual = fecha_referencia.month
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
     anio_mes_anterior = anio_actual if mes_actual > 1 else anio_actual - 1
 
@@ -1354,6 +1368,7 @@ def reporte_pagos_gastos(request):
 
 # exportar pagos de gastos a Excel
 @login_required
+#actualizado 31/07/26
 def exportar_reporte_pagos_gastos_excel(request):
     es_super = request.user.is_superuser
     pagos = PagoGasto.objects.select_related(
@@ -1367,6 +1382,15 @@ def exportar_reporte_pagos_gastos_excel(request):
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     cuenta_bancaria = request.GET.get("cuenta_bancaria")
+
+    # NUEVO -- mismo default de fechas que la pantalla (enero a hoy si no hay filtros)
+    filtros_aplicados = any([
+        empresa_id, proveedor_id, empleado_id, forma_pago,
+        fecha_inicio, fecha_fin, cuenta_bancaria,
+    ])
+    if not filtros_aplicados:
+        fecha_inicio = datetime.now().date().replace(month=1, day=1).strftime("%Y-%m-%d")
+        fecha_fin = datetime.now().date().strftime("%Y-%m-%d")
 
     if not es_super:
         pagos = pagos.filter(gasto__empresa=request.user.perfilusuario.empresa)
@@ -1398,44 +1422,35 @@ def exportar_reporte_pagos_gastos_excel(request):
     wb = Workbook()
     ws = wb.active
     ws.title = "Pagos de Gastos"
-    ws.append(
-        [
-            "Folio",
-            "Fecha pago",
-            "Empresa",
-            "Proveedor/Empleado",
-            "Tipo gasto",
-            "Concepto",
-            "Forma de pago",
-            "Monto",
-            "Cuenta Bancaria",
-            "Numero Cta",
-            "Estatus",
-        ]
-    )
+    ws.append([
+        "Folio", "Fecha pago", "Empresa", "Proveedor/Empleado", "Tipo gasto",
+        "Concepto", "Forma de pago", "Monto", "Cuenta Bancaria", "Numero Cta", "Estatus",
+    ])
 
+    total_general = 0
     for pago in pagos_list:
         gasto = pago.gasto
         origen = (
-            gasto.proveedor.nombre
-            if gasto.proveedor
+            gasto.proveedor.nombre if gasto.proveedor
             else (gasto.empleado.nombre if gasto.empleado else "")
         )
-        ws.append(
-            [
-                gasto.id,
-                pago.fecha_pago if pago.fecha_pago else "",
-                gasto.empresa.nombre if gasto.empresa else "",
-                origen,
-                gasto.tipo_gasto.nombre if gasto.tipo_gasto else "",
-                gasto.descripcion,
-                pago.get_forma_pago_display(),
-                float(pago.monto),
-                pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
-                pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
-                gasto.estatus,
-            ]
-        )
+        ws.append([
+            gasto.id,
+            pago.fecha_pago if pago.fecha_pago else "",
+            gasto.empresa.nombre if gasto.empresa else "",
+            origen,
+            gasto.tipo_gasto.nombre if gasto.tipo_gasto else "",
+            gasto.descripcion,
+            pago.get_forma_pago_display(),
+            float(pago.monto),
+            pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
+            pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
+            gasto.estatus,
+        ])
+        total_general += float(pago.monto)
+
+    # NUEVO -- fila de total, para comparar directo contra el KPI de pantalla
+    ws.append(["", "", "", "", "", "", "", "", "", "TOTAL:", total_general])
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

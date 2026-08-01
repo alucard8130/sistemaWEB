@@ -78,6 +78,8 @@
                 <i class="bi bi-bank me-1"></i>
                 <strong>{{ item.cuenta.banco }}</strong> — {{ item.cuenta.numero_cuenta }}
                 <span class="badge bg-light text-dark ms-2">{{ item.cuenta.get_moneda_display }}</span>
+                <span class="badge bg-light text-dark ms-2">Periodo: {{ item.periodo.mes }}/{{ item.periodo.anio }}</span>
+                <span class="badge bg-light text-dark ms-2">Tipo de cuenta: {{ item.cuenta.get_tipo_cuenta_display }}</span>
             </div>
             {% if item.periodo.cerrado %}
                 <span class="badge bg-white text-success">
