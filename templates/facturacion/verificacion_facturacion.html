@@ -55,6 +55,7 @@
         .mes-falta   { font-size:1rem; color:#c0392b; }
         .mes-corriente-ok    { font-size:1rem; color:#d4ac0d; }
         .mes-corriente-falta { font-size:1rem; color:#9ca3af; }
+        .mes-no-aplica { font-size:1rem; color:#cbd5e1; }
 
         .badge-ok     { background:#eafaf1; color:#1e8449; padding:3px 8px; border-radius:10px; font-size:0.7rem; font-weight:700; }
         .badge-brecha { background:#fdf0f0; color:#c0392b; padding:3px 8px; border-radius:10px; font-size:0.7rem; font-weight:700; }
@@ -198,9 +199,11 @@
                                     {{ row.propiedad.numero }}
                                 </a>
                             </td>
-                            {% for mes_info in row.meses %}
+                                {% for mes_info in row.meses %}
                             <td>
-                                {% if mes_info.corriente %}
+                                {% if not mes_info.corriente and mes_info.tiene is None %}
+                                    <span class="mes-no-aplica" title="{{ mes_info.nombre }} — Propiedad aún no existía">—</span>
+                                {% elif mes_info.corriente %}
                                     {% if mes_info.tiene %}
                                         <span class="mes-corriente-ok" title="Mes corriente — ya facturado">●</span>
                                     {% else %}
@@ -265,7 +268,9 @@
                             </td>
                             {% for mes_info in row.meses %}
                             <td>
-                                {% if mes_info.corriente %}
+                                {% if not mes_info.corriente and mes_info.tiene is None %}
+                                    <span class="mes-no-aplica" title="{{ mes_info.nombre }} — Propiedad aún no existía">—</span>
+                                {% elif mes_info.corriente %}
                                     {% if mes_info.tiene %}
                                         <span class="mes-corriente-ok" title="Mes corriente — ya facturado">●</span>
                                     {% else %}

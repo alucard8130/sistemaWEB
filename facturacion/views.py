@@ -494,6 +494,7 @@ def lista_facturas(request):
 
 
 # reporte de verificación de facturación por local y área, mostrando los meses con facturas pendientes o cobradas, y los meses faltantes
+#mod 03/08/206
 @login_required
 def verificacion_facturacion(request):
     hoy = date.today()
@@ -524,7 +525,6 @@ def verificacion_facturacion(request):
     )
     areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by("numero")
 
-    # Filtrar facturas según tipo
     if tipo_cuota == "todos":
         facturas_qs = Factura.objects.filter(
             empresa=empresa,
@@ -540,7 +540,6 @@ def verificacion_facturacion(request):
             estatus__in=["pendiente", "cobrada"],
         )
 
-    # Controlar qué tablas mostrar
     mostrar_locales = tipo_cuota in ("todos", "mantenimiento")
     mostrar_areas = tipo_cuota in ("todos", "renta")
 
@@ -555,19 +554,19 @@ def verificacion_facturacion(request):
             meses_area.setdefault(f.area_comun_id, set()).add(mes)
 
     MESES_NOMBRES = [
-        "Ene",
-        "Feb",
-        "Mar",
-        "Abr",
-        "May",
-        "Jun",
-        "Jul",
-        "Ago",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dic",
+        "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
     ]
+
+    def mes_ya_existia(fecha_creacion, anio_eval, mes_eval):
+        """True si la propiedad ya existía para el fin de ese mes."""
+        if not fecha_creacion:
+            return True  # sin fecha registrada, no penalices -- asume que siempre existió
+        if mes_eval < 12:
+            fin_de_mes = date(anio_eval, mes_eval + 1, 1) - timedelta(days=1)
+        else:
+            fin_de_mes = date(anio_eval, 12, 31)
+        return fecha_creacion.date() <= fin_de_mes
 
     # Armar resultado locales
     resultado_locales = []
@@ -577,34 +576,28 @@ def verificacion_facturacion(request):
             meses_info = []
             faltantes = 0
             for m in meses_cerrados:
+                # NUEVO -- si la propiedad no existía ese mes, se marca "no aplica"
+                if not mes_ya_existia(local.fecha_creacion, anio, m):
+                    meses_info.append({
+                        "mes": m, "nombre": MESES_NOMBRES[m - 1],
+                        "tiene": None, "corriente": False,  # None = No aplica
+                    })
+                    continue
                 tiene = m in meses_con_factura
                 if not tiene:
                     faltantes += 1
-                meses_info.append(
-                    {
-                        "mes": m,
-                        "nombre": MESES_NOMBRES[m - 1],
-                        "tiene": tiene,
-                        "corriente": False,
-                    }
-                )
-            meses_info.append(
-                {
-                    "mes": mes_corriente,
-                    "nombre": MESES_NOMBRES[mes_corriente - 1],
-                    "tiene": mes_corriente in meses_con_factura,
-                    "corriente": True,
-                }
-            )
-            resultado_locales.append(
-                {
-                    "propiedad": local,
-                    "tipo": "local",
-                    "meses": meses_info,
-                    "faltantes": faltantes,
-                    "ok": faltantes == 0,
-                }
-            )
+                meses_info.append({
+                    "mes": m, "nombre": MESES_NOMBRES[m - 1],
+                    "tiene": tiene, "corriente": False,
+                })
+            meses_info.append({
+                "mes": mes_corriente, "nombre": MESES_NOMBRES[mes_corriente - 1],
+                "tiene": mes_corriente in meses_con_factura, "corriente": True,
+            })
+            resultado_locales.append({
+                "propiedad": local, "tipo": "local", "meses": meses_info,
+                "faltantes": faltantes, "ok": faltantes == 0,
+            })
 
     # Armar resultado áreas
     resultado_areas = []
@@ -614,36 +607,28 @@ def verificacion_facturacion(request):
             meses_info = []
             faltantes = 0
             for m in meses_cerrados:
+                if not mes_ya_existia(area.fecha_creacion, anio, m):
+                    meses_info.append({
+                        "mes": m, "nombre": MESES_NOMBRES[m - 1],
+                        "tiene": None, "corriente": False,
+                    })
+                    continue
                 tiene = m in meses_con_factura
                 if not tiene:
                     faltantes += 1
-                meses_info.append(
-                    {
-                        "mes": m,
-                        "nombre": MESES_NOMBRES[m - 1],
-                        "tiene": tiene,
-                        "corriente": False,
-                    }
-                )
-            meses_info.append(
-                {
-                    "mes": mes_corriente,
-                    "nombre": MESES_NOMBRES[mes_corriente - 1],
-                    "tiene": mes_corriente in meses_con_factura,
-                    "corriente": True,
-                }
-            )
-            resultado_areas.append(
-                {
-                    "propiedad": area,
-                    "tipo": "area",
-                    "meses": meses_info,
-                    "faltantes": faltantes,
-                    "ok": faltantes == 0,
-                }
-            )
+                meses_info.append({
+                    "mes": m, "nombre": MESES_NOMBRES[m - 1],
+                    "tiene": tiene, "corriente": False,
+                })
+            meses_info.append({
+                "mes": mes_corriente, "nombre": MESES_NOMBRES[mes_corriente - 1],
+                "tiene": mes_corriente in meses_con_factura, "corriente": True,
+            })
+            resultado_areas.append({
+                "propiedad": area, "tipo": "area", "meses": meses_info,
+                "faltantes": faltantes, "ok": faltantes == 0,
+            })
 
-    # Totales resumen
     total_locales = len(resultado_locales)
     locales_ok = sum(1 for r in resultado_locales if r["ok"])
     locales_con_brecha = total_locales - locales_ok
