@@ -851,7 +851,6 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
     )
     return redirect("lista_facturas")
 
-
 @login_required
 def confirmar_facturacion(request):
     hoy = now().date()
@@ -861,7 +860,6 @@ def confirmar_facturacion(request):
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
 
-    # FILTRAR locales y áreas activos con cliente
     if request.user.is_superuser:
         locales = LocalComercial.objects.filter(
             activo=True, cliente__isnull=False, es_cuota_anual=False
@@ -880,25 +878,19 @@ def confirmar_facturacion(request):
         filtro_facturas = Q(empresa=empresa)
 
     nombres_meses = [
-        "Enero",
-        "Febrero",
-        "Marzo",
-        "Abril",
-        "Mayo",
-        "Junio",
-        "Julio",
-        "Agosto",
-        "Septiembre",
-        "Octubre",
-        "Noviembre",
-        "Diciembre",
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
     ]
 
-    # Detectar meses faltantes — un mes es faltante si algún local o área no tiene factura
     meses_faltantes_por_anio = {}
     for m in range(1, mes + 1):
-        # Usa esto (1 query):
-        locales_ids = list(locales.values_list("id", flat=True))
+        # NUEVO -- fin de mes evaluado, para filtrar solo propiedades que ya existían entonces
+        fin_de_mes = date(año, m + 1, 1) - timedelta(days=1) if m < 12 else date(año, 12, 31)
+
+        # NUEVO -- excluye propiedades dadas de alta DESPUÉS de ese mes
+        locales_del_mes = locales.filter(fecha_creacion__date__lte=fin_de_mes)
+        locales_ids = list(locales_del_mes.values_list("id", flat=True))
+
         locales_con_factura = set(
             Factura.objects.filter(
                 local_id__in=locales_ids,
@@ -914,7 +906,10 @@ def confirmar_facturacion(request):
 
         falta_local = len(locales_con_factura) < len(locales_ids)
 
-        areas_ids = list(areas.values_list("id", flat=True))
+        # NUEVO -- mismo filtro para áreas
+        areas_del_mes = areas.filter(fecha_creacion__date__lte=fin_de_mes)
+        areas_ids = list(areas_del_mes.values_list("id", flat=True))
+
         areas_con_factura = set(
             Factura.objects.filter(
                 area_comun_id__in=areas_ids,
@@ -932,7 +927,6 @@ def confirmar_facturacion(request):
         if falta_local or falta_area:
             meses_faltantes_por_anio.setdefault(año, []).append(m)
 
-    # Determina el mes/año más antiguo faltante
     if meses_faltantes_por_anio:
         anio_permitido = min(meses_faltantes_por_anio.keys())
         mes_permitido = min(meses_faltantes_por_anio[anio_permitido])
@@ -940,11 +934,41 @@ def confirmar_facturacion(request):
         anio_permitido = año
         mes_permitido = mes
 
-    # CONTAR locales y áreas no facturados del periodo más antiguo faltante
-    total_locales = len(locales_ids) - len(locales_con_factura)
-    total_areas = len(areas_ids) - len(areas_con_factura)
+    # NUEVO -- recalcula el conteo del periodo permitido con el mismo filtro de fecha_creacion,
+    # en vez de reutilizar las variables de la última vuelta del ciclo (que quedaban con el mes
+    # actual, no necesariamente el periodo permitido -- mismo bug potencial que vimos antes)
+    fin_de_mes_permitido = (
+        date(anio_permitido, mes_permitido + 1, 1) - timedelta(days=1)
+        if mes_permitido < 12 else date(anio_permitido, 12, 31)
+    )
+    locales_permitido = locales.filter(fecha_creacion__date__lte=fin_de_mes_permitido)
+    locales_ids_permitido = list(locales_permitido.values_list("id", flat=True))
+    locales_con_factura_permitido = set(
+        Factura.objects.filter(
+            local_id__in=locales_ids_permitido,
+            tipo_cuota="mantenimiento",
+            estatus__in=["pendiente", "cobrada"],
+        ).filter(
+            Q(fecha_emision__year=anio_permitido, fecha_emision__month=mes_permitido)
+            | Q(fecha_vencimiento__year=anio_permitido, fecha_vencimiento__month=mes_permitido)
+        ).values_list("local_id", flat=True)
+    )
+    total_locales = len(locales_ids_permitido) - len(locales_con_factura_permitido)
 
-    # Prepara mensaje de periodos faltantes
+    areas_permitido = areas.filter(fecha_creacion__date__lte=fin_de_mes_permitido)
+    areas_ids_permitido = list(areas_permitido.values_list("id", flat=True))
+    areas_con_factura_permitido = set(
+        Factura.objects.filter(
+            area_comun_id__in=areas_ids_permitido,
+            tipo_cuota="renta",
+            estatus__in=["pendiente", "cobrada"],
+        ).filter(
+            Q(fecha_emision__year=anio_permitido, fecha_emision__month=mes_permitido)
+            | Q(fecha_vencimiento__year=anio_permitido, fecha_vencimiento__month=mes_permitido)
+        ).values_list("area_comun_id", flat=True)
+    )
+    total_areas = len(areas_ids_permitido) - len(areas_con_factura_permitido)
+
     faltantes_mensaje = []
     for anio_f, meses_f in sorted(meses_faltantes_por_anio.items()):
         meses_nombres = ", ".join([nombres_meses[m - 1] for m in meses_f])
@@ -956,7 +980,6 @@ def confirmar_facturacion(request):
         facturar_locales = "locales" in request.POST
         facturar_areas = "areas" in request.POST
 
-        # Solo permite facturar el periodo más antiguo faltante
         if (anio, mes_post) != (anio_permitido, mes_permitido):
             messages.error(
                 request, "Solo puedes facturar el periodo más antiguo pendiente."
@@ -981,6 +1004,7 @@ def confirmar_facturacion(request):
             "faltantes_mensaje": faltantes_mensaje,
         },
     )
+
 
 
 # vistas registro de cobros por cuotas
