@@ -72,6 +72,8 @@ from decimal import Decimal
 from .forms import (
     AvisoForm,
     CSDUploadForm,
+    ContadorForm,
+    EditarEmpresasContadorForm,
 )
 import base64
 import io
@@ -115,7 +117,8 @@ from django.core.paginator import Paginator
 import weasyprint
 from babel.dates import format_date
 import pytz
-#from django.db.models.functions import TruncMonth
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import SetPasswordForm
 
 
 
@@ -126,6 +129,16 @@ MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'
 
 @login_required
 def dashboard_inicio(request):
+    # NUEVO -- redirige a los contadores directo a su panel dedicado 03/08/26
+    if not request.user.is_superuser:
+        perfil = getattr(request.user, 'perfilusuario', None)
+        # NUEVO -- primero verifica si debe cambiar contraseña
+        if perfil and perfil.debe_cambiar_password:
+            return redirect('cambiar_password_obligatorio')
+        if perfil and perfil.es_contador:
+            return redirect('panel_contador')
+
+
     hoy = date.today()
     mes_actual = hoy.month
     anio_actual = hoy.year
@@ -461,7 +474,193 @@ def dashboard_inicio(request):
     })
 
 
+####PANEL DEDICADO PARA CONTADORES########################03/08/26
+@login_required
+def panel_contador(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if not (perfil and perfil.es_contador) and not request.user.is_superuser:
+        messages.error(request, "No tienes acceso a este panel.")
+        return redirect('dashboard_inicio')
 
+    empresa = perfil.empresa if perfil else None
+
+    return render(request, 'contador/panel_contador.html', {
+        'empresa': empresa,
+    })
+
+
+@login_required
+def crear_contador(request):  
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta sección.")
+        return redirect('dashboard_inicio')
+
+    if request.method == "POST":
+        form = ContadorForm(request.POST)
+        if form.is_valid():
+            empresas_seleccionadas = form.cleaned_data["empresas"]
+            empresa_principal = empresas_seleccionadas.first()
+            username = form.cleaned_data["username"]
+            temp_password = get_random_string(
+                length=12, allowed_chars="abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+            )
+
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=username,
+                    email=form.cleaned_data["email"],
+                    password=temp_password,
+                    first_name=form.cleaned_data["nombre_completo"],
+                )
+                perfil, _ = PerfilUsuario.objects.update_or_create(
+                    usuario=user,
+                    defaults={
+                        "empresa": empresa_principal,  # empresa activa por default
+                        "tipo_usuario": "gratis",
+                        "es_contador": True,
+                        "debe_cambiar_password": True,
+                    },
+                )
+                perfil.empresas_contador.set(empresas_seleccionadas)  # NUEVO -- guarda todas
+
+            nombres_empresas = ", ".join(e.nombre for e in empresas_seleccionadas)
+
+            # Correo al contador -- igual, actualizado
+            login_url = request.build_absolute_uri(reverse("login"))
+            asunto_contador = "Acceso a GESAC"
+            mensaje_contador = (
+                f"Hola {form.cleaned_data['nombre_completo']},\n\n"
+                f"Se te dio de alta como contador en GESAC, con acceso a: {nombres_empresas}.\n\n"
+                f"Tus datos de acceso son:\n"
+                f"Usuario: {username}\n"
+                f"Contraseña temporal: {temp_password}\n\n"
+                f"Puedes iniciar sesión aquí: {login_url}\n\n"
+                f"Por seguridad, el sistema te pedirá crear una nueva contraseña la primera vez que ingreses.\n\n"
+                f"Si tienes acceso a más de un condominio, podrás cambiar entre ellos desde el menú superior.\n\n"
+                f"Saludos,\nEquipo GESAC"
+            )
+            send_mail(subject=asunto_contador, message=mensaje_contador,
+                      from_email=settings.DEFAULT_FROM_EMAIL,
+                      recipient_list=[user.email], fail_silently=True)
+
+            messages.success(request, f"✅ Contador '{user.username}' dado de alta con acceso a {len(empresas_seleccionadas)} empresa(s).")
+            return redirect("lista_contadores")
+    else:
+        form = ContadorForm()
+
+    return render(request, "contador/crear_contador.html", {"form": form})
+
+@login_required
+def cambiar_password_obligatorio(request):
+    perfil = getattr(request.user, "perfilusuario", None)
+    if not perfil or not perfil.debe_cambiar_password:
+        return redirect("dashboard_inicio")
+
+    if request.method == "POST":
+        form = SetPasswordForm(request.user, request.POST)
+        if form.is_valid():
+            form.save()
+            perfil.debe_cambiar_password = False
+            perfil.save(update_fields=["debe_cambiar_password"])
+            update_session_auth_hash(request, request.user)  # evita que se cierre la sesión al cambiar la contraseña
+            messages.success(request, "✅ Contraseña actualizada correctamente.")
+            return redirect("dashboard_inicio")
+    else:
+        form = SetPasswordForm(request.user)
+
+    return render(request, "contador/cambiar_password_obligatorio.html", {"form": form})
+
+
+@login_required
+def lista_contadores(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta sección.")
+        return redirect('dashboard_inicio')
+
+    empresa_filtro = request.GET.get("empresa")
+
+    contadores = PerfilUsuario.objects.filter(
+        es_contador=True
+    ).select_related("usuario", "empresa").order_by("empresa__nombre", "usuario__username")
+
+    if empresa_filtro and empresa_filtro.isdigit():
+        contadores = contadores.filter(empresa_id=empresa_filtro)
+
+    empresas = Empresa.objects.all().order_by("nombre")
+
+    return render(request, "contador/lista_contadores.html", {
+        "contadores": contadores,
+        "empresas": empresas,
+        "empresa_filtro": empresa_filtro,
+    })
+
+@login_required
+def toggle_acceso_contador(request, perfil_id):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para realizar esta acción.")
+        return redirect('dashboard_inicio')
+
+    perfil = get_object_or_404(PerfilUsuario, pk=perfil_id, es_contador=True)
+
+    perfil.usuario.is_active = not perfil.usuario.is_active
+    perfil.usuario.save(update_fields=["is_active"])
+
+    estado = "reactivado" if perfil.usuario.is_active else "restringido"
+    messages.success(request, f"✅ Acceso {estado} para '{perfil.usuario.username}' ({perfil.empresa.nombre if perfil.empresa else 'sin empresa'}).")
+    return redirect("lista_contadores")
+
+@login_required
+def cambiar_empresa_contador(request, empresa_id):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if not perfil or not perfil.es_contador:
+        messages.error(request, "No tienes permiso para esta acción.")
+        return redirect('dashboard_inicio')
+
+    empresa = perfil.empresas_contador.filter(id=empresa_id).first()
+    if not empresa:
+        messages.error(request, "No tienes acceso a esa empresa.")
+        return redirect('panel_contador')
+
+    perfil.empresa = empresa
+    perfil.save(update_fields=['empresa'])
+    messages.success(request, f"Ahora estás viendo: {empresa.nombre}")
+    return redirect('panel_contador')
+
+@login_required
+def editar_empresas_contador(request, perfil_id):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta sección.")
+        return redirect('dashboard_inicio')
+
+    perfil = get_object_or_404(PerfilUsuario, pk=perfil_id, es_contador=True)
+
+    if request.method == "POST":
+        form = EditarEmpresasContadorForm(request.POST)
+        if form.is_valid():
+            empresas_seleccionadas = form.cleaned_data["empresas"]
+
+            perfil.empresas_contador.set(empresas_seleccionadas)
+
+            # Si la empresa activa actual ya no está en la nueva lista, reasigna una válida
+            if perfil.empresa not in empresas_seleccionadas:
+                perfil.empresa = empresas_seleccionadas.first() if empresas_seleccionadas else None
+                perfil.save(update_fields=['empresa'])
+
+            nombres_empresas = ", ".join(e.nombre for e in empresas_seleccionadas) or "ninguna"
+            messages.success(request, f"✅ Empresas actualizadas para '{perfil.usuario.username}': {nombres_empresas}.")
+            return redirect("lista_contadores")
+    else:
+        form = EditarEmpresasContadorForm(initial={"empresas": perfil.empresas_contador.all()})
+
+    return render(request, "contador/editar_empresas_contador.html", {
+        "form": form,
+        "perfil": perfil,
+    })
+
+
+
+
+################### INFORMACION ADICIONAL DE PLANES Y SUSCRIPCIONES ########################
 @login_required
 def info_plus(request):
     return render(request, 'planes/info_plus.html', {

@@ -90,6 +90,14 @@
         table.mini-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; color: #374151; }
         table.mini-table tr:last-child td { border-bottom: none; }
         table.mini-table tr:hover td { background: #f8fbff; }
+
+        .empresa-segmento {
+        font-size: 0.78rem;
+        opacity: 0.75;
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -293,6 +301,10 @@ if (premiumBtn) {
         <div>
             <div class="empresa-sub"><i class="bi bi-building me-1"></i>Condominio activo</div>
             <div class="empresa-nombre">{{ empresa.nombre }}</div>
+            <div class="empresa-segmento">
+                <i class="bi bi-{% if empresa.segmento == 'habitacional' %}houses{% else %}shop{% endif %} me-1"></i>
+                {{ empresa.get_segmento_display }}
+            </div>
         </div>
         <div class="d-flex align-items-center gap-3">
             <div style="text-align:right;">

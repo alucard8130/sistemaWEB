@@ -17,9 +17,9 @@ from principal import views
 from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
 from principal.forms import EmpresaAuthenticationForm
 from principal.views import (actualizar_ticket, agregar_seguimiento, api_amenidades_lista, api_areas_por_empresa, api_avisos_empresa, api_cancelar_reservacion, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_mis_reservaciones, api_reporte_ingresos_vs_gastos, api_reservar_amenidad, aviso_crear, aviso_eliminar, 
-                             avisos_lista, cancelar_suscripcion_premium, cerrar_wizard, consulta_cfdis_facturama, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_sesion_pago_premium,  crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, eliminar_tema, enviar_recordatorio_morosidad, lista_temas, membresia_pago_exitoso, 
-                             lista_tickets, crear_ticket, registro_visitante, resultados_votacion, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
-                             eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
+                             avisos_lista, cambiar_empresa_contador, cambiar_password_obligatorio, cancelar_suscripcion_premium, cerrar_wizard, consulta_cfdis_facturama, crear_contador, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_sesion_pago_premium,  crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, editar_empresas_contador, eliminar_tema, enviar_recordatorio_morosidad, lista_contadores, lista_temas, membresia_pago_exitoso, 
+                             lista_tickets, crear_ticket, panel_contador, registro_visitante, resultados_votacion, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
+                             eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, toggle_acceso_contador, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
                                visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
 from principal.views import reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import cuenta_bancaria_crear, cuenta_bancaria_editar, cuenta_bancaria_eliminar, cuentas_bancarias_lista, empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
@@ -234,6 +234,13 @@ urlpatterns = [
     path('amenidades/calendario/', calendario_reservaciones, name='calendario_reservaciones'),
     path('amenidades/api/eventos/', api_eventos_reservaciones, name='api_eventos_reservaciones'),
     path('catalogos/', include('catalogos.urls')),
+    path('panel-contador/', panel_contador, name='panel_contador'),
+    path('contadores/nuevo/', crear_contador, name='crear_contador'),
+    path('contadores/', lista_contadores, name='lista_contadores'),
+    path('contadores/<int:perfil_id>/toggle/', toggle_acceso_contador, name='toggle_acceso_contador'),
+    path('cambiar-password-obligatorio/', cambiar_password_obligatorio, name='cambiar_password_obligatorio'),
+    path('contador/cambiar-empresa/<int:empresa_id>/', cambiar_empresa_contador, name='cambiar_empresa_contador'),
+    path('contadores/<int:perfil_id>/editar-empresas/', editar_empresas_contador, name='editar_empresas_contador'),
 ]
 
     

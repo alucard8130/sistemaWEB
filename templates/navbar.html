@@ -16,13 +16,103 @@
 
 <div id="globalSidebarWrapper" class="global-sidebar-wrapper">
   <div id="navbar-hover-zone"></div>
+  {% if request.user.perfilusuario.es_contador %}
 
-  <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-0 shadow-navbar">
+    {# ===== NAVBAR MINIMALISTA PARA CONTADORES ===== #}
+    <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-0 shadow-navbar">
+      <div class="container-fluid">
+
+        <a href="{% url 'panel_contador' %}" class="btn btn-sm btn-light reporte-link" title="Inicio">
+          <i class="bi bi-house me-1"></i>
+        </a>
+
+        <span class="navbar-text text-white fw-bold ms-2 d-none d-md-inline">
+          <i class="bi bi-calculator-fill me-1"></i> Panel del Contador
+        </span>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarOpcionesContador" aria-controls="navbarOpcionesContador" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarOpcionesContador">
+          <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center mx-auto">
+
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Catálogo Contable">
+                Catálogo Contable
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item reporte-link" href="{% url 'lista_catalogo_cuentas' %}"><i class="bi bi-diagram-3 me-2"></i>Cuentas Contables</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_gasto' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Gastos</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_cuota' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Cuotas</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_otro_ingreso' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Otros Ingresos</a></li>
+              </ul>
+            </li>
+
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Pólizas y Reportes">
+                Pólizas y Reportes
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_gastos' %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Póliza de Gastos</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_ingresos' %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Póliza de Ingresos</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}"><i class="bi bi-bar-chart me-2"></i>Estado de Resultados</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}"><i class="bi bi-receipt me-2"></i>Reporte de Pagos de Gastos</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}"><i class="bi bi-cash-stack me-2"></i>Reporte de Cobros de Cuotas</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}"><i class="bi bi-cash-coin me-2"></i>Reporte de Otros Ingresos</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}"><i class="bi bi-graph-up-arrow me-2"></i>Cartera Vencida</a></li>
+              </ul>
+            </li>
+
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Presupuestos y Nómina">
+                Presupuestos y Nómina
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-clipboard-data me-2"></i>Presupuesto vs. Real</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}"><i class="bi bi-clipboard-data me-2"></i>Presupuesto vs. Real (Ingresos)</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}"><i class="bi bi-person-check me-2"></i>Reporte de Asistencia</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}"><i class="bi bi-exclamation-diamond me-2"></i>Incidencias</a></li>
+              </ul>
+            </li>
+
+          </ul>
+        </div>
+        
+        <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center gap-3">
+          {% if request.user.perfilusuario.empresas_contador.count > 1 %}
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-building me-1"></i>{{ request.user.perfilusuario.empresa.nombre|default:"Selecciona empresa" }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              {% for e in request.user.perfilusuario.empresas_contador.all %}
+                <li><a class="dropdown-item reporte-link" href="{% url 'cambiar_empresa_contador' e.id %}">{{ e.nombre }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          <form method="post" action="{% url 'logout' %}" class="mb-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-sm" title="Cerrar sesión">
+              <i class="bi bi-box-arrow-right me-1"></i>
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </nav>
+
+  {% else %}
+    {# ===== NAVBAR COMPLETO PARA USUARIOS NORMALES ===== #}
+    <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-0 shadow-navbar">
     <div class="container-fluid">
       {% comment %} <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
         <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="welcome-logo" style="max-width:35px; margin: 0 auto;">
       </a> {% endcomment %}
-    
 
       <a href="{% url 'dashboard_inicio' %}" class="btn btn-sm btn-light reporte-link" title="Inicio">
         <i class="bi bi-house me-1"></i>
@@ -50,6 +140,7 @@
               <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
               <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
               <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_contadores' %}"><i class="bi bi-calculator-fill me-2"></i>Contadores con acceso</a></li>
               <li><a class="dropdown-item" href="{% url 'usuarios_demo' %}">Usuarios GESAC Demo</a></li>
               <li><a class="dropdown-item" href="{% url 'lista_usuarios_normales' %}">Usuarios GESAC Paga</a></li>
               <li><a class="dropdown-item" href="{% url 'lista_usuarios_visitantes' %}">Usuarios Condominos</a></li>
@@ -353,45 +444,46 @@
       <div class="d-flex align-items-center ms-auto">
       </div>
     </div>
-  </nav>
-</div>
+    </nav>
+    </div>
 
-<div class="modal fade" id="modalAyuda" tabindex="-1" aria-labelledby="modalAyudaLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalAyudaLabel">Ayuda</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body text-center">
-        <h5 class="mb-3">Manual de Operación Sistema GESAC</h5>
-        <a href="{% static 'docs/Manual_GESAC-0726.pdf' %}" target="_blank" class="btn btn-outline-primary mb-3">
-          <i class="bi bi-file-earmark-pdf"></i> Descargar Manual
-        </a>
-        <h5 class="mb-3">Guia practica nuevos usuarios</h5>
-        <a href="{% static 'docs/GESAC_Capacitacion_Usuarios.pdf' %}" target="_blank" class="btn btn-outline-primary mb-3">
-          <i class="bi bi-file-earmark-pdf"></i> Descargar Guia
-        </a>
-        <div>
-          <a href="https://youtube.com/@jaimeestradab?si=uuDbhuhkBUVe4tj8" target="_blank">
-            <p class="mt-3">Videos Tutoriales.</p>
-          </a>
-          <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
-            <p class="mt-2">Visita la página web GESAC.</p>
-          </a>
+    <div class="modal fade" id="modalAyuda" tabindex="-1" aria-labelledby="modalAyudaLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalAyudaLabel">Ayuda</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body text-center">
+            <h5 class="mb-3">Manual de Operación Sistema GESAC</h5>
+            <a href="{% static 'docs/Manual_GESAC-0726.pdf' %}" target="_blank" class="btn btn-outline-primary mb-3">
+              <i class="bi bi-file-earmark-pdf"></i> Descargar Manual
+            </a>
+            <h5 class="mb-3">Guia practica nuevos usuarios</h5>
+            <a href="{% static 'docs/GESAC_Capacitacion_Usuarios.pdf' %}" target="_blank" class="btn btn-outline-primary mb-3">
+              <i class="bi bi-file-earmark-pdf"></i> Descargar Guia
+            </a>
+            <div>
+              <a href="https://youtube.com/@jaimeestradab?si=uuDbhuhkBUVe4tj8" target="_blank">
+                <p class="mt-3">Videos Tutoriales.</p>
+              </a>
+              <a href="https://paginaweb-ro9v.onrender.com/gestor_administrativo" target="_blank">
+                <p class="mt-2">Visita la página web GESAC.</p>
+              </a>
+            </div>
+          </div>
+          <div class="modal-footer">
+            {% if request.user.perfilusuario.empresa.es_premium %}
+              <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PREMIUM</button>
+            {% elif request.user.perfilusuario.empresa.es_plus %}
+              <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PLUS</button>
+            {% endif %}
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
         </div>
       </div>
-      <div class="modal-footer">
-        {% if request.user.perfilusuario.empresa.es_premium %}
-          <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PREMIUM</button>
-        {% elif request.user.perfilusuario.empresa.es_plus %}
-          <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PLUS</button>
-        {% endif %}
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-      </div>
     </div>
-  </div>
-</div>
+{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

@@ -1,5 +1,5 @@
 from os import path
-from .views import  registro_usuario, reiniciar_sistema, reporte_auditoria
+from .views import reiniciar_sistema, reporte_auditoria, registro_usuario
 
 urlpatterns = [
     # otras rutas...
@@ -7,4 +7,6 @@ urlpatterns = [
     path('auditoria/', reporte_auditoria, name='reporte_auditoria'),
     path('registro/', registro_usuario, name='registro'),
     
+    
 ]
+

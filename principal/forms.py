@@ -5,6 +5,7 @@ from empresas.models import Empresa
 from locales.models import LocalComercial
 from .models import Aviso, TemaGeneral, VisitanteAcceso
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
 
 
 
@@ -148,3 +149,36 @@ class EmpresaAuthenticationForm(AuthenticationForm):
                 code='empresa_suspendida',
                 params={'estado': empresa.get_estado_display().lower()},
             )   
+
+
+#################FORMULARIO PARA REGISTRAR UN NUEVO CONTADOR DE EMPRESAS###############
+class ContadorForm(forms.Form):
+    empresas = forms.ModelMultipleChoiceField(
+        queryset=Empresa.objects.all().order_by("nombre"),
+        label="Condominios / Empresas",
+        widget=forms.SelectMultiple(attrs={"size": 8}),
+    )
+    nombre_completo = forms.CharField(max_length=150, label="Nombre completo")
+    username = forms.CharField(max_length=150, label="Usuario")
+    email = forms.EmailField(label="Correo electrónico")
+
+    def clean_username(self):
+        username = self.cleaned_data["username"]
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError("Ese usuario ya existe.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data["email"]
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("Ese correo ya está registrado.")
+        return email
+
+
+#editar empresas asignadas a un contador
+class EditarEmpresasContadorForm(forms.Form):
+    empresas = forms.ModelMultipleChoiceField(
+        queryset=Empresa.objects.all().order_by("nombre"),
+        label="Condominios / Empresas",
+        widget=forms.SelectMultiple(attrs={"size": 10}),
+    )    

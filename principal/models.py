@@ -30,6 +30,20 @@ class PerfilUsuario(models.Model):
     mostrar_wizard = models.BooleanField(default=False)
     ultima_visita_changelog= models.DateTimeField(null=True, blank=True)
     fecha_vencimiento = models.DateTimeField(null=True, blank=True)
+      # NUEVO
+    es_contador = models.BooleanField(
+        default=False,
+        help_text="Si está activo, este usuario solo ve el menú reducido de reportes contables al iniciar sesión."
+    )
+      # NUEVO
+    debe_cambiar_password = models.BooleanField(
+        default=False,
+        help_text="Si está activo, se le fuerza a cambiar su contraseña en el próximo inicio de sesión."
+    )
+    empresas_contador = models.ManyToManyField(
+        Empresa, blank=True, related_name='contadores',
+        help_text="Empresas a las que este contador tiene acceso (solo aplica si es_contador=True)."
+    )
     
     def __str__(self):
        return f"{self.usuario.username} → {self.empresa.nombre if self.empresa else 'Sin empresa'}"

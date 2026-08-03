@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Contadores · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-4 px-3">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h4 class="mb-0"><i class="bi bi-calculator-fill me-2"></i>Contadores</h4>
+            <a href="{% url 'crear_contador' %}" class="btn btn-outline-success reporte-link">
+                <i class="bi bi-plus-lg me-1"></i>Nuevo Contador
+            </a>
+        </div>
+        <form method="get" class="mb-3 d-flex gap-2" style="max-width: 320px;">
+            <select name="empresa" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Todas las empresas</option>
+                {% for e in empresas %}
+                    <option value="{{ e.id }}" {% if empresa_filtro == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <div class="table-responsive rounded-3 border">
+            <table class="table align-middle mb-0 shadow-sm">
+                <thead>
+                    <tr>
+                        <th>Empresa</th>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Estatus</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for perfil in contadores %}
+                        <tr>
+                            <td>
+                                {% for e in perfil.empresas_contador.all %}
+                                    <span class="badge bg-secondary">{{ e.nombre }}</span>
+                                {% empty %}
+                                    <span class="text-muted">-</span>
+                                {% endfor %}
+                            </td>
+                            <td>{{ perfil.usuario.username }}</td>
+                            <td>{{ perfil.usuario.first_name|default:"-" }}</td>
+                            <td>{{ perfil.usuario.email|default:"-" }}</td>
+                            <td>
+                                {% if perfil.usuario.is_active %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Restringido</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'editar_empresas_contador' perfil.id %}" class="btn btn-sm btn-outline-primary reporte-link me-1">
+                                    <i class="bi bi-building-gear"></i> Editar empresas
+                                </a>
+                                <form method="post" action="{% url 'toggle_acceso_contador' perfil.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    {% if perfil.usuario.is_active %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('¿Restringir el acceso de {{ perfil.usuario.username }}? No podrá iniciar sesión hasta que lo reactives.');">
+                                            <i class="bi bi-slash-circle"></i> Restringir acceso
+                                        </button>
+                                    {% else %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-check-circle"></i> Reactivar acceso
+                                        </button>
+                                    {% endif %}
+                                    
+                                </form>
+                            </td>
+
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-calculator fs-3 d-block mb-2"></i>
+                                No hay contadores registrados todavía.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
