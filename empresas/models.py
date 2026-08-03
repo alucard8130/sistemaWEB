@@ -13,6 +13,13 @@ class Empresa(models.Model):
         ('comercial', 'Comercial (plaza / centro comercial)'),
         ('habitacional', 'Habitacional (condominio residencial)'),
     ]
+    ESTADO_CHOICES = [
+        ('activa', 'Activa'),
+        ('prueba', 'En prueba'),
+        ('suspendida', 'Suspendida'),
+        ('cancelada', 'Cancelada'), 
+        ('gratis', 'Gratis'),
+    ]
     nombre = models.CharField(max_length=100)
     rfc = models.CharField(max_length=13, unique=True)
     regimen_fiscal = models.CharField(max_length=100, choices=REGIMEN_CHOICES, blank=True, null=True,default='603')
@@ -33,6 +40,11 @@ class Empresa(models.Model):
     segmento = models.CharField(
         max_length=20, choices=SEGMENTO_CHOICES, default='comercial',
         help_text="Determina la terminología y opciones que ve la empresa en el sistema (Local/Renta vs. Vivienda/Amenidad)."
+    )
+    # NUEVO
+    estado = models.CharField(
+        max_length=20, choices=ESTADO_CHOICES, default='activa',
+        help_text="Controla si la empresa participa en procesos automáticos como la facturación mensual del Cron Job."
     )
     
     def __str__(self):

@@ -5,7 +5,7 @@ from .models import Empresa, CuentaBancaria
 
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'rfc', 'regimen_fiscal', 'stripe_public_key', 'stripe_secret_key', 'stripe_webhook_secret')
+    list_display = ('nombre', 'rfc', 'regimen_fiscal', 'estado', 'segmento', 'es_premium', 'stripe_public_key', 'stripe_secret_key', 'stripe_webhook_secret')
     search_fields = ('nombre', 'rfc')
 
 

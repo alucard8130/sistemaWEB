@@ -160,8 +160,12 @@
                                     </button>
                                 </div>
                             </div>
-                            {% if form.errors %}
-                                <div class="alert alert-danger mt-3 py-2">Usuario o contraseña incorrectos.</div>
+                           {% if form.non_field_errors %}
+                                <div class="alert alert-danger mt-3 py-2">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
                             {% endif %}
                             <div class="col-md-2 d-flex align-items-end">
                                 <a href="{% url 'password_reset' %}" class="small text-muted text-nowrap">¿Olvidaste tu contraseña?</a>

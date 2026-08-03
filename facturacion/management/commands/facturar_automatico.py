@@ -19,7 +19,11 @@ class Command(BaseCommand):
         año, mes = hoy.year, hoy.month
         resumen = []
 
-        empresas = Empresa.objects.all()
+        #empresas = Empresa.objects.all()
+         # NUEVO -- solo empresas activas
+        empresas = Empresa.objects.filter(estado='activa', es_premium=True)
+        self.stdout.write(f"Procesando {empresas.count()} empresa(s) activa(s)...")
+
         for empresa in empresas:
             try:
                 creadas, omitidas = generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_areas=True)

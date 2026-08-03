@@ -4,6 +4,7 @@ from areas.models import AreaComun
 from empresas.models import Empresa
 from locales.models import LocalComercial
 from .models import Aviso, TemaGeneral, VisitanteAcceso
+from django.contrib.auth.forms import AuthenticationForm
 
 
 
@@ -126,3 +127,24 @@ class VisitanteRegistroForm(forms.ModelForm):
         if email and VisitanteAcceso.objects.filter(email=email).exists():
             raise forms.ValidationError("El correo electrónico ya está registrado.")
         return email
+
+
+#valida al hacer login un usuario operativo, si la empresa es suspendida o cancelada, no permite el acceso y muestra un mensaje de error
+class EmpresaAuthenticationForm(AuthenticationForm):
+    def confirm_login_allowed(self, user):
+        # Mantiene la validación estándar de Django (usuario inactivo, etc.)
+        super().confirm_login_allowed(user)
+
+        if user.is_superuser:
+            return  # los superusuarios no dependen de ninguna empresa
+
+        perfil = getattr(user, 'perfilusuario', None)
+        empresa = getattr(perfil, 'empresa', None) if perfil else None
+
+        if empresa and empresa.estado in ('suspendida', 'cancelada'):
+            raise forms.ValidationError(
+                "Tu cuenta está %(estado)s. Por favor comunícate con el administrador del sistema: "
+                "adminsoftheron@gesacadmin.com o por WhatsApp al 55 4882 2343.",
+                code='empresa_suspendida',
+                params={'estado': empresa.get_estado_display().lower()},
+            )   
