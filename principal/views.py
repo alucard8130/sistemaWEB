@@ -119,6 +119,8 @@ from babel.dates import format_date
 import pytz
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import SetPasswordForm
+from django.db.models import Count
+from django.db.models.functions import TruncMonth
 
 
 
@@ -295,29 +297,67 @@ def dashboard_inicio(request):
         )
     )
 
-    cartera_vencida_cuotas = facturas_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
-    cartera_vencida_otros = facturas_otros_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
-    cartera_vencida = cartera_vencida_cuotas + cartera_vencida_otros
+    # cartera_vencida_cuotas = facturas_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
+    # cartera_vencida_otros = facturas_otros_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
+    # cartera_vencida = cartera_vencida_cuotas + cartera_vencida_otros
 
-    facturas_vencidas_count = facturas_pend_qs.count() + facturas_otros_pend_qs.count()
+    # facturas_vencidas_count = facturas_pend_qs.count() + facturas_otros_pend_qs.count()
  
-    # Antigüedad por días desde fecha_vencimiento
+    # # Antigüedad por días desde fecha_vencimiento
    
+    # fecha_30 = hoy - timedelta(days=30)
+    # fecha_60 = hoy - timedelta(days=60)
+    # fecha_90 = hoy - timedelta(days=90)
+    # fecha_180 = hoy - timedelta(days=180)
+ 
+    # def _suma_bucket(qs_cuotas, qs_otros, **filtros):
+    #     total_cuotas = qs_cuotas.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
+    #     total_otros = qs_otros.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
+    #     return total_cuotas + total_otros
+
+    # saldo_0_30 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__gte=fecha_30)
+    # saldo_31_60 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60)
+    # saldo_61_90 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90)
+    # saldo_91_180 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180)
+    # saldo_181_mas = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_180)
+
+    # ── CARTERA VENCIDA — todo en 1 sola consulta por tipo (antes eran ~14) ──
     fecha_30 = hoy - timedelta(days=30)
     fecha_60 = hoy - timedelta(days=60)
     fecha_90 = hoy - timedelta(days=90)
     fecha_180 = hoy - timedelta(days=180)
- 
-    def _suma_bucket(qs_cuotas, qs_otros, **filtros):
-        total_cuotas = qs_cuotas.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
-        total_otros = qs_otros.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
-        return total_cuotas + total_otros
 
-    saldo_0_30 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__gte=fecha_30)
-    saldo_31_60 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60)
-    saldo_61_90 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90)
-    saldo_91_180 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180)
-    saldo_181_mas = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_180)
+    resumen_cuotas = facturas_pend_qs.aggregate(
+        total=Sum('saldo_real'),
+        cantidad=Count('id'),
+        b_0_30=Sum(Case(When(fecha_vencimiento__gte=fecha_30, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_31_60=Sum(Case(When(fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_61_90=Sum(Case(When(fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_91_180=Sum(Case(When(fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_181_mas=Sum(Case(When(fecha_vencimiento__lt=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
+    )
+
+    resumen_otros = facturas_otros_pend_qs.aggregate(
+        total=Sum('saldo_real'),
+        cantidad=Count('id'),
+        b_0_30=Sum(Case(When(fecha_vencimiento__gte=fecha_30, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_31_60=Sum(Case(When(fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_61_90=Sum(Case(When(fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_91_180=Sum(Case(When(fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        b_181_mas=Sum(Case(When(fecha_vencimiento__lt=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
+    )
+
+    def _s(dic, key):
+        return dic.get(key) or Decimal('0')
+
+    cartera_vencida = _s(resumen_cuotas, 'total') + _s(resumen_otros, 'total')
+    facturas_vencidas_count = (resumen_cuotas['cantidad'] or 0) + (resumen_otros['cantidad'] or 0)
+
+    saldo_0_30 = _s(resumen_cuotas, 'b_0_30') + _s(resumen_otros, 'b_0_30')
+    saldo_31_60 = _s(resumen_cuotas, 'b_31_60') + _s(resumen_otros, 'b_31_60')
+    saldo_61_90 = _s(resumen_cuotas, 'b_61_90') + _s(resumen_otros, 'b_61_90')
+    saldo_91_180 = _s(resumen_cuotas, 'b_91_180') + _s(resumen_otros, 'b_91_180')
+    saldo_181_mas = _s(resumen_cuotas, 'b_181_mas') + _s(resumen_otros, 'b_181_mas')
 
     saldo_31_90 = float(saldo_31_60) + float(saldo_61_90)
     saldo_90_mas = float(saldo_91_180) + float(saldo_181_mas)
@@ -347,58 +387,142 @@ def dashboard_inicio(request):
 
     top_deudores = sorted(top_deudores, key=lambda x: x['saldo'], reverse=True)[:5]
  
-    # ── DATOS 6 MESES ──
+    # # ── DATOS 6 MESES ──
+    # meses_6 = []
+    # ingresos_cobrados_6 = []
+    # ingresos_porcobrar_6 = []
+    # gastos_pagados_6 = []
+    # gastos_pendientes_6 = []
+ 
+    # for i in range(5, -1, -1):
+    #     # Calcular mes/año retrocediendo
+    #     m = (mes_actual - i - 1) % 12 + 1
+    #     a = anio_actual - ((i - mes_actual + 1) // 12 + (1 if (i - mes_actual + 1) % 12 >= 0 and i >= mes_actual else 0))
+    #     # Forma más simple y correcta:
+    #     target = hoy.replace(day=1) - timedelta(days=30*i)
+    #     m, a = target.month, target.year
+ 
+    #     meses_6.append(MESES[m-1])
+ 
+    #     cobrado_cuotas = Pago.objects.filter(
+    #         factura__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m
+    #     ).exclude(forma_pago='nota_credito').aggregate(t=Sum('monto'))['t'] or 0
+
+    #     cobrado_otros = CobroOtrosIngresos.objects.filter(
+    #         factura__empresa=empresa, fecha_cobro__year=a, fecha_cobro__month=m
+    #     ).aggregate(t=Sum('monto'))['t'] or 0
+
+    #     cobrado = float(cobrado_cuotas) + float(cobrado_otros)
+
+    #     porcobrar_cuotas = Factura.objects.filter(
+    #         empresa=empresa, estatus='pendiente', activo=True,
+    #         fecha_vencimiento__year=a, fecha_vencimiento__month=m
+    #     ).aggregate(t=Sum('monto'))['t'] or 0
+
+    #     porcobrar_otros = FacturaOtrosIngresos.objects.filter(
+    #         empresa=empresa, estatus='pendiente', activo=True,
+    #         fecha_vencimiento__year=a, fecha_vencimiento__month=m
+    #     ).aggregate(t=Sum('monto'))['t'] or 0
+
+    #     porcobrar = float(porcobrar_cuotas) + float(porcobrar_otros)
+ 
+    #     gpagados = PagoGasto.objects.filter(
+    #         gasto__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m, monto__gt=0
+    #     ).aggregate(t=Sum('monto'))['t'] or 0
+ 
+    #     gpendientes = Gasto.objects.filter(
+    #         empresa=empresa, fecha__year=a, fecha__month=m, estatus='pendiente'
+    #     ).aggregate(t=Sum('monto'))['t'] or 0
+ 
+    #     ingresos_cobrados_6.append(float(cobrado))
+    #     ingresos_porcobrar_6.append(float(porcobrar))
+    #     gastos_pagados_6.append(float(gpagados))
+    #     gastos_pendientes_6.append(float(gpendientes))
+    
+    # ── DATOS 6 MESES — agrupado, 4 consultas en total (antes eran ~24) ──
     meses_6 = []
+    claves_mes = []  # lista de (año, mes) en el mismo orden que meses_6, preservando tu cálculo original
+    for i in range(5, -1, -1):
+        target = hoy.replace(day=1) - timedelta(days=30 * i)
+        m, a = target.month, target.year
+        meses_6.append(MESES[m - 1])
+        claves_mes.append((a, m))
+
+    fecha_rango_inicio = min(date(a, m, 1) for a, m in claves_mes)
+
+    # 1 consulta: cobros de cuotas agrupados por mes
+    cobrado_cuotas_qs = (
+        Pago.objects.filter(factura__empresa=empresa, fecha_pago__gte=fecha_rango_inicio)
+        .exclude(forma_pago='nota_credito')
+        .annotate(mes_trunc=TruncMonth('fecha_pago'))
+        .values('mes_trunc')
+        .annotate(total=Sum('monto'))
+    )
+    cobrado_cuotas_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in cobrado_cuotas_qs}
+
+    # 1 consulta: cobros de otros ingresos agrupados por mes
+    cobrado_otros_qs = (
+        CobroOtrosIngresos.objects.filter(factura__empresa=empresa, fecha_cobro__gte=fecha_rango_inicio)
+        .annotate(mes_trunc=TruncMonth('fecha_cobro'))
+        .values('mes_trunc')
+        .annotate(total=Sum('monto'))
+    )
+    cobrado_otros_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in cobrado_otros_qs}
+
+    # 1 consulta: facturas de cuotas pendientes agrupadas por mes de vencimiento
+    porcobrar_cuotas_qs = (
+        Factura.objects.filter(empresa=empresa, estatus='pendiente', activo=True, fecha_vencimiento__gte=fecha_rango_inicio)
+        .annotate(mes_trunc=TruncMonth('fecha_vencimiento'))
+        .values('mes_trunc')
+        .annotate(total=Sum('monto'))
+    )
+    porcobrar_cuotas_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in porcobrar_cuotas_qs}
+
+    # 1 consulta: facturas de otros ingresos pendientes agrupadas por mes
+    porcobrar_otros_qs = (
+        FacturaOtrosIngresos.objects.filter(empresa=empresa, estatus='pendiente', activo=True, fecha_vencimiento__gte=fecha_rango_inicio)
+        .annotate(mes_trunc=TruncMonth('fecha_vencimiento'))
+        .values('mes_trunc')
+        .annotate(total=Sum('monto'))
+    )
+    porcobrar_otros_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in porcobrar_otros_qs}
+
+    # 1 consulta: gastos pagados agrupados por mes
+    gpagados_qs = (
+        PagoGasto.objects.filter(gasto__empresa=empresa, fecha_pago__gte=fecha_rango_inicio, monto__gt=0)
+        .annotate(mes_trunc=TruncMonth('fecha_pago'))
+        .values('mes_trunc')
+        .annotate(total=Sum('monto'))
+    )
+    gpagados_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in gpagados_qs}
+
+    # 1 consulta: gastos pendientes agrupados por mes
+    gpendientes_qs = (
+        Gasto.objects.filter(empresa=empresa, estatus='pendiente', fecha__gte=fecha_rango_inicio)
+        .annotate(mes_trunc=TruncMonth('fecha'))
+        .values('mes_trunc')
+        .annotate(total=Sum('monto'))
+    )
+    gpendientes_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in gpendientes_qs}
+
+    # Arma las 4 listas finales, en el mismo orden que antes, leyendo de los diccionarios (sin más consultas)
     ingresos_cobrados_6 = []
     ingresos_porcobrar_6 = []
     gastos_pagados_6 = []
     gastos_pendientes_6 = []
- 
-    for i in range(5, -1, -1):
-        # Calcular mes/año retrocediendo
-        m = (mes_actual - i - 1) % 12 + 1
-        a = anio_actual - ((i - mes_actual + 1) // 12 + (1 if (i - mes_actual + 1) % 12 >= 0 and i >= mes_actual else 0))
-        # Forma más simple y correcta:
-        target = hoy.replace(day=1) - timedelta(days=30*i)
-        m, a = target.month, target.year
- 
-        meses_6.append(MESES[m-1])
- 
-        cobrado_cuotas = Pago.objects.filter(
-            factura__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m
-        ).exclude(forma_pago='nota_credito').aggregate(t=Sum('monto'))['t'] or 0
 
-        cobrado_otros = CobroOtrosIngresos.objects.filter(
-            factura__empresa=empresa, fecha_cobro__year=a, fecha_cobro__month=m
-        ).aggregate(t=Sum('monto'))['t'] or 0
+    for a, m in claves_mes:
+        cobrado = cobrado_cuotas_dict.get((a, m), 0) + cobrado_otros_dict.get((a, m), 0)
+        porcobrar = porcobrar_cuotas_dict.get((a, m), 0) + porcobrar_otros_dict.get((a, m), 0)
+        gpagados = gpagados_dict.get((a, m), 0)
+        gpendientes = gpendientes_dict.get((a, m), 0)
 
-        cobrado = float(cobrado_cuotas) + float(cobrado_otros)
+        ingresos_cobrados_6.append(cobrado)
+        ingresos_porcobrar_6.append(porcobrar)
+        gastos_pagados_6.append(gpagados)
+        gastos_pendientes_6.append(gpendientes)
 
-        porcobrar_cuotas = Factura.objects.filter(
-            empresa=empresa, estatus='pendiente', activo=True,
-            fecha_vencimiento__year=a, fecha_vencimiento__month=m
-        ).aggregate(t=Sum('monto'))['t'] or 0
 
-        porcobrar_otros = FacturaOtrosIngresos.objects.filter(
-            empresa=empresa, estatus='pendiente', activo=True,
-            fecha_vencimiento__year=a, fecha_vencimiento__month=m
-        ).aggregate(t=Sum('monto'))['t'] or 0
-
-        porcobrar = float(porcobrar_cuotas) + float(porcobrar_otros)
- 
-        gpagados = PagoGasto.objects.filter(
-            gasto__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m, monto__gt=0
-        ).aggregate(t=Sum('monto'))['t'] or 0
- 
-        gpendientes = Gasto.objects.filter(
-            empresa=empresa, fecha__year=a, fecha__month=m, estatus='pendiente'
-        ).aggregate(t=Sum('monto'))['t'] or 0
- 
-        ingresos_cobrados_6.append(float(cobrado))
-        ingresos_porcobrar_6.append(float(porcobrar))
-        gastos_pagados_6.append(float(gpagados))
-        gastos_pendientes_6.append(float(gpendientes))
-    
     # Membresía
     membresia_label = 'Premium'
     try:
