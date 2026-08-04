@@ -36,6 +36,13 @@
 
                 <form method="post" id="form-empresas">
                     {% csrf_token %}
+                      <div class="mb-3">
+                        <label class="form-label">Correo electrónico</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                            <div class="text-danger small">{{ form.email.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Condominios / Empresas con acceso</label>
                         {{ form.empresas }}

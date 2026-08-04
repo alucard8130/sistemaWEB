@@ -176,9 +176,10 @@ class ContadorForm(forms.Form):
 
 
 #editar empresas asignadas a un contador
-class EditarEmpresasContadorForm(forms.Form):
+class EditarContadorForm(forms.Form):
+    email = forms.EmailField(label="Correo electrónico")
     empresas = forms.ModelMultipleChoiceField(
         queryset=Empresa.objects.all().order_by("nombre"),
         label="Condominios / Empresas",
         widget=forms.SelectMultiple(attrs={"size": 10}),
-    )    
+    )

@@ -73,7 +73,7 @@ from .forms import (
     AvisoForm,
     CSDUploadForm,
     ContadorForm,
-    EditarEmpresasContadorForm,
+    EditarContadorForm
 )
 import base64
 import io
@@ -759,28 +759,86 @@ def editar_empresas_contador(request, perfil_id):
     perfil = get_object_or_404(PerfilUsuario, pk=perfil_id, es_contador=True)
 
     if request.method == "POST":
-        form = EditarEmpresasContadorForm(request.POST)
+        form = EditarContadorForm(request.POST)
         if form.is_valid():
-            empresas_seleccionadas = form.cleaned_data["empresas"]
+            nuevo_email = form.cleaned_data["email"]
 
+            # Verifica que el correo no esté siendo usado por otro usuario
+            if User.objects.filter(email=nuevo_email).exclude(pk=perfil.usuario.pk).exists():
+                messages.error(request, "Ese correo ya está registrado por otro usuario.")
+                return render(request, "contador/editar_empresas_contador.html", {"form": form, "perfil": perfil})
+
+            perfil.usuario.email = nuevo_email
+            perfil.usuario.save(update_fields=["email"])
+
+            empresas_seleccionadas = form.cleaned_data["empresas"]
             perfil.empresas_contador.set(empresas_seleccionadas)
 
-            # Si la empresa activa actual ya no está en la nueva lista, reasigna una válida
             if perfil.empresa not in empresas_seleccionadas:
                 perfil.empresa = empresas_seleccionadas.first() if empresas_seleccionadas else None
                 perfil.save(update_fields=['empresa'])
 
             nombres_empresas = ", ".join(e.nombre for e in empresas_seleccionadas) or "ninguna"
-            messages.success(request, f"✅ Empresas actualizadas para '{perfil.usuario.username}': {nombres_empresas}.")
+            messages.success(request, f"✅ Datos actualizados para '{perfil.usuario.username}'. Correo: {nuevo_email}. Empresas: {nombres_empresas}.")
             return redirect("lista_contadores")
     else:
-        form = EditarEmpresasContadorForm(initial={"empresas": perfil.empresas_contador.all()})
+        form = EditarContadorForm(initial={
+            "empresas": perfil.empresas_contador.all(),
+            "email": perfil.usuario.email,
+        })
 
     return render(request, "contador/editar_empresas_contador.html", {
         "form": form,
         "perfil": perfil,
     })
 
+
+@login_required
+def reenviar_credenciales_contador(request, perfil_id):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para realizar esta acción.")
+        return redirect('dashboard_inicio')
+
+    if request.method != "POST":
+        return redirect('lista_contadores')
+
+    perfil = get_object_or_404(PerfilUsuario, pk=perfil_id, es_contador=True)
+
+    if not perfil.usuario.email:
+        messages.error(request, f"'{perfil.usuario.username}' no tiene correo registrado. Edítalo primero.")
+        return redirect('lista_contadores')
+
+    # Genera una contraseña temporal NUEVA (la original nunca quedó guardada en texto plano)
+    temp_password = get_random_string(
+        length=12, allowed_chars="abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+    )
+    perfil.usuario.set_password(temp_password)
+    perfil.usuario.save(update_fields=["password"])
+
+    perfil.debe_cambiar_password = True
+    perfil.save(update_fields=["debe_cambiar_password"])
+
+    nombres_empresas = ", ".join(e.nombre for e in perfil.empresas_contador.all()) or "ninguna"
+    login_url = request.build_absolute_uri(reverse("login"))
+    asunto = "Acceso a GESAC"
+    mensaje = (
+        f"Hola {perfil.usuario.first_name or perfil.usuario.username},\n\n"
+        f"Se reenviaron tus credenciales de acceso a GESAC, con acceso a: {nombres_empresas}.\n\n"
+        f"Tus datos de acceso son:\n"
+        f"Usuario: {perfil.usuario.username}\n"
+        f"Contraseña temporal: {temp_password}\n\n"
+        f"Puedes iniciar sesión aquí: {login_url}\n\n"
+        f"Por seguridad, el sistema te pedirá crear una nueva contraseña la primera vez que ingreses.\n\n"
+        f"Saludos,\nEquipo GESAC"
+    )
+    send_mail(
+        subject=asunto, message=mensaje,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[perfil.usuario.email], fail_silently=True,
+    )
+
+    messages.success(request, f"✅ Credenciales reenviadas a {perfil.usuario.email}.")
+    return redirect("lista_contadores")
 
 
 
