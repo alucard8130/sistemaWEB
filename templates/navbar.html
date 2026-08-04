@@ -61,7 +61,7 @@
                 <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}"><i class="bi bi-receipt me-2"></i>Reporte de Pagos de Gastos</a></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}"><i class="bi bi-cash-stack me-2"></i>Reporte de Cobros de Cuotas</a></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}"><i class="bi bi-cash-coin me-2"></i>Reporte de Otros Ingresos</a></li>
-                <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}"><i class="bi bi-graph-up-arrow me-2"></i>Cartera Vencida</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}"><i class="bi bi-graph-up-arrow me-2"></i>Cartera Vencida</a></li>
               </ul>
             </li>
 
@@ -70,7 +70,7 @@
                 Presupuestos y Nómina
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-clipboard-data me-2"></i>Presupuesto vs. Real</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-clipboard-data me-2"></i>Presupuesto vs. Real (Gastos)</a></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}"><i class="bi bi-clipboard-data me-2"></i>Presupuesto vs. Real (Ingresos)</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}"><i class="bi bi-person-check me-2"></i>Reporte de Asistencia</a></li>
