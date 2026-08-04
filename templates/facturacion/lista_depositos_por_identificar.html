@@ -52,9 +52,14 @@
 <div class="mb-2">
     <h2><strong>Total depósitos no identificados:</strong> ${{ total_depositos|floatformat:2 |intcomma}}</h2>
 </div>
-<a href="{% url 'registrar_deposito_por_identificar' %}" class="btn btn-success mb-3 reporte-link">
-    <i class="bi bi-plus-circle me-1"></i>Registrar depósito no identificado
-</a>
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <a href="{% url 'registrar_deposito_por_identificar' %}" class="btn btn-success reporte-link">
+        <i class="bi bi-plus-circle me-1"></i>Registrar depósito no identificado
+    </a>
+    <a href="{% url 'exportar_depositos_por_identificar_excel' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}" class="btn btn-outline-primary">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Descargar Excel
+    </a>
+</div>
 
     <table class="table table-striped mt-3">
         <thead>

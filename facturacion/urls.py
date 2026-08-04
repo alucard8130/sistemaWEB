@@ -37,4 +37,5 @@ urlpatterns = [
     path('exportar-estado-cuenta/', views.exportar_estado_cuenta_excel, name='exportar_estado_cuenta_excel'),
     path('verificacion-facturacion/', views.verificacion_facturacion, name='verificacion_facturacion'),
     path('reportes/cartera-vencida/', views.reporte_cartera_vencida, name='reporte_cartera_vencida'),
+    path('depositos-por-identificar/exportar/', views.exportar_depositos_por_identificar_excel, name='exportar_depositos_por_identificar_excel'),
 ]

@@ -1318,6 +1318,67 @@ def lista_depositos_por_identificar(request):
     )
 
 
+@login_required
+def exportar_depositos_por_identificar_excel(request):
+    empresa = request.user.perfilusuario.empresa
+    pagos = Pago.objects.filter(
+        identificado=False, factura__isnull=True, empresa=empresa
+    ).select_related("cuenta_bancaria").order_by("-fecha_pago")
+
+    fecha_inicio = request.GET.get("fecha_inicio")
+    fecha_fin = request.GET.get("fecha_fin")
+
+    if fecha_inicio:
+        try:
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__gte=fecha_i)
+        except Exception:
+            pass
+    if fecha_fin:
+        try:
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            pagos = pagos.filter(fecha_pago__lte=fecha_f)
+        except Exception:
+            pass
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Depósitos por Identificar"
+
+    ws.append([
+        "Fecha", "Monto", "Banco", "Número de Cuenta",
+        "Forma de Pago", "Observaciones",
+    ])
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="C0392B", end_color="C0392B", fill_type="solid")
+
+    total = 0
+    for pago in pagos:
+        ws.append([
+            pago.fecha_pago.strftime("%d/%m/%Y") if pago.fecha_pago else "",
+            float(pago.monto),
+            pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
+            pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
+            pago.get_forma_pago_display(),
+            pago.observaciones or "",
+        ])
+        total += float(pago.monto)
+
+    ws.append(["", "", "", "", "TOTAL:", total])
+    for cell in ws[ws.max_row]:
+        cell.font = Font(bold=True)
+
+    for col_letra, ancho in [("A", 14), ("B", 14), ("C", 22), ("D", 20), ("E", 22), ("F", 30)]:
+        ws.column_dimensions[col_letra].width = ancho
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=depositos_por_identificar.xlsx"
+    wb.save(response)
+    return response
+
 
 #################################REPORTES
 # pagos_por_origen.html
