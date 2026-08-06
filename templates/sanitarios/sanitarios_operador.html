@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Sanitarios · Operador · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+        .op-card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 14px rgba(0,0,0,0.07); margin-bottom: 20px; }
+        .btn-generar {
+            background: linear-gradient(135deg, #0f2d52, #1a5276);
+            color: white; font-weight: 700; font-size: 1.1rem;
+            padding: 18px; border-radius: 14px; width: 100%; border: none;
+        }
+        .kpi-mini { background: #f7f9fc; border-radius: 10px; padding: 12px 16px; text-align: center; }
+        .kpi-mini .valor { font-size: 1.4rem; font-weight: 700; }
+        .kpi-mini .label { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; }
+        table.tabla-usos td, table.tabla-usos th { font-size: 0.82rem; padding: 8px 10px; }
+        input#input-codigo-cobrar { font-size: 1.4rem; text-align: center; letter-spacing: 0.2em; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <body>
+    {% if not es_caseta_publica %}
+    {% include 'navbar.html' %}
+    {% endif %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container py-4" style="max-width: 720px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-3"><i class="bi bi-door-open-fill me-2"></i>Control de Sanitarios — {{ empresa.nombre }}</h4>
+
+        <div class="row g-2 mb-3">
+            <div class="col-4">
+                <div class="kpi-mini">
+                    <div class="valor text-warning">{{ pendientes_hoy.count }}</div>
+                    <div class="label">Pendientes hoy</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="kpi-mini">
+                    <div class="valor text-success">{{ cobrados_count }}</div>
+                    <div class="label">Cobrados hoy</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="kpi-mini">
+                    <div class="valor text-primary">${{ total_cobrado_hoy|floatformat:2 }}</div>
+                    <div class="label">Total del día</div>
+                </div>
+            </div>
+        </div>
+
+       <div class="op-card">
+             {% if empresa.usa_boletos_fisicos_sanitario %}
+                <div class="mb-2">
+                    {% if boletos_disponibles == 0 %}
+                        <span class="badge bg-danger fs-6 px-3 py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>0 boletos disponibles — carga más folios
+                        </span>
+                    {% elif boletos_disponibles < 50 %}
+                        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                            <i class="bi bi-exclamation-circle me-1"></i>{{ boletos_disponibles }} boletos disponibles
+                        </span>
+                    {% else %}
+                        <span class="badge bg-success fs-6 px-3 py-2">
+                            <i class="bi bi-ticket-perforated-fill me-1"></i>{{ boletos_disponibles }} boletos disponibles
+                        </span>
+                    {% endif %}
+                </div>
+                <h6 class="text-muted mb-2">1. Al dejar entrar a alguien, entrega el siguiente boleto del rollo</h6>
+                <form method="post" id="form-generar">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="generar">
+                    <button type="submit" class="btn-generar">
+                        <i class="bi bi-ticket-perforated-fill me-2"></i>Entregar siguiente boleto
+                    </button>
+                </form>
+            {% else %}
+                <h6 class="text-muted mb-2">1. Al dejar entrar a alguien, genera su código</h6>
+                <form method="post" id="form-generar">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="generar">
+                    <button type="submit" class="btn-generar">
+                        <i class="bi bi-plus-circle me-2"></i>Generar nuevo código
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+
+        <div class="op-card">
+            <h6 class="text-muted mb-2">2. Al momento de cobrar, escribe el código</h6>
+            <form method="post" id="form-cobrar" class="d-flex gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="cobrar">
+               {% if empresa.usa_boletos_fisicos_sanitario %}
+                <input type="text" name="codigo" id="input-codigo-cobrar" maxlength="10"
+                       class="form-control text-uppercase" placeholder="A-0001" autocomplete="off">
+                {% else %}
+                <input type="text" name="codigo" id="input-codigo-cobrar" maxlength="4" inputmode="numeric"
+                       class="form-control" placeholder="0000" autocomplete="off">
+                {% endif %}
+                <button type="submit" class="btn btn-success px-4">
+                    <i class="bi bi-cash-coin"></i> Cobrar
+                </button>
+            </form>
+        </div>
+
+        {% if pendientes_hoy %}
+        <div class="op-card">
+            <h6 class="text-muted mb-2"><i class="bi bi-hourglass-split me-1"></i>Códigos pendientes de cobro</h6>
+            <div class="d-flex flex-wrap gap-2">
+                {% for uso in pendientes_hoy %}
+                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">{{ uso.codigo }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="op-card">
+            <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i>Historial de hoy</h6>
+            <div class="table-responsive">
+                <table class="table table-sm tabla-usos mb-0">
+                    <thead>
+                        <tr><th>Código</th><th>Hora generado</th><th>Estado</th><th>Hora cobro</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for uso in usos_hoy %}
+                        <tr>
+                            <td class="fw-bold">{{ uso.codigo }}</td>
+                            <td>{{ uso.fecha_generado|time:"H:i" }}</td>
+                            <td>
+                                {% if uso.estado == 'cobrado' %}
+                                    <span class="badge bg-success">Cobrado</span>
+                                {% elif uso.estado == 'pendiente' %}
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Cancelado</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if uso.fecha_cobro %}{{ uso.fecha_cobro|time:"H:i" }}{% else %}—{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">Sin movimientos todavía hoy.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if not es_caseta_publica %}
+        <div class="text-center">
+            <a href="{% url 'sanitarios_corte_diario' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-calculator me-1"></i>Ver corte del día
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('input-codigo-cobrar').focus();
+        });
+    </script>
+</body>
+</html>

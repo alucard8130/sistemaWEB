@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Corte Diario de Sanitarios · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+        .corte-card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 14px rgba(0,0,0,0.07); margin-bottom: 20px; }
+        .kpi-box { background: #f7f9fc; border-radius: 12px; padding: 16px; text-align: center; }
+        .kpi-box .valor { font-size: 1.6rem; font-weight: 700; }
+        .kpi-box .label { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; }
+        .alerta-diferencia { background: #fdedec; border: 1px solid #f5b7b1; border-radius: 10px; padding: 12px 16px; color: #922b21; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container py-4" style="max-width: 640px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-3"><i class="bi bi-calculator-fill me-2"></i>Corte Diario de Sanitarios</h4>
+
+        <form method="get" class="d-flex gap-2 mb-3 align-items-end">
+            <div>
+                <label class="form-label small">Fecha</label>
+                <input type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()">
+            </div>
+        </form>
+
+        <div class="corte-card">
+            <div class="row g-3">
+                <div class="col-4">
+                    <div class="kpi-box">
+                        <div class="valor text-primary">{{ generados }}</div>
+                        <div class="label">Códigos generados</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="kpi-box">
+                        <div class="valor text-success">{{ cobrados_count }}</div>
+                        <div class="label">Cobrados</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="kpi-box">
+                        <div class="valor text-warning">{{ pendientes }}</div>
+                        <div class="label">Sin cobrar</div>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="text-center mb-3">
+                <div class="text-muted small">TOTAL COBRADO EL {{ fecha|date:"d/m/Y" }}</div>
+                <div style="font-size:2.2rem; font-weight:800; color:#1e8449;">${{ total_cobrado|floatformat:2 }}</div>
+            </div>
+
+            {% if pendientes > 0 %}
+            <div class="alerta-diferencia mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                Hay <strong>{{ pendientes }}</strong> código(s) generado(s) que nunca se cobraron ese día —
+                revisa con el operador antes de cerrar el corte.
+            </div>
+            {% endif %}
+
+            {% if corte_existente %}
+            <div class="alert alert-success mb-0">
+                <i class="bi bi-check-circle-fill me-1"></i>
+                Este corte ya fue cerrado el {{ corte_existente.fecha_cierre|date:"d/m/Y H:i" }}
+                por {{ corte_existente.cerrado_por.username }}.
+            </div>
+            {% elif total_cobrado > 0 %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="cerrar_corte">
+                <input type="hidden" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+                <div class="mb-3">
+                    <label class="form-label small">Fecha real del depósito al banco</label>
+                    <input type="date" name="fecha_deposito" class="form-control" value="{{ fecha|date:'Y-m-d' }}" min="{{ fecha|date:'Y-m-d' }}">
+                    <div class="form-text">Si el operador aún no deposita, ajusta esta fecha después de que sí lo haga.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">Cuenta bancaria donde se depositará el efectivo</label>
+                    <select name="cuenta_bancaria" class="form-select" required>
+                        <option value="">Selecciona una cuenta…</option>
+                        {% for cuenta in cuentas %}
+                            <option value="{{ cuenta.id }}">{{ cuenta.banco }} — {{ cuenta.numero_cuenta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success w-100 py-2"
+                        onclick="return confirm('¿Generar el ingreso de ${{ total_cobrado|floatformat:2 }} por uso de sanitarios del {{ fecha_formateada }}?');">
+                    <i class="bi bi-check-circle me-1"></i> Cerrar corte y generar ingreso
+                </button>
+            </form>
+            {% else %}
+            <p class="text-center text-muted small mb-0">No hay nada cobrado este día todavía.</p>
+            {% endif %}
+        </div>
+
+        <div class="text-center">
+            <a href="{% url 'sanitarios_operador' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Volver al panel del operador
+            </a>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

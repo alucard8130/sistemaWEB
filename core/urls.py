@@ -243,6 +243,7 @@ urlpatterns = [
     path('contadores/<int:perfil_id>/editar-empresas/', editar_empresas_contador, name='editar_empresas_contador'),
     path('contadores/<int:perfil_id>/reenviar/', reenviar_credenciales_contador, name='reenviar_credenciales_contador'),
     path('contador/login/', auth_views.LoginView.as_view(template_name='contador/login_contador.html',authentication_form=EmpresaAuthenticationForm,), name='contador_login'),
+    path('sanitarios/', include('sanitarios.urls')),
 ]
 
     

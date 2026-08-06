@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Sanitarios no configurados · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh; background: #f0f4f9; font-family: 'Rubik', sans-serif;
+            display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .aviso-card {
+            background: white; border-radius: 18px; padding: 40px 32px;
+            max-width: 420px; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="aviso-card">
+        <i class="bi bi-exclamation-triangle-fill" style="font-size: 2.8rem; color: #d4ac0d;"></i>
+        <h5 class="fw-bold mt-3 mb-2">Servicio no configurado</h5>
+        <p class="text-muted small">
+            Esta caseta pertenece a <strong>{{ empresa.nombre }}</strong>, pero el precio de uso
+            de sanitarios todavía no ha sido configurado en el sistema.
+        </p>
+        <p class="text-muted small mb-0">
+            Contacta al administrador de tu condominio o al proveedor de GESAC para activarlo.
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Cortes Pendientes de Sanitarios · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+        .pendiente-card {
+            background: white; border-radius: 14px; padding: 16px 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .total-strip {
+            background: linear-gradient(135deg, #0f2d52, #1a5276); color: white;
+            border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container py-4" style="max-width: 680px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-3"><i class="bi bi-exclamation-diamond-fill text-warning me-2"></i>Cortes Pendientes de Cerrar — {{ empresa.nombre }}</h4>
+
+        {% if pendientes %}
+        <div class="total-strip">
+            <div style="font-size:0.78rem; opacity:0.8; text-transform:uppercase;">Total sin registrar como ingreso</div>
+            <div style="font-size:2rem; font-weight:800;">${{ total_pendiente|floatformat:2 }}</div>
+            <div style="font-size:0.82rem; opacity:0.85;">{{ pendientes|length }} día(s) con cobros pendientes de cerrar</div>
+        </div>
+
+        {% for dia in pendientes %}
+        <div class="pendiente-card">
+            <div>
+                <div class="fw-bold">{{ dia.dia|date:"l, d \d\e F \d\e Y" }}</div>
+                <div class="text-muted small">{{ dia.cantidad }} cobro(s) — ${{ dia.total|floatformat:2 }}</div>
+            </div>
+            <a href="{% url 'sanitarios_corte_diario' %}?fecha={{ dia.dia|date:'Y-m-d' }}" class="btn btn-sm btn-primary reporte-link">
+                <i class="bi bi-calculator me-1"></i>Ir a cerrar
+            </a>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-check-circle fs-1 d-block mb-2 text-success"></i>
+            No hay ningún corte pendiente — todo está al día.
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

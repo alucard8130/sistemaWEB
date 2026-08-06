@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "traspasos",
     "amenidades",
     "catalogos",
+    "sanitarios",
 ]
 
 

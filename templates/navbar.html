@@ -129,12 +129,15 @@
           {% if request.user.is_staff %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Configuración">
-              Config. <i style="font-size: 1.5em;"></i>
+              Super Usuario <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
               <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Panel Administrador</a></li>
               <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
               <li><a class="dropdown-item" href="{% url 'anuncios_publicos' %}">Anuncios Institucionales</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'configurar_precio_sanitario' %}"><i class="bi bi-gear me-2"></i>Configurar Sanitarios</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_casetas_sanitario' %}"><i class="bi bi-house me-2"></i>Casetas Sanitario</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'cargar_boletos_fisicos' %}"><i class="bi bi-ticket-perforated-fill me-2"></i>Cargar Boletos Físicos</a></li>
               <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
               <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
               <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Empresa</a></li>
@@ -296,6 +299,10 @@
               {% endif %}
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
+              {% endif %}
+              {% if empresa_actual.precio_sanitario %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'sanitarios_operador' %}"><i class="bi bi-door-open-fill me-2"></i>Control de Sanitarios</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'cortes_sanitario_pendientes' %}"><i class="bi bi-exclamation-diamond me-2"></i>Cortes Pendientes Sanitarios</a></li>
               {% endif %}
             </ul>
           </li>

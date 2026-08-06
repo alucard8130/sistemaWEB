@@ -46,6 +46,14 @@ class Empresa(models.Model):
         max_length=20, choices=ESTADO_CHOICES, default='activa',
         help_text="Controla si la empresa participa en procesos automáticos como la facturación mensual del Cron Job."
     )
+    precio_sanitario = models.DecimalField(
+            max_digits=6, decimal_places=2, null=True, blank=True,
+            help_text="Precio fijo por uso de sanitario. Déjalo vacío si tu condominio no cobra este servicio."
+        )
+    usa_boletos_fisicos_sanitario = models.BooleanField(
+        default=False,
+        help_text="Si está activo, el operador captura el número del boleto físico existente en vez de que el sistema genere un código aleatorio."
+    ) 
     
     def __str__(self):
         return self.nombre
@@ -100,6 +108,7 @@ class CuentaBancaria(models.Model):
     cuenta_contable = models.ForeignKey(
         'gastos.CuentaContable', on_delete=models.SET_NULL, null=True, blank=True, related_name='cuentas_bancarias'
     )
+    
 
     def __str__(self):
         return f"{self.banco} - {self.numero_cuenta}"
