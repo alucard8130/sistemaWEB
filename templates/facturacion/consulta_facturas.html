@@ -293,6 +293,10 @@
                                         {{ factura.local.numero }}
                                     {% elif factura.area_comun %}
                                         {{ factura.area_comun.numero }}
+                                    {% elif factura.locales_incluidos.all %}
+                                        <span class="badge badge-modern" title="{% for l in factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                            <i class="bi bi-collection-fill"></i> {{ factura.locales_incluidos.count }} locales
+                                        </span>
                                     {% else %}
                                         -
                                     {% endif %}

@@ -95,7 +95,7 @@ from rest_framework.decorators import (
 )
 from .models import VisitanteToken
 from functools import wraps
-from django.db.models import Sum
+from django.db.models import Exists, Sum
 from django.db.models import (
     Case,
     When,
@@ -281,9 +281,7 @@ def dashboard_inicio(request):
             output_field=DecimalField()
         )
     )
-    # Subquery para cobros parciales (otros ingresos) -- ya la tienes definida arriba también
-    # total_cobrado_otros_sq ya está definido arriba
-
+   
     facturas_otros_pend_qs = FacturaOtrosIngresos.objects.filter(
         empresa=empresa, estatus='pendiente', activo=True
     ).annotate(
@@ -297,29 +295,6 @@ def dashboard_inicio(request):
         )
     )
 
-    # cartera_vencida_cuotas = facturas_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
-    # cartera_vencida_otros = facturas_otros_pend_qs.aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
-    # cartera_vencida = cartera_vencida_cuotas + cartera_vencida_otros
-
-    # facturas_vencidas_count = facturas_pend_qs.count() + facturas_otros_pend_qs.count()
- 
-    # # Antigüedad por días desde fecha_vencimiento
-   
-    # fecha_30 = hoy - timedelta(days=30)
-    # fecha_60 = hoy - timedelta(days=60)
-    # fecha_90 = hoy - timedelta(days=90)
-    # fecha_180 = hoy - timedelta(days=180)
- 
-    # def _suma_bucket(qs_cuotas, qs_otros, **filtros):
-    #     total_cuotas = qs_cuotas.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
-    #     total_otros = qs_otros.filter(**filtros).aggregate(t=Sum('saldo_real'))['t'] or Decimal('0')
-    #     return total_cuotas + total_otros
-
-    # saldo_0_30 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__gte=fecha_30)
-    # saldo_31_60 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60)
-    # saldo_61_90 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90)
-    # saldo_91_180 = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180)
-    # saldo_181_mas = _suma_bucket(facturas_pend_qs, facturas_otros_pend_qs, fecha_vencimiento__lt=fecha_180)
 
     # ── CARTERA VENCIDA — todo en 1 sola consulta por tipo (antes eran ~14) ──
     fecha_30 = hoy - timedelta(days=30)
@@ -365,11 +340,17 @@ def dashboard_inicio(request):
     # ── TOP DEUDORES (cuotas + otros ingresos combinados) ──
     top_deudores = []
 
-    for f in facturas_pend_qs.select_related('cliente', 'local', 'area_comun').order_by('-monto')[:10]:
+    for f in facturas_pend_qs.select_related('cliente', 'local', 'area_comun').prefetch_related('locales_incluidos').order_by('-monto')[:10]:
         dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
+        if f.local:
+            local_label = f.local.numero
+        elif f.locales_incluidos.exists():
+            local_label = "Grupo: " + ", ".join(l.numero for l in f.locales_incluidos.all())
+        else:
+            local_label = None
         top_deudores.append({
             'cliente__nombre': f.cliente.nombre if f.cliente else '—',
-            'local__numero': f.local.numero if f.local else None,
+            'local__numero': local_label,
             'area_comun__numero': f.area_comun.numero if f.area_comun else None,
             'saldo': float(f.monto),
             'dias_vencido': max(dias, 0),
@@ -387,57 +368,6 @@ def dashboard_inicio(request):
 
     top_deudores = sorted(top_deudores, key=lambda x: x['saldo'], reverse=True)[:5]
  
-    # # ── DATOS 6 MESES ──
-    # meses_6 = []
-    # ingresos_cobrados_6 = []
-    # ingresos_porcobrar_6 = []
-    # gastos_pagados_6 = []
-    # gastos_pendientes_6 = []
- 
-    # for i in range(5, -1, -1):
-    #     # Calcular mes/año retrocediendo
-    #     m = (mes_actual - i - 1) % 12 + 1
-    #     a = anio_actual - ((i - mes_actual + 1) // 12 + (1 if (i - mes_actual + 1) % 12 >= 0 and i >= mes_actual else 0))
-    #     # Forma más simple y correcta:
-    #     target = hoy.replace(day=1) - timedelta(days=30*i)
-    #     m, a = target.month, target.year
- 
-    #     meses_6.append(MESES[m-1])
- 
-    #     cobrado_cuotas = Pago.objects.filter(
-    #         factura__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m
-    #     ).exclude(forma_pago='nota_credito').aggregate(t=Sum('monto'))['t'] or 0
-
-    #     cobrado_otros = CobroOtrosIngresos.objects.filter(
-    #         factura__empresa=empresa, fecha_cobro__year=a, fecha_cobro__month=m
-    #     ).aggregate(t=Sum('monto'))['t'] or 0
-
-    #     cobrado = float(cobrado_cuotas) + float(cobrado_otros)
-
-    #     porcobrar_cuotas = Factura.objects.filter(
-    #         empresa=empresa, estatus='pendiente', activo=True,
-    #         fecha_vencimiento__year=a, fecha_vencimiento__month=m
-    #     ).aggregate(t=Sum('monto'))['t'] or 0
-
-    #     porcobrar_otros = FacturaOtrosIngresos.objects.filter(
-    #         empresa=empresa, estatus='pendiente', activo=True,
-    #         fecha_vencimiento__year=a, fecha_vencimiento__month=m
-    #     ).aggregate(t=Sum('monto'))['t'] or 0
-
-    #     porcobrar = float(porcobrar_cuotas) + float(porcobrar_otros)
- 
-    #     gpagados = PagoGasto.objects.filter(
-    #         gasto__empresa=empresa, fecha_pago__year=a, fecha_pago__month=m, monto__gt=0
-    #     ).aggregate(t=Sum('monto'))['t'] or 0
- 
-    #     gpendientes = Gasto.objects.filter(
-    #         empresa=empresa, fecha__year=a, fecha__month=m, estatus='pendiente'
-    #     ).aggregate(t=Sum('monto'))['t'] or 0
- 
-    #     ingresos_cobrados_6.append(float(cobrado))
-    #     ingresos_porcobrar_6.append(float(porcobrar))
-    #     gastos_pagados_6.append(float(gpagados))
-    #     gastos_pendientes_6.append(float(gpendientes))
     
     # ── DATOS 6 MESES — agrupado, 4 consultas en total (antes eran ~24) ──
     meses_6 = []
@@ -2372,11 +2302,11 @@ def visitante_consulta_facturas(request):
     facturas = Factura.objects.none()
     if local_id:
         facturas = Factura.objects.filter(
-            local_id=local_id,
-            local__in=locales,
+            Q(local_id=local_id, local__in=locales)
+            | Q(locales_incluidos__id=local_id, locales_incluidos__in=locales),
             empresa=empresa,
             monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
-        ).order_by("-fecha_vencimiento")
+        ).distinct().order_by("-fecha_vencimiento")
     elif area_id:
         facturas = Factura.objects.filter(
             area_comun_id=area_id,
@@ -2386,10 +2316,10 @@ def visitante_consulta_facturas(request):
         ).order_by("-fecha_vencimiento")
     else:
         facturas = Factura.objects.filter(
-            Q(local__in=locales) | Q(area_comun__in=areas),
+            Q(local__in=locales) | Q(area_comun__in=areas) | Q(locales_incluidos__in=locales),
             empresa=empresa,
             monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
-        ).order_by("-fecha_vencimiento")
+        ).distinct().order_by("-fecha_vencimiento")
 
     # Obtén los años únicos de las facturas
     anios_unicos = (
@@ -2423,6 +2353,7 @@ def visitante_consulta_facturas(request):
     factura_pendiente_id = (
         factura_pendiente_mas_antigua.id if factura_pendiente_mas_antigua else None
     )
+    facturas = facturas.select_related("local", "area_comun").prefetch_related("locales_incluidos")
     # paginacion
     page_number = request.GET.get("page", 1)
     paginator = Paginator(facturas, 10)  # Mostrar 10 facturas por página
@@ -2483,16 +2414,20 @@ def descargar_estado_cuenta_pdf(request):
     facturas = Factura.objects.none()
     if local_id:
         facturas = Factura.objects.filter(
-            local_id=local_id, local__in=locales, empresa=empresa, monto__gt=0
-        )
+            Q(local_id=local_id, local__in=locales)
+            | Q(locales_incluidos__id=local_id, locales_incluidos__in=locales),
+            empresa=empresa, monto__gt=0,
+        ).distinct()
     elif area_id:
         facturas = Factura.objects.filter(
             area_comun_id=area_id, area_comun__in=areas, empresa=empresa, monto__gt=0
         )
     else:
         facturas = Factura.objects.filter(
-            Q(local__in=locales) | Q(area_comun__in=areas), empresa=empresa, monto__gt=0
-        )
+            Q(local__in=locales) | Q(area_comun__in=areas) | Q(locales_incluidos__in=locales),
+            empresa=empresa, monto__gt=0,
+        ).distinct()
+
     if anio and anio.isdigit():
         facturas = facturas.filter(fecha_vencimiento__year=int(anio))
 
@@ -2542,13 +2477,19 @@ def visitante_factura_detalle(request, factura_id):
     if not visitante_id:
         return redirect("visitante_login")
     visitante = VisitanteAcceso.objects.get(id=visitante_id)
-    factura = get_object_or_404(Factura, id=factura_id)
-    # Verifica que la factura pertenezca a los locales/áreas del visitante
-    if (
-        factura.local not in visitante.locales.all()
-        and factura.area_comun not in visitante.areas.all()
-    ):
+    factura = get_object_or_404(
+        Factura.objects.select_related("local", "area_comun").prefetch_related("locales_incluidos"),
+        id=factura_id,
+    )
+
+    tiene_acceso = (
+        factura.local in visitante.locales.all()
+        or factura.area_comun in visitante.areas.all()
+        or factura.locales_incluidos.filter(id__in=visitante.locales.all()).exists()
+    )
+    if not tiene_acceso:
         return redirect("visitante_consulta_facturas")
+
     cobros = factura.pagos.all()
     return render(
         request,
@@ -2564,17 +2505,21 @@ def visitante_timbrar_factura(request, pk):
         return redirect("visitante_login")
     visitante = VisitanteAcceso.objects.get(id=visitante_id)
     factura = get_object_or_404(Factura, pk=pk)
-    # Verifica que la factura pertenezca a los locales/áreas del visitante
-    if (
-        factura.local not in visitante.locales.all()
-        and factura.area_comun not in visitante.areas.all()
-    ):
+
+    # Verifica que la factura pertenezca a los locales/áreas del visitante,
+    # o que el visitante sea dueño de al menos 1 local dentro del grupo consolidado
+    tiene_acceso = (
+        factura.local in visitante.locales.all()
+        or factura.area_comun in visitante.areas.all()
+        or factura.locales_incluidos.filter(id__in=visitante.locales.all()).exists()
+    )
+    if not tiene_acceso:
         messages.error(request, "No tienes permiso para timbrar esta factura.")
         return redirect("visitante_consulta_facturas")
 
     # Validar membresía
     # if getattr(visitante, "membresia_tipo", "basica") not in ["plus", "premium"]:
-    #     return redirect("visitante_membresia_pago")  # Crea esta vista/URL para el pago
+    #     return redirect("visitante_membresia_pago")
 
     empresa = factura.empresa
     if not empresa.es_premium:
@@ -3229,21 +3174,21 @@ def factura_a_json_facturama(
             f"Cuota área común {factura.area_comun.numero} "
             f"({format_date(factura.fecha_vencimiento, 'LLLL yyyy', locale='es')})"
         )
-    elif (
-        hasattr(factura, "descripcion")
-        and factura.descripcion
-        and factura.folio.startswith("FG-")
-    ):
-        # Factura global (folio inicia con FG-)
-        locales = set()
-        for f in Factura.objects.filter(factura_global=factura):
-            if f.local:
-                locales.add(f.local.numero)
-        locales_str = ", ".join(sorted(locales))
-        descripcion = (
-            f"Factura global locales: {locales_str} \n"
-            f"({format_date(factura.fecha_vencimiento, 'LLLL yyyy', locale='es')})"
-        )
+    # elif (
+    #     hasattr(factura, "descripcion")
+    #     and factura.descripcion
+    #     and factura.folio.startswith("FG-")
+    # ):
+    #     # Factura global (folio inicia con FG-)
+    #     locales = set()
+    #     for f in Factura.objects.filter(factura_global=factura):
+    #         if f.local:
+    #             locales.add(f.local.numero)
+    #     locales_str = ", ".join(sorted(locales))
+    #     descripcion = (
+    #         f"Factura global locales: {locales_str} \n"
+    #         f"({format_date(factura.fecha_vencimiento, 'LLLL yyyy', locale='es')})"
+    #     )
     elif hasattr(factura, "tipo_ingreso"):
         # FacturaOtrosIngresos
         descripcion = (
@@ -3335,101 +3280,101 @@ def timbrar_factura(request, pk):
         messages.info(request, "La factura ya está timbrada.")
         return redirect("lista_facturas")
 
-    # --- INICIO FLUJO FACTURA GLOBAL SOLO PARA LOCALES ---
-    if factura.cliente.factura_global:
-        mes = factura.fecha_vencimiento.month
-        anio = factura.fecha_vencimiento.year
-        cliente = factura.cliente
+    # # --- INICIO FLUJO FACTURA GLOBAL SOLO PARA LOCALES ---
+    # if factura.cliente.factura_global:
+    #     mes = factura.fecha_vencimiento.month
+    #     anio = factura.fecha_vencimiento.year
+    #     cliente = factura.cliente
 
-        # Solo facturas de locales, no áreas ni otros ingresos
-        facturas_mes = Factura.objects.filter(
-            cliente=cliente,
-            empresa=empresa,
-            fecha_vencimiento__year=anio,
-            fecha_vencimiento__month=mes,
-            uuid__isnull=True,
-            local__isnull=False,  # Solo locales
-        )
+    #     # Solo facturas de locales, no áreas ni otros ingresos
+    #     facturas_mes = Factura.objects.filter(
+    #         cliente=cliente,
+    #         empresa=empresa,
+    #         fecha_vencimiento__year=anio,
+    #         fecha_vencimiento__month=mes,
+    #         uuid__isnull=True,
+    #         local__isnull=False,  # Solo locales
+    #     )
 
-        if facturas_mes.count() > 1:
-            total_monto = sum(f.monto for f in facturas_mes)
-            descripcion = f"Factura global locales:" + ", ".join(
-                [f.local.numero for f in facturas_mes if f.local]
-            )
+    #     if facturas_mes.count() > 1:
+    #         total_monto = sum(f.monto for f in facturas_mes)
+    #         descripcion = f"Factura global locales:" + ", ".join(
+    #             [f.local.numero for f in facturas_mes if f.local]
+    #         )
 
-            # Marca las facturas individuales como incluidas en la global
-            # facturas_mes.update(estatus="incluida_global", factura_global=factura_global)
+    #         # Marca las facturas individuales como incluidas en la global
+    #         # facturas_mes.update(estatus="incluida_global", factura_global=factura_global)
 
-            # Timbrar la factura global
-            if request.method == "POST":
-                form = TimbrarFacturaForm(request.POST)
-                if form.is_valid():
-                    # Crea la factura global
-                    factura_global = Factura.objects.create(
-                        empresa=empresa,
-                        cliente=cliente,
-                        monto=total_monto,
-                        fecha_emision=timezone.now(),
-                        fecha_vencimiento=factura.fecha_vencimiento,
-                        folio="FG-" + timezone.now().strftime("%Y%m%d%H%M%S"),
-                        observaciones=descripcion,
-                    )
-                    tax_object = form.cleaned_data["tax_object"]
-                    payment_method = form.cleaned_data["payment_method"]
-                    payment_form = form.cleaned_data["payment_form"]
-                    datos_json = factura_a_json_facturama(
-                        factura_global, tax_object, payment_method, payment_form
-                    )
-                    resultado = timbrar_factura_facturama(datos_json)
+    #         # Timbrar la factura global
+    #         if request.method == "POST":
+    #             form = TimbrarFacturaForm(request.POST)
+    #             if form.is_valid():
+    #                 # Crea la factura global
+    #                 factura_global = Factura.objects.create(
+    #                     empresa=empresa,
+    #                     cliente=cliente,
+    #                     monto=total_monto,
+    #                     fecha_emision=timezone.now(),
+    #                     fecha_vencimiento=factura.fecha_vencimiento,
+    #                     folio="FG-" + timezone.now().strftime("%Y%m%d%H%M%S"),
+    #                     observaciones=descripcion,
+    #                 )
+    #                 tax_object = form.cleaned_data["tax_object"]
+    #                 payment_method = form.cleaned_data["payment_method"]
+    #                 payment_form = form.cleaned_data["payment_form"]
+    #                 datos_json = factura_a_json_facturama(
+    #                     factura_global, tax_object, payment_method, payment_form
+    #                 )
+    #                 resultado = timbrar_factura_facturama(datos_json)
 
-                    if "error" in resultado:
-                        messages.error(
-                            request, f"Error al timbrar: {resultado['error']}"
-                        )
-                    else:
-                        uuid = resultado.get("Uuid") or resultado.get(
-                            "Complement", {}
-                        ).get("TaxStamp", {}).get("Uuid")
-                        facturama_id = resultado.get("Id")
-                        if not uuid or not facturama_id:
-                            messages.error(request, f"Error inesperado: {resultado}")
-                        else:
-                            factura_global.uuid = uuid
-                            factura_global.facturama_id = facturama_id
-                            factura_global.save()
-                            # Solo aquí actualiza las facturas individuales
-                            # facturas_mes.update(estatus="incluida_global", factura_global=factura_global)
-                            for f in facturas_mes:
-                                f.factura_global = factura_global
-                                f.uuid = factura_global.uuid
-                                f.facturama_id = factura_global.facturama_id
-                                f.save(
-                                    update_fields=[
-                                        "factura_global",
-                                        "uuid",
-                                        "facturama_id",
-                                    ]
-                                )
-                            messages.success(
-                                request,
-                                f"Factura global {factura_global.folio} timbrada correctamente. Ahora puedes descargar el PDF y XML.",
-                            )
-                    if next_url:
-                        return redirect(next_url)
-                    return redirect("lista_facturas")
-            else:
-                form = TimbrarFacturaForm()
-            return render(
-                request,
-                "facturacion/timbrar_factura.html",
-                {
-                    "form": form,
-                    "factura": factura,
-                    "url_cancelar": next_url,
-                },
-            )
-        # Si solo hay una factura, sigue el flujo normal
-    # --- FIN FLUJO FACTURA GLOBAL ---
+    #                 if "error" in resultado:
+    #                     messages.error(
+    #                         request, f"Error al timbrar: {resultado['error']}"
+    #                     )
+    #                 else:
+    #                     uuid = resultado.get("Uuid") or resultado.get(
+    #                         "Complement", {}
+    #                     ).get("TaxStamp", {}).get("Uuid")
+    #                     facturama_id = resultado.get("Id")
+    #                     if not uuid or not facturama_id:
+    #                         messages.error(request, f"Error inesperado: {resultado}")
+    #                     else:
+    #                         factura_global.uuid = uuid
+    #                         factura_global.facturama_id = facturama_id
+    #                         factura_global.save()
+    #                         # Solo aquí actualiza las facturas individuales
+    #                         # facturas_mes.update(estatus="incluida_global", factura_global=factura_global)
+    #                         for f in facturas_mes:
+    #                             f.factura_global = factura_global
+    #                             f.uuid = factura_global.uuid
+    #                             f.facturama_id = factura_global.facturama_id
+    #                             f.save(
+    #                                 update_fields=[
+    #                                     "factura_global",
+    #                                     "uuid",
+    #                                     "facturama_id",
+    #                                 ]
+    #                             )
+    #                         messages.success(
+    #                             request,
+    #                             f"Factura global {factura_global.folio} timbrada correctamente. Ahora puedes descargar el PDF y XML.",
+    #                         )
+    #                 if next_url:
+    #                     return redirect(next_url)
+    #                 return redirect("lista_facturas")
+    #         else:
+    #             form = TimbrarFacturaForm()
+    #         return render(
+    #             request,
+    #             "facturacion/timbrar_factura.html",
+    #             {
+    #                 "form": form,
+    #                 "factura": factura,
+    #                 "url_cancelar": next_url,
+    #             },
+    #         )
+    #     # Si solo hay una factura, sigue el flujo normal
+    # # --- FIN FLUJO FACTURA GLOBAL ---
 
     # FLUJO NORMAL (una sola factura)
     if request.method == "POST":
@@ -3953,19 +3898,18 @@ def visitante_login_api(request):
 @api_view(["GET"])
 @visitante_token_required
 def visitante_facturas_api(request):
-    visitante = request.visitante  # El usuario autenticado por token
+    visitante = request.visitante
     empresa_id = request.GET.get("empresa_id")
     if not empresa_id:
         return Response({"error": "Debe seleccionar una empresa"}, status=400)
     locales = visitante.locales.filter(empresa_id=empresa_id)
     areas = visitante.areas.filter(empresa_id=empresa_id)
     facturas = Factura.objects.filter(
-        Q(local__in=locales) | Q(area_comun__in=areas),
+        Q(local__in=locales) | Q(area_comun__in=areas) | Q(locales_incluidos__in=locales),
         empresa_id=empresa_id,
-    ).select_related("cliente", "empresa", "local", "area_comun")
+    ).select_related("cliente", "empresa", "local", "area_comun").prefetch_related("locales_incluidos").distinct()
     serializer = FacturaSerializer(facturas, many=True)
     return Response({"facturas": serializer.data})
-
 
 # API crear Payment Intent con Stripe
 @api_view(["POST"])
@@ -4147,11 +4091,17 @@ def api_reporte_ingresos_vs_gastos(request):
     )
 
     # Agrupar por tipo de origen (Local/Área)
+    tiene_grupo_sq = Factura.objects.filter(
+        pk=OuterRef("factura_id"), locales_incluidos__isnull=False
+    )
+
     ingresos_qs = (
-        pagos.annotate(
+        pagos.annotate(es_grupo=Exists(tiene_grupo_sq))
+        .annotate(
             origen=Case(
                 When(factura__local__isnull=False, then=Value("Propiedades")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
+                When(es_grupo=True, then=Value("Propiedades")),
                 default=Value("Sin origen"),
                 output_field=CharField(),
             )
@@ -4171,6 +4121,7 @@ def api_reporte_ingresos_vs_gastos(request):
     ingresos_por_origen = OrderedDict()
     for x in ingresos_qs:
         ingresos_por_origen[x["origen"]] = float(x["total"])
+
     for x in otros_ingresos_qs:
         tipo = x["factura__tipo_ingreso__nombre"] or "Otros ingresos"
         ingresos_por_origen[f"{tipo}"] = float(x["total"])
@@ -4299,7 +4250,12 @@ def api_dashboard_saldos_visitante(request):
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
     if origen == "local":
-        facturas = facturas.filter(local__isnull=False)
+        tiene_grupo_sq = Factura.objects.filter(
+            pk=OuterRef("pk"), locales_incluidos__isnull=False
+        )
+        facturas = facturas.annotate(es_grupo=Exists(tiene_grupo_sq)).filter(
+            Q(local__isnull=False) | Q(es_grupo=True)
+        )
     elif origen == "area":
         facturas = facturas.filter(area_comun__isnull=False)
     if tipo_cuota:
@@ -4318,7 +4274,7 @@ def api_dashboard_saldos_visitante(request):
             pass
 
     # NUEVO — evita N+1 al serializar cliente/empresa/local/área_comun
-    facturas = facturas.select_related("cliente", "empresa", "local", "area_comun")
+    facturas = facturas.select_related("cliente", "empresa", "local", "area_comun").prefetch_related("locales_incluidos")  # Evita N+1 al serializar locales_incluidos
 
     pagos_subquery = (
         Pago.objects.filter(factura=OuterRef("pk"))
@@ -4478,6 +4434,7 @@ def api_dashboard_saldos_visitante(request):
             "empresa": f.empresa.nombre if f.empresa else "",
             "local": f.local.numero if f.local else "",
             "area_comun": f.area_comun.numero if f.area_comun else "",
+            "locales_grupo": [l.numero for l in f.locales_incluidos.all()] if not f.local_id and not f.area_comun_id else [],
             "monto": float(f.monto),
             "saldo_pendiente": float(f.saldo_pendiente_dash),
             "fecha_vencimiento": f.fecha_vencimiento,
@@ -4720,11 +4677,19 @@ def api_estado_resultados(request):
 
     # --- INGRESOS por origen (mismas etiquetas que la vista web) ---
     ingresos_por_origen = OrderedDict()
+    # NUEVO -- Exists() es una subconsulta booleana (no un JOIN), así que
+    # nunca multiplica filas ni infla el SUM, aunque el grupo tenga varios locales.
+    tiene_grupo_sq = Factura.objects.filter(
+        pk=OuterRef("factura_id"), locales_incluidos__isnull=False
+    )
+
     ingresos_qs = (
-        pagos.annotate(
+        pagos.annotate(es_grupo=Exists(tiene_grupo_sq))
+        .annotate(
             origen=Case(
                 When(factura__local__isnull=False, then=Value("Locales")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
+                When(es_grupo=True, then=Value("Locales")),
                 default=Value("Sin origen"),
                 output_field=CharField(),
             )
@@ -5036,11 +5001,13 @@ def enviar_recordatorio_morosidad(request):
         filas_facturas = ""
         for factura in facturas:
             if tipo == "local":
-                ubicacion = (
-                    f"Local: {factura.local.numero}"
-                    if factura.local
-                    else "Sin ubicación"
-                )
+                if factura.local:
+                    ubicacion = f"Local: {factura.local.numero}"
+                elif factura.locales_incluidos.exists():
+                    numeros = ", ".join(l.numero for l in factura.locales_incluidos.all())
+                    ubicacion = f"Locales: {numeros}"
+                else:
+                    ubicacion = "Sin ubicación"
             else:
                 ubicacion = (
                     f"Área común: {factura.area_comun.numero}"
@@ -5168,8 +5135,12 @@ def enviar_recordatorio_morosidad(request):
 
     if local_id:
         local_id = int(local_id)
-        facturas = Factura.objects.filter(local_id=local_id, estatus="pendiente")
+        facturas = Factura.objects.filter(
+            Q(local_id=local_id) | Q(locales_incluidos__id=local_id),
+            estatus="pendiente",
+        ).distinct()
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
+
         if not facturas:
             messages.warning(
                 request, "No hay adeudos pendientes para el local seleccionado."
@@ -5217,7 +5188,7 @@ def enviar_recordatorio_morosidad(request):
         )
         messages.success(
             request,
-            f"Recordatorio enviado correctamente al cliente {cliente.nombre} del local {facturas[0].local.numero if facturas[0].local else ''}.",
+            f"Recordatorio enviado correctamente al cliente {cliente.nombre}.",
         )
         return redirect(next_url or "lista_facturas")
 

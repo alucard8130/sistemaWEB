@@ -2,6 +2,7 @@
 from django.db import models
 from empresas.models import Empresa
 
+
 # Create your models here.
 class LocalComercial(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -40,6 +41,11 @@ class LocalComercial(models.Model):
     proindiviso = models.DecimalField(
         max_digits=7, decimal_places=4, null=True, blank=True,
         help_text="Porcentaje de proindiviso de la propiedad (%)"
+    )
+    grupo_facturacion = models.ForeignKey(
+        'facturacion.GrupoFacturacion', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='locales',
+        help_text="Si este local se factura junto con otros del mismo cliente, selecciona el grupo aquí."
     )
 
 

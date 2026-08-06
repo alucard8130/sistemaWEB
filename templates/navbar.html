@@ -250,6 +250,8 @@
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas_otros_ingresos' %}" title="Busca facturas de otros ingresos y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Otros Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_grupos_facturacion' %}"><i class="bi bi-collection-fill me-2"></i>Grupos de Facturación</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'verificacion_facturacion' %}" title="Verificación de facturación por local y área"><i class="bi bi-check2-circle me-2"></i>Verificación Facturación</a></li>
             </ul>
           </li>
@@ -262,17 +264,7 @@
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}?tipo=local" title="Reporte Depositos por Cuotas de mantenimiento y areas comunes"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Cuotas</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}" title="Reporte de Depositos Otros Ingresos"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Otros Ingresos</a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_ingresos' %}" title="Exportar Póliza de Ingresos"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos</a></li>
-              {% else %}
-              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos (PREMIUM)</a></li>
-              {% endif %}
               <li><hr class="dropdown-divider"></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Reporte Inversiones</a></li> 
-              {% else %}
-              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-cash-stack me-2"></i>Reporte Inversiones (PREMIUM)</a></li>
-              {% endif %}
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales"><i class="bi bi-bar-chart me-2"></i>Grafico de Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado"><i class="bi bi-question-circle me-2"></i>Depositos no identificados</a></li>
@@ -301,8 +293,15 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
               {% endif %}
               {% if empresa_actual.precio_sanitario %}
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'sanitarios_operador' %}"><i class="bi bi-door-open-fill me-2"></i>Control de Sanitarios</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cortes_sanitario_pendientes' %}"><i class="bi bi-exclamation-diamond me-2"></i>Cortes Pendientes Sanitarios</a></li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              {% if request.user.perfilusuario.empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_ingresos' %}" title="Exportar Póliza de Ingresos"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos</a></li>
+              {% else %}
+              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos (PREMIUM)</a></li>
               {% endif %}
             </ul>
           </li>
@@ -400,6 +399,12 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}"><i class="bi bi-file-text me-2"></i>Reporte de Resultados</a></li>
+              <li><hr class="dropdown-divider"></li>
+              {% if request.user.perfilusuario.empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Reporte Inversiones</a></li> 
+              {% else %}
+              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-cash-stack me-2"></i>Reporte Inversiones (PREMIUM)</a></li>
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Gastos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_total' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Gtos</a></li>

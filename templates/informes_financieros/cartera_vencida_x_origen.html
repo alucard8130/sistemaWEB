@@ -208,7 +208,9 @@
             <div class="origen-header" onclick="toggleOrigen('origen-{{ forloop.counter }}', this)">
                 <div class="origen-nombre">
                     <i class="bi bi-chevron-down" id="ico-{{ forloop.counter }}"></i>
-                    {% if 'Local' in origen.origen_nombre %}
+                    {% if 'Grupo de Locales' in origen.origen_nombre %}
+                        <i class="bi bi-collection-fill text-info"></i>
+                    {% elif 'Local' in origen.origen_nombre %}
                         <i class="bi bi-shop-window text-primary"></i>
                     {% elif 'Área' in origen.origen_nombre %}
                         <i class="bi bi-building text-success"></i>

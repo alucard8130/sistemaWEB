@@ -38,4 +38,7 @@ urlpatterns = [
     path('verificacion-facturacion/', views.verificacion_facturacion, name='verificacion_facturacion'),
     path('reportes/cartera-vencida/', views.reporte_cartera_vencida, name='reporte_cartera_vencida'),
     path('depositos-por-identificar/exportar/', views.exportar_depositos_por_identificar_excel, name='exportar_depositos_por_identificar_excel'),
+    path('grupos-facturacion/', views.lista_grupos_facturacion, name='lista_grupos_facturacion'),
+    path('grupos-facturacion/nuevo/', views.crear_grupo_facturacion, name='crear_grupo_facturacion'),
+    path('grupos-facturacion/<int:grupo_id>/editar/', views.editar_grupo_facturacion, name='editar_grupo_facturacion'),
 ]

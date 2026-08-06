@@ -44,7 +44,12 @@ class Factura(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='facturas_incluidas'
-    )  
+    )
+    locales_incluidos = models.ManyToManyField(
+        'locales.LocalComercial', blank=True, related_name='facturas_grupo',
+        help_text="Para facturas consolidadas de un grupo: todos los locales que cubre esta factura."
+    )
+
     
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"
@@ -200,5 +205,17 @@ class TipoOtroIngreso(models.Model):
 
     def __str__(self):
         return self.nombre
-    
 
+
+#Clase para agrupar facturas por cliente y empresa, útil para generar reportes y análisis de facturación.    
+class GrupoFacturacion(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='grupos_facturacion')
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='grupos_facturacion')
+    nombre = models.CharField(max_length=100, help_text="Ej. 'Tiendas Soriana — Plaza Norte'")
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nombre']
+
+    def __str__(self):
+        return f"{self.nombre} ({self.cliente.nombre})"

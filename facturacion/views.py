@@ -32,6 +32,7 @@ from .models import (
     CobroOtrosIngresos,
     Factura,
     FacturaOtrosIngresos,
+    GrupoFacturacion,
     Pago,
     TipoOtroIngreso,
 )
@@ -42,7 +43,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from datetime import date, timedelta
-from django.db.models import Q, Value, Case, When, CharField  # FloatField
+from django.db.models import Q, Count, Value, Case, When, CharField  # FloatField
 from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 import openpyxl
@@ -73,6 +74,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from datetime import date as date_cls
 import datetime as dt
+
 
 
 
@@ -108,7 +110,11 @@ def crear_factura(request):
                     estatus__in=["pendiente", "cobrada"],
                 )
                 if factura.local:
-                    duplicado_qs = duplicado_qs.filter(local=factura.local)
+                    # NUEVO -- también detecta si el local ya está cubierto
+                    # por la factura consolidada de un Grupo de Facturación
+                    duplicado_qs = duplicado_qs.filter(
+                        Q(local=factura.local) | Q(locales_incluidos=factura.local)
+                    )
                 elif factura.area_comun:
                     duplicado_qs = duplicado_qs.filter(area_comun=factura.area_comun)
 
@@ -272,6 +278,57 @@ def crear_factura(request):
     )
 
 
+@login_required
+def editar_factura(request, factura_id):
+    factura = get_object_or_404(Factura, pk=factura_id)
+    empresa = factura.empresa
+    # Bloqueo si la factura está pagada
+    if factura.estatus == "cobrada":
+        messages.warning(request, "Esta factura ya está pagada y no puede ser editada.")
+        return redirect("lista_facturas")
+
+    if request.method == "POST":
+        form = FacturaEditForm(request.POST, instance=factura, empresa=empresa)
+        if form.is_valid():
+            factura_original = Factura.objects.get(pk=factura_id)
+            factura_modificada = form.save(commit=False)
+            # Si la fecha viene vacía, conserva la original
+            if (
+                not factura_modificada.fecha_vencimiento
+                or str(factura_modificada.fecha_vencimiento).strip() == ""
+            ):
+                factura_modificada.fecha_vencimiento = factura.fecha_vencimiento
+            # Comparar y guardar auditoría
+            for field in form.changed_data:
+                valor_anterior = getattr(factura_original, field)
+                valor_nuevo = getattr(factura_modificada, field)
+                if str(valor_anterior) != str(valor_nuevo):
+                    AuditoriaCambio.objects.create(
+                        modelo="factura",
+                        objeto_id=factura.pk,
+                        campo=field,
+                        valor_anterior=valor_anterior,
+                        valor_nuevo=valor_nuevo,
+                        usuario=request.user,
+                    )
+            factura_modificada.save()
+            messages.success(request, "Factura actualizada correctamente.")
+            next_url = request.GET.get("next")
+            if next_url:
+                return redirect(next_url)
+
+            return redirect("lista_facturas")
+    else:
+        form = FacturaEditForm(instance=factura, empresa=empresa)
+    return render(
+        request,
+        "facturacion/editar_factura.html",
+        {
+            "form": form,
+            "factura": factura,
+        },
+    )
+
 # deshabilite la funcion porque estan borrando facturas para que no crezca la cartera, eso esta mal
 @login_required
 def eliminar_factura(request, factura_id):
@@ -351,7 +408,7 @@ def lista_facturas(request):
         if empresa_id:
             facturas = facturas.filter(empresa_id=empresa_id)
         if local_id:
-            facturas = facturas.filter(local_id=local_id)
+            facturas = facturas.filter(Q(local_id=local_id) | Q(locales_incluidos__id=local_id)).distinct()
         if area_id:
             facturas = facturas.filter(area_comun_id=area_id)
         if tipo_cuota:
@@ -365,7 +422,7 @@ def lista_facturas(request):
 
     facturas = (
         facturas.select_related("cliente", "empresa", "local", "area_comun")
-        .prefetch_related("pagos")
+        .prefetch_related("pagos", "locales_incluidos")  # Evita N+1
         .order_by("-fecha_vencimiento")
     )
 
@@ -543,6 +600,8 @@ def verificacion_facturacion(request):
     mostrar_locales = tipo_cuota in ("todos", "mantenimiento")
     mostrar_areas = tipo_cuota in ("todos", "renta")
 
+    facturas_qs = facturas_qs.prefetch_related("locales_incluidos")  # NUEVO -- evita N+1
+
     meses_local = {}
     meses_area = {}
 
@@ -552,6 +611,9 @@ def verificacion_facturacion(request):
             meses_local.setdefault(f.local_id, set()).add(mes)
         if f.area_comun_id:
             meses_area.setdefault(f.area_comun_id, set()).add(mes)
+        # NUEVO -- atribuye el mes de la factura de grupo a CADA local incluido
+        for local_incluido in f.locales_incluidos.all():
+            meses_local.setdefault(local_incluido.id, set()).add(mes)    
 
     MESES_NOMBRES = [
         "Ene", "Feb", "Mar", "Abr", "May", "Jun",
@@ -689,7 +751,7 @@ def exportar_estado_cuenta_excel(request):
     facturas = facturas.filter(estatus="pendiente")
 
     if local_id:
-        facturas = facturas.filter(local_id=local_id)
+        facturas = facturas.filter(Q(local_id=local_id) | Q(locales_incluidos__id=local_id)).distinct()
     if area_id:
         facturas = facturas.filter(area_comun_id=area_id)
     if anio:
@@ -719,7 +781,7 @@ def exportar_estado_cuenta_excel(request):
     )
 
     # Estilo encabezados
-    from openpyxl.styles import Font, PatternFill, Alignment
+   
 
     header_fill = PatternFill(
         start_color="1F4E79", end_color="1F4E79", fill_type="solid"
@@ -991,6 +1053,86 @@ def confirmar_facturacion(request):
     )
 
 
+# vistas de grupos de facturación, para asignar locales a un grupo y facturar por grupo 06/08/26
+@login_required
+def lista_grupos_facturacion(request):
+    empresa = request.user.perfilusuario.empresa if not request.user.is_superuser else Empresa.objects.filter(id=request.session.get("empresa_id")).first()
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect("dashboard_inicio")
+
+    grupos = (
+        GrupoFacturacion.objects.filter(empresa=empresa)
+        .select_related("cliente")
+        .annotate(total_locales=Count("locales"), total_cuota=Sum("locales__cuota"))
+        .order_by("nombre")
+    )
+    return render(request, "facturacion/lista_grupos_facturacion.html", {"grupos": grupos, "empresa": empresa})
+
+
+@login_required
+def crear_grupo_facturacion(request):
+    empresa = request.user.perfilusuario.empresa if not request.user.is_superuser else Empresa.objects.filter(id=request.session.get("empresa_id")).first()
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect("dashboard_inicio")
+
+    if request.method == "POST":
+        cliente_id = request.POST.get("cliente")
+        nombre = request.POST.get("nombre", "").strip()
+        cliente = Cliente.objects.filter(id=cliente_id, empresa=empresa).first()
+
+        if not cliente or not nombre:
+            messages.error(request, "Selecciona un cliente y captura un nombre para el grupo.")
+            return redirect("crear_grupo_facturacion")
+
+        grupo = GrupoFacturacion.objects.create(empresa=empresa, cliente=cliente, nombre=nombre)
+        messages.success(request, f"✅ Grupo '{grupo.nombre}' creado. Ahora asígnale los locales.")
+        return redirect("editar_grupo_facturacion", grupo.id)
+
+    clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
+    return render(request, "facturacion/crear_grupo_facturacion.html", {"clientes": clientes, "empresa": empresa})
+
+
+@login_required
+def editar_grupo_facturacion(request, grupo_id):
+    empresa = request.user.perfilusuario.empresa if not request.user.is_superuser else Empresa.objects.filter(id=request.session.get("empresa_id")).first()
+    grupo = get_object_or_404(GrupoFacturacion, id=grupo_id, empresa=empresa)
+
+    if request.method == "POST":
+        local_ids = request.POST.getlist("locales")
+
+        # Quita del grupo los locales que ya no vengan marcados
+        LocalComercial.objects.filter(grupo_facturacion=grupo).exclude(id__in=local_ids).update(grupo_facturacion=None)
+
+        # Asigna los que sí vienen marcados -- solo si son del MISMO cliente que el grupo
+        locales_validos = LocalComercial.objects.filter(
+            id__in=local_ids, empresa=empresa, cliente=grupo.cliente
+        )
+        locales_invalidos = len(local_ids) - locales_validos.count()
+        locales_validos.update(grupo_facturacion=grupo)
+
+        if locales_invalidos > 0:
+            messages.warning(request, f"⚠️ {locales_invalidos} local(es) se ignoraron por no pertenecer al cliente '{grupo.cliente.nombre}'.")
+
+        messages.success(request, "✅ Locales del grupo actualizados.")
+        return redirect("lista_grupos_facturacion")
+
+    # Solo locales del MISMO cliente que este grupo, sin cuota anual (misma regla que la facturación mensual normal)
+    locales_disponibles = LocalComercial.objects.filter(
+        empresa=empresa, cliente=grupo.cliente, activo=True, es_cuota_anual=False
+    ).filter(Q(grupo_facturacion=grupo) | Q(grupo_facturacion__isnull=True)).order_by("numero")
+
+    locales_en_grupo_ids = set(
+        LocalComercial.objects.filter(grupo_facturacion=grupo).values_list("id", flat=True)
+    )
+
+    return render(request, "facturacion/editar_grupo_facturacion.html", {
+        "grupo": grupo,
+        "locales_disponibles": locales_disponibles,
+        "locales_en_grupo_ids": locales_en_grupo_ids,
+    })
+
 
 # vistas registro de cobros por cuotas
 @login_required
@@ -1093,7 +1235,10 @@ def registrar_pago(request, factura_id):
 
 @login_required
 def facturas_detalle(request, pk):
-    factura = get_object_or_404(Factura, pk=pk)
+    factura = get_object_or_404(
+        Factura.objects.select_related("local", "area_comun", "cliente").prefetch_related("locales_incluidos"),
+        pk=pk,
+    )
     cobros = factura.pagos.all().order_by("fecha_pago")
     reversados_ids = set()
     for cobro in cobros:
@@ -1404,6 +1549,7 @@ def pagos_por_origen(request):
                 "factura__cliente",
                 "cuenta_bancaria",
             )
+            .prefetch_related("factura__locales_incluidos")
             .all()
             .order_by("-fecha_pago")
         )
@@ -1414,6 +1560,7 @@ def pagos_por_origen(request):
         empresa = request.user.perfilusuario.empresa
         pagos = (
             Pago.objects.select_related("factura", "cuenta_bancaria")
+            .prefetch_related("factura__locales_incluidos")
             .filter(factura__empresa=empresa)
             .order_by("-fecha_pago")
         )
@@ -1442,7 +1589,9 @@ def pagos_por_origen(request):
     if empresa_id:
         pagos_base = pagos_base.filter(factura__empresa_id=empresa_id)
     if local_id:
-        pagos_base = pagos_base.filter(factura__local_id=local_id)
+        pagos_base = pagos_base.filter(
+            Q(factura__local_id=local_id) | Q(factura__locales_incluidos__id=local_id)
+        ).distinct()
     if area_id:
         pagos_base = pagos_base.filter(factura__area_comun_id=area_id)
     if tipo_cuota:
@@ -1460,7 +1609,9 @@ def pagos_por_origen(request):
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id).order_by("fecha_pago")
     if local_id:
-        pagos = pagos.filter(factura__local_id=local_id).order_by("fecha_pago")
+        pagos = pagos.filter(
+            Q(factura__local_id=local_id) | Q(factura__locales_incluidos__id=local_id)
+        ).distinct().order_by("fecha_pago")
     if area_id:
         pagos = pagos.filter(factura__area_comun_id=area_id).order_by("fecha_pago")
 
@@ -2032,7 +2183,7 @@ def dashboard_pagos(request):
     if cliente_id:
         filtro &= Q(factura__cliente_id=cliente_id)
     if origen == "local":
-        filtro &= Q(factura__local__isnull=False)
+        filtro &= (Q(factura__local__isnull=False) | Q(factura__locales_incluidos__isnull=False))
     elif origen == "area":
         filtro &= Q(factura__area_comun__isnull=False)
 
@@ -2040,6 +2191,7 @@ def dashboard_pagos(request):
         Pago.objects.exclude(forma_pago="nota_credito")
         .filter(filtro)
         .select_related("factura", "factura__empresa", "factura__cliente")
+        .distinct()
     )
 
     # Cobros de otros ingresos
@@ -2227,7 +2379,9 @@ def dashboard_pagos(request):
     if mes:
         facturas_pendientes = facturas_pendientes.filter(fecha_emision__month=mes)
     if origen == "local":
-        facturas_pendientes = facturas_pendientes.filter(local__isnull=False)
+        facturas_pendientes = facturas_pendientes.filter(
+            Q(local__isnull=False) | Q(locales_incluidos__isnull=False)
+        ).distinct()
     elif origen == "area":
         facturas_pendientes = facturas_pendientes.filter(area_comun__isnull=False)
 
@@ -2604,6 +2758,7 @@ def cartera_vencida_saldos_antiguedad(request):
             estatus="pendiente", fecha_vencimiento__lt=hoy, activo=True
         )
         .select_related("cliente", "empresa", "local", "area_comun")
+        .prefetch_related("locales_incluidos")
         .annotate(
             total_pagado_ann=Coalesce(
                 Subquery(total_pagado_sq, output_field=DecimalField()),
@@ -2640,7 +2795,7 @@ def cartera_vencida_saldos_antiguedad(request):
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
     if origen == "local":
-        facturas = facturas.filter(local__isnull=False)
+        facturas = facturas.filter(Q(local__isnull=False) | Q(locales_incluidos__isnull=False)).distinct()
         facturas_otros = facturas_otros.none()
     elif origen == "area":
         facturas = facturas.filter(area_comun__isnull=False)
@@ -2739,6 +2894,7 @@ def exportar_cartera_excel(request):
             estatus="pendiente", fecha_vencimiento__lt=hoy, activo=True
         )
         .select_related("cliente", "local", "area_comun")
+        .prefetch_related("locales_incluidos")
         .annotate(
             total_pagado_ann=Coalesce(
                 Subquery(total_pagado_sq, output_field=DecimalField()),
@@ -2784,8 +2940,9 @@ def exportar_cartera_excel(request):
         facturas = facturas.filter(tipo_cuota=tipo_cuota)
 
     if origen == "local":
-        facturas = facturas.filter(local__isnull=False)
+        facturas = facturas.filter(Q(local__isnull=False) | Q(locales_incluidos__isnull=False)).distinct()
         facturas_otros = facturas_otros.none()
+
     elif origen == "area":
         facturas = facturas.filter(area_comun__isnull=False)
         facturas_otros = facturas_otros.none()
@@ -2940,6 +3097,9 @@ def exportar_cartera_excel(request):
                     origen_str = f"Local {f.local.numero}"
                 elif f.area_comun:
                     origen_str = f"Área {f.area_comun.numero}"
+                elif f.locales_incluidos.exists():
+                    numeros = ", ".join(l.numero for l in f.locales_incluidos.all())
+                    origen_str = f"Grupo: {numeros}"
                 else:
                     origen_str = "—"
 
@@ -3034,13 +3194,15 @@ def exportar_pagos_excel(request):
         "factura__area_comun",
         "factura__cliente",
         "cuenta_bancaria",
-    ).all()
+    ).prefetch_related("factura__locales_incluidos").all()
     if not request.user.is_superuser:
         pagos = pagos.filter(factura__empresa=request.user.perfilusuario.empresa)
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id)
     if local_id:
-        pagos = pagos.filter(factura__local_id=local_id)
+        pagos = pagos.filter(
+            Q(factura__local_id=local_id) | Q(factura__locales_incluidos__id=local_id)
+        ).distinct()
     if area_id:
         pagos = pagos.filter(factura__area_comun_id=area_id)
 
@@ -3084,11 +3246,16 @@ def exportar_pagos_excel(request):
     total_general = 0
     for pago in pagos:
         factura = pago.factura
-        local_area = (
-            factura.local.numero if factura.local
-            else factura.area_comun.numero if factura.area_comun
-            else "-"
-        )
+        if factura.local:
+            local_area = factura.local.numero
+        elif factura.area_comun:
+            local_area = factura.area_comun.numero
+        elif factura.locales_incluidos.exists():
+            numeros = ", ".join(l.numero for l in factura.locales_incluidos.all())
+            local_area = f"Grupo: {numeros}"
+        else:
+            local_area = "-"
+
         ws.append([
             local_area,
             factura.cliente.nombre,
@@ -3240,57 +3407,6 @@ def plantilla_facturas_excel(request):
     wb.save(response)
     return response
 
-
-@login_required
-def editar_factura(request, factura_id):
-    factura = get_object_or_404(Factura, pk=factura_id)
-    empresa = factura.empresa
-    # Bloqueo si la factura está pagada
-    if factura.estatus == "pagada":
-        messages.warning(request, "Esta factura ya está pagada y no puede ser editada.")
-        return redirect("lista_facturas")
-
-    if request.method == "POST":
-        form = FacturaEditForm(request.POST, instance=factura, empresa=empresa)
-        if form.is_valid():
-            factura_original = Factura.objects.get(pk=factura_id)
-            factura_modificada = form.save(commit=False)
-            # Si la fecha viene vacía, conserva la original
-            if (
-                not factura_modificada.fecha_vencimiento
-                or str(factura_modificada.fecha_vencimiento).strip() == ""
-            ):
-                factura_modificada.fecha_vencimiento = factura.fecha_vencimiento
-            # Comparar y guardar auditoría
-            for field in form.changed_data:
-                valor_anterior = getattr(factura_original, field)
-                valor_nuevo = getattr(factura_modificada, field)
-                if str(valor_anterior) != str(valor_nuevo):
-                    AuditoriaCambio.objects.create(
-                        modelo="factura",
-                        objeto_id=factura.pk,
-                        campo=field,
-                        valor_anterior=valor_anterior,
-                        valor_nuevo=valor_nuevo,
-                        usuario=request.user,
-                    )
-            factura_modificada.save()
-            messages.success(request, "Factura actualizada correctamente.")
-            next_url = request.GET.get("next")
-            if next_url:
-                return redirect(next_url)
-
-            return redirect("lista_facturas")
-    else:
-        form = FacturaEditForm(instance=factura, empresa=empresa)
-    return render(
-        request,
-        "facturacion/editar_factura.html",
-        {
-            "form": form,
-            "factura": factura,
-        },
-    )
 
 
 @login_required
@@ -4496,9 +4612,13 @@ def tipos_otro_ingreso_json(request):
     return JsonResponse({"tipos": data})
 
 
+####recibos de factura y pago (cuotas y otros ingresos)####
 @login_required
 def recibo_factura(request, factura_id):
-    factura = get_object_or_404(Factura, pk=factura_id)
+    factura = get_object_or_404(
+        Factura.objects.select_related("local", "area_comun", "cliente", "empresa").prefetch_related("locales_incluidos"),
+        pk=factura_id,
+    )
     cliente = factura.cliente
     empresa = factura.empresa
     return render(
@@ -4511,10 +4631,15 @@ def recibo_factura(request, factura_id):
         },
     )
 
-
 @login_required
 def recibo_pago(request, pago_id):
-    pago = get_object_or_404(Pago, pk=pago_id)
+    pago = get_object_or_404(
+        Pago.objects.select_related(
+            "factura", "factura__local", "factura__area_comun",
+            "factura__cliente", "factura__empresa",
+        ).prefetch_related("factura__locales_incluidos"),
+        pk=pago_id,
+    )
     factura = pago.factura
     cliente = factura.cliente
     empresa = factura.empresa

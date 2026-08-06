@@ -206,6 +206,10 @@
                             <td class="small">
                                 {% if pago.factura.local %}{{ pago.factura.local.numero }}
                                 {% elif pago.factura.area_comun %}{{ pago.factura.area_comun.numero }}
+                                {% elif pago.factura.locales_incluidos.all %}
+                                    <span class="badge bg-info text-dark" title="{% for l in pago.factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                        <i class="bi bi-collection-fill"></i> {{ pago.factura.locales_incluidos.count }} locales
+                                    </span>
                                 {% else %}—{% endif %}
                             </td>
                             <td class="small">{{ pago.factura.cliente.nombre }}</td>

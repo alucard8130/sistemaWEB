@@ -1,0 +1,108 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Editar Grupo · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .local-check-card {
+            border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px;
+            margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .local-check-card:has(input:checked) { border-color: #1e8449; background: #f0f9f2; }
+        .total-strip {
+            background: linear-gradient(135deg, #0f2d52, #1a5276); color: white;
+            border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container mt-4" style="max-width: 620px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-1"><i class="bi bi-collection-fill me-2"></i>{{ grupo.nombre }}</h4>
+        <p class="text-muted small mb-3">Cliente: <strong>{{ grupo.cliente.nombre }}</strong></p>
+
+        <div class="total-strip">
+            <div style="font-size:0.78rem; opacity:0.8; text-transform:uppercase;">Cuota total del grupo</div>
+            <div style="font-size:1.8rem; font-weight:800;" id="total-cuota">$0.00</div>
+        </div>
+
+        <form method="post" id="form-locales">
+            {% csrf_token %}
+            <p class="text-muted small">Marca los locales de <strong>{{ grupo.cliente.nombre }}</strong> que quieres incluir en este grupo:</p>
+
+            {% for local in locales_disponibles %}
+            <label class="local-check-card">
+                <span>
+                    <input type="checkbox" name="locales" value="{{ local.id }}" class="form-check-input me-2 local-checkbox"
+                           data-cuota="{{ local.cuota }}"
+                           {% if local.id in locales_en_grupo_ids %}checked{% endif %}>
+                    <strong>Local {{ local.numero }}</strong>
+                    <span class="text-muted">— {{ local.superficie_m2|floatformat:2|intcomma }} m²</span>
+                </span>
+                <span class="fw-bold text-primary">${{ local.cuota|floatformat:2|intcomma }}</span>
+            </label>
+            {% empty %}
+            <div class="text-center text-muted py-4">
+                No hay locales disponibles de este cliente para agregar (o ya están todos en el grupo).
+            </div>
+            {% endfor %}
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-success px-4">
+                    <i class="bi bi-check-circle me-1"></i> Guardar locales del grupo
+                </button>
+                <a href="{% url 'lista_grupos_facturacion' %}" class="btn btn-outline-secondary reporte-link">Volver</a>
+            </div>
+        </form>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function actualizarTotal() {
+            let total = 0;
+            document.querySelectorAll('.local-checkbox:checked').forEach(function(cb) {
+                total += parseFloat(cb.getAttribute('data-cuota')) || 0;
+            });
+            document.getElementById('total-cuota').textContent = '$' + total.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.local-checkbox').forEach(function(cb) {
+                cb.addEventListener('change', actualizarTotal);
+            });
+            actualizarTotal();
+
+            document.getElementById('form-locales').addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

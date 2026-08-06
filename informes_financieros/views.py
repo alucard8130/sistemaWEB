@@ -19,7 +19,7 @@ from django.http import HttpResponse
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from django.db.models import F, Value, CharField, Sum, Case, When, IntegerField
+from django.db.models import F, Exists, Value, CharField, Sum, Case, When, IntegerField
 from django.db.models import  OuterRef, Subquery, DecimalField
 from django.db.models.functions import Coalesce
 from openpyxl.utils import get_column_letter
@@ -35,10 +35,7 @@ def reporte_ingresos_vs_gastos(request):
     anio = request.GET.get("anio")
     periodo = request.GET.get("periodo")
 
-    # if not request.user.is_superuser:
-    #     empresa_id = str(request.user.perfilusuario.empresa.id)
-    # else:
-    #     empresa_id = request.GET.get("empresa") or ""
+  
     if not request.user.is_superuser:
         # Verificar si viene del portal de acceso
         if getattr(request, 'is_portal_acceso', False):
@@ -182,11 +179,17 @@ def reporte_ingresos_vs_gastos(request):
     )
 
     # Agrupar por tipo de origen (Local/Área)
+    tiene_grupo_sq = Factura.objects.filter(
+        pk=OuterRef("factura_id"), locales_incluidos__isnull=False
+    )
+
     ingresos_qs = (
-        pagos.annotate(
+        pagos.annotate(es_grupo=Exists(tiene_grupo_sq))
+        .annotate(
             origen=Case(
                 When(factura__local__isnull=False, then=Value("Propiedades")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
+                When(es_grupo=True, then=Value("Propiedades")),
                 default=Value("Sin origen"),
                 output_field=CharField(),
             )
@@ -1036,7 +1039,7 @@ def cartera_vencida_por_origen(request):
         estatus="pendiente",
         fecha_vencimiento__lt=hoy,
         monto__gt=0
-    ).select_related('local', 'area_comun', 'cliente').annotate(
+    ).select_related('local', 'area_comun', 'cliente').prefetch_related('locales_incluidos').annotate(
         origen_id=Case(
             When(local__isnull=False, then=F("local__id")),
             When(area_comun__isnull=False, then=F("area_comun__id")),
@@ -1103,8 +1106,16 @@ def cartera_vencida_por_origen(request):
             origen_id = f"area_{f.origen_id}"
             origen_nombre = f"Área Común: {f.origen_nombre}"
         else:
-            origen_id = "sin_origen"
-            origen_nombre = "Sin origen"
+            # NUEVO -- distingue facturas de grupo de facturas realmente huérfanas
+            incluidos = list(f.locales_incluidos.all())
+            if incluidos:
+                numeros = ", ".join(l.numero for l in incluidos)
+                grupo_id = incluidos[0].grupo_facturacion_id or f.id
+                origen_id = f"grupo_{grupo_id}"
+                origen_nombre = f"Grupo de Locales: {numeros}"
+            else:    
+                origen_id = "sin_origen"
+                origen_nombre = "Sin origen"
 
         if origen_id not in origenes_dict:
             origenes_dict[origen_id] = {"origen_nombre": origen_nombre, "total_vencido": 0, "facturas": []}
@@ -1143,7 +1154,7 @@ def cartera_vencida_por_origen(request):
         })
         origenes_dict[origen_id]["total_vencido"] += saldo
 
-    if filtro_origen in ("local", "area", "tipoingreso"):
+    if filtro_origen in ("local", "area", "tipoingreso", "grupo"):
         resultado = [v for k, v in origenes_dict.items() if k.startswith(filtro_origen + "_")]
     else:
         resultado = list(origenes_dict.values())

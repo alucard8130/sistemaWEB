@@ -22,6 +22,7 @@ from django.db.models import Sum, Avg
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
+
 @login_required
 def lista_locales(request):
     user = request.user
@@ -29,12 +30,12 @@ def lista_locales(request):
     if user.is_superuser:
         empresa_id = request.session.get("empresa_id")
         if empresa_id:
-            locales = LocalComercial.objects.filter(activo=True, empresa_id=empresa_id).select_related('cliente', 'empresa').order_by('numero')
+            locales = LocalComercial.objects.filter(activo=True, empresa_id=empresa_id).select_related('cliente', 'empresa', 'grupo_facturacion').order_by('numero')
         else:
-            locales = LocalComercial.objects.filter(activo=True).select_related('cliente', 'empresa').order_by('numero')
+            locales = LocalComercial.objects.filter(activo=True).select_related('cliente', 'empresa', 'grupo_facturacion').order_by('numero')
     else:
         empresa = user.perfilusuario.empresa
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'empresa').order_by('numero')
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'empresa', 'grupo_facturacion').order_by('numero')
 
     if query:
         locales = locales.filter(
@@ -42,21 +43,20 @@ def lista_locales(request):
         )
 
     locales = locales.order_by('numero')
-    locales_totales_activos =locales.count()  
+    locales_totales_activos = locales.count()
     total_superficie = locales.aggregate(Sum('superficie_m2'))['superficie_m2__sum'] or 0
     superficie_ocupada = locales.filter(status='ocupado').aggregate(Sum('superficie_m2'))['superficie_m2__sum'] or 0
-    superficie_disponible = total_superficie - superficie_ocupada   
+    superficie_disponible = total_superficie - superficie_ocupada
     total_cuotas = locales.aggregate(Sum('cuota'))['cuota__sum'] or 0
     promedio_cuotas = locales.aggregate(Avg('cuota'))['cuota__avg'] or 0
     promedio_precio_m2 = total_superficie > 0 and (total_cuotas / total_superficie) or 0
     porcentaje_ocupacion = (superficie_ocupada / total_superficie * 100) if total_superficie > 0 else 0
-    
-    # Paginación
+
     paginator = Paginator(locales, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'locales/lista_locales.html', {'locales': page_obj, 'q': query, 
+    return render(request, 'locales/lista_locales.html', {'locales': page_obj, 'q': query,
                                                           'locales_totales_activos': locales_totales_activos,
                                                           'total_superficie': total_superficie,
                                                           'superficie_ocupada': superficie_ocupada,
@@ -66,6 +66,7 @@ def lista_locales(request):
                                                           'promedio_precio_m2': promedio_precio_m2,
                                                           'porcentaje_ocupacion': porcentaje_ocupacion,
                                                           })
+
 
 @login_required
 def crear_local(request):

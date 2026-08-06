@@ -208,6 +208,10 @@
                         <td class="small">
                             {% if factura.local %}{{ factura.local.numero }}
                             {% elif factura.area_comun %}{{ factura.area_comun.numero }}
+                            {% elif factura.locales_incluidos.all %}
+                                <span class="badge bg-info text-dark" title="{% for l in factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                    <i class="bi bi-collection-fill"></i> {{ factura.locales_incluidos.count }} locales
+                                </span>
                             {% else %}—{% endif %}
                         </td>
                         <td class="small text-end">${{ factura.monto|floatformat:2|intcomma }}</td>

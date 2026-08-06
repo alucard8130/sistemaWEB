@@ -133,13 +133,11 @@
             <table>
                 {% if factura.local %}
                     <tr><td><strong>Local:</strong></td><td>{{ factura.local.numero }}</td></tr>
-                    
-                {% else %}
-                
+                {% elif factura.area_comun %}
                     <tr><td><strong>Área Común:</strong></td><td>{{ factura.area_comun.numero }}</td></tr>
-                    
+                {% elif factura.locales_incluidos.all %}
+                    <tr><td><strong>Locales:</strong></td><td>{% for l in factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
                 {% endif %}
-                {% comment %} <tr><td><strong>Referencia:</strong></td><td>{{ factura.area_comun.referencia }}</td></tr> {% endcomment %}
             </table>
         </div>
         <div class="datos-section">

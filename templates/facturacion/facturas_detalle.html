@@ -34,12 +34,27 @@
                 <h2 class="form-title text-center mb-0">Detalle de factura</h2>
                 
                 <!-- Invoices table -->    
-                <table class="table table-bordered mb-4">
+                 <table class="table table-bordered mb-4">
                     <tr><th>Monto:</th><td>${{ factura.monto|floatformat:2|intcomma }}</td></tr>
                     <tr><th>Saldo:</th><td>${{ factura.saldo_pendiente|floatformat:2|intcomma }}</td></tr>
                     <tr><th>Estatus:</th><td>{{ factura.get_estatus_display }}</td></tr>
                     <tr><th>Fecha:</th><td>{{ factura.fecha_vencimiento }}</td></tr>
                     <tr><th>Cliente:</th><td>{{ factura.cliente.nombre }} </td></tr>
+                    {% if factura.local %}
+                    <tr><th>Local:</th><td>{{ factura.local.numero }}</td></tr>
+                    {% elif factura.area_comun %}
+                    <tr><th>Área común:</th><td>{{ factura.area_comun.numero }}</td></tr>
+                    {% elif factura.locales_incluidos.all %}
+                    <tr>
+                        <th>Locales incluidos:</th>
+                        <td>
+                            <span class="badge bg-info text-dark">
+                                <i class="bi bi-collection-fill"></i>
+                                {% for l in factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endif %}
                     <!-- ...otros campos que desees mostrar... -->
                 </table>
             </div>
@@ -90,7 +105,7 @@
                 <tr>
                     <td colspan="5">No hay depositos registrados para esta factura.</td>
                 </tr>
-                {% endfor %}
+                {% endfor %}    
             </tbody>
         </table>
         {% if es_visitante %}

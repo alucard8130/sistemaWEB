@@ -1,14 +1,14 @@
 from datetime import date
 from django.shortcuts import render
-
 from areas.models import AreaComun
 from locales.models import LocalComercial
-from .models import Factura, FacturaOtrosIngresos
+from .models import Factura, FacturaOtrosIngresos, GrupoFacturacion
 from decimal import Decimal
 from django.db.models import Sum, Q,F, ExpressionWrapper, Value, DecimalField
 from django.db.models.functions import Coalesce
 import datetime as dt
 from django.db.models import Max
+
 
 
 def debe_mostrar_recordatorio_facturacion(empresa):
@@ -161,8 +161,10 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
         return 0
 
     if facturar_locales:
+        # NUEVO -- excluye del ciclo individual a los locales que pertenecen a un grupo
         locales = LocalComercial.objects.filter(
-            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False,
+            grupo_facturacion__isnull=True,
         ).select_related("cliente")
         locales_ids = list(locales.values_list("id", flat=True))
         locales_con_factura = set(
@@ -189,6 +191,41 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                     tipo_cuota="mantenimiento", estatus="pendiente", observaciones="Cuota mensual",
                 ))
                 facturas_creadas += 1
+
+        # NUEVO -- bloque completo: genera 1 factura consolidada por cada grupo activo
+        grupos_activos = GrupoFacturacion.objects.filter(empresa=empresa, activo=True).prefetch_related("locales")
+        for grupo in grupos_activos:
+            locales_grupo = grupo.locales.filter(activo=True, es_cuota_anual=False)
+            if not locales_grupo.exists():
+                continue
+
+            ya_facturado_grupo = Factura.objects.filter(
+                empresa=empresa, locales_incluidos__in=locales_grupo,
+                tipo_cuota="mantenimiento", estatus__in=["pendiente", "cobrada", "cancelada"],
+            ).filter(
+                Q(fecha_emision__year=año, fecha_emision__month=mes)
+                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
+            ).exists()
+
+            if ya_facturado_grupo:
+                facturas_omitidas += 1
+                continue
+
+            monto_total = locales_grupo.aggregate(t=Sum("cuota"))["t"] or Decimal("0")
+            if monto_total <= 0:
+                continue
+
+            last_num_cm += 1
+            numeros_locales = ", ".join(l.numero for l in locales_grupo.order_by("numero"))
+            factura_grupo = Factura.objects.create(
+                empresa=empresa, cliente=grupo.cliente, local=None,
+                folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
+                fecha_vencimiento=fecha_factura, monto=monto_total,
+                tipo_cuota="mantenimiento", estatus="pendiente",
+                observaciones=f"Cuota mensual consolidada — Grupo '{grupo.nombre}' — Locales: {numeros_locales}",
+            )
+            factura_grupo.locales_incluidos.set(locales_grupo)
+            facturas_creadas += 1
 
         if mes == 1:
             locales_anuales = LocalComercial.objects.filter(

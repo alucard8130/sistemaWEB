@@ -118,11 +118,11 @@
             {% if empresa.email %}<p>Email: {{ empresa.email }}</p>{% endif %}
         </div>
               <div class="recibo-title" style="color: #d35400">
-          {% if factura.local %}      
-          FACTURA  CUOTA DE MANTENIMIENTO
-          {% else %}
-          FACTURA  CUOTA DE AREA COMUN
-          {% endif %}
+              {% if factura.local or factura.locales_incluidos.all %}      
+              FACTURA  CUOTA DE MANTENIMIENTO
+              {% else %}
+              FACTURA  CUOTA DE AREA COMUN
+              {% endif %}
               </div>
               <div style="text-align: right; margin-bottom: 10px">
                 <img
@@ -168,7 +168,7 @@
                     <td><strong>Referencia:</strong></td>
                     <td>{{ factura.local.referencia }}</td>
                   </tr>
-                  {% endif %} {% if factura.area_comun %}
+                  {% elif factura.area_comun %}
                   <tr>
                     <td><strong>Área Común:</strong></td>
                     <td>{{ factura.area_comun.numero }}</td>
@@ -176,6 +176,11 @@
                   <tr>
                     <td><strong>Referencia:</strong></td>
                     <td>{{ factura.area_comun.referencia }}</td>
+                  </tr>
+                  {% elif factura.locales_incluidos.all %}
+                  <tr>
+                    <td><strong>Locales:</strong></td>
+                    <td>{% for l in factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
                   </tr>
                   {% endif %}
                   <tr>

@@ -180,7 +180,16 @@
                 <tbody>
                     {% for local in locales %}
                         <tr>
-                            <td>{{ local.numero }}</td>
+                            <td>
+                                {{ local.numero }}
+                                {% if local.grupo_facturacion %}
+                                    <a href="{% url 'editar_grupo_facturacion' local.grupo_facturacion.id %}"
+                                    class="badge bg-info text-dark ms-1 reporte-link"
+                                    title="Agrupado con: {{ local.grupo_facturacion.nombre }}">
+                                        <i class="bi bi-collection-fill"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
                             <td>{{ local.propietario }}</td>
                             <td>{{ local.cliente.nombre }}</td>
                             {% if request.user.is_superuser %}
