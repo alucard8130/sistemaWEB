@@ -288,11 +288,11 @@
               <!-- Estacionamiento -->
               {% if request.user.perfilusuario.empresa.es_premium %}
                 <li><a class="dropdown-item reporte-link" href="{% url 'lista_cortes_estacionamiento' %}">
-                    <i class="bi bi-p-circle me-1"></i> Cortes Z (Estacionamiento)
+                    <i class="bi bi-p-circle me-1"></i>Estacionamiento
                 </a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#">
-                    <i class="bi bi-p-circle me-1"></i> Cortes Z (Estacionamiento) (PREMIUM)
+                    <i class="bi bi-p-circle me-1"></i>Estacionamiento (PREMIUM)
                 </a></li>
               {% endif %}
               {% if request.user.is_superuser %}
