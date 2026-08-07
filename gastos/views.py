@@ -932,15 +932,7 @@ def gastos_lista(request):
     porc_pagadas = (num_pagadas / total_solicitudes * 100) if total_solicitudes else 0
     porc_pendientes = (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
     folio_comprobante = request.GET.get("folio_comprobante")
-    # # Top 10 proveedores
-    # top_proveedores_qs = (
-    #     gastos_base.exclude(proveedor__isnull=True)
-    #     .values("proveedor__nombre")
-    #     .annotate(cantidad=Count("id"))
-    #     .order_by("-cantidad")[:10]
-    # )
-    # top_prov_labels = [item["proveedor__nombre"] for item in top_proveedores_qs]
-    # top_prov_data = [item["cantidad"] for item in top_proveedores_qs]
+
 
     # Queryset final con anotaciones
     gastos = (
@@ -1005,7 +997,36 @@ def gasto_nuevo(request):
             permitido, error = validar_periodo_abierto(None, gasto.fecha, user=request.user)
             if not permitido:
                 messages.error(request, error)
-                return render(request, "gastos/form.html", {"form": form, "modo": "crear"})    
+                return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
+
+            # NUEVO -- detecta solicitudes duplicadas: mismo proveedor/empleado + mismo monto + mismo mes
+            if gasto.fecha:
+                duplicado_qs = Gasto.objects.filter(
+                    empresa=gasto.empresa,
+                    monto=gasto.monto,
+                    fecha__year=gasto.fecha.year,
+                    fecha__month=gasto.fecha.month,
+                ).exclude(estatus="cancelado")
+
+                if origen == "proveedor" and gasto.proveedor_id:
+                    duplicado_qs = duplicado_qs.filter(proveedor_id=gasto.proveedor_id)
+                elif origen == "empleado" and gasto.empleado_id:
+                    duplicado_qs = duplicado_qs.filter(empleado_id=gasto.empleado_id)
+                else:
+                    duplicado_qs = Gasto.objects.none()  # sin proveedor/empleado, no hay base para comparar
+
+                dup = duplicado_qs.first()
+                if dup:
+                    nombre_origen = gasto.proveedor.nombre if origen == "proveedor" and gasto.proveedor else (
+                        gasto.empleado.nombre if origen == "empleado" and gasto.empleado else "este origen"
+                    )
+                    messages.error(
+                        request,
+                        f"⚠️ Posible solicitud duplicada: ya existe la solicitud folio {dup.id} "
+                        f"con {nombre_origen}, mismo monto (${dup.monto}) y mismo mes. "
+                        f"Verifica antes de continuar."
+                    )
+                    return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
 
             gasto.estatus = "pendiente"
             gasto.save()
