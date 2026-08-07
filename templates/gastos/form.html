@@ -84,6 +84,17 @@
                                 {% endif %}
                             {% endif %}
                         {% endfor %}
+                        {% if mostrar_confirmacion_particion %}
+                        <div class="alert alert-warning">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="confirmar_particion" value="1" id="confirmarParticion">
+                                <label class="form-check-label" for="confirmarParticion">
+                                    Confirmo que esta es una factura <strong>DISTINTA</strong> a la solicitud existente
+                                    del mismo proveedor/empleado este mes, no una partición de la misma factura.
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="d-flex justify-content-between mt-3">
                             <button type="button" class="btn btn-secondary" onclick="prevStepGasto()">Anterior</button>
                             <button type="submit" class="btn btn-primary">{% if modo == 'crear' %}Guardar{% else %}Actualizar{% endif %}</button>
@@ -142,6 +153,13 @@
     document.addEventListener("DOMContentLoaded", function() {
         mostrarOrigen();
         document.getElementById("id_origen_tipo").addEventListener("change", mostrarOrigen);
+
+        // Si el servidor detectó una posible partición, salta directo al Paso 2
+        // para que el usuario vea el checkbox sin tener que dar clic en "Siguiente" de nuevo
+        if (document.getElementById('confirmarParticion')) {
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'block';
+        }
     });
     document.getElementById('gastoForm').addEventListener('submit', function(e) {
         // Validar todos los campos visibles del segundo paso
