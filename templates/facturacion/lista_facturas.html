@@ -280,6 +280,11 @@
                                    class="btn btn-xs btn-success" title="Descargar CFDI">
                                     <i class="bi bi-download"></i>
                                 </a>
+                            {% elif factura.estatus == 'cobrada' and factura.empresa.es_premium %}
+                                <a href="{% url 'timbrar_factura' factura.id %}?next={{ request.get_full_path|urlencode }}"
+                                   class="badge bg-danger reporte-link text-decoration-none" title="Ya se cobró, invita a timbrar el CFDI">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Falta timbrar
+                                </a>
                             {% else %}
                                 <span class="text-muted" style="font-style: italic; font-size: smaller;">no Timbrada</span>
                             {% endif %}

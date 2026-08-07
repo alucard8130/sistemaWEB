@@ -253,6 +253,12 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_grupos_facturacion' %}"><i class="bi bi-collection-fill me-2"></i>Grupos de Facturación</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'verificacion_facturacion' %}" title="Verificación de facturación por local y área"><i class="bi bi-check2-circle me-2"></i>Verificación Facturación</a></li>
+              <li><hr class="dropdown-divider"></li>
+              {% if request.user.perfilusuario.empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'timbrar_masivo_mes' %}"><i class="bi bi-file-earmark-check-fill me-2"></i>Timbrado Masivo</a></li>
+              {% else %}
+              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-check-fill me-2"></i>Timbrado Masivo (PREMIUM)</a></li>
+              {% endif %}
             </ul>
           </li>
 

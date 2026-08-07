@@ -1,11 +1,13 @@
 from django import forms
-from .models import Cliente 
+
+from .models import Cliente
+
 
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
-        fields = ['empresa','nombre', 'rfc', 'tipo_contribuyente','regimen_fiscal','direccion_domicilio','codigo_postal','uso_cfdi','telefono', 'email', 'activo']
-        widgets = {
+        fields = ['empresa','nombre', 'rfc', 'tipo_contribuyente','regimen_fiscal','direccion_domicilio','codigo_postal','uso_cfdi','objeto_impuesto','telefono', 'email', 'activo']  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'empresa': forms.Select(attrs={
                 'class': 'form-control'
             }),
@@ -34,6 +36,9 @@ class ClienteForm(forms.ModelForm):
             'uso_cfdi': forms.Select(attrs={
                 'class': 'form-control',
             }),
+            'objeto_impuesto': forms.Select(attrs={
+                'class': 'form-control',
+            }),
             'telefono': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Teléfono'
@@ -43,12 +48,13 @@ class ClienteForm(forms.ModelForm):
                 'placeholder': 'Email'
             }),
         }
-        labels = {
+        labels = {  # noqa: RUF012
             'rfc': 'RFC',
             'telefono': 'Teléfono',
             'codigo_postal': 'Código Postal',
             'regimen_fiscal': 'Régimen Fiscal',
             "nombre": "Nombre o Razón Social",
+            "objeto_impuesto": "Objeto de Impuesto (IVA)",
         }
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -63,6 +69,7 @@ class ClienteForm(forms.ModelForm):
         self.fields['codigo_postal'].required = True
         self.fields['tipo_contribuyente'].required = True
         self.fields['direccion_domicilio'].required = True
+        self.fields['objeto_impuesto'].required = True
     
     def clean(self):
         cleaned_data = super().clean()

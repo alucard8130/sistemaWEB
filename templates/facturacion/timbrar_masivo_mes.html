@@ -1,0 +1,134 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Timbrado Masivo · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .total-strip {
+            background: linear-gradient(135deg, #0f2d52, #1a5276); color: white;
+            border-radius: 14px; padding: 20px; text-align: center;
+        }
+        .total-strip.warning { background: linear-gradient(135deg, #7d5a00, #b8860b); }
+        table.tabla-facturas td, table.tabla-facturas th { font-size: 0.82rem; padding: 8px 10px; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container py-4" style="max-width: 820px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-3"><i class="bi bi-file-earmark-check-fill me-2"></i>Timbrado Masivo — {{ mes_actual_nombre }}</h4>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="total-strip">
+                    <div style="font-size:0.78rem; opacity:0.8; text-transform:uppercase;">Listas para timbrar automáticamente</div>
+                    <div style="font-size:2rem; font-weight:800;">{{ total_listas }}</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="total-strip warning">
+                    <div style="font-size:0.78rem; opacity:0.8; text-transform:uppercase;">Requieren timbrado manual</div>
+                    <div style="font-size:2rem; font-weight:800;">{{ total_excluidas }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if total_listas > 0 %}
+        <h6 class="text-muted">Se timbrarán con estos datos, tomados automáticamente de cada factura:</h6>
+        <div class="table-responsive rounded-3 border mb-3" style="max-height: 320px; overflow-y: auto;">
+            <table class="table table-sm tabla-facturas mb-0">
+                <thead class="table-light">
+                    <tr><th>Folio</th><th>Cliente</th><th>Local/Área</th><th class="text-end">Monto</th><th>Forma de pago SAT</th><th>Objeto imp.</th></tr>
+                </thead>
+                <tbody>
+                    {% for item in facturas_listas %}
+                    <tr>
+                        <td>{{ item.factura.folio }}</td>
+                        <td>{{ item.factura.cliente.nombre }}</td>
+                        <td>
+                            {% if item.factura.local %}{{ item.factura.local.numero }}
+                            {% elif item.factura.area_comun %}{{ item.factura.area_comun.numero }}
+                            {% elif item.factura.locales_incluidos.all %}Grupo ({{ item.factura.locales_incluidos.count }})
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="text-end">${{ item.factura.monto|floatformat:2|intcomma }}</td>
+                        <td>{{ item.forma_pago_sat }}</td>
+                        <td>{{ item.factura.cliente.get_objeto_impuesto_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <form method="post" class="mb-4">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger w-100 py-2"
+                    onclick="return confirm('¿Timbrar las {{ total_listas }} facturas listadas? Esta acción no se puede deshacer.');">
+                <i class="bi bi-file-earmark-check-fill me-1"></i> Timbrar las {{ total_listas }} facturas
+            </button>
+        </form>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-check-circle fs-1 d-block mb-2 text-success"></i>
+            No hay facturas listas para timbrado automático este mes.
+        </div>
+        {% endif %}
+
+        {% if total_excluidas > 0 %}
+        <h6 class="text-muted mt-4"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>Estas requieren revisión manual</h6>
+        <div class="table-responsive rounded-3 border">
+            <table class="table table-sm tabla-facturas mb-0">
+                <thead class="table-light">
+                    <tr><th>Folio</th><th>Cliente</th><th>Motivo</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for item in facturas_excluidas %}
+                    <tr>
+                        <td>{{ item.factura.folio }}</td>
+                        <td>{{ item.factura.cliente.nombre }}</td>
+                        <td class="text-warning">{{ item.motivo }}</td>
+                        <td>
+                            <a href="{% url 'timbrar_factura' item.factura.id %}" class="btn btn-sm btn-outline-primary reporte-link">
+                                Timbrar manual
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -92,6 +92,7 @@
                         {% comment %} <th>Domicilio Fiscal</th> {% endcomment %}
                         <th>Código Postal</th>
                         <th>Uso CFDI</th>
+                        <th>Objeto de Impuesto</th>
                         <th>Email</th>
                         {% comment %} <th>Factura Global</th>                         {% endcomment %}
                         <th>Acciones</th>
@@ -117,6 +118,7 @@
                         {% comment %} <td>{{ cliente.direccion_domicilio }}</td> {% endcomment %}
                         <td>{{ cliente.codigo_postal|default:"—" }}</td>
                         <td>{{ cliente.uso_cfdi|default:"—" }}</td>
+                        <td>{{ cliente.objeto_impuesto|default:"—" }}</td>
                         <td>{{ cliente.email|default:"—" }}</td>
                         {% comment %} <td>
                             <form method="post" action="{% url 'actualizar_factura_global' cliente.id %}">

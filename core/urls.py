@@ -19,7 +19,7 @@ from principal.forms import EmpresaAuthenticationForm
 from principal.views import (actualizar_ticket, agregar_seguimiento, api_amenidades_lista, api_areas_por_empresa, api_avisos_empresa, api_cancelar_reservacion, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_mis_reservaciones, api_reporte_ingresos_vs_gastos, api_reservar_amenidad, aviso_crear, aviso_eliminar, 
                              avisos_lista, cambiar_empresa_contador, cambiar_password_obligatorio, cancelar_suscripcion_premium, cerrar_wizard, consulta_cfdis_facturama, crear_contador, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_sesion_pago_premium,  crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, editar_empresas_contador, eliminar_tema, enviar_recordatorio_morosidad, lista_contadores, lista_temas, membresia_pago_exitoso, 
                              lista_tickets, crear_ticket, panel_contador, reenviar_credenciales_contador, registro_visitante, resultados_votacion, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
-                             eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, toggle_acceso_contador, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
+                             eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, timbrar_masivo_mes, toggle_acceso_contador, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
                                visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
 from principal.views import reiniciar_sistema, respaldo_empresa_excel
 from empresas.views import cuenta_bancaria_crear, cuenta_bancaria_editar, cuenta_bancaria_eliminar, cuentas_bancarias_lista, empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
@@ -244,6 +244,7 @@ urlpatterns = [
     path('contadores/<int:perfil_id>/reenviar/', reenviar_credenciales_contador, name='reenviar_credenciales_contador'),
     path('contador/login/', auth_views.LoginView.as_view(template_name='contador/login_contador.html',authentication_form=EmpresaAuthenticationForm,), name='contador_login'),
     path('sanitarios/', include('sanitarios.urls')),
+    path('timbrar-masivo/', timbrar_masivo_mes, name='timbrar_masivo_mes'),
 ]
 
     

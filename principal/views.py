@@ -3163,34 +3163,30 @@ def factura_a_json_facturama(
     fecha_timbrado = timezone.now().astimezone(tz_mx).strftime("%Y-%m-%d %H:%M:%S")
 
     if hasattr(factura, "local") and factura.local:
-        # Factura de local comercial
         descripcion = (
             f"Cuota de mantenimiento local {factura.local.numero} "
             f"({format_date(factura.fecha_vencimiento, 'LLLL yyyy', locale='es')})"
         )
     elif hasattr(factura, "area_comun") and factura.area_comun:
-        # Factura de área común
         descripcion = (
             f"Cuota área común {factura.area_comun.numero} "
             f"({format_date(factura.fecha_vencimiento, 'LLLL yyyy', locale='es')})"
         )
-    # elif (
-    #     hasattr(factura, "descripcion")
-    #     and factura.descripcion
-    #     and factura.folio.startswith("FG-")
-    # ):
-    #     # Factura global (folio inicia con FG-)
-    #     locales = set()
-    #     for f in Factura.objects.filter(factura_global=factura):
-    #         if f.local:
-    #             locales.add(f.local.numero)
-    #     locales_str = ", ".join(sorted(locales))
-    #     descripcion = (
-    #         f"Factura global locales: {locales_str} \n"
-    #         f"({format_date(factura.fecha_vencimiento, 'LLLL yyyy', locale='es')})"
-    #     )
+    elif (
+        hasattr(factura, "locales_incluidos")
+        and not factura.local
+        and not factura.area_comun
+        and factura.locales_incluidos.exists()
+    ):
+        # Factura consolidada de Grupo de Facturación
+        locales_str = ", ".join(
+            l.numero for l in factura.locales_incluidos.order_by("numero")
+        )
+        descripcion = (
+            f"Cuota de mantenimiento consolidada — Locales: {locales_str} "
+            f"({format_date(factura.fecha_vencimiento, 'LLLL yyyy', locale='es')})"
+        )
     elif hasattr(factura, "tipo_ingreso"):
-        # FacturaOtrosIngresos
         descripcion = (
             "Otro ingreso: "
             + str(getattr(factura, "tipo_ingreso", ""))
@@ -3204,12 +3200,10 @@ def factura_a_json_facturama(
         descripcion = factura.observaciones or "Concepto de factura"
 
     if tax_object == "01":
-        # Sin objeto de impuesto: total y subtotal son iguales al monto
         subtotal = monto.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         item_total = subtotal
         total = subtotal
     else:
-        # Con objeto de impuesto: calcula subtotal y desglose de IVA
         subtotal = (monto / divisor_iva).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
@@ -3280,102 +3274,6 @@ def timbrar_factura(request, pk):
         messages.info(request, "La factura ya está timbrada.")
         return redirect("lista_facturas")
 
-    # # --- INICIO FLUJO FACTURA GLOBAL SOLO PARA LOCALES ---
-    # if factura.cliente.factura_global:
-    #     mes = factura.fecha_vencimiento.month
-    #     anio = factura.fecha_vencimiento.year
-    #     cliente = factura.cliente
-
-    #     # Solo facturas de locales, no áreas ni otros ingresos
-    #     facturas_mes = Factura.objects.filter(
-    #         cliente=cliente,
-    #         empresa=empresa,
-    #         fecha_vencimiento__year=anio,
-    #         fecha_vencimiento__month=mes,
-    #         uuid__isnull=True,
-    #         local__isnull=False,  # Solo locales
-    #     )
-
-    #     if facturas_mes.count() > 1:
-    #         total_monto = sum(f.monto for f in facturas_mes)
-    #         descripcion = f"Factura global locales:" + ", ".join(
-    #             [f.local.numero for f in facturas_mes if f.local]
-    #         )
-
-    #         # Marca las facturas individuales como incluidas en la global
-    #         # facturas_mes.update(estatus="incluida_global", factura_global=factura_global)
-
-    #         # Timbrar la factura global
-    #         if request.method == "POST":
-    #             form = TimbrarFacturaForm(request.POST)
-    #             if form.is_valid():
-    #                 # Crea la factura global
-    #                 factura_global = Factura.objects.create(
-    #                     empresa=empresa,
-    #                     cliente=cliente,
-    #                     monto=total_monto,
-    #                     fecha_emision=timezone.now(),
-    #                     fecha_vencimiento=factura.fecha_vencimiento,
-    #                     folio="FG-" + timezone.now().strftime("%Y%m%d%H%M%S"),
-    #                     observaciones=descripcion,
-    #                 )
-    #                 tax_object = form.cleaned_data["tax_object"]
-    #                 payment_method = form.cleaned_data["payment_method"]
-    #                 payment_form = form.cleaned_data["payment_form"]
-    #                 datos_json = factura_a_json_facturama(
-    #                     factura_global, tax_object, payment_method, payment_form
-    #                 )
-    #                 resultado = timbrar_factura_facturama(datos_json)
-
-    #                 if "error" in resultado:
-    #                     messages.error(
-    #                         request, f"Error al timbrar: {resultado['error']}"
-    #                     )
-    #                 else:
-    #                     uuid = resultado.get("Uuid") or resultado.get(
-    #                         "Complement", {}
-    #                     ).get("TaxStamp", {}).get("Uuid")
-    #                     facturama_id = resultado.get("Id")
-    #                     if not uuid or not facturama_id:
-    #                         messages.error(request, f"Error inesperado: {resultado}")
-    #                     else:
-    #                         factura_global.uuid = uuid
-    #                         factura_global.facturama_id = facturama_id
-    #                         factura_global.save()
-    #                         # Solo aquí actualiza las facturas individuales
-    #                         # facturas_mes.update(estatus="incluida_global", factura_global=factura_global)
-    #                         for f in facturas_mes:
-    #                             f.factura_global = factura_global
-    #                             f.uuid = factura_global.uuid
-    #                             f.facturama_id = factura_global.facturama_id
-    #                             f.save(
-    #                                 update_fields=[
-    #                                     "factura_global",
-    #                                     "uuid",
-    #                                     "facturama_id",
-    #                                 ]
-    #                             )
-    #                         messages.success(
-    #                             request,
-    #                             f"Factura global {factura_global.folio} timbrada correctamente. Ahora puedes descargar el PDF y XML.",
-    #                         )
-    #                 if next_url:
-    #                     return redirect(next_url)
-    #                 return redirect("lista_facturas")
-    #         else:
-    #             form = TimbrarFacturaForm()
-    #         return render(
-    #             request,
-    #             "facturacion/timbrar_factura.html",
-    #             {
-    #                 "form": form,
-    #                 "factura": factura,
-    #                 "url_cancelar": next_url,
-    #             },
-    #         )
-    #     # Si solo hay una factura, sigue el flujo normal
-    # # --- FIN FLUJO FACTURA GLOBAL ---
-
     # FLUJO NORMAL (una sola factura)
     if request.method == "POST":
         form = TimbrarFacturaForm(request.POST)
@@ -3422,6 +3320,131 @@ def timbrar_factura(request, pk):
             "url_cancelar": next_url,
         },
     )
+
+
+FORMA_PAGO_SAT_MAP = {
+    'efectivo': '01',
+    'cheque': '02',
+    'transferencia': '03',
+    'deposito': '01',   # confirmado: efectivo
+    'tarjeta': '28',    # confirmado: tarjeta de débito
+    'stripe': '28',     # confirmado: tarjeta de débito
+    'nota_credito': '99',
+    'rendimiento_inversion': '99',
+    'otro': '99',
+}
+
+
+def obtener_forma_pago_sat_factura(factura):
+    """Determina el código SAT de forma de pago a partir de los pagos reales
+    de la factura. Regresa (codigo, None) si todos los pagos coinciden en
+    forma de pago, o (None, mensaje_error) si hay formas de pago mezcladas."""
+    formas_usadas = set(
+        factura.pagos.exclude(forma_pago='nota_credito').values_list('forma_pago', flat=True)
+    )
+    if not formas_usadas:
+        return None, "La factura no tiene pagos registrados."
+    if len(formas_usadas) > 1:
+        return None, f"Tiene pagos con formas de pago distintas ({', '.join(formas_usadas)}) — requiere timbrado manual."
+
+    forma_pago_interna = formas_usadas.pop()
+    codigo_sat = FORMA_PAGO_SAT_MAP.get(forma_pago_interna, '99')
+    return codigo_sat, None
+
+
+@login_required
+def timbrar_masivo_mes(request):
+    if request.user.is_superuser:
+        empresa_id = request.session.get("empresa_id")
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect("dashboard_inicio")
+
+    if not empresa.es_premium:
+        messages.error(request, "El timbrado masivo solo está disponible en la versión PREMIUM.")
+        return redirect("dashboard_inicio")
+
+    hoy = date.today()
+    mes_actual = hoy.month
+    anio_actual = hoy.year
+
+    facturas_qs = (
+        Factura.objects.filter(
+            empresa=empresa, estatus="cobrada",
+            pagos__fecha_pago__year=anio_actual, pagos__fecha_pago__month=mes_actual,
+        )
+        .filter(Q(uuid__isnull=True) | Q(uuid=""))
+        .select_related("cliente", "local", "area_comun")
+        .prefetch_related("pagos", "locales_incluidos")
+        .distinct()
+        .order_by("cliente__nombre")
+    )
+
+    # Clasifica de antemano cuáles se pueden timbrar automáticamente y cuáles no
+    facturas_listas = []
+    facturas_excluidas = []
+    for factura in facturas_qs:
+        codigo_forma_pago, error = obtener_forma_pago_sat_factura(factura)
+        if error:
+            facturas_excluidas.append({"factura": factura, "motivo": error})
+        else:
+            facturas_listas.append({"factura": factura, "forma_pago_sat": codigo_forma_pago})
+
+    if request.method == "POST":
+        exitosas = []
+        fallidas = []
+
+        for item in facturas_listas:
+            factura = item["factura"]
+            try:
+                datos_json = factura_a_json_facturama(
+                    factura,
+                    tax_object=factura.cliente.objeto_impuesto,
+                    payment_method="PUE",
+                    payment_form=item["forma_pago_sat"],
+                )
+                resultado = timbrar_factura_facturama(datos_json)
+
+                if "error" in resultado:
+                    fallidas.append((factura.folio, resultado["error"]))
+                    continue
+
+                uuid = resultado.get("Uuid") or resultado.get("Complement", {}).get("TaxStamp", {}).get("Uuid")
+                facturama_id = resultado.get("Id")
+                if not uuid or not facturama_id:
+                    fallidas.append((factura.folio, "Respuesta inesperada de Facturama"))
+                    continue
+
+                factura.uuid = uuid
+                factura.facturama_id = facturama_id
+                factura.save(update_fields=["uuid", "facturama_id"])
+                exitosas.append(factura.folio)
+
+            except Exception as e:
+                fallidas.append((factura.folio, str(e)))
+
+        if exitosas:
+            messages.success(request, f"✅ {len(exitosas)} factura(s) timbrada(s) correctamente: {', '.join(exitosas)}")
+        if fallidas:
+            detalle_fallidas = "; ".join(f"{folio} ({error})" for folio, error in fallidas)
+            messages.error(request, f"⚠️ {len(fallidas)} factura(s) con error: {detalle_fallidas}")
+        if not exitosas and not fallidas:
+            messages.info(request, "No había facturas listas para timbrar automáticamente.")
+
+        return redirect("lista_facturas")
+
+    return render(request, "facturacion/timbrar_masivo_mes.html", {
+        "empresa": empresa,
+        "facturas_listas": facturas_listas,
+        "facturas_excluidas": facturas_excluidas,
+        "total_listas": len(facturas_listas),
+        "total_excluidas": len(facturas_excluidas),
+        "mes_actual_nombre": hoy.strftime("%B").capitalize(),
+    })
 
 
 @login_required
