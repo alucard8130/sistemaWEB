@@ -1,0 +1,139 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Carga Inicial de Plaza · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .paso-card {
+            border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px;
+            margin-bottom: 16px; background: white;
+        }
+        .paso-numero {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #0f2d52; color: white; display: flex;
+            align-items: center; justify-content: center; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .paso-opcional { background: #9ca3af; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container py-4" style="max-width: 720px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message|safe }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-1"><i class="bi bi-cloud-upload-fill me-2"></i>Carga Inicial de Plaza</h4>
+        <form method="get" class="mb-3">
+            <label class="form-label small">Selecciona la empresa/plaza</label>
+            <select name="empresa" class="form-select" onchange="this.form.submit()">
+                <option value="">-- Selecciona una plaza --</option>
+                {% for e in empresas %}
+                    <option value="{{ e.id }}" {% if empresa.id == e.id %}selected{% endif %}>{{ e.nombre }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if empresa %}
+        <p class="text-muted small mb-4">
+            Para {{ empresa.nombre }} — carga clientes, propiedades, y (opcionalmente) la cartera vencida
+            histórica que ya arrastraban antes de usar GESAC. Todo se procesa en un solo paso.
+        </p>
+        {% endif %}
+
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <strong>Orden importante:</strong> los nombres de cliente en el archivo de Propiedades deben
+            coincidir EXACTO con el archivo de Clientes. Igual con los números de local entre Propiedades y Adeudos.
+        </div>
+        {% if empresa %}
+        <form method="post" enctype="multipart/form-data" id="form-carga-inicial">
+            {% csrf_token %}
+            <input type="hidden" name="empresa" value="{{ empresa.id }}">
+            <div class="paso-card">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="paso-numero">1</div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Clientes <span class="text-danger">*</span></h6>
+                        <p class="text-muted small mb-2">Nombre, RFC (opcional), correo y teléfono de cada cliente.</p>
+                        <a href="{% url 'plantilla_clientes_carga_inicial_excel' %}" class="btn btn-sm btn-outline-secondary mb-2">
+                            <i class="bi bi-download me-1"></i>Descargar plantilla
+                        </a>
+                        <input type="file" name="archivo_clientes" class="form-control" accept=".xlsx" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="paso-card">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="paso-numero">2</div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Propiedades <span class="text-danger">*</span></h6>
+                        <p class="text-muted small mb-2">Número de local, cliente asignado, cuota, superficie y giro.</p>
+                        <a href="{% url 'plantilla_propiedades_carga_inicial_excel' %}" class="btn btn-sm btn-outline-secondary mb-2">
+                            <i class="bi bi-download me-1"></i>Descargar plantilla
+                        </a>
+                        <input type="file" name="archivo_propiedades" class="form-control" accept=".xlsx" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="paso-card">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="paso-numero paso-opcional">3</div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Cartera Vencida Histórica <span class="badge bg-secondary">Opcional</span></h6>
+                        <p class="text-muted small mb-2">
+                            Un renglón por cada mes que el cliente debe (ej. 3 filas si debe marzo, abril y mayo).
+                            Esto genera facturas pendientes reales, para que Antigüedad de Saldos salga exacta desde el día 1.
+                        </p>
+                        <a href="{% url 'plantilla_adeudos_carga_inicial_excel' %}" class="btn btn-sm btn-outline-secondary mb-2">
+                            <i class="bi bi-download me-1"></i>Descargar plantilla
+                        </a>
+                        <input type="file" name="archivo_adeudos" class="form-control" accept=".xlsx">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100 py-2 mt-2"
+                    onclick="return confirm('¿Procesar la carga inicial completa? Revisa que los archivos estén correctos.');">
+                <i class="bi bi-cloud-upload-fill me-1"></i> Procesar carga inicial
+            </button>
+        </form>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-building fs-1 d-block mb-2"></i>
+            Selecciona una plaza arriba para comenzar la carga.
+        </div>
+        {% endif %}    
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('form-carga-inicial');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

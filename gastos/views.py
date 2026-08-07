@@ -1,23 +1,53 @@
 # from collections import Counter, defaultdict
-from decimal import Decimal, InvalidOperation
 import difflib
-from io import BytesIO
 import json
 import unicodedata
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
-from openpyxl import Workbook
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+from io import BytesIO
+
 import openpyxl
+from django.contrib import messages
+from django.contrib import messages as django_messages
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import (
+    Case,
+    Count,
+    DecimalField,
+    F,
+    FloatField,
+    ProtectedError,
+    Q,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, TruncMonth, TruncYear
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateformat import DateFormat
+from django.utils.dateparse import parse_date
+from num2words import num2words
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 from unidecode import unidecode
+
 from caja_chica.models import GastoCajaChica, ValeCaja
 from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
-from facturacion.models import CobroOtrosIngresos, Factura, Pago, TipoCuotaHomologacion, TipoOtroIngreso
+from facturacion.models import (
+    CobroOtrosIngresos,
+    Factura,
+    Pago,
+    TipoCuotaHomologacion,
+    TipoOtroIngreso,
+)
 from presupuestos.models import Presupuesto
 from proveedores.models import Proveedor
+
 from .forms import (
     CargaMasivaCuentasForm,
     GastoForm,
@@ -27,20 +57,16 @@ from .forms import (
     SubgrupoGastoForm,
     TipoGastoForm,
 )
-from .models import CargaCatalogoFila, CargaCatalogoSesion, CuentaContable, Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
-from datetime import datetime
-from django.db.models import F, DecimalField, Value
-from django.db.models import Q, Sum, Count, Case, When, FloatField
-from django.utils.dateparse import parse_date
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.db.models import ProtectedError
-from django.db.models.functions import Coalesce, TruncMonth, TruncYear
-from num2words import num2words
-from django.utils.dateformat import DateFormat
-from datetime import date
-from django.contrib import messages as django_messages
-from openpyxl.styles import Font, PatternFill
+from .models import (
+    CargaCatalogoFila,
+    CargaCatalogoSesion,
+    CuentaContable,
+    Gasto,
+    GrupoGasto,
+    PagoGasto,
+    SubgrupoGasto,
+    TipoGasto,
+)
 
 
 ###################CATALOGOS CONTABLES GASTOS E INGRESOS############################

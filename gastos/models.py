@@ -1,12 +1,13 @@
 
 # Create your models here.
-from django.db import models
 from django.conf import settings
+from django.contrib.auth.models import User
+from django.db import models
 from django.db.models import Sum
+
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
 from proveedores.models import Proveedor
-from django.contrib.auth.models import User
 
 
 class CuentaContable(models.Model):
@@ -16,7 +17,7 @@ class CuentaContable(models.Model):
     cuenta_padre = models.ForeignKey(
         'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='subcuentas'
     )
-    NATURALEZA_CHOICES = [
+    NATURALEZA_CHOICES = [  # noqa: RUF012
         ('deudora', 'Deudora'),
         ('acreedora', 'Acreedora'),
     ]
@@ -37,7 +38,7 @@ class CuentaContable(models.Model):
     
 class CargaCatalogoSesion(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    ESTADO_CHOICES = [
+    ESTADO_CHOICES = [  # noqa: RUF012
         ('pendiente_revision', 'Pendiente de revisión'),
         ('aplicada', 'Aplicada'),
         ('cancelada', 'Cancelada'),
@@ -62,7 +63,7 @@ class CargaCatalogoFila(models.Model):
     tipo_gasto_sugerido = models.ForeignKey('TipoGasto', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     similitud_pct = models.PositiveIntegerField(default=0)
 
-    ACCION_CHOICES = [
+    ACCION_CHOICES = [  # noqa: RUF012
         ('crear_nuevo', 'Crear nuevo tipo de gasto'),
         ('usar_existente', 'Usar tipo de gasto existente'),
         ('solo_cuenta', 'Solo cargar la cuenta (sin tipo de gasto)'),
@@ -112,7 +113,7 @@ class Gasto(models.Model):
     comprobante = models.FileField(upload_to='cfdi_gastos/', blank=True, null=True)
     folio_comprobante = models.CharField(max_length=100, blank=True, null=True, 
                                       help_text='Folio o número de la factura/comprobante adjunto')
-    STATUS_CHOICES = [
+    STATUS_CHOICES = [  # noqa: RUF012
         ('pendiente', 'Pendiente'),
         ('pagada', 'Pagada'),
         ('cancelada', 'Cancelada'),

@@ -1,5 +1,5 @@
 
-from django import forms
+from django import forms  # noqa: I001
 from areas.models import AreaComun
 from empresas.models import Empresa
 from locales.models import LocalComercial

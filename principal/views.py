@@ -1,133 +1,120 @@
 # import csv
-from decimal import ROUND_HALF_UP
+import base64
+import io
+import json
 import locale
+import logging
 import os
-from typing_extensions import OrderedDict
+import zipfile
+from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
+from functools import wraps
 
 # from urllib import response
 from uuid import uuid4
 
-# import uuid
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib import messages
-from django.db import transaction
-
 # from openai import base_url
 import openpyxl
+import pytz
+
+# from django.conf import settings
+import requests
+import stripe
+import weasyprint
+from babel.dates import format_date
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import update_session_auth_hash
+
+# import uuid
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.models import User
+from django.core.mail import EmailMessage, send_mail
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import (
+    Case,
+    CharField,
+    Count,
+    DecimalField,
+    Exists,
+    ExpressionWrapper,
+    F,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, ExtractMonth, ExtractYear, TruncMonth
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+
+# from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+
+# from rest_framework.authtoken.models import Token
+# from rest_framework.authentication import TokenAuthentication
+# from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import (
+    api_view,
+    # authentication_classes,
+    # permission_classes,
+    parser_classes,
+)
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from typing_extensions import OrderedDict
 
 # from areas import models
 from amenidades.models import Amenidad, Reservacion
+from areas.models import AreaComun
+from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
+from clientes.models import Cliente
 from core import settings
 from empleados.models import Empleado
 
 # import empresas
 from empresas.models import CuentaBancaria, Empresa
-from clientes.models import Cliente
 from facturacion.forms import TimbrarFacturaForm
-from facturacion.utils import debe_mostrar_recordatorio_facturacion
-from gastos.models import Gasto, TipoGasto
-from locales.models import LocalComercial
-from areas.models import AreaComun
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from facturacion.utils import debe_mostrar_recordatorio_facturacion
+from gastos.models import Gasto, PagoGasto, TipoGasto
+from locales.models import LocalComercial
 from presupuestos.models import Presupuesto, PresupuestoIngreso
 
 # from principal.admin import VisitanteAccesoForm
 from principal.forms import TemaGeneralForm, VisitanteLoginForm
 from principal.models import AuditoriaCambio
 from proveedores.models import Proveedor
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.core.mail import send_mail
 
+from .forms import AvisoForm, ContadorForm, CSDUploadForm, EditarContadorForm
 from .models import (
     Aviso,
     CapturarEmailForm,
     Evento,
     PerfilUsuario,
+    SeguimientoTicket,
     TemaGeneral,
+    TicketMantenimiento,
     VisitanteAcceso,
+    VisitanteToken,
     VotacionCorreo,
 )
-import json
-from django.core.mail import EmailMessage
-from django.template.loader import render_to_string
-from django.contrib.auth.models import User
-from datetime import date, datetime, timedelta
-import stripe
-from .models import TicketMantenimiento
-
-# from django.contrib.auth import get_user_model
-from django.utils import timezone
-from .models import SeguimientoTicket
-from django.contrib.auth.hashers import check_password
-from django.urls import reverse
-
-# from django.conf import settings
-import requests
-from decimal import Decimal
-from .forms import (
-    AvisoForm,
-    CSDUploadForm,
-    ContadorForm,
-    EditarContadorForm
-)
-import base64
-import io
-import zipfile
-from gastos.models import PagoGasto
 from .serializers import FacturaSerializer
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
-import logging
-
-# from rest_framework.authtoken.models import Token
-# from rest_framework.authentication import TokenAuthentication
-# from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import (
-    # authentication_classes,
-    # permission_classes,
-    parser_classes,
-)
-from .models import VisitanteToken
-from functools import wraps
-from django.db.models import Exists, Sum
-from django.db.models import (
-    Case,
-    When,
-    Value,
-    CharField,
-    Q,
-    DecimalField,
-    ExpressionWrapper,
-    OuterRef,
-    Subquery,
-    F,
-)
-from django.db.models.functions import Coalesce
-from rest_framework.parsers import MultiPartParser, FormParser
-from django.db.models.functions import ExtractMonth, ExtractYear
-from django.contrib.auth.hashers import make_password
-from django.utils.crypto import get_random_string
-from django.core.paginator import Paginator
-import weasyprint
-from babel.dates import format_date
-import pytz
-from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.forms import SetPasswordForm
-from django.db.models import Count
-from django.db.models.functions import TruncMonth
-
-
-
 
 # pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 
 MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+
 
 @login_required
 def dashboard_inicio(request):

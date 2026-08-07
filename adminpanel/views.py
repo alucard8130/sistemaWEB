@@ -1,24 +1,40 @@
-from django.contrib import messages
+
 from django.conf import settings
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.models import User
-from django.shortcuts import render
-from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
-from principal.models import AuditoriaCambio, Aviso, Evento, SeguimientoTicket, TemaGeneral, TicketMantenimiento, VisitanteAcceso
-from django.shortcuts import redirect, get_object_or_404
-from django.core.mail import send_mail
-from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
-from empresas.models import Empresa
-from locales.models import LocalComercial
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404, redirect, render
+
 from areas.models import AreaComun
+from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from clientes.models import Cliente
-from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
-from gastos.models import Gasto, PagoGasto
-from presupuestos.models import Presupuesto, PresupuestoIngreso
 from empleados.models import Empleado
+from empresas.models import Empresa
+from facturacion.models import (
+    CobroOtrosIngresos,
+    Factura,
+    FacturaOtrosIngresos,
+    GrupoFacturacion,
+    Pago,
+    TipoCuotaHomologacion,
+    TipoOtroIngreso,
+)
+from gastos.models import (
+    CuentaContable,
+    Gasto,
+    GrupoGasto,
+    PagoGasto,
+    SubgrupoGasto,
+    TipoGasto,
+)
+from locales.models import LocalComercial
+from presupuestos.models import Presupuesto, PresupuestoIngreso
+from principal.models import Aviso, Evento, PerfilUsuario, TemaGeneral, VisitanteAcceso
 from proveedores.models import Proveedor
+from sanitarios.models import BoletoFisico, CasetaOperador, CorteSanitario, UsoSanitario
+
 
 #usuarios GESAC
 @staff_member_required
@@ -73,32 +89,63 @@ def toggle_reporte_visitante(request, visitante_id):
 def resetear_empresa(request, empresa_id):
     empresa = get_object_or_404(Empresa, id=empresa_id)
     if request.method == "POST":
-        # Borra todos los datos relacionados a la empresa
+        # --- Facturación y cobranza ---
         Factura.objects.filter(empresa=empresa).delete()
         FacturaOtrosIngresos.objects.filter(empresa=empresa).delete()
         Pago.objects.filter(factura__empresa=empresa).delete()
         CobroOtrosIngresos.objects.filter(factura__empresa=empresa).delete()
+
+        # --- Grupos de Facturación ---
+        GrupoFacturacion.objects.filter(empresa=empresa).delete()
+
+        # --- Caja Chica ---
         FondeoCajaChica.objects.filter(empresa=empresa).delete()
         GastoCajaChica.objects.filter(fondeo__empresa=empresa).delete()
         ValeCaja.objects.filter(fondeo__empresa=empresa).delete()
+
+        # --- Propiedades y catálogos ---
         LocalComercial.objects.filter(empresa=empresa).delete()
         AreaComun.objects.filter(empresa=empresa).delete()
         Cliente.objects.filter(empresa=empresa).delete()
         Proveedor.objects.filter(empresa=empresa).delete()
         Empleado.objects.filter(empresa=empresa).delete()
+
+        # --- Gastos (antes del catálogo contable, por la homologación) ---
         Gasto.objects.filter(empresa=empresa).delete()
         PagoGasto.objects.filter(gasto__empresa=empresa).delete()
-        #AuditoriaCambio.objects.filter(usuario__perfilusuario__empresa=empresa).delete()
+
+        # --- Catálogo Contable (homologación) ---
+        TipoGasto.objects.filter(empresa=empresa).delete()
+        TipoCuotaHomologacion.objects.filter(empresa=empresa).delete()
+        TipoOtroIngreso.objects.filter(empresa=empresa).delete()
+        CuentaContable.objects.filter(empresa=empresa).delete()
+
+        # --- Comunicación ---
         Evento.objects.filter(empresa=empresa).delete()
-        #TicketMantenimiento.objects.filter(empresa=empresa).delete()
-        #SeguimientoTicket.objects.filter(ticket__empresa=empresa).delete()
         TemaGeneral.objects.filter(empresa=empresa).delete()
         Aviso.objects.filter(empresa=empresa).delete()
+
+        # --- Presupuestos ---
         Presupuesto.objects.filter(empresa=empresa).delete()
         PresupuestoIngreso.objects.filter(empresa=empresa).delete()
+
+        # --- Control de Sanitarios ---
+        UsoSanitario.objects.filter(empresa=empresa).delete()
+        BoletoFisico.objects.filter(empresa=empresa).delete()
+        CasetaOperador.objects.filter(empresa=empresa).delete()
+        CorteSanitario.objects.filter(empresa=empresa).delete()
+
+        # --- Contadores -- solo se les quita el acceso a ESTA empresa, nunca se borra su cuenta ---
+        for perfil in PerfilUsuario.objects.filter(empresas_contador=empresa):
+            perfil.empresas_contador.remove(empresa)
+            if perfil.empresa_id == empresa.id:
+                nueva_empresa = perfil.empresas_contador.first()
+                perfil.empresa = nueva_empresa
+                perfil.save(update_fields=["empresa"])
+
         # Puedes agregar más modelos relacionados aquí
 
         messages.success(request, f"Todos los datos de la empresa '{empresa.nombre}' han sido eliminados.")
-        return redirect('bienvenida')  # O la vista que prefieras
+        return redirect('bienvenida')
 
     return render(request, "adminpanel/resetear_empresa_confirm.html", {"empresa": empresa})

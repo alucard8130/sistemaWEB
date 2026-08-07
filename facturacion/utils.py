@@ -1,14 +1,14 @@
+import datetime as dt
 from datetime import date
-from django.shortcuts import render
+from decimal import Decimal
+
+from django.db.models import DecimalField, ExpressionWrapper, F, Max, Q, Sum, Value
+from django.db.models.functions import Coalesce
+
 from areas.models import AreaComun
 from locales.models import LocalComercial
-from .models import Factura, FacturaOtrosIngresos, GrupoFacturacion
-from decimal import Decimal
-from django.db.models import Sum, Q,F, ExpressionWrapper, Value, DecimalField
-from django.db.models.functions import Coalesce
-import datetime as dt
-from django.db.models import Max
 
+from .models import Factura, FacturaOtrosIngresos, GrupoFacturacion
 
 
 def debe_mostrar_recordatorio_facturacion(empresa):

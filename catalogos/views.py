@@ -1,13 +1,21 @@
+from datetime import date
+from decimal import Decimal
+
 import openpyxl
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.db import transaction
 from django import forms
-from clientes.models import Cliente       # ajusta el import real de tu app de clientes
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.http import HttpResponse
+from django.shortcuts import redirect, render
+
+from clientes.models import Cliente  # ajusta el import real de tu app de clientes
 from empresas.models import Empresa
-from proveedores.models import Proveedor  # ajusta el import real de tu app de proveedores
+from facturacion.models import Factura
+from locales.models import LocalComercial
+from proveedores.models import (
+    Proveedor,  # ajusta el import real de tu app de proveedores
+)
 
 
 def _empresa_del_usuario(request):
@@ -140,3 +148,254 @@ def carga_masiva_clientes_proveedores(request):
         form = CargaMasivaClientesProveedoresForm()
 
     return render(request, 'catalogos/carga_masiva_clientes_proveedores.html', {'form': form})
+
+
+@login_required
+def carga_inicial_completa(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta sección.")
+        return redirect("dashboard_inicio")
+
+    empresas = Empresa.objects.all().order_by("nombre")
+    empresa_id = request.GET.get("empresa") or request.POST.get("empresa")
+    empresa = empresas.filter(id=empresa_id).first() if empresa_id else None
+
+    if request.method == "POST":
+        if not empresa:
+            messages.error(request, "Selecciona la empresa/plaza antes de procesar la carga.")
+            return redirect("carga_inicial_completa")
+        
+        archivo_clientes = request.FILES.get("archivo_clientes")
+        archivo_propiedades = request.FILES.get("archivo_propiedades")
+        archivo_adeudos = request.FILES.get("archivo_adeudos")
+
+        if not archivo_clientes or not archivo_propiedades:
+            messages.error(request, "Los archivos de Clientes y Propiedades son obligatorios. Adeudos es opcional.")
+            return redirect(f"{request.path}?empresa={empresa.id}")
+
+        resumen = {
+            "clientes_creados": 0, "clientes_reutilizados": 0,
+            "propiedades_creadas": 0, "adeudos_creados": 0,
+        }
+        errores = []
+
+        try:
+            with transaction.atomic():
+                # ── PASO 1: CLIENTES ──
+                clientes_dict = {}  # nombre normalizado -> objeto Cliente
+                wb1 = openpyxl.load_workbook(archivo_clientes, data_only=True)
+                ws1 = wb1.active
+                for i, row in enumerate(ws1.iter_rows(min_row=2, values_only=True), start=2):
+                    if not row or all(c is None or (isinstance(c, str) and not c.strip()) for c in row):
+                        continue
+                    try:
+                        nombre = str(row[0]).strip()
+                        rfc = str(row[1]).strip().upper() if len(row) > 1 and row[1] else None
+                        email = str(row[2]).strip() if len(row) > 2 and row[2] else None
+                        telefono = str(row[3]).strip() if len(row) > 3 and row[3] else None
+
+                        if not nombre:
+                            raise Exception("Nombre vacío.")
+
+                        if rfc:
+                            cliente, creado = Cliente.objects.get_or_create(
+                                empresa=empresa, rfc=rfc,
+                                defaults={"nombre": nombre, "email": email, "telefono": telefono},
+                            )
+                        else:
+                            cliente = Cliente.objects.filter(
+                                empresa=empresa, rfc__isnull=True, nombre__iexact=nombre
+                            ).first()
+                            creado = cliente is None
+                            if creado:
+                                cliente = Cliente.objects.create(
+                                    empresa=empresa, nombre=nombre, email=email, telefono=telefono,
+                                )
+
+                        clientes_dict[nombre.strip().lower()] = cliente
+                        if creado:
+                            resumen["clientes_creados"] += 1
+                        else:
+                            resumen["clientes_reutilizados"] += 1
+
+                    except Exception as e:
+                        errores.append(f"[Clientes] Fila {i}: {str(e)}")
+
+                # ── PASO 2: PROPIEDADES ──
+                locales_dict = {}  # numero normalizado -> objeto LocalComercial
+                wb2 = openpyxl.load_workbook(archivo_propiedades, data_only=True)
+                ws2 = wb2.active
+                for i, row in enumerate(ws2.iter_rows(min_row=2, values_only=True), start=2):
+                    if not row or all(c is None or (isinstance(c, str) and not c.strip()) for c in row):
+                        continue
+                    try:
+                        numero = str(row[0]).strip()
+                        cliente_nombre = str(row[1]).strip() if len(row) > 1 and row[1] else None
+                        cuota = Decimal(str(row[2])) if len(row) > 2 and row[2] not in (None, "") else Decimal("0")
+                        superficie = Decimal(str(row[3])) if len(row) > 3 and row[3] not in (None, "") else None
+                        giro = str(row[4]).strip() if len(row) > 4 and row[4] else None
+
+                        if not numero:
+                            raise Exception("Número de local vacío.")
+
+                        cliente_obj = None
+                        if cliente_nombre:
+                            cliente_obj = clientes_dict.get(cliente_nombre.strip().lower())
+                            if not cliente_obj:
+                                raise Exception(  # noqa: TRY002
+                                    f"Cliente '{cliente_nombre}' no encontrado -- revisa que su nombre "
+                                    f"coincida EXACTO con el archivo de Clientes."
+                                )
+
+                        local, creado = LocalComercial.objects.get_or_create(
+                            empresa=empresa, numero=numero,
+                            defaults={
+                                "cliente": cliente_obj, "cuota": cuota,
+                                "superficie_m2": superficie, "giro": giro, "activo": True,
+                            },
+                        )
+                        if not creado:
+                            local.cliente = cliente_obj or local.cliente
+                            local.cuota = cuota
+                            local.superficie_m2 = superficie or local.superficie_m2
+                            local.giro = giro or local.giro
+                            local.save()
+
+                        locales_dict[numero.strip().lower()] = local
+                        if creado:
+                            resumen["propiedades_creadas"] += 1
+
+                    except Exception as e:
+                        errores.append(f"[Propiedades] Fila {i}: {str(e)}")
+
+                # ── PASO 3: ADEUDOS HISTÓRICOS (opcional) ──
+                if archivo_adeudos:
+                    wb3 = openpyxl.load_workbook(archivo_adeudos, data_only=True)
+                    ws3 = wb3.active
+
+                    prefix = "CM-F"
+                    last_folio = Factura.objects.filter(
+                        empresa=empresa, folio__startswith=prefix
+                    ).order_by("-folio").values_list("folio", flat=True).first()
+                    last_num = int(last_folio.replace(prefix, "")) if last_folio else 0
+
+                    for i, row in enumerate(ws3.iter_rows(min_row=2, values_only=True), start=2):
+                        if not row or all(c is None or (isinstance(c, str) and not c.strip()) for c in row):
+                            continue
+                        try:
+                            numero = str(row[0]).strip()
+                            mes = int(row[1])
+                            anio = int(row[2])
+                            monto = Decimal(str(row[3]))
+
+                            if not (1 <= mes <= 12):
+                                raise Exception(f"Mes inválido: {mes}")
+                            if monto <= 0:
+                                raise Exception("El monto debe ser mayor a 0.")
+
+                            local = locales_dict.get(numero.strip().lower())
+                            if not local:
+                                raise Exception(  # noqa: TRY002
+                                    f"Local '{numero}' no encontrado -- revisa que coincida EXACTO "
+                                    f"con el archivo de Propiedades."
+                                )
+
+                            if not local.cliente:
+                                raise Exception(f"El local '{numero}' no tiene cliente asignado, no se puede generar el adeudo.")
+
+                            fecha_venc = date(anio, mes, 1)
+                            last_num += 1
+                            Factura.objects.create(
+                                empresa=empresa, cliente=local.cliente, local=local,
+                                folio=f"{prefix}{last_num:05d}",
+                                fecha_emision=fecha_venc, fecha_vencimiento=fecha_venc,
+                                monto=monto, tipo_cuota="mantenimiento", estatus="pendiente",
+                                observaciones="Saldo inicial -- carga histórica",
+                            )
+                            resumen["adeudos_creados"] += 1
+
+                        except Exception as e:
+                            errores.append(f"[Adeudos] Fila {i}: {str(e)}")
+
+        except Exception as e:
+            messages.error(request, f"❌ Error crítico, no se guardó nada: {str(e)}")
+            return redirect("carga_inicial_completa")
+
+        msg = (
+            f"✅ Clientes: {resumen['clientes_creados']} nuevos, {resumen['clientes_reutilizados']} ya existían. "
+            f"Propiedades: {resumen['propiedades_creadas']} creadas. "
+            f"Adeudos históricos: {resumen['adeudos_creados']} facturas generadas."
+        )
+        messages.success(request, msg)
+
+        if errores:
+            from django.utils.safestring import mark_safe
+            texto_errores = "<br>".join(errores[:100])
+            if len(errores) > 100:
+                texto_errores += f"<br>...y {len(errores)-100} errores más."
+            messages.error(request, mark_safe("Algunas filas tuvieron problemas:<br>" + texto_errores))
+
+        return redirect(f"{request.path}?empresa={empresa.id}")
+
+    return render(request, "catalogos/carga_inicial_completa.html", {"empresa": empresa, "empresas": empresas})
+
+
+@login_required
+def plantilla_clientes_carga_inicial_excel(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta sección.")
+        return redirect("dashboard_inicio")
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Clientes"
+    ws.append(["nombre", "rfc", "email", "telefono"])
+    ws.append(["Tiendas Soriana", "TSO123456AB1", "contacto@soriana.com", "5512345678"])
+    ws.append(["Público en General", "", "", ""])
+    for col, ancho in [("A", 35), ("B", 16), ("C", 28), ("D", 16)]:
+        ws.column_dimensions[col].width = ancho
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = "attachment; filename=plantilla_1_clientes.xlsx"
+    wb.save(response)
+    return response
+
+
+@login_required
+def plantilla_propiedades_carga_inicial_excel(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta sección.")
+        return redirect("dashboard_inicio")
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Propiedades"
+    ws.append(["numero_local", "cliente_nombre", "cuota", "superficie_m2", "giro"])
+    ws.append(["A-101", "Tiendas Soriana", 15000.00, 250.5, "Supermercado"])
+    ws.append(["A-102", "", 8000.00, 120.0, ""])
+    for col, ancho in [("A", 14), ("B", 35), ("C", 12), ("D", 14), ("E", 20)]:
+        ws.column_dimensions[col].width = ancho
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = "attachment; filename=plantilla_2_propiedades.xlsx"
+    wb.save(response)
+    return response
+
+
+@login_required
+def plantilla_adeudos_carga_inicial_excel(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para acceder a esta sección.")
+        return redirect("dashboard_inicio")
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Adeudos Historicos"
+    ws.append(["numero_local", "mes", "anio", "monto"])
+    ws.append(["A-101", 3, 2026, 15000.00])
+    ws.append(["A-101", 4, 2026, 15000.00])
+    ws.append(["A-101", 5, 2026, 15000.00])
+    for col, ancho in [("A", 14), ("B", 8), ("C", 8), ("D", 12)]:
+        ws.column_dimensions[col].width = ancho
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = "attachment; filename=plantilla_3_adeudos_historicos.xlsx"
+    wb.save(response)
+    return response

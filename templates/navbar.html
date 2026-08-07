@@ -143,6 +143,7 @@
               <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Empresa</a></li>
               <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
               <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'carga_inicial_completa' %}"><i class="bi bi-cloud-upload-fill me-2"></i>Carga Inicial de Plaza</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_contadores' %}"><i class="bi bi-calculator-fill me-2"></i>Contadores con acceso</a></li>
               <li><a class="dropdown-item" href="{% url 'usuarios_demo' %}">Usuarios GESAC Demo</a></li>
@@ -172,7 +173,6 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'empleado_lista' %}"><i class="bi bi-person me-2"></i>Empleados</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'proveedor_lista' %}"><i class="bi bi-truck me-2"></i>Proveedores</a></li>
-
             </ul>
           </li>
           {% endif %}

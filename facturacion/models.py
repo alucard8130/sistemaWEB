@@ -1,21 +1,23 @@
 
 # Create your models here.
 from decimal import Decimal
-from django.db import models
+
 from django.conf import settings
-from empresas.models import CuentaBancaria
-from clientes.models import Cliente
-from empresas.models import Empresa
-from locales.models import LocalComercial
-from areas.models import AreaComun
+from django.db import models
 from django.db.models import Sum
+
+from areas.models import AreaComun
+from clientes.models import Cliente
+from empresas.models import CuentaBancaria, Empresa
+from locales.models import LocalComercial
+
 
 class Factura(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     local = models.ForeignKey(LocalComercial, on_delete=models.SET_NULL, null=True, blank=True)
     area_comun = models.ForeignKey(AreaComun, on_delete=models.SET_NULL, null=True, blank=True)
-    TIPO_CUOTA_CHOICES = [
+    TIPO_CUOTA_CHOICES = [  # noqa: RUF012
         ('mantenimiento', 'Mantenimiento'),
         ('renta', 'Renta'),
         ('deposito', 'Deposito Garantía'),
@@ -29,7 +31,7 @@ class Factura(models.Model):
     fecha_emision = models.DateField()
     fecha_vencimiento = models.DateField()
     monto = models.DecimalField(max_digits=20, decimal_places=2)
-    STATUS_CHOICES = [
+    STATUS_CHOICES = [  # noqa: RUF012
         ('pendiente', 'Pendiente'),
         ('cobrada', 'Cobrada'),
         ('cancelada', 'Cancelada'),

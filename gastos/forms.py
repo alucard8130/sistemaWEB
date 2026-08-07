@@ -1,13 +1,11 @@
 from django import forms
+from unidecode import unidecode
 
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria
 from proveedores.models import Proveedor
-from .models import Gasto, GrupoGasto, SubgrupoGasto, TipoGasto
-from django import forms
-from .models import PagoGasto
-from unidecode import unidecode
 
+from .models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
 
 
 class CargaMasivaCuentasForm(forms.Form):
@@ -20,7 +18,7 @@ class SubgrupoGastoForm(forms.ModelForm):
         model = SubgrupoGasto
         fields = ['grupo', 'nombre']
 
-        widgets = {
+        widgets = {  # noqa: RUF012
             'grupo': forms.Select(attrs={'class': 'form-select'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
         }
@@ -33,8 +31,8 @@ class SubgrupoGastoForm(forms.ModelForm):
 class TipoGastoForm(forms.ModelForm):
     class Meta:
         model = TipoGasto
-        fields = ['empresa', 'subgrupo', 'nombre', 'descripcion']
-        labels = {
+        fields = ['empresa', 'subgrupo', 'nombre', 'descripcion']  # noqa: RUF012
+        labels = {  # noqa: RUF012
             'nombre': 'Sub-Cuenta de Gasto',
             'subgrupo': 'Cuenta de Gasto',
         }
@@ -101,8 +99,8 @@ class GastoForm(forms.ModelForm):
 
     class Meta:
         model = Gasto
-        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr', 'observaciones']
-        widgets = {
+        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr', 'observaciones']  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'proveedor': forms.Select(attrs={
                 'class': 'form-select'
             }),
@@ -137,7 +135,7 @@ class GastoForm(forms.ModelForm):
                 'class': 'form-control'
             }),
         }
-        labels = {
+        labels = {  # noqa: RUF012
             'tipo_gasto': 'Cuenta de Gasto',
             'descripcion': 'Descripción del gasto',
             'fecha': 'Fecha Solicitud',
@@ -229,9 +227,9 @@ class GastoForm(forms.ModelForm):
 class PagoGastoForm(forms.ModelForm):
     class Meta:
         model = PagoGasto
-        fields = ['fecha_pago', 'monto','cuenta_bancaria', 'forma_pago', 'referencia']
+        fields = ['fecha_pago', 'monto','cuenta_bancaria', 'forma_pago', 'referencia']  # noqa: RUF012
         labels = {'referencia': 'Comentario'}
-        widgets = {
+        widgets = {  # noqa: RUF012
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
                 'class': 'form-control'
@@ -265,7 +263,7 @@ class GastosCargaMasivaForm(forms.Form):
 
 #reversa pagos gastos erroneos
 class MotivoReversaPagoForm(forms.Form):
-    MOTIVOS_REVERSA = [
+    MOTIVOS_REVERSA = [  # noqa: RUF012
         ('Error captura', 'Error en la captura'),
         ('Duplicado', 'Pago duplicado'),
         ('Sin fondos', 'Cheque sin fondos'),

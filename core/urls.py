@@ -2,41 +2,217 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
 from django.contrib.auth import views as auth_views
-from adminpanel.views import lista_usuarios_normales, lista_usuarios_visitantes, resetear_empresa, toggle_activo_visitante, toggle_reporte_visitante
-#from areas import views
-from amenidades.views import api_eventos_reservaciones, calendario_reservaciones, cancelar_reservacion, crear_amenidad, editar_amenidad, eliminar_amenidad, lista_amenidades, lista_amenidades_config, mis_reservaciones, reservar_amenidad
-from caja_chica.views import (comprobar_vale, detalle_fondeo, eliminar_fondeo, eliminar_gasto_caja, eliminar_vale_caja, exportar_fondeos_excel, exportar_gastos_caja_chica_excel, exportar_vales_caja_chica_excel, 
-                              fondeo_caja_chica, generar_vale_caja, imprimir_vale_caja, lista_fondeos, lista_gastos_caja_chica, lista_vales_caja_chica, recibo_fondeo_caja, registrar_gasto_caja_chica, reporte_caja_chica)
-from empleados.views import (exportar_incidencias_excel, incidencia_cancelar, incidencia_crear, incidencia_editar, incidencias_lista)
-from facturacion.views import (identificar_deposito, lista_depositos_por_identificar, recibo_factura, recibo_factura_otras_cuotas, recibo_pago, recibo_pago_otras_cuotas, registrar_deposito_por_identificar, reversa_cobro_erroneo, reversa_cobro_erroneo_otros_ingresos)
-from gastos.views import descargar_reporte_retenciones_gastos, recibo_gasto, reporte_retenciones_gastos, reversa_pago_gasto
-from informes_financieros.views import cartera_vencida_por_origen, exportar_cartera_vencida_excel
-from principal import views
-from presupuestos.views import borrar_presupuesto_gastos, borrar_presupuesto_ingresos, comparativo_anual_ingresos, comparativo_anual_total, exportar_matriz_presupuesto_ingresos_excel
-from principal.forms import EmpresaAuthenticationForm
-from principal.views import (actualizar_ticket, agregar_seguimiento, api_amenidades_lista, api_areas_por_empresa, api_avisos_empresa, api_cancelar_reservacion, api_dashboard_saldos_visitante, api_empresas_lista, api_estado_resultados, api_locales_por_empresa, api_mis_reservaciones, api_reporte_ingresos_vs_gastos, api_reservar_amenidad, aviso_crear, aviso_eliminar, 
-                             avisos_lista, cambiar_empresa_contador, cambiar_password_obligatorio, cancelar_suscripcion_premium, cerrar_wizard, consulta_cfdis_facturama, crear_contador, crear_sesion_pago_membresia_plus, crear_sesion_pago_membresia_premium, crear_sesion_pago_premium,  crear_tema_y_enviar, create_payment_intent, dashboard_inicio, descargar_cfdi_facturama, descargar_estado_cuenta_pdf, descargar_factura_timbrada, editar_empresas_contador, eliminar_tema, enviar_recordatorio_morosidad, lista_contadores, lista_temas, membresia_pago_exitoso, 
-                             lista_tickets, crear_ticket, panel_contador, reenviar_credenciales_contador, registro_visitante, resultados_votacion, stripe_checkout_visitante, stripe_webhook_membresia, stripe_webhook_visitante, subir_csd_facturama,tickets_asignados, cancelar_suscripcion, crear_evento, crear_sesion_pago, detalle_ticket, 
-                             eliminar_evento, enviar_correo_evento, guardar_datos_empresa, registro_usuario, reporte_auditoria, stripe_webhook, timbrar_factura, timbrar_factura_otros_ingresos, timbrar_masivo_mes, toggle_acceso_contador, visitante_consulta_facturas, visitante_factura_detalle, visitante_facturas_api, visitante_login, visitante_login_api, visitante_logout,
-                               visitante_membresia_pago, visitante_recuperar_password, visitante_registro_api, visitante_seleccionar_empresa, visitante_timbrar_factura, votar_tema_correo)
-from principal.views import reiniciar_sistema, respaldo_empresa_excel
-from empresas.views import cuenta_bancaria_crear, cuenta_bancaria_editar, cuenta_bancaria_eliminar, cuentas_bancarias_lista, empresa_editar, empresa_eliminar, empresa_lista, empresa_crear
-from locales.views import (
-    crear_local, editar_local, eliminar_local, lista_locales, 
-    locales_inactivos, reactivar_local)
-from areas.views import (
-    contrato_formulario, generar_contrato, lista_areas, crear_area, editar_area, eliminar_area,
-    areas_inactivas, reactivar_area)
-from clientes.views import (
-    actualizar_factura_global, carga_masiva_clientes, clientes_inactivos, instrucciones_pago_pdf, instrucciones_pago_propiedad_pdf, lista_clientes, crear_cliente, 
-    editar_cliente, eliminar_cliente, plantilla_clientes_excel, reactivar_cliente)
-from proveedores.views import carga_masiva_proveedores, eliminar_proveedor, plantilla_proveedores_excel
-from publicidad.views import anuncios_api, solicitud_publicidad_api
-from publicidad.views import anuncios_publicos
+from django.urls import include, path
 
-#from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView,)
+from adminpanel.views import (
+    lista_usuarios_normales,
+    lista_usuarios_visitantes,
+    resetear_empresa,
+    toggle_activo_visitante,
+    toggle_reporte_visitante,
+)
+
+#from areas import views
+from amenidades.views import (
+    api_eventos_reservaciones,
+    calendario_reservaciones,
+    cancelar_reservacion,
+    crear_amenidad,
+    editar_amenidad,
+    eliminar_amenidad,
+    lista_amenidades,
+    lista_amenidades_config,
+    mis_reservaciones,
+    reservar_amenidad,
+)
+from areas.views import (
+    areas_inactivas,
+    contrato_formulario,
+    crear_area,
+    editar_area,
+    eliminar_area,
+    generar_contrato,
+    lista_areas,
+    reactivar_area,
+)
+from caja_chica.views import (
+    comprobar_vale,
+    detalle_fondeo,
+    eliminar_fondeo,
+    eliminar_gasto_caja,
+    eliminar_vale_caja,
+    exportar_fondeos_excel,
+    exportar_gastos_caja_chica_excel,
+    exportar_vales_caja_chica_excel,
+    fondeo_caja_chica,
+    generar_vale_caja,
+    imprimir_vale_caja,
+    lista_fondeos,
+    lista_gastos_caja_chica,
+    lista_vales_caja_chica,
+    recibo_fondeo_caja,
+    registrar_gasto_caja_chica,
+    reporte_caja_chica,
+)
+from catalogos.views import (
+    carga_inicial_completa,
+    plantilla_adeudos_carga_inicial_excel,
+    plantilla_clientes_carga_inicial_excel,
+    plantilla_propiedades_carga_inicial_excel,
+)
+from clientes.views import (
+    actualizar_factura_global,
+    carga_masiva_clientes,
+    clientes_inactivos,
+    crear_cliente,
+    editar_cliente,
+    eliminar_cliente,
+    instrucciones_pago_pdf,
+    instrucciones_pago_propiedad_pdf,
+    lista_clientes,
+    plantilla_clientes_excel,
+    reactivar_cliente,
+)
+from empleados.views import (
+    exportar_incidencias_excel,
+    incidencia_cancelar,
+    incidencia_crear,
+    incidencia_editar,
+    incidencias_lista,
+)
+from empresas.views import (
+    cuenta_bancaria_crear,
+    cuenta_bancaria_editar,
+    cuenta_bancaria_eliminar,
+    cuentas_bancarias_lista,
+    empresa_crear,
+    empresa_editar,
+    empresa_eliminar,
+    empresa_lista,
+)
+from facturacion.views import (
+    identificar_deposito,
+    lista_depositos_por_identificar,
+    recibo_factura,
+    recibo_factura_otras_cuotas,
+    recibo_pago,
+    recibo_pago_otras_cuotas,
+    registrar_deposito_por_identificar,
+    reversa_cobro_erroneo,
+    reversa_cobro_erroneo_otros_ingresos,
+)
+from gastos.views import (
+    descargar_reporte_retenciones_gastos,
+    recibo_gasto,
+    reporte_retenciones_gastos,
+    reversa_pago_gasto,
+)
+from informes_financieros.views import (
+    cartera_vencida_por_origen,
+    exportar_cartera_vencida_excel,
+)
+from locales.views import (
+    crear_local,
+    editar_local,
+    eliminar_local,
+    lista_locales,
+    locales_inactivos,
+    reactivar_local,
+)
+from presupuestos.views import (
+    borrar_presupuesto_gastos,
+    borrar_presupuesto_ingresos,
+    comparativo_anual_ingresos,
+    comparativo_anual_total,
+    exportar_matriz_presupuesto_ingresos_excel,
+)
+from principal import views
+from principal.forms import EmpresaAuthenticationForm
+from principal.views import (
+    actualizar_ticket,
+    agregar_seguimiento,
+    api_amenidades_lista,
+    api_areas_por_empresa,
+    api_avisos_empresa,
+    api_cancelar_reservacion,
+    api_dashboard_saldos_visitante,
+    api_empresas_lista,
+    api_estado_resultados,
+    api_locales_por_empresa,
+    api_mis_reservaciones,
+    api_reporte_ingresos_vs_gastos,
+    api_reservar_amenidad,
+    aviso_crear,
+    aviso_eliminar,
+    avisos_lista,
+    cambiar_empresa_contador,
+    cambiar_password_obligatorio,
+    cancelar_suscripcion,
+    cancelar_suscripcion_premium,
+    cerrar_wizard,
+    consulta_cfdis_facturama,
+    crear_contador,
+    crear_evento,
+    crear_sesion_pago,
+    crear_sesion_pago_membresia_plus,
+    crear_sesion_pago_membresia_premium,
+    crear_sesion_pago_premium,
+    crear_tema_y_enviar,
+    crear_ticket,
+    create_payment_intent,
+    dashboard_inicio,
+    descargar_cfdi_facturama,
+    descargar_estado_cuenta_pdf,
+    descargar_factura_timbrada,
+    detalle_ticket,
+    editar_empresas_contador,
+    eliminar_evento,
+    eliminar_tema,
+    enviar_correo_evento,
+    enviar_recordatorio_morosidad,
+    guardar_datos_empresa,
+    lista_contadores,
+    lista_temas,
+    lista_tickets,
+    membresia_pago_exitoso,
+    panel_contador,
+    reenviar_credenciales_contador,
+    registro_usuario,
+    registro_visitante,
+    reiniciar_sistema,
+    reporte_auditoria,
+    respaldo_empresa_excel,
+    resultados_votacion,
+    stripe_checkout_visitante,
+    stripe_webhook,
+    stripe_webhook_membresia,
+    stripe_webhook_visitante,
+    subir_csd_facturama,
+    tickets_asignados,
+    timbrar_factura,
+    timbrar_factura_otros_ingresos,
+    timbrar_masivo_mes,
+    toggle_acceso_contador,
+    visitante_consulta_facturas,
+    visitante_factura_detalle,
+    visitante_facturas_api,
+    visitante_login,
+    visitante_login_api,
+    visitante_logout,
+    visitante_membresia_pago,
+    visitante_recuperar_password,
+    visitante_registro_api,
+    visitante_seleccionar_empresa,
+    visitante_timbrar_factura,
+    votar_tema_correo,
+)
+from proveedores.views import (
+    carga_masiva_proveedores,
+    eliminar_proveedor,
+    plantilla_proveedores_excel,
+)
+from publicidad.views import anuncios_api, anuncios_publicos, solicitud_publicidad_api
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -245,6 +421,10 @@ urlpatterns = [
     path('contador/login/', auth_views.LoginView.as_view(template_name='contador/login_contador.html',authentication_form=EmpresaAuthenticationForm,), name='contador_login'),
     path('sanitarios/', include('sanitarios.urls')),
     path('timbrar-masivo/', timbrar_masivo_mes, name='timbrar_masivo_mes'),
+    path('carga-inicial/', carga_inicial_completa, name='carga_inicial_completa'),
+    path('carga-inicial/plantilla-clientes/', plantilla_clientes_carga_inicial_excel, name='plantilla_clientes_carga_inicial_excel'),
+    path('carga-inicial/plantilla-propiedades/', plantilla_propiedades_carga_inicial_excel, name='plantilla_propiedades_carga_inicial_excel'),
+    path('carga-inicial/plantilla-adeudos/', plantilla_adeudos_carga_inicial_excel, name='plantilla_adeudos_carga_inicial_excel'),
 ]
 
     

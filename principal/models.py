@@ -1,20 +1,24 @@
 
 import secrets
-from django.contrib.auth.models import User
-from django.db import models
-from areas.models import AreaComun
-from empresas.models import Empresa
+
+from django import forms
+
 #from django.conf import settings
 #from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.models import User
+from django.db import models
+
+from areas.models import AreaComun
+from empresas.models import Empresa
 from locales.models import LocalComercial
-from django import forms
+
 #from django.db import models
 #from django.contrib.auth.models import User
 
 #perfil de usuario extendido
 class PerfilUsuario(models.Model):
-    TIPO_USUARIOS = [
+    TIPO_USUARIOS = [  # noqa: RUF012
         ('demo', 'Demo'),
         ('plus', 'Plus'),
         ('premium', 'Premium'),
@@ -50,7 +54,7 @@ class PerfilUsuario(models.Model):
 
 # Modulo de auditoria 
 class AuditoriaCambio(models.Model):
-    MODELOS_AUDITABLES = [
+    MODELOS_AUDITABLES = [  # noqa: RUF012
         ('local', 'Local Comercial'),
         ('area', 'Área Común'),
         ('factura', 'Factura'),
@@ -81,7 +85,7 @@ class Evento(models.Model):
 
 # Modulo de tickets de mantenimiento
 class TicketMantenimiento(models.Model):
-    ESTADO_CHOICES = [
+    ESTADO_CHOICES = [  # noqa: RUF012
         ('pendiente', 'Pendiente'),
         ('en_proceso', 'En proceso'),
         ('resuelto', 'Resuelto'),

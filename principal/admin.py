@@ -1,12 +1,13 @@
 
+from django import forms
 from django.contrib import admin
+from django.contrib.auth.hashers import make_password
 
 from areas.models import AreaComun
 from locales.models import LocalComercial
-from .models import PerfilUsuario
-from .models import VisitanteAcceso
-from django.contrib.auth.hashers import make_password
-from django import forms
+
+from .models import PerfilUsuario, VisitanteAcceso
+
 
 # Register your models here.
 @admin.register(PerfilUsuario)
