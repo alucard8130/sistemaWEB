@@ -1,26 +1,23 @@
 
 from decimal import Decimal, InvalidOperation
 
+import openpyxl
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Avg, Q, Sum
 from django.http import HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.safestring import mark_safe
+from unidecode import unidecode
 
-import openpyxl
 from clientes.models import Cliente
 from empresas.models import Empresa
-
 from locales.utils import generar_facturas_local
-from principal.models import AuditoriaCambio
-from .models import LocalComercial
-from .forms import LocalCargaMasivaForm, LocalComercialForm
 
-from unidecode import unidecode
-from django.core.paginator import Paginator
-from django.db.models import Q
-from django.db.models import Sum, Avg
-from django.db import transaction
-from django.utils.safestring import mark_safe
+from .forms import LocalCargaMasivaForm, LocalComercialForm
+from .models import LocalComercial
 
 
 @login_required
@@ -278,6 +275,8 @@ def carga_masiva_locales(request):
                 if key in headers_map:
                     i = headers_map[key]
                     return row[i] if i < len(row) else None
+                if pos is None:
+                    return None
                 return row[pos] if pos < len(row) else None
 
             tipos_validos_habitacional = ('casa', 'departamento', 'terreno')
@@ -465,18 +464,18 @@ def plantilla_locales_excel(request):
         ])
         ws.append([
             'Condominio Las Palmas AC', 'Juan Pérez', 'Juan Pérez', 'XXX-XXX-XXX',
-            '1500.00', 'departamento', '85.5', '0.1234',
+            'juan@ejemplo.com', '101', '1500.00', 'departamento', '85.5', '0.1234',
             'ocupado', 'carga inicial'
         ])
     else:
         ws.title = "Plantilla Locales"
         ws.append([
             'condominio', 'propietario', 'cliente', 'rfc', 'email', 'numero',
-            'cuota', 'ubicacion', 'superficie_m2', 'proindiviso', 'giro', 'status', 'observaciones'
+            'cuota', 'tipo_propiedad', 'ubicacion', 'superficie_m2', 'proindiviso', 'giro', 'status', 'observaciones'
         ])
         ws.append([
             'plaza en condominio AC', 'Tiendas Soriana SA de CV', 'Juan Pérez',
-            'XXX-XXX-XXX', 'email@ejemplo.com', '101', '120.3', 'planta baja',
+            'XXX-XXX-XXX', 'email@ejemplo.com', '101', '120.3', 'local', 'planta baja',
             '30.5', '50.56', 'venta ropa', 'ocupado', 'carga inicial'
         ])
 
