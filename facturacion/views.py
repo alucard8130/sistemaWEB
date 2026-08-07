@@ -3363,51 +3363,6 @@ def buscar_por_id_o_nombre(modelo, valor, campo="nombre", empresa=None):
         raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
 
 
-@login_required
-def plantilla_facturas_excel(request):
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Plantilla Facturas"
-
-    # Encabezados (ajusta según tu modelo)
-    ws.append(
-        [
-            "folio",
-            "condominio",
-            "cliente",
-            "Num.local",
-            "Num.area",
-            "tipo cuota",
-            "monto",
-            "fecha emision",
-            "fecha vencimiento",
-            "observaciones",
-        ]
-    )
-    # Fila de ejemplo (puedes poner valores ficticios)
-    ws.append(
-        [
-            "FAC001",
-            "Condominio Torre Reforma AC",
-            "Juan Pérez",
-            "L-101",
-            "",
-            "mantenimiento",
-            "1500.00",
-            "2025-06-10",
-            "2025-07-10",
-            "carga inicial",
-        ]
-    )
-
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = "attachment; filename=plantilla_facturas.xlsx"
-    wb.save(response)
-    return response
-
-
 
 @login_required
 def exportar_lista_facturas_excel(request):
@@ -3911,8 +3866,6 @@ def carga_masiva_facturas(request):
                         )
                     exitos += 1
                 except Exception as e:
-                    import traceback
-
                     errores.append(f"Fila {i}: {str(e)}")
             # mensajes
             if exitos:
@@ -3930,6 +3883,52 @@ def carga_masiva_facturas(request):
     else:
         form = FacturaCargaMasivaForm()
     return render(request, "facturacion/carga_masiva_facturas.html", {"form": form})
+
+
+
+@login_required
+def plantilla_facturas_excel(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Plantilla Facturas"
+
+    ws.append(
+        [
+            "folio",
+            "condominio",
+            "cliente",
+            "rfc",
+            "Num.local",
+            "Num.area",
+            "tipo cuota",
+            "monto",
+            "fecha emision",
+            "fecha vencimiento",
+            "observaciones",
+        ]
+    )
+    ws.append(
+        [
+            "FAC001",
+            "Condominio Torre Reforma AC",
+            "Juan Pérez",
+            "XXX-XXX-XXX",
+            "L-101",
+            "",
+            "mantenimiento",
+            "1500.00",
+            "2025-06-10",
+            "2025-07-10",
+            "carga inicial",
+        ]
+    )
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=plantilla_facturas.xlsx"
+    wb.save(response)
+    return response
 
 
 @login_required
