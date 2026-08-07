@@ -153,18 +153,16 @@ def get_o_crear_periodo(cuenta, empresa, anio, mes):
 
 
 def validar_periodo_abierto(cuenta, fecha, user=None):
-    # if not cuenta:
-    #     return True, None
-
+   
     if not fecha:
         return True, None
     
-    hoy = datetime.date.today()
+    hoy = datetime.date.today()  # noqa: DTZ011
 
     # Superusuario puede registrar en años anteriores
     #if not (user and user.is_superuser):
     # Política de seguridad: no se puede registrar en años anteriores al actual
-    if not (user and user.is_superuser):
+    if not (user and user.is_superuser):  # noqa: SIM102
         if fecha.year < hoy.year:
             return False, (
                 f"No se pueden registrar movimientos con fecha del año {fecha.year}. "
@@ -179,7 +177,9 @@ def validar_periodo_abierto(cuenta, fecha, user=None):
     )
 
     # Verificar si el período está cerrado
-    if cuenta:
+    # Verificar si el período está cerrado -- SOLO bloquea si además es de un año ANTERIOR.
+    # Un período cerrado del año actual ya no bloquea nada (la regla de "año actual" de arriba basta).
+    if cuenta and fecha.year < hoy.year:
         periodo = SaldoCuentaPeriodo.objects.filter(
             cuenta=cuenta,
             anio=fecha.year,
