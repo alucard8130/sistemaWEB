@@ -1,26 +1,35 @@
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-from django.contrib import messages
-from django.http import HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+
 import openpyxl
+from dateutil.relativedelta import relativedelta
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+
+#from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Avg, Q, Sum
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from unidecode import unidecode
+
 from areas.utility import generar_facturas_area
 from clientes.models import Cliente
 from empresas.models import Empresa
+
 #from facturacion.views import crear_factura
 #from locales.forms import LocalComercialForm
 from principal.models import AuditoriaCambio
-from .models import AreaComun
-from .forms import AreaComunCargaMasivaForm, AreaComunForm, AsignarClienteForm, DatosContratoForm
-from unidecode import unidecode
-#from django.contrib.admin.views.decorators import staff_member_required
-from django.core.paginator import Paginator
-from django.db.models import Q, Sum, Avg
-from django.template.loader import render_to_string
-from django.db import transaction
 
+from .forms import (
+    AreaComunCargaMasivaForm,
+    AreaComunForm,
+    AsignarClienteForm,
+    DatosContratoForm,
+)
+from .models import AreaComun
 
 
 @login_required
@@ -259,11 +268,11 @@ def carga_masiva_areas(request):
             for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row is None:
                     continue
-                if len(row) != COLUMNAS_ESPERADAS:
-                    errores.append(f"Fila {i}: número de columnas incorrecto ({len(row)} en vez de {COLUMNAS_ESPERADAS})")
+                if len(row) < COLUMNAS_ESPERADAS:
+                    errores.append(f"Fila {i}: faltan columnas ({len(row)} en vez de {COLUMNAS_ESPERADAS} esperadas)")
                     continue
 
-                empresa_val, nombre_cliente, rfc_cliente, email_cliente, numero, cuota, deposito, ubicacion, superficie_m2, tipo_area, cantidad_areas, giro, status, fecha_inicial, fecha_fin, observaciones = row
+                empresa_val, nombre_cliente, rfc_cliente, email_cliente, numero, cuota, deposito, ubicacion, superficie_m2, tipo_area, cantidad_areas, giro, status, fecha_inicial, fecha_fin, observaciones = row[:COLUMNAS_ESPERADAS]
                 try:
                     empresa = buscar_por_id_o_nombre(Empresa, empresa_val)
                     if not empresa:
@@ -343,8 +352,7 @@ def carga_masiva_areas(request):
                     )
                     exitos += 1
                 except Exception as e:
-                    import traceback
-                    errores.append(f"Fila {i}: {str(e) or repr(e)}<br>{traceback.format_exc()}")
+                    errores.append(f"Fila {i}: {str(e) or repr(e)}")
 
             if exitos:
                 messages.success(request, f"¡{exitos} áreas cargadas exitosamente!")
