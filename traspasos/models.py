@@ -1,11 +1,11 @@
-from django.db import models
 from django.contrib.auth.models import User
-from empresas.models import Empresa,CuentaBancaria
+from django.db import models
 
+from empresas.models import CuentaBancaria, Empresa
 
 
 class TraspasoBancario(models.Model):
-    ESTADO_CHOICES = [
+    ESTADO_CHOICES = [  # noqa: RUF012
         ('completado', 'Completado'),
         ('cancelado', 'Cancelado'),
     ]
@@ -37,7 +37,7 @@ class TraspasoBancario(models.Model):
         'gastos.Gasto', on_delete=models.SET_NULL, null=True, blank=True  # ajusta la app real
     )
     # NUEVO
-    TIPO_MOVIMIENTO_INVERSION_CHOICES = [
+    TIPO_MOVIMIENTO_INVERSION_CHOICES = [  # noqa: RUF012
         ('incremento', 'Incremento de inversión'),
         ('retiro', 'Retiro / Liquidación de inversión'),
     ]

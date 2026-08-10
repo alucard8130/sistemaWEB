@@ -1,11 +1,11 @@
 
-from dotenv import load_dotenv
-from pathlib import Path
 import os
+from pathlib import Path
+
 import dj_database_url
 import sentry_sdk
+from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
-
 
 load_dotenv()
 
@@ -240,7 +240,7 @@ FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")
 
 
-PORTAL_PAGOS_URL = os.getenv("PORTAL_PAGOS_URL", "https://adminsoftheron.onrender.com/visitante/login/")
+PORTAL_PAGOS_URL = os.getenv("PORTAL_PAGOS_URL", "https://www.gesacadmin.com/visitante/login/")
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 

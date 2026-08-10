@@ -1,12 +1,58 @@
 # Create your views here.
 # from django.forms import CharField
-from django.shortcuts import render, redirect, get_object_or_404
+import datetime as dt
+import io
+import json
+from calendar import monthrange
+
+# from django.db.models import Sum
+from collections import OrderedDict, defaultdict
+from datetime import date, datetime, timedelta
+from datetime import date as date_cls
+
+# from django.db.models import Q
+# from facturacion.models import Pago
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+
+import openpyxl
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
+from django.db.models import (  # FloatField
+    Case,
+    CharField,
+    Count,
+    DecimalField,
+    ExpressionWrapper,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, TruncMonth, TruncYear
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateformat import DateFormat
+from django.utils.timezone import now
 from numpy import rint
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+from unidecode import unidecode
+
 from acceso_empresas.decorators import login_o_portal_required
 from areas.models import AreaComun
 from clientes.models import Cliente
-from conciliaciones.utils import  validar_periodo_abierto
+from conciliaciones.utils import validar_periodo_abierto
 from empresas.models import CuentaBancaria, Empresa
 from facturacion.utils import (
     calcular_cartera_vencida,
@@ -15,16 +61,19 @@ from facturacion.utils import (
 )
 from gastos.models import Gasto, PagoGasto, TipoGasto
 from locales.models import LocalComercial
+from presupuestos.models import PresupuestoIngreso
+from principal.models import AuditoriaCambio  # PerfilUsuario
 from proveedores.models import Proveedor
 from traspasos.models import TraspasoBancario
+
 from .forms import (
+    CobroForm,
+    FacturaCargaMasivaForm,
     FacturaEditForm,
     FacturaForm,
     FacturaOtrosIngresosForm,
     MotivoReversaCobroForm,
     PagoForm,
-    FacturaCargaMasivaForm,
-    CobroForm,
     PagoPorIdentificarForm,
     TipoOtroIngresoForm,
 )
@@ -36,47 +85,6 @@ from .models import (
     Pago,
     TipoOtroIngreso,
 )
-from principal.models import AuditoriaCambio  # PerfilUsuario
-from django.utils.timezone import now
-from django.utils import timezone
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib import messages
-from datetime import date, timedelta
-from django.db.models import Q, Count, Value, Case, When, CharField  # FloatField
-from django.db.models import F, OuterRef, Subquery, Sum, DecimalField, ExpressionWrapper
-from django.db.models.functions import Coalesce
-import openpyxl
-from django.http import HttpResponse
-
-# from django.db.models import Q
-# from facturacion.models import Pago
-from decimal import Decimal, InvalidOperation
-from unidecode import unidecode
-from django.db.models.functions import TruncMonth, TruncYear
-from datetime import datetime
-from django.db import IntegrityError, transaction
-from django.core.paginator import Paginator
-import io
-from django.utils.dateformat import DateFormat
-from presupuestos.models import PresupuestoIngreso
-from collections import defaultdict
-import json
-from django.http import JsonResponse
-from django.db.models import Max, Min
-from decimal import ROUND_HALF_UP
-
-# from django.db.models import Sum
-from collections import OrderedDict
-from calendar import monthrange
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from datetime import date as date_cls
-import datetime as dt
-
-
-
 
 
 @login_required

@@ -1,29 +1,36 @@
 # Create your views here.
-from django.http import HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.urls import reverse
-from unidecode import unidecode
-#from clientes.utils import generar_referencia_pago
-from weasyprint import HTML
-from empresas.models import CuentaBancaria, Empresa
-#from facturacion.models import Factura
-from .models import Cliente
-from .forms import ClienteCargaMasivaForm, ClienteForm
+import base64
+from io import BytesIO
+
 #from django.contrib.admin.views.decorators import staff_member_required
 import openpyxl
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.db.models import Q
-from django.views.decorators.http import require_POST
-from django.template.loader import render_to_string
+
 #import random
 #import string
 import segno
-from io import BytesIO
-import base64
-from facturacion.models import LocalComercial
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+from unidecode import unidecode
+
+#from clientes.utils import generar_referencia_pago
+from weasyprint import HTML
+
 from areas.models import AreaComun as AreaComunModel
+from core import settings
+from empresas.models import CuentaBancaria, Empresa
+from facturacion.models import LocalComercial
+
+from .forms import ClienteCargaMasivaForm, ClienteForm
+
+#from facturacion.models import Factura
+from .models import Cliente
 
 
 @login_required
@@ -351,7 +358,9 @@ def instrucciones_pago_pdf(request, cliente_id):
         )
         return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
 
-    cuentas = CuentaBancaria.objects.filter(empresa=cliente.empresa, activa=True)
+    cuentas = CuentaBancaria.objects.filter(
+        empresa=cliente.empresa, activa=True
+    ).exclude(tipo_cuenta__in=['INVERSION', 'CORRIENTE','NOMINA'])  # Excluir cuentas de inversión y corriente
 
     propiedades = []
     for local in locales:
@@ -371,6 +380,7 @@ def instrucciones_pago_pdf(request, cliente_id):
     contexto = {
         'cliente': cliente,
         'propiedades': propiedades,
+        'portal_pagos_url': settings.PORTAL_PAGOS_URL,
     }
 
     html_string = render_to_string('clientes/instrucciones_pago.html', contexto)
@@ -403,12 +413,15 @@ def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
         messages.warning(request, f"'{propiedad.numero}' aún no tiene referencia de pago asignada.")
         return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
 
-    cuentas = CuentaBancaria.objects.filter(empresa=cliente.empresa, activa=True)
+    cuentas = CuentaBancaria.objects.filter(
+        empresa=cliente.empresa, activa=True
+    ).exclude(tipo_cuenta='INVERSION')
     propiedad_armada = _armar_propiedad(propiedad, tipo_label, cliente, cuentas)
 
     contexto = {
         'cliente': cliente,
         'propiedades': [propiedad_armada],
+        'portal_pagos_url': settings.PORTAL_PAGOS_URL,
     }
 
     html_string = render_to_string('clientes/instrucciones_pago.html', contexto)
