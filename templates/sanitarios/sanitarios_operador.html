@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Sanitarios · Operador · GESAC</title>
+    <title>Control de Sanitarios · GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
@@ -21,11 +21,12 @@
         .kpi-mini .valor { font-size: 1.4rem; font-weight: 700; }
         .kpi-mini .label { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; }
         table.tabla-usos td, table.tabla-usos th { font-size: 0.82rem; padding: 8px 10px; }
-        input#input-codigo-cobrar { font-size: 1.4rem; text-align: center; letter-spacing: 0.2em; font-weight: 700; }
+        input.input-codigo-cobrar { font-size: 1.4rem; text-align: center; letter-spacing: 0.2em; font-weight: 700; }
+        .nav-tabs .nav-link { font-weight: 600; color: #6b7280; }
+        .nav-tabs .nav-link.active { color: #0f2d52; border-bottom: 3px solid #0f2d52; }
     </style>
 </head>
 <body>
-    <body>
     {% if not es_caseta_publica %}
     {% include 'navbar.html' %}
     {% endif %}
@@ -43,129 +44,311 @@
 
         <h4 class="mb-3"><i class="bi bi-door-open-fill me-2"></i>Control de Sanitarios — {{ empresa.nombre }}</h4>
 
-        <div class="row g-2 mb-3">
-            <div class="col-4">
-                <div class="kpi-mini">
-                    <div class="valor text-warning">{{ pendientes_hoy.count }}</div>
-                    <div class="label">Pendientes hoy</div>
-                </div>
-            </div>
-            <div class="col-4">
-                <div class="kpi-mini">
-                    <div class="valor text-success">{{ cobrados_count }}</div>
-                    <div class="label">Cobrados hoy</div>
-                </div>
-            </div>
-            <div class="col-4">
-                <div class="kpi-mini">
-                    <div class="valor text-primary">${{ total_cobrado_hoy|floatformat:2 }}</div>
-                    <div class="label">Total del día</div>
-                </div>
-            </div>
-        </div>
+        <ul class="nav nav-tabs mb-3" id="conceptoTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-sanitario-btn" data-bs-toggle="tab" data-bs-target="#tab-sanitario" type="button">
+                    🚻 Sanitario
+                </button>
+            </li>
+            {% if datos_papel.activo %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-papel-btn" data-bs-toggle="tab" data-bs-target="#tab-papel" type="button">
+                    🧻 Papel
+                </button>
+            </li>
+            {% endif %}
+            {% if empresa.precio_toalla %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-toalla-btn" data-bs-toggle="tab" data-bs-target="#tab-toalla" type="button">
+                    🩸 Toallas
+                </button>
+            </li>
+            {% endif %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-historial-btn" data-bs-toggle="tab" data-bs-target="#tab-historial" type="button">
+                    📋 Historial
+                </button>
+            </li>
+        </ul>
 
-       <div class="op-card">
-             {% if empresa.usa_boletos_fisicos_sanitario %}
-                <div class="mb-2">
-                    {% if boletos_disponibles == 0 %}
-                        <span class="badge bg-danger fs-6 px-3 py-2">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>0 boletos disponibles — carga más folios
-                        </span>
-                    {% elif boletos_disponibles < 50 %}
-                        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-                            <i class="bi bi-exclamation-circle me-1"></i>{{ boletos_disponibles }} boletos disponibles
-                        </span>
+        <div class="tab-content">
+            <!-- ==================== PESTAÑA SANITARIO ==================== -->
+            <div class="tab-pane fade show active" id="tab-sanitario" role="tabpanel">
+
+                <div class="row g-2 mb-3">
+                    <div class="col-3"><div class="kpi-mini"><div class="valor text-warning">{{ datos_sanitario.pendientes_hoy.count }}</div><div class="label">Pendientes</div></div></div>
+                    <div class="col-3"><div class="kpi-mini"><div class="valor text-success">{{ datos_sanitario.cobrados_count }}</div><div class="label">Cobrados</div></div></div>
+                    <div class="col-3"><div class="kpi-mini"><div class="valor" style="color:#0dcaf0;">{{ datos_sanitario.gratis_count }}</div><div class="label">Gratis</div></div></div>
+                    <div class="col-3"><div class="kpi-mini"><div class="valor text-primary">${{ datos_sanitario.total_cobrado_hoy|floatformat:2 }}</div><div class="label">Total día</div></div></div>
+                </div>
+
+                <div class="op-card">
+                    {% if datos_sanitario.usa_boletos_fisicos %}
+                        <div class="mb-2">
+                            {% if datos_sanitario.boletos_disponibles == 0 %}
+                                <span class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>0 boletos disponibles</span>
+                            {% elif datos_sanitario.boletos_disponibles < 50 %}
+                                <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="bi bi-exclamation-circle me-1"></i>{{ datos_sanitario.boletos_disponibles }} boletos disponibles</span>
+                            {% else %}
+                                <span class="badge bg-success fs-6 px-3 py-2"><i class="bi bi-ticket-perforated-fill me-1"></i>{{ datos_sanitario.boletos_disponibles }} boletos disponibles</span>
+                            {% endif %}
+                        </div>
+                        <h6 class="text-muted mb-2">1. Entrega el siguiente boleto del rollo</h6>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="tipo" value="sanitario">
+                            <input type="hidden" name="accion" value="generar">
+                            <button type="submit" class="btn-generar"><i class="bi bi-ticket-perforated-fill me-2"></i>Entregar siguiente boleto</button>
+                        </form>
                     {% else %}
-                        <span class="badge bg-success fs-6 px-3 py-2">
-                            <i class="bi bi-ticket-perforated-fill me-1"></i>{{ boletos_disponibles }} boletos disponibles
-                        </span>
+                        <h6 class="text-muted mb-2">1. Al dejar entrar a alguien, genera su código</h6>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="tipo" value="sanitario">
+                            <input type="hidden" name="accion" value="generar">
+                            <button type="submit" class="btn-generar"><i class="bi bi-plus-circle me-2"></i>Generar nuevo código</button>
+                        </form>
                     {% endif %}
                 </div>
-                <h6 class="text-muted mb-2">1. Al dejar entrar a alguien, entrega el siguiente boleto del rollo</h6>
-                <form method="post" id="form-generar">
-                    {% csrf_token %}
-                    <input type="hidden" name="accion" value="generar">
-                    <button type="submit" class="btn-generar">
-                        <i class="bi bi-ticket-perforated-fill me-2"></i>Entregar siguiente boleto
-                    </button>
-                </form>
-            {% else %}
-                <h6 class="text-muted mb-2">1. Al dejar entrar a alguien, genera su código</h6>
-                <form method="post" id="form-generar">
-                    {% csrf_token %}
-                    <input type="hidden" name="accion" value="generar">
-                    <button type="submit" class="btn-generar">
-                        <i class="bi bi-plus-circle me-2"></i>Generar nuevo código
-                    </button>
-                </form>
+
+                <div class="op-card">
+                    <h6 class="text-muted mb-2">2. Al cobrar, escribe el código</h6>
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="tipo" value="sanitario">
+                        <input type="hidden" name="accion" value="cobrar">
+                        <input type="text" name="codigo" class="form-control text-uppercase input-codigo-cobrar" placeholder="0000" autocomplete="off">
+                        <button type="submit" class="btn btn-success px-4"><i class="bi bi-cash-coin"></i> Cobrar</button>
+                    </form>
+                </div>
+
+                <div class="op-card">
+                    <h6 class="text-muted mb-2">Entrada gratuita con gafete</h6>
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="tipo" value="sanitario">
+                        <input type="hidden" name="accion" value="gafete">
+                        <input type="text" name="numero_gafete" class="form-control text-uppercase" placeholder="Número de gafete" autocomplete="off">
+                        <button type="submit" class="btn btn-outline-secondary px-4"><i class="bi bi-person-badge-fill me-1"></i>Registrar</button>
+                    </form>
+                </div>
+
+                {% if datos_sanitario.pendientes_todos %}
+                <div class="op-card">
+                    <h6 class="text-muted mb-2"><i class="bi bi-hourglass-split me-1"></i>Pendientes de cobro (todas las fechas)</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for uso in datos_sanitario.pendientes_todos %}
+                            <span class="badge {% if uso.fecha_generado.date != hoy %}bg-danger{% else %}bg-warning text-dark{% endif %} fs-6 px-3 py-2"
+                                  title="Generado el {{ uso.fecha_generado|date:'d/m/Y' }}">
+                                {{ uso.codigo }} <small>({{ uso.fecha_generado|date:"d/m" }})</small>
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ==================== PESTAÑA PAPEL ==================== -->
+            {% if datos_papel.activo %}
+            <div class="tab-pane fade" id="tab-papel" role="tabpanel">
+
+                <div class="row g-2 mb-3">
+                    <div class="col-3"><div class="kpi-mini"><div class="valor text-warning">{{ datos_papel.pendientes_hoy.count }}</div><div class="label">Pendientes</div></div></div>
+                    <div class="col-3"><div class="kpi-mini"><div class="valor text-success">{{ datos_papel.cobrados_count }}</div><div class="label">Cobrados</div></div></div>
+                    <div class="col-3"><div class="kpi-mini"><div class="valor" style="color:#0dcaf0;">{{ datos_papel.gratis_count }}</div><div class="label">Gratis</div></div></div>
+                    <div class="col-3"><div class="kpi-mini"><div class="valor text-primary">${{ datos_papel.total_cobrado_hoy|floatformat:2 }}</div><div class="label">Total día</div></div></div>
+                </div>
+
+                <div class="op-card">
+                    {% if datos_papel.usa_boletos_fisicos %}
+                        <div class="mb-2">
+                            {% if datos_papel.boletos_disponibles == 0 %}
+                                <span class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>0 boletos disponibles</span>
+                            {% elif datos_papel.boletos_disponibles < 50 %}
+                                <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="bi bi-exclamation-circle me-1"></i>{{ datos_papel.boletos_disponibles }} boletos disponibles</span>
+                            {% else %}
+                                <span class="badge bg-success fs-6 px-3 py-2"><i class="bi bi-ticket-perforated-fill me-1"></i>{{ datos_papel.boletos_disponibles }} boletos disponibles</span>
+                            {% endif %}
+                        </div>
+                        <h6 class="text-muted mb-2">1. Entrega el siguiente boleto del rollo</h6>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="tipo" value="papel">
+                            <input type="hidden" name="accion" value="generar">
+                            <button type="submit" class="btn-generar"><i class="bi bi-ticket-perforated-fill me-2"></i>Entregar siguiente boleto</button>
+                        </form>
+                    {% else %}
+                        <h6 class="text-muted mb-2">1. Al vender papel, genera su código</h6>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="tipo" value="papel">
+                            <input type="hidden" name="accion" value="generar">
+                            <button type="submit" class="btn-generar"><i class="bi bi-plus-circle me-2"></i>Generar nuevo código</button>
+                        </form>
+                    {% endif %}
+                </div>
+
+                <div class="op-card">
+                    <h6 class="text-muted mb-2">2. Al cobrar, escribe el código</h6>
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="tipo" value="papel">
+                        <input type="hidden" name="accion" value="cobrar">
+                        <input type="text" name="codigo" class="form-control text-uppercase input-codigo-cobrar" placeholder="0000" autocomplete="off">
+                        <button type="submit" class="btn btn-success px-4"><i class="bi bi-cash-coin"></i> Cobrar</button>
+                    </form>
+                </div>
+
+                <div class="op-card">
+                    <h6 class="text-muted mb-2">Papel gratuito con gafete</h6>
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="tipo" value="papel">
+                        <input type="hidden" name="accion" value="gafete">
+                        <input type="text" name="numero_gafete" class="form-control text-uppercase" placeholder="Número de gafete" autocomplete="off">
+                        <button type="submit" class="btn btn-outline-secondary px-4"><i class="bi bi-person-badge-fill me-1"></i>Registrar</button>
+                    </form>
+                </div>
+
+                {% if datos_papel.pendientes_todos %}
+                <div class="op-card">
+                    <h6 class="text-muted mb-2"><i class="bi bi-hourglass-split me-1"></i>Pendientes de cobro (todas las fechas)</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for uso in datos_papel.pendientes_todos %}
+                            <span class="badge {% if uso.fecha_generado.date != hoy %}bg-danger{% else %}bg-warning text-dark{% endif %} fs-6 px-3 py-2"
+                                  title="Generado el {{ uso.fecha_generado|date:'d/m/Y' }}">
+                                {{ uso.codigo }} <small>({{ uso.fecha_generado|date:"d/m" }})</small>
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
             {% endif %}
+
+            <!-- ==================== PESTAÑA TOALLAS ==================== -->
+            {% if empresa.precio_toalla %}
+            <div class="tab-pane fade" id="tab-toalla" role="tabpanel">
+
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div class="kpi-mini">
+                            <div class="valor {% if inventario_toallas == 0 %}text-danger{% elif inventario_toallas < 20 %}text-warning{% else %}text-success{% endif %}">
+                                {{ inventario_toallas }}
+                            </div>
+                            <div class="label">En inventario</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="kpi-mini">
+                            <div class="valor text-success">{{ datos_toalla.cobrados_count }}</div>
+                            <div class="label">Vendidas hoy</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="kpi-mini">
+                            <div class="valor text-primary">${{ datos_toalla.total_cobrado_hoy|floatformat:2 }}</div>
+                            <div class="label">Total día</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="op-card text-center">
+                    {% if inventario_toallas > 0 %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="tipo" value="toalla">
+                        <input type="hidden" name="accion" value="vender_toalla">
+                        <button type="submit" class="btn-generar">
+                            <i class="bi bi-bag-check-fill me-2"></i>Vender toalla — ${{ empresa.precio_toalla|floatformat:2 }}
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        Sin inventario disponible — registra un lote nuevo.
+                    </div>
+                    {% endif %}
+                    {% if not es_caseta_publica %}
+                    <a href="{% url 'registrar_lote_toallas' %}" class="btn btn-outline-secondary btn-sm mt-3">
+                        <i class="bi bi-box-seam me-1"></i>Registrar lote nuevo
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ==================== PESTAÑA HISTORIAL ==================== -->
+            <div class="tab-pane fade" id="tab-historial" role="tabpanel">
+                <div class="op-card">
+                    <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i>Todo lo de hoy (los 3 conceptos)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm tabla-usos mb-0">
+                            <thead><tr><th>Concepto</th><th>Código</th><th>Hora</th><th>Estado</th><th>Cobro</th></tr></thead>
+                            <tbody>
+                                {% for uso in datos_sanitario.usos_hoy %}
+                                <tr>
+                                    <td>🚻</td>
+                                    <td class="fw-bold">{{ uso.codigo }}</td>
+                                    <td>{{ uso.fecha_generado|time:"H:i" }}</td>
+                                    <td>
+                                        {% if uso.estado == 'cobrado' %}<span class="badge bg-success">Cobrado</span>
+                                        {% elif uso.estado == 'pendiente' %}<span class="badge bg-warning text-dark">Pendiente</span>
+                                        {% elif uso.estado == 'gratis' %}<span class="badge bg-info text-dark">Gratis</span>
+                                        {% else %}<span class="badge bg-secondary">Cancelado</span>{% endif %}
+                                    </td>
+                                    <td>{% if uso.fecha_cobro %}{{ uso.fecha_cobro|time:"H:i" }}{% else %}—{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                                {% for uso in datos_papel.usos_hoy %}
+                                <tr>
+                                    <td>🧻</td>
+                                    <td class="fw-bold">{{ uso.codigo }}</td>
+                                    <td>{{ uso.fecha_generado|time:"H:i" }}</td>
+                                    <td>
+                                        {% if uso.estado == 'cobrado' %}<span class="badge bg-success">Cobrado</span>
+                                        {% elif uso.estado == 'pendiente' %}<span class="badge bg-warning text-dark">Pendiente</span>
+                                        {% elif uso.estado == 'gratis' %}<span class="badge bg-info text-dark">Gratis</span>
+                                        {% else %}<span class="badge bg-secondary">Cancelado</span>{% endif %}
+                                    </td>
+                                    <td>{% if uso.fecha_cobro %}{{ uso.fecha_cobro|time:"H:i" }}{% else %}—{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                                {% for uso in datos_toalla.usos_hoy %}
+                                <tr>
+                                    <td>🩸</td>
+                                    <td>—</td>
+                                    <td>{{ uso.fecha_cobro|time:"H:i" }}</td>
+                                    <td><span class="badge bg-success">Vendida</span></td>
+                                    <td>{{ uso.fecha_cobro|time:"H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="op-card">
-            <h6 class="text-muted mb-2">2. Al momento de cobrar, escribe el código</h6>
-            <form method="post" id="form-cobrar" class="d-flex gap-2">
+        {% if es_caseta_publica %}
+        <div class="op-card text-center mt-3">
+            <h6 class="text-muted mb-3"><i class="bi bi-box-arrow-right me-1"></i>Fin de turno</h6>
+            <form method="post" action="{% url 'cerrar_corte_caseta' caseta.token %}" id="form-cerrar-corte">
                 {% csrf_token %}
-                <input type="hidden" name="accion" value="cobrar">
-               {% if empresa.usa_boletos_fisicos_sanitario %}
-                <input type="text" name="codigo" id="input-codigo-cobrar" maxlength="10"
-                       class="form-control text-uppercase" placeholder="A-0001" autocomplete="off">
-                {% else %}
-                <input type="text" name="codigo" id="input-codigo-cobrar" maxlength="4" inputmode="numeric"
-                       class="form-control" placeholder="0000" autocomplete="off">
-                {% endif %}
-                <button type="submit" class="btn btn-success px-4">
-                    <i class="bi bi-cash-coin"></i> Cobrar
+                <div class="mb-3" style="max-width:320px; margin:0 auto;">
+                    <label class="form-label small">¿Quién eres?</label>
+                    <select name="empleado_id" class="form-select" required>
+                        <option value="">-- Selecciona tu nombre --</option>
+                        {% for emp in empleados_empresa %}
+                            <option value="{{ emp.id }}">{{ emp.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-danger px-4"
+                        onclick="return confirm('¿Cerrar tu corte de turno? Se contará todo lo cobrado desde el último corte hasta ahora.');">
+                    <i class="bi bi-calculator-fill me-1"></i>Cerrar mi corte
                 </button>
             </form>
-        </div>
-
-        {% if pendientes_hoy %}
-        <div class="op-card">
-            <h6 class="text-muted mb-2"><i class="bi bi-hourglass-split me-1"></i>Códigos pendientes de cobro</h6>
-            <div class="d-flex flex-wrap gap-2">
-                {% for uso in pendientes_hoy %}
-                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">{{ uso.codigo }}</span>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="op-card">
-            <h6 class="text-muted mb-2"><i class="bi bi-clock-history me-1"></i>Historial de hoy</h6>
-            <div class="table-responsive">
-                <table class="table table-sm tabla-usos mb-0">
-                    <thead>
-                        <tr><th>Código</th><th>Hora generado</th><th>Estado</th><th>Hora cobro</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for uso in usos_hoy %}
-                        <tr>
-                            <td class="fw-bold">{{ uso.codigo }}</td>
-                            <td>{{ uso.fecha_generado|time:"H:i" }}</td>
-                            <td>
-                                {% if uso.estado == 'cobrado' %}
-                                    <span class="badge bg-success">Cobrado</span>
-                                {% elif uso.estado == 'pendiente' %}
-                                    <span class="badge bg-warning text-dark">Pendiente</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Cancelado</span>
-                                {% endif %}
-                            </td>
-                            <td>{% if uso.fecha_cobro %}{{ uso.fecha_cobro|time:"H:i" }}{% else %}—{% endif %}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="text-center text-muted py-3">Sin movimientos todavía hoy.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        {% if not es_caseta_publica %}
-        <div class="text-center">
-            <a href="{% url 'sanitarios_corte_diario' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-calculator me-1"></i>Ver corte del día
-            </a>
         </div>
         {% endif %}
     </div>
@@ -175,7 +358,18 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('input-codigo-cobrar').focus();
+            var primerInput = document.querySelector('.input-codigo-cobrar');
+            if (primerInput) primerInput.focus();
+
+            var params = new URLSearchParams(window.location.search);
+            var tab = params.get('tab');
+            if (tab) {
+                var boton = document.getElementById('tab-' + tab + '-btn');
+                if (boton) {
+                    var tabInstance = new bootstrap.Tab(boton);
+                    tabInstance.show();
+                }
+            }
         });
     </script>
 </body>

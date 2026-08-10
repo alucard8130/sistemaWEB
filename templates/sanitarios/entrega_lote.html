@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Carta Entrega-Recepción — Lote {{ lote.codigo_barras }}</title>
+    <style>
+        @page { size: letter; margin: 25mm 20mm; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #1a1a1a;
+            background: #f0f4f9;
+            margin: 0;
+        }
+        .no-print { text-align: center; padding: 20px; }
+        .no-print button {
+            background: #0f2d52; color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; font-size: 1rem; cursor: pointer;
+        }
+        .hoja {
+            background: white;
+            max-width: 700px;
+            margin: 20px auto;
+            padding: 40px 50px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+        }
+        .encabezado { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0f2d52; padding-bottom: 16px; }
+        .encabezado h1 { font-size: 1.3rem; color: #0f2d52; margin: 0 0 4px 0; }
+        .encabezado p { margin: 0; color: #6b7280; font-size: 0.85rem; }
+        .titulo-doc { text-align: center; font-size: 1.1rem; font-weight: 700; margin: 24px 0; text-transform: uppercase; letter-spacing: 0.04em; color: #1a1a1a; }
+        .datos-tabla { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        .datos-tabla td { padding: 10px 12px; border: 1px solid #e5e7eb; font-size: 0.92rem; }
+        .datos-tabla td.label { background: #f7f9fc; font-weight: 600; width: 220px; color: #374151; }
+        .texto-cuerpo { font-size: 0.92rem; line-height: 1.7; margin-bottom: 40px; text-align: justify; }
+        .firmas { display: flex; justify-content: space-between; margin-top: 60px; }
+        .firma-bloque { width: 45%; text-align: center; }
+        .firma-linea { border-top: 1px solid #1a1a1a; margin-bottom: 8px; padding-top: 6px; }
+        .firma-label { font-size: 0.82rem; color: #374151; }
+        .fecha-doc { text-align: right; font-size: 0.85rem; color: #6b7280; margin-bottom: 24px; }
+
+        @media print {
+            .no-print { display: none; }
+            body { background: white; }
+            .hoja { box-shadow: none; margin: 0; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Imprimir carta</button>
+    </div>
+
+    <div class="hoja">
+        <div class="encabezado">
+            <h1>{{ lote.empresa.nombre }}</h1>
+            <p>Control de Inventario · Toallas Sanitarias</p>
+        </div>
+
+        <div class="fecha-doc">
+            {{ lote.fecha_recepcion|date:"d \d\e F \d\e Y" }}
+        </div>
+
+        <div class="titulo-doc">Carta de Entrega — Recepción de Mercancía</div>
+
+        <table class="datos-tabla">
+            <tr>
+                <td class="label">Código de barras del lote</td>
+                <td>{{ lote.codigo_barras }}</td>
+            </tr>
+            <tr>
+                <td class="label">Cantidad recibida</td>
+                <td>{{ lote.cantidad_inicial }} piezas</td>
+            </tr>
+            <tr>
+                <td class="label">Fecha y hora de recepción</td>
+                <td>{{ lote.fecha_recepcion|date:"d/m/Y H:i" }} hrs</td>
+            </tr>
+            <tr>
+                <td class="label">Recibido por</td>
+                <td></td>
+            </tr>
+        </table>
+
+        <div class="texto-cuerpo">
+            Por medio de la presente se hace constar la entrega y recepción del lote de toallas
+            sanitarias descrito arriba, en las instalaciones de <strong>{{ lote.empresa.nombre }}</strong>,
+            en la fecha y cantidad señaladas. Ambas partes confirman haber revisado la mercancía
+            al momento de la entrega y estar conformes con la cantidad recibida.
+        </div>
+
+        <div class="firmas">
+            <div class="firma-bloque">
+                <div class="firma-linea"></div>
+                <div class="firma-label">Nombre y firma de quien entrega</div>
+            </div>
+            <div class="firma-bloque">
+                <div class="firma-linea"></div>
+                <div class="firma-label">Nombre y firma de quien recibe</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

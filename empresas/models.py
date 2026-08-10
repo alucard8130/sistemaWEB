@@ -3,17 +3,17 @@ from django.db import models
 
 # Create your models here.
 class Empresa(models.Model):
-    REGIMEN_CHOICES = [
+    REGIMEN_CHOICES = [  # noqa: RUF012
         ('601', 'General de Ley Personas Morales'),
         ('603', 'Personas Morales con Fines no Lucrativos'),
         ('621', 'Incorporación Fiscal'),
         ('626', 'Régimen Simplificado de Confianza'),
     ]
-    SEGMENTO_CHOICES = [
+    SEGMENTO_CHOICES = [  # noqa: RUF012
         ('comercial', 'Comercial (plaza / centro comercial)'),
         ('habitacional', 'Habitacional (condominio residencial)'),
     ]
-    ESTADO_CHOICES = [
+    ESTADO_CHOICES = [  # noqa: RUF012
         ('activa', 'Activa'),
         ('prueba', 'En prueba'),
         ('suspendida', 'Suspendida'),
@@ -53,7 +53,18 @@ class Empresa(models.Model):
     usa_boletos_fisicos_sanitario = models.BooleanField(
         default=False,
         help_text="Si está activo, el operador captura el número del boleto físico existente en vez de que el sistema genere un código aleatorio."
-    ) 
+    )
+    precio_papel = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text="Precio fijo por venta de papel. Déjalo vacío si no se vende por separado."
+    )
+    usa_boletos_fisicos_papel = models.BooleanField(default=False) 
+
+    precio_toalla = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text="Precio fijo por toalla sanitaria. Déjalo vacío si no se vende."
+    )
+
     
     def __str__(self):
         return self.nombre
@@ -64,7 +75,7 @@ class Empresa(models.Model):
 
 
 class CuentaBancaria(models.Model):
-    BANCOS_CHOICES = [
+    BANCOS_CHOICES = [  # noqa: RUF012
         ('BANAMEX', 'Banamex'),
         ('SANTANDER', 'Santander'),
         ('HSBC', 'HSBC'),
@@ -81,14 +92,14 @@ class CuentaBancaria(models.Model):
         ('BANJERCITO', 'Banjército'),
         ('OTRO', 'Otro'),
     ]
-    TIPO_CUENTA= [
+    TIPO_CUENTA= [  # noqa: RUF012
         ('INVERSION', 'Inversión'),
         ('CORRIENTE', 'Corriente'),
         ('NOMINA', 'Nómina'),
         ('EMPRESARIAL', 'Empresarial'),
         ('OTRO', 'Otro'),
     ]
-    TIPO_MONEDA = [
+    TIPO_MONEDA = [  # noqa: RUF012
         ('MXN', 'Peso Mexicano'),
         ('USD', 'Dólar Estadounidense'),
         ('EUR', 'Euro'),

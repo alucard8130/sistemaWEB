@@ -1,0 +1,158 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Carta de Corte — {{ corte.fecha|date:"d/m/Y" }}</title>
+    <style>
+        @page { size: letter; margin: 16mm 18mm; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #1a1a1a;
+            background: #f0f4f9;
+            margin: 0;
+            font-size: 13px;
+        }
+        .no-print { text-align: center; padding: 16px; }
+        .no-print button {
+            background: #0f2d52; color: white; border: none;
+            padding: 9px 22px; border-radius: 8px; font-size: 0.95rem; cursor: pointer;
+        }
+        .hoja {
+            background: white;
+            max-width: 720px;
+            margin: 16px auto;
+            padding: 26px 36px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+        }
+        .encabezado { display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0f2d52; padding-bottom: 10px; margin-bottom: 14px; }
+        .encabezado h1 { font-size: 1.1rem; color: #0f2d52; margin: 0; }
+        .encabezado p { margin: 0; color: #6b7280; font-size: 0.75rem; }
+        .encabezado .fecha-doc { font-size: 0.78rem; color: #6b7280; text-align: right; }
+        .titulo-doc { text-align: center; font-size: 0.95rem; font-weight: 700; margin: 10px 0 14px 0; text-transform: uppercase; letter-spacing: 0.03em; }
+
+        .datos-tabla { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 0.8rem; }
+        .datos-tabla td { padding: 6px 10px; border: 1px solid #e5e7eb; }
+        .datos-tabla td.label { background: #f7f9fc; font-weight: 600; width: 190px; color: #374151; }
+
+        .kpi-fila { display:flex; gap:8px; margin-bottom: 14px; }
+        .kpi-mini { flex:1; text-align:center; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px; }
+        .kpi-mini .v { font-size: 1.05rem; font-weight: 800; }
+        .kpi-mini .l { font-size: 0.62rem; color: #6b7280; text-transform: uppercase; }
+
+        .total-destacado {
+            background: #0f2d52; color: white; text-align: center;
+            padding: 10px; border-radius: 8px; margin-bottom: 14px;
+        }
+        .total-destacado .monto { font-size: 1.5rem; font-weight: 800; }
+        .total-destacado .label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.8; }
+
+        .deposito-box { border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 0.78rem; }
+        .deposito-si { background:#e2f0d9; border:1px solid #1e8449; }
+        .deposito-si strong { color:#1e8449; }
+
+        .detalle-tabla { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.8rem; }
+        .detalle-tabla th { background: #1a3a5c; color: white; padding: 6px 10px; text-align: left; }
+        .detalle-tabla td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+
+        .alerta-pend { background:#fdedec; border:1px solid #f5b7b1; border-radius:6px; padding:6px 12px; margin-bottom:14px; font-size:0.76rem; color:#922b21; }
+
+        .firmas { display: flex; justify-content: space-between; margin-top: 30px; }
+        .firma-bloque { width: 45%; text-align: center; }
+        .firma-linea { border-top: 1px solid #1a1a1a; margin-bottom: 6px; padding-top: 4px; }
+        .firma-label { font-size: 0.75rem; color: #374151; }
+
+        @media print {
+            .no-print { display: none; }
+            body { background: white; }
+            .hoja { box-shadow: none; margin: 0; max-width: 100%; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Imprimir carta de corte</button>
+    </div>
+
+    <div class="hoja">
+        <div class="encabezado">
+            <div>
+                <h1>{{ corte.empresa.nombre }}</h1>
+                <p>Corte Diario · Sanitarios</p>
+            </div>
+            <div class="fecha-doc">
+                Periodo cubierto<br>
+                <strong>{{ corte.fecha_hora_inicio|date:"d/m H:i" }} — {{ corte.fecha_hora_fin|date:"d/m H:i" }}</strong>
+            </div>
+        </div>
+
+        <div class="titulo-doc">Carta de Corte de Caja</div>
+
+        <table class="datos-tabla">
+            <tr>
+                <td class="label">Cerrado el</td>
+               <td>{{ corte.fecha_cierre|date:"d/m/Y H:i" }} hrs — por {{ corte.nombre_responsable }}
+                {% if corte.caseta %} — Caseta: {{ corte.caseta.nombre }}{% endif %}</td>
+            </tr>
+            {% if corte.factura %}
+            <tr>
+                <td class="label">Folio de ingreso generado</td>
+                <td>{{ corte.factura.folio }}</td>
+            </tr>
+            {% endif %}
+        </table>
+
+        <div class="kpi-fila">
+            <div class="kpi-mini"><div class="v">{{ generados }}</div><div class="l">Generados</div></div>
+            <div class="kpi-mini"><div class="v" style="color:#0dcaf0;">{{ gratuitos }}</div><div class="l">Gratis</div></div>
+            <div class="kpi-mini"><div class="v" style="color:#b8860b;">{{ pendientes }}</div><div class="l">Sin cobrar</div></div>
+        </div>
+
+        <div class="total-destacado">
+            <div class="label">Total cobrado (todos los conceptos)</div>
+            <div class="monto">${{ total_real|floatformat:2 }}</div>
+        </div>
+
+        {% if cobro_deposito %}
+        <div class="deposito-box deposito-si">
+            <strong>✔ Depositado</strong> el {{ cobro_deposito.fecha_cobro|date:"d/m/Y" }}
+            a {{ cobro_deposito.cuenta_bancaria.banco }} — {{ cobro_deposito.cuenta_bancaria.numero_cuenta|slice:"-4:" }}
+        </div>
+        {% endif %}
+
+        {% if pendientes > 0 %}
+        <div class="alerta-pend">⚠️ {{ pendientes }} código(s)/venta(s) generados que nunca se cobraron ese día.</div>
+        {% endif %}
+
+        {% if desglose %}
+        <table class="detalle-tabla">
+            <thead>
+                <tr><th>Concepto</th><th>Rango de folios</th><th class="text-center">Cantidad</th><th style="text-align:right;">Total</th></tr>
+            </thead>
+            <tbody>
+                {% for d in desglose %}
+                <tr>
+                    <td>{{ d.label }}</td>
+                    <td>{{ d.rango|default:"—" }}</td>
+                    <td style="text-align:center;">{{ d.cantidad }}</td>
+                    <td style="text-align:right;">${{ d.total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <div class="firmas">
+            <div class="firma-bloque">
+                <div class="firma-linea"></div>
+                <div class="firma-label">Firma de quien entrega el efectivo</div>
+            </div>
+            <div class="firma-bloque">
+                <div class="firma-linea"></div>
+                <div class="firma-label">Firma de quien recibe / administrador</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

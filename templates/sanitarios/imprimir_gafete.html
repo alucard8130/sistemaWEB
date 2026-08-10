@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gafete {{ gafete.numero }} · GESAC</title>
+    <style>
+        @page { size: 90mm 55mm; margin: 0; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f4f9;
+        }
+        .no-print { text-align: center; padding: 20px; }
+        .no-print button {
+            background: #0f2d52; color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; font-size: 1rem; cursor: pointer;
+        }
+        .gafete-card {
+            width: 90mm; height: 55mm;
+            margin: 20px auto;
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 100%);
+            border-radius: 10px;
+            color: white;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .gafete-card::before {
+            content: '';
+            position: absolute; top: -40px; right: -40px;
+            width: 140px; height: 140px; border-radius: 50%;
+            background: rgba(255,255,255,0.06);
+        }
+        .gafete-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .gafete-titulo { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; }
+        .gafete-empresa { font-size: 0.78rem; font-weight: 700; margin-top: 2px; }
+        .gafete-cuerpo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .gafete-numero { font-size: 2rem; font-weight: 800; letter-spacing: 0.05em; }
+        .gafete-titular { font-size: 0.78rem; margin-top: 2px; opacity: 0.9; }
+        .gafete-local { font-size: 0.68rem; opacity: 0.7; }
+        .gafete-qr { background: white; padding: 4px; border-radius: 6px; }
+        .gafete-qr img { display: block; width: 60px; height: 60px; }
+        .gafete-footer { font-size: 0.55rem; text-align: center; opacity: 0.6; letter-spacing: 0.05em; }
+
+        @media print {
+            .no-print { display: none; }
+            body { background: white; }
+            .gafete-card { margin: 0; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Imprimir gafete</button>
+    </div>
+
+    <div class="gafete-card">
+        <div class="gafete-header">
+            <div>
+                <div class="gafete-titulo">Acceso Gratuito · Sanitarios</div>
+                <div class="gafete-empresa">{{ gafete.empresa.nombre }}</div>
+            </div>
+        </div>
+
+        <div class="gafete-cuerpo">
+            <div>
+                <div class="gafete-numero">{{ gafete.numero }}</div>
+                {% if gafete.nombre_titular %}
+                    <div class="gafete-titular">{{ gafete.nombre_titular }}</div>
+                {% endif %}
+                {% if gafete.local %}
+                    <div class="gafete-local">Local {{ gafete.local.numero }}</div>
+                {% elif gafete.area_comun %}
+                    <div class="gafete-local">Área {{ gafete.area_comun.numero }}</div>
+                {% endif %}
+            </div>
+            <div class="gafete-qr">
+                <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR">
+            </div>
+        </div>
+
+        <div class="gafete-footer">GESAC · Este gafete es personal e intransferible</div>
+    </div>
+</body>
+</html>

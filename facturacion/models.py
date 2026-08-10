@@ -103,7 +103,7 @@ class TipoCuotaHomologacion(models.Model):
 
 class Pago(models.Model):
 
-    FORMAS_PAGO = [
+    FORMAS_PAGO = [  # noqa: RUF012
         ('transferencia', 'Transferencia'),
         ('cheque', 'Cheque'),
         ('tarjeta', 'Tarjeta'),
@@ -177,7 +177,7 @@ class FacturaOtrosIngresos(models.Model):
         self.save()
 
 class CobroOtrosIngresos(models.Model):
-    FORMAS_PAGO = [
+    FORMAS_PAGO = [  # noqa: RUF012
         ('transferencia', 'Transferencia'),
         ('cheque', 'Cheque'),
         ('tarjeta', 'Tarjeta'),

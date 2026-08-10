@@ -1,0 +1,132 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Registrar Depósitos · Sanitarios · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .total-strip {
+            background: linear-gradient(135deg, #7d5a00, #b8860b); color: white;
+            border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 20px;
+        }
+        table.tabla-depositos td, table.tabla-depositos th { font-size: 0.85rem; padding: 10px; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container py-4" style="max-width: 780px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-3"><i class="bi bi-bank2 me-2"></i>Registrar Depósitos — Sanitarios</h4>
+        <p class="text-muted small">
+            Estos son los cortes ya cerrados que todavía no se han depositado al banco.
+            Márcalos aquí en cuanto el administrador reciba y deposite el efectivo.
+        </p>
+
+        <div class="total-strip">
+            <div style="font-size:0.78rem; opacity:0.8; text-transform:uppercase;">Total pendiente de depositar</div>
+            <div style="font-size:2rem; font-weight:800;">
+                ${{ facturas_pendientes.count }} corte(s) — revisa el detalle abajo
+            </div>
+        </div>
+
+        {% if facturas_pendientes %}
+        <div class="table-responsive rounded-3 border mb-4">
+            <table class="table tabla-depositos align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Folio</th>
+                        <th>Fecha del corte</th>
+                        <th class="text-end">Monto</th>
+                        <th>Detalle</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for factura in facturas_pendientes %}
+                        <tr>
+                            <td class="fw-bold">{{ factura.folio }}</td>
+                            <td>{{ factura.fecha_vencimiento|date:"d/m/Y" }}</td>
+                            <td class="text-end">${{ factura.monto|floatformat:2|intcomma }}</td>
+                            <td class="text-muted small">{{ factura.observaciones }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalDeposito{{ factura.id }}">
+                                    <i class="bi bi-bank2"></i> Depositar
+                                </button>
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="modalDeposito{{ factura.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="factura_id" value="{{ factura.id }}">
+                                        <div class="modal-header">
+                                            <h6 class="modal-title">Registrar depósito — {{ factura.folio }}</h6>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Monto: <strong>${{ factura.monto|floatformat:2|intcomma }}</strong></p>
+                                            <div class="mb-3">
+                                                <label class="form-label small">Cuenta bancaria</label>
+                                                <select name="cuenta_bancaria" class="form-select" required>
+                                                    <option value="">-- Selecciona --</option>
+                                                    {% for cuenta in cuentas %}
+                                                        <option value="{{ cuenta.id }}">{{ cuenta.banco }} - {{ cuenta.numero_cuenta|slice:"-4:" }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small">Fecha real del depósito</label>
+                                                <input type="date" name="fecha_deposito" class="form-control" required>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-success">Confirmar depósito</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-check-circle fs-1 d-block mb-2 text-success"></i>
+            No hay ningún corte pendiente de depósito — todo al día.
+        </div>
+        {% endif %}
+        <div class="text-center mt-3">
+            {% comment %} <a href="{% url 'sanitarios_operador' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Volver al panel del operador
+            </a> {% endcomment %}
+            <a href="{% url 'sanitarios_corte_diario' %}" class="btn btn-success">
+                <i class="bi bi-arrow-left me-1"></i>Volver Historial
+            </a>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

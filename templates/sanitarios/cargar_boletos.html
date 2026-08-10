@@ -32,9 +32,17 @@
                 </div>
             {% endfor %}
         {% endif %}
-
+        <ul class="nav nav-pills mb-3">
+            <li class="nav-item">
+                <a class="nav-link {% if tipo == 'sanitario' %}active{% endif %}" href="?tipo=sanitario{% if empresa %}&empresa={{ empresa.id }}{% endif %}">🚻 Sanitario</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tipo == 'papel' %}active{% endif %}" href="?tipo=papel{% if empresa %}&empresa={{ empresa.id }}{% endif %}">🧻 Papel</a>
+            </li>
+        </ul>        
         {% if empresas|length > 1 %}
         <form method="get" class="mb-3">
+            <input type="hidden" name="tipo" value="{{ tipo }}">
             <select name="empresa" class="form-select form-select-sm" style="max-width:320px;" onchange="this.form.submit()">
                 {% for e in empresas %}
                     <option value="{{ e.id }}" {% if e.id == empresa.id %}selected{% endif %}>{{ e.nombre }}</option>
@@ -68,7 +76,7 @@
                 <form method="post" id="form-boletos">
                     {% csrf_token %}
                     <input type="hidden" name="empresa" value="{{ empresa.id }}">
-
+                    <input type="hidden" name="tipo" value="{{ tipo }}">
                     <div class="row g-2 mb-3">
                         <div class="col-4">
                             <label class="form-label small">Prefijo (opcional)</label>

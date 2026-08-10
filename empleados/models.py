@@ -1,14 +1,17 @@
 
 # Create your models here.
 import uuid
+
 from django.db import models
+
 from empresas.models import Empresa
+
 
 class Empleado(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100)
     rfc= models.CharField(max_length=13)
-    PUESTOS_CHOICES = [
+    PUESTOS_CHOICES = [  # noqa: RUF012
         ('GERENTE', 'Gerente'),
         ('SUPERVISOR', 'Supervisor'),
         ('JEFE', 'Jefe'),
@@ -17,7 +20,7 @@ class Empleado(models.Model):
         ('OTRO', 'Otro'),
     ]
     puesto = models.CharField(max_length=30, choices=PUESTOS_CHOICES)
-    DEPARTAMENTO_CHOICES = [
+    DEPARTAMENTO_CHOICES = [  # noqa: RUF012
         ('ADMIN', 'Administracion'),
         ('CONTA', 'Contabilidad'),
         ('MANTTO', 'Mantenimiento'),
@@ -64,7 +67,7 @@ class Empleado(models.Model):
 
 #modulo inicidencias
 class Incidencia(models.Model):
-    TIPO_CHOICES = [
+    TIPO_CHOICES = [  # noqa: RUF012
         ('falta', 'Falta'),
         ('retardo', 'Retardo'),
         ('extra', 'Hora Extra'),
