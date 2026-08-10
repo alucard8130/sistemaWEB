@@ -30,20 +30,25 @@
 
             <!-- Resumen del corte -->
             <div class="alert alert-info mb-4">
+                {% if corte.tiene_operador_externo %}
                 <div class="row">
-                    <div class="col-6">
-                        <div class="text-muted small">Ingresos brutos</div>
-                        <div class="fw-bold">${{ corte.total_ingresos_brutos|floatformat:2|intcomma }}</div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-muted small">Descuento operador</div>
-                        <div class="fw-bold text-danger">-${{ corte.monto_operador|floatformat:2|intcomma }}</div>
+                    <div class="col-12">
+                        <div class="text-muted small">Ingresos brutos cobrados por el operador (informativo, no se factura)</div>
+                        <div class="fw-bold text-muted">${{ corte.total_ingresos_brutos|floatformat:2|intcomma }}</div>
                     </div>
                     <div class="col-12 mt-2 border-top pt-2">
-                        <div class="text-muted small">Monto a facturar (ingreso neto plaza)</div>
+                        <div class="text-muted small">Monto a facturar (renta fija del operador — {{ corte.nombre_operador }})</div>
                         <div class="fw-bold fs-5 text-success">${{ corte.ingreso_neto_plaza|floatformat:2|intcomma }}</div>
                     </div>
                 </div>
+                {% else %}
+                <div class="row">
+                    <div class="col-12">
+                        <div class="text-muted small">Monto a facturar (ingresos brutos de la plaza)</div>
+                        <div class="fw-bold fs-5 text-success">${{ corte.ingreso_neto_plaza|floatformat:2|intcomma }}</div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <form method="post">
@@ -57,16 +62,6 @@
                         {% endfor %}
                     </select>
                 </div>
-                {% comment %} <div class="mb-3">
-                    <label class="form-label">Tipo de ingreso <span class="text-danger">*</span></label>
-                    <select name="tipo_ingreso_id" class="form-select" required>
-                        <option value="">Selecciona un tipo</option>
-                        {% for tipo in tipos_ingreso %}
-                            <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Si no existe "Estacionamiento", créalo primero en el módulo de Otros Ingresos.</div>
-                </div> {% endcomment %}
                 <div class="mb-3">
                     <label class="form-label">Fecha de vencimiento <span class="text-danger">*</span></label>
                     <input type="date" name="fecha_vencimiento" class="form-control"

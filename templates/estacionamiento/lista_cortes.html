@@ -14,7 +14,7 @@
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4><i class="bi bi-p-circle me-2"></i>Ingresos por Estacionamiento</h4>
+        <h4><i class="bi bi-p-circle me-2"></i>Cortes Estacionamiento</h4>
         <a href="{% url 'crear_corte_estacionamiento' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i> Nuevo corte
         </a>
@@ -69,11 +69,19 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        {% comment %} <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="text-muted small">Total ingresos brutos</div>
-                    <div class="fs-5 fw-bold text-dark">${{ totales.total_efectivo|default:0|add:totales.total_tarjeta|default:0|floatformat:2|intcomma }}</div>
+                    <div class="fs-5 fw-bold text-dark">${{ totales.total_ingresos_brutos|default:0|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+        </div> {% endcomment %}
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm" style="border-left:4px solid #1e8449 !important;">
+                <div class="card-body">
+                    <div class="text-muted small">Neto real de la plaza</div>
+                    <div class="fs-5 fw-bold text-success">${{ totales.total_neto_plaza|default:0|floatformat:2|intcomma }}</div>
                 </div>
             </div>
         </div>
@@ -91,10 +99,9 @@
                             <th class="text-end">Efectivo</th>
                             <th class="text-end">Tarjeta</th>
                             <th class="text-center">Boletos</th>
-                            <th class="text-end">Bruto</th>
+                            {% comment %} <th class="text-end">Bruto</th> {% endcomment %}
                             <th class="text-end">Neto plaza</th>
                             <th>Operador</th>
-                            <th>Cuenta</th>
                             <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -110,7 +117,7 @@
                             <td class="text-end">${{ corte.total_efectivo|floatformat:2|intcomma }}</td>
                             <td class="text-end">${{ corte.total_tarjeta|floatformat:2|intcomma }}</td>
                             <td class="text-center">{{ corte.total_boletos }}</td>
-                            <td class="text-end">${{ corte.total_ingresos_brutos|floatformat:2|intcomma }}</td>
+                            {% comment %} <td class="text-end">${{ corte.total_ingresos_brutos|floatformat:2|intcomma }}</td> {% endcomment %}
                             <td class="text-end fw-bold text-success">${{ corte.ingreso_neto_plaza|floatformat:2|intcomma }}</td>
                             <td>
                                 {% if corte.tiene_operador_externo %}
@@ -119,7 +126,6 @@
                                     <span class="text-muted small">Plaza propia</span>
                                 {% endif %}
                             </td>
-                            <td class="small text-muted">{{ corte.cuenta_bancaria.banco|default:"—" }}</td>
                             <td class="text-center">
                                 <a href="{% url 'detalle_corte_estacionamiento' corte.pk %}" class="btn btn-sm btn-outline-info me-1" title="Ver detalle">
                                     <i class="bi bi-eye"></i>
@@ -135,10 +141,15 @@
                                     class="btn btn-sm btn-outline-success me-1" title="Generar factura">
                                         <i class="bi bi-receipt"></i>
                                     </a>
-                                {% else %}
+                                {% elif corte.factura.estatus == 'cobrada' %}
                                     <span class="badge bg-success" title="Factura: {{ corte.factura.folio }}">
                                         <i class="bi bi-check-circle"></i> {{ corte.factura.folio }}
                                     </span>
+                                {% else %}
+                                    <a href="{% url 'lista_facturas_otros_ingresos' %}?q={{ corte.factura.folio }}"
+                                       class="badge bg-warning text-dark text-decoration-none" title="Pendiente de cobro — clic para ir a registrarlo">
+                                        <i class="bi bi-hourglass-split"></i> {{ corte.factura.folio }} (pendiente)
+                                    </a>
                                 {% endif %}
                             </td>
                         </tr>

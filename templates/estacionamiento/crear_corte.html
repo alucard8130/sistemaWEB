@@ -90,44 +90,34 @@
                 </div>
                 <div id="seccion_operador" style="display:none;">
                     <div class="row g-3 mb-4">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">{{ form.nombre_operador.label }}</label>
                             {{ form.nombre_operador }}
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">{{ form.porcentaje_operador.label }}</label>
-                            <div class="input-group">
-                                {{ form.porcentaje_operador }}
-                                <span class="input-group-text">%</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">{{ form.monto_renta_operador.label }}</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 {{ form.monto_renta_operador }}
                             </div>
+                            <div class="form-text">Esta renta ES el 100% del ingreso neto para la plaza (no se resta nada más).</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Cuenta y archivo -->
-                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Depósito y archivo</h6>
+                <!-- Archivo de referencia -->
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Archivo de referencia</h6>
                 <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label">{{ form.cuenta_bancaria.label }}</label>
-                        {{ form.cuenta_bancaria }}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">{{ form.fecha_deposito.label }}</label>
-                        {{ form.fecha_deposito }}
-                        <div class="form-text">Fecha en que se depositó en la cuenta bancaria.</div>
-                    </div>
                     <div class="col-md-6">
                         <label class="form-label">{{ form.archivo_origen.label }}</label>
                         {{ form.archivo_origen }}
                         <div class="form-text">CSV, Excel — opcional, para referencia</div>
                     </div>
+                </div>
+                <div class="alert alert-light border small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    El depósito de este corte se registra después, desde la Lista de Facturas de Otros Ingresos —
+                    no se captura aquí.
                 </div>
 
                 <!-- Observaciones -->
@@ -181,19 +171,21 @@ function calcularResumen() {
     const tarjeta  = parseFloat(document.querySelector('[name="total_tarjeta"]').value  || 0);
     const bruto = efectivo + tarjeta;
 
-    let operador = 0;
+    let neto = bruto;
+    let operadorTexto = 'N/A (plaza propia)';
+
     if (chk.checked) {
-        const pct   = parseFloat(document.querySelector('[name="porcentaje_operador"]').value || 0);
         const renta = parseFloat(document.querySelector('[name="monto_renta_operador"]').value || 0);
-        operador = bruto * (pct / 100) + renta;
+        neto = renta;
+        operadorTexto = fmt(renta) + ' (renta fija = 100% del ingreso)';
     }
 
     document.getElementById('r_bruto').textContent    = fmt(bruto);
-    document.getElementById('r_operador').textContent = fmt(operador);
-    document.getElementById('r_neto').textContent     = fmt(bruto - operador);
+    document.getElementById('r_operador').textContent = operadorTexto;
+    document.getElementById('r_neto').textContent     = fmt(neto);
 }
 
-document.querySelectorAll('[name="total_efectivo"],[name="total_tarjeta"],[name="porcentaje_operador"],[name="monto_renta_operador"]')
+document.querySelectorAll('[name="total_efectivo"],[name="total_tarjeta"],[name="monto_renta_operador"]')
     .forEach(el => el.addEventListener('input', calcularResumen));
 calcularResumen();
 </script>

@@ -1,10 +1,11 @@
 from django.db import models
 
-from empresas.models import CuentaBancaria, Empresa
+from empresas.models import Empresa
+
 
 # Create your models here.
 class CorteEstacionamiento(models.Model):
-    PERIODO_CHOICES = [
+    PERIODO_CHOICES = [  # noqa: RUF012
         ('semanal', 'Semanal'),
         ('quincenal', 'Quincenal'),
         ('mensual', 'Mensual'),
@@ -17,15 +18,13 @@ class CorteEstacionamiento(models.Model):
     total_tarjeta = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_boletos = models.PositiveIntegerField(default=0)
 
-    # Liquidación al operador
+   # Liquidación al operador
     tiene_operador_externo = models.BooleanField(default=False)
     nombre_operador = models.CharField(max_length=100, blank=True, null=True)
-    porcentaje_operador = models.DecimalField(max_digits=5, decimal_places=2, default=0,
-        help_text="% que corresponde al operador. 0 si es 100% de la plaza.")
     monto_renta_operador = models.DecimalField(max_digits=12, decimal_places=2, default=0,
-        help_text="Renta fija que paga el operador, si aplica.")
+        help_text="Renta fija mensual que paga el operador externo.")
 
-    cuenta_bancaria = models.ForeignKey(CuentaBancaria, on_delete=models.PROTECT, null=True, blank=True,related_name='cortes_estacionamiento')
+    #cuenta_bancaria = models.ForeignKey(CuentaBancaria, on_delete=models.PROTECT, null=True, blank=True,related_name='cortes_estacionamiento')
     # Factura generada para este corte
     factura = models.OneToOneField(
         'facturacion.FacturaOtrosIngresos',
@@ -37,24 +36,23 @@ class CorteEstacionamiento(models.Model):
     archivo_origen = models.FileField(upload_to='estacionamiento/', blank=True, null=True)
     registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
-    fecha_deposito = models.DateField(null=True, blank=True, verbose_name="Fecha de depósito en banco")
+
 
     @property
     def total_ingresos_brutos(self):
         return self.total_efectivo + self.total_tarjeta
 
     @property
-    def monto_operador(self):
-        """Lo que le corresponde al operador externo"""
-        if not self.tiene_operador_externo:
-            return 0
-        por_porcentaje = self.total_ingresos_brutos * (self.porcentaje_operador / 100)
-        return por_porcentaje + self.monto_renta_operador
-
-    @property
     def ingreso_neto_plaza(self):
-        """Lo que queda para la plaza después de pagar al operador"""
-        return self.total_ingresos_brutos - self.monto_operador
+        """Lo que realmente ingresa a la plaza/condominio.
+
+        - Si NO hay operador externo: es el 100% de lo cobrado en efectivo + tarjeta.
+        - Si SÍ hay operador externo: es el 100% de la renta fija -- no se resta
+          nada, ya que el operador se queda con todo lo que cobra a los usuarios.
+        """
+        if self.tiene_operador_externo:
+            return self.monto_renta_operador
+        return self.total_ingresos_brutos
 
     @property
     def label_periodo(self):
@@ -82,7 +80,7 @@ class TicketEstacionamiento(models.Model):
     hora_salida = models.TimeField()
     minutos = models.PositiveIntegerField(default=0)
     monto = models.DecimalField(max_digits=10, decimal_places=2)
-    FORMA_PAGO_CHOICES = [
+    FORMA_PAGO_CHOICES = [  # noqa: RUF012
         ('efectivo', 'Efectivo'),
         ('tarjeta', 'Tarjeta'),
     ]
