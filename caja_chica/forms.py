@@ -1,23 +1,21 @@
 from decimal import Decimal
+
 from django import forms
 
-from gastos.models import TipoGasto
-from proveedores.models import Proveedor
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
-
 
 
 class FondeoCajaChicaForm(forms.ModelForm):
     class Meta:
         model = FondeoCajaChica
-        fields = [
+        fields = [  # noqa: RUF012
             "numero_cheque",
             "importe_cheque",
             "cuenta_bancaria",
             "empleado_asignado",
             "fecha",
         ]
-        widgets = {
+        widgets = {  # noqa: RUF012
             "fecha": forms.DateInput(attrs={"type": "date"}),
             "empleado_asignado": forms.Select(attrs={"class": "form-control"}),
             "numero_cheque": forms.TextInput(attrs={"class": "form-control"}),
@@ -28,12 +26,15 @@ class FondeoCajaChicaForm(forms.ModelForm):
     fecha = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
     )
-
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["cuenta_bancaria"].required = True
 
 class GastoCajaChicaForm(forms.ModelForm):
     class Meta:
         model = GastoCajaChica
-        fields = [
+        fields = [  # noqa: RUF012
             "fondeo",
             "proveedor",
             "tipo_gasto",
@@ -41,7 +42,7 @@ class GastoCajaChicaForm(forms.ModelForm):
             "importe",
             "fecha",
         ]
-        widgets = {
+        widgets = {  # noqa: RUF012
             "fondeo": forms.Select(attrs={"class": "form-control"}),
             "fecha": forms.DateInput(attrs={"type": "date"}),
             "proveedor": forms.Select(attrs={"class": "form-control","required": True}),
@@ -57,7 +58,7 @@ class GastoCajaChicaForm(forms.ModelForm):
 class ValeCajaForm(forms.ModelForm):
     class Meta:
         model = ValeCaja
-        fields = [
+        fields = [  # noqa: RUF012
             "fondeo",
             "tipo_gasto",
             "descripcion",
@@ -68,7 +69,7 @@ class ValeCajaForm(forms.ModelForm):
             "autorizado_por",
             
         ]
-        widgets = {
+        widgets = {  # noqa: RUF012
             "fondeo": forms.Select(attrs={"class": "form-control"}),
             "fecha": forms.DateInput(attrs={"type": "date"}),
             "recibido_por": forms.Select(attrs={"class": "form-control","required": True}),

@@ -1,7 +1,7 @@
 from django.db import models
+
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria
-
 
 
 class FondeoCajaChica(models.Model):
@@ -16,7 +16,7 @@ class FondeoCajaChica(models.Model):
     cuenta_bancaria = models.ForeignKey(
         CuentaBancaria,
         on_delete=models.PROTECT,
-        related_name='fondeos_caja_chica',null=True, blank=True
+        related_name='fondeos_caja_chica'
     )
  
     def __str__(self):
