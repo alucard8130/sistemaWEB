@@ -164,7 +164,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
         # NUEVO -- excluye del ciclo individual a los locales que pertenecen a un grupo
         locales = LocalComercial.objects.filter(
             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False,
-            grupo_facturacion__isnull=True,
+            grupo_facturacion__isnull=True,cuota__gt=0,
         ).select_related("cliente")
         locales_ids = list(locales.values_list("id", flat=True))
         locales_con_factura = set(
@@ -229,7 +229,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
 
         if mes == 1:
             locales_anuales = LocalComercial.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True,cuota__gt=0,
             ).select_related("cliente")
             locales_anuales_ids = list(locales_anuales.values_list("id", flat=True))
             locales_anuales_con_factura = set(
@@ -251,7 +251,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
 
     if facturar_areas:
         areas = AreaComun.objects.filter(
-            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False,cuota__gt=0,
         ).select_related("cliente")
         areas_ids = list(areas.values_list("id", flat=True))
         areas_con_factura = set(
@@ -294,7 +294,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
 
         if mes == 1:
             areas_anuales = AreaComun.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True
+                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True,cuota__gt=0,
             ).select_related("cliente")
             areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
             areas_anuales_con_factura = set(
