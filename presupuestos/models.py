@@ -1,9 +1,12 @@
 
 from django.db import models
+
 from empresas.models import Empresa
-from facturacion.models import FacturaOtrosIngresos, TipoOtroIngreso
+from facturacion.models import TipoOtroIngreso
 from gastos.models import GrupoGasto, SubgrupoGasto, TipoGasto
 
+
+#presupesto gastos
 class Presupuesto(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     grupo = models.ForeignKey(GrupoGasto, on_delete=models.PROTECT)
@@ -22,6 +25,7 @@ class Presupuesto(models.Model):
             periodo += f"-{self.mes:02d}"
         return f"{self.empresa} | {self.grupo} | {self.tipo_gasto} | {periodo}: ${self.monto:,.2f}"
 
+
 class PresupuestoCierre(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     anio = models.PositiveIntegerField()
@@ -34,9 +38,10 @@ class PresupuestoCierre(models.Model):
 
     def __str__(self):
         return f"{self.empresa} - {self.anio} ({'CERRADO' if self.cerrado else 'ABIERTO'})"
-    
+
+   
 class PresupuestoIngreso(models.Model):
-    ORIGEN_CHOICES = [
+    ORIGEN_CHOICES = [  # noqa: RUF012
         ('local', 'Locales'),
         ('area', 'Áreas comunes'),
         ('otros', 'Otros ingresos'),

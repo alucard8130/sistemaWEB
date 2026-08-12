@@ -1,45 +1,47 @@
 # Create your views here.
+import calendar
+from calendar import month_name
+from collections import defaultdict
+
+#from io import BytesIO
+from datetime import date, datetime
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pyexpat.errors import messages
-#from urllib import request
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+
 #from httpx import request
 import openpyxl
+from django.contrib.auth import authenticate
+
+#from urllib import request
+from django.contrib.auth.decorators import login_required
+
+#from django.db import models as djmodels
+from django.db.models import F, Q, Sum
+from django.db.models.functions import ExtractMonth, ExtractYear
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils.timezone import now
+from django.views.decorators.http import require_POST
+
+#from django.db.models.functions import TruncMonth, TruncYear
+#from .forms import PresupuestoCargaMasivaForm
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
+
+from caja_chica.models import GastoCajaChica, ValeCaja
+from empresas.models import Empresa
 from facturacion.models import (
     CobroOtrosIngresos,
     Factura,
     Pago,
     TipoOtroIngreso,
 )
-from gastos.models import Gasto, GrupoGasto, PagoGasto, TipoGasto, SubgrupoGasto
-from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
+from gastos.models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
+
 from .forms import PresupuestoCargaMasivaForm
-from django.utils.timezone import now
-from django.db.models import Sum, F
-from empresas.models import Empresa
-from calendar import month_name
-from collections import defaultdict
-from decimal import Decimal, InvalidOperation,ROUND_HALF_UP
-from openpyxl.utils import get_column_letter
-from django.http import HttpResponse
-from django.contrib.auth import authenticate
-import calendar
-from openpyxl.styles import Font
-from django.db.models.functions import ExtractYear, ExtractMonth
-#from io import BytesIO
-from datetime import date, datetime
-#from django.db.models.functions import TruncMonth, TruncYear
-#from .forms import PresupuestoCargaMasivaForm
-from openpyxl import load_workbook 
-from caja_chica.models import GastoCajaChica
-from caja_chica.models import ValeCaja
-#from django.db import models as djmodels
-from django.db.models import Q
-from django.urls import reverse
-from openpyxl import Workbook
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.contrib import messages
+from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
 
 
 # matriz ppto gastos
