@@ -1064,6 +1064,44 @@ def gasto_nuevo(request):
                         "mostrar_confirmacion_particion": True,
                     })
 
+            # NUEVO -- validar presupuesto disponible del tipo de gasto para todo el año
+            if gasto.fecha and gasto.tipo_gasto_id:
+                anio_gasto = gasto.fecha.year
+
+                presupuesto_anual = Presupuesto.objects.filter(
+                    empresa=gasto.empresa, tipo_gasto_id=gasto.tipo_gasto_id, anio=anio_gasto,
+                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")  # noqa: FURB157
+
+                pagado_anual = PagoGasto.objects.filter(
+                    gasto__empresa=gasto.empresa, gasto__tipo_gasto_id=gasto.tipo_gasto_id,
+                    fecha_pago__year=anio_gasto,
+                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")  # noqa: FURB157
+
+                pendiente_anual = Gasto.objects.filter(
+                    empresa=gasto.empresa, tipo_gasto_id=gasto.tipo_gasto_id,
+                    fecha__year=anio_gasto, estatus="pendiente",
+                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")  # noqa: FURB157
+
+                comprometido = pagado_anual + pendiente_anual
+                disponible = presupuesto_anual - comprometido
+
+                if presupuesto_anual <= 0:
+                    messages.error(
+                        request,
+                        f"⚠️ No hay presupuesto capturado para '{gasto.tipo_gasto}' en {anio_gasto}. "
+                        f"Captura el presupuesto de esta cuenta antes de solicitar gastos contra ella."
+                    )
+                    return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
+
+                if gasto.monto > disponible:
+                    messages.error(
+                        request,
+                        f"⚠️ Presupuesto insuficiente para '{gasto.tipo_gasto}' en {anio_gasto}. "
+                        f"Presupuesto anual: ${presupuesto_anual:,.2f} — Ya comprometido: ${comprometido:,.2f} "
+                        f"— Disponible: ${disponible:,.2f} — Esta solicitud: ${gasto.monto:,.2f}."
+                    )
+                    return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
+                
             gasto.estatus = "pendiente"
             gasto.save()
             messages.success(request, f"Solicitud de gasto folio: {gasto.id}, registrada correctamente.")

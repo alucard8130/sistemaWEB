@@ -440,14 +440,14 @@ def dashboard_inicio(request):
         gastos_pendientes_6.append(gpendientes)
 
 
-    # Membresía
-    membresia_label = ''
-    try:
-        nivel = empresa.perfil.nivel if hasattr(empresa, 'perfil') else None
-        if nivel:
-            membresia_label = nivel.capitalize()
-    except Exception:
-        pass
+    # Membresía, la deshabilité porque no funcionaba bien, se puede reactivar si se arregla el perfil de empresa
+    # membresia_label = ''
+    # try:
+    #     nivel = empresa.perfil.nivel if hasattr(empresa, 'perfil') else None
+    #     if nivel:
+    #         membresia_label = nivel.capitalize()
+    # except Exception:
+    #     pass
 
     mensaje_pago = None
     if request.GET.get("pago") == "ok":
@@ -502,7 +502,7 @@ def dashboard_inicio(request):
         'gastos_pagados_6': json.dumps(gastos_pagados_6),
         'gastos_pendientes_6': json.dumps(gastos_pendientes_6),
         # Membresía
-        'membresia_label': membresia_label,
+        #'membresia_label': membresia_label,
         # Recordatorio facturación
         'mostrar_recordatorio': mostrar_recordatorio,
         'mostrar_wizard': mostrar_wizard,

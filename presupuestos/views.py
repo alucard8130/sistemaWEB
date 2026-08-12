@@ -6,10 +6,10 @@ from collections import defaultdict
 #from io import BytesIO
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from pyexpat.errors import messages
 
 #from httpx import request
 import openpyxl
+from django.contrib import messages
 from django.contrib.auth import authenticate
 
 #from urllib import request
@@ -48,7 +48,7 @@ from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
 @login_required
 def matriz_presupuesto(request):
     anio = int(request.GET.get("anio", now().year))
-    now_year = now().year
+    now_year = now().year  # noqa: F841
     anios = list(
         Presupuesto.objects.values_list("anio", flat=True).distinct().order_by("anio")
     )
@@ -2484,17 +2484,6 @@ def copiar_presupuesto_gastos_a_nuevo_anio(request):
         messages.success(request, f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.")
     return redirect("matriz_presupuesto")
 
-    # if tipo_clon == "con" and porcentaje > 0:
-    #     messages.success(
-    #         request,
-    #         f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} con incremento del {porcentaje}%",
-    #     )
-    # else:
-    #     messages.success(
-    #         request,
-    #         f"Presupuesto de gastos {anio_actual} copiado a {anio_nuevo} sin incremento.",
-    #     )
-    # return redirect("matriz_presupuesto")
 
 
 @login_required

@@ -311,8 +311,20 @@ if (premiumBtn) {
                 <div style="font-size:0.72rem;opacity:0.7;">{{ hoy|date:"l, d \d\e F Y" }}</div>
                 <div style="font-size:0.82rem;font-weight:600;">{{ request.user.get_full_name|default:request.user.username }}</div>
             </div>
-            <span class="badge" style="background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:20px;font-size:0.75rem;">
-                {{ membresia_label}}
+            <span>
+                {% if request.user.perfilusuario.empresa.es_premium or request.user.perfilusuario.tipo_usuario == "premium" %}
+                <span style="background:#d4ac0d;color:#5a3e00;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">
+                    ⭐ Premium
+                </span>
+            {% elif request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.tipo_usuario == "plus" %}
+                <span style="background:#00B0F0;color:white;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">
+                    Plus
+                </span>
+            {% else %}
+                <span style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">
+                    Demo
+                </span>
+            {% endif %}
             </span>
         </div>
     </div>
