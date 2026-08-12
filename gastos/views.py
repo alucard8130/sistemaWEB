@@ -1086,21 +1086,19 @@ def gasto_nuevo(request):
                 disponible = presupuesto_anual - comprometido
 
                 if presupuesto_anual <= 0:
-                    messages.error(
+                    messages.warning(
                         request,
                         f"⚠️ No hay presupuesto capturado para '{gasto.tipo_gasto}' en {anio_gasto}. "
-                        f"Captura el presupuesto de esta cuenta antes de solicitar gastos contra ella."
+                        f"La solicitud se guardó de todas formas — considera capturar el presupuesto de esta cuenta."
                     )
-                    return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
-
-                if gasto.monto > disponible:
-                    messages.error(
+                elif gasto.monto > disponible:
+                    messages.warning(
                         request,
-                        f"⚠️ Presupuesto insuficiente para '{gasto.tipo_gasto}' en {anio_gasto}. "
+                        f"⚠️ Esta solicitud excede el presupuesto disponible de '{gasto.tipo_gasto}' en {anio_gasto}. "
                         f"Presupuesto anual: ${presupuesto_anual:,.2f} — Ya comprometido: ${comprometido:,.2f} "
-                        f"— Disponible: ${disponible:,.2f} — Esta solicitud: ${gasto.monto:,.2f}."
+                        f"— Disponible: ${disponible:,.2f} — Esta solicitud: ${gasto.monto:,.2f}. "
+                        f"La solicitud se guardó de todas formas."
                     )
-                    return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
                 
             gasto.estatus = "pendiente"
             gasto.save()
