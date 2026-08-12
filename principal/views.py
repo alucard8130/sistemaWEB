@@ -441,7 +441,7 @@ def dashboard_inicio(request):
 
 
     # Membresía
-    membresia_label = 'Premium'
+    membresia_label = ''
     try:
         nivel = empresa.perfil.nivel if hasattr(empresa, 'perfil') else None
         if nivel:
