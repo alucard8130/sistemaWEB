@@ -106,8 +106,9 @@
             <strong>Atención:</strong>
             <p>Si estás en periodo de incremento de cuotas propiedades, recuerda antes actualizar los importes en: <a href="{% url 'incrementar_c_locales' %}">Incrementar cuotas Propiedades</a>.</p>
             {% if empresa_actual.segmento != 'habitacional' %}
-            <P>Si estás en periodo de incremento de cuotas por áreas comunes, recuerda antes actualizar los importes en: <a href="{% url 'incrementar_c_areas' %}">Incrementar cuotas Áreas Comunes</a>.</P>
+            <p>Si estás en periodo de incremento de cuotas por áreas comunes, recuerda antes actualizar los importes en: <a href="{% url 'incrementar_c_areas' %}">Incrementar cuotas Áreas Comunes</a>.</p>
             {% endif %}
+            <p>Antes revisa tus pools de locales vacíos, tus facturaciones anuales y tus facturaciones grupales</p>
         </div>
         <form id="form-facturacion" method="post" class="p-3 mt-3 rounded" style="background-color: #ffffff; border: 1px solid #f0e6e6;">
             {% csrf_token %}
