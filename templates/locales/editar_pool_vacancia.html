@@ -55,18 +55,18 @@
         <h4 class="mb-3"><i class="bi bi-building-gear me-2"></i>{{ pool.nombre }}</h4>
 
         <div class="info-strip">
-            <div style="font-size: 0.8rem; opacity: 0.85; text-transform: uppercase;">Cliente que cubre la vacancia</div>
+            <div style="font-size: 0.8rem; opacity: 0.85; text-transform: uppercase;">Cliente que cubre la cuota</div>
             <div style="font-size: 1.3rem; font-weight: 700;">{{ pool.cliente_cobertura.nombre }}</div>
         </div>
 
         <div class="alert alert-primary d-flex align-items-start gap-2">
             <i class="bi bi-info-circle-fill mt-1"></i>
             <div>
-                Aquí solo aparecen los locales con estado <strong>"Disp."</strong> — un local
-                ocupado no se puede agregar directamente al pool. Si quieres incluir un local que
-                hoy tiene inquilino, primero <strong>edítalo y cambia su estado a "Disponible"</strong>
+                Aquí solo aparecen las propiedades con estado <strong>"Disponible"</strong> — una propiedad
+                ocupada no se puede agregar directamente al pool. Si quieres incluir una propiedad que
+                hoy tiene inquilino, primero <strong>edítala y cambia su estado a "Disponible"</strong>
                 — al hacerlo, el sistema le quita el cliente automáticamente y queda libre. En cuanto
-                lo hagas, aparecerá aquí para que lo marques.
+                lo hagas, aparecerá aquí para que la marques.
             </div>
         </div>
 
@@ -75,7 +75,7 @@
 
             <div class="locales-card">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0 text-muted">Locales disponibles para incluir en este pool</h6>
+                    <h6 class="mb-0 text-muted">Propiedades disponibles para incluir en este pool</h6>
                     <input type="text" id="buscar-local" class="form-control form-control-sm filtro-buscar"
                            placeholder="Buscar por número...">
                 </div>
@@ -84,10 +84,10 @@
                     {% for local in locales_disponibles %}
                         <div class="local-row" data-busqueda="{{ local.numero|lower }}">
                             <label class="d-flex align-items-center flex-grow-1 mb-0" style="cursor: pointer;">
-                                <input type="checkbox" name="locales" value="{{ local.id }}"
+                                <input type="checkbox" name="propiedades" value="{{ local.id }}"
                                        {% if local.id in ids_actuales %}checked{% endif %}>
                                 <div>
-                                    <div class="local-numero">Local {{ local.numero }}</div>
+                                    <div class="local-numero">Propiedad {{ local.numero }}</div>
                                     <div class="local-cliente">Cuota: ${{ local.cuota|floatformat:2 }}</div>
                                 </div>
                             </label>
@@ -95,7 +95,7 @@
                         </div>
                     {% empty %}
                         <p class="text-muted text-center py-4">
-                            No hay locales en estado "Disponible" en tu empresa por el momento.
+                            No hay propiedades en estado "Disponible" en tu empresa por el momento.
                         </p>
                     {% endfor %}
                 </div>
@@ -106,7 +106,7 @@
                     <i class="bi bi-arrow-left me-1"></i>Volver
                 </a>
                 <button type="submit" class="btn-guardar">
-                    <i class="bi bi-check-circle me-1"></i>Guardar locales elegibles
+                    <i class="bi bi-check-circle me-1"></i>Guardar propiedades elegibles
                 </button>
             </div>
         </form>
@@ -125,7 +125,7 @@
             {% for local in locales_pool_no_disponibles %}
                 <div class="local-row">
                     <div>
-                        <div class="local-numero">Local {{ local.numero }}</div>
+                        <div class="local-numero">Propiedad {{ local.numero }}</div>
                         <div class="local-cliente">
                             {% if local.cliente %}{{ local.cliente.nombre }}{% else %}—{% endif %}
                         </div>

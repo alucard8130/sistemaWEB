@@ -38,14 +38,14 @@
         {% endif %}
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="mb-0"><i class="bi bi-building-fill-exclamation me-2"></i>Pools de Vacancia</h4>
+            <h4 class="mb-0"><i class="bi bi-building-fill-exclamation me-2"></i>Pools de Propiedades Vacias</h4>
             <a href="{% url 'crear_pool_vacancia' %}" class="btn btn-nuevo-pool">
                 <i class="bi bi-plus-circle me-1"></i> Nuevo pool
             </a>
         </div>
 
         <p class="text-muted mb-4">
-            Cada pool factura automáticamente, cada mes, la suma de las cuotas de los locales
+            Cada pool factura automáticamente, cada mes, la suma de las cuotas de las propiedades
             elegibles que en ese momento <strong>no tienen cliente asignado</strong>, a nombre del
             cliente que cubre. En cuanto un local se renta, sale del cálculo por sí solo.
         </p>
@@ -66,7 +66,7 @@
                             </div>
                         </div>
                         <span class="badge badge-locales px-3 py-2">
-                            {{ pool.locales_elegibles.count }} local{{ pool.locales_elegibles.count|pluralize:"es" }} elegible{{ pool.locales_elegibles.count|pluralize }}
+                            {{ pool.locales_elegibles.count }} propiedad{{ pool.locales_elegibles.count|pluralize:"es" }} elegible{{ pool.locales_elegibles.count|pluralize }}
                         </span>
                     </div>
 
@@ -81,7 +81,7 @@
 
                     <div class="mt-3">
                         <a href="{% url 'editar_pool_vacancia' pool.id %}" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-pencil-square me-1"></i>Editar locales elegibles
+                            <i class="bi bi-pencil-square me-1"></i>Editar propiedades elegibles
                         </a>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
         {% else %}
             <div class="empty-state">
                 <i class="bi bi-building-fill-exclamation fs-1 d-block mb-3"></i>
-                Todavía no tienes ningún pool de vacancia configurado.
+                Todavía no tienes ningún pool de propiedades vacías configurado.
                 <div class="mt-3">
                     <a href="{% url 'crear_pool_vacancia' %}" class="btn btn-nuevo-pool">
                         <i class="bi bi-plus-circle me-1"></i> Crear el primero

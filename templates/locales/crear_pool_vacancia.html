@@ -33,10 +33,10 @@
             {% endfor %}
         {% endif %}
 
-        <h4 class="mb-1"><i class="bi bi-building-fill-add me-2"></i>Nuevo Pool de Vacancia</h4>
+        <h4 class="mb-1"><i class="bi bi-building-fill-add me-2"></i>Nuevo Pool de Propiedades Disponibles</h4>
         <p class="text-muted mb-4">
-            Define el nombre del pool y qué cliente cubre la cuota de los locales elegibles
-            mientras estén sin arrendar. En el siguiente paso eliges qué locales entran.
+            Define el nombre del pool y qué cliente cubre la cuota de las propiedades elegibles
+            mientras estén sin arrendar. En el siguiente paso eliges qué propiedades entran.
         </p>
 
         <div class="form-card">
@@ -46,11 +46,11 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Nombre del pool</label>
                     <input type="text" name="nombre" class="form-control"
-                           placeholder="Ej. Vacancia — Plaza Independencia Torreón" required>
+                           placeholder="Ej. Locales disponibles — Soriana" required>
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label fw-semibold">Cliente que cubre la vacancia</label>
+                    <label class="form-label fw-semibold">Cliente que cubre la cuota</label>
                     <select name="cliente_id" class="form-select" required>
                         <option value="" selected disabled>Selecciona un cliente...</option>
                         {% for cliente in clientes %}
@@ -58,8 +58,8 @@
                         {% endfor %}
                     </select>
                     <div class="form-text">
-                        A este cliente se le factura, cada mes, la suma de las cuotas de los
-                        locales del pool que sigan sin cliente propio.
+                                A este cliente se le factura, cada mes, la suma de las cuotas de las
+                                propiedades del pool que sigan sin cliente propio.
                     </div>
                 </div>
 
@@ -68,7 +68,7 @@
                         <i class="bi bi-arrow-left me-1"></i>Cancelar
                     </a>
                     <button type="submit" class="btn-guardar">
-                        <i class="bi bi-check-circle me-1"></i>Crear y asignar locales
+                        <i class="bi bi-check-circle me-1"></i>Crear y asignar propiedades
                     </button>
                 </div>
             </form>
