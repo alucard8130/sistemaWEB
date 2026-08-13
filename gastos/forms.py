@@ -228,7 +228,7 @@ class PagoGastoForm(forms.ModelForm):
     class Meta:
         model = PagoGasto
         fields = ['fecha_pago', 'monto','cuenta_bancaria', 'forma_pago', 'referencia']  # noqa: RUF012
-        labels = {'referencia': 'Comentario'}
+        labels = {'referencia': 'Comentario'}  # noqa: RUF012
         widgets = {  # noqa: RUF012
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
@@ -254,8 +254,12 @@ class PagoGastoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if empresa:
             self.fields['cuenta_bancaria'].queryset = CuentaBancaria.objects.filter(empresa=empresa)
-    
-        # self.fields['comprobante'].disabled = True
+        # NUEVO -- aunque el modelo permite cuenta_bancaria vacía (necesario
+        # para casos especiales como la Retención de ISR, que se registra por
+        # código y nunca pasa por este formulario), en el flujo NORMAL donde
+        # un usuario captura el pago a mano, la cuenta bancaria es obligatoria:
+        # un pago siempre tiene que salir de algún lado.
+        self.fields['cuenta_bancaria'].required = True
 
 class GastosCargaMasivaForm(forms.Form):
         archivo = forms.FileField(label='Archivo Excel (.xlsx)')     

@@ -68,11 +68,11 @@
                         <select name="cuenta_destino" class="form-select" required
                                 onchange="actualizarSaldo(this, 'saldo-destino')">
                             <option value="">Selecciona la cuenta destino</option>
-                            {% for cuenta in cuentas %}
-                            <option value="{{ cuenta.id }}"
-                                    data-saldo="{{ cuenta.saldo_final|default:cuenta.saldo_inicial }}">
-                                {{ cuenta.banco }} — {{ cuenta.numero_cuenta }}
-                                (${{ cuenta.saldo_final|default:cuenta.saldo_inicial|floatformat:2|intcomma }})
+                            {% for item in cuentas_con_saldo %}
+                            <option value="{{ item.id }}"
+                                    data-saldo="{{ item.saldo_actual }}">
+                                {{ item.banco }} — {{ item.numero_cuenta }}
+                                (${{ item.saldo_actual|floatformat:2|intcomma }})
                             </option>
                             {% endfor %}
                         </select>

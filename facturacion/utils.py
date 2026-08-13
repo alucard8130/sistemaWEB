@@ -8,7 +8,14 @@ from django.db.models.functions import Coalesce
 from areas.models import AreaComun
 from locales.models import LocalComercial
 
-from .models import Factura, FacturaOtrosIngresos, GrupoFacturacion, Pago, PoolVacancia, SaldoAFavor
+from .models import (
+    Factura,
+    FacturaOtrosIngresos,
+    GrupoFacturacion,
+    Pago,
+    PoolVacancia,
+    SaldoAFavor,
+)
 
 
 def debe_mostrar_recordatorio_facturacion(empresa):
@@ -142,8 +149,6 @@ def calcular_total_vencida_rapido(empresa, fecha_corte, incluir_cuotas=True, inc
 
 # ============================================================
 # Helper -- aplicar saldos a favor a una factura recién creada.
-# Colócalo en facturacion/utils.py, junto a generar_facturas_mes.
-# ============================================================
 
 def aplicar_saldos_a_favor(factura):
     """

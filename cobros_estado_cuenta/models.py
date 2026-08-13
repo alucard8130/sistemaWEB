@@ -1,14 +1,15 @@
 
 # Create your models here.
-from django.db import models
-from django.contrib.auth.models import User
 from django.conf import settings
-from empresas.models import Empresa, CuentaBancaria
+from django.contrib.auth.models import User
+from django.db import models
+
+from empresas.models import CuentaBancaria, Empresa
 
 
 class SesionEstadoCuenta(models.Model):
     """Representa una sesión de procesamiento de un estado de cuenta bancario"""
-    ESTADO_CHOICES = [
+    ESTADO_CHOICES = [  # noqa: RUF012
         ('procesando', 'Procesando'),
         ('listo', 'Listo para revisar'),
         ('aplicado', 'Aplicado'),
@@ -39,7 +40,7 @@ class SesionEstadoCuenta(models.Model):
 
 class MovimientoEstadoCuenta(models.Model):
     """Cada abono extraído del estado de cuenta por Claude"""
-    ESTADO_CHOICES = [
+    ESTADO_CHOICES = [  # noqa: RUF012
         ('pendiente', 'Pendiente de asignar'),
         ('asignado_factura', 'Asignado a factura existente'),
         ('factura_nueva', 'Factura nueva creada'),

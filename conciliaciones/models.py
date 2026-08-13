@@ -1,5 +1,5 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
 
 from empresas.models import CuentaBancaria, Empresa
 
@@ -17,6 +17,7 @@ class EstadoCuentaBancario(models.Model):
     def __str__(self):
         return f"Estado {self.cuenta_bancaria} {self.fecha_inicio} - {self.fecha_fin}"
 
+
 class MovimientoEstadoCuenta(models.Model):
     TIPO_CHOICES = (
         ('cargo', 'Cargo'),
@@ -33,6 +34,7 @@ class MovimientoEstadoCuenta(models.Model):
 
     def __str__(self):
         return f"{self.fecha} {self.tipo} {self.monto}"
+
 
 class MovimientoSistema(models.Model):
     TIPO_CHOICES = (
@@ -53,6 +55,7 @@ class MovimientoSistema(models.Model):
     def __str__(self):
         return f"{self.fecha} {self.origen} {self.monto}"
 
+
 class ConciliacionBancaria(models.Model):
     empresa=models.ForeignKey(Empresa, on_delete=models.CASCADE)
     estado_cuenta = models.ForeignKey(EstadoCuentaBancario, on_delete=models.CASCADE)
@@ -63,6 +66,7 @@ class ConciliacionBancaria(models.Model):
     def __str__(self):
         return f"Conciliación {self.estado_cuenta} {self.fecha_conciliacion}"
     
+
 
 class SaldoCuentaPeriodo(models.Model):
     cuenta = models.ForeignKey(
@@ -87,7 +91,7 @@ class SaldoCuentaPeriodo(models.Model):
 
     class Meta:
         unique_together = ('cuenta', 'anio', 'mes')
-        ordering = ['-anio', '-mes']
+        ordering = ['-anio', '-mes']  # noqa: RUF012
         verbose_name = 'Saldo por período'
         verbose_name_plural = 'Saldos por período'
 

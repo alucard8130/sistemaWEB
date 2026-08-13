@@ -1,24 +1,32 @@
-from decimal import Decimal, InvalidOperation
-import json
+import datetime
 import io
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth.decorators import login_required
+import json
+from calendar import monthrange
+from decimal import Decimal, InvalidOperation
+
+import pandas as pd
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from pandas.errors import EmptyDataError, ParserError
+
+from empresas.models import CuentaBancaria, Empresa
+
 #from httpcore import request
 from facturacion.models import CobroOtrosIngresos, Pago
 from gastos.models import PagoGasto
-from .forms import EstadoCuentaBancarioForm, ConciliacionBancariaForm
-from .models import ConciliacionBancaria, EstadoCuentaBancario, MovimientoEstadoCuenta
-import pandas as pd
-from pandas.errors import EmptyDataError, ParserError
-from django.db import transaction
-from calendar import monthrange
+
+from .forms import ConciliacionBancariaForm, EstadoCuentaBancarioForm
+from .models import (
+    ConciliacionBancaria,
+    EstadoCuentaBancario,
+    MovimientoEstadoCuenta,
+    SaldoCuentaPeriodo,
+)
 from .utils import calcular_saldo_cuenta_periodo, get_o_crear_periodo
-from .models import SaldoCuentaPeriodo
-from empresas.models import CuentaBancaria, Empresa
-import datetime
-from django.utils import timezone
-from django.contrib.auth.models import User
 
 
 ################################# VISTAS PARA CARGAR ESTADOS DE CUENTA Y CONCILIAR ########################################

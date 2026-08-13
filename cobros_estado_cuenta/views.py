@@ -1,48 +1,66 @@
 # Create your views here.
-from decimal import Decimal
-import json
-#import base64
-import os
-import threading
-import anthropic
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.conf import settings
-
-from gastos.models import Gasto, PagoGasto, TipoGasto
-from proveedores.models import Proveedor
-from .models import AplicacionMovimientoEstadoCuenta, SesionEstadoCuenta, MovimientoEstadoCuenta
-from empresas.models import CuentaBancaria
-from clientes.models import Cliente
-from facturacion.models import Factura, Pago, FacturaOtrosIngresos, TipoOtroIngreso
 import datetime
-import re
+
 #import pdfplumber
 import io
+import json
 import logging
+
+#import base64
+import os
+import re
+import re as re_module
+import threading
+from collections import defaultdict
+from decimal import Decimal
+
+import anthropic
 import pandas as pd
-from adobe.pdfservices.operation.auth.service_principal_credentials import ServicePrincipalCredentials
-from adobe.pdfservices.operation.exception.exceptions import ServiceApiException, ServiceUsageException, SdkException
+from adobe.pdfservices.operation.auth.service_principal_credentials import (
+    ServicePrincipalCredentials,
+)
+from adobe.pdfservices.operation.exception.exceptions import (
+    SdkException,
+    ServiceApiException,
+    ServiceUsageException,
+)
 from adobe.pdfservices.operation.pdf_services import PDFServices
 from adobe.pdfservices.operation.pdf_services_media_type import PDFServicesMediaType
 from adobe.pdfservices.operation.pdfjobs.jobs.export_pdf_job import ExportPDFJob
-from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_params import ExportPDFParams
-from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_target_format import ExportPDFTargetFormat
+from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_params import (
+    ExportPDFParams,
+)
+from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_target_format import (
+    ExportPDFTargetFormat,
+)
 from adobe.pdfservices.operation.pdfjobs.result.export_pdf_result import ExportPDFResult
-from django.http import HttpResponse
-from facturacion.models import LocalComercial  
-from areas.models import AreaComun
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from collections import defaultdict
+from django.db import IntegrityError, connection, transaction
 from django.db.models import F
-from django.db import connection, transaction
-from django.db import IntegrityError
-import re as re_module
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 
+from areas.models import AreaComun
+from clientes.models import Cliente
+from empresas.models import CuentaBancaria
+from facturacion.models import (
+    Factura,
+    FacturaOtrosIngresos,
+    LocalComercial,
+    Pago,
+    TipoOtroIngreso,
+)
+from gastos.models import Gasto, PagoGasto, TipoGasto
+from proveedores.models import Proveedor
 
-
-
+from .models import (
+    AplicacionMovimientoEstadoCuenta,
+    MovimientoEstadoCuenta,
+    SesionEstadoCuenta,
+)
 
 logger = logging.getLogger(__name__)
 

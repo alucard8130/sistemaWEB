@@ -1,9 +1,13 @@
+import datetime
 import re
+from decimal import Decimal
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
+from django.db.models import Sum
+from django.shortcuts import get_object_or_404, redirect, render
 
 from clientes.models import Cliente
 from conciliaciones.models import SaldoCuentaPeriodo
@@ -15,6 +19,7 @@ from conciliaciones.utils import (
     calcular_saldo_cuenta_periodo,
     validar_periodo_abierto,
 )
+from empresas.models import CuentaBancaria, Empresa
 from facturacion.models import (
     CobroOtrosIngresos,
     FacturaOtrosIngresos,
@@ -23,12 +28,8 @@ from facturacion.models import (
 )
 from gastos.models import Gasto, PagoGasto, TipoGasto
 from proveedores.models import Proveedor
+
 from .models import TraspasoBancario
-from empresas.models import Empresa, CuentaBancaria
-import datetime
-from decimal import Decimal
-from django.db.models import Sum
-from django.core.paginator import Paginator
 
 
 @login_required
@@ -71,17 +72,13 @@ def nuevo_traspaso(request):
 
     cuentas_con_saldo = []
     for cuenta in cuentas:
-        # Buscar el período actual en SaldoCuentaPeriodo
-        periodo = SaldoCuentaPeriodo.objects.filter(
-            cuenta=cuenta, anio=hoy.year, mes=hoy.month
-        ).first()
-
-        if periodo:
-            saldo = periodo.saldo_calculado
-        else:
-            # Si no existe el período, usar saldo_final del modelo
-            saldo = cuenta.saldo_final or cuenta.saldo_inicial or 0
-
+        # NUEVO -- siempre el cálculo completo (incluye cuotas, gastos,
+        # otros ingresos y traspasos), nunca el campo suelto saldo_final,
+        # que no se actualiza con esos movimientos.
+        saldo_base = calcular_saldo_acumulado_hasta(cuenta, hoy.year, hoy.month)
+        movs = calcular_saldo_cuenta_periodo(cuenta, hoy.year, hoy.month)
+        saldo = saldo_base + movs["movimiento_neto"]
+ 
         cuentas_con_saldo.append(
             {
                 "id": cuenta.id,
@@ -131,16 +128,16 @@ def nuevo_traspaso(request):
             CuentaBancaria, pk=cuenta_destino_id, empresa=empresa
         )
 
-        # Verificar saldo suficiente
-        # saldo_origen = cuenta_origen.saldo_final or cuenta_origen.saldo_inicial
-        periodo_origen = SaldoCuentaPeriodo.objects.filter(
-            cuenta=cuenta_origen, anio=hoy.year, mes=hoy.month
-        ).first()
-        saldo_origen = (
-            periodo_origen.saldo_calculado
-            if periodo_origen
-            else (cuenta_origen.saldo_final or cuenta_origen.saldo_inicial or 0)
-        )
+        # # Verificar saldo suficiente
+        # # saldo_origen = cuenta_origen.saldo_final or cuenta_origen.saldo_inicial
+        # periodo_origen = SaldoCuentaPeriodo.objects.filter(
+        #     cuenta=cuenta_origen, anio=hoy.year, mes=hoy.month
+        # ).first()
+        # saldo_origen = (
+        #     periodo_origen.saldo_calculado
+        #     if periodo_origen
+        #     else (cuenta_origen.saldo_final or cuenta_origen.saldo_inicial or 0)
+        # )
 
         hoy = datetime.date.today()
         saldo_base = calcular_saldo_acumulado_hasta(cuenta_origen, hoy.year, hoy.month)
@@ -172,21 +169,21 @@ def nuevo_traspaso(request):
                 creado_por=request.user,
             )
 
-            saldo_origen_actual = (
-                cuenta_origen.saldo_final
-                if cuenta_origen.saldo_final is not None
-                else cuenta_origen.saldo_inicial
-            )
-            cuenta_origen.saldo_final = saldo_origen_actual - monto
-            cuenta_origen.save()
+            # saldo_origen_actual = (
+            #     cuenta_origen.saldo_final
+            #     if cuenta_origen.saldo_final is not None
+            #     else cuenta_origen.saldo_inicial
+            # )
+            # cuenta_origen.saldo_final = saldo_origen_actual - monto
+            # cuenta_origen.save()
 
-            saldo_destino_actual = (
-                cuenta_destino.saldo_final
-                if cuenta_destino.saldo_final is not None
-                else cuenta_destino.saldo_inicial
-            )
-            cuenta_destino.saldo_final = saldo_destino_actual + monto
-            cuenta_destino.save()
+            # saldo_destino_actual = (
+            #     cuenta_destino.saldo_final
+            #     if cuenta_destino.saldo_final is not None
+            #     else cuenta_destino.saldo_inicial
+            # )
+            # cuenta_destino.saldo_final = saldo_destino_actual + monto
+            # cuenta_destino.save()
 
         messages.success(
             request, f"Traspaso de ${monto:,.2f} registrado correctamente."
@@ -227,18 +224,18 @@ def cancelar_traspaso(request, traspaso_id):
     if request.method == "POST":
         with transaction.atomic():
             # Revertir saldos
-            cuenta_origen = traspaso.cuenta_origen
-            cuenta_destino = traspaso.cuenta_destino
+            #cuenta_origen = traspaso.cuenta_origen
+            #cuenta_destino = traspaso.cuenta_destino
 
-            cuenta_origen.saldo_final = (
-                cuenta_origen.saldo_final or cuenta_origen.saldo_inicial
-            ) + traspaso.monto
-            cuenta_origen.save()
+            # cuenta_origen.saldo_final = (
+            #     cuenta_origen.saldo_final or cuenta_origen.saldo_inicial
+            # ) + traspaso.monto
+            # cuenta_origen.save()
 
-            cuenta_destino.saldo_final = (
-                cuenta_destino.saldo_final or cuenta_destino.saldo_inicial
-            ) - traspaso.monto
-            cuenta_destino.save()
+            # cuenta_destino.saldo_final = (
+            #     cuenta_destino.saldo_final or cuenta_destino.saldo_inicial
+            # ) - traspaso.monto
+            # cuenta_destino.save()
 
             traspaso.estado = "cancelado"
             traspaso.save()
@@ -436,21 +433,21 @@ def nuevo_movimiento_inversion(request):
                 tipo_movimiento_inversion=tipo_movimiento,
             )
 
-            saldo_origen_actual = (
-                cuenta_origen.saldo_final
-                if cuenta_origen.saldo_final is not None
-                else cuenta_origen.saldo_inicial
-            )
-            cuenta_origen.saldo_final = saldo_origen_actual - monto
-            cuenta_origen.save()
+            # saldo_origen_actual = (
+            #     cuenta_origen.saldo_final
+            #     if cuenta_origen.saldo_final is not None
+            #     else cuenta_origen.saldo_inicial
+            # )
+            # cuenta_origen.saldo_final = saldo_origen_actual - monto
+            # cuenta_origen.save()
 
-            saldo_destino_actual = (
-                cuenta_destino.saldo_final
-                if cuenta_destino.saldo_final is not None
-                else cuenta_destino.saldo_inicial
-            )
-            cuenta_destino.saldo_final = saldo_destino_actual + monto
-            cuenta_destino.save()
+            # saldo_destino_actual = (
+            #     cuenta_destino.saldo_final
+            #     if cuenta_destino.saldo_final is not None
+            #     else cuenta_destino.saldo_inicial
+            # )
+            # cuenta_destino.saldo_final = saldo_destino_actual + monto
+            # cuenta_destino.save()
 
         messages.success(request, f"✅ {etiqueta} registrado: ${monto:,.2f}.")
         return redirect("reporte_inversion")
@@ -703,16 +700,16 @@ def cancelar_movimiento_inversion(request, traspaso_id):
 
     with transaction.atomic():
         # Revertir el efecto en los saldos cacheados de las cuentas
-        cuenta_origen = traspaso.cuenta_origen
-        cuenta_destino = traspaso.cuenta_destino
+        # cuenta_origen = traspaso.cuenta_origen
+        # cuenta_destino = traspaso.cuenta_destino
 
-        saldo_origen_actual = cuenta_origen.saldo_final if cuenta_origen.saldo_final is not None else cuenta_origen.saldo_inicial
-        cuenta_origen.saldo_final = saldo_origen_actual + traspaso.monto
-        cuenta_origen.save()
+        # saldo_origen_actual = cuenta_origen.saldo_final if cuenta_origen.saldo_final is not None else cuenta_origen.saldo_inicial
+        # cuenta_origen.saldo_final = saldo_origen_actual + traspaso.monto
+        # cuenta_origen.save()
 
-        saldo_destino_actual = cuenta_destino.saldo_final if cuenta_destino.saldo_final is not None else cuenta_destino.saldo_inicial
-        cuenta_destino.saldo_final = saldo_destino_actual - traspaso.monto
-        cuenta_destino.save()
+        # saldo_destino_actual = cuenta_destino.saldo_final if cuenta_destino.saldo_final is not None else cuenta_destino.saldo_inicial
+        # cuenta_destino.saldo_final = saldo_destino_actual - traspaso.monto
+        # cuenta_destino.save()
 
         # No se borra -- se marca como cancelado, para no perder rastro.
         # Los cálculos de saldo (tanto en inversión como en saldos_periodo)

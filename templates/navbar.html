@@ -274,6 +274,7 @@
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado"><i class="bi bi-question-circle me-2"></i>Depositos no identificados</a></li>
               <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Inversiones</a></li> 
               {% if request.user.perfilusuario.empresa.es_premium %}
                   <li><a class="dropdown-item reporte-link" href="{% url 'lista_sesiones_estado_cuenta' %}">
                       <i class="bi bi-bank me-1"></i> Cobro cuotas por IA
@@ -423,12 +424,6 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}"><i class="bi bi-file-text me-2"></i>Reporte de Resultados</a></li>
-              <li><hr class="dropdown-divider"></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Reporte Inversiones</a></li> 
-              {% else %}
-              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-cash-stack me-2"></i>Reporte Inversiones (PREMIUM)</a></li>
-              {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Gastos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_total' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Gtos</a></li>
