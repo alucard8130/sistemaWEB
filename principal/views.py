@@ -3917,6 +3917,13 @@ def visitante_facturas_api(request):
     facturas = Factura.objects.filter(
         Q(local__in=locales) | Q(area_comun__in=areas) | Q(locales_incluidos__in=locales),
         empresa_id=empresa_id,
+    ).exclude(
+        # NUEVO -- una factura de Pool de Vacancia se factura a un
+        # tercero (el cliente que cubre), NUNCA al visitante -- aunque
+        # su local aparezca en locales_incluidos (porque estuvo vacío
+        # en ese periodo), esa factura jamás fue suya y no debe
+        # mostrarse en su Estado de Cuenta.
+        pool_vacancia__isnull=False,
     ).select_related("cliente", "empresa", "local", "area_comun").prefetch_related("locales_incluidos").distinct()
     serializer = FacturaSerializer(facturas, many=True)
     return Response({"facturas": serializer.data})
