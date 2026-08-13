@@ -1,6 +1,6 @@
 """Clase base para todos los handlers del asistente"""
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 
 class BaseHandler(ABC):
@@ -11,7 +11,7 @@ class BaseHandler(ABC):
     
     # Metadatos del handler
     intencion_principal = None  # Ej: 'crear_cliente'
-    intencion_aliases = []       # Ej: ['alta_cliente', 'nuevo_cliente']
+    intencion_aliases = []       # Ej: ['alta_cliente', 'nuevo_cliente']  # noqa: RUF012
     descripcion = ""
     emoji = "❓"
 
@@ -21,8 +21,8 @@ class BaseHandler(ABC):
     oculto_en_menu = False
     
     # Campos requeridos y opcionales
-    campos_requeridos = []
-    campos_opcionales = []
+    campos_requeridos = []  # noqa: RUF012
+    campos_opcionales = []  # noqa: RUF012
     
     def __init__(self, usuario, empresa=None):
         self.usuario = usuario

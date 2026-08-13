@@ -1,6 +1,7 @@
 """Reconocimiento de intenciones mejorado"""
 import re
 from typing import Tuple
+
 from .handlers import HANDLERS_REGISTRY
 
 

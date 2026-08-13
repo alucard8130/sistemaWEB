@@ -1,8 +1,9 @@
-from django.db import models
+
 from django.contrib.auth.models import User
+from django.db import models
+
 from empresas.models import Empresa
-import json
-from datetime import datetime
+
 
 class ConversacionAsistente(models.Model):
     """Historial de conversaciones del usuario con el asistente"""
@@ -63,14 +64,14 @@ class ConversacionAsistente(models.Model):
     class Meta:
         verbose_name = 'Conversación Asistente'
         verbose_name_plural = 'Conversaciones Asistente'
-        ordering = ['-fecha_actualizacion']
+        ordering = ['-fecha_actualizacion']  # noqa: RUF012
 
 
 class MensajeAsistente(models.Model):
     """Mensajes individuales de la conversación"""
     conversacion = models.ForeignKey(ConversacionAsistente, on_delete=models.CASCADE, related_name='mensajes_historial')
 
-    TIPO_CHOICES = [
+    TIPO_CHOICES = [  # noqa: RUF012
         ('usuario', 'Usuario'),
         ('asistente', 'Asistente'),
     ]
@@ -89,4 +90,27 @@ class MensajeAsistente(models.Model):
     class Meta:
         verbose_name = 'Mensaje Asistente'
         verbose_name_plural = 'Mensajes Asistente'
-        ordering = ['fecha_creacion']
+        ordering = ['fecha_creacion']  # noqa: RUF012
+
+
+# ============================================================
+# Modelo nuevo -- contador diario de consultas al manual, por empresa.
+
+
+class UsoConsultaManual(models.Model):
+    """Contador diario de consultas al manual vía Sherlock, por empresa.
+    Se usa para limitar cuántas veces al día una empresa puede consultar
+    el manual con IA, según su plan (Plus/Premium)."""
+
+    empresa = models.ForeignKey(
+        Empresa, on_delete=models.CASCADE, related_name="usos_consulta_manual"
+    )
+    fecha = models.DateField()
+    contador = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ("empresa", "fecha")
+
+    def __str__(self):
+        return f"{self.empresa.nombre} — {self.fecha}: {self.contador} consulta(s)"
+

@@ -1,12 +1,13 @@
 """Serializadores para la API REST"""
 from rest_framework import serializers
+
 from .models import ConversacionAsistente, MensajeAsistente
 
 
 class MensajeSerializer(serializers.ModelSerializer):
     class Meta:
         model = MensajeAsistente
-        fields = ['id', 'tipo', 'contenido', 'opciones', 'fecha_creacion']
+        fields = ['id', 'tipo', 'contenido', 'opciones', 'fecha_creacion']  # noqa: RUF012
 
 
 class ConversacionSerializer(serializers.ModelSerializer):
@@ -14,8 +15,8 @@ class ConversacionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ConversacionAsistente
-        fields = [
+        fields = [  # noqa: RUF012
             'id', 'intencion', 'estado', 'datos_recopilados', 
             'errores', 'mensajes', 'fecha_inicio', 'fecha_actualizacion'
         ]
-        read_only_fields = ['id', 'fecha_inicio', 'fecha_actualizacion']
+        read_only_fields = ['id', 'fecha_inicio', 'fecha_actualizacion']  # noqa: RUF012

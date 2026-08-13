@@ -1,19 +1,22 @@
+import base64
+import json
+
+import anthropic
+from django.conf import settings
+from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.generic import TemplateView
-from django.utils.decorators import method_decorator
-from django.conf import settings
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from clientes.models import Cliente
+
 from .models import ConversacionAsistente
 from .serializers import ConversacionSerializer, MensajeSerializer
 from .services import AsistenteService
-import anthropic
-import base64
-import json
+
 
 @method_decorator(xframe_options_exempt, name="dispatch")
 class ChatView(TemplateView):
@@ -125,6 +128,7 @@ class ConversacionAsistenteViewSet(viewsets.ModelViewSet):
         conversacion.estado = "cancelada"
         conversacion.save()
         return Response({"estado": "cancelada"})
+
 
     # procesar comprobante facturas, notas de venta pdf o imagenes
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])

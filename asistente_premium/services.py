@@ -1,13 +1,19 @@
 """Servicios mejorados con sistema de handlers"""
 
-from datetime import datetime
-from typing import Dict, Any, Optional, List
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 from xml.sax import handler
-from .models import ConversacionAsistente, MensajeAsistente
-from .intents import recognizar_intencion, extraer_datos_mensaje
-from .handlers import obtener_handler, HANDLERS_REGISTRY
-from django.db import transaction
 
+import anthropic
+from django.db import transaction
+from django.db.models import F
+from django.utils import timezone as django_timezone
+
+from core import settings
+
+from .handlers import HANDLERS_REGISTRY, obtener_handler
+from .intents import extraer_datos_mensaje, recognizar_intencion
+from .models import ConversacionAsistente, MensajeAsistente, UsoConsultaManual
 
 # Nivel mínimo de membresía requerido para cada intención. Las intenciones
 # que no aparecen aquí (ej. 'otro') no tienen restricción de nivel.
@@ -27,6 +33,12 @@ NIVEL_REQUERIDO_POR_INTENCION = {
 # Orden de jerarquía de planes, de menor a mayor acceso
 NIVEL_ORDEN = {"demo": 0, "plus": 1, "premium": 2}
 
+# Límite de consultas manuales por día según el plan de la empresa
+LIMITE_CONSULTAS_MANUAL_POR_DIA = {
+    "plus": 1,
+    "premium": 2,
+}
+
 
 class AsistenteService:
     """Servicio orquestador que usa handlers"""
@@ -34,6 +46,7 @@ class AsistenteService:
     def __init__(self, usuario, empresa=None):
         self.usuario = usuario
         self.empresa = empresa
+
 
     @staticmethod
     def _nivel_empresa(empresa) -> str:
@@ -45,6 +58,7 @@ class AsistenteService:
         if getattr(empresa, "es_plus", False):
             return "plus"
         return "demo"
+
 
     def _respuesta_plan_insuficiente(
         self,
@@ -103,6 +117,64 @@ class AsistenteService:
             "conversacion_id": conversacion.id,
         }
 
+
+
+    def _responder_con_manual(self, mensaje_texto: str) -> Optional[str]:
+        """
+        Intenta responder una pregunta de "cómo funciona GESAC" usando el
+        manual de usuario completo como contexto. Devuelve el texto de la
+        respuesta, o None si el modelo determina que la pregunta no se
+        puede resolver con el manual (para que el llamador decida mostrar
+        el menú de opciones en su lugar).
+        """
+        from .manual_gesac import cargar_manual_gesac  # ajusta el import a tu ruta real
+
+        manual = cargar_manual_gesac()
+        if not manual:
+            return None
+
+        system_prompt = f"""Eres Sherlock, el asistente de GESAC (Sistema de Gestión \
+Administrativa Condominal). Un usuario te hizo una pregunta sobre cómo funciona el \
+sistema o cómo configurar algo.
+
+Responde ÚNICAMENTE con información que aparezca en el MANUAL DE USUARIO que se te \
+da a continuación. No inventes funciones, pantallas ni pasos que no estén en el manual.
+
+Reglas de la respuesta:
+- Responde en español, tono cercano y claro, como si le explicaras a un administrador \
+de condominio sin conocimientos técnicos.
+- Sé conciso: prioriza pasos numerados o viñetas cuando el manual los tenga, en vez de \
+párrafos largos.
+- Si la pregunta menciona una sección específica del manual, cítala por su número \
+(ej. "sección 5.5") para que el usuario pueda ubicarla si abre el manual completo.
+- Si la pregunta NO se puede responder con el contenido de este manual (porque es sobre \
+algo que el manual no cubre, o porque en realidad parece una ACCIÓN que Sherlock podría \
+ejecutar directamente -- como "dar de alta un cliente" -- en vez de una pregunta de \
+"cómo funciona"), responde EXACTAMENTE con el texto: NO_ENCONTRADO
+No agregues nada más en ese caso, ni expliques por qué.
+
+MANUAL DE USUARIO COMPLETO:
+{manual}
+"""
+
+        try:
+            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            respuesta = client.messages.create(
+                model="claude-opus-4-6",
+                max_tokens=1000,
+                system=system_prompt,
+                messages=[{"role": "user", "content": mensaje_texto}],
+            )
+            texto = respuesta.content[0].text.strip()
+        except Exception:
+            return None
+
+        if texto == "NO_ENCONTRADO" or not texto:
+            return None
+
+        return texto
+
+    
     @transaction.atomic
     def procesar_mensaje(
         self,
@@ -210,7 +282,7 @@ class AsistenteService:
         )
 
         if not handler:
-            respuesta = self._manejar_intencion_desconocida(conversacion)
+            respuesta = self._manejar_intencion_desconocida(conversacion, mensaje_texto)
         elif conversacion.estado == "iniciada":
             respuesta = self._iniciar_conversacion(conversacion, handler, mensaje_texto)
         elif conversacion.estado == "solicitando_datos":
@@ -231,6 +303,7 @@ class AsistenteService:
 
         respuesta["conversacion_id"] = conversacion.id
         return respuesta
+
 
     def _iniciar_conversacion(
         self, conversacion: ConversacionAsistente, handler, mensaje: str
@@ -274,6 +347,7 @@ class AsistenteService:
         conversacion.estado = "validando"
         conversacion.save()
         return self._procesar_handler(conversacion, handler)
+
 
     def _recopilar_datos(
         self, conversacion: ConversacionAsistente, handler, mensaje: str
@@ -342,6 +416,7 @@ class AsistenteService:
         conversacion.save()
         return self._procesar_handler(conversacion, handler)
 
+
     def _procesar_handler(
         self, conversacion: ConversacionAsistente, handler
     ) -> Dict[str, Any]:
@@ -396,16 +471,82 @@ class AsistenteService:
         return respuesta
 
 
-    def _manejar_intencion_desconocida(
-        self, conversacion: ConversacionAsistente) -> Dict[str, Any]:
-        """Maneja cuando no se reconoce la intención"""
+    def _limite_consultas_manual_alcanzado(self) -> Optional[str]:
+        """
+        Revisa el contador diario de consultas al manual para esta empresa.
 
+        Si todavía tiene cupo, incrementa el contador de inmediato (el costo
+        de la llamada a la API se genera sin importar si Claude encuentra
+        la respuesta o no, así que se descuenta ANTES de llamar) y devuelve
+        None para indicar que puede continuar.
+
+        Si ya se agotó su cupo del día, devuelve el mensaje a mostrar,
+        listo para regresar como respuesta.
+        """
+    
+        nivel = self._nivel_empresa(self.empresa)
+        limite = LIMITE_CONSULTAS_MANUAL_POR_DIA.get(nivel)
+        if limite is None:
+            # Nivel sin límite definido (ej. algún plan futuro) -- no se
+            # restringe. El nivel "demo" ya se corta antes, en procesar_mensaje.
+            return None
+
+        hoy = django_timezone.localdate()
+        uso, _ = UsoConsultaManual.objects.get_or_create(
+            empresa=self.empresa, fecha=hoy, defaults={"contador": 0}
+        )
+
+        if uso.contador >= limite:
+            if nivel == "plus":
+                limite_premium = LIMITE_CONSULTAS_MANUAL_POR_DIA.get("premium", limite)
+                return (
+                    f"📚 Ya usaste tus {limite} consultas a Sherlock de hoy con tu plan Plus. "
+                    f"Con el plan Premium tienes hasta {limite_premium} consultas diarias. "
+                    f"Contacta al administrador de tu sistema GESAC si necesitas más consultas a Sherlock."
+                )
+            return (
+                f"📚 Ya usaste tus {limite} consultas a Sherlock de hoy. "
+                f"Si necesitas más, contacta al administrador de tu sistema GESAC."
+            )
+
+        # Todavía tiene cupo -- se descuenta ahora, antes de llamar a la API
+        UsoConsultaManual.objects.filter(pk=uso.pk).update(contador=F("contador") + 1)
+        return None
+
+
+    def _manejar_intencion_desconocida(
+        self, conversacion: ConversacionAsistente, mensaje_texto: str
+    ) -> Dict[str, Any]:
+        """Maneja cuando no se reconoce la intención -- primero intenta
+        responder con el manual de usuario; si no encuentra nada útil,
+        cae al menú de opciones de siempre."""
+        mensaje_limite = self._limite_consultas_manual_alcanzado()
+        if mensaje_limite:
+            return {
+                "estado": "solicitando_intención",
+                "mensaje": mensaje_limite,
+                 "opciones": [],
+                }
+        
+        respuesta_manual = self._responder_con_manual(mensaje_texto)
+
+        if respuesta_manual:
+            # Ya se encontró la respuesta en el manual -- se muestra sola,
+            # sin el menú de opciones (no aplica, la pregunta ya se resolvió).
+            return {
+                "estado": "solicitando_intención",
+                "mensaje": respuesta_manual,
+                "opciones": [],
+                "fuente": "manual",  # útil en el frontend si quieres mostrar un badge distinto
+            }
+
+        # No se encontró nada en el manual -- se arma el menú de opciones de siempre
         nivel_empresa = self._nivel_empresa(self.empresa)
 
         opciones = []
         for intencion, handler_class in HANDLERS_REGISTRY.items():
             if getattr(handler_class, 'oculto_en_menu', False):
-                continue  # ← NUEVO: no ofrecer handlers de uso interno
+                continue  # no ofrecer handlers de uso interno
 
             nivel_requerido = NIVEL_REQUERIDO_POR_INTENCION.get(intencion)
             if nivel_requerido and NIVEL_ORDEN[nivel_empresa] < NIVEL_ORDEN[nivel_requerido]:
@@ -423,6 +564,7 @@ class AsistenteService:
             "mensaje": "❓ No entiendo bien. ¿Qué quieres hacer?",
             "opciones": opciones,
         }
+
 
     @staticmethod
     def _respuesta_campo(
@@ -447,6 +589,7 @@ class AsistenteService:
             "campos_faltantes": campos_faltantes,
         }
 
+
     @staticmethod
     def _normalizar_valor_select(mensaje: str, opciones: List) -> Optional[str]:
         """
@@ -463,6 +606,7 @@ class AsistenteService:
                 return valor
         return None
 
+
     @staticmethod
     def _obtener_campos_faltantes(
         datos_recopilados: Dict, campos: List[Dict]
@@ -475,6 +619,7 @@ class AsistenteService:
         """
         return [c for c in campos if c["nombre"] not in datos_recopilados]
 
+
     @staticmethod
     def _buscar_campo(campos: List[Dict], nombre: Optional[str]) -> Optional[Dict]:
         """Busca la definición de un campo por su nombre"""
@@ -484,6 +629,7 @@ class AsistenteService:
             if c["nombre"] == nombre:
                 return c
         return None
+
 
     @staticmethod
     def obtener_handlers_disponibles() -> list:
