@@ -1020,11 +1020,11 @@ def gasto_nuevo(request):
                     nombre_origen = gasto.proveedor.nombre if origen == "proveedor" and gasto.proveedor else (
                         gasto.empleado.nombre if origen == "empleado" and gasto.empleado else "este origen"
                     )
-                    messages.error(
+                    messages.warning(
                         request,
                         f"⚠️ Posible solicitud duplicada: ya existe la solicitud folio {dup.id} "
                         f"con {nombre_origen}, mismo monto (${dup.monto}) y mismo mes. "
-                        f"Verifica antes de continuar."
+                        f"La solicitud se guardó de todas formas -- verifica que no sea un duplicado real."
                     )
                     return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
 
