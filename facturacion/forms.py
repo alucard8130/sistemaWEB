@@ -1,14 +1,23 @@
 from django import forms
 
+from areas.models import AreaComun
 from clientes.models import Cliente
-from .models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago, TipoOtroIngreso
+
 #from django.db import models
 from empresas.models import CuentaBancaria
 from locales.models import LocalComercial
-from areas.models import AreaComun
+
+from .models import (
+    CobroOtrosIngresos,
+    Factura,
+    FacturaOtrosIngresos,
+    Pago,
+    TipoOtroIngreso,
+)
+
 
 class FacturaForm(forms.ModelForm):
-    TIPO_ORIGEN_CHOICES = [
+    TIPO_ORIGEN_CHOICES = [  # noqa: RUF012
         ('local', 'Local Comercial'),
         ('area_comun', 'Área Común'),
     ]
@@ -16,8 +25,8 @@ class FacturaForm(forms.ModelForm):
 
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun', 'tipo_cuota', 'fecha_vencimiento', 'monto', 'observaciones']
-        widgets = {
+        fields = ['cliente', 'local', 'area_comun', 'tipo_cuota', 'fecha_vencimiento', 'monto', 'observaciones']  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'cliente': forms.Select(attrs={'class': 'form-select'}),
             'local': forms.Select(attrs={'class': 'form-select'}),
             'area_comun': forms.Select(attrs={'class': 'form-select'}),
@@ -26,7 +35,7 @@ class FacturaForm(forms.ModelForm):
             'monto': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Monto'}),
             'observaciones': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Comentario'}),
         }
-        labels = {
+        labels = {  # noqa: RUF012
             'cliente': 'Arrendatario/Inquilino',
             'observaciones': 'Comentario',
         }
@@ -87,9 +96,9 @@ class FacturaForm(forms.ModelForm):
 class PagoForm(forms.ModelForm):
     class Meta:
         model = Pago
-        fields = ['fecha_pago', 'monto','cuenta_bancaria', 'forma_pago', 'observaciones']
-        labels = {'observaciones': 'Comentario','forma_pago': 'Forma de depósito','fecha_pago': 'Fecha de depósito','monto': 'Monto depositado','cuenta_bancaria': 'Cuenta Bancaria'}
-        widgets = {
+        fields = ['fecha_pago', 'monto','cuenta_bancaria', 'forma_pago', 'observaciones']  # noqa: RUF012
+        labels = {'observaciones': 'Comentario','forma_pago': 'Forma de depósito','fecha_pago': 'Fecha de depósito','monto': 'Monto depositado','cuenta_bancaria': 'Cuenta Bancaria'}  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date',
                 'class': 'form-control'
@@ -139,23 +148,24 @@ class PagoForm(forms.ModelForm):
             raise forms.ValidationError("La fecha de pago es obligatoria.")
         return fecha_pago
 
+
 class PagoPorIdentificarForm(forms.ModelForm):
     class Meta:
         model=Pago
-        fields=[
+        fields=[  # noqa: RUF012
             'monto',
             'cuenta_bancaria',
             'fecha_pago',
             'forma_pago',
             'observaciones'
         ]
-        labels={
+        labels={  # noqa: RUF012
             'monto': 'Importe depositado',
             'cuenta_bancaria': 'Cuenta Bancaria',
             'fecha_pago': 'Fecha de deposito',
             'forma_pago': 'Forma de deposito',}
         
-        widgets={
+        widgets={  # noqa: RUF012
             'fecha_pago': forms.DateInput(attrs={
                 'type': 'date'}),
         }
@@ -166,8 +176,10 @@ class PagoPorIdentificarForm(forms.ModelForm):
         if empresa:
             self.fields['cuenta_bancaria'].queryset = CuentaBancaria.objects.filter(empresa=empresa)
 
+
 class FacturaCargaMasivaForm(forms.Form):
     archivo = forms.FileField(label='Archivo Excel (.xlsx)')
+
 
 #filtros para la lista de facturas en la vista identificar depositos por identificar
 class FiltroFacturaForm(forms.Form):
@@ -180,9 +192,9 @@ class FiltroFacturaForm(forms.Form):
 class FacturaEditForm(forms.ModelForm):
     class Meta:
         model = Factura
-        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota', 'estatus', 'observaciones']
-        labels = {'observaciones': 'Comentario'}   
-        widgets = {
+        fields = ['cliente', 'local', 'area_comun', 'folio', 'fecha_vencimiento', 'monto','tipo_cuota', 'estatus', 'observaciones']  # noqa: RUF012
+        labels = {'observaciones': 'Comentario'}  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'cliente': forms.Select(attrs={
                 'class': 'form-select'
             }),
@@ -236,9 +248,9 @@ class FacturaEditForm(forms.ModelForm):
 class FacturaOtrosIngresosForm(forms.ModelForm):
     class Meta:
         model = FacturaOtrosIngresos
-        fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'observaciones']
-        labels = {'observaciones': 'Comentario'}
-        widgets = {
+        fields = ['cliente', 'tipo_ingreso', 'fecha_vencimiento', 'monto', 'observaciones']  # noqa: RUF012
+        labels = {'observaciones': 'Comentario'}  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'cliente': forms.Select(attrs={
                 'class': 'form-select'             
             }),
@@ -269,13 +281,14 @@ class FacturaOtrosIngresosForm(forms.ModelForm):
             self.fields['tipo_ingreso'].queryset = TipoOtroIngreso.objects.filter(empresa=empresa)
         else:
             self.fields['tipo_ingreso'].queryset = TipoOtroIngreso.objects.all()    
+
    
 class CobroForm(forms.ModelForm):
     class Meta:
         model = CobroOtrosIngresos
-        fields = ['fecha_cobro', 'monto', 'cuenta_bancaria','forma_cobro', 'observaciones']
-        labels = {'observaciones': 'Comentario','monto': 'Monto depositado','fecha_cobro': 'Fecha de deposito','forma_cobro': 'Forma de deposito'}
-        widgets = {
+        fields = ['fecha_cobro', 'monto', 'cuenta_bancaria','forma_cobro', 'observaciones']  # noqa: RUF012
+        labels = {'observaciones': 'Comentario','monto': 'Monto depositado','fecha_cobro': 'Fecha de deposito','forma_cobro': 'Forma de deposito'}  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'fecha_cobro': forms.DateInput(attrs={
                 'type': 'date',
                 'class': 'form-control'
@@ -330,15 +343,15 @@ class TipoOtroIngresoForm(forms.ModelForm):
 
 # Formulario para timbrar factura
 class TimbrarFacturaForm(forms.Form):
-    TAX_OBJECT_CHOICES = [
+    TAX_OBJECT_CHOICES = [  # noqa: RUF012
         ("02", "Sí objeto de impuesto"),
         ("01", "No objeto de impuesto"),
     ]
-    PAYMENT_METHOD_CHOICES = [
+    PAYMENT_METHOD_CHOICES = [  # noqa: RUF012
         ("PUE", "Pago en una sola exhibición"),
         ("PPD", "Pago en parcialidades o diferido"),
     ]
-    PAYMENT_FORM_CHOICES = [
+    PAYMENT_FORM_CHOICES = [  # noqa: RUF012
         ("01", "Efectivo"),
         ("02", "Cheque nominativo"),
         ("03", "Transferencia electrónica de fondos"),
@@ -354,7 +367,7 @@ class TimbrarFacturaForm(forms.Form):
 
 #reversa cobro erroneo
 class MotivoReversaCobroForm(forms.Form):
-    MOTIVOS_REVERSA = [
+    MOTIVOS_REVERSA = [  # noqa: RUF012
         ('Error captura', 'Error en la captura'),
         ('Duplicado', 'Pago duplicado'),
         ('Sin fondos', 'Cheque sin fondos'),

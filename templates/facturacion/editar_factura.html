@@ -2,13 +2,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 30/06/2025
-        Description: Edit invoice details
-    -->
     <meta charset="UTF-8">
     <title>Editar factura</title>
     <!-- Bootstrap base styles -->
@@ -37,6 +30,31 @@
                     {% for message in messages %}
                         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
                     {% endfor %}
+                {% endif %}
+
+                <!-- NUEVO -- aviso cuando la factura es de Grupo de Facturación o Pool de Vacancia -->
+                {% if not factura.local and not factura.area_comun and factura.locales_incluidos.exists %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-collection-fill me-1"></i>
+                        <strong>
+                            {% if factura.pool_vacancia %}
+                                Factura de Pool de Vacancia — {{ factura.pool_vacancia.nombre }}
+                            {% else %}
+                                Factura de Grupo de Facturación
+                            {% endif %}
+                        </strong>
+                        <br>
+                        Incluye los locales:
+                        {% for local in factura.locales_incluidos.all %}
+                            <span class="badge bg-secondary">{{ local.numero }}</span>{% if not forloop.last %} {% endif %}
+                        {% endfor %}
+                        <br>
+                        <small class="text-muted">
+                            Los campos "Local" y "Área Común" aparecen vacíos porque esta factura no pertenece a
+                            una sola propiedad — esa asociación no se puede editar desde aquí. Para cambiar qué
+                            locales incluye, edita el {% if factura.pool_vacancia %}Pool de Vacancia{% else %}Grupo de Facturación{% endif %} correspondiente.
+                        </small>
+                    </div>
                 {% endif %}
 
                 <!-- Form -->

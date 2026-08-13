@@ -48,6 +48,24 @@
             margin: 18px 0 12px 0;
             color: #007bff;
         }
+        .nota-consolidada {
+            background: #eef4fb;
+            border-left: 4px solid #007bff;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 0.92em;
+            color: #2c3e50;
+            border-radius: 4px;
+        }
+        .nota-sin-factura {
+            background: #fff8e6;
+            border-left: 4px solid #f0ad4e;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 0.92em;
+            color: #6a5300;
+            border-radius: 4px;
+        }
         .datos-section {
             margin-bottom: 18px;
         }
@@ -119,15 +137,44 @@
         <div style="text-align:right;margin-bottom:10px;">
             <img src="https://barcode.tec-it.com/barcode.ashx?data={{ pago.id }}&code=Code128&dpi=96" alt="Código de barras" style="height:40px;">
         </div>
+
+        {% if not factura %}
+        <div class="nota-sin-factura">
+            <strong>Depósito sin factura asignada.</strong>
+            Este pago todavía no está ligado a ninguna factura específica del sistema
+            (por ejemplo, un depósito por identificar, o el origen de un Saldo a Favor).
+        </div>
+        {% elif not factura.local and not factura.area_comun and factura.locales_incluidos.all %}
+            {% if factura.pool_vacancia %}
+            <div class="nota-consolidada">
+                <strong>Cobertura de vacancia — {{ factura.pool_vacancia.nombre }}.</strong>
+                Este pago corresponde a la cuota de mantenimiento de los locales listados abajo,
+                que actualmente están disponibles/sin arrendar, y que usted cubre por acuerdo.
+                No son propiedades a su nombre.
+            </div>
+            {% else %}
+            <div class="nota-consolidada">
+                <strong>Pago de factura consolidada — Grupo de Facturación.</strong>
+                Este pago corresponde a varios locales a su nombre, agrupados en un solo folio.
+            </div>
+            {% endif %}
+        {% endif %}
+
         <div class="datos-section">
             <h4>Datos del Cliente</h4>
             <table>
+                {% if cliente %}
                 <tr><td><strong>Nombre:</strong></td><td>{{ cliente.nombre }}</td></tr>
                 {% if cliente.rfc %}<tr><td><strong>RFC:</strong></td><td>{{ cliente.rfc }}</td></tr>{% endif %}
                 {% if cliente.telefono %}<tr><td><strong>Teléfono:</strong></td><td>{{ cliente.telefono }}</td></tr>{% endif %}
                 {% if cliente.email %}<tr><td><strong>Email:</strong></td><td>{{ cliente.email }}</td></tr>{% endif %}
+                {% else %}
+                <tr><td colspan="2" style="color:#888;">Sin cliente asociado a este depósito todavía.</td></tr>
+                {% endif %}
             </table>
         </div>
+
+        {% if factura %}
         <div class="datos-section">
             <h4>Datos Ubicación</h4>
             <table>
@@ -136,7 +183,7 @@
                 {% elif factura.area_comun %}
                     <tr><td><strong>Área Común:</strong></td><td>{{ factura.area_comun.numero }}</td></tr>
                 {% elif factura.locales_incluidos.all %}
-                    <tr><td><strong>Locales:</strong></td><td>{% for l in factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
+                    <tr><td><strong>{% if factura.pool_vacancia %}Locales cubiertos{% else %}Locales{% endif %}:</strong></td><td>{% for l in factura.locales_incluidos.all %}{{ l.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
                 {% endif %}
             </table>
         </div>
@@ -146,6 +193,8 @@
             <p><strong>Importe de la Factura:</strong> ${{ factura.monto|floatformat:2|intcomma }}</p>
             <p><strong>Tipo de Cuota:</strong> {{ factura.tipo_cuota }}</p>
         </div>
+        {% endif %}
+
         <div class="datos-section">
             <h4>Datos del Deposito</h4>
             <table class="factura-table">

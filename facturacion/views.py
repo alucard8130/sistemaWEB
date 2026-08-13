@@ -155,6 +155,19 @@ def crear_factura(request):
                 if local_cliente and local_cliente != cliente:
                     conflicto = True
                     conflicto_tipo = "local"
+                # NUEVO -- un local que pertenece a un Grupo de Facturación
+                # activo, o a un Pool de Vacancia mientras está "Disponible",
+                # ya se factura de forma consolidada cada mes. Crear aquí una
+                # factura individual duplicaría el cobro.
+                elif factura.local.grupo_facturacion_id:
+                    conflicto = True
+                    conflicto_tipo = "grupo"
+                elif (
+                    factura.local.pool_vacancia_id
+                    and factura.local.status == "disponible"
+                ):
+                    conflicto = True
+                    conflicto_tipo = "pool"
 
             # ---- Validación área ----
             if factura.area_comun:
@@ -184,10 +197,30 @@ def crear_factura(request):
                         )
                         # print("[DEBUG] Autenticación superuser fallida.")
                 else:
-                    form.add_error(
-                        None,
-                        f"El cliente del {conflicto_tipo} seleccionado no coincide. Contacta al administrador del sistema para autorizar el cambio.",
-                    )
+                    if conflicto_tipo == "grupo":
+                        mensaje = (
+                            f"El local {factura.local.numero} pertenece al Grupo de "
+                            f"Facturación '{factura.local.grupo_facturacion.nombre}' y ya se "
+                            f"factura de forma consolidada cada mes. Crear una factura manual "
+                            f"aquí duplicaría el cobro -- edita el grupo en vez de facturar "
+                            f"individualmente, o contacta al administrador para autorizar de "
+                            f"todas formas."
+                        )
+                    elif conflicto_tipo == "pool":
+                        mensaje = (
+                            f"El local {factura.local.numero} pertenece al Pool de Vacancia "
+                            f"'{factura.local.pool_vacancia.nombre}' y está \"Disponible\" -- "
+                            f"ya se factura de forma consolidada al cliente que cubre. Crear "
+                            f"una factura manual aquí duplicaría el cobro -- asígnale un "
+                            f"cliente real desde Editar Local en vez de facturarlo aquí, o "
+                            f"contacta al administrador para autorizar de todas formas."
+                        )
+                    else:
+                        mensaje = (
+                            f"El cliente del {conflicto_tipo} seleccionado no coincide. "
+                            f"Contacta al administrador del sistema para autorizar el cambio."
+                        )
+                    form.add_error(None, mensaje)   
                     # print("[DEBUG] Conflicto detectado sin autorización.")
             else:
                 superuser_auth_ok = True  # Si no hay conflicto, siempre debe pasar
@@ -240,7 +273,13 @@ def crear_factura(request):
                             or superuser_auth_ok
                         ):
                             factura.local.cliente = cliente
+                            # NUEVO -- mismo criterio que LocalComercialForm.clean():
+                            # al asignar cliente, el local pasa a "Ocupado" -- este atajo
+                            # bypassa el form, así que hay que replicarlo aquí a mano para
+                            # no dejar cliente asignado + status="disponible" a la vez.
+                            factura.local.status = "ocupado"
                             factura.local.save()
+
                         if factura.area_comun and (
                             factura.area_comun.cliente is None
                             or request.user.is_superuser
@@ -252,7 +291,22 @@ def crear_factura(request):
                         messages.success(
                             request, f"Registro Exitoso. Folio: {factura.folio}"
                         )
+                        # NUEVO -- si se autorizó un conflicto de tipo "grupo", el local
+                        # sigue perteneciendo al Grupo de Facturación -- advertir que el
+                        # próximo mes va a volver a incluirse en la factura consolidada,
+                        # a menos que se quite manualmente del grupo.
+                        if conflicto_tipo == "grupo" and factura.local:
+                            messages.warning(
+                                request,
+                                f"⚠️ El local {factura.local.numero} sigue perteneciendo al Grupo de "
+                                f"Facturación '{factura.local.grupo_facturacion.nombre}'. El próximo mes "
+                                f"volverá a incluirse en la factura consolidada del grupo -- si esta "
+                                f"factura manual fue para reemplazar esa facturación, quita el local del "
+                                f"grupo desde Grupos de Facturación para evitar un doble cobro."
+                            )
+
                         next_url = request.POST.get("next") or request.GET.get("next")
+
                         if next_url:
                             return redirect(next_url)
                         return redirect("lista_facturas")
@@ -264,7 +318,6 @@ def crear_factura(request):
             messages.error(request, "Por favor corrige los errores en el formulario.")
 
     else:
-        # form = FacturaForm(user=request.user)
         initial = {}
         for campo in ["cliente", "local", "area_comun", "tipo_cuota", "tipo_origen"]:
             valor = request.GET.get(campo)
@@ -4833,16 +4886,38 @@ def recibo_factura(request, factura_id):
         },
     )
 
+
 @login_required
 def recibo_pago(request, pago_id):
     pago = get_object_or_404(
         Pago.objects.select_related(
             "factura", "factura__local", "factura__area_comun",
-            "factura__cliente", "factura__empresa",
+            "factura__cliente", "factura__empresa", "empresa",
         ).prefetch_related("factura__locales_incluidos"),
         pk=pago_id,
     )
     factura = pago.factura
+
+    # NUEVO -- pago.factura puede ser None (depósito por identificar, o el
+    # depósito origen de un Saldo a Favor) -- no truena, muestra un recibo
+    # simplificado con lo que sí se sabe del pago.
+    if factura is None:
+        messages.info(
+            request,
+            "Este pago todavía no está ligado a ninguna factura -- se muestra "
+            "un recibo simplificado.",
+        )
+        return render(
+            request,
+            "facturacion/recibo_pago.html",
+            {
+                "pago": pago,
+                "factura": None,
+                "cliente": None,
+                "empresa": pago.empresa,
+            },
+        )
+
     cliente = factura.cliente
     empresa = factura.empresa
     return render(
