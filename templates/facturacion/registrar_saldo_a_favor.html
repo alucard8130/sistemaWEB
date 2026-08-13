@@ -1,0 +1,264 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Registrar Saldo a Favor · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+        .form-card { background: white; border-radius: 16px; padding: 28px; box-shadow: 0 2px 14px rgba(0,0,0,0.07); }
+        .btn-guardar {
+            background: linear-gradient(135deg, #0f2d52, #1a5276);
+            color: white; font-weight: 700; border: none; border-radius: 12px;
+            padding: 12px 26px;
+        }
+        .tipo-propiedad-radios .form-check { margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container py-4" style="max-width: 640px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4 class="mb-1"><i class="bi bi-piggy-bank-fill me-2"></i>Registrar Saldo a Favor</h4>
+        <p class="text-muted mb-4">
+            Úsalo cuando un cliente pagó de más (por ejemplo, adelantó varios meses) y el
+            sobrante todavía no se puede aplicar porque las facturas futuras aún no existen.
+            GESAC lo aplicará automáticamente, mes por mes, en cuanto se generen.
+        </p>
+
+        <div class="form-card">
+            <form method="post" id="form-saldo-favor">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Cliente</label>
+                    <select name="cliente_id" id="cliente_id" class="form-select" required>
+                        <option value="" selected disabled>Selecciona un cliente...</option>
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">¿A qué aplica este saldo?</label>
+                    <div class="tipo-propiedad-radios">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_propiedad" id="tipo_cualquiera" value="cualquiera" checked>
+                            <label class="form-check-label" for="tipo_cualquiera">
+                                Cualquier propiedad de este cliente
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_propiedad" id="tipo_local" value="local">
+                            <label class="form-check-label" for="tipo_local">
+                                Un local específico
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_propiedad" id="tipo_area" value="area">
+                            <label class="form-check-label" for="tipo_area">
+                                Un área común específica
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-text">
+                        Si el cliente solo tiene una propiedad, "Cualquier propiedad" es lo más simple.
+                        Si tiene varias, especifica a cuál corresponde el pago adelantado para no
+                        aplicarlo por error a otra.
+                    </div>
+                </div>
+
+                <div class="mb-3 d-none" id="bloque_propiedad">
+                    <label class="form-label fw-semibold">Propiedad</label>
+                    <select name="propiedad_id" id="propiedad_id" class="form-select">
+                        <option value="" selected disabled>Primero selecciona un cliente...</option>
+                    </select>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Monto</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" name="monto" class="form-control" step="0.01" min="0.01" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Fecha del depósito</label>
+                        <input type="date" name="fecha_registro" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Forma de pago</label>
+                    <select name="forma_pago" id="forma_pago" class="form-select" required>
+                        <option value="" selected disabled>Selecciona cómo se recibió el dinero...</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="deposito">Depósito</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="stripe">Stripe</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="mb-3" id="bloque_cuenta_bancaria">
+                    <label class="form-label fw-semibold">Cuenta bancaria <span class="text-danger" id="cuenta_requerida_marca">*</span></label>
+                    <select name="cuenta_bancaria_id" id="cuenta_bancaria_id" class="form-select" required>
+                        <option value="" selected disabled>Selecciona la cuenta donde cayó el dinero...</option>
+                        {% for cuenta in cuentas %}
+                            <option value="{{ cuenta.id }}">{{ cuenta.banco }} — {{ cuenta.numero_cuenta }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text" id="cuenta_ayuda_texto">
+                        Obligatorio -- indica en qué cuenta bancaria entró el dinero. Solo es opcional si la forma de pago es Efectivo.
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Observaciones</label>
+                    <textarea name="observaciones" class="form-control" rows="2" placeholder="Ej. Pago adelantado de 6 meses, depósito del 12/08/2026"></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'lista_saldos_a_favor' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn-guardar">
+                        <i class="bi bi-check-circle me-1"></i>Registrar saldo a favor
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Todas las propiedades de la empresa, con su cliente -- se filtran en el navegador
+        const LOCALES = [
+            {% for local in locales_todos %}
+            { id: "{{ local.id }}", numero: "{{ local.numero|escapejs }}", clienteId: "{{ local.cliente_id }}" },
+            {% endfor %}
+        ];
+        const AREAS = [
+            {% for area in areas_todas %}
+            { id: "{{ area.id }}", numero: "{{ area.numero|escapejs }}", clienteId: "{{ area.cliente_id }}" },
+            {% endfor %}
+        ];
+
+        const clienteSelect = document.getElementById('cliente_id');
+        const bloquePropiedad = document.getElementById('bloque_propiedad');
+        const propiedadSelect = document.getElementById('propiedad_id');
+        const radiosTipo = document.querySelectorAll('input[name="tipo_propiedad"]');
+
+        function tipoActual() {
+            const checked = document.querySelector('input[name="tipo_propiedad"]:checked');
+            return checked ? checked.value : 'cualquiera';
+        }
+
+        function refrescarPropiedades() {
+            const tipo = tipoActual();
+            if (tipo === 'cualquiera') {
+                bloquePropiedad.classList.add('d-none');
+                propiedadSelect.innerHTML = '';
+                return;
+            }
+            bloquePropiedad.classList.remove('d-none');
+
+            const clienteId = clienteSelect.value;
+            const lista = (tipo === 'local' ? LOCALES : AREAS).filter(function (item) {
+                return item.clienteId === clienteId;
+            });
+
+            propiedadSelect.innerHTML = '';
+            if (!clienteId) {
+                propiedadSelect.innerHTML = '<option value="" selected disabled>Primero selecciona un cliente...</option>';
+                return;
+            }
+            if (lista.length === 0) {
+                propiedadSelect.innerHTML = '<option value="" selected disabled>Este cliente no tiene propiedades de este tipo</option>';
+                return;
+            }
+            const opcionVacia = document.createElement('option');
+            opcionVacia.value = '';
+            opcionVacia.disabled = true;
+            opcionVacia.selected = true;
+            opcionVacia.textContent = 'Selecciona una propiedad...';
+            propiedadSelect.appendChild(opcionVacia);
+
+            lista.forEach(function (item) {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = item.numero;
+                propiedadSelect.appendChild(opt);
+            });
+        }
+
+        clienteSelect.addEventListener('change', refrescarPropiedades);
+        radiosTipo.forEach(function (r) { r.addEventListener('change', refrescarPropiedades); });
+
+        // NUEVO -- la cuenta bancaria es obligatoria salvo que la forma de pago sea Efectivo
+        const formaPagoSelect = document.getElementById('forma_pago');
+        const bloqueCuenta = document.getElementById('bloque_cuenta_bancaria');
+        const cuentaSelect = document.getElementById('cuenta_bancaria_id');
+        const cuentaMarca = document.getElementById('cuenta_requerida_marca');
+        const cuentaAyuda = document.getElementById('cuenta_ayuda_texto');
+
+        function refrescarCuentaBancaria() {
+            const esEfectivo = formaPagoSelect.value === 'efectivo';
+            if (esEfectivo) {
+                cuentaSelect.required = false;
+                cuentaSelect.value = '';
+                cuentaSelect.disabled = true;
+                cuentaMarca.classList.add('d-none');
+                cuentaAyuda.textContent = 'No aplica -- el pago fue en efectivo.';
+            } else {
+                cuentaSelect.required = true;
+                cuentaSelect.disabled = false;
+                cuentaMarca.classList.remove('d-none');
+                cuentaAyuda.textContent = 'Obligatorio -- indica en qué cuenta bancaria entró el dinero. Solo es opcional si la forma de pago es Efectivo.';
+            }
+        }
+        formaPagoSelect.addEventListener('change', refrescarCuentaBancaria);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var hoy = new Date().toISOString().split('T')[0];
+            var fechaInput = document.querySelector('input[name="fecha_registro"]');
+            if (fechaInput && !fechaInput.value) fechaInput.value = hoy;
+
+            var form = document.getElementById('form-saldo-favor');
+            if (form) {
+                form.addEventListener('submit', function () {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
+            document.querySelectorAll('a.reporte-link').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

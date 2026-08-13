@@ -37,7 +37,7 @@ class Factura(models.Model):
         ('cancelada', 'Cancelada'),
     ]
     estatus = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
-    observaciones = models.CharField(blank=True, null=True)
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
     activo = models.BooleanField(default=True)
     facturama_id = models.CharField(max_length=100, blank=True, null=True)
     factura_global = models.ForeignKey(
@@ -51,6 +51,12 @@ class Factura(models.Model):
         'locales.LocalComercial', blank=True, related_name='facturas_grupo',
         help_text="Para facturas consolidadas de un grupo: todos los locales que cubre esta factura."
     )
+    pool_vacancia = models.ForeignKey(
+            "facturacion.PoolVacancia", null=True, blank=True, on_delete=models.SET_NULL,
+            related_name="facturas_generadas",
+        )
+
+    
 
     
     def __str__(self):
@@ -111,7 +117,8 @@ class Pago(models.Model):
         ('deposito', 'Depósito'),
         ('efectivo', 'Efectivo'),
         ('stripe', 'Stripe'),
-        ('rendimiento_inversion', 'Rendimiento de Inversión'),
+        ('rendimiento_inversion', 'Rendimiento Inv.'),
+        ('saldo_a_favor', 'Saldo a Favor (pago adelantado)'),  
         ('otro', 'Otro'),
     ]
     factura = models.ForeignKey('Factura', on_delete=models.CASCADE, related_name='pagos',null=True, blank=True)
@@ -221,3 +228,65 @@ class GrupoFacturacion(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.cliente.nombre})"
+
+
+#CLASE PARA AGRUPAR LOCALES VACIOS Y FACTURARLOS A UN CLIENTE ESPECIFICO, UTIL PARA FACTURACION DE VACANCIA
+class PoolVacancia(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="pools_vacancia")
+    cliente_cobertura = models.ForeignKey(
+        Cliente, on_delete=models.PROTECT, related_name="pools_vacancia_cubiertos",
+        help_text="Cliente al que se le factura por los locales de este pool que estén vacíos cada mes.",
+    )
+    nombre = models.CharField(max_length=150)
+    activo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.nombre} — cubre: {self.cliente_cobertura.nombre}"
+
+
+# Clase para manejar saldos a favor de clientes, es decir, pagos adelantados que aún no se pueden aplicar a facturas futuras.
+class SaldoAFavor(models.Model):
+    """Dinero que un cliente ya pagó de más (pago adelantado de varios
+    meses) y que todavía no se puede aplicar porque las facturas futuras
+    aún no existen -- GESAC solo genera la factura del mes en curso.
+
+    Se aplica automáticamente, mes por mes, la próxima vez que se genere
+    una factura para ese mismo cliente + propiedad, hasta agotarse.
+    """
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='saldos_a_favor')
+    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT, related_name='saldos_a_favor')
+
+    # Opcional -- si se deja vacío, el saldo aplica a CUALQUIER propiedad
+    # de ese cliente (útil si el cliente solo tiene una propiedad). Si el
+    # cliente tiene varias, lo normal es especificar a cuál corresponde
+    # el pago adelantado, para no aplicarlo por error a otra.
+    local = models.ForeignKey(
+        'locales.LocalComercial', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='saldos_a_favor'
+    )
+    area_comun = models.ForeignKey(
+        'areas.AreaComun', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='saldos_a_favor'
+    )
+
+    monto_original = models.DecimalField(max_digits=20, decimal_places=2)
+    monto_disponible = models.DecimalField(max_digits=20, decimal_places=2)
+
+    fecha_registro = models.DateField()
+    origen_pago = models.ForeignKey(
+        'Pago', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='saldo_a_favor_generado',
+        help_text="El depósito original (sin factura) que dio origen a este saldo."
+    )
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
+    registrado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    activo = models.BooleanField(default=True)  # se pone False solo cuando monto_disponible llega a 0
+
+    def __str__(self):
+        propiedad = self.local.numero if self.local else (self.area_comun.numero if self.area_comun else "cualquier propiedad")
+        return f"Saldo a favor -- {self.cliente.nombre} ({propiedad}) -- ${self.monto_disponible} disponible"
+
+    class Meta:
+        ordering = ['fecha_registro']  # FIFO: el saldo más antiguo se consume primero    

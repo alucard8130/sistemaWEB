@@ -14,7 +14,9 @@ from unidecode import unidecode
 
 from clientes.models import Cliente
 from empresas.models import Empresa
+from facturacion.models import PoolVacancia
 from locales.utils import generar_facturas_local
+from sanitarios.views import _empresa_actual
 
 from .forms import LocalCargaMasivaForm, LocalComercialForm
 from .models import LocalComercial
@@ -27,12 +29,12 @@ def lista_locales(request):
     if user.is_superuser:
         empresa_id = request.session.get("empresa_id")
         if empresa_id:
-            locales = LocalComercial.objects.filter(activo=True, empresa_id=empresa_id).select_related('cliente', 'empresa', 'grupo_facturacion').order_by('numero')
+            locales = LocalComercial.objects.filter(activo=True, empresa_id=empresa_id).select_related('cliente', 'empresa', 'grupo_facturacion', 'pool_vacancia').order_by('numero')
         else:
-            locales = LocalComercial.objects.filter(activo=True).select_related('cliente', 'empresa', 'grupo_facturacion').order_by('numero')
+            locales = LocalComercial.objects.filter(activo=True).select_related('cliente', 'empresa', 'grupo_facturacion', 'pool_vacancia').order_by('numero')
     else:
         empresa = user.perfilusuario.empresa
-        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'empresa', 'grupo_facturacion').order_by('numero')
+        locales = LocalComercial.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'empresa', 'grupo_facturacion', 'pool_vacancia').order_by('numero')
 
     if query:
         locales = locales.filter(
@@ -486,3 +488,113 @@ def plantilla_locales_excel(request):
     response['Content-Disposition'] = f'attachment; filename={nombre_archivo}'
     wb.save(response)
     return response
+
+
+
+
+# vistas de pools de vacancia, para asignar locales a un pool y facturar por pool 06/08/26
+# ============================================================
+@login_required
+def lista_pools_vacancia(request):
+    empresa = _empresa_actual(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect("dashboard_inicio")
+
+    pools = (
+        PoolVacancia.objects.filter(empresa=empresa)
+        .select_related("cliente_cobertura")
+        .prefetch_related("locales_elegibles")
+    )
+    return render(request, "locales/lista_pools_vacancia.html", {"pools": pools})
+
+
+@login_required
+def crear_pool_vacancia(request):
+    empresa = _empresa_actual(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect("dashboard_inicio")
+
+    if request.method == "POST":
+        nombre = request.POST.get("nombre", "").strip()
+        cliente_id = request.POST.get("cliente_id")
+        cliente = Cliente.objects.filter(id=cliente_id, empresa=empresa).first()
+
+        if not nombre or not cliente:
+            messages.error(request, "Captura un nombre y selecciona el cliente que cubre la vacancia.")
+            return redirect("crear_pool_vacancia")
+
+        pool = PoolVacancia.objects.create(empresa=empresa, nombre=nombre, cliente_cobertura=cliente)
+        messages.success(request, "Pool de vacancia creado — ahora asigna los locales elegibles.")
+        return redirect("editar_pool_vacancia", pool_id=pool.id)
+
+    clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
+    return render(request, "locales/crear_pool_vacancia.html", {"clientes": clientes})
+
+
+@login_required
+def editar_pool_vacancia(request, pool_id):
+    empresa = _empresa_actual(request)
+    pool = get_object_or_404(PoolVacancia, id=pool_id, empresa=empresa)
+
+    if request.method == "POST":
+        ids_seleccionados = {
+            int(i) for i in request.POST.getlist("locales") if i.isdigit()
+        }
+
+        # IMPORTANTE -- este formulario SOLO muestra/edita locales con
+        # status="disponible". Los que ya pertenecen al pool pero están
+        # ocupados NO aparecen aquí, y por lo tanto NO deben tocarse
+        # aunque no vengan en la lista enviada (si no, se quitarían
+        # del pool por accidente solo por estar ocupados hoy).
+        candidatos_ids = set(
+            LocalComercial.objects.filter(
+                empresa=empresa, activo=True, status="disponible"
+            ).filter(
+                Q(pool_vacancia__isnull=True) | Q(pool_vacancia=pool)
+            ).values_list("id", flat=True)
+        )
+
+        a_asignar = candidatos_ids & ids_seleccionados
+        a_quitar = candidatos_ids - ids_seleccionados
+
+        if a_quitar:
+            LocalComercial.objects.filter(id__in=a_quitar).update(pool_vacancia=None)
+        if a_asignar:
+            LocalComercial.objects.filter(id__in=a_asignar, empresa=empresa).update(pool_vacancia=pool)
+
+        messages.success(request, "Locales elegibles del pool actualizados.")
+        return redirect("editar_pool_vacancia", pool_id=pool.id)
+
+    # SOLO locales con status="disponible" se pueden marcar/desmarcar aquí.
+    # Un local ocupado no debe poder asignarse al pool directamente --
+    # primero hay que liberarlo (ver aviso en el template).
+    locales_disponibles = LocalComercial.objects.filter(
+        empresa=empresa, activo=True, status="disponible"
+    ).filter(
+        Q(pool_vacancia__isnull=True) | Q(pool_vacancia=pool)
+    ).order_by("numero")
+
+    ids_actuales = set(
+        LocalComercial.objects.filter(
+            pool_vacancia=pool, status="disponible"
+        ).values_list("id", flat=True)
+    )
+
+    # Informativo -- locales que ya pertenecen al pool pero AHORA están
+    # ocupados (o en otro estado). No se editan desde aquí, solo se listan
+    # para que el administrador entienda por qué no aparecen como opción.
+    locales_pool_no_disponibles = LocalComercial.objects.filter(
+        pool_vacancia=pool
+    ).exclude(status="disponible").select_related("cliente").order_by("numero")
+
+    return render(request, "locales/editar_pool_vacancia.html", {
+        "pool": pool,
+        "locales_disponibles": locales_disponibles,
+        "ids_actuales": ids_actuales,
+        "locales_pool_no_disponibles": locales_pool_no_disponibles,
+    })
+
+
+

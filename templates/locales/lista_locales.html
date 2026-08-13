@@ -189,6 +189,13 @@
                                         <i class="bi bi-collection-fill"></i>
                                     </a>
                                 {% endif %}
+                                {% if local.pool_vacancia %}
+                                    <a href="{% url 'editar_pool_vacancia' local.pool_vacancia.id %}"
+                                    class="badge {% if local.status == 'disponible' %}bg-warning text-dark{% else %}bg-secondary{% endif %} ms-1 reporte-link"
+                                    title="{% if local.status == 'disponible' %}Vacío -- se factura este mes a: {{ local.pool_vacancia.cliente_cobertura.nombre }}{% else %}Pertenece al pool '{{ local.pool_vacancia.nombre }}', pero no se factura mientras esté {{ local.get_status_display }}{% endif %}">
+                                        <i class="bi bi-building-fill-exclamation"></i>
+                                    </a>
+                                {% endif %}
                             </td>
                             <td>{{ local.propietario }}</td>
                             <td>{{ local.cliente.nombre }}</td>

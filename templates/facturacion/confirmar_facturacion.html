@@ -2,13 +2,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-      Created by: Jaime Estrada
-      Modified by: María Martínez
-      Date of creation: 05/06/2025
-      Date of modification: 28/08/2025
-      Description: Confirm automatic billing
-    -->
     <meta charset="UTF-8">
     <title>Confirmar facturación</title>
     <!-- Bootstrap base styles -->
@@ -44,8 +37,53 @@
           {{ msg|safe }}<br>
         {% endfor %}
       </div>
-    {% endif %}      
-      
+    {% endif %}
+
+    {% if total_anuales_pendientes > 0 %}
+    <div class="alert alert-warning" role="alert">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h6 class="mb-1"><i class="bi bi-calendar-event-fill me-1"></i>
+                    Cuotas anuales pendientes de {{ anio_actual_anuales }}
+                </h6>
+                <p class="mb-2 small">
+                    Estas propiedades tienen "Cuota anual" activada y todavía no tienen
+                    factura generada para este año. Esto es independiente del periodo
+                    mensual pendiente de arriba -- puedes generarlas ahora mismo, sin
+                    tener que resolver primero el backlog mensual.
+                </p>
+
+                {% if locales_anuales_pendientes %}
+                    <div class="small mb-1">
+                        <strong>{% if empresa_actual.segmento == 'habitacional' %}Viviendas{% else %}Locales{% endif %} ({{ locales_anuales_pendientes|length }}):</strong>
+                        {% for local in locales_anuales_pendientes %}
+                            <span class="badge bg-secondary me-1">{{ local.numero }} — {{ local.cliente.nombre|truncatechars:20 }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if areas_anuales_pendientes %}
+                    <div class="small">
+                        <strong>Áreas Comunes ({{ areas_anuales_pendientes|length }}):</strong>
+                        {% for area in areas_anuales_pendientes %}
+                            <span class="badge bg-secondary me-1">{{ area.numero }} — {{ area.cliente.nombre|truncatechars:20 }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <form method="post" class="flex-shrink-0" id="form-anuales-pendientes">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="generar_anuales_pendientes">
+                <button type="submit" class="btn btn-sm" style="background-color: #f7c59f; color: #fff;">
+                    <i class="bi bi-lightning-charge-fill me-1"></i>
+                    Generar {{ total_anuales_pendientes }} factura(s) anual(es) ahora
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
         {% if total_locales == 0 and total_areas == 0 %}
             <div class="alert cuotas-todas" style="background-color: #fff3cd; color: #856404; border-left: 5px solid #ffeeba;">
                 Ya se generaron las cuotas de todas las propiedades de este mes.
@@ -129,6 +167,15 @@
       var form = document.getElementById('form-facturacion');
       if (form) {
         form.addEventListener('submit', function() {
+          var overlay = document.getElementById('loading-overlay');
+          if (overlay) overlay.style.display = 'flex';
+        });
+      }
+
+      // Overlay también para el formulario de cuotas anuales pendientes
+      var formAnuales = document.getElementById('form-anuales-pendientes');
+      if (formAnuales) {
+        formAnuales.addEventListener('submit', function() {
           var overlay = document.getElementById('loading-overlay');
           if (overlay) overlay.style.display = 'flex';
         });

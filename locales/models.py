@@ -1,5 +1,6 @@
 
 from django.db import models
+
 from empresas.models import Empresa
 
 
@@ -13,7 +14,7 @@ class LocalComercial(models.Model):
     superficie_m2 = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     cuota = models.DecimalField(max_digits=100, decimal_places=2)
     giro = models.CharField(max_length=255, blank=True, null=True)
-    STATUS_CHOICES = [
+    STATUS_CHOICES = [  # noqa: RUF012
         ('ocupado', 'Ocup.'),
         ('disponible', 'Disp.'),
         ('mantenimiento', 'en Remod.'),
@@ -28,7 +29,7 @@ class LocalComercial(models.Model):
     observaciones = models.CharField(max_length=255, blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota anual?")
     
-    TIPO_CHOICES = [
+    TIPO_CHOICES = [  # noqa: RUF012
         ('local', 'Local'),
         ('casa', 'Casa'),
         ('departamento', 'Departamento'),
@@ -47,6 +48,14 @@ class LocalComercial(models.Model):
         related_name='locales',
         help_text="Si este local se factura junto con otros del mismo cliente, selecciona el grupo aquí."
     )
+    pool_vacancia = models.ForeignKey(
+            "facturacion.PoolVacancia", null=True, blank=True, on_delete=models.SET_NULL,
+            related_name="locales_elegibles",
+            help_text="Si este local se queda SIN cliente, se factura automáticamente "
+                       "su cuota al cliente que cubre este pool.",
+        )
+
+    
 
 
     def save(self, *args, **kwargs):

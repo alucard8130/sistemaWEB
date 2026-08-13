@@ -1,14 +1,16 @@
 from django import forms
 from jmespath import Options
+
 from clientes.models import Cliente
-from .models import LocalComercial
 from empresas.models import Empresa
+
+from .models import LocalComercial
 
 
 class LocalComercialForm(forms.ModelForm):
     class Meta:
         model = LocalComercial
-        fields = [
+        fields = [  # noqa: RUF012
             "numero",
             "propietario",
             "cliente",
@@ -23,7 +25,7 @@ class LocalComercialForm(forms.ModelForm):
             "es_cuota_anual",
             "proindiviso",
         ]
-        widgets = {
+        widgets = {  # noqa: RUF012
             "numero": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Número, Codigo o Id."}
             ),
@@ -64,7 +66,7 @@ class LocalComercialForm(forms.ModelForm):
                 }
             ),
         }
-        labels = {
+        labels = {  # noqa: RUF012
             "numero": "Número, Codigo o Id.",
             "ubicacion": "Ubicación",
             "status": "Estatus",
@@ -116,10 +118,24 @@ class LocalComercialForm(forms.ModelForm):
                 if c[0] in ("local", "oficina", "bodega", "terreno")
             ]
 
+
+
+
+    def clean_cuota(self):
+        cuota = self.cleaned_data.get("cuota")
+        if cuota is None or cuota <= 0:
+            raise forms.ValidationError(
+                "La cuota debe ser mayor a $0.00 -- no se puede dejar en cero."
+            )
+        return cuota
+
+    
     def clean(self):
         cleaned_data = super().clean()
         numero = cleaned_data.get("numero")
         empresa = cleaned_data.get("empresa")
+        status = cleaned_data.get("status")
+        cliente = cleaned_data.get("cliente")
 
         if numero and empresa:
             duplicado = LocalComercial.objects.filter(
@@ -129,6 +145,25 @@ class LocalComercialForm(forms.ModelForm):
                 raise forms.ValidationError(
                     f"Ya existe un local con número '{numero}' en esta empresa."
                 )
+
+        # NUEVO -- compara contra el cliente que tenía ANTES de esta edición
+        # (self.instance todavía no se ha modificado en este punto).
+        cliente_original_id = self.instance.cliente_id if self.instance.pk else None
+        cliente_nuevo_id = cliente.id if cliente else None
+        se_asigno_cliente_nuevo = (
+            cliente_nuevo_id is not None and cliente_nuevo_id != cliente_original_id
+        )
+
+        if se_asigno_cliente_nuevo:
+            # Se seleccionó un cliente distinto al que tenía (o es alta nueva)
+            # -- el local pasa a "Ocupado" automáticamente, sin importar qué
+            # estado se haya dejado seleccionado en el formulario.
+            cleaned_data["status"] = "ocupado"
+        elif status == "disponible":
+            # No se asignó cliente nuevo, y el estado quedó en "Disponible"
+            # -- se libera el cliente (si tenía alguno).
+            cleaned_data["cliente"] = None
+
         return cleaned_data
 
 

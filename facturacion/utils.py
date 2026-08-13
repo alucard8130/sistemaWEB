@@ -8,7 +8,7 @@ from django.db.models.functions import Coalesce
 from areas.models import AreaComun
 from locales.models import LocalComercial
 
-from .models import Factura, FacturaOtrosIngresos, GrupoFacturacion
+from .models import Factura, FacturaOtrosIngresos, GrupoFacturacion, Pago, PoolVacancia, SaldoAFavor
 
 
 def debe_mostrar_recordatorio_facturacion(empresa):
@@ -140,6 +140,82 @@ def calcular_total_vencida_rapido(empresa, fecha_corte, incluir_cuotas=True, inc
     return total
 
 
+# ============================================================
+# Helper -- aplicar saldos a favor a una factura recién creada.
+# Colócalo en facturacion/utils.py, junto a generar_facturas_mes.
+# ============================================================
+
+def aplicar_saldos_a_favor(factura):
+    """
+    Revisa si el cliente de esta factura tiene algún Saldo a Favor
+    disponible que aplique a esta propiedad (o a "cualquier propiedad"
+    si el saldo no especifica local/área), y lo consume automáticamente
+    -- en orden FIFO (el saldo más antiguo primero) -- hasta que la
+    factura quede pagada o se acabe el saldo disponible.
+
+    Se debe llamar UNA VEZ por cada factura recién creada, después de
+    que ya tenga folio y pk asignados.
+    """
+    
+    saldo_pendiente_factura = factura.monto
+    ya_pagado = factura.pagos.aggregate(t=Sum("monto"))["t"] or Decimal("0")
+    saldo_pendiente_factura -= ya_pagado
+
+    if saldo_pendiente_factura <= 0:
+        return  # ya está pagada por otro medio, no hay nada que hacer
+
+    # Candidatos: saldos activos de este cliente, que apliquen a ESTA
+    # propiedad específica, o que no tengan propiedad especificada
+    # (aplican a cualquier propiedad del cliente). FIFO por fecha_registro
+    # (ya viene ordenado así por Meta.ordering del modelo).
+    saldos_candidatos = SaldoAFavor.objects.filter(
+        empresa=factura.empresa, cliente=factura.cliente,
+        activo=True, monto_disponible__gt=0,
+    )
+    if factura.local_id:
+        saldos_candidatos = saldos_candidatos.filter(
+            Q(local_id=factura.local_id) | Q(local__isnull=True, area_comun__isnull=True)
+        )
+    elif factura.area_comun_id:
+        saldos_candidatos = saldos_candidatos.filter(
+            Q(area_comun_id=factura.area_comun_id) | Q(local__isnull=True, area_comun__isnull=True)
+        )
+    else:
+        saldos_candidatos = saldos_candidatos.filter(local__isnull=True, area_comun__isnull=True)
+
+    for saldo in saldos_candidatos:
+        if saldo_pendiente_factura <= 0:
+            break
+
+        monto_a_aplicar = min(saldo.monto_disponible, saldo_pendiente_factura)
+
+        Pago.objects.create(
+            factura=factura,
+            fecha_pago=factura.fecha_emision,
+            monto=monto_a_aplicar,
+            forma_pago="saldo_a_favor",
+            observaciones=f"Aplicado automáticamente desde saldo a favor #{saldo.id} "
+                           f"(pago adelantado del {saldo.fecha_registro}).",
+            identificado=True,
+            empresa=factura.empresa,
+        )
+
+        saldo.monto_disponible -= monto_a_aplicar
+        if saldo.monto_disponible <= 0:
+            saldo.monto_disponible = Decimal("0")
+            saldo.activo = False
+        saldo.save(update_fields=["monto_disponible", "activo"])
+
+        saldo_pendiente_factura -= monto_a_aplicar
+
+    # Si con el/los saldo(s) aplicados la factura quedó cubierta al 100%,
+    # márcala como cobrada -- igual que si el cliente hubiera pagado normal.
+    if saldo_pendiente_factura <= 0 and factura.estatus == "pendiente":
+        factura.estatus = "cobrada"
+        factura.save(update_fields=["estatus"])
+
+
+        
 def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_areas=True):
     """Núcleo reutilizable de la facturación mensual -- usado tanto por la
     vista manual (facturar_mes_actual) como por el comando automático.
@@ -161,16 +237,16 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
         return 0
 
     if facturar_locales:
-        # NUEVO -- excluye del ciclo individual a los locales que pertenecen a un grupo
+        # excluye del ciclo individual a los locales que pertenecen a un grupo
         locales = LocalComercial.objects.filter(
             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False,
-            grupo_facturacion__isnull=True,cuota__gt=0,
+            grupo_facturacion__isnull=True, cuota__gt=0,
         ).select_related("cliente")
         locales_ids = list(locales.values_list("id", flat=True))
         locales_con_factura = set(
             Factura.objects.filter(
                 local_id__in=locales_ids, tipo_cuota="mantenimiento",
-                estatus__in=["pendiente", "cobrada", "cancelada"],
+                estatus__in=["pendiente", "cobrada"],
             ).filter(
                 Q(fecha_emision__year=año, fecha_emision__month=mes)
                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
@@ -192,7 +268,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 ))
                 facturas_creadas += 1
 
-        # NUEVO -- bloque completo: genera 1 factura consolidada por cada grupo activo
+        # bloque de Grupos de Facturación: genera 1 factura consolidada por cada grupo activo
         grupos_activos = GrupoFacturacion.objects.filter(empresa=empresa, activo=True).prefetch_related("locales")
         for grupo in grupos_activos:
             locales_grupo = grupo.locales.filter(activo=True, es_cuota_anual=False)
@@ -201,7 +277,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
 
             ya_facturado_grupo = Factura.objects.filter(
                 empresa=empresa, locales_incluidos__in=locales_grupo,
-                tipo_cuota="mantenimiento", estatus__in=["pendiente", "cobrada", "cancelada"],
+                tipo_cuota="mantenimiento", estatus__in=["pendiente", "cobrada"],
             ).filter(
                 Q(fecha_emision__year=año, fecha_emision__month=mes)
                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
@@ -222,42 +298,92 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
                 fecha_vencimiento=fecha_factura, monto=monto_total,
                 tipo_cuota="mantenimiento", estatus="pendiente",
-                observaciones=f"Cuota mensual consolidada — Grupo '{grupo.nombre}' — Locales: {numeros_locales}",
+                observaciones=f"Cuota consolidada — Grupo '{grupo.nombre}' — Locales: {numeros_locales}",
             )
             factura_grupo.locales_incluidos.set(locales_grupo)
             facturas_creadas += 1
 
-        if mes == 1:
-            locales_anuales = LocalComercial.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True,cuota__gt=0,
-            ).select_related("cliente")
-            locales_anuales_ids = list(locales_anuales.values_list("id", flat=True))
-            locales_anuales_con_factura = set(
-                Factura.objects.filter(
-                    local_id__in=locales_anuales_ids, tipo_cuota="mantenimiento",
-                    estatus__in=["pendiente", "cobrada", "cancelada"], fecha_emision__year=año,
-                ).values_list("local_id", flat=True)
+        # Pools de Vacancia: factura consolidada al cliente que cubre,
+        # sumando SOLO los locales del pool que ACTUALMENTE están sin cliente.
+        pools_vacancia = PoolVacancia.objects.filter(
+            empresa=empresa, activo=True
+        ).select_related("cliente_cobertura")
+
+        for pool in pools_vacancia:
+            # Fuente de verdad: status="disponible" (no solo cliente vacío) --
+            # así se excluyen locales en remodelación, juicio o venta, que
+            # tampoco deben facturarse al pool aunque no tengan cliente.
+            locales_vacantes = LocalComercial.objects.filter(
+                pool_vacancia=pool, activo=True, status="disponible",
+                cliente__isnull=True, cuota__gt=0,
             )
-            for local in locales_anuales:
-                if local.id not in locales_anuales_con_factura:
-                    last_num_cm += 1
-                    facturas_a_crear.append(Factura(
-                        empresa=empresa, cliente=local.cliente, local=local,
-                        folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
-                        fecha_vencimiento=fecha_factura, monto=local.cuota,
-                        tipo_cuota="mantenimiento", estatus="pendiente", observaciones="Cuota anual",
-                    ))
-                    facturas_creadas += 1
+            if not locales_vacantes.exists():
+                continue
+
+            ya_facturado_pool = Factura.objects.filter(
+                empresa=empresa, pool_vacancia=pool,
+                estatus__in=["pendiente", "cobrada"],
+            ).filter(
+                Q(fecha_emision__year=año, fecha_emision__month=mes)
+                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
+            ).exists()
+
+            if ya_facturado_pool:
+                facturas_omitidas += 1
+                continue
+
+            monto_total = locales_vacantes.aggregate(t=Sum("cuota"))["t"] or Decimal("0")
+            if monto_total <= 0:
+                continue
+
+            last_num_cm += 1
+            numeros_locales = ", ".join(l.numero for l in locales_vacantes.order_by("numero"))
+            factura_vacancia = Factura.objects.create(
+                empresa=empresa, cliente=pool.cliente_cobertura, local=None,
+                pool_vacancia=pool,
+                folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
+                fecha_vencimiento=fecha_factura, monto=monto_total,
+                tipo_cuota="mantenimiento", estatus="pendiente",
+                observaciones=f"Cuota Prop. vacías — Pool '{pool.nombre}' — "
+                               f"Prop. vacías este mes: {numeros_locales}",
+            )
+            factura_vacancia.locales_incluidos.set(locales_vacantes)
+            facturas_creadas += 1
+
+        # Cuota anual -- se revisa en CUALQUIER mes que se corra la facturación,
+        # no solo enero. El chequeo "fecha_emision__year=año" ya evita duplicar
+        # si el local ya se facturó antes en el mismo año.
+        locales_anuales = LocalComercial.objects.filter(
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True, cuota__gt=0,
+        ).select_related("cliente")
+        locales_anuales_ids = list(locales_anuales.values_list("id", flat=True))
+        locales_anuales_con_factura = set(
+            Factura.objects.filter(
+                local_id__in=locales_anuales_ids, tipo_cuota="mantenimiento",
+                estatus__in=["pendiente", "cobrada"], fecha_emision__year=año,
+            ).values_list("local_id", flat=True)
+        )
+        for local in locales_anuales:
+            if local.id not in locales_anuales_con_factura:
+                last_num_cm += 1
+                monto_anual = local.cuota * 12
+                facturas_a_crear.append(Factura(
+                    empresa=empresa, cliente=local.cliente, local=local,
+                    folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
+                    fecha_vencimiento=fecha_factura, monto=monto_anual,
+                    tipo_cuota="mantenimiento", estatus="pendiente", observaciones="Cuota anual",
+                ))
+                facturas_creadas += 1
 
     if facturar_areas:
         areas = AreaComun.objects.filter(
-            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False,cuota__gt=0,
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False, cuota__gt=0,
         ).select_related("cliente")
         areas_ids = list(areas.values_list("id", flat=True))
         areas_con_factura = set(
             Factura.objects.filter(
                 area_comun_id__in=areas_ids, tipo_cuota="renta",
-                estatus__in=["pendiente", "cobrada", "cancelada"],
+                estatus__in=["pendiente", "cobrada"],
             ).filter(
                 Q(fecha_emision__year=año, fecha_emision__month=mes)
                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
@@ -292,29 +418,37 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                         tipo_cuota="deposito", estatus="pendiente", observaciones="Depósito en garantía",
                     ))
 
-        if mes == 1:
-            areas_anuales = AreaComun.objects.filter(
-                empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True,cuota__gt=0,
-            ).select_related("cliente")
-            areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
-            areas_anuales_con_factura = set(
-                Factura.objects.filter(
-                    area_comun_id__in=areas_anuales_ids, tipo_cuota="renta",
-                    estatus__in=["pendiente", "cobrada", "cancelada"], fecha_emision__year=año,
-                ).values_list("area_comun_id", flat=True)
-            )
-            for area in areas_anuales:
-                if area.id not in areas_anuales_con_factura:
-                    last_num_ac += 1
-                    facturas_a_crear.append(Factura(
-                        empresa=empresa, cliente=area.cliente, area_comun=area,
-                        folio=f"AC-F{last_num_ac:05d}", fecha_emision=fecha_factura,
-                        fecha_vencimiento=fecha_factura, monto=area.cuota,
-                        tipo_cuota="renta", estatus="pendiente", observaciones="Cuota anual",
-                    ))
-                    facturas_creadas += 1
+        # Cuota anual -- se revisa en CUALQUIER mes, mismo criterio que locales.
+        areas_anuales = AreaComun.objects.filter(
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True, cuota__gt=0,
+        ).select_related("cliente")
+        areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
+        areas_anuales_con_factura = set(
+            Factura.objects.filter(
+                area_comun_id__in=areas_anuales_ids, tipo_cuota="renta",
+                estatus__in=["pendiente", "cobrada"], fecha_emision__year=año,
+            ).values_list("area_comun_id", flat=True)
+        )
+        for area in areas_anuales:
+            if area.id not in areas_anuales_con_factura:
+                last_num_ac += 1
+                monto_anual = area.cuota * 12
+                facturas_a_crear.append(Factura(
+                    empresa=empresa, cliente=area.cliente, area_comun=area,
+                    folio=f"AC-F{last_num_ac:05d}", fecha_emision=fecha_factura,
+                    fecha_vencimiento=fecha_factura, monto=monto_anual,
+                    tipo_cuota="renta", estatus="pendiente", observaciones="Cuota anual",
+                ))
+                facturas_creadas += 1
 
     if facturas_a_crear:
         Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
+        # NUEVO -- aplica saldos a favor a cada factura recién creada
+        # (bulk_create en Postgres regresa los objetos con pk ya asignado)
+        for factura_nueva in facturas_a_crear:
+            aplicar_saldos_a_favor(factura_nueva)
 
     return facturas_creadas, facturas_omitidas
+
+
+

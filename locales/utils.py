@@ -1,8 +1,11 @@
 from datetime import date, datetime
-from dateutil.relativedelta import relativedelta
 from decimal import Decimal
+
+from dateutil.relativedelta import relativedelta
 from django.db import transaction
+
 from facturacion.models import Factura
+
 
 def _siguiente_folio(prefix, empresa):
     ultimo = Factura.objects.filter(empresa=empresa, folio__startswith=prefix).order_by('pk').last()
@@ -10,6 +13,7 @@ def _siguiente_folio(prefix, empresa):
         return f"{prefix}0001"
     num = int(ultimo.folio.replace(prefix, "")) + 1
     return f"{prefix}{num:04d}"
+
 
 def generar_facturas_local(local, adeudo=None):
     """

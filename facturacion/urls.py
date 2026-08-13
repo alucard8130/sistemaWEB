@@ -1,6 +1,7 @@
 from django.urls import path
 
 from principal.views import usuarios_demo
+
 from . import views
 
 urlpatterns = [
@@ -41,4 +42,6 @@ urlpatterns = [
     path('grupos-facturacion/', views.lista_grupos_facturacion, name='lista_grupos_facturacion'),
     path('grupos-facturacion/nuevo/', views.crear_grupo_facturacion, name='crear_grupo_facturacion'),
     path('grupos-facturacion/<int:grupo_id>/editar/', views.editar_grupo_facturacion, name='editar_grupo_facturacion'),
+    path('saldos-a-favor/', views.lista_saldos_a_favor, name='lista_saldos_a_favor'),
+    path('saldos-a-favor/nuevo/', views.registrar_saldo_a_favor, name='registrar_saldo_a_favor'),
 ]

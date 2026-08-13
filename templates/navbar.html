@@ -200,6 +200,7 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_locales' %}"><i class="bi bi-building me-2"></i>Propiedades</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_pools_vacancia' %}"><i class="bi bi-building-fill-exclamation me-2"></i>Pools de Vacancia</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'locales_inactivos' %}"><i class="bi bi-building me-2"></i>Propiedades Inactivas</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'incrementar_c_locales' %}"><i class="bi bi-arrow-up me-2"></i>Incrementar Cuotas</a></li>
@@ -242,6 +243,7 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'facturar_mes' %}" title="Genera Masivamente las facturas por cuotas de mantenimiento y areas comunes"><i class="bi bi-calendar-check me-2"></i>Generacion Mensual Cuotas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_saldos_a_favor' %}" title="Busca saldos a favor de clientes"><i class="bi bi-piggy-bank-fill me-2"></i>Saldos a Favor</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas' %}" title="Busca facturas de cuotas y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Cuotas Mantto y Areas</a></li>
               <li><hr class="dropdown-divider"></li>
