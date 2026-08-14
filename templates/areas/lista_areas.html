@@ -134,6 +134,10 @@
                             <strong>{{ status_vencido }}</strong>
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
+                            <span>Áreas Disponibles:</span>
+                            <strong>{{ status_disponible }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
                             <span>Porcentaje Vencido:</span>
                             <strong>{{ porcentaje_vencido|floatformat:0 }}%</strong>
                         </li>
@@ -150,7 +154,7 @@
                     <i class="bi bi-search"></i><span class="d-none d-sm-inline ms-1">Buscar</span>
                 </button>
             </form>
-            <a href="{% url 'crear_area' %}" class="btn btn-outline-success flex-shrink-0" title="Nueva Area Comun">
+            <a href="{% url 'crear_area' %}" class="btn btn-outline-success flex-shrink-0 reporte-link" title="Nueva Area Comun">
                 <i class="bi bi-plus-lg"></i> Nueva Area Comun
             </a>
         </div>
@@ -189,7 +193,13 @@
                         {% endif %}
                         <td>{{ area.get_tipo_area_display }}</td>
                         <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
-                        <td>${{ area.cuota|floatformat:2|intcomma }}</td>
+                        <td>
+                            {% if area.es_cuota_variable %}
+                                <span class="badge bg-warning text-dark" title="El importe se captura cada vez que se factura">Variable</span>
+                            {% else %}
+                                ${{ area.cuota|floatformat:2|intcomma }}
+                            {% endif %}
+                        </td>
                         <td>${{ area.deposito|floatformat:2|intcomma }}</td>
                         <td>
                             {% if area.es_cuota_anual %}
@@ -199,36 +209,46 @@
                             {% endif %}
                         </td>
                         <td class="col-giro" title="{{ area.giro|default:'' }}">{{ area.giro|default:""|truncatechars:15 }}</td>
-                        
+
                         <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
                         <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
                         <td>
-                            {% if area.estado_vigencia == "Vencido" %}
+                            {% if area.status == 'disponible' %}
+                            <span class="badge bg-secondary">Disponible</span>
+                            {% elif area.estado_vigencia == "Vencido" %}
                             <span class="badge bg-danger" title="Edita Fechas para Renovar Contrato">{{ area.estado_vigencia }}</span>
                             {% else %}
                             <span class="badge bg-success">{{ area.estado_vigencia }}</span>
                             {% endif %}
                         </td>
                         <td>
+                            {% if area.status == 'disponible' %}
+                            <span class="text-muted small">—</span>
+                            {% else %}
                             <a href="{% url 'lista_facturas' %}?area_id={{ area.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas relacionadas a esta área y registrar nuevos pagos">
                                 <i class="bi bi-receipt"></i>
                             </a>
+                            {% endif %}
                         </td>
                         <td>
-                            {% if area.empresa.es_premium %}
-                                {% if area.estado_vigencia == "Vigente" %}
-                                <button onclick="window.open('{% url 'contrato_formulario' area.pk %}', 'contrato_{{ area.pk }}', 'width=1000,height=800,scrollbars=yes')" class="btn btn-sm btn-outline-primary m-1" title="Generar contrato">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                </button>
-                                {% else %}
-                                <span class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                </span>
-                                {% endif %}
+                            {% if area.status == 'disponible' %}
+                            <span class="text-muted small">—</span>
                             {% else %}
-                                <a href="#" class="btn btn-sm btn-primary m-1" title="Contrato solo PREMIUM">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                </a>
+                                {% if area.empresa.es_premium %}
+                                    {% if area.estado_vigencia == "Vigente" %}
+                                    <button onclick="window.open('{% url 'contrato_formulario' area.pk %}', 'contrato_{{ area.pk }}', 'width=1000,height=800,scrollbars=yes')" class="btn btn-sm btn-outline-primary m-1" title="Generar contrato">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </button>
+                                    {% else %}
+                                    <span class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="#" class="btn btn-sm btn-primary m-1" title="Contrato solo PREMIUM">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </a>
+                                {% endif %}
                             {% endif %}
                         </td>
                         <td class="text-nowrap">
@@ -241,12 +261,14 @@
                             <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar area">
                                 <i class="bi bi-slash-circle"></i>
                             </a>
-                            {% if area.referencia_pago %}
-                            <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de Instrucciones de Pago">
-                                <i class="bi bi-qr-code"></i>
-                            </a>
-                            {% else %}
-                            <span class="text-muted small" title="Asigna un cliente primero">Sin referencia</span>
+                            {% if area.status != 'disponible' %}
+                                {% if area.referencia_pago %}
+                                <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de Instrucciones de Pago">
+                                    <i class="bi bi-qr-code"></i>
+                                </a>
+                                {% else %}
+                                <span class="text-muted small" title="Asigna un cliente primero">Sin referencia</span>
+                                {% endif %}
                             {% endif %}
                             {% if area.status == 'disponible' %}
                             <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-outline-success btn-sm reporte-link" title="Asignar cliente a área">

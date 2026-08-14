@@ -381,9 +381,14 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 facturas_creadas += 1
 
     if facturar_areas:
+        # areas = AreaComun.objects.filter(
+        #     empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False, cuota__gt=0,
+        # ).select_related("cliente")
         areas = AreaComun.objects.filter(
-            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False, cuota__gt=0,
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False,
+            es_cuota_variable=False, cuota__gt=0,
         ).select_related("cliente")
+
         areas_ids = list(areas.values_list("id", flat=True))
         areas_con_factura = set(
             Factura.objects.filter(
@@ -424,9 +429,14 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                     ))
 
         # Cuota anual -- se revisa en CUALQUIER mes, mismo criterio que locales.
+        # areas_anuales = AreaComun.objects.filter(
+        #     empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True, cuota__gt=0,
+        # ).select_related("cliente")
         areas_anuales = AreaComun.objects.filter(
-            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True, cuota__gt=0,
+            empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True,
+            es_cuota_variable=False, cuota__gt=0,
         ).select_related("cliente")
+
         areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
         areas_anuales_con_factura = set(
             Factura.objects.filter(

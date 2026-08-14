@@ -1,9 +1,11 @@
 
 from django import forms
 from django.db import models
+from django.utils import timezone
+
 #from clientes.models import Cliente
 from empresas.models import Empresa
-from django.utils import timezone
+
 
 # Create your models here.
 class AreaComun(models.Model):
@@ -11,7 +13,7 @@ class AreaComun(models.Model):
     cliente = models.ForeignKey('clientes.Cliente', on_delete=models.PROTECT, null=True, blank=True) 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     superficie_m2 = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    TIPO_AREA_CHOICES = [
+    TIPO_AREA_CHOICES = [  # noqa: RUF012
         ('Modulo', 'modulo'),
         ('Stand', 'stand'),
         ('Espacio', 'superficie'),
@@ -27,7 +29,7 @@ class AreaComun(models.Model):
     giro = models.CharField(max_length=100, blank=True, null=True)
     ubicacion = models.CharField(blank=True, null=True)
     activo = models.BooleanField(default=True)
-    STATUS_CHOICES = [
+    STATUS_CHOICES = [  # noqa: RUF012
         ('ocupado', 'Ocupado'),
         ('disponible', 'Disponible'),
         ('mantenimiento', 'Mantenimiento'),
@@ -41,6 +43,14 @@ class AreaComun(models.Model):
     observaciones = models.CharField(blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota global? un solo pago")
     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
+    es_cuota_variable = models.BooleanField(
+        default=False,
+        verbose_name="¿Cuota variable?",
+        help_text="Si está activo, el importe NO se captura aquí -- se determina "
+                   "cada vez que el usuario factura manualmente esta área. Esta "
+                   "área nunca se incluye en la facturación mensual automática."
+    )
+
 
     def save(self, *args, **kwargs):
         if not self.referencia_pago and self.cliente_id:
@@ -59,7 +69,7 @@ class AreaComun(models.Model):
             return "Vencido"
         return "Vigente"
 
-    widgets = {
+    widgets = {  # noqa: RUF012
             'fecha_inicial': forms.DateInput(attrs={'type': 'date'}),
             'fecha_fin': forms.DateInput(attrs={'type': 'date'}),
         }

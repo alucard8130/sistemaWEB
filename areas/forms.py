@@ -1,15 +1,19 @@
+from decimal import Decimal
+
 from django import forms
 
-from empresas.models import CuentaBancaria
-from .models import AreaComun
 from clientes.models import Cliente
+from empresas.models import CuentaBancaria
+
+from .models import AreaComun
+
 #from empresas.models import Empresa
 
 
 class AreaComunForm(forms.ModelForm):
     class Meta:
         model = AreaComun
-        fields = [
+        fields = [  # noqa: RUF012
             "numero",
             "cliente",
             "empresa",
@@ -25,8 +29,9 @@ class AreaComunForm(forms.ModelForm):
             "status",
             "observaciones",
             "es_cuota_anual",
+            "es_cuota_variable",
         ]
-        widgets = {
+        widgets = {  # noqa: RUF012
             "numero": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Número, Codigo o Id."}
             ),
@@ -41,6 +46,9 @@ class AreaComunForm(forms.ModelForm):
                 attrs={"class": "form-control", "placeholder": "Importe Cuota Mensual"}
             ),
             "es_cuota_anual": forms.CheckboxInput(
+                attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
+            ),
+            "es_cuota_variable": forms.CheckboxInput(
                 attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
             ),
             "deposito": forms.TextInput(
@@ -67,7 +75,7 @@ class AreaComunForm(forms.ModelForm):
                 }
             ),
         }
-        labels = {
+        labels = {  # noqa: RUF012
             "numero": "Número, Codigo o Id.",
             "tipo_area": "Tipo de área",
             "cantidad_areas": "Cantidad de áreas",
@@ -75,6 +83,8 @@ class AreaComunForm(forms.ModelForm):
             "ubicacion": "Ubicación",
             "status": "Estatus",
             "cliente": "Cliente",
+            "es_cuota_anual": "Es cuota anual",
+            "es_cuota_variable": "Es cuota variable",
         }
 
     def __init__(self, *args, **kwargs):
@@ -90,18 +100,39 @@ class AreaComunForm(forms.ModelForm):
         else:
             self.fields["cliente"].queryset = Cliente.objects.all()
 
-        # Deshabilita el campo cliente si se está editando un local existente
+    
         if self.instance and self.instance.pk:
-            self.fields["cliente"].disabled = True
             self.fields["numero"].disabled = True
-            self.fields["status"].disabled = True
+            # NUEVO -- cliente y status ya NO se deshabilitan: se necesitan
+            # editables para que las reglas automáticas de clean() (más abajo)
+            # puedan aplicar -- mismo criterio que LocalComercialForm.
 
+        # NUEVO -- estos campos dependen del status resultante (ver clean()),
+        # así que se aflojan aquí y clean() decide si son obligatorios o no.
+        self.fields["cuota"].required = False
+        self.fields["giro"].required = False
+        self.fields["fecha_inicial"].required = False
+        self.fields["fecha_fin"].required = False
+
+
+    def clean_cuota(self):
+        cuota = self.cleaned_data.get("cuota")
+        es_variable = self.data.get("es_cuota_variable") or self.initial.get("es_cuota_variable")
+        if es_variable:
+            return cuota or Decimal("0")
+        if cuota is None or cuota <= 0:
+            raise forms.ValidationError(
+                "La cuota debe ser mayor a $0.00 -- no se puede dejar en cero. "
+                "Si el importe de esta área varía cada vez, marca \"¿Cuota variable?\"."
+            )
+        return cuota
+ 
     def clean(self):
         cleaned_data = super().clean()
-        numero = cleaned_data.get("numero")  # Cambiado de 'nombre' a 'numero'
+        numero = cleaned_data.get("numero")
         empresa = cleaned_data.get("empresa")
-        fecha_inicial = cleaned_data.get("fecha_inicial")
-        fecha_fin = cleaned_data.get("fecha_fin")
+        status = cleaned_data.get("status")
+        cliente = cleaned_data.get("cliente")
 
         if numero and empresa:
             qs = AreaComun.objects.filter(
@@ -114,11 +145,44 @@ class AreaComunForm(forms.ModelForm):
                     "Ya existe un área común con ese número en esta empresa."
                 )
 
-        if not fecha_inicial:
-            raise forms.ValidationError("Debe ingresar la fecha inicial.")
-        if not fecha_fin:
-            raise forms.ValidationError("Debe ingresar la fecha fin.")
+        # ---- Reglas automáticas de cliente/status (mismo criterio que Locales) ----
+        cliente_original_id = self.instance.cliente_id if self.instance.pk else None
+        cliente_nuevo_id = cliente.id if cliente else None
+        se_asigno_cliente_nuevo = (
+            cliente_nuevo_id is not None and cliente_nuevo_id != cliente_original_id
+        )
 
+        if se_asigno_cliente_nuevo:
+            # Se asignó un cliente nuevo/distinto -- el área pasa a "Ocupado"
+            # automáticamente, sin importar qué status se haya seleccionado.
+            cleaned_data["status"] = "ocupado"
+            status = "ocupado"
+        elif status == "disponible":
+            # NUEVO -- al quedar Disponible, se limpia TODO lo relacionado
+            # al contrato anterior: cliente, giro, fecha_inicial, fecha_fin.
+            # La cuota NO se toca (se queda capturada para la próxima renta).
+            cleaned_data["cliente"] = None
+            cleaned_data["giro"] = None
+            cleaned_data["fecha_inicial"] = None
+            cleaned_data["fecha_fin"] = None
+
+        # ---- Campos obligatorios SOLO si el área queda "Ocupado" ----
+        if status == "ocupado":
+            if not cleaned_data.get("fecha_inicial"):
+                raise forms.ValidationError(
+                    "Debe ingresar la fecha inicial del contrato -- el área quedará Ocupada."
+                )
+            if not cleaned_data.get("fecha_fin"):
+                raise forms.ValidationError(
+                    "Debe ingresar la fecha fin del contrato -- el área quedará Ocupada."
+                )
+            if not cleaned_data.get("giro"):
+                raise forms.ValidationError(
+                    "Debe ingresar el giro del cliente -- el área quedará Ocupada."
+                )
+
+        fecha_inicial = cleaned_data.get("fecha_inicial")
+        fecha_fin = cleaned_data.get("fecha_fin")
         if fecha_inicial and fecha_fin and fecha_inicial > fecha_fin:
             raise forms.ValidationError(
                 "La fecha inicial no puede ser posterior a la fecha fin."
@@ -127,31 +191,42 @@ class AreaComunForm(forms.ModelForm):
         return cleaned_data
 
 
+
 class AsignarClienteForm(forms.ModelForm):
     class Meta:
         model = AreaComun
-        fields = ["cliente", "fecha_inicial", "fecha_fin"]
-        widgets = {
+        fields = ["cliente", "giro", "fecha_inicial", "fecha_fin"]  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             "fecha_inicial": forms.DateInput(attrs={"type": "date"}),
             "fecha_fin": forms.DateInput(attrs={"type": "date"}),
         }
 
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop("empresa", None)
         super().__init__(*args, **kwargs)
-        self.fields["cliente"].queryset = Cliente.objects.all()
+        # NUEVO -- filtra por empresa, igual que AreaComunForm
+        if empresa:
+            self.fields["cliente"].queryset = Cliente.objects.filter(empresa=empresa)
+        else:
+            self.fields["cliente"].queryset = Cliente.objects.all()
 
     def clean(self):
         cleaned_data = super().clean()
         cliente = cleaned_data.get("cliente")
+        giro = cleaned_data.get("giro")
         fecha_inicial = cleaned_data.get("fecha_inicial")
         fecha_fin = cleaned_data.get("fecha_fin")
 
         if not cliente:
             self.add_error("cliente", "Debe seleccionar un cliente.")
+        if not giro:
+            self.add_error("giro", "Debe ingresar el giro del cliente.")
         if not fecha_inicial:
             self.add_error("fecha_inicial", "Debe ingresar la fecha inicial.")
         if not fecha_fin:
             self.add_error("fecha_fin", "Debe ingresar la fecha fin.")
+        if fecha_inicial and fecha_fin and fecha_inicial > fecha_fin:
+            self.add_error("fecha_fin", "La fecha fin no puede ser anterior a la fecha inicial.")
 
         return cleaned_data
 

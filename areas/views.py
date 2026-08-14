@@ -56,9 +56,20 @@ def lista_areas(request):
     promedio_cuotas = areas.aggregate(promedio=Avg('cuota'))['promedio'] or 0
     superficie_total = areas.aggregate(total=Sum('superficie_m2'))['total'] or 0
     promedio_precio_m2 = total_cuotas / superficie_total if superficie_total > 0 else 0
+
     status_vencido = areas.filter(fecha_fin__lt=datetime.now()).count()
     status_vigente = areas.filter(fecha_fin__gte=datetime.now()).count()
-    porcentaje_vencido = (status_vencido / total_areas * 100) if total_areas > 0 else 0
+    # NUEVO -- las áreas "Disponible" no tienen fecha_fin (se limpia al
+    # liberarlas), así que no caen ni en vigente ni en vencido -- se
+    # cuentan aparte, para que el desglose siga sumando el total.
+    status_disponible = areas.filter(status="disponible").count()
+
+    # NUEVO -- el porcentaje ahora se calcula sobre las áreas que SÍ
+    # tienen contrato (vigente + vencido), no sobre el total -- si no,
+    # las Disponibles diluyen el porcentaje y lo hacen ver más bajo de
+    # lo real.
+    con_contrato = status_vigente + status_vencido
+    porcentaje_vencido = (status_vencido / con_contrato * 100) if con_contrato > 0 else 0
      
     
     paginator = Paginator(areas, 25)
@@ -75,7 +86,9 @@ def lista_areas(request):
                                                           'status_vencido': status_vencido,
                                                           'status_vigente': status_vigente,
                                                             'porcentaje_vencido': porcentaje_vencido,
+                                                            'status_disponible': status_disponible
                                                       })
+
 
 @login_required
 def crear_area(request):
@@ -220,11 +233,20 @@ def incrementar_cuotas_areas(request):
 
     return render(request, 'areas/incrementar_c_areas.html')
 
+
 @login_required
 def asignar_cliente_area(request, pk):
-    area = get_object_or_404(AreaComun, pk=pk, status='disponible')
+    # NUEVO -- filtra por empresa del usuario, salvo superusuario
+    if request.user.is_superuser:
+        area = get_object_or_404(AreaComun, pk=pk, status='disponible')
+    else:
+        empresa = request.user.perfilusuario.empresa
+        area = get_object_or_404(AreaComun, pk=pk, status='disponible', empresa=empresa)
+
+    empresa_para_form = area.empresa
+
     if request.method == 'POST':
-        form = AsignarClienteForm(request.POST, instance=area)
+        form = AsignarClienteForm(request.POST, instance=area, empresa=empresa_para_form)
         if form.is_valid():
             area = form.save(commit=False)
             area.status = 'ocupado'
@@ -232,8 +254,9 @@ def asignar_cliente_area(request, pk):
             messages.success(request, 'Cliente asignado correctamente.')
             return redirect('lista_areas')
     else:
-        form = AsignarClienteForm(instance=area)
+        form = AsignarClienteForm(instance=area, empresa=empresa_para_form)
     return render(request, 'areas/asignar_cliente.html', {'form': form, 'area': area})
+
 
 def buscar_por_id_o_nombre(modelo, valor, campo='nombre'):
     if not valor:
@@ -388,7 +411,7 @@ def plantilla_areas_excel(request):
     return response  
 
 
-# modulo generar contrato y guardar PDF
+################# modulo generar contrato y guardar PDF#################################
 
 try:
     from weasyprint import HTML

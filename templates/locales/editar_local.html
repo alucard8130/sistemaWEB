@@ -1,119 +1,248 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 26/06/2025
-        Description: Edit local details
-    -->
-    <meta charset="UTF-8" />
-    <title>Editar local</title>
-    <!-- Bootstrap base styles -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <!-- Bootstrap icons -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
-      rel="stylesheet"
-    />
-    <!-- Google Font Rubik -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Rubik&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Customised CSS -->
-    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
-  </head>
-  <body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Editar propiedad · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+
+        .page-wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 60px; }
+
+        .form-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 100%);
+            border-radius: 16px 16px 0 0;
+            padding: 24px 28px;
+            color: white;
+        }
+        .form-header h4 { margin: 0; font-weight: 700; }
+        .form-header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.85; }
+
+        .form-card {
+            background: white;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 4px 22px rgba(15,45,82,0.08);
+            padding: 28px;
+        }
+
+        .field-section { margin-bottom: 26px; }
+        .field-section:last-child { margin-bottom: 0; }
+        .section-title {
+            font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; color: #6b7a90; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .section-title i { color: #1a5276; }
+
+        .field-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+        .field-row:last-child { margin-bottom: 0; }
+        .field-col { flex: 1 1 220px; }
+
+        .field-col label, .mb-3 > label {
+            font-size: 0.82rem; font-weight: 600; color: #33475b; margin-bottom: 5px; display: block;
+        }
+        .field-col .form-control, .field-col .form-select,
+        .mb-3 .form-control, .mb-3 .form-select {
+            border-radius: 10px; border: 1px solid #dde3ec; padding: 9px 12px; font-size: 0.9rem;
+        }
+        .field-col .form-control:focus, .field-col .form-select:focus {
+            border-color: #1a5276; box-shadow: 0 0 0 3px rgba(26,82,118,0.12);
+        }
+
+        .checkbox-card {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: #f7f9fc; border: 1px solid #e6ebf3; border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 12px;
+        }
+        .checkbox-card input[type="checkbox"] { margin-top: 3px; width: 1.05em; height: 1.05em; }
+        .checkbox-card label { font-size: 0.86rem; font-weight: 600; color: #33475b; margin: 0; }
+        .checkbox-card .hint { font-size: 0.76rem; color: #8592a6; margin-top: 2px; }
+
+        .btn-gesac-primary {
+            background: linear-gradient(135deg, #0f2d52, #1a5276);
+            color: white; font-weight: 700; border: none; border-radius: 10px;
+            padding: 10px 26px; font-size: 0.9rem;
+        }
+        .btn-gesac-primary:hover { color: white; opacity: 0.92; }
+        .btn-gesac-outline {
+            border: 1px solid #c9d3e0; color: #33475b; border-radius: 10px;
+            padding: 10px 22px; font-size: 0.9rem; font-weight: 600; background: white;
+            text-decoration: none; display: inline-flex; align-items: center;
+        }
+        .btn-gesac-outline:hover { color: #33475b; background: #f7f9fc; }
+
+        @media (max-width: 576px) {
+            .page-wrap { padding: 16px 10px 40px; }
+            .form-header { padding: 18px 18px; }
+            .form-card { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <!-- Main content -->
-    <div class="container mt-5">
-      <div class="row justify-content-center">
-        <div class="col-md-4 col-sm-6 mx-auto">
-          <!-- Styled title with the same width as the form -->
-          <h2 class="form-title text-center mb-0">Editar Propiedad</h2>
+    <div class="page-wrap">
 
-          <!-- Block for displaying messages -->
-          {% if messages %} 
+        {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %} 
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
         {% endif %}
-    
-          <!-- Form -->
-          <form method="post" class="p-4 rounded custom-form">
-            {% csrf_token %} {% comment %} {{ form.as_p }} {% endcomment %}
-            <!-- Form fields -->
-            <div class="mb-3">
-              {{ form.numero.label_tag }} 
-              {{ form.numero }} {{ form.numero.errors }}
-            </div>
-            <div class="mb-3">
-              {{ form.propietario.label_tag }} 
-              {{ form.propietario }} {{ form.propietario.errors }}
-            </div>
-            <div class="mb-3">
-              {{ form.cliente.label_tag }} {{ form.cliente }} {{ form.cliente.errors }}
-            </div>
-            <div class="mb-3">
-              {{ form.tipo_propiedad.label_tag }} {{ form.tipo_propiedad }} {{ form.tipo_propiedad.errors }}
-            </div>
-            {% if request.user.is_superuser %}
-            <div class="mb-3 select-wrapper">
-              {{ form.empresa.label_tag }} {{ form.empresa }} {{ form.empresa.errors }}
-            </div>
-            {% else %} 
-            {{ form.empresa }} 
-            {% endif %}
-            <div class="mb-3">
-              {{ form.superficie_m2.label_tag }} {{ form.superficie_m2 }} {{ form.superficie_m2.errors }}
-            </div>
-            <div class="mb-3">
-              {{ form.proindiviso.label_tag }} {{ form.proindiviso }} {{ form.proindiviso.errors }}
-              <div class="form-text">Porcentaje de proindiviso de esta propiedad (opcional).</div>
-            </div>
-            <div class="mb-3">
-              {{ form.cuota.label_tag }} {{ form.cuota }} {{ form.cuota.errors }}
-            </div>
-            <div class="form-check mb-3">
-              {{ form.es_cuota_anual }} 
-              {{ form.es_cuota_anual.label_tag }} {{ form.es_cuota_anual.errors }}
-            </div>
-            <div class="mb-3">
-              {{ form.giro.label_tag }} {{ form.giro }} {{ form.giro.errors }}
-            </div>
-            <div class="mb-3">
-              {{ form.ubicacion.label_tag }} 
-              {{ form.ubicacion }} {{ form.ubicacion.errors }}
-            </div>
-            <div class="mb-3 select-wrapper">
-              {{ form.status.label_tag }} {{ form.status }} {{ form.status.errors }}
-            </div>
-            <div class="mb-3">
-              {{ form.observaciones.label_tag }} {{ form.observaciones }} {{ form.observaciones.errors }}
-            </div>
-            <div class="d-flex justify-content-between mt-3">
-              <button type="submit" class="btn btn-primary">Guardar</button>
-              <a href="{% url 'lista_locales' %}" class="btn btn-secondary"
-                >Cancelar</a
-              >
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-    <!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
 
-    <!-- Scripts -->
+        {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+                <div class="alert alert-danger">{{ error }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="form-header">
+            <h4><i class="bi bi-pencil-square me-2"></i>Editar propiedad</h4>
+            <p>Actualiza los datos, la cuota y el estado de esta propiedad.</p>
+        </div>
+
+        <form method="post" class="form-card" id="localEditForm">
+            {% csrf_token %}
+
+            <div class="field-section">
+                <div class="section-title"><i class="bi bi-hash"></i>Identificación</div>
+                <div class="field-row">
+                    <div class="field-col">
+                        {{ form.numero.label_tag }}
+                        {{ form.numero }}
+                        {{ form.numero.errors }}
+                    </div>
+                    <div class="field-col">
+                        {{ form.propietario.label_tag }}
+                        {{ form.propietario }}
+                        {{ form.propietario.errors }}
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field-col">
+                        {{ form.cliente.label_tag }}
+                        {{ form.cliente }}
+                        {{ form.cliente.errors }}
+                    </div>
+                    {% if request.user.is_superuser %}
+                    <div class="field-col">
+                        {{ form.empresa.label_tag }}
+                        {{ form.empresa }}
+                        {{ form.empresa.errors }}
+                    </div>
+                    {% else %}
+                        {{ form.empresa }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="field-section">
+                <div class="section-title"><i class="bi bi-rulers"></i>Características</div>
+                <div class="field-row">
+                    <div class="field-col">
+                        {{ form.tipo_propiedad.label_tag }}
+                        {{ form.tipo_propiedad }}
+                        {{ form.tipo_propiedad.errors }}
+                    </div>
+                    <div class="field-col">
+                        {{ form.superficie_m2.label_tag }}
+                        {{ form.superficie_m2 }}
+                        {{ form.superficie_m2.errors }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.proindiviso.label_tag }}
+                    {{ form.proindiviso }}
+                    {{ form.proindiviso.errors }}
+                    <div class="form-text">Porcentaje de proindiviso de esta propiedad (opcional).</div>
+                </div>
+            </div>
+
+            <div class="field-section">
+                <div class="section-title"><i class="bi bi-cash-coin"></i>Cuota</div>
+                <div class="mb-3">
+                    {{ form.cuota.label_tag }}
+                    {{ form.cuota }}
+                    {{ form.cuota.errors }}
+                </div>
+                <div class="checkbox-card">
+                    {{ form.es_cuota_anual }}
+                    <div>
+                        {{ form.es_cuota_anual.label_tag }}
+                        <div class="hint">Se genera una sola factura al año en vez de mensual.</div>
+                        {{ form.es_cuota_anual.errors }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-section">
+                <div class="section-title"><i class="bi bi-shop"></i>Uso y estado</div>
+                <div class="field-row">
+                    <div class="field-col">
+                        {{ form.giro.label_tag }}
+                        {{ form.giro }}
+                        {{ form.giro.errors }}
+                    </div>
+                    <div class="field-col">
+                        {{ form.status.label_tag }}
+                        {{ form.status }}
+                        {{ form.status.errors }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.ubicacion.label_tag }}
+                    {{ form.ubicacion }}
+                    {{ form.ubicacion.errors }}
+                </div>
+            </div>
+
+            <div class="field-section">
+                <div class="section-title"><i class="bi bi-pencil-square"></i>Notas</div>
+                <div class="mb-3">
+                    {{ form.observaciones.label_tag }}
+                    {{ form.observaciones }}
+                    {{ form.observaciones.errors }}
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4 pt-2 border-top">
+                <a href="{% url 'lista_locales' %}" class="btn-gesac-outline reporte-link">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-gesac-primary">
+                    <i class="bi bi-check-circle me-1"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  </body>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('localEditForm');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
 </html>

@@ -2,186 +2,330 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 08/09/2025
-        Description: Register new commercial premises
-    -->
     <meta charset="UTF-8">
-    <title>Registrar local</title>
-    <!-- Bootstrap base styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>{% if es_habitacional %}Registrar Vivienda{% else %}Registrar Propiedad Comercial{% endif %} · GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+
+        .page-wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 60px; }
+
+        .form-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 100%);
+            border-radius: 16px 16px 0 0;
+            padding: 24px 28px;
+            color: white;
+        }
+        .form-header h4 { margin: 0; font-weight: 700; }
+        .form-header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.85; }
+
+        .step-indicator { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+        .step-pill {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 14px; border-radius: 999px;
+            background: rgba(255,255,255,0.12); font-size: 0.8rem; font-weight: 600;
+            transition: background 0.2s;
+        }
+        .step-pill.active { background: rgba(255,255,255,0.95); color: #0f2d52; }
+        .step-pill .num {
+            width: 20px; height: 20px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.25); font-size: 0.72rem;
+        }
+        .step-pill.active .num { background: #0f2d52; color: white; }
+        .step-line { flex: 1; height: 2px; background: rgba(255,255,255,0.2); }
+
+        .form-card {
+            background: white;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 4px 22px rgba(15,45,82,0.08);
+            padding: 28px;
+        }
+
+        .field-section { margin-bottom: 26px; }
+        .field-section:last-child { margin-bottom: 0; }
+        .section-title {
+            font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; color: #6b7a90; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .section-title i { color: #1a5276; }
+
+        .field-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+        .field-row:last-child { margin-bottom: 0; }
+        .field-col { flex: 1 1 220px; }
+
+        .field-col label, .mb-3 > label {
+            font-size: 0.82rem; font-weight: 600; color: #33475b; margin-bottom: 5px; display: block;
+        }
+        .field-col .form-control, .field-col .form-select,
+        .mb-3 .form-control, .mb-3 .form-select {
+            border-radius: 10px; border: 1px solid #dde3ec; padding: 9px 12px; font-size: 0.9rem;
+        }
+        .field-col .form-control:focus, .field-col .form-select:focus {
+            border-color: #1a5276; box-shadow: 0 0 0 3px rgba(26,82,118,0.12);
+        }
+
+        .checkbox-card {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: #f7f9fc; border: 1px solid #e6ebf3; border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 12px;
+        }
+        .checkbox-card input[type="checkbox"] { margin-top: 3px; width: 1.05em; height: 1.05em; }
+        .checkbox-card label { font-size: 0.86rem; font-weight: 600; color: #33475b; margin: 0; }
+        .checkbox-card .hint { font-size: 0.76rem; color: #8592a6; margin-top: 2px; }
+
+        .adeudo-card {
+            border: 1px dashed #d1a53d; background: #fffaf0; border-radius: 12px;
+            padding: 16px 18px; margin-bottom: 4px;
+        }
+        .adeudo-card legend-title {
+            font-size: 0.85rem; font-weight: 700; color: #8a6d00; margin-bottom: 10px; display: block;
+        }
+        .adeudo-fields-inner { margin-top: 14px; }
+
+        .btn-gesac-primary {
+            background: linear-gradient(135deg, #0f2d52, #1a5276);
+            color: white; font-weight: 700; border: none; border-radius: 10px;
+            padding: 10px 26px; font-size: 0.9rem;
+        }
+        .btn-gesac-primary:hover { color: white; opacity: 0.92; }
+        .btn-gesac-outline {
+            border: 1px solid #c9d3e0; color: #33475b; border-radius: 10px;
+            padding: 10px 22px; font-size: 0.9rem; font-weight: 600; background: white;
+            text-decoration: none; display: inline-flex; align-items: center;
+        }
+        .btn-gesac-outline:hover { color: #33475b; background: #f7f9fc; }
+
+        @media (max-width: 576px) {
+            .page-wrap { padding: 16px 10px 40px; }
+            .form-header { padding: 18px 18px; }
+            .form-card { padding: 18px; }
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-     {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                    {% if form.non_field_errors %}
-                        {% for error in form.non_field_errors %}
-                            <div class="alert alert-danger">{{ error }}</div>
-                        {% endfor %}
-                    {% endif %}
-    
-        <!-- Contenido principal -->
-        <main class="flex-grow-1">
-        <div class="container mt-5">
-            <div class="row justify-content-center">
-                <div class="col-md-5 col-sm-8 mx-auto">
-                    <h2 class="form-title text-center mb-0">
-                        {% if es_habitacional %}Registrar Vivienda{% else %}Registrar Propiedad Comercial{% endif %}
-                    </h2>
-                    <form method="post" class="p-4 rounded custom-form" id="localForm">
-                        {% csrf_token %}
-                        <!-- Paso 1: Datos generales -->
-                        <div id="step1">
-                            <div class="mb-3">
-                                {{ form.numero.label_tag }}
-                                {{ form.numero }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.numero.errors }}
-                            </div>
-                            <div class="mb-3">
-                                {{ form.propietario.label_tag }}
-                                {{ form.propietario }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.propietario.errors }}
-                            </div>
-                            <div class="mb-3 select-wrapper">
-                                {{ form.cliente.label_tag }}
-                                {{ form.cliente }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.cliente.errors }}
-                            </div>
-                            {% if request.user.is_superuser %}
-                            <div class="mb-3 select-wrapper">
-                                {{ form.empresa.label_tag }}
-                                {{ form.empresa }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.empresa.errors }}
-                            </div>
-                            {% else %}
-                                {{ form.empresa }}
-                            {% endif %}
-                            <div class="mb-3">
-                                {{ form.superficie_m2.label_tag }}
-                                {{ form.superficie_m2 }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.superficie_m2.errors }}
-                            </div>
-                            <div class="mb-3">
-                                {{ form.proindiviso.label_tag }}
-                                {{ form.proindiviso }}
-                                {{ form.proindiviso.errors }}
-                                <div class="form-text">Porcentaje de proindiviso de esta propiedad (opcional).</div>
-                            </div>
-                            <div class="mb-3">
-                                {{ form.tipo_propiedad.label_tag }}
-                                {{ form.tipo_propiedad }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.tipo_propiedad.errors }}
-                            </div>
-                            <div class="d-flex justify-content-end mt-3">
-                                <button type="button" class="btn btn-secondary me-2" onclick="window.location.href='{% url 'lista_locales' %}'">Cancelar</button>
-                                <button type="button" class="btn btn-primary" onclick="nextStepLocal()">Siguiente</button>
-                            </div>
-                        </div>
-                        <!-- Paso 2: Datos del local -->
-                        <div id="step2" style="display:none;">
-                            <div class="mb-3">
-                                {{ form.cuota.label_tag }}
-                                {{ form.cuota }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.cuota.errors }}
-                            </div>
-                            <div class="form-check mb-3">
-                                {{ form.es_cuota_anual }}
-                                {{ form.es_cuota_anual.label_tag }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.es_cuota_anual.errors }}
-                            </div>
-                            {% if not es_habitacional %}
-                            <div class="mb-3">
-                                {{ form.giro.label_tag }}
-                                {{ form.giro }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.giro.errors }}
-                            </div>
-                            {% endif %}
-                            <div class="mb-3">
-                                {{ form.ubicacion.label_tag }}
-                                {{ form.ubicacion }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.ubicacion.errors }}
-                            </div>
-                            <div class="mb-3 select-wrapper">
-                                {{ form.status.label_tag }}
-                                {{ form.status }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.status.errors }}
-                            </div>
-                            <!-- Adeudo opcional -->
-                            <fieldset class="border p-3 mb-3">
-                                <legend class="small mb-2">Adeudo (opcional)</legend>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" id="id_tiene_adeudo" name="tiene_adeudo">
-                                    <label class="form-check-label" for="id_tiene_adeudo">Tiene adeudo</label>
-                                </div>
-                                <div id="adeudo_fields" style="display:none;">
-                                    <div class="mb-2">
-                                        <label for="adeudo_inicio" class="form-label">Periodo inicio</label>
-                                        <input class="form-control" type="month" id="adeudo_inicio" name="adeudo_inicio" placeholder="YYYY-MM">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label for="adeudo_fin" class="form-label">Periodo fin (opcional)</label>
-                                        <input class="form-control" type="month" id="adeudo_fin" name="adeudo_fin" placeholder="YYYY-MM">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label for="adeudo_importe" class="form-label">Importe</label>
-                                        <input class="form-control" type="number" step="0.01" id="adeudo_importe" name="adeudo_importe" placeholder="0.00">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label for="adeudo_descripcion" class="form-label">Descripción (opcional)</label>
-                                        <textarea class="form-control" id="adeudo_descripcion" name="adeudo_descripcion" rows="2"></textarea>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            <div class="mb-3">
-                                {{ form.observaciones.label_tag }}
-                                {{ form.observaciones }}
-                                <div class="invalid-feedback">Este campo es obligatorio.</div>
-                                {{ form.observaciones.errors }}
-                            </div>
-                            <div class="d-flex justify-content-between mt-3">
-                                <button type="button" class="btn btn-secondary" onclick="prevStepLocal()">Anterior</button>
-                                <button type="submit" class="btn btn-primary">Guardar</button>
-                                <a href="{% url 'lista_locales' %}" class="btn btn-secondary ">Cancelar</a>
-                            </div>
-                        </div>
-                    </form>
+
+    <div class="page-wrap">
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+                <div class="alert alert-danger">{{ error }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="form-header">
+            <h4>
+                <i class="bi bi-{% if es_habitacional %}house-add{% else %}shop{% endif %} me-2"></i>
+                {% if es_habitacional %}Registrar Vivienda{% else %}Registrar Propiedad Comercial{% endif %}
+            </h4>
+            <p>Completa los datos generales y, en el segundo paso, la cuota y el estado de la propiedad.</p>
+
+            <div class="step-indicator">
+                <div class="step-pill active" id="pill-1">
+                    <span class="num">1</span> Datos generales
+                </div>
+                <div class="step-line"></div>
+                <div class="step-pill" id="pill-2">
+                    <span class="num">2</span> Cuota y estado
                 </div>
             </div>
         </div>
-    </main>
 
-        <!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
+        <form method="post" class="form-card" id="localForm">
+            {% csrf_token %}
 
-        <!-- Scripts -->
-        <script src="{% static 'js/script.js' %}"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-        <script>
+            <!-- ============ PASO 1: Datos generales ============ -->
+            <div id="step1">
+
+                <div class="field-section">
+                    <div class="section-title"><i class="bi bi-hash"></i>Identificación</div>
+                    <div class="field-row">
+                        <div class="field-col">
+                            {{ form.numero.label_tag }}
+                            {{ form.numero }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.numero.errors }}
+                        </div>
+                        <div class="field-col">
+                            {{ form.propietario.label_tag }}
+                            {{ form.propietario }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.propietario.errors }}
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field-col">
+                            {{ form.cliente.label_tag }}
+                            {{ form.cliente }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.cliente.errors }}
+                        </div>
+                        {% if request.user.is_superuser %}
+                        <div class="field-col">
+                            {{ form.empresa.label_tag }}
+                            {{ form.empresa }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.empresa.errors }}
+                        </div>
+                        {% else %}
+                            {{ form.empresa }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="field-section">
+                    <div class="section-title"><i class="bi bi-rulers"></i>Características</div>
+                    <div class="field-row">
+                        <div class="field-col">
+                            {{ form.superficie_m2.label_tag }}
+                            {{ form.superficie_m2 }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.superficie_m2.errors }}
+                        </div>
+                        <div class="field-col">
+                            {{ form.tipo_propiedad.label_tag }}
+                            {{ form.tipo_propiedad }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.tipo_propiedad.errors }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        {{ form.proindiviso.label_tag }}
+                        {{ form.proindiviso }}
+                        {{ form.proindiviso.errors }}
+                        <div class="form-text">Porcentaje de proindiviso de esta propiedad (opcional).</div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4 pt-2 border-top">
+                    <a href="{% url 'lista_locales' %}" class="btn-gesac-outline reporte-link">
+                        Cancelar
+                    </a>
+                    <button type="button" class="btn-gesac-primary" onclick="nextStepLocal()">
+                        Siguiente <i class="bi bi-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ============ PASO 2: Datos del local ============ -->
+            <div id="step2" style="display:none;">
+
+                <div class="field-section">
+                    <div class="section-title"><i class="bi bi-cash-coin"></i>Cuota</div>
+                    <div class="mb-3">
+                        {{ form.cuota.label_tag }}
+                        {{ form.cuota }}
+                        <div class="invalid-feedback">Este campo es obligatorio.</div>
+                        {{ form.cuota.errors }}
+                    </div>
+                    <div class="checkbox-card">
+                        {{ form.es_cuota_anual }}
+                        <div>
+                            {{ form.es_cuota_anual.label_tag }}
+                            <div class="hint">Se genera una sola factura al año en vez de mensual.</div>
+                            {{ form.es_cuota_anual.errors }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field-section">
+                    <div class="section-title"><i class="bi bi-shop"></i>Uso y estado</div>
+                    <div class="field-row">
+                        {% if not es_habitacional %}
+                        <div class="field-col">
+                            {{ form.giro.label_tag }}
+                            {{ form.giro }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.giro.errors }}
+                        </div>
+                        {% endif %}
+                        <div class="field-col">
+                            {{ form.status.label_tag }}
+                            {{ form.status }}
+                            <div class="invalid-feedback">Este campo es obligatorio.</div>
+                            {{ form.status.errors }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        {{ form.ubicacion.label_tag }}
+                        {{ form.ubicacion }}
+                        <div class="invalid-feedback">Este campo es obligatorio.</div>
+                        {{ form.ubicacion.errors }}
+                    </div>
+                </div>
+
+                <div class="field-section">
+                    <div class="section-title"><i class="bi bi-exclamation-circle"></i>Adeudo (opcional)</div>
+                    <div class="adeudo-card">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="id_tiene_adeudo" name="tiene_adeudo">
+                            <label class="form-check-label" for="id_tiene_adeudo">Esta propiedad tiene un adeudo previo</label>
+                        </div>
+                        <div id="adeudo_fields" class="adeudo-fields-inner" style="display:none;">
+                            <div class="field-row">
+                                <div class="field-col">
+                                    <label for="adeudo_inicio" class="form-label">Periodo inicio</label>
+                                    <input class="form-control" type="month" id="adeudo_inicio" name="adeudo_inicio" placeholder="YYYY-MM">
+                                </div>
+                                <div class="field-col">
+                                    <label for="adeudo_fin" class="form-label">Periodo fin (opcional)</label>
+                                    <input class="form-control" type="month" id="adeudo_fin" name="adeudo_fin" placeholder="YYYY-MM">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="adeudo_importe" class="form-label">Importe</label>
+                                <input class="form-control" type="number" step="0.01" id="adeudo_importe" name="adeudo_importe" placeholder="0.00">
+                            </div>
+                            <div class="mb-0">
+                                <label for="adeudo_descripcion" class="form-label">Descripción (opcional)</label>
+                                <textarea class="form-control" id="adeudo_descripcion" name="adeudo_descripcion" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field-section">
+                    <div class="section-title"><i class="bi bi-pencil-square"></i>Notas</div>
+                    <div class="mb-3">
+                        {{ form.observaciones.label_tag }}
+                        {{ form.observaciones }}
+                        <div class="invalid-feedback">Este campo es obligatorio.</div>
+                        {{ form.observaciones.errors }}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4 pt-2 border-top">
+                    <button type="button" class="btn-gesac-outline" onclick="prevStepLocal()">
+                        <i class="bi bi-arrow-left me-1"></i> Anterior
+                    </button>
+                    <button type="submit" class="btn-gesac-primary">
+                        <i class="bi bi-check-circle me-1"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
         function nextStepLocal() {
             var requiredFields = [
                 document.querySelector('[name="{{ form.numero.html_name }}"]'),
@@ -205,11 +349,17 @@
             if (valid) {
                 document.getElementById('step1').style.display = 'none';
                 document.getElementById('step2').style.display = 'block';
+                document.getElementById('pill-1').classList.remove('active');
+                document.getElementById('pill-2').classList.add('active');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
         function prevStepLocal() {
             document.getElementById('step2').style.display = 'none';
             document.getElementById('step1').style.display = 'block';
+            document.getElementById('pill-2').classList.remove('active');
+            document.getElementById('pill-1').classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         document.getElementById('localForm').addEventListener('submit', function(e) {
             var requiredFields2 = [
@@ -258,7 +408,7 @@
     </script>
     <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Mostrar overlay al hacer submit en el formulario de filtros
+  // Mostrar overlay al hacer submit en el formulario
   var form = document.getElementById('localForm');
   if (form) {
     form.addEventListener('submit', function() {
@@ -274,7 +424,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (overlay) overlay.style.display = 'flex';
     });
   });
-// Toggle campos de adeudo
+
+  // Toggle campos de adeudo
   var chk = document.getElementById('id_tiene_adeudo');
   var adeudoFields = document.getElementById('adeudo_fields');
   function toggleAdeudo() {
