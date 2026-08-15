@@ -30,7 +30,7 @@ from openpyxl.utils import get_column_letter
 from acceso_empresas.decorators import login_o_portal_required
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from clientes.models import Cliente
-from conciliaciones.utils import calcular_saldo_acumulado_hasta
+from conciliaciones.utils import get_o_crear_periodo
 from empresas.models import CuentaBancaria, Empresa
 from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
 from gastos.models import PagoGasto
@@ -399,13 +399,13 @@ def estado_resultados(request):
             .values("mes", "anio").distinct()
         )
 
-    meses_anios_set = set((x["mes"], x["anio"]) for x in list(meses_anios) + list(meses_anios_otros))
+    meses_anios_set = set((x["mes"], x["anio"]) for x in list(meses_anios) + list(meses_anios_otros))  # noqa: C401
     meses_anios_list = sorted(
         [t for t in meses_anios_set if t[0] is not None and t[1] is not None],
         key=lambda x: (x[1], x[0])
     )
-    meses_unicos = sorted(set(m for m, y in meses_anios_list if m))
-    anios_unicos = sorted(set(y for m, y in meses_anios_list if y))
+    meses_unicos = sorted(set(m for m, y in meses_anios_list if m))  # noqa: C401
+    anios_unicos = sorted(set(y for m, y in meses_anios_list if y))  # noqa: C401
 
     # --- Periodo por defecto ---
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
@@ -439,12 +439,12 @@ def estado_resultados(request):
     # Convertir strings a date
     if isinstance(fecha_inicio, str):
         try:
-            fecha_inicio = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+            fecha_inicio = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d").date()  # noqa: DTZ007
         except Exception:
             fecha_inicio = None
     if isinstance(fecha_fin, str):
         try:
-            fecha_fin = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            fecha_fin = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d").date()  # noqa: DTZ007
         except Exception:
             fecha_fin = None
 
@@ -539,19 +539,23 @@ def estado_resultados(request):
     #                     .aggregate(t=Sum("importe_cheque"))["t"] or 0
     #                 )
     #                 saldo_inicial += ing - gto
-    # --- Saldo inicial -- suma, por cada cuenta activa de la empresa,
-    # el saldo acumulado justo antes de que arranque fecha_inicio.
-    # Usa la MISMA función que ya confiamos en Saldos por Período,
-    # Traspasos e Inversiones -- garantiza que los números coincidan
-    # entre pantallas, y ya incluye Traspasos correctamente.
+
+    # --- Saldo inicial -- usa get_o_crear_periodo, la MISMA función que
+    # arma "Saldos por Período", para cada cuenta activa de la empresa.
+    # IMPORTANTE: NO se puede usar calcular_saldo_acumulado_hasta directo --
+    # esa función ignora los períodos ya CERRADOS (que traen el saldo real
+    # confirmado por el banco, capturado a mano al cerrar) y recalcula todo
+    # desde cero, lo cual puede no coincidir si hubo un ajuste manual en
+    # algún cierre anterior.
     saldo_inicial = saldo_inicial_empresa
     if empresa and empresa_id and fecha_inicio:
         saldo_inicial = 0.0
         cuentas_empresa = CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
         for cuenta in cuentas_empresa:
-            saldo_inicial += float(
-                calcular_saldo_acumulado_hasta(cuenta, fecha_inicio.year, fecha_inicio.month)
+            periodo, _ = get_o_crear_periodo(
+                cuenta, empresa, fecha_inicio.year, fecha_inicio.month
             )
+            saldo_inicial += float(periodo.saldo_inicial)
         # # Temporal — después del loop del saldo inicial
         # print(f"DEBUG saldo_inicial calculado: {saldo_inicial}")
         
