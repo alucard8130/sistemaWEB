@@ -115,7 +115,6 @@ class Pago(models.Model):
         ('tarjeta', 'Tarjeta'),
         ('nota_credito', 'Nota de Crédito'),
         ('deposito', 'Depósito'),
-        ('efectivo', 'Efectivo'),
         ('stripe', 'Stripe'),
         ('rendimiento_inversion', 'Rendimiento Inv.'),
         ('saldo_a_favor', 'Saldo a Favor (pago adelantado)'),  
@@ -190,7 +189,6 @@ class CobroOtrosIngresos(models.Model):
         ('tarjeta', 'Tarjeta'),
         ('nota_credito', 'Nota de Crédito'),
         ('deposito', 'Depósito'),
-        ('efectivo', 'Efectivo'),
         ('otro', 'Otro'),
     ]
     factura = models.ForeignKey(FacturaOtrosIngresos, on_delete=models.CASCADE, related_name='cobros')
