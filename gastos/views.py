@@ -999,7 +999,7 @@ def gasto_nuevo(request):
                 messages.error(request, error)
                 return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
 
-            # Duplicado EXACTO: mismo proveedor/empleado + mismo monto + mismo mes -- BLOQUEA siempre
+            # Duplicado EXACTO: mismo proveedor/empleado + mismo monto + mismo mes -- avisa, no bloquea
             if gasto.fecha:
                 duplicado_qs = Gasto.objects.filter(
                     empresa=gasto.empresa,
@@ -1026,10 +1026,11 @@ def gasto_nuevo(request):
                         f"con {nombre_origen}, mismo monto (${dup.monto}) y mismo mes. "
                         f"La solicitud se guardó de todas formas -- verifica que no sea un duplicado real."
                     )
-                    return render(request, "gastos/form.html", {"form": form, "modo": "crear"})
+                    # NOTA: SIN return aquí -- el flujo sigue de largo hacia el guardado.
 
-                # NUEVO -- posible PARTICIÓN de una sola factura: mismo proveedor/empleado,
-                # mismo mes, pero monto DISTINTO -- advierte, pero permite continuar si confirma
+                # posible PARTICIÓN de una sola factura: mismo proveedor/empleado,
+                # mismo mes, pero monto DISTINTO -- este SÍ sigue bloqueando hasta
+                # que se confirme con el checkbox (es un flujo distinto, a propósito).
                 otro_qs = Gasto.objects.filter(
                     empresa=gasto.empresa,
                     fecha__year=gasto.fecha.year,
@@ -1064,23 +1065,23 @@ def gasto_nuevo(request):
                         "mostrar_confirmacion_particion": True,
                     })
 
-            # NUEVO -- validar presupuesto disponible del tipo de gasto para todo el año
+            # validar presupuesto disponible del tipo de gasto para todo el año
             if gasto.fecha and gasto.tipo_gasto_id:
                 anio_gasto = gasto.fecha.year
 
                 presupuesto_anual = Presupuesto.objects.filter(
                     empresa=gasto.empresa, tipo_gasto_id=gasto.tipo_gasto_id, anio=anio_gasto,
-                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")  # noqa: FURB157
+                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")
 
                 pagado_anual = PagoGasto.objects.filter(
                     gasto__empresa=gasto.empresa, gasto__tipo_gasto_id=gasto.tipo_gasto_id,
                     fecha_pago__year=anio_gasto,
-                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")  # noqa: FURB157
+                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")
 
                 pendiente_anual = Gasto.objects.filter(
                     empresa=gasto.empresa, tipo_gasto_id=gasto.tipo_gasto_id,
                     fecha__year=anio_gasto, estatus="pendiente",
-                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")  # noqa: FURB157
+                ).aggregate(t=Sum("monto"))["t"] or Decimal("0")
 
                 comprometido = pagado_anual + pendiente_anual
                 disponible = presupuesto_anual - comprometido
@@ -1099,7 +1100,7 @@ def gasto_nuevo(request):
                         f"— Disponible: ${disponible:,.2f} — Esta solicitud: ${gasto.monto:,.2f}. "
                         f"La solicitud se guardó de todas formas."
                     )
-                
+
             gasto.estatus = "pendiente"
             gasto.save()
             messages.success(request, f"Solicitud de gasto folio: {gasto.id}, registrada correctamente.")
@@ -1243,13 +1244,15 @@ def reversa_pago_gasto(request, pago_id, gasto_id):
     gasto = get_object_or_404(Gasto, id=gasto_id)
     next_url = request.GET.get("next")
 
-     # Validar que la fecha del pago original esté en un período permitido
+    # Validar que la fecha del pago original esté en un período permitido
     if pago.cuenta_bancaria:
-        error_periodo = validar_periodo_abierto(pago.cuenta_bancaria, pago.fecha_pago)
-        if error_periodo:
+        permitido, error_periodo = validar_periodo_abierto(
+            pago.cuenta_bancaria, pago.fecha_pago, user=request.user
+        )
+        if not permitido:
             messages.error(request, f"No se puede reversar: {error_periodo}")
             return redirect(next_url or "gasto_detalle", pk=gasto.id)
-        
+
     if request.method == "POST":
         form = MotivoReversaPagoForm(request.POST)
         if form.is_valid():
