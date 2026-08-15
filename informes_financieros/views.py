@@ -1,28 +1,39 @@
+# from django.db.models import Case, When, Value, CharField
+#import calendar
+import datetime
+import locale
+from collections import OrderedDict
+
+from django.contrib.auth.decorators import login_required
+from django.db.models import (
+    Case,
+    CharField,
+    DecimalField,
+    Exists,
+    F,
+    IntegerField,
+    OuterRef,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, ExtractMonth, ExtractYear
+from django.http import HttpResponse
 from django.shortcuts import render
+from django.utils import timezone
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 
 # from django.db.models import Sum
 from acceso_empresas.decorators import login_o_portal_required
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from clientes.models import Cliente
-from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
-from gastos.models import  PagoGasto
+from conciliaciones.utils import calcular_saldo_acumulado_hasta
 from empresas.models import CuentaBancaria, Empresa
-from collections import OrderedDict
-
-# from django.db.models import Case, When, Value, CharField
-#import calendar
-import datetime
-import locale
-from django.contrib.auth.decorators import login_required
-from openpyxl import Workbook
-from django.http import HttpResponse
-from django.db.models.functions import ExtractMonth, ExtractYear
-from django.utils import timezone
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from django.db.models import F, Exists, Value, CharField, Sum, Case, When, IntegerField
-from django.db.models import  OuterRef, Subquery, DecimalField
-from django.db.models.functions import Coalesce
-from openpyxl.utils import get_column_letter
+from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from gastos.models import PagoGasto
 
 
 @login_o_portal_required 
@@ -482,52 +493,65 @@ def estado_resultados(request):
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
 
     # --- Saldo inicial dinámico acumulado ---
+    # saldo_inicial = saldo_inicial_empresa
+    # if empresa and empresa_id and fecha_inicio:
+    #     anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
+
+    #     if mes and anio:
+    #         anio_tope = int(anio)
+    #         mes_tope = int(mes) - 1
+    #         if mes_tope == 0:
+    #             anio_tope -= 1
+    #             mes_tope = 12
+    #     else:
+    #         if fecha_inicio.month == 1:
+    #             anio_tope = fecha_inicio.year - 1
+    #             mes_tope = 12
+    #         else:
+    #             anio_tope = fecha_inicio.year
+    #             mes_tope = fecha_inicio.month - 1
+
+    #     if anio_tope >= anio_inicio:
+    #         for y in range(anio_inicio, anio_tope + 1):
+    #             mes_fin_loop = mes_tope if y == anio_tope else 12
+    #             for m in range(1, mes_fin_loop + 1):
+    #                 fi = datetime.date(y, m, 1)
+    #                 ff = datetime.date(y, m + 1, 1) - datetime.timedelta(days=1) if m < 12 else datetime.date(y, 12, 31)
+    #                 ing = float(
+    #                     Pago.objects.exclude(forma_pago="nota_credito")
+    #                     .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+    #                     .aggregate(t=Sum("monto"))["t"] or 0
+    #                 ) + float(
+    #                     CobroOtrosIngresos.objects
+    #                     .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
+    #                     .aggregate(t=Sum("monto"))["t"] or 0
+    #                 ) + float(
+    #                     Pago.objects.filter(factura__isnull=True, identificado=False, empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+    #                     .aggregate(t=Sum("monto"))["t"] or 0
+    #                 )
+    #                 gto = float(
+    #                     PagoGasto.objects
+    #                     .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+    #                     .aggregate(t=Sum("monto"))["t"] or 0
+    #                 ) + float(
+    #                     FondeoCajaChica.objects  # ← usar fondeos, NO gastos individuales
+    #                     .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
+    #                     .aggregate(t=Sum("importe_cheque"))["t"] or 0
+    #                 )
+    #                 saldo_inicial += ing - gto
+    # --- Saldo inicial -- suma, por cada cuenta activa de la empresa,
+    # el saldo acumulado justo antes de que arranque fecha_inicio.
+    # Usa la MISMA función que ya confiamos en Saldos por Período,
+    # Traspasos e Inversiones -- garantiza que los números coincidan
+    # entre pantallas, y ya incluye Traspasos correctamente.
     saldo_inicial = saldo_inicial_empresa
     if empresa and empresa_id and fecha_inicio:
-        anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
-
-        if mes and anio:
-            anio_tope = int(anio)
-            mes_tope = int(mes) - 1
-            if mes_tope == 0:
-                anio_tope -= 1
-                mes_tope = 12
-        else:
-            if fecha_inicio.month == 1:
-                anio_tope = fecha_inicio.year - 1
-                mes_tope = 12
-            else:
-                anio_tope = fecha_inicio.year
-                mes_tope = fecha_inicio.month - 1
-
-        if anio_tope >= anio_inicio:
-            for y in range(anio_inicio, anio_tope + 1):
-                mes_fin_loop = mes_tope if y == anio_tope else 12
-                for m in range(1, mes_fin_loop + 1):
-                    fi = datetime.date(y, m, 1)
-                    ff = datetime.date(y, m + 1, 1) - datetime.timedelta(days=1) if m < 12 else datetime.date(y, 12, 31)
-                    ing = float(
-                        Pago.objects.exclude(forma_pago="nota_credito")
-                        .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        CobroOtrosIngresos.objects
-                        .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        Pago.objects.filter(factura__isnull=True, identificado=False, empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    )
-                    gto = float(
-                        PagoGasto.objects
-                        .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        FondeoCajaChica.objects  # ← usar fondeos, NO gastos individuales
-                        .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe_cheque"))["t"] or 0
-                    )
-                    saldo_inicial += ing - gto
+        saldo_inicial = 0.0
+        cuentas_empresa = CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
+        for cuenta in cuentas_empresa:
+            saldo_inicial += float(
+                calcular_saldo_acumulado_hasta(cuenta, fecha_inicio.year, fecha_inicio.month)
+            )
         # # Temporal — después del loop del saldo inicial
         # print(f"DEBUG saldo_inicial calculado: {saldo_inicial}")
         

@@ -107,49 +107,7 @@ def calcular_saldo_acumulado_hasta(cuenta, anio, mes):
     return (cuenta.saldo_inicial or Decimal('0')) + total_ingresos - total_egresos
 
 
-# def get_o_crear_periodo(cuenta, empresa, anio, mes):
-#     periodo_existente = SaldoCuentaPeriodo.objects.filter(
-#         cuenta=cuenta, anio=anio, mes=mes
-#     ).first()
 
-#     if periodo_existente:
-#         movimientos = calcular_saldo_cuenta_periodo(cuenta, anio, mes)
-#         if not periodo_existente.cerrado:
-#             periodo_existente.saldo_calculado = periodo_existente.saldo_inicial + movimientos['movimiento_neto']
-#             periodo_existente.save()
-#         return periodo_existente, movimientos
-
-#     mes_anterior = mes - 1
-#     anio_anterior = anio
-#     if mes_anterior == 0:
-#         mes_anterior = 12
-#         anio_anterior = anio - 1
-
-#     periodo_anterior_cerrado = SaldoCuentaPeriodo.objects.filter(
-#         cuenta=cuenta,
-#         anio=anio_anterior,
-#         mes=mes_anterior,
-#         cerrado=True
-#     ).first()
-
-#     if periodo_anterior_cerrado:
-#         saldo_inicial = periodo_anterior_cerrado.saldo_final
-#     else:
-#         saldo_inicial = calcular_saldo_acumulado_hasta(cuenta, anio, mes)
-
-#     movimientos = calcular_saldo_cuenta_periodo(cuenta, anio, mes)
-#     saldo_calculado = saldo_inicial + movimientos['movimiento_neto']
-
-#     periodo = SaldoCuentaPeriodo.objects.create(
-#         cuenta=cuenta,
-#         empresa=empresa,
-#         anio=anio,
-#         mes=mes,
-#         saldo_inicial=saldo_inicial,
-#         saldo_calculado=saldo_calculado,
-#     )
-
-#     return periodo, movimientos
 def get_o_crear_periodo(cuenta, empresa, anio, mes):
     mes_anterior = mes - 1
     anio_anterior = anio

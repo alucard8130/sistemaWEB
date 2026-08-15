@@ -225,6 +225,7 @@ def convertir_pdf_a_excel_adobe(pdf_bytes):
 
     return stream_asset.get_input_stream()
 
+
 @login_required
 def convertir_pdf_preview(request):
     """
@@ -595,6 +596,7 @@ def lista_sesiones(request):
         'sesiones': sesiones,
     })
 
+
 @login_required
 def eliminar_sesion(request, pk):
     perfil = getattr(request.user, 'perfilusuario', None)
@@ -714,6 +716,7 @@ def revisar_sesion(request, pk):
         'proveedores_bancos': Proveedor.objects.filter(empresa=empresa, activo=True).order_by('nombre'),
         'tipos_gasto': TipoGasto.objects.filter(empresa=empresa).order_by('nombre'),
     })
+
 
 @login_required
 def ver_procesando_sesion(request, pk):
