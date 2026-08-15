@@ -135,7 +135,7 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2 no-print">
-                    <a href="{% url 'fondeo_caja_chica' %}" class="btn btn-sm btn-light fw-bold">
+                    <a href="{% url 'fondeo_caja_chica' %}" class="btn btn-sm btn-light fw-bold reporte-link">
                         <i class="bi bi-plus-circle me-1"></i>Nuevo Fondeo
                     </a>
                     {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
@@ -172,7 +172,7 @@
                 <select name="responsable" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     <option value="">Todos los responsables</option>
                     {% for r in responsables %}
-                        <option value="{{ r.id }}" {% if r.id|stringformat:"s" == responsable_sel %}selected{% endif %}>{{ r.get_full_name|default:r.username }}</option>
+                        <option value="{{ r.id }}" {% if r.id|stringformat:"s" == responsable_sel %}selected{% endif %}>{{ r.nombre }}</option>
                     {% endfor %}
                 </select>
 
@@ -182,7 +182,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel-fill me-1"></i>Filtrar
                 </button>
-                <a href="{% url 'lista_fondeos' %}" class="btn btn-outline-secondary btn-sm">
+                <a href="{% url 'lista_fondeos' %}" class="btn btn-outline-secondary btn-sm reporte-link">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>
                 </a>
                 <a href="?{{ request.GET.urlencode }}&excel=1" class="btn btn-success btn-sm">
@@ -229,21 +229,21 @@
                             <td class="text-center no-print">
                                 <div class="d-flex align-items-center justify-content-center gap-1">
                                     {% if fondeo.saldo > 0 %}
-                                    <a href="{%  url 'registrar_gasto_caja_chica' %}?fondeo_id={{ fondeo.id }}" class="btn-registrar-gasto">
-                                        <i class="bi bi-plus-circle"></i> Registrar Gasto
+                                    <a href="{%  url 'registrar_gasto_caja_chica' %}?fondeo_id={{ fondeo.id }}" class="btn-registrar-gasto reporte-link" title="Registrar gasto">
+                                        <i class="bi bi-plus-circle reporte-link"></i> Registrar Gasto
                                     </a>
                                     {% endif %}
                                     <a href="{% url 'recibo_fondeo' fondeo.id %}" class="btn-accion imprimir" title="Imprimir" target="_blank">
                                         <i class="bi bi-printer"></i>
                                     </a>
-                                    <button type="button" class="btn-accion eliminar" title="Eliminar"
+                                    <button type="button" class="btn-accion eliminar reporte-link" title="Eliminar"
                                         onclick="confirmarEliminar('{% url 'eliminar_fondeo' fondeo.id %}')">
                                         <i class="bi bi-trash3"></i>
                                     </button>
                                 </div>
                             </td>
                             <td class="text-center no-print">
-                                <a href="{% url 'detalle_fondeo' fondeo.id %}" class="btn-accion historial" title="Ver historial">
+                                <a href="{% url 'detalle_fondeo' fondeo.id %}" class="btn-accion historial reporte-link" title="Ver historial">
                                     <i class="bi bi-eye"></i>
                                 </a>
                             </td>
@@ -309,5 +309,23 @@
         }
     }
     </script>
+    <script>
+    function mostrarOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('d-none');
+        overlay.style.display = 'flex';
+    }
+
+    // Mostrar overlay de carga al enviar cualquier formulario (ej. checkboxes de filtro)
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', mostrarOverlay);
+    });
+
+    // Mostrar overlay también al navegar con links marcados como "reporte-link"
+    document.querySelectorAll('a.reporte-link').forEach(link => {
+        link.addEventListener('click', mostrarOverlay);
+    });
+</script>
 </body>
 </html>

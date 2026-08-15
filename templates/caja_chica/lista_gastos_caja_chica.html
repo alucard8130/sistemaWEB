@@ -187,7 +187,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel-fill me-1"></i>Filtrar
                 </button>
-                <a href="{% url 'lista_gastos_caja_chica' %}" class="btn btn-outline-secondary btn-sm">
+                <a href="{% url 'lista_gastos_caja_chica' %}" class="btn btn-outline-secondary btn-sm reporte-link">
                     <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
                 <a href="?{{ request.GET.urlencode }}&excel=1" class="btn btn-success btn-sm">
@@ -204,7 +204,7 @@
                         <tr>
                             <th>Fondeo / Cheque</th>
                             <th>Fecha</th>
-                            <th>Concepto</th>
+                            <th>Responsable</th>
                             <th>Tipo de Gasto</th>
                             <th class="text-end">Importe</th>
                             <th class="text-center no-print">Acciones</th>
@@ -302,5 +302,23 @@
         }
     }
     </script>
+      <script>
+    function mostrarOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('d-none');
+        overlay.style.display = 'flex';
+    }
+
+    // Mostrar overlay de carga al enviar cualquier formulario (ej. checkboxes de filtro)
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', mostrarOverlay);
+    });
+
+    // Mostrar overlay también al navegar con links marcados como "reporte-link"
+    document.querySelectorAll('a.reporte-link').forEach(link => {
+        link.addEventListener('click', mostrarOverlay);
+    });
+</script>
 </body>
 </html>

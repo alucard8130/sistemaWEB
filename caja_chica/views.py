@@ -212,64 +212,77 @@ def generar_vale_caja(request):
 @login_required
 def lista_fondeos(request):
     empresa_id = request.session.get("empresa_id")
-    cheque = request.GET.get("cheque")
-    empleado_id = request.GET.get("empleado")
-    fecha_inicio = request.GET.get("fecha_inicio")
-    fecha_fin = request.GET.get("fecha_fin")
+    cheque_sel = request.GET.get("cheque")
+    responsable_sel = request.GET.get("responsable")
+    desde_sel = request.GET.get("desde")
+    hasta_sel = request.GET.get("hasta")
 
+    empresa = None
     if request.user.is_superuser and empresa_id:
         fondeos = FondeoCajaChica.objects.filter(empresa_id=empresa_id).order_by('-fecha')
+        empresa = Empresa.objects.filter(id=empresa_id).first()
     elif request.user.is_superuser:
         fondeos = FondeoCajaChica.objects.all().order_by('-fecha')
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
             fondeos = FondeoCajaChica.objects.filter(empresa=perfil.empresa).order_by('-fecha')
+            empresa = perfil.empresa
         else:
             fondeos = FondeoCajaChica.objects.none().order_by('-fecha')
 
-    # Filtros
-    if cheque:
-        # fondeos = fondeos.filter(numero_cheque__icontains=cheque)
-        # Coincidencia exacta
-        fondeos = fondeos.filter(numero_cheque=cheque)
-    if empleado_id and empleado_id.isdigit():
-        fondeos = fondeos.filter(empleado_asignado_id=empleado_id)
-    if fecha_inicio:
-        fondeos = fondeos.filter(fecha__gte=fecha_inicio)
-    if fecha_fin:
-        fondeos = fondeos.filter(fecha__lte=fecha_fin)
-    
-    fondeos = fondeos.order_by('-saldo', '-fecha')  # Ordenar por saldo descendente y luego por fecha descendente
-    empleados = Empleado.objects.filter(id__in=fondeos.values_list('empleado_asignado_id', flat=True)).order_by('nombre')
-    cheques_existentes = fondeos.values_list('numero_cheque', flat=True).distinct().order_by('numero_cheque')
-    total_importe = fondeos.object_list.aggregate(total=Sum('importe_cheque'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('importe_cheque'))['total']
-    total_saldo = fondeos.object_list.aggregate(total=Sum('saldo'))['total'] if hasattr(fondeos, 'object_list') else fondeos.aggregate(total=Sum('saldo'))['total']
+    # Queryset filtrado SOLO por empresa -- se usa para el "total del mes"
+    # y para armar los dropdowns, así nunca se encogen por los demás filtros.
+    fondeos_empresa = fondeos
 
-    paginator = Paginator(fondeos, 10)  # Mostrar 10 fondeos por página
+    # Filtros -- usando los MISMOS nombres que manda el formulario del template
+    if cheque_sel:
+        fondeos = fondeos.filter(numero_cheque=cheque_sel)
+    if responsable_sel and responsable_sel.isdigit():
+        fondeos = fondeos.filter(empleado_asignado_id=responsable_sel)
+    if desde_sel:
+        fondeos = fondeos.filter(fecha__gte=desde_sel)
+    if hasta_sel:
+        fondeos = fondeos.filter(fecha__lte=hasta_sel)
+
+    fondeos = fondeos.order_by('-saldo', '-fecha')
+
+    # Dropdowns -- se arman desde fondeos_empresa (alcance de empresa),
+    # NO desde fondeos ya filtrado -- así siempre muestran todas las
+    # opciones disponibles, sin importar qué otro filtro esté activo.
+    responsables = Empleado.objects.filter(
+        id__in=fondeos_empresa.values_list('empleado_asignado_id', flat=True)
+    ).order_by('nombre')
+    cheques = fondeos_empresa.values_list('numero_cheque', flat=True).distinct().order_by('numero_cheque')
+
+    total_importe = fondeos.aggregate(total=Sum('importe_cheque'))['total']
+    total_saldo = fondeos.aggregate(total=Sum('saldo'))['total']
+
+    paginator = Paginator(fondeos, 10)
     page_number = request.GET.get("page")
     fondeos = paginator.get_page(page_number)
 
     hoy = date.today()
-    total_importe_mes = FondeoCajaChica.objects.filter(
-    empresa_id=empresa_id if request.user.is_superuser and empresa_id else None,
-    fecha__year=hoy.year,
-    fecha__month=hoy.month
+    total_importe_mes = fondeos_empresa.filter(
+        fecha__year=hoy.year,
+        fecha__month=hoy.month,
     ).aggregate(total=Sum('importe_cheque'))['total'] or 0
 
     return render(request, "caja_chica/lista_fondeos.html", {
         "fondeos": fondeos,
-          "empleados": empleados, 
-          "cheque": cheque, 
-          "empleado_id": empleado_id,
-            "fecha_inicio": fecha_inicio,
-              "fecha_fin": fecha_fin,
-              "cheques_existentes": cheques_existentes,
-                "total_importe": total_importe or 0,
-                    "total_saldo": total_saldo or 0,
-                    "total_importe_mes": total_importe_mes or 0,
-                    'periodo_label': f"{fecha_inicio} — {fecha_fin}" if fecha_inicio or fecha_fin else f"{hoy.strftime('%B %Y')}",
-          })
+        "empresa": empresa,
+        "responsables": responsables,
+        "cheques": cheques,
+        "cheque_sel": cheque_sel,
+        "responsable_sel": responsable_sel,
+        "desde_sel": desde_sel,
+        "hasta_sel": hasta_sel,
+        "total_importe": total_importe or 0,
+        "total_saldo": total_saldo or 0,
+        "total_importe_mes": total_importe_mes or 0,
+        'periodo_label': f"{desde_sel} — {hasta_sel}" if desde_sel or hasta_sel else f"{hoy.strftime('%B %Y')}",
+    })
+
 
 @login_required
 def exportar_fondeos_excel(request):
@@ -339,20 +352,25 @@ def exportar_fondeos_excel(request):
 def lista_gastos_caja_chica(request):
     empresa_id = request.session.get("empresa_id")
     proveedor_id = request.GET.get("proveedor")
-    tipo_gasto_id = request.GET.get("tipo_gasto")
+    fondeo_sel = request.GET.get("fondeo")
+    tipo_gasto_sel = request.GET.get("tipo_gasto")
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
 
+    empresa = None
     if request.user.is_superuser and empresa_id:
         gastos = GastoCajaChica.objects.select_related("fondeo").filter(
             fondeo__empresa_id=empresa_id
         ).order_by('-fecha')
         proveedores = Proveedor.objects.filter(empresa_id=empresa_id, activo=True).order_by('nombre')
         tipos_gasto = TipoGasto.objects.filter(empresa_id=empresa_id).order_by('nombre')
+        fondeos_disponibles = FondeoCajaChica.objects.filter(empresa_id=empresa_id).order_by('-fecha')
+        empresa = Empresa.objects.filter(id=empresa_id).first()
     elif request.user.is_superuser:
         gastos = GastoCajaChica.objects.select_related("fondeo").all().order_by('-fecha')
         proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
         tipos_gasto = TipoGasto.objects.all().order_by('nombre')
+        fondeos_disponibles = FondeoCajaChica.objects.all().order_by('-fecha')
     else:
         perfil = getattr(request.user, "perfilusuario", None)
         if perfil and perfil.empresa:
@@ -361,16 +379,22 @@ def lista_gastos_caja_chica(request):
             ).order_by('-fecha')
             proveedores = Proveedor.objects.filter(empresa=perfil.empresa, activo=True).order_by('nombre')
             tipos_gasto = TipoGasto.objects.filter(empresa=perfil.empresa).order_by('nombre')
+            fondeos_disponibles = FondeoCajaChica.objects.filter(empresa=perfil.empresa).order_by('-fecha')
+            empresa = perfil.empresa
         else:
             gastos = GastoCajaChica.objects.select_related("fondeo").none().order_by('-fecha')
             proveedores = Proveedor.objects.none().order_by('nombre')
             tipos_gasto = TipoGasto.objects.none().order_by('nombre')
+            fondeos_disponibles = FondeoCajaChica.objects.none().order_by('-fecha')
 
     # Filtros
     if proveedor_id and proveedor_id.isdigit():
         gastos = gastos.filter(proveedor_id=proveedor_id)
-    if tipo_gasto_id and tipo_gasto_id.isdigit():
-        gastos = gastos.filter(tipo_gasto_id=tipo_gasto_id)
+    # NUEVO -- filtro de fondeo, el que realmente usa el template
+    if fondeo_sel and fondeo_sel.isdigit():
+        gastos = gastos.filter(fondeo_id=fondeo_sel)
+    if tipo_gasto_sel and tipo_gasto_sel.isdigit():
+        gastos = gastos.filter(tipo_gasto_id=tipo_gasto_sel)
     if fecha_inicio:
         gastos = gastos.filter(fecha__gte=fecha_inicio)
     if fecha_fin:
@@ -378,24 +402,26 @@ def lista_gastos_caja_chica(request):
 
     total_gastos = gastos.aggregate(total=Sum('importe'))['total'] or 0
 
-    # Para los selects en el template
-    # proveedores = Proveedor.objects.filter(activo=True).order_by('nombre')
-    # tipos_gasto = TipoGasto.objects.all()
-
     paginator = Paginator(gastos, 10)
     page_number = request.GET.get("page")
     gastos = paginator.get_page(page_number)
 
+    hoy = date.today()
+
     return render(
         request, "caja_chica/lista_gastos_caja_chica.html", {
             "gastos": gastos,
+            "empresa": empresa,
             "proveedores": proveedores,
             "tipos_gasto": tipos_gasto,
+            "fondeos_disponibles": fondeos_disponibles,
             "proveedor_id": proveedor_id,
-            "tipo_gasto_id": tipo_gasto_id,
+            "fondeo_sel": fondeo_sel,
+            "tipo_gasto_sel": tipo_gasto_sel,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
             "total_gastos": total_gastos,
+            "periodo_label": f"{fecha_inicio} — {fecha_fin}" if fecha_inicio or fecha_fin else f"{hoy.strftime('%B %Y')}",
         }
     )
 
@@ -471,15 +497,18 @@ def exportar_gastos_caja_chica_excel(request):
 @login_required
 def lista_vales_caja_chica(request):
     empresa_id = request.session.get("empresa_id")
-    empleado_id = request.GET.get("empleado")
+    estatus_sel = request.GET.get("estatus")
+    empleado_sel = request.GET.get("empleado")
     tipo_gasto_id = request.GET.get("tipo_gasto")
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
 
+    empresa = None
     if request.user.is_superuser and empresa_id:
         vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
             fondeo__empresa_id=empresa_id
         ).order_by('status', '-fecha')
+        empresa = Empresa.objects.filter(id=empresa_id).first()
     elif request.user.is_superuser:
         vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").all().order_by('status', '-fecha')
     else:
@@ -488,12 +517,21 @@ def lista_vales_caja_chica(request):
             vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").filter(
                 fondeo__empresa=perfil.empresa
             ).order_by('status', '-fecha')
+            empresa = perfil.empresa
         else:
             vales = ValeCaja.objects.select_related("fondeo", "recibido_por", "tipo_gasto").none().order_by('status', '-fecha')
 
+    # Queryset filtrado SOLO por empresa -- para el dropdown de empleados,
+    # así no se encoge por los demás filtros activos.
+    vales_empresa = vales
+
     # Filtros
-    if empleado_id and empleado_id.isdigit():
-        vales = vales.filter(recibido_por_id=empleado_id)
+    # NUEVO -- el filtro de estatus que el template ya mandaba, pero
+    # la vista nunca leía.
+    if estatus_sel:
+        vales = vales.filter(status=estatus_sel)
+    if empleado_sel and empleado_sel.isdigit():
+        vales = vales.filter(recibido_por_id=empleado_sel)
     if tipo_gasto_id and tipo_gasto_id.isdigit():
         vales = vales.filter(tipo_gasto_id=tipo_gasto_id)
     if fecha_inicio:
@@ -501,25 +539,35 @@ def lista_vales_caja_chica(request):
     if fecha_fin:
         vales = vales.filter(fecha__lte=fecha_fin)
 
-    # total_vales = vales.aggregate(total=Sum('importe'))['total'] or 0
     total_pendientes = vales.filter(status="pendiente").aggregate(total=Sum('importe'))['total'] or 0
     total_comprobados = vales.filter(status="comprobado").aggregate(total=Sum('importe'))['total'] or 0
     gran_total = total_pendientes + total_comprobados
 
-    # Para los selects en el template
-    empleados = Empleado.objects.filter(id__in=vales.values_list('recibido_por_id', flat=True)).order_by('nombre')
+    # NUEVO -- conteos que el template necesita y nunca recibía
+    count_pendientes = vales.filter(status="pendiente").count()
+    count_pagados = vales.filter(status="comprobado").count()
+
+    # Dropdown de empleados -- desde vales_empresa (alcance de empresa),
+    # no desde "vales" ya filtrado, para que no se encoja.
+    empleados = Empleado.objects.filter(
+        id__in=vales_empresa.values_list('recibido_por_id', flat=True)
+    ).order_by('nombre')
     tipos_gasto = TipoGasto.objects.all()
 
     paginator = Paginator(vales, 10)
     page_number = request.GET.get("page")
     vales = paginator.get_page(page_number)
 
+    hoy = date.today()
+
     return render(
         request, "caja_chica/lista_vales_caja_chica.html",
         {
             "vales": vales,
+            "empresa": empresa,
+            "estatus_sel": estatus_sel,
             "empleados": empleados,
-            "empleado_id": empleado_id,
+            "empleado_sel": empleado_sel,
             "tipos_gasto": tipos_gasto,
             "tipo_gasto_id": tipo_gasto_id,
             "fecha_inicio": fecha_inicio,
@@ -527,6 +575,9 @@ def lista_vales_caja_chica(request):
             "total_vales": gran_total,
             "total_pendientes": total_pendientes,
             "total_comprobados": total_comprobados,
+            "count_pendientes": count_pendientes,
+            "count_pagados": count_pagados,
+            "periodo_label": f"{fecha_inicio} — {fecha_fin}" if fecha_inicio or fecha_fin else f"{hoy.strftime('%B %Y')}",
         }
     )
 

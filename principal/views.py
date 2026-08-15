@@ -79,6 +79,7 @@ from amenidades.models import Amenidad, Reservacion
 from areas.models import AreaComun
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from clientes.models import Cliente
+from conciliaciones.utils import get_o_crear_periodo
 from core import settings
 from empleados.models import Empleado
 
@@ -4624,55 +4625,64 @@ def api_estado_resultados(request):
         gastos_modo = gastos_modo.filter(gasto__empresa_id=empresa_id)
 
     # --- Saldo inicial dinámico acumulado (AHORA incluye depósitos no identificados) ---
+    # saldo_inicial = saldo_inicial_empresa
+    # if empresa and empresa_id and fecha_inicio:
+    #     anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
+
+    #     if mes and anio:
+    #         anio_tope = int(anio)
+    #         mes_tope = int(mes) - 1
+    #         if mes_tope == 0:
+    #             anio_tope -= 1
+    #             mes_tope = 12
+    #     else:
+    #         if fecha_inicio.month == 1:
+    #             anio_tope = fecha_inicio.year - 1
+    #             mes_tope = 12
+    #         else:
+    #             anio_tope = fecha_inicio.year
+    #             mes_tope = fecha_inicio.month - 1
+
+    #     if anio_tope >= anio_inicio:
+    #         for y in range(anio_inicio, anio_tope + 1):
+    #             mes_fin_loop = mes_tope if y == anio_tope else 12
+    #             for m in range(1, mes_fin_loop + 1):
+    #                 fi = date(y, m, 1)
+    #                 ff = date(y, m + 1, 1) - timedelta(days=1) if m < 12 else date(y, 12, 31)
+    #                 ing = float(
+    #                     Pago.objects.exclude(forma_pago="nota_credito")
+    #                     .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+    #                     .aggregate(t=Sum("monto"))["t"] or 0
+    #                 ) + float(
+    #                     CobroOtrosIngresos.objects
+    #                     .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
+    #                     .aggregate(t=Sum("monto"))["t"] or 0
+    #                 ) + float(
+    #                     # NUEVO: depósitos no identificados, igual que la vista web
+    #                     Pago.objects.filter(
+    #                         factura__isnull=True, identificado=False, empresa_id=empresa_id,
+    #                         fecha_pago__gte=fi, fecha_pago__lte=ff,
+    #                     ).aggregate(t=Sum("monto"))["t"] or 0
+    #                 )
+    #                 gto = float(
+    #                     PagoGasto.objects
+    #                     .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
+    #                     .aggregate(t=Sum("monto"))["t"] or 0
+    #                 ) + float(
+    #                     FondeoCajaChica.objects
+    #                     .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
+    #                     .aggregate(t=Sum("importe_cheque"))["t"] or 0
+    #                 )
+    #                 saldo_inicial += ing - gto
     saldo_inicial = saldo_inicial_empresa
     if empresa and empresa_id and fecha_inicio:
-        anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
-
-        if mes and anio:
-            anio_tope = int(anio)
-            mes_tope = int(mes) - 1
-            if mes_tope == 0:
-                anio_tope -= 1
-                mes_tope = 12
-        else:
-            if fecha_inicio.month == 1:
-                anio_tope = fecha_inicio.year - 1
-                mes_tope = 12
-            else:
-                anio_tope = fecha_inicio.year
-                mes_tope = fecha_inicio.month - 1
-
-        if anio_tope >= anio_inicio:
-            for y in range(anio_inicio, anio_tope + 1):
-                mes_fin_loop = mes_tope if y == anio_tope else 12
-                for m in range(1, mes_fin_loop + 1):
-                    fi = date(y, m, 1)
-                    ff = date(y, m + 1, 1) - timedelta(days=1) if m < 12 else date(y, 12, 31)
-                    ing = float(
-                        Pago.objects.exclude(forma_pago="nota_credito")
-                        .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        CobroOtrosIngresos.objects
-                        .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        # NUEVO: depósitos no identificados, igual que la vista web
-                        Pago.objects.filter(
-                            factura__isnull=True, identificado=False, empresa_id=empresa_id,
-                            fecha_pago__gte=fi, fecha_pago__lte=ff,
-                        ).aggregate(t=Sum("monto"))["t"] or 0
-                    )
-                    gto = float(
-                        PagoGasto.objects
-                        .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        FondeoCajaChica.objects
-                        .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe_cheque"))["t"] or 0
-                    )
-                    saldo_inicial += ing - gto
+        saldo_inicial = 0.0
+        cuentas_empresa = CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
+        for cuenta in cuentas_empresa:
+            periodo, _ = get_o_crear_periodo(
+                cuenta, empresa, fecha_inicio.year, fecha_inicio.month
+            )
+            saldo_inicial += float(periodo.saldo_inicial)
 
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)

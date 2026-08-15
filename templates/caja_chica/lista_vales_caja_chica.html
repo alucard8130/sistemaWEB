@@ -129,7 +129,7 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2 no-print">
-                    <a href="{% url 'generar_vale_caja' %}" class="btn btn-sm btn-light fw-bold">
+                    <a href="{% url 'generar_vale_caja' %}" class="btn btn-sm btn-light fw-bold reporte-link">
                         <i class="bi bi-plus-circle me-1"></i>Nuevo Vale
                     </a>
                     {% comment %} <button onclick="window.print()" class="btn btn-sm btn-outline-light">
@@ -181,7 +181,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel-fill me-1"></i>Filtrar
                 </button>
-                <a href="{% url 'lista_vales_caja_chica' %}" class="btn btn-outline-secondary btn-sm">
+                <a href="{% url 'lista_vales_caja_chica' %}" class="btn btn-outline-secondary btn-sm reporte-link">
                     <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
                 <a href="?{{ request.GET.urlencode }}&excel=1" class="btn btn-success btn-sm">
@@ -232,7 +232,7 @@
                               </td>
                             <td class="text-center no-print">
                                 <div class="d-flex align-items-center justify-content-center gap-1">
-                                    {% if vale.estatus == 'pendiente' %}
+                                    {% if vale.status == 'pendiente' %}
                                     <a href="{% url 'pagar_vale_caja' vale.id %}" class="btn-accion pagar" title="Marcar como pagado">
                                         <i class="bi bi-check-lg"></i>
                                     </a>
@@ -306,5 +306,23 @@
         }
     }
     </script>
+    <script>
+    function mostrarOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('d-none');
+        overlay.style.display = 'flex';
+    }
+
+    // Mostrar overlay de carga al enviar cualquier formulario (ej. checkboxes de filtro)
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', mostrarOverlay);
+    });
+
+    // Mostrar overlay también al navegar con links marcados como "reporte-link"
+    document.querySelectorAll('a.reporte-link').forEach(link => {
+        link.addEventListener('click', mostrarOverlay);
+    });
+</script>
 </body>
 </html>
