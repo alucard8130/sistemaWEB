@@ -1253,6 +1253,7 @@ def editar_grupo_facturacion(request, grupo_id):
     })
 
 
+
 # ============================================================
 # Vistas -- registrar y consultar Saldos a Favor
 # ============================================================
@@ -4968,7 +4969,7 @@ def recibo_pago_otras_cuotas(request, pago_id):
 
 
 #####reportes cartera vencida###################
-
+#reporte comparativo de cartera vencida (cuotas y otros ingresos) con top 10 clientes y tendencia de los últimos 6 meses
 @login_required
 def reporte_cartera_vencida(request):
     empresa = request.user.perfilusuario.empresa
@@ -5119,3 +5120,271 @@ def reporte_cartera_vencida(request):
 
 
 
+# ============================================================
+# Vista: reporte_iva
+#
+# Desglosa el IVA de Ingresos (Factura + FacturaOtrosIngresos) en
+# Cobrado / Por Cobrar, y el IVA de Gastos en Pagado / Por Pagar --
+# de forma PROPORCIONAL a lo realmente cobrado/pagado de cada
+# documento (no solo por su estatus binario), para que los pagos
+# parciales se reflejen correctamente.
+# ============================================================
+
+
+def _iva_proporcional(monto, monto_iva, total_pagado):
+    """Regresa (iva_ya_cobrado_o_pagado, iva_pendiente) de un solo
+    documento, en proporción a lo que realmente se ha cobrado/pagado."""
+    monto = Decimal(str(monto or 0))
+    monto_iva = Decimal(str(monto_iva or 0))
+    total_pagado = Decimal(str(total_pagado or 0))
+
+    if monto <= 0 or monto_iva == 0:
+        return Decimal("0"), Decimal("0")
+
+    proporcion = total_pagado / monto
+    if proporcion > 1:
+        proporcion = Decimal("1")  # protección por si hay un sobrepago
+    if proporcion < 0:
+        proporcion = Decimal("0")
+
+    iva_realizado = (monto_iva * proporcion).quantize(Decimal("0.01"))
+    iva_pendiente = monto_iva - iva_realizado
+    return iva_realizado, iva_pendiente
+
+
+@login_required
+def reporte_iva(request):
+    empresa = _empresa_actual(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect("dashboard_inicio")
+
+    hoy = date.today()
+    # Mes actual
+    primer_dia = hoy.replace(day=1)
+    ultimo_dia = (hoy.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+
+    fecha_inicio = request.GET.get("fecha_inicio") or primer_dia.isoformat()
+    fecha_fin = request.GET.get("fecha_fin") or ultimo_dia.isoformat()
+
+    facturas = (
+        Factura.objects.filter(empresa=empresa, activo=True)
+        .exclude(estatus="cancelada")
+        .filter(fecha_emision__gte=fecha_inicio, fecha_emision__lte=fecha_fin)
+        .annotate(
+            total_pagado_calc=Coalesce(
+                Subquery(
+                    Pago.objects.filter(factura_id=OuterRef("pk"))
+                    .values("factura_id")
+                    .annotate(total=Sum("monto"))
+                    .values("total")[:1],
+                    output_field=DecimalField(max_digits=20, decimal_places=2)
+                ),
+                Value(Decimal("0.00"), output_field=DecimalField(max_digits=20, decimal_places=2))
+            )
+        )
+    )
+
+    otros_ingresos = (
+        FacturaOtrosIngresos.objects.filter(empresa=empresa, activo=True)
+        .exclude(estatus="cancelada")
+        .filter(fecha_emision__gte=fecha_inicio, fecha_emision__lte=fecha_fin)
+        .annotate(
+            total_cobrado_calc=Coalesce(
+                Subquery(
+                    CobroOtrosIngresos.objects.filter(factura_id=OuterRef("pk"))
+                    .values("factura_id")
+                    .annotate(total=Sum("monto"))
+                    .values("total")[:1],
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                ),
+                Value(Decimal("0.00"), output_field=DecimalField(max_digits=12, decimal_places=2))
+            )
+        )
+    )
+
+    gastos = (
+        Gasto.objects.filter(empresa=empresa)
+        .exclude(estatus="cancelada")
+        .filter(fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+        .annotate(
+            total_pagado_gasto=Coalesce(
+                Subquery(
+                    PagoGasto.objects.filter(gasto_id=OuterRef("pk"))
+                    .values("gasto_id")
+                    .annotate(total=Sum("monto"))
+                    .values("total")[:1],
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                ),
+                Value(Decimal("0.00"), output_field=DecimalField(max_digits=12, decimal_places=2))
+            )
+        )
+    )
+
+    iva_cobrado = Decimal("0")
+    iva_por_cobrar = Decimal("0")
+
+    for doc in facturas.iterator():
+        cobrado_doc = doc.total_pagado_calc or Decimal("0")
+        realizado, pendiente = _iva_proporcional(doc.monto, doc.monto_iva, cobrado_doc)
+        iva_cobrado += realizado
+        iva_por_cobrar += pendiente
+
+    for doc in otros_ingresos.iterator():
+        cobrado_doc = doc.total_cobrado_calc or Decimal("0")
+        realizado, pendiente = _iva_proporcional(doc.monto, doc.monto_iva, cobrado_doc)
+        iva_cobrado += realizado
+        iva_por_cobrar += pendiente
+
+    iva_pagado = Decimal("0")
+    iva_por_pagar = Decimal("0")
+
+    for gasto in gastos.iterator():
+        realizado, pendiente = _iva_proporcional(gasto.monto, gasto.monto_iva, gasto.total_pagado_gasto)
+        iva_pagado += realizado
+        iva_por_pagar += pendiente
+
+    iva_neto_a_enterar = iva_cobrado - iva_pagado
+
+    return render(request, "iva/reporte_iva.html", {
+        "empresa": empresa,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "iva_cobrado": iva_cobrado,
+        "iva_por_cobrar": iva_por_cobrar,
+        "iva_pagado": iva_pagado,
+        "iva_por_pagar": iva_por_pagar,
+        "iva_neto_a_enterar": iva_neto_a_enterar,
+    })
+
+
+@login_required
+def exportar_reporte_iva_excel(request):
+    empresa = _empresa_actual(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect("dashboard_inicio")
+
+    hoy = date.today()
+    fecha_inicio = request.GET.get("fecha_inicio") or date(hoy.year, 1, 1).isoformat()
+    fecha_fin = request.GET.get("fecha_fin") or hoy.isoformat()
+
+    facturas = (
+        Factura.objects.filter(empresa=empresa, activo=True)
+        .exclude(estatus="cancelada")
+        .filter(fecha_emision__gte=fecha_inicio, fecha_emision__lte=fecha_fin)
+        .annotate(
+            total_pagado_calc=Coalesce(
+                Subquery(
+                    Pago.objects.filter(factura_id=OuterRef("pk"))
+                    .values("factura_id")
+                    .annotate(total=Sum("monto"))
+                    .values("total")[:1],
+                    output_field=DecimalField(max_digits=20, decimal_places=2)
+                ),
+                Value(Decimal("0.00"), output_field=DecimalField(max_digits=20, decimal_places=2))
+            )
+        )
+        .values_list(
+            "fecha_emision", "folio", "cliente__nombre", "monto", "monto_iva", "total_pagado_calc"
+        )
+    )
+
+    otros_ingresos = (
+        FacturaOtrosIngresos.objects.filter(empresa=empresa, activo=True)
+        .exclude(estatus="cancelada")
+        .filter(fecha_emision__gte=fecha_inicio, fecha_emision__lte=fecha_fin)
+        .annotate(
+            total_cobrado_calc=Coalesce(
+                Subquery(
+                    CobroOtrosIngresos.objects.filter(factura_id=OuterRef("pk"))
+                    .values("factura_id")
+                    .annotate(total=Sum("monto"))
+                    .values("total")[:1],
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                ),
+                Value(Decimal("0.00"), output_field=DecimalField(max_digits=12, decimal_places=2))
+            )
+        )
+        .values_list(
+            "fecha_emision", "folio", "cliente__nombre", "monto", "monto_iva", "total_cobrado_calc"
+        )
+    )
+
+    gastos = (
+        Gasto.objects.filter(empresa=empresa)
+        .exclude(estatus="cancelada")
+        .filter(fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+        .annotate(
+            total_pagado_gasto=Coalesce(
+                Subquery(
+                    PagoGasto.objects.filter(gasto_id=OuterRef("pk"))
+                    .values("gasto_id")
+                    .annotate(total=Sum("monto"))
+                    .values("total")[:1],
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                ),
+                Value(Decimal("0.00"), output_field=DecimalField(max_digits=12, decimal_places=2))
+            )
+        )
+        .values_list(
+            "fecha", "folio_comprobante", "proveedor__nombre", "empleado__nombre", "monto", "monto_iva", "total_pagado_gasto"
+        )
+    )
+
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet("Detalle IVA")
+    ws.append([
+        "Tipo", "Fecha", "Folio", "Cliente/Proveedor",
+        "Monto", "IVA", "Monto pagado/cobrado", "IVA realizado", "IVA pendiente"
+    ])
+
+    for fecha, folio, cliente, monto, monto_iva, pagado in facturas:
+        iva_realizado, iva_pendiente = _iva_proporcional(monto, monto_iva, pagado)
+        ws.append([
+            "Factura",
+            fecha.strftime("%d/%m/%Y") if fecha else "",
+            folio,
+            cliente or "",
+            Decimal(str(monto or 0)),
+            Decimal(str(monto_iva or 0)),
+            Decimal(str(pagado or 0)),
+            iva_realizado,
+            iva_pendiente,
+        ])
+
+    for fecha, folio, cliente, monto, monto_iva, cobrado in otros_ingresos:
+        iva_realizado, iva_pendiente = _iva_proporcional(monto, monto_iva, cobrado)
+        ws.append([
+            "Otro ingreso",
+            fecha.strftime("%d/%m/%Y") if fecha else "",
+            folio,
+            cliente or "",
+            Decimal(str(monto or 0)),
+            Decimal(str(monto_iva or 0)),
+            Decimal(str(cobrado or 0)),
+            iva_realizado,
+            iva_pendiente,
+        ])
+
+    for fecha, folio, proveedor, empleado, monto, monto_iva, pagado in gastos:
+        iva_realizado, iva_pendiente = _iva_proporcional(monto, monto_iva, pagado)
+        nombre = proveedor or empleado or ""
+        ws.append([
+            "Gasto",
+            fecha.strftime("%d/%m/%Y") if fecha else "",
+            folio or "",
+            nombre,
+            Decimal(str(monto or 0)),
+            Decimal(str(monto_iva or 0)),
+            Decimal(str(pagado or 0)),
+            iva_realizado,
+            iva_pendiente,
+        ])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="detalle_iva_{fecha_inicio}_a_{fecha_fin}.xlsx"'
+    wb.save(response)
+    return response

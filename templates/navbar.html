@@ -62,6 +62,9 @@
                 <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}"><i class="bi bi-cash-stack me-2"></i>Reporte de Cobros de Cuotas</a></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}"><i class="bi bi-cash-coin me-2"></i>Reporte de Otros Ingresos</a></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}"><i class="bi bi-receipt me-2"></i>Depósitos por Identificar</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_iva' %}"><i class="bi bi-receipt me-2"></i>Reporte de IVAs</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'reporte_retenciones_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Retencion Impuestos</a></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}"><i class="bi bi-graph-up-arrow me-2"></i>Cartera Vencida</a></li>
               </ul>
             </li>
@@ -250,6 +253,8 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas_otros_ingresos' %}" title="Busca facturas de otros ingresos y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Otros Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_grupos_facturacion' %}"><i class="bi bi-collection-fill me-2"></i>Grupos de Facturación</a></li>
+              {% comment %} <li><hr class="dropdown-divider"></li> {% endcomment %}
+              {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'reporte_iva' %}"><i class="bi bi-receipt-cutoff me-2"></i>Reporte de IVA</a></li> {% endcomment %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'verificacion_facturacion' %}" title="Verificación de facturación por local y área"><i class="bi bi-check2-circle me-2"></i>Verificación Facturación</a></li>
               <li><hr class="dropdown-divider"></li>
@@ -385,7 +390,7 @@
               {% endif %}
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_gastos_mensual' %}"><i class="bi bi-bar-chart me-2"></i>Grafico de Gastos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_retenciones_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Retencion Impuestos</a></li>
+              {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'reporte_retenciones_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Retencion Impuestos</a></li> {% endcomment %}
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
               {% endif %}

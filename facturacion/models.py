@@ -1,6 +1,6 @@
 
 # Create your models here.
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.db import models
@@ -11,6 +11,7 @@ from clientes.models import Cliente
 from empresas.models import CuentaBancaria, Empresa
 from locales.models import LocalComercial
 
+IVA_TASA = Decimal("0.16")
 
 class Factura(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -31,6 +32,11 @@ class Factura(models.Model):
     fecha_emision = models.DateField()
     fecha_vencimiento = models.DateField()
     monto = models.DecimalField(max_digits=20, decimal_places=2)
+     # NUEVO -- desglose fiscal. "monto" NO cambia de significado -- sigue
+    # siendo el TOTAL a cobrar (con IVA incluido si aplica).
+    monto_base = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    monto_iva = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+
     STATUS_CHOICES = [  # noqa: RUF012
         ('pendiente', 'Pendiente'),
         ('cobrada', 'Cobrada'),
@@ -57,15 +63,26 @@ class Factura(models.Model):
         )
 
     
-
-    
     def __str__(self):
         return f"{self.folio} - {self.cliente.nombre}"
     
     class Meta:
-        ordering = ['-fecha_emision']
+        ordering = ['-fecha_emision']  # noqa: RUF012
         unique_together = ('folio', 'empresa')  # Folio único por empresa
-    
+
+    # NUEVO -- cubre cualquier factura creada/editada con .create() o
+    # .save() normal (Crear Factura manual, Grupos, Pools de Vacancia,
+    # ediciones posteriores, etc.). Las que se crean con bulk_create
+    # (dentro de generar_facturas_mes) NO pasan por aquí -- ver el
+    # fix aparte de esa función.
+    def save(self, *args, **kwargs):
+        # Import LOCAL (dentro del método, no al inicio del archivo) --
+        # evita el import circular entre facturacion/models.py y
+        # facturacion/utils.py (utils.py ya importa cosas de models.py).
+        from facturacion.utils import calcular_iva_factura
+        self.monto_base, self.monto_iva = calcular_iva_factura(self.monto, self.tipo_cuota)
+        super().save(*args, **kwargs)
+        
   
     @property
     def total_pagado(self):
@@ -91,7 +108,7 @@ class Factura(models.Model):
             self.estatus = 'pendiente'  # O podrías poner un "parcial" si agregas esa opción
         self.save()
 
-# En facturacion/models.py, junto a la clase Factura
+
 
 class TipoCuotaHomologacion(models.Model):
     empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='homologaciones_cuota')
@@ -148,6 +165,10 @@ class FacturaOtrosIngresos(models.Model):
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_vencimiento = models.DateField()
     monto = models.DecimalField(max_digits=10, decimal_places=2)
+    # NUEVO -- Otros Ingresos SIEMPRE llevan IVA (sin excepciones, a
+    # diferencia de Factura). "monto" sigue siendo el TOTAL a cobrar.
+    monto_base = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    monto_iva = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     estatus = models.CharField(max_length=20, choices=[('pendiente','Pendiente'),('cobrada','Cobrada'),('cancelada','Cancelada')], default='pendiente')
     observaciones = models.CharField(max_length=255, blank=True, null=True)
     activo = models.BooleanField(default=True)
@@ -158,7 +179,22 @@ class FacturaOtrosIngresos(models.Model):
     
     class Meta:
         unique_together = ('folio', 'empresa')  # Folio único por empresa
-   
+
+    # NUEVO -- calcula el desglose cada vez que se guarda. Confirmado que
+    # TODAS las vistas que crean FacturaOtrosIngresos usan .create()/.save()
+    # normal (Estacionamiento, Sanitarios, Rendimiento de Inversión) --
+    # ninguna usa bulk_create, así que no hace falta ningún cálculo
+    # explícito adicional en ninguna vista.
+    def save(self, *args, **kwargs):
+        if self.monto is not None:
+            monto = Decimal(str(self.monto))
+            base = (monto / (Decimal("1") + IVA_TASA)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            self.monto_base = base
+            self.monto_iva = monto - base
+        super().save(*args, **kwargs)
+        
     @property
     def saldo(self):
         if self.estatus == 'cancelada':
@@ -181,6 +217,7 @@ class FacturaOtrosIngresos(models.Model):
         else:
             self.estatus = 'pendiente'  # O podrías poner un "parcial" si agregas esa opción
         self.save()
+
 
 class CobroOtrosIngresos(models.Model):
     FORMAS_PAGO = [  # noqa: RUF012

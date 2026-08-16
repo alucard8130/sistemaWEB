@@ -70,15 +70,6 @@ def crear_corte(request):
             corte = form.save(commit=False)
             corte.empresa = empresa
             corte.registrado_por = request.user
-
-            #fecha = corte.fecha_deposito
-            #cuenta_bancaria = corte.cuenta_bancaria
-            # if fecha and cuenta_bancaria:
-            #     periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha, user=request.user)
-            #     if not periodo_valido:
-            #         form.add_error(None, error_periodo)
-            #         return render(request, 'estacionamiento/crear_corte.html', {'form': form})
-
             corte.save()
             messages.success(request, f"Corte registrado correctamente: {corte.label_periodo}")
             return redirect('lista_cortes_estacionamiento')
@@ -172,34 +163,6 @@ def generar_factura_corte(request, pk):
                         observaciones=observaciones if observaciones else f"Ingresos por estacionamiento — {corte.label_periodo}",
                         estatus='pendiente',
                     )
-
-                    # # NUEVO -- solo registra el cobro automático si YA se conoce
-                    # # la cuenta y fecha real del depósito. Si no, la factura queda
-                    # # pendiente, esperando el paso separado de "Registrar Depósito".
-                    # if corte.fecha_deposito and corte.cuenta_bancaria:
-                    #     periodo_valido, error_periodo = validar_periodo_abierto(
-                    #         corte.cuenta_bancaria, corte.fecha_deposito, user=request.user
-                    #     )
-                    #     if not periodo_valido:
-                    #         factura.delete()
-                    #         messages.error(request, error_periodo)
-                    #         return render(request, 'estacionamiento/generar_factura_corte.html', {
-                    #             'corte': corte,
-                    #             'clientes': clientes,
-                    #             'fecha_vencimiento_default': corte.fecha_fin.strftime('%Y-%m-%d'),
-                    #         })
-
-                    #     CobroOtrosIngresos.objects.create(
-                    #         factura=factura,
-                    #         fecha_cobro=corte.fecha_deposito,
-                    #         monto=corte.ingreso_neto_plaza,
-                    #         forma_cobro='deposito',
-                    #         cuenta_bancaria=corte.cuenta_bancaria,
-                    #         registrado_por=request.user,
-                    #         observaciones=f"Cobro automático Corte Z — {corte.label_periodo}",
-                    #     )
-                    #     factura.actualizar_estatus()
-
                     corte.factura = factura
                     corte.save(update_fields=['factura'])
                     guardado = True

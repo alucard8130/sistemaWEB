@@ -97,6 +97,7 @@ def _cerrar_corte_sanitarios(empresa, caseta, usuario=None, empleado=None):
 
     return corte, None
 
+
 #no se usa, solo para supervision del ususrio GESAC, esta vista no se usa por ningun empleado
 @login_required
 def sanitarios_operador(request):
@@ -502,35 +503,6 @@ def registrar_deposito_sanitarios(request):
     })
 
 
-# @login_required
-# def cortes_sanitario_pendientes(request):
-#     empresa = _empresa_actual(request)
-#     if not empresa:
-#         messages.error(request, "No se pudo determinar tu empresa.")
-#         return redirect("dashboard_inicio")
-
-#     fechas_con_cobro = (
-#         UsoSanitario.objects.filter(empresa=empresa, estado="cobrado")
-#         .annotate(dia=TruncDate("fecha_cobro"))
-#         .values("dia")
-#         .annotate(total=Sum("monto"), cantidad=Count("id"))
-#         .order_by("-dia")
-#     )
-
-#     dias_cerrados = set(
-#         CorteSanitario.objects.filter(empresa=empresa).values_list("fecha", flat=True)
-#     )
-
-#     pendientes = [
-#         f for f in fechas_con_cobro if f["dia"] not in dias_cerrados
-#     ]
-
-#     return render(request, "sanitarios/cortes_pendientes.html", {
-#         "empresa": empresa,
-#         "pendientes": pendientes,
-#         "total_pendiente": sum(p["total"] for p in pendientes),
-#     })
-
 
 ##solo super user puede configurar precios de sanitarios y papel
 @login_required
@@ -738,32 +710,6 @@ def cargar_boletos_fisicos(request):
 
 
 #########modulo de venta de toallas para sanitarios########################
-# @login_required
-# def vender_toalla(request):
-#     empresa = _empresa_actual(request)
-#     if not empresa or not empresa.precio_toalla:
-#         messages.error(request, "El precio de toallas no está configurado.")
-#         return redirect("sanitarios_operador")
-
-#     lote = LoteToallas.objects.filter(empresa=empresa, cantidad_disponible__gt=0).order_by("fecha_recepcion").first()
-#     if not lote:
-#         messages.error(request, "❌ No hay inventario de toallas disponible. Registra un lote nuevo.")
-#         return redirect(f"{reverse('sanitarios_operador')}?tab=toalla")
-
-#     with transaction.atomic():
-#         lote.cantidad_disponible -= 1
-#         lote.save(update_fields=["cantidad_disponible"])
-
-#         codigo = UsoSanitario.generar_codigo_unico(empresa, tipo="toalla")
-#         UsoSanitario.objects.create(
-#             empresa=empresa, tipo="toalla", codigo=codigo,
-#             estado="cobrado", monto=empresa.precio_toalla,
-#             fecha_cobro=timezone.now(), cobrado_por=request.user,
-#             lote_toallas=lote,
-#         )
-
-#     messages.success(request, f"✅ Toalla vendida — ${empresa.precio_toalla}. Quedan {lote.cantidad_disponible} en el lote.")
-#     return redirect(f"{reverse('sanitarios_operador')}?tab=toalla")
 
 @login_required
 def registrar_lote_toallas(request):

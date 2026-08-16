@@ -2,7 +2,7 @@
 import difflib
 import json
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
@@ -2158,57 +2158,142 @@ def recibo_gasto(request, gasto_id):
 
 
 # consulta retenciones de gastos
+# @login_required
+# def reporte_retenciones_gastos(request):
+#     fecha_inicio = request.GET.get("fecha_inicio")
+#     fecha_fin = request.GET.get("fecha_fin")
+
+#     # Obtén la empresa del usuario logueado correctamente
+#     perfil = getattr(request.user, "perfilusuario", None)
+#     empresa = perfil.empresa if perfil else None
+#     if not empresa:
+#         return render(
+#             request,
+#             "gastos/reporte_retenciones.html",
+#             {
+#                 "gastos": [],
+#                 "fecha_inicio": fecha_inicio or "",
+#                 "fecha_fin": fecha_fin or "",
+#                 "error": "No se pudo determinar la empresa del usuario.",
+#             },
+#         )
+
+#     gastos = Gasto.objects.select_related(
+#         "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo"
+#     ).filter(empresa=empresa)
+
+#     if fecha_inicio:
+#         gastos = gastos.filter(fecha__gte=parse_date(fecha_inicio))
+#     if fecha_fin:
+#         gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
+
+#     gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by(
+#         "-fecha"
+#     )
+
+#     data = []
+#     for g in gastos:
+#         if g.proveedor:
+#             nombre = g.proveedor.nombre
+#         elif g.empleado:
+#             nombre = g.empleado.nombre
+#         else:
+#             nombre = ""
+#         data.append(
+#             {
+#                 "persona": nombre,
+#                 "subgrupo": g.tipo_gasto.subgrupo.nombre
+#                 if g.tipo_gasto and g.tipo_gasto.subgrupo
+#                 else "",
+#                 "tipo": g.tipo_gasto.nombre if g.tipo_gasto else "",
+#                 "fecha": g.fecha,
+#                 "retencion_isr": getattr(g, "retencion_isr", 0),
+#                 "retencion_iva": getattr(g, "retencion_iva", 0),
+#             }
+#         )
+
+#     return render(
+#         request,
+#         "gastos/reporte_retenciones.html",
+#         {
+#             "gastos": data,
+#             "fecha_inicio": fecha_inicio or "",
+#             "fecha_fin": fecha_fin or "",
+#             "error": None,
+#         },
+#     )
 @login_required
 def reporte_retenciones_gastos(request):
-    fecha_inicio = request.GET.get("fecha_inicio")
-    fecha_fin = request.GET.get("fecha_fin")
+    hoy = date.today()
+    primer_dia = hoy.replace(day=1)
+    ultimo_dia = (hoy.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
-    # Obtén la empresa del usuario logueado correctamente
+    fecha_inicio = request.GET.get("fecha_inicio") or primer_dia.isoformat()
+    fecha_fin = request.GET.get("fecha_fin") or ultimo_dia.isoformat()
+
     perfil = getattr(request.user, "perfilusuario", None)
     empresa = perfil.empresa if perfil else None
+
     if not empresa:
         return render(
             request,
             "gastos/reporte_retenciones.html",
             {
                 "gastos": [],
-                "fecha_inicio": fecha_inicio or "",
-                "fecha_fin": fecha_fin or "",
+                "fecha_inicio": fecha_inicio,
+                "fecha_fin": fecha_fin,
+                "resumen": {
+                    "total_isr": Decimal("0.00"),
+                    "total_iva": Decimal("0.00"),
+                },
                 "error": "No se pudo determinar la empresa del usuario.",
             },
         )
 
-    gastos = Gasto.objects.select_related(
-        "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo"
-    ).filter(empresa=empresa)
+    gastos_qs = (
+        Gasto.objects.filter(empresa=empresa)
+        .filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0))
+        .filter(fecha__gte=parse_date(fecha_inicio), fecha__lte=parse_date(fecha_fin))
+        .select_related("proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo")
+        .order_by("-fecha")
+    )
 
-    if fecha_inicio:
-        gastos = gastos.filter(fecha__gte=parse_date(fecha_inicio))
-    if fecha_fin:
-        gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
+    resumen = gastos_qs.aggregate(
+        total_isr=Coalesce(
+            Sum("retencion_isr"),
+            Value(Decimal("0.00")),
+            output_field=DecimalField(max_digits=14, decimal_places=2),
+        ),
+        total_iva=Coalesce(
+            Sum("retencion_iva"),
+            Value(Decimal("0.00")),
+            output_field=DecimalField(max_digits=14, decimal_places=2),
+        ),
+    )
 
-    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by(
-        "-fecha"
+    rows = gastos_qs.values(
+        "id",
+        "fecha",
+        "retencion_isr",
+        "retencion_iva",
+        "proveedor__nombre",
+        "empleado__nombre",
+        "tipo_gasto__nombre",
+        "tipo_gasto__subgrupo__nombre",
     )
 
     data = []
-    for g in gastos:
-        if g.proveedor:
-            nombre = g.proveedor.nombre
-        elif g.empleado:
-            nombre = g.empleado.nombre
-        else:
-            nombre = ""
+    for g in rows:
+        nombre = g["proveedor__nombre"] or g["empleado__nombre"] or ""
         data.append(
             {
+                "id": g["id"],
+                "fecha": g["fecha"],
                 "persona": nombre,
-                "subgrupo": g.tipo_gasto.subgrupo.nombre
-                if g.tipo_gasto and g.tipo_gasto.subgrupo
-                else "",
-                "tipo": g.tipo_gasto.nombre if g.tipo_gasto else "",
-                "fecha": g.fecha,
-                "retencion_isr": getattr(g, "retencion_isr", 0),
-                "retencion_iva": getattr(g, "retencion_iva", 0),
+                "subgrupo": g["tipo_gasto__subgrupo__nombre"] or "",
+                "tipo": g["tipo_gasto__nombre"] or "",
+                "retencion_isr": g["retencion_isr"] or Decimal("0.00"),
+                "retencion_iva": g["retencion_iva"] or Decimal("0.00"),
             }
         )
 
@@ -2217,8 +2302,12 @@ def reporte_retenciones_gastos(request):
         "gastos/reporte_retenciones.html",
         {
             "gastos": data,
-            "fecha_inicio": fecha_inicio or "",
-            "fecha_fin": fecha_fin or "",
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "resumen": {
+                "total_isr": resumen["total_isr"] or Decimal("0.00"),
+                "total_iva": resumen["total_iva"] or Decimal("0.00"),
+            },
             "error": None,
         },
     )
@@ -2227,65 +2316,61 @@ def reporte_retenciones_gastos(request):
 # descagar reporte de retenciones de gastos en Excel
 @login_required
 def descargar_reporte_retenciones_gastos(request):
-    fecha_inicio = request.GET.get("fecha_inicio")
-    fecha_fin = request.GET.get("fecha_fin")
+    hoy = date.today()
+    primer_dia = hoy.replace(day=1)
+    ultimo_dia = (hoy.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
-    gastos = Gasto.objects.select_related(
-        "proveedor", "empleado", "tipo_gasto", "tipo_gasto__subgrupo"
-    ).all()
+    fecha_inicio = request.GET.get("fecha_inicio") or primer_dia.isoformat()
+    fecha_fin = request.GET.get("fecha_fin") or ultimo_dia.isoformat()
 
-    # Filtro por fechas si se proporcionan
-    if fecha_inicio:
-        gastos = gastos.filter(fecha__gte=parse_date(fecha_inicio))
-    if fecha_fin:
-        gastos = gastos.filter(fecha__lte=parse_date(fecha_fin))
+    perfil = getattr(request.user, "perfilusuario", None)
+    empresa = perfil.empresa if perfil else None
 
-    # Solo los que tengan retención ISR o IVA mayor a cero
-    gastos = gastos.filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0)).order_by(
-        "-fecha"
-    )
+    if not empresa:
+        return redirect("reporte_retenciones_gastos")
 
-    # Crear el archivo Excel
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Reporte Retenciones Gastos"
-
-    # Encabezados
-    ws.append(
-        [
-            "Persona",
-            "Subgrupo",
-            "Tipo de Gasto",
-            "Fecha",
-            "Retención ISR",
-            "Retención IVA",
-        ]
-    )
-
-    for g in gastos:
-        if g.proveedor:
-            nombre = g.proveedor.nombre
-        elif g.empleado:
-            nombre = g.empleado.nombre
-        else:
-            nombre = ""
-        ws.append(
-            [
-                nombre,
-                g.tipo_gasto.subgrupo.nombre
-                if g.tipo_gasto and g.tipo_gasto.subgrupo
-                else "",
-                g.tipo_gasto.nombre if g.tipo_gasto else "",
-                g.fecha if g.fecha else "",
-                float(getattr(g, "retencion_isr", 0)),
-                float(getattr(g, "retencion_iva", 0)),
-            ]
+    gastos = (
+        Gasto.objects.filter(empresa=empresa)
+        .filter(Q(retencion_isr__gt=0) | Q(retencion_iva__gt=0))
+        .filter(fecha__gte=parse_date(fecha_inicio), fecha__lte=parse_date(fecha_fin))
+        .order_by("-fecha")
+        .values_list(
+            "fecha",
+            "proveedor__nombre",
+            "empleado__nombre",
+            "tipo_gasto__subgrupo__nombre",
+            "tipo_gasto__nombre",
+            "retencion_isr",
+            "retencion_iva",
         )
+    )
+
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet("Reporte Retenciones Gastos")
+    ws.append([
+        "Persona",
+        "Subgrupo",
+        "Tipo de Gasto",
+        "Fecha",
+        "Retención ISR",
+        "Retención IVA",
+    ])
+
+    for fecha, proveedor, empleado, subgrupo, tipo_gasto, ret_isr, ret_iva in gastos:
+        nombre = proveedor or empleado or ""
+        ws.append([
+            nombre or "",
+            subgrupo or "",
+            tipo_gasto or "",
+            fecha.strftime("%d/%m/%Y") if fecha else "",
+            float(ret_isr or 0),
+            float(ret_iva or 0),
+        ])
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    filename = "reporte_retenciones_gastos.xlsx"
-    response["Content-Disposition"] = f"attachment; filename={filename}"
+    filename = f"reporte_retenciones_gastos_{fecha_inicio}_a_{fecha_fin}.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     wb.save(response)
     return response

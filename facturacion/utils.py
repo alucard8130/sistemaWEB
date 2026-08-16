@@ -1,6 +1,6 @@
 import datetime as dt
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import DecimalField, ExpressionWrapper, F, Max, Q, Sum, Value
 from django.db.models.functions import Coalesce
@@ -9,6 +9,7 @@ from areas.models import AreaComun
 from locales.models import LocalComercial
 
 from .models import (
+    IVA_TASA,
     Factura,
     FacturaOtrosIngresos,
     GrupoFacturacion,
@@ -220,7 +221,9 @@ def aplicar_saldos_a_favor(factura):
         factura.save(update_fields=["estatus"])
 
 
-        
+
+#####funcion principal de facturación mensual, usada por la vista y el comando
+
 def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_areas=True):
     """Núcleo reutilizable de la facturación mensual -- usado tanto por la
     vista manual (facturar_mes_actual) como por el comando automático.
@@ -265,10 +268,14 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 facturas_omitidas += 1
             else:
                 last_num_cm += 1
+                # NUEVO -- desglose de IVA calculado explícitamente, porque
+                # esta factura va por bulk_create (save() nunca se ejecuta).
+                mb, miva = calcular_iva_factura(local.cuota, "mantenimiento")
                 facturas_a_crear.append(Factura(
                     empresa=empresa, cliente=local.cliente, local=local,
                     folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
                     fecha_vencimiento=fecha_factura, monto=local.cuota,
+                    monto_base=mb, monto_iva=miva,
                     tipo_cuota="mantenimiento", estatus="pendiente", observaciones="Cuota mensual",
                 ))
                 facturas_creadas += 1
@@ -303,9 +310,10 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
                 fecha_vencimiento=fecha_factura, monto=monto_total,
                 tipo_cuota="mantenimiento", estatus="pendiente",
-                observaciones=f"Cuota consolidada — Grupo '{grupo.nombre}' — Locales: {numeros_locales}",
+                observaciones=f"Cuota — Grupo '{grupo.nombre}' — Locales: {numeros_locales}",
             )
             factura_grupo.locales_incluidos.set(locales_grupo)
+            aplicar_saldos_a_favor(factura_grupo)
             facturas_creadas += 1
 
         # Pools de Vacancia: factura consolidada al cliente que cubre,
@@ -353,6 +361,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                                f"Prop. vacías este mes: {numeros_locales}",
             )
             factura_vacancia.locales_incluidos.set(locales_vacantes)
+            aplicar_saldos_a_favor(factura_vacancia)
             facturas_creadas += 1
 
         # Cuota anual -- se revisa en CUALQUIER mes que se corra la facturación,
@@ -372,11 +381,15 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
             if local.id not in locales_anuales_con_factura:
                 last_num_cm += 1
                 monto_anual = local.cuota * 12
+                # NUEVO -- bulk_create, desglose explícito.
+                mb, miva = calcular_iva_factura(monto_anual, "mantenimiento")
                 facturas_a_crear.append(Factura(
                     empresa=empresa, cliente=local.cliente, local=local,
                     folio=f"CM-F{last_num_cm:05d}", fecha_emision=fecha_factura,
                     fecha_vencimiento=fecha_factura, monto=monto_anual,
-                    tipo_cuota="mantenimiento", estatus="pendiente", observaciones="Cuota anual",
+                    monto_base=mb, monto_iva=miva,
+                    tipo_cuota="mantenimiento", estatus="pendiente", 
+                    observaciones=f"Cuota anual (${local.cuota}/mes × 12)",
                 ))
                 facturas_creadas += 1
 
@@ -407,11 +420,15 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 facturas_omitidas += 1
             else:
                 last_num_ac += 1
+                # NUEVO -- bulk_create, desglose explícito. "renta" es GRAVADA.
+                mb, miva = calcular_iva_factura(area.cuota, "renta")
                 facturas_a_crear.append(Factura(
                     empresa=empresa, cliente=area.cliente, area_comun=area,
                     folio=f"AC-F{last_num_ac:05d}", fecha_emision=fecha_factura,
                     fecha_vencimiento=fecha_factura, monto=area.cuota,
-                    tipo_cuota="renta", estatus="pendiente", observaciones="Cuota mensual",
+                    monto_base=mb, monto_iva=miva,
+                    tipo_cuota="renta", estatus="pendiente", 
+                    observaciones="Cuota mensual",
                 ))
                 facturas_creadas += 1
 
@@ -421,11 +438,15 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 ).exists()
                 if not existe_deposito:
                     last_num_dg += 1
+                    # NUEVO -- "deposito" es EXENTO -- monto_base = monto, monto_iva = 0.
+                    mb, miva = calcular_iva_factura(area.deposito, "deposito")
                     facturas_a_crear.append(Factura(
                         empresa=empresa, cliente=area.cliente, area_comun=area,
                         folio=f"DG-F{last_num_dg:05d}", fecha_emision=fecha_factura,
                         fecha_vencimiento=fecha_factura, monto=area.deposito,
-                        tipo_cuota="deposito", estatus="pendiente", observaciones="Depósito en garantía",
+                        monto_base=mb, monto_iva=miva,
+                        tipo_cuota="deposito", estatus="pendiente", 
+                        observaciones="Depósito en garantía",
                     ))
 
         # Cuota anual -- se revisa en CUALQUIER mes, mismo criterio que locales.
@@ -448,11 +469,15 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
             if area.id not in areas_anuales_con_factura:
                 last_num_ac += 1
                 monto_anual = area.cuota * 12
+                # NUEVO -- bulk_create, desglose explícito.
+                mb, miva = calcular_iva_factura(monto_anual, "renta")
                 facturas_a_crear.append(Factura(
                     empresa=empresa, cliente=area.cliente, area_comun=area,
                     folio=f"AC-F{last_num_ac:05d}", fecha_emision=fecha_factura,
                     fecha_vencimiento=fecha_factura, monto=monto_anual,
-                    tipo_cuota="renta", estatus="pendiente", observaciones="Cuota anual",
+                    monto_base=mb, monto_iva=miva,
+                    tipo_cuota="renta", estatus="pendiente", 
+                    observaciones=f"Cuota anual (${area.cuota}/mes × 12)"
                 ))
                 facturas_creadas += 1
 
@@ -467,3 +492,45 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
 
 
 
+
+# Se usa en 2 lugares:
+#   1. Factura.save() -- para cualquier factura creada/editada con
+#      .create() o .save() normal (Crear Factura manual, Grupos,
+#      Pools de Vacancia, etc.)
+#   2. generar_facturas_mes -- para las facturas que van por
+#      bulk_create (locales/áreas mensuales y anuales), donde
+#      save() NUNCA se ejecuta.
+# ============================================================
+
+
+
+
+
+# True = exento, False = gravado (16%)
+TIPO_CUOTA_ES_EXENTO = {
+    "mantenimiento": True,
+    "deposito": True,
+    "extraordinaria": True,
+    "renta": False,
+    "penalidad": False,
+    "intereses": False,
+}
+
+
+def calcular_iva_factura(monto, tipo_cuota):
+    """Regresa (monto_base, monto_iva) a partir de un monto TOTAL
+    (con IVA ya incluido, si aplica) y el tipo_cuota de la factura."""
+    if monto is None:
+        return Decimal("0"), Decimal("0")
+
+    monto = Decimal(str(monto))
+    es_exento = TIPO_CUOTA_ES_EXENTO.get(tipo_cuota, True)
+
+    if es_exento:
+        return monto, Decimal("0")
+
+    base = (monto / (Decimal("1") + IVA_TASA)).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    iva = monto - base
+    return base, iva

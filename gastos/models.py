@@ -1,5 +1,7 @@
 
 # Create your models here.
+from decimal import ROUND_HALF_UP, Decimal
+
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
@@ -114,6 +116,10 @@ class Gasto(models.Model):
     descripcion = models.CharField(max_length=255, blank=True)
     fecha = models.DateField()
     monto = models.DecimalField(max_digits=12, decimal_places=2)
+     # NUEVO -- desglose fiscal. "monto" sigue siendo el TOTAL del gasto
+    # (con IVA incluido, salvo que su grupo esté marcado como exento).
+    monto_base = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    monto_iva = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     comprobante = models.FileField(upload_to='cfdi_gastos/', blank=True, null=True)
     folio_comprobante = models.CharField(max_length=100, blank=True, null=True, 
                                       help_text='Folio o número de la factura/comprobante adjunto')
@@ -133,6 +139,32 @@ class Gasto(models.Model):
     @property
     def total_pagado(self):
         return sum(p.monto for p in self.pagos.all())
+    
+    # NUEVO -- calcula el desglose cada vez que se guarda, según si el
+    # GRUPO de este tipo_gasto está marcado como exento de IVA (nómina) o
+    # no (todos los demás gastos generales, que sí llevan IVA incluido).
+    def save(self, *args, **kwargs):
+        if self.monto is not None and self.tipo_gasto_id:
+            # NUEVO -- IVA_TASA definida directo aquí, sin importarla de
+            # otra app -- evita cualquier riesgo de import circular entre
+            # "gastos" y "facturacion".
+            IVA_TASA = Decimal("0.16")
+ 
+            monto = Decimal(str(self.monto))
+            es_exento = self.tipo_gasto.subgrupo.grupo.es_exento_iva
+ 
+            if es_exento:
+                self.monto_base = monto
+                self.monto_iva = Decimal("0")
+            else:
+                base = (monto / (Decimal("1") + IVA_TASA)).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+                self.monto_base = base
+                self.monto_iva = monto - base
+ 
+        super().save(*args, **kwargs)
+
 
     @property
     def saldo_restante(self):

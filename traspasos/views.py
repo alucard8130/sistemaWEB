@@ -433,22 +433,6 @@ def nuevo_movimiento_inversion(request):
                 tipo_movimiento_inversion=tipo_movimiento,
             )
 
-            # saldo_origen_actual = (
-            #     cuenta_origen.saldo_final
-            #     if cuenta_origen.saldo_final is not None
-            #     else cuenta_origen.saldo_inicial
-            # )
-            # cuenta_origen.saldo_final = saldo_origen_actual - monto
-            # cuenta_origen.save()
-
-            # saldo_destino_actual = (
-            #     cuenta_destino.saldo_final
-            #     if cuenta_destino.saldo_final is not None
-            #     else cuenta_destino.saldo_inicial
-            # )
-            # cuenta_destino.saldo_final = saldo_destino_actual + monto
-            # cuenta_destino.save()
-
         messages.success(request, f"✅ {etiqueta} registrado: ${monto:,.2f}.")
         return redirect("reporte_inversion")
 

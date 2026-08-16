@@ -4,76 +4,133 @@
 <head>
     <meta charset="UTF-8">
     <title>Reporte de Retenciones ISR e IVA</title>
-    <!-- Bootstrap base styles -->  
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Font Rubik -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
-    <!-- Customised CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <title>Reporte de Retenciones ISR e IVA</title>
     <style>
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ccc; padding: 8px; }
-        th { background: #f0f0f0; }
-        form { margin-bottom: 20px; }
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+        .page-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+        .card-kpi {
+            border-radius: 14px;
+            border: 1px solid #edf1f7;
+            box-shadow: 0 4px 18px rgba(74,16,128,0.05);
+            background: white;
+        }
+        .card-kpi .card-body { padding: 18px 20px; }
+        .small-label { color: #6b7280; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .kpi-value { font-size: 1.5rem; font-weight: 700; color: #1a0533; margin-top: 8px; }
+        .table-wrap { background: white; border: 1px solid #edf1f7; border-radius: 14px; overflow: hidden; }
+        .table thead th { background: #1a0533; color: white; font-size: 0.8rem; }
+        .table td, .table th { vertical-align: middle; }
+        .toolbar-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+        .filter-box { background: white; border-radius: 12px; border: 1px solid #edf1f7; padding: 14px; }
     </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
-    <!-- Main content -->
-    <div class="container-fluid mt-4">
-        <h2>Reporte de Retenciones</h2>
-        <form method="get"  class="row g-2 mb-3">
-            <div class="col-auto">
-                <label>Fecha inicio:
-                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}">
-                </label>
-                <label>Fecha fin:
-                    <input type="date" name="fecha_fin" value="{{ fecha_fin }}">
-                </label>
-                <button type="submit" class="btn btn-primary">Filtrar</button>
-                <!-- Limpiar filtros -->
-                <a href="{% url 'reporte_retenciones_gastos' %}" class="btn btn-secondary">Limpiar filtros</a>
-                <!-- descargar reporte -->
-                <a href="{% url 'descargar_reporte_retenciones_gastos' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-success">
-                    Descargar reporte
-                </a>
+
+    <div class="page-wrap">
+        <h2 class="mb-3">Impuestos Retenidos IVA e ISR</h2>
+
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+
+        <div class="filter-box mb-4">
+            <form method="get" class="toolbar-row" id="form-filtros">
+                <div>
+                    <label class="form-label d-block small text-muted">Fecha inicio</label>
+                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control">
+                </div>
+                <div>
+                    <label class="form-label d-block small text-muted">Fecha fin</label>
+                    <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control">
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary reporte-link">
+                        <i class="bi bi-funnel me-1"></i> Filtrar
+                    </button>
+                </div>
+                <div>
+                    <a href="{% url 'reporte_retenciones_gastos' %}" class="btn btn-secondary reporte-link">
+                        Limpiar
+                    </a>
+                </div>
+                <div>
+                    <a href="{% url 'descargar_reporte_retenciones_gastos' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn btn-success">
+                        <i class="bi bi-download me-1"></i> Descargar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="card-kpi">
+                    <div class="card-body">
+                        <div class="small-label">ISR retenido</div>
+                        <div class="kpi-value">${{ resumen.total_isr|floatformat:2 }}</div>
+                    </div>
+                </div>
             </div>
-            <table class="table table-striped">
+
+            <div class="col-md-6">
+                <div class="card-kpi">
+                    <div class="card-body">
+                        <div class="small-label">IVA retenido</div>
+                        <div class="kpi-value">${{ resumen.total_iva|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th>Proveedor/Empleado</th>
-                        <th>Subgrupo de Gasto</th>
-                        <th>Tipo de Gasto</th>
                         <th>Fecha</th>
-                        <th>ISR</th>
-                        <th>IVA</th>
+                        <th>Persona</th>
+                        <th>Subgrupo</th>
+                        <th>Tipo</th>
+                        <th>ISR retenido</th>
+                        <th>IVA retenido</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for g in gastos %}
                     <tr>
+                        <td>{{ g.fecha|date:"d/m/Y" }}</td>
                         <td>{{ g.persona }}</td>
                         <td>{{ g.subgrupo }}</td>
                         <td>{{ g.tipo }}</td>
-                        <td>{{ g.fecha|date:"d/m/Y" }}</td>
-                        <td style="text-align:right;">{{ g.retencion_isr|floatformat:2 }}</td>
-                        <td style="text-align:right;">{{ g.retencion_iva|floatformat:2 }}</td>
+                        <td style="text-align:right;">${{ g.retencion_isr|floatformat:2 }}</td>
+                        <td style="text-align:right;">${{ g.retencion_iva|floatformat:2 }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6">No hay datos.</td></tr>
+                    <tr>
+                        <td colspan="6" class="text-center py-4">No hay datos para el periodo seleccionado.</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
     </div>
 
-     <!-- 🔹 Footer -->
-{% include 'tool_bar.html' %}
-    <!-- Scripts -->
+    {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('form-filtros');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+    });
+    </script>
 </body>
 </html>
