@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 {% load static %}
+{% load humanize %}
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -71,7 +72,7 @@
                 <div class="card-kpi">
                     <div class="card-body">
                         <div class="small-label">ISR retenido</div>
-                        <div class="kpi-value">${{ resumen.total_isr|floatformat:2 }}</div>
+                        <div class="kpi-value">${{ resumen.total_isr|floatformat:2|intcomma }}</div>
                     </div>
                 </div>
             </div>
@@ -80,7 +81,7 @@
                 <div class="card-kpi">
                     <div class="card-body">
                         <div class="small-label">IVA retenido</div>
-                        <div class="kpi-value">${{ resumen.total_iva|floatformat:2 }}</div>
+                        <div class="kpi-value">${{ resumen.total_iva|floatformat:2|intcomma }}</div>
                     </div>
                 </div>
             </div>
@@ -105,8 +106,8 @@
                         <td>{{ g.persona }}</td>
                         <td>{{ g.subgrupo }}</td>
                         <td>{{ g.tipo }}</td>
-                        <td style="text-align:right;">${{ g.retencion_isr|floatformat:2 }}</td>
-                        <td style="text-align:right;">${{ g.retencion_iva|floatformat:2 }}</td>
+                        <td style="text-align:right;">${{ g.retencion_isr|floatformat:2|intcomma }}</td>
+                        <td style="text-align:right;">${{ g.retencion_iva|floatformat:2|intcomma }}</td>
                     </tr>
                     {% empty %}
                     <tr>
