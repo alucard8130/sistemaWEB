@@ -1,0 +1,174 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Dispersiones de Nómina · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+        .ld-header {
+            background: linear-gradient(135deg, #1a0533 0%, #4a1080 60%, #7b2fbe 100%);
+            border-radius: 16px; padding: 22px 28px; color: white; margin-bottom: 18px;
+        }
+        .ld-header h4 { margin: 0; font-weight: 700; }
+        .ld-header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.85; }
+
+        .ld-table-wrap { background:white; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.08); overflow:hidden; }
+        table.ld-table { width:100%; border-collapse:separate; border-spacing:0; font-size:0.84rem; }
+        table.ld-table thead th {
+            background:#1a0533; color:white; font-weight:600; font-size:0.72rem;
+            text-transform:uppercase; letter-spacing:0.04em; padding:11px 14px; white-space:nowrap;
+        }
+        table.ld-table tbody td { padding:10px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+        table.ld-table tbody tr:hover td { background:#faf5ff; }
+        table.ld-table tbody tr:last-child td { border-bottom:none; }
+
+        .badge-confirmado { background:#eafaf1; color:#1a7a45; padding:3px 9px; border-radius:10px; font-size:0.72rem; font-weight:700; }
+        .badge-borrador { background:#fef9e7; color:#d4ac0d; padding:3px 9px; border-radius:10px; font-size:0.72rem; font-weight:700; }
+
+        .btn-gesac-primary {
+            background: linear-gradient(135deg, #4a1080, #7b2fbe);
+            color: white; font-weight: 700; border: none; border-radius: 10px;
+            padding: 10px 22px; font-size: 0.9rem; text-decoration: none;
+            display: inline-flex; align-items: center;
+        }
+        .btn-gesac-primary:hover { color: white; opacity: 0.92; }
+
+        .btn-accion {
+            width:30px; height:30px; border-radius:8px; border:1px solid #e2e8f0;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:0.8rem; cursor:pointer; transition:all 0.15s;
+            background:white; text-decoration:none; color:#4a1080;
+        }
+        .btn-accion:hover { background:#4a1080; color:white; border-color:#4a1080; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 980px; margin: 0 auto;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="ld-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4><i class="bi bi-cash-coin me-2"></i>Dispersiones de Nómina</h4>
+                <p>Historial de periodos de nómina procesados desde XML timbrados.</p>
+            </div>
+            {# si el usuario es contador no debe mostrar boton de nueva dispersion #}
+            {% if not user.perfilusuario.es_contador%}
+            <a href="{% url 'nueva_dispersion_nomina' %}" class="btn-gesac-primary reporte-link">
+                <i class="bi bi-plus-circle me-1"></i> Nueva Dispersión
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="ld-table-wrap mb-3">
+            <form method="get" class="d-flex align-items-center flex-wrap gap-2 p-3">
+                <input type="date" name="fecha_inicio" class="form-control form-control-sm" style="width:auto;" value="{{ fecha_inicio|default:'' }}" placeholder="Desde">
+                <input type="date" name="fecha_fin" class="form-control form-control-sm" style="width:auto;" value="{{ fecha_fin|default:'' }}" placeholder="Hasta">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtrar
+                </button>
+                <a href="{% url 'exportar_dispersiones_nomina_excel' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}"
+                   class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-excel-fill me-1"></i>Descargar Excel
+                </a>
+            </form>
+        </div>
+
+        <div class="ld-table-wrap">
+            <div class="table-responsive">
+                <table class="ld-table">
+                    <thead>
+                        <tr>
+                            <th>Periodo</th>
+                            <th>Cuenta bancaria</th>
+                            <th class="text-end">Empleados</th>
+                            <th class="text-end">Total neto</th>
+                            <th>Estatus</th>
+                            <th>Registrado por</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in dispersiones %}
+                        <tr>
+                            <td>
+                                {% if d.periodo_inicio %}
+                                    {{ d.periodo_inicio|date:"d/m/Y" }} — {{ d.periodo_fin|date:"d/m/Y" }}
+                                {% else %}
+                                    <span class="text-muted">Sin periodo</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ d.cuenta_bancaria.banco }} — {{ d.cuenta_bancaria.numero_cuenta }}</td>
+                            <td class="text-end">{{ d.recibos.count }}</td>
+                            <td class="text-end" style="font-weight:700; color:#4a1080;">
+                                ${{ d.total_neto|floatformat:2|intcomma }}
+                            </td>
+                            <td>
+                                {% if d.estatus == "confirmado" %}
+                                    <span class="badge-confirmado"><i class="bi bi-check-circle me-1"></i>Confirmada</span>
+                                {% else %}
+                                    <span class="badge-borrador"><i class="bi bi-pencil me-1"></i>Borrador</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">{{ d.registrado_por.get_full_name|default:d.registrado_por.username }}</td>
+                            <td class="text-center">
+                                {% if not user.perfilusuario.es_contador%}
+                                {% if d.estatus == "confirmado" %}
+                                    <a href="{% url 'detalle_dispersion_nomina' d.id %}" class="btn-accion reporte-link" title="Ver detalle">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'revisar_dispersion_nomina' d.id %}" class="btn-accion reporte-link" title="Continuar revisión">
+                                        <i class="bi bi-arrow-right-circle"></i>
+                                    </a>
+                                {% endif %}
+                                <a href="{% url 'borrar_dispersion_nomina' d.id %}" class="btn-accion reporte-link" title="Eliminar dispersión">
+                                    <i class="bi bi-trash3"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                                No hay dispersiones registradas todavía.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('a.reporte-link').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

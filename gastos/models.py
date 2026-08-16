@@ -77,6 +77,10 @@ class CargaCatalogoFila(models.Model):
 
 class GrupoGasto(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
+    es_exento_iva = models.BooleanField(
+        default=False,
+        help_text="Actívalo para grupos como Nómina, donde los gastos NO incluyen IVA."
+    )
 
     def __str__(self):
         return self.nombre

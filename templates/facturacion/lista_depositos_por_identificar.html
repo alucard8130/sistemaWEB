@@ -52,10 +52,13 @@
 <div class="mb-2">
     <h2><strong>Total depósitos no identificados:</strong> ${{ total_depositos|floatformat:2 |intcomma}}</h2>
 </div>
+
 <div class="d-flex gap-2 mb-3 flex-wrap">
+    {% if not user.perfilusuario.es_contador%}
     <a href="{% url 'registrar_deposito_por_identificar' %}" class="btn btn-success reporte-link">
         <i class="bi bi-plus-circle me-1"></i>Registrar depósito no identificado
     </a>
+    {% endif %}
     <a href="{% url 'exportar_depositos_por_identificar_excel' %}?fecha_inicio={{ fecha_inicio|default:'' }}&fecha_fin={{ fecha_fin|default:'' }}" class="btn btn-outline-primary">
         <i class="bi bi-file-earmark-spreadsheet me-1"></i>Descargar Excel
     </a>
@@ -89,9 +92,11 @@
                     <td>Pendiente identificar</td>
                 {% endif %}
                <td>
+                {% if not user.perfilusuario.es_contador%}
                     <a href="{% url 'identificar_deposito' pago.id %}" class="btn btn-sm btn-success reporte-link">
                         Identificar
                     </a>
+                {% endif %} 
                 </td>
             </tr>
             {% empty %}

@@ -24,18 +24,21 @@
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <div class="container-fluid mt-4">
-        <h2>Incidencias de Nómina</h2>
-
-        <a href="{% url 'incidencia_crear' %}" class="btn btn-crear mb-3">
-            <i class="bi bi-plus-circle-fill me-1"></i> Nueva incidencia
-        </a>
-        <!-- Bloque para mostrar mensajes -->
+    <!-- Bloque para mostrar mensajes -->
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
+
+    <div class="container-fluid mt-4">
+        <h2>Incidencias de Nómina</h2>
+        {% if not user.perfilusuario.es_contador%}
+        <a href="{% url 'incidencia_crear' %}" class="btn btn-crear mb-3">
+            <i class="bi bi-plus-circle-fill me-1"></i> Nueva incidencia
+        </a>
+        {% endif %}
+        
 <form method="get" class="row g-2 mb-3">
     <div class="col-auto">
         <select name="empleado" class="form-select">
@@ -94,7 +97,9 @@
                         <td>{{ i.descripcion }}</td>
                         <td>{% if i.tipo == 'incapacidad' and i.numero_incapacidad_imss %}{{ i.numero_incapacidad_imss }}{% else %}—{% endif %}</td>
                         <td>{% if i.importe %}${{ i.importe|floatformat:2|intcomma }}{% else %}—{% endif %}</td>
+                        
                         <td>
+                            {% if not user.perfilusuario.es_contador%}
                             <a href="{% url 'incidencia_editar' i.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
@@ -102,6 +107,7 @@
                             onclick="return confirm('¿Estás seguro de eliminar esta incidencia?');">
                                 <i class="bi bi-x-circle"></i>
                             </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

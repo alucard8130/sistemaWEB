@@ -516,7 +516,7 @@ def dashboard_inicio(request):
     })
 
 
-####PANEL DEDICADO PARA CONTADORES########################03/08/26
+####PANEL DEDICADO PARA DESPACHOS DE CONTADORES########################03/08/26
 @login_required
 def panel_contador(request):
     perfil = getattr(request.user, 'perfilusuario', None)
@@ -530,7 +530,7 @@ def panel_contador(request):
         'empresa': empresa,
     })
 
-
+#alta usuario contador
 @login_required
 def crear_contador(request):  
     if not request.user.is_superuser:
@@ -592,6 +592,7 @@ def crear_contador(request):
 
     return render(request, "contador/crear_contador.html", {"form": form})
 
+
 @login_required
 def cambiar_password_obligatorio(request):
     perfil = getattr(request.user, "perfilusuario", None)
@@ -636,6 +637,7 @@ def lista_contadores(request):
         "empresa_filtro": empresa_filtro,
     })
 
+
 @login_required
 def toggle_acceso_contador(request, perfil_id):
     if not request.user.is_superuser:
@@ -650,6 +652,7 @@ def toggle_acceso_contador(request, perfil_id):
     estado = "reactivado" if perfil.usuario.is_active else "restringido"
     messages.success(request, f"✅ Acceso {estado} para '{perfil.usuario.username}' ({perfil.empresa.nombre if perfil.empresa else 'sin empresa'}).")
     return redirect("lista_contadores")
+
 
 @login_required
 def cambiar_empresa_contador(request, empresa_id):
@@ -667,6 +670,7 @@ def cambiar_empresa_contador(request, empresa_id):
     perfil.save(update_fields=['empresa'])
     messages.success(request, f"Ahora estás viendo: {empresa.nombre}")
     return redirect('panel_contador')
+
 
 @login_required
 def editar_empresas_contador(request, perfil_id):

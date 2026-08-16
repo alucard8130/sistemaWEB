@@ -76,6 +76,7 @@
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}"><i class="bi bi-person-check me-2"></i>Reporte de Asistencia</a></li>
                 <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}"><i class="bi bi-exclamation-diamond me-2"></i>Incidencias</a></li>
+                <li><a class="dropdown-item reporte-link" href="{% url 'lista_dispersiones_nomina' %}"><i class="bi bi-cash-stack me-2"></i>Dispersión de Nómina</a></li>
               </ul>
             </li>
 
@@ -248,7 +249,6 @@
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_facturas_otros_ingresos' %}" title="Busca facturas de otros ingresos y asigna pagos"><i class="bi bi-file-text me-2"></i>Facturas Otros Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_saldos_a_favor' %}" title="Busca saldos a favor de clientes"><i class="bi bi-piggy-bank-fill me-2"></i>Saldos a Favor</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_grupos_facturacion' %}"><i class="bi bi-collection-fill me-2"></i>Grupos de Facturación</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'verificacion_facturacion' %}" title="Verificación de facturación por local y área"><i class="bi bi-check2-circle me-2"></i>Verificación Facturación</a></li>
@@ -273,6 +273,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales"><i class="bi bi-bar-chart me-2"></i>Grafico de Ingresos</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado"><i class="bi bi-question-circle me-2"></i>Depositos no identificados</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_saldos_a_favor' %}" title="Busca saldos a favor de clientes"><i class="bi bi-piggy-bank-fill me-2"></i>Saldos a Favor</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Inversiones</a></li> 
               {% if request.user.perfilusuario.empresa.es_premium %}
@@ -354,6 +355,8 @@
               Nomina <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_dispersiones_nomina' %}"><i class="bi bi-cash-coin me-2"></i>Dispersión de Nómina</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}"><i class="bi bi-list-ul me-2"></i>Incidencias</a></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}"><i class="bi bi-file-text me-2"></i>Reporte Asistencia</a></li>

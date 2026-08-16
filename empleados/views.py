@@ -1,14 +1,14 @@
 
 import csv
-from django.core.paginator import Paginator
-from django.db.models import Q
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 
 from empresas.models import Empresa
-
 
 from .forms import EmpleadoForm, IncidenciaForm
 from .models import Empleado, Incidencia
@@ -27,6 +27,7 @@ def empleado_crear(request):
     else:
         form = EmpleadoForm(user=request.user)
     return render(request, 'empleados/crear.html', {'form': form})
+
 
 @login_required
 def empleado_editar(request, pk):
@@ -80,6 +81,7 @@ def empleado_editar(request, pk):
     return render(request, 'empleados/editar.html', {'form': form, 
                             'empleado': empleado,
                             'horario_bloqueado_para_usuario': empleado.horario_bloqueado and not request.user.is_superuser,})
+
 
 @login_required
 def empleado_lista(request):
@@ -165,6 +167,7 @@ def incidencias_lista(request):
         'fecha_fin': fecha_fin,
     })
 
+
 @login_required
 def exportar_incidencias_excel(request):
     empleado_id = request.GET.get('empleado')
@@ -201,6 +204,8 @@ def exportar_incidencias_excel(request):
         ])
     return response
 
+
+
 @login_required
 def incidencia_editar(request, pk):
     incidencia = get_object_or_404(Incidencia, pk=pk)
@@ -224,6 +229,7 @@ def incidencia_editar(request, pk):
         form = IncidenciaForm(instance=incidencia)
         form.fields['empleado'].queryset = empleados_qs
     return render(request, 'incidencias/form.html', {'form': form, 'incidencia': incidencia})
+
 
 @login_required
 def incidencia_cancelar(request, pk):

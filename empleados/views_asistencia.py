@@ -6,15 +6,15 @@ empleado. El link debe compartirse solo con el empleado correspondiente
 import json
 from datetime import datetime, timedelta
 
-from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, render
 from django.templatetags import tz
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Empleado, RegistroAsistencia, Incidencia, UbicacionEnVivo
+from .models import Empleado, Incidencia, RegistroAsistencia, UbicacionEnVivo
 from .utils import calcular_distancia_metros
-from django.contrib.auth.decorators import login_required
 
 
 def marcar_asistencia(request, token):

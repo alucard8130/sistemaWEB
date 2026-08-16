@@ -1,18 +1,21 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
-from .models import UsuarioAcceso, AccesoEmpresa
-from empresas.models import Empresa
 import datetime
 import secrets
-from django.core.mail import send_mail
-from django.conf import settings
 from datetime import timedelta
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+
+from empresas.models import Empresa
+
+from .models import AccesoEmpresa, UsuarioAcceso
 
 ####################APP ACCESO PORTAL EMPRESAS DE ADMINISTRACION Y MIEMBROS DEL COMITE####################
 
@@ -35,6 +38,7 @@ def requiere_acceso(f):
     return wrapper
 
 
+
 def portal_login(request):
     if request.method == 'POST':
         email_o_user = request.POST.get('email', '').strip()
@@ -42,13 +46,20 @@ def portal_login(request):
 
         # Intentar como superusuario de Django (username o email)
         django_user = authenticate(request, username=email_o_user, password=password)
+
         if not django_user and '@' in email_o_user:
-            # Intentar por email
-            try:
-                u = User.objects.get(email=email_o_user)
-                django_user = authenticate(request, username=u.username, password=password)
-            except User.DoesNotExist:
-                pass
+            # NUEVO -- puede haber más de un User con el mismo email (el
+            # campo email no es único en Django). En vez de asumir que hay
+            # uno solo, se prueban TODOS los candidatos -- authenticate()
+            # exige la contraseña correcta, así que solo el usuario dueño
+            # real de esa contraseña logra iniciar sesión, sin importar
+            # cuántos compartan el email.
+            posibles_usuarios = User.objects.filter(email=email_o_user)
+            for candidato in posibles_usuarios:
+                intento = authenticate(request, username=candidato.username, password=password)
+                if intento:
+                    django_user = intento
+                    break
 
         if django_user and django_user.is_superuser:
             login(request, django_user)
@@ -56,23 +67,31 @@ def portal_login(request):
 
         # Intentar como UsuarioAcceso del portal (solo por email)
         if '@' in email_o_user:
-            try:
-                ua = UsuarioAcceso.objects.get(email=email_o_user)
-                if ua.check_password(password):
-                    if not ua.activo:
-                        request.session['ua_id'] = ua.id
-                        messages.warning(request, "Tu cuenta está pendiente de pago.")
-                        return redirect('acceso_checkout')
-                    request.session['ua_id'] = ua.id
-                    return redirect('acceso_dashboard')
-                else:
-                    messages.error(request, "Email o contraseña incorrectos.")
-            except UsuarioAcceso.DoesNotExist:
+            # NUEVO -- mismo criterio que con User: puede haber más de un
+            # UsuarioAcceso con el mismo email -- se prueban todos los
+            # candidatos, y solo el que tenga la contraseña correcta
+            # inicia sesión.
+            posibles_ua = UsuarioAcceso.objects.filter(email=email_o_user)
+            ua_autenticado = None
+            for candidato in posibles_ua:
+                if candidato.check_password(password):
+                    ua_autenticado = candidato
+                    break
+
+            if ua_autenticado:
+                if not ua_autenticado.activo:
+                    request.session['ua_id'] = ua_autenticado.id
+                    messages.warning(request, "Tu cuenta está pendiente de pago.")
+                    return redirect('acceso_checkout')
+                request.session['ua_id'] = ua_autenticado.id
+                return redirect('acceso_dashboard')
+            else:
                 messages.error(request, "Email o contraseña incorrectos.")
         else:
             messages.error(request, "Usuario o contraseña incorrectos.")
 
     return render(request, 'acceso_empresas/login.html')
+
 
 
 def portal_logout(request):

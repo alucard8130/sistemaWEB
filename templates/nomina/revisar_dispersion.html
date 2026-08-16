@@ -1,0 +1,262 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Revisar Dispersión · GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { background: #f0f4f9; font-family: 'Rubik', sans-serif; }
+        .page-wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 60px; }
+        .rd-header {
+            background: linear-gradient(135deg, #1a0533 0%, #4a1080 60%, #7b2fbe 100%);
+            border-radius: 16px; padding: 22px 28px; color: white; margin-bottom: 18px;
+        }
+        .rd-header h4 { margin: 0; font-weight: 700; }
+        .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+        @media (max-width:768px) { .kpi-strip { grid-template-columns:repeat(2,1fr); } }
+        .kpi-box { background:white; border-radius:14px; padding:14px 16px; box-shadow:0 2px 12px rgba(0,0,0,0.07); border-top:4px solid transparent; }
+        .kpi-box.verde { border-top-color:#1a7a45; }
+        .kpi-box.ambar { border-top-color:#d4ac0d; }
+        .kpi-box.rojo { border-top-color:#c0392b; }
+        .kpi-box.gris { border-top-color:#6b7280; }
+        .kpi-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:#6b7280; font-weight:600; }
+        .kpi-val { font-size:1.3rem; font-weight:700; margin-top:2px; }
+
+        .rd-table-wrap { background:white; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.08); overflow:hidden; margin-bottom: 20px;}
+        table.rd-table { width:100%; border-collapse:separate; border-spacing:0; font-size:0.84rem; }
+        table.rd-table thead th {
+            background:#1a0533; color:white; font-weight:600; font-size:0.72rem;
+            text-transform:uppercase; letter-spacing:0.04em; padding:10px 14px; white-space:nowrap;
+        }
+        table.rd-table tbody td { padding:10px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+        table.rd-table tbody tr:last-child td { border-bottom:none; }
+
+        .badge-ok { background:#eafaf1; color:#1a7a45; padding:3px 9px; border-radius:10px; font-size:0.72rem; font-weight:700; }
+        .badge-sin-match { background:#fef9e7; color:#d4ac0d; padding:3px 9px; border-radius:10px; font-size:0.72rem; font-weight:700; }
+        .badge-duplicado { background:#f0f4f8; color:#6b7280; padding:3px 9px; border-radius:10px; font-size:0.72rem; font-weight:700; }
+        .badge-error { background:#fdecea; color:#c0392b; padding:3px 9px; border-radius:10px; font-size:0.72rem; font-weight:700; }
+
+        .select-empleado { min-width: 220px; }
+
+        .btn-gesac-primary {
+            background: linear-gradient(135deg, #4a1080, #7b2fbe);
+            color: white; font-weight: 700; border: none; border-radius: 10px;
+            padding: 10px 26px; font-size: 0.9rem;
+        }
+        .btn-gesac-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-gesac-outline {
+            border: 1px solid #c9d3e0; color: #33475b; border-radius: 10px;
+            padding: 10px 22px; font-size: 0.9rem; font-weight: 600; background: white;
+            text-decoration: none; display: inline-flex; align-items: center;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="page-wrap">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="rd-header">
+            <h4><i class="bi bi-clipboard-check me-2"></i>Revisar Dispersión</h4>
+            <div style="font-size:0.85rem; opacity:0.85; margin-top:4px;">
+                {% if dispersion.periodo_inicio %}
+                    Periodo: {{ dispersion.periodo_inicio|date:"d/m/Y" }} al {{ dispersion.periodo_fin|date:"d/m/Y" }} —
+                {% endif %}
+                Cuenta: {{ dispersion.cuenta_bancaria.banco }} {{ dispersion.cuenta_bancaria.numero_cuenta }}
+            </div>
+        </div>
+
+        <div class="kpi-strip">
+            <div class="kpi-box verde">
+                <div class="kpi-label">Listos</div>
+                <div class="kpi-val text-success">{{ listos }}</div>
+            </div>
+            <div class="kpi-box ambar">
+                <div class="kpi-label">Sin asignar</div>
+                <div class="kpi-val" style="color:#d4ac0d;">{{ pendientes_sin_match }}</div>
+            </div>
+            <div class="kpi-box gris">
+                <div class="kpi-label">Duplicados</div>
+                <div class="kpi-val text-secondary">{{ duplicados }}</div>
+            </div>
+            <div class="kpi-box rojo">
+                <div class="kpi-label">Con error</div>
+                <div class="kpi-val text-danger">{{ con_error }}</div>
+            </div>
+        </div>
+
+        {% if pendientes_sin_match > 0 %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            Hay {{ pendientes_sin_match }} recibo(s) cuyo RFC no coincide con ningún empleado activo.
+            Asígnalos manualmente abajo y guarda, antes de poder confirmar.
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="rd-table-wrap">
+                <div class="table-responsive">
+                    <table class="rd-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre en XML</th>
+                                <th>RFC</th>
+                                <th>Empleado</th>
+                                <th class="text-end">Neto</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for recibo in recibos %}
+                            <tr>
+                                <td>{{ recibo.nombre_receptor|default:"—" }}</td>
+                                <td><code>{{ recibo.rfc_receptor|default:"—" }}</code></td>
+                                <td>
+                                    {% if recibo.estatus == "sin_match" %}
+                                        <div class="asignacion-block" data-recibo="{{ recibo.id }}">
+                                            <div class="btn-group btn-group-sm mb-2" role="group">
+                                                <input type="radio" class="btn-check" name="accion_{{ recibo.id }}" id="acc_existente_{{ recibo.id }}" value="existente" checked onchange="toggleAsignacion({{ recibo.id }})">
+                                                <label class="btn btn-outline-secondary" for="acc_existente_{{ recibo.id }}">Empleado existente</label>
+
+                                                <input type="radio" class="btn-check" name="accion_{{ recibo.id }}" id="acc_nuevo_{{ recibo.id }}" value="nuevo" onchange="toggleAsignacion({{ recibo.id }})">
+                                                <label class="btn btn-outline-secondary" for="acc_nuevo_{{ recibo.id }}">Crear empleado nuevo</label>
+                                            </div>
+
+                                            <div id="bloque_existente_{{ recibo.id }}">
+                                                <select name="empleado_{{ recibo.id }}" class="form-select form-select-sm select-empleado">
+                                                    <option value="">Selecciona un empleado...</option>
+                                                    {% for emp in empleados_empresa %}
+                                                        <option value="{{ emp.id }}">{{ emp.nombre }}{% if emp.rfc %} ({{ emp.rfc }}){% else %} — sin RFC{% endif %}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div id="bloque_nuevo_{{ recibo.id }}" style="display:none;">
+                                                <div class="small text-muted mb-1">
+                                                    Se creará como: <strong>{{ recibo.nombre_receptor|default:"(sin nombre en XML)" }}</strong>
+                                                    {% if recibo.rfc_receptor %} — RFC {{ recibo.rfc_receptor }}{% endif %}
+                                                </div>
+                                                <div class="d-flex gap-1">
+                                                    <select name="puesto_{{ recibo.id }}" class="form-select form-select-sm">
+                                                        <option value="">Puesto...</option>
+                                                        {% for valor, etiqueta in puestos_choices %}
+                                                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <select name="departamento_{{ recibo.id }}" class="form-select form-select-sm">
+                                                        <option value="">Departamento...</option>
+                                                        {% for valor, etiqueta in departamentos_choices %}
+                                                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% elif recibo.empleado %}
+                                        {{ recibo.empleado.nombre }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end" style="font-weight:700;">${{ recibo.neto_pagado|floatformat:2|intcomma }}</td>
+                                <td>
+                                    {% if recibo.estatus == "ok" %}
+                                        <span class="badge-ok"><i class="bi bi-check-circle me-1"></i>Listo</span>
+                                    {% elif recibo.estatus == "sin_match" %}
+                                        <span class="badge-sin-match"><i class="bi bi-question-circle me-1"></i>Sin asignar</span>
+                                    {% elif recibo.estatus == "duplicado" %}
+                                        <span class="badge-duplicado" title="Ya se había procesado este folio fiscal antes"><i class="bi bi-files me-1"></i>Duplicado</span>
+                                    {% elif recibo.estatus == "error" %}
+                                        <span class="badge-error" title="{{ recibo.error_detalle }}"><i class="bi bi-x-circle me-1"></i>Error</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">No hay recibos en esta dispersión.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'lista_dispersiones_nomina' %}" class="btn-gesac-outline reporte-link">
+                    <i class="bi bi-arrow-left me-1"></i> Volver
+                </a>
+                {% if pendientes_sin_match > 0 %}
+                <button type="submit" class="btn-gesac-primary">
+                    <i class="bi bi-save me-1"></i> Guardar asignaciones
+                </button>
+                {% endif %}
+            </div>
+        </form>
+
+        {% if puede_confirmar %}
+        <form method="post" action="{% url 'confirmar_dispersion_nomina' dispersion.id %}" class="mt-3 text-end" id="form-confirmar-dispersion">
+            {% csrf_token %}
+            <button type="submit" class="btn-gesac-primary">
+                <i class="bi bi-check2-circle me-1"></i> Confirmar dispersión ({{ listos }} gasto(s) se generarán)
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // NUEVO -- alterna entre "vincular a empleado existente" y
+        // "crear empleado nuevo" para cada recibo sin asignar.
+        function toggleAsignacion(reciboId) {
+            const esNuevo = document.getElementById('acc_nuevo_' + reciboId).checked;
+            document.getElementById('bloque_existente_' + reciboId).style.display = esNuevo ? 'none' : 'block';
+            document.getElementById('bloque_nuevo_' + reciboId).style.display = esNuevo ? 'block' : 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('a.reporte-link').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+            document.querySelectorAll('form:not(#form-confirmar-dispersion)').forEach(function (form) {
+                form.addEventListener('submit', function () {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+
+            var formConfirmar = document.getElementById('form-confirmar-dispersion');
+            if (formConfirmar) {
+                formConfirmar.addEventListener('submit', function (e) {
+                    if (!confirm('¿Confirmar esta dispersión? Se generará un Gasto pagado por cada empleado listo, y ya no se podrá deshacer desde aquí.')) {
+                        e.preventDefault();
+                        return;
+                    }
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

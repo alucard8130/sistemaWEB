@@ -16,7 +16,7 @@ class CargaMasivaCuentasForm(forms.Form):
 class SubgrupoGastoForm(forms.ModelForm):
     class Meta:
         model = SubgrupoGasto
-        fields = ['grupo', 'nombre']
+        fields = ['grupo', 'nombre']  # noqa: RUF012
 
         widgets = {  # noqa: RUF012
             'grupo': forms.Select(attrs={'class': 'form-select'}),
@@ -25,7 +25,7 @@ class SubgrupoGastoForm(forms.ModelForm):
       
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Todos los grupos son universales
+        #Todos los grupos son universales
         self.fields['grupo'].queryset = GrupoGasto.objects.all()
 
 class TipoGastoForm(forms.ModelForm):

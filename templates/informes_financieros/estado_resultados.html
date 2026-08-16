@@ -400,6 +400,12 @@
                                         <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
                                 {% endif %}
+                                {% if tipo.tipo == "Dispersión De Nómina" %}
+                                    <a href="{% url 'lista_dispersiones_nomina' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}"
+                                    class="ms-1 small text-primary" title="Ver detalle por empleado de las dispersiones de nómina">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                {% endif %}
                             </span>
                             <span class="er-tipo-monto">${{ tipo.total|floatformat:2|intcomma }}</span>
                         </div>
