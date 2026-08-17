@@ -46,4 +46,9 @@ urlpatterns = [
     path('saldos-a-favor/nuevo/', views.registrar_saldo_a_favor, name='registrar_saldo_a_favor'),
     path('reportes/iva/', views.reporte_iva, name='reporte_iva'),
     path('reportes/iva/exportar/', views.exportar_reporte_iva_excel, name='exportar_reporte_iva_excel'),
+    path('catalogo-cuentas/exportar-poliza-ingresos/', views.exportar_poliza_ingresos, name='exportar_poliza_ingresos'),
+    path('catalogo-cuentas/homologar-cuotas/', views.homologar_tipos_cuota, name='homologar_tipos_cuota'),
+    path('catalogo-cuentas/homologar-cuotas/<int:homologacion_id>/asignar/', views.asignar_cuenta_contable_cuota, name='asignar_cuenta_contable_cuota'),
+    path('catalogo-cuentas/homologar-otros-ingresos/', views.homologar_tipos_otro_ingreso, name='homologar_tipos_otro_ingreso'),
+    path('catalogo-cuentas/homologar-otros-ingresos/<int:tipo_id>/asignar/', views.asignar_cuenta_contable_otro_ingreso, name='asignar_cuenta_contable_otro_ingreso'),
 ]

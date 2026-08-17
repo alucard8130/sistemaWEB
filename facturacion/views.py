@@ -59,7 +59,8 @@ from facturacion.utils import (
     calcular_total_vencida_rapido,
     variacion,
 )
-from gastos.models import Gasto, PagoGasto, TipoGasto
+from gastos.models import CuentaContable, Gasto, PagoGasto, TipoGasto
+from gastos.views import _empresa_del_usuario
 from locales.models import LocalComercial
 from presupuestos.models import PresupuestoIngreso
 from principal.models import AuditoriaCambio
@@ -83,6 +84,7 @@ from .models import (
     GrupoFacturacion,
     Pago,
     SaldoAFavor,
+    TipoCuotaHomologacion,
     TipoOtroIngreso,
 )
 
@@ -5388,3 +5390,231 @@ def exportar_reporte_iva_excel(request):
     response["Content-Disposition"] = f'attachment; filename="detalle_iva_{fecha_inicio}_a_{fecha_fin}.xlsx"'
     wb.save(response)
     return response
+
+
+@login_required
+def exportar_poliza_ingresos(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    if request.method == 'POST' or request.GET.get('fecha_inicio'):
+        fecha_inicio_str = request.POST.get('fecha_inicio') or request.GET.get('fecha_inicio')
+        fecha_fin_str = request.POST.get('fecha_fin') or request.GET.get('fecha_fin')
+
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            messages.error(request, "Fechas inválidas.")
+            return redirect('exportar_poliza_ingresos')
+
+        # --- Pagos de cuotas ---
+        pagos_cuotas = Pago.objects.filter(
+            factura__empresa=empresa,
+            fecha_pago__gte=fecha_inicio,
+            fecha_pago__lte=fecha_fin,
+        ).exclude(forma_pago='nota_credito').select_related(
+            'factura', 'cuenta_bancaria', 'cuenta_bancaria__cuenta_contable', 'factura__cliente'
+        )
+
+        # --- Cobros de otros ingresos ---
+        cobros_otros = CobroOtrosIngresos.objects.filter(
+            factura__empresa=empresa,
+            fecha_cobro__gte=fecha_inicio,
+            fecha_cobro__lte=fecha_fin,
+        ).select_related(
+            'factura', 'factura__tipo_ingreso', 'cuenta_bancaria', 'cuenta_bancaria__cuenta_contable', 'factura__cliente'
+        )
+
+        # NUEVO -- cuenta contable de IVA Trasladado (ya cobrado), buscada
+        # UNA sola vez por nombre dentro del catálogo de la empresa.
+        cuenta_iva_trasladado = CuentaContable.objects.filter(
+            empresa=empresa, nombre__icontains="IVA Trasladado Cobrado", activa=True,
+        ).first()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Póliza Ingresos"
+        ws.append(['Fecha', 'Cuenta', 'Concepto', 'Cargo', 'Abono'])
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="1E8449", end_color="1E8449", fill_type="solid")
+
+        total_exportado = 0
+        pendientes_homologar = []
+
+        homologaciones_cuota = {
+            h.tipo_cuota: h.cuenta_contable
+            for h in TipoCuotaHomologacion.objects.filter(empresa=empresa).select_related('cuenta_contable')
+        }
+
+        # NUEVO -- función auxiliar: dado el monto de ESTE pago y la
+        # factura a la que pertenece, regresa (monto_ingreso, monto_iva)
+        # proporcional a lo que representa este pago del total facturado.
+        def _desglose_pago(monto_pago, factura):
+            monto_pago = Decimal(str(monto_pago))
+            if not factura.monto or factura.monto_iva in (None, 0) or factura.monto <= 0:
+                return monto_pago, Decimal("0")
+            proporcion = monto_pago / Decimal(str(factura.monto))
+            if proporcion > 1:
+                proporcion = Decimal("1")
+            iva_este_pago = (Decimal(str(factura.monto_iva)) * proporcion).quantize(Decimal("0.01"))
+            return monto_pago - iva_este_pago, iva_este_pago
+
+        for pago in pagos_cuotas:
+            cuenta_banco = getattr(pago.cuenta_bancaria, 'cuenta_contable', None) if pago.cuenta_bancaria else None
+            cuenta_ingreso = homologaciones_cuota.get(pago.factura.tipo_cuota)
+
+            if not cuenta_banco or not cuenta_ingreso:
+                pendientes_homologar.append({
+                    'fecha': pago.fecha_pago, 'tipo': pago.factura.get_tipo_cuota_display(),
+                    'monto': pago.monto, 'falta': 'Cuenta bancaria' if not cuenta_banco else 'Tipo de cuota',
+                })
+                continue
+
+            concepto = f"Cuota {pago.factura.get_tipo_cuota_display()} — {pago.factura.cliente.nombre} — Folio {pago.factura.folio}"[:200]
+            monto_ingreso, monto_iva_pago = _desglose_pago(pago.monto, pago.factura)
+
+            if monto_iva_pago > 0 and not cuenta_iva_trasladado:
+                pendientes_homologar.append({
+                    'fecha': pago.fecha_pago, 'tipo': pago.factura.get_tipo_cuota_display(),
+                    'monto': pago.monto, 'falta': 'Cuenta de IVA Trasladado Cobrado',
+                })
+                continue
+
+            ws.append([pago.fecha_pago.strftime('%d/%m/%Y'), f"{cuenta_banco.codigo} — {cuenta_banco.nombre}", concepto, float(pago.monto), ''])
+            ws.append([pago.fecha_pago.strftime('%d/%m/%Y'), f"{cuenta_ingreso.codigo} — {cuenta_ingreso.nombre}", concepto, '', float(monto_ingreso)])
+            if monto_iva_pago > 0:
+                ws.append([pago.fecha_pago.strftime('%d/%m/%Y'), f"{cuenta_iva_trasladado.codigo} — {cuenta_iva_trasladado.nombre}", concepto, '', float(monto_iva_pago)])
+
+            total_exportado += float(pago.monto)
+
+        for cobro in cobros_otros:
+            cuenta_banco = getattr(cobro.cuenta_bancaria, 'cuenta_contable', None) if cobro.cuenta_bancaria else None
+            cuenta_ingreso = getattr(cobro.factura.tipo_ingreso, 'cuenta_contable', None) if cobro.factura.tipo_ingreso else None
+
+            if not cuenta_banco or not cuenta_ingreso:
+                pendientes_homologar.append({
+                    'fecha': cobro.fecha_cobro, 'tipo': cobro.factura.tipo_ingreso.nombre if cobro.factura.tipo_ingreso else '—',
+                    'monto': cobro.monto, 'falta': 'Cuenta bancaria' if not cuenta_banco else 'Tipo de otro ingreso',
+                })
+                continue
+
+            concepto = f"{cobro.factura.tipo_ingreso.nombre} — {cobro.factura.cliente.nombre} — Folio {cobro.factura.folio}"[:200]
+            # Otros Ingresos SIEMPRE llevan IVA -- misma función, mismo criterio.
+            monto_ingreso, monto_iva_cobro = _desglose_pago(cobro.monto, cobro.factura)
+
+            if monto_iva_cobro > 0 and not cuenta_iva_trasladado:
+                pendientes_homologar.append({
+                    'fecha': cobro.fecha_cobro, 'tipo': cobro.factura.tipo_ingreso.nombre if cobro.factura.tipo_ingreso else '—',
+                    'monto': cobro.monto, 'falta': 'Cuenta de IVA Trasladado Cobrado',
+                })
+                continue
+
+            ws.append([cobro.fecha_cobro.strftime('%d/%m/%Y'), f"{cuenta_banco.codigo} — {cuenta_banco.nombre}", concepto, float(cobro.monto), ''])
+            ws.append([cobro.fecha_cobro.strftime('%d/%m/%Y'), f"{cuenta_ingreso.codigo} — {cuenta_ingreso.nombre}", concepto, '', float(monto_ingreso)])
+            if monto_iva_cobro > 0:
+                ws.append([cobro.fecha_cobro.strftime('%d/%m/%Y'), f"{cuenta_iva_trasladado.codigo} — {cuenta_iva_trasladado.nombre}", concepto, '', float(monto_iva_cobro)])
+
+            total_exportado += float(cobro.monto)
+
+        ws.append(['', '', 'TOTAL (Cargo = Abono)', total_exportado, total_exportado])
+        for cell in ws[ws.max_row]:
+            cell.font = Font(bold=True)
+
+        for col_letra, ancho in [('A', 12), ('B', 35), ('C', 50), ('D', 14), ('E', 14)]:
+            ws.column_dimensions[col_letra].width = ancho
+
+        if pendientes_homologar:
+            ws2 = wb.create_sheet("Sin homologar")
+            ws2.append(['Fecha', 'Tipo', 'Monto', 'Falta homologar'])
+            for cell in ws2[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="C0392B", end_color="C0392B", fill_type="solid")
+            for p in pendientes_homologar:
+                ws2.append([p['fecha'].strftime('%d/%m/%Y'), p['tipo'], float(p['monto']), p['falta']])
+            for col_letra, ancho in [('A', 12), ('B', 30), ('C', 14), ('D', 20)]:
+                ws2.column_dimensions[col_letra].width = ancho
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename=poliza_ingresos_{fecha_inicio}_{fecha_fin}.xlsx'
+        wb.save(response)
+        return response
+
+    return render(request, 'facturacion/exportar_poliza_ingresos.html', {})
+
+
+@login_required
+def homologar_tipos_cuota(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    # Asegura que exista una fila por cada tipo de cuota posible
+    for tipo_valor, _ in Factura.TIPO_CUOTA_CHOICES:
+        TipoCuotaHomologacion.objects.get_or_create(empresa=empresa, tipo_cuota=tipo_valor)
+
+    homologaciones = TipoCuotaHomologacion.objects.filter(empresa=empresa).select_related('cuenta_contable')
+    cuentas_disponibles = CuentaContable.objects.filter(empresa=empresa, activa=True).order_by('codigo')
+
+    return render(request, 'facturacion/homologar_tipos_cuota.html', {
+        'homologaciones': homologaciones,
+        'cuentas_disponibles': cuentas_disponibles,
+    })
+
+
+@login_required
+def asignar_cuenta_contable_cuota(request, homologacion_id):
+    empresa = _empresa_del_usuario(request)
+    homologacion = get_object_or_404(TipoCuotaHomologacion, pk=homologacion_id, empresa=empresa)
+
+    if request.method == 'POST':
+        cuenta_id = request.POST.get('cuenta_contable_id')
+        if cuenta_id:
+            cuenta = get_object_or_404(CuentaContable, pk=cuenta_id, empresa=empresa)
+            homologacion.cuenta_contable = cuenta
+        else:
+            homologacion.cuenta_contable = None
+        homologacion.save(update_fields=['cuenta_contable'])
+        messages.success(request, f"'{homologacion.get_tipo_cuota_display()}' homologado correctamente.")
+
+    return redirect('homologar_tipos_cuota')
+
+
+@login_required
+def homologar_tipos_otro_ingreso(request):
+    empresa = _empresa_del_usuario(request)
+    if not empresa:
+        messages.error(request, "No se pudo determinar tu empresa.")
+        return redirect('dashboard_inicio')
+
+    tipos_otro_ingreso = TipoOtroIngreso.objects.filter(empresa=empresa).select_related('cuenta_contable').order_by('nombre')
+    cuentas_disponibles = CuentaContable.objects.filter(empresa=empresa, activa=True).order_by('codigo')
+
+    return render(request, 'facturacion/homologar_tipos_otro_ingreso.html', {
+        'tipos_otro_ingreso': tipos_otro_ingreso,
+        'cuentas_disponibles': cuentas_disponibles,
+    })
+
+
+@login_required
+def asignar_cuenta_contable_otro_ingreso(request, tipo_id):
+    empresa = _empresa_del_usuario(request)
+    tipo = get_object_or_404(TipoOtroIngreso, pk=tipo_id, empresa=empresa)
+
+    if request.method == 'POST':
+        cuenta_id = request.POST.get('cuenta_contable_id')
+        if cuenta_id:
+            cuenta = get_object_or_404(CuentaContable, pk=cuenta_id, empresa=empresa)
+            tipo.cuenta_contable = cuenta
+        else:
+            tipo.cuenta_contable = None
+        tipo.save(update_fields=['cuenta_contable'])
+        messages.success(request, f"'{tipo.nombre}' homologado correctamente.")
+
+    return redirect('homologar_tipos_otro_ingreso')

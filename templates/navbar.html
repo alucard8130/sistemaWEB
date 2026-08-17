@@ -378,7 +378,7 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'gastos_lista' %}"><i class="bi bi-list-ul me-2"></i>Solicitudes de Gasto</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Pagos Solicitudes Gastos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Pagos Solicitudes</a></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_gastos' %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Gastos</a></li>
               {% else %}
