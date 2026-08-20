@@ -1,24 +1,32 @@
-from django.http import HttpResponse
-from django.shortcuts import render, get_object_or_404, redirect
+from collections import OrderedDict
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from num2words import num2words
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Sum
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from num2words import num2words
+from openpyxl import Workbook
+
+from acceso_empresas.decorators import login_o_portal_required
 from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado, Incidencia
-from proveedores.models import Proveedor
-from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
-from .forms import ComprobarValeForm, FondeoCajaChicaForm, GastoCajaChicaForm, ValeCajaForm
-from gastos.models import TipoGasto
-from django.db import transaction
-from decimal import Decimal, InvalidOperation
-from django.db.models import Sum
-from openpyxl import Workbook
-from django.core.paginator import Paginator
-from datetime import datetime
-from collections import OrderedDict
-from datetime import date
 from empresas.models import Empresa
+from gastos.models import TipoGasto
+from proveedores.models import Proveedor
+
+from .forms import (
+    ComprobarValeForm,
+    FondeoCajaChicaForm,
+    GastoCajaChicaForm,
+    ValeCajaForm,
+)
+from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
 
 
 def imprimir_vale_caja(request, vale_id):

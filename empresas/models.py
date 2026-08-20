@@ -64,6 +64,17 @@ class Empresa(models.Model):
         max_digits=6, decimal_places=2, null=True, blank=True,
         help_text="Precio fijo por toalla sanitaria. Déjalo vacío si no se vende."
     )
+    #Twilio configuration fields (enviar mensajes de WhatsApp y SMS)
+    twilio_account_sid = models.CharField(max_length=100, blank=True, null=True)
+    twilio_auth_token = models.CharField(max_length=100, blank=True, null=True)
+    twilio_whatsapp_number = models.CharField(
+        max_length=20, blank=True, null=True,
+        help_text="Número de WhatsApp Business habilitado en Twilio, formato +521234567890 (sin 'whatsapp:')."
+    )
+    twilio_sms_number = models.CharField(
+        max_length=20, blank=True, null=True,
+        help_text="Número de Twilio para SMS, formato +521234567890."
+    )
 
     
     def __str__(self):

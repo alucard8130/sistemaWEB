@@ -1,17 +1,18 @@
-from django.db import models
-from django.contrib.auth.models import User
-from empresas.models import Empresa
 import secrets
-from django.contrib.auth.hashers import make_password, check_password
 
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.models import User
+from django.db import models
+
+from empresas.models import Empresa
 
 
 class UsuarioAcceso(models.Model):
-    TIPO_CHOICES = [
+    TIPO_CHOICES = [  # noqa: RUF012
         ('administradora', 'Empresa Administradora'),
         ('comite', 'Comité / Mesa Directiva'),
     ]
-    PLAN_CHOICES = [
+    PLAN_CHOICES = [  # noqa: RUF012
         ('basico', 'Básico — 1 condominio'),
         ('profesional', 'Profesional — hasta 3 condominios'),
         ('enterprise', 'Enterprise — condominios ilimitados'),
@@ -80,7 +81,7 @@ class TokenAcceso(models.Model):
 
 
 class AccesoEmpresa(models.Model):
-    ESTADO_CHOICES = [
+    ESTADO_CHOICES = [  # noqa: RUF012
         ('pendiente', 'Pendiente de aprobación'),
         ('aprobado', 'Aprobado'),
         ('rechazado', 'Rechazado'),
@@ -105,6 +106,7 @@ class AccesoEmpresa(models.Model):
     ver_estado_resultados = models.BooleanField(default=False)
     ver_cobranza = models.BooleanField(default=False)
     ver_gastos = models.BooleanField(default=False)
+    gestion_cobranza = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.usuario_acceso} → {self.empresa.nombre}"

@@ -263,7 +263,9 @@ def cambiar_empresa_activa(request, empresa_id):
 def solicitar_acceso_empresa(request):
     ua = request.ua
     if not ua.puede_agregar_empresa:
-        messages.error(request, f"Tu plan permite máximo {ua.limite_empresas} empresa(s).")
+        #messages.error(request, f"Tu plan permite máximo {ua.limite_empresas} empresa(s).")
+        #si quieres agregar mas empresas, debes actualizar tu plan.
+        messages.info(request, "Si quieres agregar más empresas, debes actualizar tu plan.")
         return redirect('acceso_dashboard')
 
     if request.method == 'POST':
@@ -344,6 +346,21 @@ def reporte_gastos(request):
     request.empresa_activa_portal = acceso_activo.empresa
     from informes_financieros.views import reporte_ingresos_vs_gastos
     return reporte_ingresos_vs_gastos(request)
+
+
+@requiere_acceso
+def reporte_gestion_cobranza(request):
+    acceso_activo = _get_acceso_activo(request)
+    if not acceso_activo or not acceso_activo.gestion_cobranza:
+        messages.error(request, "No tienes acceso a este reporte.")
+        return redirect('acceso_dashboard')
+    request.session['empresa_id'] = acceso_activo.empresa.id
+    request.is_portal_acceso = True
+    request.acceso_activo = acceso_activo
+    request.empresa_activa_portal = acceso_activo.empresa
+    from gestion_cobranza.views import resumen_cobranza_portal
+    return resumen_cobranza_portal(request)
+
 
 @requiere_acceso
 def upgrade_plan(request, nuevo_plan):
@@ -430,6 +447,7 @@ def aprobar_acceso(request, acceso_id):
             acceso.ver_estado_resultados = request.POST.get('ver_estado_resultados') == 'on'
             acceso.ver_cobranza = request.POST.get('ver_cobranza') == 'on'
             acceso.ver_gastos = request.POST.get('ver_gastos') == 'on'
+            acceso.gestion_cobranza = request.POST.get('ver_gestion_cobranza') == 'on'
             acceso.save()
 
             ua = acceso.usuario_acceso
@@ -463,6 +481,7 @@ def editar_permisos(request, acceso_id):
         acceso.ver_cobranza = request.POST.get('ver_cobranza') == 'on'
         acceso.ver_gastos = request.POST.get('ver_gastos') == 'on'
         acceso.activo = request.POST.get('activo') == 'on'
+        acceso.gestion_cobranza = request.POST.get('ver_gestion_cobranza') == 'on'
         acceso.save()
         messages.success(request, "Permisos actualizados correctamente.")
         return redirect('acceso_superuser_panel')

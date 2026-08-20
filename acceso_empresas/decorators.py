@@ -14,7 +14,7 @@ def login_o_portal_required(view_func):
                 ua = UsuarioAcceso.objects.get(pk=ua_id, activo=True)
                 request.ua = ua
                 return view_func(request, *args, **kwargs)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
         from django.shortcuts import redirect
         return redirect('login')

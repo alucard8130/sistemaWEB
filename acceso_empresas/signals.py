@@ -1,8 +1,10 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from .models import UsuarioAcceso, AccesoEmpresa
-from principal.models import VisitanteAcceso  # ajusta el import real
+
 from empresas.models import Empresa  # ajusta el import real
+from principal.models import VisitanteAcceso  # ajusta el import real
+
+from .models import AccesoEmpresa, UsuarioAcceso
 
 
 @receiver(post_save, sender=UsuarioAcceso)

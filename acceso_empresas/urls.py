@@ -1,5 +1,7 @@
 from django.urls import path
+
 from . import views
+
 #from django.contrib.auth import views as auth_views
 
 urlpatterns = [
@@ -18,6 +20,7 @@ urlpatterns = [
     path('reportes/estado-resultados/', views.reporte_estado_resultados, name='acceso_estado_resultados'),
     path('reportes/cobranza/', views.reporte_cobranza, name='acceso_cobranza'),
     path('reportes/gastos/', views.reporte_gastos, name='acceso_gastos'),
+    path('reportes/gestion-cobranza/', views.reporte_gestion_cobranza, name='acceso_gestion_cobranza'),
 
     # Superusuario
     path('admin/', views.superuser_panel, name='acceso_superuser_panel'),

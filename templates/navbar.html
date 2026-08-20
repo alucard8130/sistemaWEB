@@ -174,6 +174,12 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'empleado_lista' %}"><i class="bi bi-person me-2"></i>Empleados</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'proveedor_lista' %}"><i class="bi bi-truck me-2"></i>Proveedores</a></li>
+              <li><hr class="dropdown-divider"></li>
+              {% if request.user.perfilusuario.empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_plantillas' %}"><i class="bi bi-chat-square-text me-2"></i>Plantillas de Cobranza</a></li>
+              {% else %}
+              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-chat-square-text me-2"></i>Plantillas de Cobranza (PREMIUM)</a></li>
+              {% endif %}
             </ul>
           </li>
           {% endif %}
@@ -338,14 +344,19 @@
 {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Cartera Vencida">
-              Cartera <i style="font-size: 1.5em;"></i>
+              Cartera<i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
+              {% if request.user.perfilusuario.empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_cobranza' %}"><i class="bi bi-telephone-outbound me-2"></i>Gestion Cobranza</a></li>
+              {% else %}
+              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-telephone-outbound me-2"></i>Gestion Cobranza (PREMIUM)</a></li>
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_saldos_antiguedad' %}"><i class="bi bi-file-text me-2"></i>Reporte Antiguedad Saldos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}"><i class="bi bi-file-text me-2"></i>Reporte Detalle Saldos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}"><i class="bi bi-bar-chart me-2"></i>Graficos Saldos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}"><i class="bi bi-bar-chart me-2"></i>Grafico Cartera </a></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cartera_vencida' %}"><i class="bi bi-exclamation-triangle me-2"></i>Comparativo Cartera</a></li>
               {% else %}
@@ -379,18 +390,17 @@
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'gastos_lista' %}"><i class="bi bi-list-ul me-2"></i>Solicitudes de Gasto</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Pagos Solicitudes</a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_gastos' %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Gastos</a></li>
-              {% else %}
-                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Gastos (PREMIUM)</a></li>
-              {% endif %}
               <li><hr class="dropdown-divider"></li>
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'subgrupos_gasto_lista' %}"><i class="bi bi-plus-circle me-2"></i>Alta subgrupo gasto</a></li>
               {% endif %}
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_gastos_mensual' %}"><i class="bi bi-bar-chart me-2"></i>Grafico de Gastos</a></li>
               <li><hr class="dropdown-divider"></li>
-              {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'reporte_retenciones_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Retencion Impuestos</a></li> {% endcomment %}
+              {% if request.user.perfilusuario.empresa.es_premium %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_gastos' %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Gastos</a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Gastos (PREMIUM)</a></li>
+              {% endif %}
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_gastos' %}">Carga Masiva Gastos</a></li>
               {% endif %}

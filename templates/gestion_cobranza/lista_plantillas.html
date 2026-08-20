@@ -1,0 +1,129 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plantillas de Cobranza — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .pl-header {
+            background: linear-gradient(135deg, #5a0000 0%, #a93226 60%, #e74c3c 100%);
+            color: white; border-radius: 18px; padding: 24px 30px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(90,0,0,0.18);
+        }
+        .pl-header h4 { margin: 0; font-weight: 700; }
+        .pl-table-wrap { background: white; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); overflow: hidden; }
+        table.pl-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.86rem; }
+        table.pl-table thead th {
+            background: #5a0000; color: white; font-weight: 600; font-size: 0.72rem;
+            text-transform: uppercase; letter-spacing: 0.04em; padding: 11px 14px; white-space: nowrap;
+        }
+        table.pl-table tbody td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        table.pl-table tbody tr:hover td { background: #fdf5f5; }
+        .badge-canal-whatsapp { background: #e2f7e9; color: #1a7a45; padding: 3px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+        .badge-canal-sms { background: #e8f4ff; color: #1a5276; padding: 3px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+        .badge-canal-email { background: #fdf0e5; color: #e67e22; padding: 3px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+        .badge-canal-carta_extrajudicial { background: #fdecea; color: #c0392b; padding: 3px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+        .badge-inactiva { background: #f0f4f8; color: #6b7280; padding: 3px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+        .btn-gesac-primary {
+            background: linear-gradient(135deg, #a93226, #e74c3c); color: white; font-weight: 700;
+            border: none; border-radius: 10px; padding: 9px 20px; font-size: 0.86rem; text-decoration: none;
+            display: inline-flex; align-items: center;
+        }
+        .btn-gesac-primary:hover { color: white; opacity: 0.92; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 1000px; margin: 0 auto;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="pl-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4><i class="bi bi-chat-square-text me-2"></i>Plantillas de Cobranza</h4>
+                <p class="mb-0 small" style="opacity:0.85;">Mensajes reutilizables para cada canal de contacto</p>
+            </div>
+            <a href="{% url 'crear_plantilla' %}" class="btn-gesac-primary reporte-link">
+                <i class="bi bi-plus-circle me-1"></i> Nueva Plantilla
+            </a>
+        </div>
+
+        <div class="pl-table-wrap">
+            <div class="table-responsive">
+                <table class="pl-table">
+                    <thead>
+                        <tr>
+                            <th>Canal</th>
+                            <th>Nombre</th>
+                            <th>Etapa sugerida</th>
+                            <th class="text-center">Estatus</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pl in plantillas %}
+                        <tr>
+                            <td><span class="badge-canal-{{ pl.canal }}">{{ pl.get_canal_display }}</span></td>
+                            <td style="font-weight:600;">{{ pl.nombre }}</td>
+                            <td class="small text-muted">{{ pl.get_etapa_sugerida_display|default:"—" }}</td>
+                            <td class="text-center">
+                                {% if pl.activa %}
+                                    <span class="badge-canal-whatsapp">Activa</span>
+                                {% else %}
+                                    <span class="badge-inactiva">Inactiva</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'editar_plantilla' pl.id %}" class="btn btn-sm btn-outline-primary reporte-link" title="Editar">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <form method="post" action="{% url 'toggle_activa_plantilla' pl.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="{% if pl.activa %}Desactivar{% else %}Activar{% endif %}">
+                                        <i class="bi bi-{% if pl.activa %}eye-slash{% else %}eye{% endif %}"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                Todavía no has creado ninguna plantilla.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
+    });
+    </script>
+</body>
+</html>

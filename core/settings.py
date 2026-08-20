@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "catalogos",
     "sanitarios",
     "nomina",
+    "gestion_cobranza",
 ]
 
 

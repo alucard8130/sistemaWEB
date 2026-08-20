@@ -426,6 +426,7 @@ urlpatterns = [
     path('carga-inicial/plantilla-propiedades/', plantilla_propiedades_carga_inicial_excel, name='plantilla_propiedades_carga_inicial_excel'),
     path('carga-inicial/plantilla-adeudos/', plantilla_adeudos_carga_inicial_excel, name='plantilla_adeudos_carga_inicial_excel'),
     path('nomina/', include('nomina.urls')),
+    path('gestion_cobranza/', include('gestion_cobranza.urls')),
 ]
 
     

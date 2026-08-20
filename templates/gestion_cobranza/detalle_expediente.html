@@ -1,0 +1,278 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ expediente.cliente.nombre }} — Cobranza — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        .exp-header {
+            background: linear-gradient(135deg, #5a0000 0%, #a93226 60%, #e74c3c 100%);
+            color: white; border-radius: 18px; padding: 24px 30px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(90,0,0,0.18);
+        }
+        .exp-header h4 { margin: 0; font-weight: 700; }
+        .exp-header .saldo { font-size: 2rem; font-weight: 700; margin-top: 6px; }
+
+        .etapa-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+        .etapa-pill {
+            padding: 5px 12px; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
+            background: rgba(255,255,255,0.15); color: white; border: none; cursor: pointer;
+        }
+        .etapa-pill.activa { background: white; color: #a93226; }
+
+        .card-seccion { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 18px 20px; margin-bottom: 18px; }
+        .card-seccion h6 { font-weight: 700; color: #5a0000; margin-bottom: 12px; }
+
+        .factura-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
+        .factura-row:last-child { border-bottom: none; }
+
+        .timeline { position: relative; padding-left: 26px; }
+        .timeline::before { content: ''; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 2px; background: #f0d0d0; }
+        .timeline-item { position: relative; margin-bottom: 18px; }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -22px; top: 4px;
+            width: 12px; height: 12px; border-radius: 50%; background: #c0392b; border: 2px solid white;
+        }
+        .timeline-tipo { font-weight: 700; font-size: 0.85rem; color: #5a0000; }
+        .timeline-fecha { font-size: 0.72rem; color: #9ca3af; }
+        .timeline-notas { font-size: 0.84rem; color: #374151; margin-top: 3px; }
+        .badge-resultado { font-size: 0.7rem; padding: 2px 8px; border-radius: 8px; background: #f0f4f8; color: #4a6080; font-weight: 600; }
+
+        .plan-pago-card { border: 1px solid #f0d0d0; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+
+        .btn-gesac-primary {
+            background: linear-gradient(135deg, #a93226, #e74c3c);
+            color: white; font-weight: 700; border: none; border-radius: 10px;
+            padding: 9px 20px; font-size: 0.86rem;
+        }
+        .btn-gesac-primary:hover { color: white; opacity: 0.92; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 1100px; margin: 0 auto;">
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <a href="{% url 'dashboard_cobranza' %}" class="text-decoration-none small text-muted reporte-link">
+            <i class="bi bi-arrow-left me-1"></i>Volver al dashboard
+        </a>
+
+        <div class="exp-header mt-2">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h4><i class="bi bi-person-vcard me-2"></i>{{ expediente.cliente.nombre }}</h4>
+                    <div class="small" style="opacity:0.85;">Expediente #{{ expediente.id }} — Abierto el {{ expediente.fecha_apertura|date:"d/m/Y" }}</div>
+                    <div class="saldo">${{ expediente.saldo_vencido_total|floatformat:2|intcomma }}</div>
+                    <div class="small" style="opacity:0.85;">{{ expediente.dias_atraso_maximo }} días de atraso — Rango {{ expediente.rango_antiguedad }}</div>
+                </div>
+                <form method="post" action="{% url 'cerrar_expediente' expediente.id %}" class="no-print">
+                    {% csrf_token %}
+                    <input type="hidden" name="motivo" value="Resuelto desde el dashboard">
+                    <button type="submit" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-check-circle me-1"></i>Cerrar expediente
+                    </button>
+                </form>
+            </div>
+
+            <form method="post" action="{% url 'asignar_expediente' expediente.id %}" class="d-flex align-items-center gap-2 mt-2" style="max-width:340px;">
+                {% csrf_token %}
+                <label class="small mb-0" style="opacity:0.85; white-space:nowrap;"><i class="bi bi-person-badge me-1"></i>Asignado a:</label>
+                <select name="empleado_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Sin asignar</option>
+                    {% for emp in empleados_empresa %}
+                        <option value="{{ emp.id }}" {% if expediente.asignado_a_id == emp.id %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <div class="etapa-pills">
+                {% for etapa_key, etapa_label in etapa_choices %}
+                <form method="post" action="{% url 'cambiar_etapa_expediente' expediente.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="etapa" value="{{ etapa_key }}">
+                    <button type="submit" class="etapa-pill {% if expediente.etapa == etapa_key %}activa{% endif %}">
+                        {{ etapa_label }}
+                    </button>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-7">
+
+                <div class="card-seccion">
+                    <h6><i class="bi bi-plus-circle me-1"></i>Registrar gestión</h6>
+                    <form method="post" action="{% url 'registrar_gestion' expediente.id %}">
+                        {% csrf_token %}
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <select name="tipo_gestion" class="form-select form-select-sm" required>
+                                    <option value="">Tipo...</option>
+                                    {% for valor, etiqueta in tipo_choices %}
+                                        <option value="{{ valor }}">{{ etiqueta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <select name="resultado" class="form-select form-select-sm">
+                                    {% for valor, etiqueta in resultado_choices %}
+                                        <option value="{{ valor }}" {% if valor == "pendiente_respuesta" %}selected{% endif %}>{{ etiqueta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <textarea name="notas" class="form-control form-control-sm mb-2" rows="2" placeholder="Notas de la gestión..."></textarea>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label form-label-sm mb-1">Próxima acción (opcional)</label>
+                                <input type="date" name="proxima_accion_fecha" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label form-label-sm mb-1">Descripción</label>
+                                <input type="text" name="proxima_accion_descripcion" class="form-control form-control-sm" placeholder="Ej. Llamar de nuevo">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-gesac-primary w-100">
+                            <i class="bi bi-save me-1"></i>Guardar gestión
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card-seccion">
+                    <h6><i class="bi bi-clock-history me-1"></i>Bitácora de gestiones</h6>
+                    <div class="timeline">
+                        {% for g in gestiones %}
+                        <div class="timeline-item">
+                            <div class="timeline-tipo">{{ g.get_tipo_gestion_display }}</div>
+                            <div class="timeline-fecha">
+                                {{ g.fecha|date:"d/m/Y H:i" }} —
+                                {% if g.registrado_por %}
+                                    {{ g.registrado_por.get_full_name|default:g.registrado_por.username }}
+                                {% else %}
+                                    Sistema
+                                {% endif %}
+                            </div>
+                            <span class="badge-resultado">{{ g.get_resultado_display }}</span>
+                            {% if g.notas %}<div class="timeline-notas">{{ g.notas }}</div>{% endif %}
+                            {% if g.proxima_accion_fecha %}
+                                <div class="small text-muted mt-1">
+                                    <i class="bi bi-bell"></i> Próxima acción: {{ g.proxima_accion_fecha|date:"d/m/Y" }} — {{ g.proxima_accion_descripcion }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">Todavía no hay gestiones registradas.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-lg-5">
+
+                <div class="card-seccion">
+                    <h6><i class="bi bi-receipt me-1"></i>Facturas vencidas</h6>
+                    {% for f in facturas_vencidas %}
+                    <div class="factura-row">
+                        <span>
+                            {{ f.folio }} —
+                            {% if f.local %}
+                                <span class="text-primary">Local {{ f.local.numero }}</span>
+                            {% elif f.area_comun %}
+                                <span class="text-info">Área {{ f.area_comun.numero }}</span>
+                            {% elif f.pool_vacancia %}
+                                <span class="text-warning">Pool: {{ f.pool_vacancia.nombre }}</span>
+                            {% else %}
+                                <span class="text-muted">Grupo / Consolidada</span>
+                            {% endif %}
+                            — {{ f.fecha_vencimiento|date:"d/m/Y" }}
+                        </span>
+                        <span class="fw-bold text-danger">${{ f.saldo_pendiente|floatformat:2|intcomma }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted small">Sin facturas vencidas.</div>
+                    {% endfor %}
+                </div>
+
+                <div class="card-seccion">
+                    <h6 class="d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-calendar-check me-1"></i>Planes de pago</span>
+                        <a href="{% url 'crear_plan_pago' expediente.id %}" class="btn btn-sm btn-outline-danger reporte-link">
+                            <i class="bi bi-plus-lg"></i>
+                        </a>
+                    </h6>
+                    {% for plan in planes_pago %}
+                    <a href="{% url 'detalle_plan_pago' plan.id %}" class="plan-pago-card d-block text-decoration-none text-dark reporte-link">
+                        <div class="d-flex justify-content-between">
+                            <strong>${{ plan.monto_total|floatformat:2|intcomma }}</strong>
+                            <span class="badge-resultado">{{ plan.get_estatus_display }}</span>
+                        </div>
+                        <div class="small text-muted">{{ plan.numero_parcialidades }} parcialidades — {{ plan.fecha_acuerdo|date:"d/m/Y" }}</div>
+                    </a>
+                    {% empty %}
+                    <div class="text-muted small">Sin planes de pago activos.</div>
+                    {% endfor %}
+                </div>
+
+                <div class="card-seccion">
+                    <h6><i class="bi bi-chat-dots me-1"></i>Plantillas disponibles</h6>
+                    {% for pl in plantillas %}
+                        {% if pl.canal == "carta_extrajudicial" %}
+                        <a href="{% url 'generar_carta_extrajudicial_pdf' expediente.id pl.id %}" class="factura-row text-decoration-none" style="color:inherit;" target="_blank">
+                            <span>{{ pl.get_canal_display }} — {{ pl.nombre }}</span>
+                            <span class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i></span>
+                        </a>
+                        {% else %}
+                        <form method="post" action="{% url 'enviar_mensaje_plantilla' expediente.id %}" class="factura-row"
+                              onsubmit="return confirm('¿Enviar {{ pl.get_canal_display }} usando la plantilla \'{{ pl.nombre }}\'?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="plantilla_id" value="{{ pl.id }}">
+                            <span>{{ pl.get_canal_display }} — {{ pl.nombre }}</span>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-send"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    {% empty %}
+                    <div class="text-muted small">Todavía no has creado plantillas.</div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
+    });
+    </script>
+</body>
+</html>

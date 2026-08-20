@@ -270,7 +270,7 @@
         </div>
 
         <!-- FILTROS -->
-        {% if not request.is_portal_acceso %}
+        {% comment %} {% if not request.is_portal_acceso %} {% endcomment %}
         <div class="filtros-bar no-print">
             <form method="get" id="form-filtros">
                 <div class="row g-2 align-items-end">
@@ -317,7 +317,7 @@
                 </div>
             </form>
         </div>
-        {% endif %}
+        {% comment %} {% endif %} {% endcomment %}
 
         <!-- KPI STRIP -->
         <div class="kpi-strip">

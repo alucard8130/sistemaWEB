@@ -1,0 +1,122 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Plan de Pago — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .page-wrap { max-width: 640px; margin: 0 auto; padding: 32px 16px 60px; }
+        .form-header {
+            background: linear-gradient(135deg, #5a0000 0%, #a93226 60%, #e74c3c 100%);
+            border-radius: 16px 16px 0 0; padding: 24px 28px; color: white;
+        }
+        .form-header h4 { margin: 0; font-weight: 700; }
+        .form-header .saldo-ref { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .form-card { background: white; border-radius: 0 0 16px 16px; box-shadow: 0 4px 22px rgba(90,0,0,0.1); padding: 28px; }
+        .field-block { margin-bottom: 18px; }
+        .field-block label { font-size: 0.82rem; font-weight: 600; color: #33475b; margin-bottom: 6px; display: block; }
+        .field-block .form-control, .field-block .form-select {
+            border-radius: 10px; border: 1px solid #dde3ec; padding: 9px 12px; font-size: 0.9rem;
+        }
+        .btn-gesac-primary {
+            background: linear-gradient(135deg, #a93226, #e74c3c); color: white; font-weight: 700;
+            border: none; border-radius: 10px; padding: 10px 26px; font-size: 0.9rem;
+        }
+        .btn-gesac-outline {
+            border: 1px solid #c9d3e0; color: #33475b; border-radius: 10px; padding: 10px 22px;
+            font-size: 0.9rem; font-weight: 600; background: white; text-decoration: none;
+            display: inline-flex; align-items: center;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="page-wrap">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="form-header">
+            <h4><i class="bi bi-calendar-check me-2"></i>Nuevo Plan de Pago</h4>
+            <div class="saldo-ref">
+                {{ expediente.cliente.nombre }} — Saldo vencido actual: ${{ expediente.saldo_vencido_total|floatformat:2|intcomma }}
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="form-card" id="planPagoForm">
+            {% csrf_token %}
+
+            <div class="field-block">
+                <label>Monto total a pagar en el plan</label>
+                <input type="number" step="0.01" name="monto_total" class="form-control" required
+                       value="{{ expediente.saldo_vencido_total|floatformat:2 }}">
+                <div class="form-text">Se precarga con el saldo vencido actual -- puedes ajustarlo si acordaron algo distinto.</div>
+            </div>
+
+            <div class="field-block">
+                <label>Número de parcialidades</label>
+                <input type="number" name="numero_parcialidades" class="form-control" min="1" required value="3">
+            </div>
+
+            <div class="field-block">
+                <label>Fecha de la primera parcialidad</label>
+                <input type="date" name="fecha_primera_parcialidad" class="form-control" required>
+                <div class="form-text">Las siguientes se calculan automáticamente, un mes después cada una.</div>
+            </div>
+
+            <div class="field-block">
+                <label>Comprobante del acuerdo (opcional)</label>
+                <input type="file" name="comprobante_acuerdo" class="form-control">
+            </div>
+
+            <div class="field-block">
+                <label>Notas</label>
+                <textarea name="notas" class="form-control" rows="3" placeholder="Detalles del acuerdo con el cliente..."></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4 pt-2 border-top">
+                <a href="{% url 'detalle_expediente' expediente.id %}" class="btn-gesac-outline reporte-link">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-gesac-primary">
+                    <i class="bi bi-save me-1"></i> Crear plan de pago
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('planPagoForm');
+        if (form) {
+            form.addEventListener('submit', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        }
+        document.querySelectorAll('a.reporte-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            });
+        });
+    });
+    </script>
+</body>
+</html>
