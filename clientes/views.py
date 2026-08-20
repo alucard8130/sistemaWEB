@@ -1,31 +1,24 @@
 # Create your views here.
-import base64
-from io import BytesIO
+
+
 
 #from django.contrib.admin.views.decorators import staff_member_required
 import openpyxl
 
 #import random
 #import string
-import segno
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from unidecode import unidecode
 
 #from clientes.utils import generar_referencia_pago
-from weasyprint import HTML
-
-from areas.models import AreaComun as AreaComunModel
-from core import settings
-from empresas.models import CuentaBancaria, Empresa
-from facturacion.models import LocalComercial
+from empresas.models import Empresa
 
 from .forms import ClienteCargaMasivaForm, ClienteForm
 
@@ -100,15 +93,6 @@ def crear_cliente(request):
 
             # Guardar primero para obtener el id autogenerado
             cliente.save()
-
-            # # Generar referencia única usando el id ya asignado
-            # # Verificar que no exista ya (colisión improbable pero posible)
-            # referencia = generar_referencia_pago(cliente.id)
-            # while Cliente.objects.filter(referencia_pago=referencia).exists():
-            #     referencia = generar_referencia_pago(cliente.id)
-
-            # cliente.referencia_pago = referencia
-            #cliente.save()
 
             messages.success(
                 request,
@@ -306,126 +290,3 @@ def actualizar_factura_global(request, cliente_id):
 
 
 
-################## REFERENCIAS DE PAGO Y QR ##################
-def _generar_qr_spei(clabe, empresa_nombre, referencia, cliente_nombre, concepto_extra=''):
-    buffer = BytesIO()
-    contenido_qr = (
-        f"SPEI|"
-        f"{clabe or ''}|"
-        f"{empresa_nombre}|"
-        f"|"
-        f"{referencia}|"
-        f"Pago {concepto_extra} {cliente_nombre}"
-    )
-    qr = segno.make_qr(contenido_qr, error='H')
-    qr.save(buffer, kind='png', scale=4, border=2)
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')
-
-
-def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
-    cuentas_con_qr = []
-    for cuenta in cuentas:
-        qr_base64 = _generar_qr_spei(
-            cuenta.clabe, cliente.empresa.nombre, propiedad.referencia_pago,
-            cliente.nombre, f"{tipo_label} {propiedad.numero}"
-        )
-        cuentas_con_qr.append({
-            'banco': cuenta.banco,
-            'numero_cuenta': cuenta.numero_cuenta,
-            'clabe': cuenta.clabe or 'No configurado',
-            'tipo_cuenta': cuenta.tipo_cuenta or '',
-            'qr_base64': qr_base64,
-        })
-    return {
-        'tipo_label': tipo_label,
-        'numero': propiedad.numero,
-        'referencia_pago': propiedad.referencia_pago,
-        'cuentas_con_qr': cuentas_con_qr,
-    }
-
-
-def instrucciones_pago_pdf(request, cliente_id):
-    """PDF con todas las propiedades (locales + áreas) del cliente, cada una con su propia referencia y QR."""
-    cliente = get_object_or_404(Cliente, pk=cliente_id)
-
-    locales = LocalComercial.objects.filter(cliente=cliente, activo=True)
-    areas = AreaComunModel.objects.filter(cliente=cliente, activo=True)
-
-    if not locales.exists() and not areas.exists():
-        messages.warning(
-            request,
-            f"El cliente '{cliente.nombre}' no tiene locales ni áreas comunes asignadas."
-        )
-        return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
-
-    cuentas = CuentaBancaria.objects.filter(
-        empresa=cliente.empresa, activa=True
-    ).exclude(tipo_cuenta__in=['INVERSION', 'CORRIENTE','NOMINA'])  # Excluir cuentas de inversión y corriente
-
-    propiedades = []
-    for local in locales:
-        if local.referencia_pago:
-            propiedades.append(_armar_propiedad(local, 'Local Comercial', cliente, cuentas))
-    for area in areas:
-        if area.referencia_pago:
-            propiedades.append(_armar_propiedad(area, 'Área Común', cliente, cuentas))
-
-    if not propiedades:
-        messages.warning(
-            request,
-            f"Las propiedades de '{cliente.nombre}' aún no tienen referencia de pago asignada."
-        )
-        return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
-
-    contexto = {
-        'cliente': cliente,
-        'propiedades': propiedades,
-        'portal_pagos_url': settings.PORTAL_PAGOS_URL,
-    }
-
-    html_string = render_to_string('clientes/instrucciones_pago.html', contexto)
-    pdf = HTML(string=html_string).write_pdf()
-    response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="referencias_pago_cliente_{cliente.id}.pdf"'
-    return response
-
-
-def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
-    """
-    tipo: 'local' o 'area'
-    """
-    if tipo == 'local':
-        propiedad = get_object_or_404(LocalComercial, pk=propiedad_id)
-        tipo_label = 'Local Comercial'
-    elif tipo == 'area':
-        propiedad = get_object_or_404(AreaComunModel, pk=propiedad_id)
-        tipo_label = 'Área Común'
-    else:
-        from django.http import Http404
-        raise Http404("Tipo de propiedad no válido.")
-
-    cliente = propiedad.cliente
-    if not cliente:
-        messages.warning(request, "Esta propiedad no tiene cliente asignado.")
-        return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
-
-    if not propiedad.referencia_pago:
-        messages.warning(request, f"'{propiedad.numero}' aún no tiene referencia de pago asignada.")
-        return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
-
-    cuentas = CuentaBancaria.objects.filter(
-        empresa=cliente.empresa, activa=True
-    ).exclude(tipo_cuenta='INVERSION')
-    propiedad_armada = _armar_propiedad(propiedad, tipo_label, cliente, cuentas)
-
-    contexto = {
-        'cliente': cliente,
-        'propiedades': [propiedad_armada],
-        'portal_pagos_url': settings.PORTAL_PAGOS_URL,
-    }
-
-    html_string = render_to_string('clientes/instrucciones_pago.html', contexto)
-    pdf = HTML(string=html_string).write_pdf()
-    response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="referencia_pago_{propiedad.referencia_pago}.pdf"'
-    return response    

@@ -57,6 +57,7 @@ from caja_chica.views import (
 )
 from catalogos.views import (
     carga_inicial_completa,
+    instrucciones_pago_propiedad_pdf,
     plantilla_adeudos_carga_inicial_excel,
     plantilla_clientes_carga_inicial_excel,
     plantilla_propiedades_carga_inicial_excel,
@@ -68,8 +69,6 @@ from clientes.views import (
     crear_cliente,
     editar_cliente,
     eliminar_cliente,
-    instrucciones_pago_pdf,
-    instrucciones_pago_propiedad_pdf,
     lista_clientes,
     plantilla_clientes_excel,
     reactivar_cliente,
@@ -85,6 +84,7 @@ from empresas.views import (
     cuenta_bancaria_crear,
     cuenta_bancaria_editar,
     cuenta_bancaria_eliminar,
+    cuenta_bancaria_toggle_referencia_pago,
     cuentas_bancarias_lista,
     empresa_crear,
     empresa_editar,
@@ -249,7 +249,7 @@ urlpatterns = [
     path('clientes/carga-masiva/', carga_masiva_clientes, name='carga_masiva_clientes'),
     path('clientes/plantilla-clientes/', plantilla_clientes_excel, name='plantilla_clientes_excel'),
     path('clientes/<int:cliente_id>/actualizar_factura_global/',actualizar_factura_global, name='actualizar_factura_global'),
-    path('clientes/<int:cliente_id>/instrucciones_pago_pdf/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
+    #path('clientes/<int:cliente_id>/instrucciones_pago_pdf/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
     path('facturas/', include('facturacion.urls')),
     path('locales/', include('locales.urls')),
     path('areas/', include('areas.urls')),
@@ -397,7 +397,7 @@ urlpatterns = [
     path('planes/plus/', views.info_plus, name='info_plus'),
     path('traspasos/', include('traspasos.urls')),
     path("reporte/", reporte_caja_chica, name="reporte_caja_chica"),
-    path('clientes/<int:cliente_id>/instrucciones-pago/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
+    #path('clientes/<int:cliente_id>/instrucciones-pago/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
     path('propiedades/<str:tipo>/<int:propiedad_id>/instrucciones-pago/', instrucciones_pago_propiedad_pdf, name='instrucciones_pago_propiedad_pdf'),
     path('amenidades/', lista_amenidades, name='lista_amenidades'),
     path('amenidades/<int:amenidad_id>/reservar/', reservar_amenidad, name='reservar_amenidad'),
@@ -427,6 +427,7 @@ urlpatterns = [
     path('carga-inicial/plantilla-adeudos/', plantilla_adeudos_carga_inicial_excel, name='plantilla_adeudos_carga_inicial_excel'),
     path('nomina/', include('nomina.urls')),
     path('gestion_cobranza/', include('gestion_cobranza.urls')),
+    path('cuentas-bancarias/<int:cuenta_id>/toggle-referencia-pago/', cuenta_bancaria_toggle_referencia_pago, name='cuenta_bancaria_toggle_referencia_pago'),
 ]
 
     

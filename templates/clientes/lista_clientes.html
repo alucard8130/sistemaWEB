@@ -115,19 +115,10 @@
                             {% endif %}
                         </td>
                         <td>{{ cliente.regimen_fiscal|default:"—" }}</td>
-                        {% comment %} <td>{{ cliente.direccion_domicilio }}</td> {% endcomment %}
                         <td>{{ cliente.codigo_postal|default:"—" }}</td>
                         <td>{{ cliente.uso_cfdi|default:"—" }}</td>
                         <td>{{ cliente.objeto_impuesto|default:"—" }}</td>
                         <td>{{ cliente.email|default:"—" }}</td>
-                        {% comment %} <td>
-                            <form method="post" action="{% url 'actualizar_factura_global' cliente.id %}">
-                            {% csrf_token %}
-                            <input type="checkbox" name="factura_global" value="true"
-                                {% if cliente.factura_global %}checked{% endif %}
-                                onchange="this.form.submit()" title="Marque para activar factura global, desmarque para desactivar">
-                            </form>
-                        </td>         {% endcomment %}
                         <td class="text-nowrap">
                             <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar cliente">
                                 <i class="bi bi-pencil-square"></i>

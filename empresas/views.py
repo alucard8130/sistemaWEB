@@ -116,4 +116,19 @@ def cuenta_bancaria_editar(request, pk):
     })
 
 
+@login_required
+def cuenta_bancaria_toggle_referencia_pago(request, cuenta_id):
+    cuenta = get_object_or_404(CuentaBancaria, pk=cuenta_id)
+
+    if request.method != "POST":
+        return redirect('cuentas_bancarias_lista')
+
+    cuenta.mostrar_en_referencia_pago = not cuenta.mostrar_en_referencia_pago
+    cuenta.save(update_fields=['mostrar_en_referencia_pago'])
+
+    estado = "se mostrará" if cuenta.mostrar_en_referencia_pago else "ya NO se mostrará"
+    messages.success(request, f"La cuenta {cuenta.banco} - {cuenta.numero_cuenta} {estado} en las referencias de pago.")
+    return redirect('cuentas_bancarias_lista')
+
+
 

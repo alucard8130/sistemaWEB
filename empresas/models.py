@@ -130,6 +130,15 @@ class CuentaBancaria(models.Model):
     cuenta_contable = models.ForeignKey(
         'gastos.CuentaContable', on_delete=models.SET_NULL, null=True, blank=True, related_name='cuentas_bancarias'
     )
+    # NUEVO -- controla si esta cuenta aparece en el PDF de referencia de
+    # pago que ve el cliente. Por default True (mismo comportamiento que
+    # ya tenías), pero ahora se puede desactivar por cuenta -- por
+    # ejemplo, si la empresa tiene 2 cuentas y solo una es la que
+    # realmente usa para cobrar cuotas.
+    mostrar_en_referencia_pago = models.BooleanField(
+        default=True,
+        help_text="Si esta cuenta debe aparecer en el PDF de referencia de pago que recibe el cliente."
+    )
     
 
     def __str__(self):

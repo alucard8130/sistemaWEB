@@ -1,17 +1,24 @@
+import base64
 import difflib
 from datetime import date
 from decimal import Decimal
+from io import BytesIO
 
 import openpyxl
+import segno
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from weasyprint import HTML
 
+from areas.models import AreaComun as AreaComunModel
 from clientes.models import Cliente  # ajusta el import real de tu app de clientes
-from empresas.models import Empresa
+from core import settings
+from empresas.models import CuentaBancaria, Empresa
 from facturacion.models import Factura, TipoCuotaHomologacion, TipoOtroIngreso
 from gastos.forms import CargaMasivaCuentasForm
 from gastos.models import (
@@ -684,3 +691,89 @@ def lista_catalogo_cuentas(request):
 
     return render(request, 'catalogos/lista_catalogo_cuentas.html', {'cuentas': cuentas})
 
+
+
+
+################## REFERENCIAS DE PAGO Y QR ##################
+def _generar_qr_spei(clabe, empresa_nombre, referencia, cliente_nombre, concepto_extra=''):
+    buffer = BytesIO()
+    contenido_qr = (
+        f"SPEI|"
+        f"{clabe or ''}|"
+        f"{empresa_nombre}|"
+        f"|"
+        f"{referencia}|"
+        f"Pago {concepto_extra} {cliente_nombre}"
+    )
+    qr = segno.make_qr(contenido_qr, error='H')
+    qr.save(buffer, kind='png', scale=4, border=2)
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+
+def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
+    cuentas_con_qr = []
+    for cuenta in cuentas:
+        qr_base64 = _generar_qr_spei(
+            cuenta.clabe, cliente.empresa.nombre, propiedad.referencia_pago,
+            cliente.nombre, f"{tipo_label} {propiedad.numero}"
+        )
+        cuentas_con_qr.append({
+            'banco': cuenta.banco,
+            'numero_cuenta': cuenta.numero_cuenta,
+            'clabe': cuenta.clabe or 'No configurado',
+            'tipo_cuenta': cuenta.tipo_cuenta or '',
+            'qr_base64': qr_base64,
+        })
+    return {
+        'tipo_label': tipo_label,
+        'numero': propiedad.numero,
+        'referencia_pago': propiedad.referencia_pago,
+        'cuentas_con_qr': cuentas_con_qr,
+    }
+
+
+#referencia de pago de una propiedad en especifico
+def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
+    """
+    tipo: 'local' o 'area'
+    """
+    if tipo == 'local':
+        propiedad = get_object_or_404(LocalComercial, pk=propiedad_id)
+        tipo_label = 'Local Comercial'
+    elif tipo == 'area':
+        propiedad = get_object_or_404(AreaComunModel, pk=propiedad_id)
+        tipo_label = 'Área Común'
+    else:
+        from django.http import Http404
+        raise Http404("Tipo de propiedad no válido.")
+
+    cliente = propiedad.cliente
+    if not cliente:
+        messages.warning(request, "Esta propiedad no tiene cliente asignado.")
+        return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
+
+    if not propiedad.referencia_pago:
+        messages.warning(request, f"'{propiedad.numero}' aún no tiene referencia de pago asignada.")
+        return redirect(request.META.get('HTTP_REFERER', 'lista_locales'))
+
+    # NUEVO -- ahora respeta la selección del usuario (mostrar_en_referencia_pago),
+    # además de seguir excluyendo Inversión como regla dura, sin importar
+    # cómo esté marcado ese campo (para que nunca se pueda mostrar por
+    # accidente una cuenta de inversión).
+    cuentas = CuentaBancaria.objects.filter(
+        empresa=cliente.empresa, activa=True, mostrar_en_referencia_pago=True,
+    ).exclude(tipo_cuenta='INVERSION')
+
+    propiedad_armada = _armar_propiedad(propiedad, tipo_label, cliente, cuentas)
+
+    contexto = {
+        'cliente': cliente,
+        'propiedades': [propiedad_armada],
+        'portal_pagos_url': settings.PORTAL_PAGOS_URL,
+    }
+
+    html_string = render_to_string('catalogos/instrucciones_pago.html', contexto)
+    pdf = HTML(string=html_string).write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="referencia_pago_{propiedad.referencia_pago}.pdf"'
+    return response    
