@@ -298,13 +298,13 @@
               {% endif %}
               <li><hr class="dropdown-divider"></li>
               <!-- Estacionamiento -->
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if request.user.perfilusuario.empresa.es_plus %}
                 <li><a class="dropdown-item reporte-link" href="{% url 'lista_cortes_estacionamiento' %}">
                     <i class="bi bi-p-circle me-1"></i>Estacionamiento
                 </a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#">
-                    <i class="bi bi-p-circle me-1"></i>Estacionamiento (PREMIUM)
+                    <i class="bi bi-p-circle me-1"></i>Estacionamiento (PLUS)
                 </a></li>
               {% endif %}
               {% if request.user.is_superuser %}
