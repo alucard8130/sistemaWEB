@@ -1,7 +1,6 @@
 
 import xml.etree.ElementTree as ET
 
-import openpyxl
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -140,6 +139,7 @@ def nueva_dispersion_nomina(request):
         return redirect("revisar_dispersion_nomina", dispersion_id=dispersion.id)
 
     return render(request, "nomina/nueva_dispersion.html", {"cuentas": cuentas})
+
 
 #vista borrar dispersionn nomina
 @login_required
@@ -280,19 +280,28 @@ def confirmar_dispersion_nomina(request, dispersion_id):
         grupo_nomina.save(update_fields=["es_exento_iva"])
 
     subgrupo_nomina, _ = SubgrupoGasto.objects.get_or_create(
-        grupo=grupo_nomina, nombre="Sueldos y Salarios"
+        grupo=grupo_nomina, nombre="Sueldos y salarios"
     )
-    tipo_gasto_nomina, _ = TipoGasto.objects.get_or_create(
-        empresa=empresa, subgrupo=subgrupo_nomina, nombre="Dispersión de Nómina",
-    )
+    # tipo_gasto_nomina, _ = TipoGasto.objects.get_or_create(
+    #     empresa=empresa, subgrupo=subgrupo_nomina, nombre="Dispersión de Nómina",
+    # )
     
     creados = 0
     with transaction.atomic():
         for recibo in dispersion.recibos.filter(estatus="ok"):
+            # NUEVO -- un TipoGasto POR EMPLEADO (ej. "Sueldo Ana Rocha"),
+            # igual que ya haces al registrar sueldos manualmente. Si ya
+            # existe (porque ese empleado ya cobró antes), se reutiliza
+            # el mismo -- nunca se duplica.
+            tipo_gasto_empleado, _ = TipoGasto.objects.get_or_create(
+            empresa=empresa, subgrupo=subgrupo_nomina,
+            nombre=f"Sueldo {recibo.empleado.nombre}",
+            )
+
             gasto = Gasto.objects.create(
                 empresa=empresa,
                 empleado=recibo.empleado,
-                tipo_gasto=tipo_gasto_nomina,
+                tipo_gasto=tipo_gasto_empleado,
                 descripcion=f"Nómina {recibo.periodo_inicio} a {recibo.periodo_fin} — {recibo.empleado.nombre}",
                 fecha=recibo.fecha_pago or dispersion.fecha_pago,
                 monto=recibo.neto_pagado,

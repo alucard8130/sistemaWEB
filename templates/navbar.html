@@ -298,7 +298,7 @@
               {% endif %}
               <li><hr class="dropdown-divider"></li>
               <!-- Estacionamiento -->
-              {% if request.user.perfilusuario.empresa.es_plus %}
+              {% if request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.empresa.es_premium %}
                 <li><a class="dropdown-item reporte-link" href="{% url 'lista_cortes_estacionamiento' %}">
                     <i class="bi bi-p-circle me-1"></i>Estacionamiento
                 </a></li>
@@ -428,10 +428,11 @@
               Presupuestos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
+              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_gastos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Gastos</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Gastos</a></li>
+              {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_nomina' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Nómina</a></li> {% endcomment %}
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_ingresos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Ingresos</a></li>
-              <li><hr class="dropdown-divider"></li>
             </ul>
           </li>
 
@@ -444,7 +445,9 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}"><i class="bi bi-file-text me-2"></i>Reporte de Resultados</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Gastos</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_total' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Gtos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_gastos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Gtos</a></li>
+              <li><hr class="dropdown-divider"></li>
+              {% comment %} <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_nomina' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Nómina</a></li> {% endcomment %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Ingresos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_ingresos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Ing</a></li>

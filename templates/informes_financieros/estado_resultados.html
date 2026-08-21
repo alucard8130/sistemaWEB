@@ -384,6 +384,12 @@
                 {% for grupo, subgrupos in estructura_gastos.items %}
                     <div class="er-grupo">
                         <i class="bi bi-folder2-open"></i>{{ grupo }}
+                        {% if grupo == "Gastos Nomina" %}
+                            <a href="{% url 'lista_dispersiones_nomina' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}"
+                            class="ms-1 small" style="color:white; opacity:0.85;" title="Ver historial de dispersiones de nómina">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        {% endif %}
                     </div>
                     {% for subgrupo, tipos in subgrupos.items %}
                         <div class="er-subgrupo">
@@ -395,17 +401,21 @@
                                 <span class="dot gto" style="width:6px;height:6px;border-radius:50%;background:#c0392b;flex-shrink:0;"></span>
                                 {{ tipo.tipo|capfirst }}
                                 {% if tipo.tipo == "Fondeo de caja chica" %}
+                                {% if not request.is_portal_acceso %}
                                     <a href="{% url 'reporte_caja_chica' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}"
                                        class="ms-1 small text-primary" title="Ver detalle de caja chica">
                                         <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
                                 {% endif %}
-                                {% if tipo.tipo == "Dispersión De Nómina" %}
+                                {% endif %}
+                                {% comment %} {% if tipo.tipo == "Dispersión De Nómina" %}
+                                {% if not request.is_portal_acceso %}
                                     <a href="{% url 'lista_dispersiones_nomina' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}"
                                     class="ms-1 small text-primary" title="Ver detalle por empleado de las dispersiones de nómina">
                                         <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
                                 {% endif %}
+                                {% endif %} {% endcomment %}
                             </span>
                             <span class="er-tipo-monto">${{ tipo.total|floatformat:2|intcomma }}</span>
                         </div>

@@ -70,3 +70,26 @@ class PresupuestoIngreso(models.Model):
         if self.origen == 'otros' and self.tipo_otro:
             return f"{self.empresa} {self.get_origen_display()} ({self.tipo_otro.nombre}) {self.mes}/{self.anio}: {self.monto_presupuestado}"
         return f"{self.empresa} {self.get_origen_display()} {self.mes}/{self.anio}: {self.monto_presupuestado}"
+
+
+# ============================================================
+# Colócalo junto a tu modelo Presupuesto existente (mismo archivo
+# o la misma app) -- es un modelo NUEVO, independiente, no toca
+# Presupuesto ni TipoGasto para nada.
+# ============================================================
+
+class PresupuestoNomina(models.Model):
+    empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE)  # ajusta el import a tu ruta real
+    empleado = models.ForeignKey('empleados.Empleado', on_delete=models.CASCADE)  # ajusta el import a tu ruta real
+    anio = models.PositiveIntegerField()
+    mes = models.PositiveSmallIntegerField(null=True, blank=True)  # Null para anual
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        unique_together = ('empresa', 'empleado', 'anio', 'mes')
+
+    def __str__(self):
+        periodo = f"{self.anio}"
+        if self.mes:
+            periodo += f"-{self.mes:02d}"
+        return f"{self.empleado.nombre} | {periodo}: ${self.monto:,.2f}"    

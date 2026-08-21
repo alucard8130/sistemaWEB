@@ -1,0 +1,597 @@
+{% load static %}
+{% load humanize %}
+{% load dict_extras %}
+{% load get_range %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matriz Presupuesto de Nómina — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .mp-header {
+            background: linear-gradient(135deg, #1a0533 0%, #4a1080 60%, #7b2fbe 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 18px; box-shadow: 0 6px 24px rgba(74,16,128,0.2);
+            position: relative; overflow: hidden;
+        }
+        .mp-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05);
+        }
+        .mp-empresa { font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em; }
+        .mp-titulo  { font-size:1.3rem; font-weight:700; margin:3px 0; }
+        .mp-toolbar {
+            background: white; border-radius: 12px; padding: 12px 18px;
+            margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .seccion-titulo {
+            font-size: 0.95rem; font-weight: 700; color: #4a1080;
+            margin: 22px 0 10px; display: flex; align-items: center; gap: 8px;
+        }
+        .seccion-nota { font-size: 0.78rem; color: #6b7280; margin-bottom: 12px; }
+
+        .mp-layout { display: flex; gap: 16px; align-items: flex-start; }
+        .mp-table-col { flex: 1; min-width: 0; }
+        .mp-panel-col { width: 340px; flex-shrink: 0; display: none; }
+        .mp-panel-col.visible { display: block; }
+        .mp-panel { background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); overflow: hidden; position: sticky; top: 16px; }
+        .mp-panel-header { background: linear-gradient(135deg, #4a1080, #7b2fbe); color: white; padding: 16px 20px; }
+        .mp-panel-titulo { font-weight: 700; font-size: 0.95rem; }
+        .mp-panel-subtitulo { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
+        .mp-panel-body { padding: 16px; }
+        .mes-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+        .mes-row:last-child { border-bottom: none; }
+        .mes-label { width: 110px; font-size: 0.8rem; font-weight: 600; color: #6b46a3; flex-shrink: 0; }
+        .mes-label.actual { color: #7b2fbe; }
+        .mes-label.actual::after { content: ' ●'; color: #7b2fbe; font-size: 0.6rem; }
+        .panel-input {
+            flex: 1; text-align: right; padding: 5px 10px; border: 1px solid #e2e8f0;
+            border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1a0533;
+            background: #f8fafc; transition: all 0.15s;
+        }
+        .panel-input:focus { outline: none; border-color: #7b2fbe; box-shadow: 0 0 0 3px rgba(123,47,190,0.15); background: white; }
+        .panel-input.guardado { border-color: #1e8449; background: #eafaf1; }
+        .panel-input.error { border-color: #c0392b; background: #fdf0f0; }
+        .panel-total {
+            background: linear-gradient(135deg, #f3e8ff, #ede0ff); border-radius: 10px; padding: 12px 16px;
+            margin-top: 12px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .panel-total-label { font-size: 0.8rem; color: #6b46a3; font-weight: 600; }
+        .panel-total-val { font-size: 1.1rem; font-weight: 700; color: #1a0533; }
+        .panel-helpers { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+        .btn-helper {
+            font-size: 0.75rem; padding: 5px 10px; border-radius: 8px; border: 1px solid #e2e8f0;
+            background: #f8fafc; color: #6b46a3; cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .btn-helper:hover { background: #f3e8ff; border-color: #7b2fbe; color: #4a1080; }
+        .igual-input {
+            width: 100%; text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0;
+            border-radius: 8px; font-size: 0.85rem; margin-bottom: 8px; display: none;
+        }
+        .igual-input.visible { display: block; }
+        .panel-status { font-size: 0.72rem; text-align: center; margin-top: 8px; min-height: 18px; color: #9ca3af; }
+        .panel-status.ok { color: #1e8449; }
+        .panel-status.err { color: #c0392b; }
+
+        tr.mp-tipo.seleccionada td, tr.mp-empleado.seleccionada td { background: #f3e8ff !important; }
+        .btn-editar-fila {
+            width: 20px; height: 20px; border-radius: 4px; border: 1px solid #e2e8f0;
+            background: white; color: #7b2fbe; font-size: 0.65rem; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-left: 4px; vertical-align: middle;
+        }
+        .btn-editar-fila:hover { background: #7b2fbe; color: white; border-color: #7b2fbe; }
+
+        .mp-table-wrap { border-radius: 14px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.08); background: white; }
+        .mp-table-scroll { overflow-x: auto; max-height: 460px; overflow-y: auto; }
+        table.mp-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.78rem; }
+        table.mp-table thead tr th {
+            position: sticky; top: 0; background: #1a0533; color: white;
+            font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+            padding: 10px 10px; white-space: nowrap; border-bottom: 2px solid #7b2fbe; z-index: 10;
+        }
+        table.tabla-cuentas thead th:nth-child(1), table.tabla-cuentas tbody td:nth-child(1) { position:sticky; left:0; z-index:11; min-width:32px; width:32px; }
+        table.tabla-cuentas thead th:nth-child(2), table.tabla-cuentas tbody td:nth-child(2) { position:sticky; left:32px; z-index:11; min-width:120px; }
+        table.tabla-cuentas thead th:nth-child(3), table.tabla-cuentas tbody td:nth-child(3) { position:sticky; left:152px; z-index:11; min-width:110px; }
+        table.tabla-cuentas thead th:nth-child(4), table.tabla-cuentas tbody td:nth-child(4) { position:sticky; left:262px; z-index:11; min-width:130px; border-right:2px solid #e2e8f0; }
+        table.tabla-cuentas thead th:nth-child(1), table.tabla-cuentas thead th:nth-child(2),
+        table.tabla-cuentas thead th:nth-child(3), table.tabla-cuentas thead th:nth-child(4) { background:#12022a; z-index:20; }
+
+        table.tabla-empleados thead th:nth-child(1), table.tabla-empleados tbody td:nth-child(1) { position:sticky; left:0; z-index:11; min-width:32px; width:32px; }
+        table.tabla-empleados thead th:nth-child(2), table.tabla-empleados tbody td:nth-child(2) { position:sticky; left:32px; z-index:11; min-width:150px; }
+        table.tabla-empleados thead th:nth-child(3), table.tabla-empleados tbody td:nth-child(3) { position:sticky; left:182px; z-index:11; min-width:170px; border-right:2px solid #e2e8f0; }
+        table.tabla-empleados thead th:nth-child(1), table.tabla-empleados thead th:nth-child(2),
+        table.tabla-empleados thead th:nth-child(3) { background:#12022a; z-index:20; }
+
+        tr.mp-grupo td, tr.mp-depto td {
+            background: linear-gradient(90deg, #1a0533, #4a1080);
+            color: white; font-weight: 700; font-size: 0.76rem;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 9px 10px; border-bottom: 1px solid #2d0a4e;
+        }
+        tr.mp-grupo td:nth-child(-n+4), tr.mp-depto td:nth-child(-n+3) { background: linear-gradient(90deg, #12022a, #1a0533); }
+        tr.mp-subgrupo td { background: #f3e8ff; color: #2d0a4e; font-weight: 600; font-size: 0.75rem; padding: 7px 10px; border-bottom: 1px solid #e9d5ff; }
+        tr.mp-subgrupo td:nth-child(-n+4) { background: #ede0ff; }
+        tr.mp-tipo td, tr.mp-empleado td {
+            background: white; color: #374151; padding: 5px 10px;
+            border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
+        }
+        tr.mp-tipo:hover td, tr.mp-empleado:hover td { background: #faf5ff; }
+        tr.mp-tipo td:nth-child(-n+4), tr.mp-empleado td:nth-child(-n+3) { background: #fdfcff; }
+
+        tfoot tr td {
+            background: linear-gradient(90deg, #d4ac0d, #f0c330); color: #5a3e00;
+            font-weight: 700; font-size: 0.78rem; padding: 10px 10px;
+            position: sticky; bottom: 0; z-index: 5; border-top: 2px solid #c8a000;
+        }
+        tfoot.tfoot-cuentas tr td:nth-child(-n+4), tfoot.tfoot-empleados tr td:nth-child(-n+3) {
+            background: linear-gradient(90deg, #b8960a, #d4ac0d); z-index:15;
+        }
+
+        input.mp-input {
+            width: 78px; font-size: 0.75rem; text-align: right;
+            padding: 3px 6px; border: 1px solid #e2e8f0; border-radius: 6px;
+            background: #f8fafc; color: #1a0533; font-weight: 500;
+        }
+        input.mp-input:focus { outline:none; border-color:#7b2fbe; box-shadow:0 0 0 3px rgba(123,47,190,0.15); background:white; }
+        input.mp-input.is-valid { border-color:#1e8449; background:#eafaf1; }
+        input.mp-input.is-invalid { border-color:#c0392b; background:#fdf0f0; }
+        td.mp-total-row { font-weight:700; color:#1a0533; background:#f3e8ff !important; white-space:nowrap; }
+        tr.mp-grupo td.mp-total-row, tr.mp-depto td.mp-total-row { color:white; background:transparent !important; }
+        tr.mp-subgrupo td.mp-total-row { color:#1a0533; background:#ede0ff !important; }
+
+        .btn-toggle {
+            width:22px; height:22px; border-radius:50%; border:none;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:0.7rem; cursor:pointer; padding:0; flex-shrink:0;
+        }
+        tr.mp-grupo .btn-toggle, tr.mp-depto .btn-toggle { background:rgba(255,255,255,0.2); color:white; }
+        tr.mp-subgrupo .btn-toggle { background:#7b2fbe; color:white; }
+        .mes-actual-col { background: rgba(123,47,190,0.06) !important; }
+        thead th.mes-actual-col { background: #2d0a4e !important; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <div class="mp-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="mp-empresa"><i class="bi bi-building me-1"></i>{{ empresa.nombre }}</div>
+                    <div class="mp-titulo"><i class="bi bi-people-fill me-2"></i>Matriz Presupuesto de Nómina — {{ anio }}</div>
+                    <div style="font-size:0.78rem;opacity:0.75;margin-top:3px;">
+                        <i class="bi bi-pencil-square me-1"></i>Haz clic en el lápiz de cualquier fila para capturar sus montos
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mp-toolbar no-print">
+            <form method="get" class="d-flex align-items-center gap-2">
+                {% if is_super %}
+                <select name="empresa" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    {% for emp in empresas %}
+                        <option value="{{ emp.id }}" {% if empresa.id == emp.id %}selected{% endif %}>{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                <label class="small fw-bold text-muted mb-0">Año:</label>
+                <select name="anio" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    {% for a in anios %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+                {% if empresa and not is_super %}<input type="hidden" name="empresa" value="{{ empresa.id }}">{% endif %}
+            </form>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <span class="badge" style="background:#7b2fbe;"><i class="bi bi-pencil-square me-1"></i>Editable</span>
+            </div>
+        </div>
+
+        <div class="mp-layout">
+            <div class="mp-table-col">
+
+                <div class="seccion-titulo"><i class="bi bi-journal-text"></i>Cuentas Contables — Gastos Nómina</div>
+                <div class="seccion-nota">Presupuesto total por cuenta (ej. "Dispersión de Nómina") -- se compara contra el gasto real registrado en Facturación/Gastos.</div>
+
+                <div class="mp-table-wrap mb-2">
+                    <div class="mp-table-scroll">
+                        <table class="mp-table tabla-cuentas">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Grupo</th>
+                                    <th>Subgrupo</th>
+                                    <th>Cuenta</th>
+                                    {% for mes_nombre in meses_nombres %}
+                                        <th class="text-center {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">{{ mes_nombre|slice:":3" }}</th>
+                                    {% endfor %}
+                                    <th class="text-center" style="background:#d4ac0d !important;color:#5a3e00;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for grupo in cuentas_grupos %}
+                                    <tr class="mp-grupo" data-grupo="cg-{{ grupo.id }}">
+                                        <td><button type="button" class="btn-toggle toggle-cg" data-grupo="cg-{{ grupo.id }}"><i class="bi bi-dash-lg icon-abierto"></i><i class="bi bi-plus-lg icon-cerrado" style="display:none"></i></button></td>
+                                        <td colspan="3"><strong>{{ grupo.nombre }}</strong></td>
+                                        {% for i in "0"|get_range:12 %}
+                                            <td class="text-center mp-total-row {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">{{ grupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                                        {% endfor %}
+                                        <td class="text-center mp-total-row">{{ grupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                    {% for subgrupo in grupo.subgrupos %}
+                                        <tr class="mp-subgrupo" data-grupo="cg-{{ grupo.id }}" data-subgrupo="csg-{{ subgrupo.id }}">
+                                            <td style="padding-left:16px;"><button type="button" class="btn-toggle toggle-csg" data-subgrupo="csg-{{ subgrupo.id }}"><i class="bi bi-dash-lg icon-abierto"></i><i class="bi bi-plus-lg icon-cerrado" style="display:none"></i></button></td>
+                                            <td></td>
+                                            <td colspan="2"><strong>{{ subgrupo.nombre }}</strong></td>
+                                            {% for i in "0"|get_range:12 %}
+                                                <td class="text-center mp-total-row {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">{{ subgrupo.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                                            {% endfor %}
+                                            <td class="text-center mp-total-row">{{ subgrupo.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                                        </tr>
+                                        {% for tipo in subgrupo.tipos %}
+                                            <tr class="mp-tipo" data-grupo="cg-{{ grupo.id }}" data-subgrupo="csg-{{ subgrupo.id }}" data-tipo="{{ tipo.id }}">
+                                                <td></td><td></td><td></td>
+                                                <td style="font-size:0.78rem;">
+                                                    <i class="bi bi-dot text-primary"></i><span class="fila-nombre">{{ tipo.nombre }}</span>
+                                                    <button type="button" class="btn-editar-fila btn-editar-cuenta" title="Editar"><i class="bi bi-pencil"></i></button>
+                                                </td>
+                                                {% for i in "0"|get_range:12 %}
+                                                    {% with mes_num=i|add:1 %}
+                                                    <td class="text-center {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}" style="padding:4px 6px;">
+                                                        <input type="number" step="0.01" min="0" class="mp-input input-cuenta"
+                                                            value="{{ tipo.montos|dict_get:mes_num|floatformat:2 }}"
+                                                            data-tipo="{{ tipo.id }}" data-mes="{{ mes_num }}">
+                                                    </td>
+                                                    {% endwith %}
+                                                {% endfor %}
+                                                <td class="text-center mp-total-row">{{ tipo.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% empty %}
+                                    <tr><td colspan="17" class="text-center text-muted py-3">No hay cuentas bajo "Gastos Nomina" todavía.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="tfoot-cuentas">
+                                <tr>
+                                    <td colspan="4"><strong>Total Cuentas</strong></td>
+                                    {% for total in totales_mes_cuentas %}<td class="text-center"><strong>{{ total|floatformat:2|intcomma }}</strong></td>{% endfor %}
+                                    <td class="text-center"><strong>{{ totales_mes_cuentas|sum_list|floatformat:2|intcomma }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="seccion-titulo"><i class="bi bi-person-badge"></i>Presupuesto por Empleado</div>
+                <div class="seccion-nota">Detalle granular -- se compara contra lo realmente dispersado a cada persona.</div>
+
+                <div class="mp-table-wrap">
+                    <div class="mp-table-scroll">
+                        <table class="mp-table tabla-empleados">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Depto.</th>
+                                    <th>Empleado</th>
+                                    {% for mes_nombre in meses_nombres %}
+                                        <th class="text-center {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">{{ mes_nombre|slice:":3" }}</th>
+                                    {% endfor %}
+                                    <th class="text-center" style="background:#d4ac0d !important;color:#5a3e00;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for depto in deptos %}
+                                    <tr class="mp-depto" data-grupo="dp-{{ depto.id }}">
+                                        <td><button type="button" class="btn-toggle toggle-dp" data-grupo="dp-{{ depto.id }}"><i class="bi bi-dash-lg icon-abierto"></i><i class="bi bi-plus-lg icon-cerrado" style="display:none"></i></button></td>
+                                        <td colspan="2"><strong>{{ depto.nombre }}</strong></td>
+                                        {% for i in "0"|get_range:12 %}
+                                            <td class="text-center mp-total-row {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}">{{ depto.subtotal|list_index:forloop.counter0|floatformat:2|intcomma }}</td>
+                                        {% endfor %}
+                                        <td class="text-center mp-total-row">{{ depto.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                    {% for emp in depto.empleados %}
+                                        <tr class="mp-empleado" data-grupo="dp-{{ depto.id }}" data-empleado="{{ emp.id }}">
+                                            <td></td><td></td>
+                                            <td style="font-size:0.78rem;">
+                                                <i class="bi bi-dot text-primary"></i><span class="fila-nombre">{{ emp.nombre }}</span>
+                                                <button type="button" class="btn-editar-fila btn-editar-empleado" title="Editar"><i class="bi bi-pencil"></i></button>
+                                            </td>
+                                            {% for i in "0"|get_range:12 %}
+                                                {% with mes_num=i|add:1 %}
+                                                <td class="text-center {% if forloop.counter == mes_actual_num %}mes-actual-col{% endif %}" style="padding:4px 6px;">
+                                                    <input type="number" step="0.01" min="0" class="mp-input input-empleado"
+                                                        value="{{ emp.montos|dict_get:mes_num|floatformat:2 }}"
+                                                        data-empleado="{{ emp.id }}" data-mes="{{ mes_num }}">
+                                                </td>
+                                                {% endwith %}
+                                            {% endfor %}
+                                            <td class="text-center mp-total-row">{{ emp.subtotal|sum_list|floatformat:2|intcomma }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                {% empty %}
+                                    <tr><td colspan="16" class="text-center text-muted py-3">No hay empleados activos.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="tfoot-empleados">
+                                <tr>
+                                    <td colspan="3"><strong>Total Empleados</strong></td>
+                                    {% for total in totales_mes_empleados %}<td class="text-center"><strong>{{ total|floatformat:2|intcomma }}</strong></td>{% endfor %}
+                                    <td class="text-center"><strong>{{ totales_mes_empleados|sum_list|floatformat:2|intcomma }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mp-panel-col no-print" id="panel-col">
+                <div class="mp-panel">
+                    <div class="mp-panel-header">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="mp-panel-titulo" id="panel-titulo">Selecciona una fila</div>
+                                <div class="mp-panel-subtitulo" id="panel-subtitulo">Haz clic en cualquier lápiz</div>
+                            </div>
+                            <button type="button" id="btn-cerrar-panel" style="background:rgba(255,255,255,0.15);border:none;color:white;border-radius:6px;padding:4px 8px;cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                    </div>
+                    <div class="mp-panel-body">
+                        <div class="panel-helpers">
+                            <button type="button" class="btn-helper" id="btn-igual-todos"><i class="bi bi-copy"></i> Igual para todos</button>
+                            <button type="button" class="btn-helper" id="btn-limpiar"><i class="bi bi-eraser"></i> Limpiar</button>
+                        </div>
+                        <input type="number" step="0.01" min="0" class="igual-input" id="igual-input" placeholder="Monto para todos los meses…">
+                        <div id="panel-meses">
+                            {% for mes_nombre in meses_nombres %}
+                            <div class="mes-row" data-mes="{{ forloop.counter }}">
+                                <div class="mes-label {% if forloop.counter == mes_actual_num %}actual{% endif %}">{{ mes_nombre }}</div>
+                                <input type="number" step="0.01" min="0" class="panel-input" data-panel-mes="{{ forloop.counter }}" placeholder="0.00">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="panel-total">
+                            <span class="panel-total-label"><i class="bi bi-calculator me-1"></i>Total anual</span>
+                            <span class="panel-total-val" id="panel-total-val">$0.00</span>
+                        </div>
+                        <div class="panel-status" id="panel-status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    const CSRF = "{{ csrf_token }}";
+    const URL_AJAX = "{% url 'matriz_presupuesto_nomina' %}?anio={{ anio }}&empresa={{ empresa.id }}";
+
+    // ── Toggles (grupo cuentas, subgrupo cuentas, depto empleados) ──
+    function bindToggle(selector, attrName, rowSelectorFn) {
+        document.querySelectorAll(selector).forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = btn.dataset[attrName];
+                var collapsed = btn.classList.toggle('collapsed');
+                rowSelectorFn(val).forEach(function(r) { r.style.display = collapsed ? 'none' : ''; });
+                btn.querySelector('.icon-abierto').style.display = collapsed ? 'none' : '';
+                btn.querySelector('.icon-cerrado').style.display = collapsed ? '' : 'none';
+            });
+        });
+    }
+    bindToggle('.toggle-cg', 'grupo', function(v) {
+        return document.querySelectorAll('.mp-subgrupo[data-grupo="'+v+'"], .mp-tipo[data-grupo="'+v+'"]');
+    });
+    bindToggle('.toggle-csg', 'subgrupo', function(v) {
+        return document.querySelectorAll('.mp-tipo[data-subgrupo="'+v+'"]');
+    });
+    bindToggle('.toggle-dp', 'grupo', function(v) {
+        return document.querySelectorAll('.mp-empleado[data-grupo="'+v+'"]');
+    });
+
+    // ── Panel lateral compartido (modo: 'cuenta' o 'empleado') ──
+    var panelCol = document.getElementById('panel-col');
+    var panelTitulo = document.getElementById('panel-titulo');
+    var panelSubtitulo = document.getElementById('panel-subtitulo');
+    var panelStatus = document.getElementById('panel-status');
+    var panelTotalVal = document.getElementById('panel-total-val');
+    var panelInputs = document.querySelectorAll('.panel-input');
+    var currentModo = null;   // 'cuenta' | 'empleado'
+    var currentId = null;
+    var currentRow = null;
+
+    function fmt(n) { return '$' + parseFloat(n || 0).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function actualizarTotalPanel() {
+        var total = 0;
+        panelInputs.forEach(function(inp) { total += parseFloat(inp.value || 0); });
+        panelTotalVal.textContent = fmt(total);
+    }
+
+    function abrirPanel(row, modo) {
+        var attr = modo === 'cuenta' ? 'tipo' : 'empleado';
+        var id = row.dataset[attr];
+        var nombre = row.querySelector('.fila-nombre').textContent.trim();
+        currentModo = modo; currentId = id;
+
+        if (currentRow) currentRow.classList.remove('seleccionada');
+        currentRow = row;
+        row.classList.add('seleccionada');
+
+        panelTitulo.textContent = nombre;
+        panelSubtitulo.textContent = modo === 'cuenta' ? 'Cuenta contable — captura mes a mes' : 'Empleado — captura mes a mes';
+        panelStatus.textContent = ''; panelStatus.className = 'panel-status';
+
+        var inputSelector = modo === 'cuenta' ? '.input-cuenta' : '.input-empleado';
+        panelInputs.forEach(function(panelInp) {
+            var mes = panelInp.dataset.panelMes;
+            var tableInp = row.querySelector(inputSelector+'[data-'+attr+'="'+id+'"][data-mes="'+mes+'"]');
+            panelInp.value = tableInp ? (parseFloat(tableInp.value) || '') : '';
+        });
+
+        actualizarTotalPanel();
+        panelCol.style.display = 'block';
+        panelCol.classList.add('visible');
+    }
+
+    function cerrarPanel() {
+        panelCol.style.display = 'none';
+        panelCol.classList.remove('visible');
+        if (currentRow) currentRow.classList.remove('seleccionada');
+        currentRow = null; currentModo = null; currentId = null;
+    }
+    document.getElementById('btn-cerrar-panel').addEventListener('click', cerrarPanel);
+
+    document.querySelectorAll('.btn-editar-cuenta').forEach(function(btn) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); abrirPanel(btn.closest('.mp-tipo'), 'cuenta'); });
+    });
+    document.querySelectorAll('.btn-editar-empleado').forEach(function(btn) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); abrirPanel(btn.closest('.mp-empleado'), 'empleado'); });
+    });
+    document.querySelectorAll('.mp-tipo').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-editar-fila') || e.target.tagName === 'INPUT') return;
+            abrirPanel(row, 'cuenta');
+        });
+        row.style.cursor = 'pointer';
+    });
+    document.querySelectorAll('.mp-empleado').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-editar-fila') || e.target.tagName === 'INPUT') return;
+            abrirPanel(row, 'empleado');
+        });
+        row.style.cursor = 'pointer';
+    });
+
+    function payloadPara(modo, id, mes, monto) {
+        return modo === 'cuenta'
+            ? { tipo_id: id, mes: mes, monto: monto }
+            : { empleado_id: id, mes: mes, monto: monto };
+    }
+
+    function guardarDesdePanel(panelInp, mes) {
+        if (!currentId || !currentModo) return;
+        var val = panelInp.value;
+        var attr = currentModo === 'cuenta' ? 'tipo' : 'empleado';
+        var inputSelector = currentModo === 'cuenta' ? '.input-cuenta' : '.input-empleado';
+        var tableInp = document.querySelector(inputSelector+'[data-'+attr+'="'+currentId+'"][data-mes="'+mes+'"]');
+        if (!tableInp) return;
+
+        var oldVal = tableInp.getAttribute('data-old') || tableInp.defaultValue;
+        tableInp.value = val;
+        panelInp.classList.remove('guardado', 'error');
+        panelStatus.textContent = 'Guardando…'; panelStatus.className = 'panel-status';
+
+        fetch(URL_AJAX, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(payloadPara(currentModo, currentId, mes, val))
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                panelInp.classList.add('guardado');
+                tableInp.setAttribute('data-old', val);
+                tableInp.classList.add('is-valid');
+                panelStatus.textContent = '✓ Guardado'; panelStatus.className = 'panel-status ok';
+                setTimeout(() => { panelInp.classList.remove('guardado'); tableInp.classList.remove('is-valid'); panelStatus.textContent = ''; }, 1800);
+                actualizarTotalPanel();
+            } else {
+                panelInp.classList.add('error'); tableInp.value = oldVal; panelInp.value = oldVal;
+                panelStatus.textContent = '✗ Error al guardar'; panelStatus.className = 'panel-status err';
+            }
+        })
+        .catch(() => {
+            panelInp.classList.add('error'); tableInp.value = oldVal; panelInp.value = oldVal;
+            panelStatus.textContent = '✗ Sin conexión'; panelStatus.className = 'panel-status err';
+        });
+    }
+
+    panelInputs.forEach(function(inp) {
+        inp.addEventListener('change', function() { guardarDesdePanel(inp, inp.dataset.panelMes); });
+        inp.addEventListener('input', actualizarTotalPanel);
+    });
+
+    var btnIgual = document.getElementById('btn-igual-todos');
+    var igualInput = document.getElementById('igual-input');
+    if (btnIgual && igualInput) {
+        btnIgual.addEventListener('click', function() {
+            igualInput.classList.toggle('visible');
+            if (igualInput.classList.contains('visible')) igualInput.focus();
+        });
+        igualInput.addEventListener('change', function() {
+            var val = igualInput.value;
+            if (!val || !currentId) return;
+            panelInputs.forEach(function(inp) { inp.value = val; guardarDesdePanel(inp, inp.dataset.panelMes); });
+            igualInput.classList.remove('visible'); igualInput.value = '';
+        });
+    }
+
+    var btnLimpiar = document.getElementById('btn-limpiar');
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', function() {
+            if (!currentId) return;
+            if (!confirm('¿Limpiar todos los montos de esta fila?')) return;
+            panelInputs.forEach(function(inp) { inp.value = ''; guardarDesdePanel(inp, inp.dataset.panelMes); });
+        });
+    }
+
+    // ── Autoguardado directo desde la tabla (sin abrir el panel) ──
+    function bindAutoguardado(selector, modo, attr) {
+        document.querySelectorAll(selector).forEach(function(input) {
+            input.addEventListener('change', function() {
+                var oldVal = input.getAttribute('data-old') || input.defaultValue;
+                input.disabled = true;
+                input.classList.remove('is-invalid', 'is-valid');
+                var id = input.dataset[attr];
+                fetch(URL_AJAX, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(payloadPara(modo, id, input.dataset.mes, input.value))
+                })
+                .then(r => r.json())
+                .then(data => {
+                    input.disabled = false;
+                    if (data.success) {
+                        input.classList.add('is-valid');
+                        input.setAttribute('data-old', input.value);
+                        if (String(currentId) === String(id) && currentModo === modo) {
+                            var panelInp = document.querySelector('.panel-input[data-panel-mes="'+input.dataset.mes+'"]');
+                            if (panelInp) { panelInp.value = input.value; actualizarTotalPanel(); }
+                        }
+                        setTimeout(() => input.classList.remove('is-valid'), 1500);
+                    } else {
+                        input.classList.add('is-invalid'); input.value = oldVal;
+                    }
+                })
+                .catch(() => { input.disabled = false; input.classList.add('is-invalid'); input.value = oldVal; });
+            });
+        });
+    }
+    bindAutoguardado('.input-cuenta', 'cuenta', 'tipo');
+    bindAutoguardado('.input-empleado', 'empleado', 'empleado');
+    </script>
+</body>
+</html>

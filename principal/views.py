@@ -2034,7 +2034,7 @@ def lista_tickets(request):
 
 
 
-# modulo visitantes consulta adeudos y pagos de facturas via WEB
+############### modulo visitantes consulta adeudos y pagos de facturas via WEB  ##############################
 
 def registro_visitante(request):
     empresas = Empresa.objects.all()
@@ -2570,6 +2570,28 @@ def visitante_timbrar_factura(request, pk):
     )
 
 
+# Módulo de pagos con Stripe para visitantes
+COMISION_STRIPE_PORCENTAJE = Decimal("0.036")  # 3.6%
+COMISION_STRIPE_FIJA = Decimal("3.00")  # $3.00 MXN
+
+def calcular_monto_a_cobrar_stripe(monto_neto_deseado):
+    """
+    Regresa el monto TOTAL que hay que cobrarle al cliente para que,
+    DESPUÉS de que Stripe descuente su comisión (3.6% + $3 MXN, tarjetas
+    nacionales), a la empresa le quede exactamente 'monto_neto_deseado'.
+
+    Fórmula (despeje del "gross-up"):
+        total * (1 - 0.036) - 3 = neto
+        total = (neto + 3) / (1 - 0.036)
+    """
+    monto_neto_deseado = Decimal(str(monto_neto_deseado))
+    total = (monto_neto_deseado + COMISION_STRIPE_FIJA) / (Decimal("1") - COMISION_STRIPE_PORCENTAJE)  # noqa: FURB157
+    # Redondea HACIA ARRIBA al centavo -- así la empresa nunca recibe
+    # ni un centavo menos del monto real de la factura por un
+    # redondeo desfavorable.
+    return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 # Pago con Stripe para visitantes multiempresas
 def stripe_checkout_visitante(request, factura_id):
     factura = get_object_or_404(Factura, id=factura_id)
@@ -2596,7 +2618,16 @@ def stripe_checkout_visitante(request, factura_id):
         )  # O la vista/lista que corresponda
 
     stripe.api_key = empresa.stripe_secret_key  # <-- Usa la clave secreta de la empresa
-
+    # NUEVO -- según la configuración de la empresa, el cliente paga el
+    # monto exacto (empresa absorbe la comisión) o un monto ligeramente
+    # mayor que ya incluye la comisión de Stripe (empresa recibe íntegro).
+    monto_a_cobrar = factura.saldo_pendiente
+    nombre_producto = f"Pago factura {factura.folio}"
+    
+    if not empresa.absorber_comision_stripe:
+        monto_a_cobrar = calcular_monto_a_cobrar_stripe(factura.saldo_pendiente)
+        nombre_producto = f"Pago factura {factura.folio} (incluye comisión Stripe)"
+    
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         line_items=[
@@ -2604,21 +2635,33 @@ def stripe_checkout_visitante(request, factura_id):
                 "price_data": {
                     "currency": "mxn",
                     "product_data": {
-                        "name": f"Pago factura {factura.folio}",
+                        "name": nombre_producto,
                     },
-                    "unit_amount": int(factura.saldo_pendiente * 100),
+                    "unit_amount": int(monto_a_cobrar * 100),
                 },
                 "quantity": 1,
             }
         ],
         mode="payment",
-        # success_url=request.build_absolute_uri('/visitante/consulta/?pagook=1'),
         success_url=request.build_absolute_uri(
             f"/visitante/consulta/?pagook=1&factura_id={factura.id}"
         ),
         cancel_url=request.build_absolute_uri("/visitante/consulta/?pagocancel=1"),
-        metadata={"factura_id": factura.id},
-    )
+
+    #     metadata={"factura_id": factura.id},
+    # )
+        # NUEVO -- "monto_neto" viaja en la metadata para que el webhook
+        # sepa exactamente cuánto debe registrar en el Pago -- nunca el
+        # monto grossed-up que realmente se le cobró a la tarjeta, que
+        # incluye la comisión de Stripe cuando el cliente la absorbe.
+        metadata={"factura_id": factura.id, "monto_neto": str(factura.saldo_pendiente)},
+        # También se copia a nivel PaymentIntent, porque Stripe NO copia
+        # automáticamente la metadata de la Session al PaymentIntent --
+        # y el webhook puede recibir cualquiera de los dos tipos de evento.
+        payment_intent_data={
+            "metadata": {"factura_id": factura.id, "monto_neto": str(factura.saldo_pendiente)},
+        },
+    )    
     return redirect(session.url)
 
 
@@ -2671,13 +2714,38 @@ def stripe_webhook_visitante(request):
         logger.error("No se encontró factura_id en metadata.")
         return HttpResponse(status=400)
 
+    # NUEVO -- si la metadata trae "monto_neto" (checkouts creados con el
+    # cálculo de comisión), SIEMPRE se usa ese valor para el Pago -- es
+    # el monto real de la factura, sin la comisión de Stripe agregada.
+    # Si no viene (checkouts viejos, o cuando la empresa absorbe la
+    # comisión y monto_neto == lo cobrado), se cae de vuelta al
+    # comportamiento anterior.
+    monto_neto_meta = metadata.get("monto_neto")
+
+    # try:
+    #     factura = Factura.objects.get(id=int(factura_id))
+    #     if event_type == "checkout.session.completed":
+    #         monto_pagado = obj.get("amount_total", 0) / 100.0
+    #         observaciones = f"ID transacción: {obj.get('payment_intent')}"
+    #     elif event_type == "payment_intent.succeeded":
+    #         monto_pagado = obj.get("amount", 0) / 100.0
+    #         observaciones = f"ID transacción: {obj.get('id')}"
+    #     else:
+    #         logger.info(f"Ignorando evento Stripe tipo: {event_type}")
+    #         return JsonResponse({"status": "ignored"})
     try:
         factura = Factura.objects.get(id=int(factura_id))
         if event_type == "checkout.session.completed":
-            monto_pagado = obj.get("amount_total", 0) / 100.0
+            if monto_neto_meta:
+                monto_pagado = float(monto_neto_meta)
+            else:
+                monto_pagado = obj.get("amount_total", 0) / 100.0
             observaciones = f"ID transacción: {obj.get('payment_intent')}"
         elif event_type == "payment_intent.succeeded":
-            monto_pagado = obj.get("amount", 0) / 100.0
+            if monto_neto_meta:
+                monto_pagado = float(monto_neto_meta)
+            else:
+                monto_pagado = obj.get("amount", 0) / 100.0
             observaciones = f"ID transacción: {obj.get('id')}"
         else:
             logger.info(f"Ignorando evento Stripe tipo: {event_type}")

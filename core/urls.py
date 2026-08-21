@@ -123,8 +123,8 @@ from locales.views import (
 from presupuestos.views import (
     borrar_presupuesto_gastos,
     borrar_presupuesto_ingresos,
+    comparativo_anual_gastos,
     comparativo_anual_ingresos,
-    comparativo_anual_total,
     exportar_matriz_presupuesto_ingresos_excel,
 )
 from principal import views
@@ -334,11 +334,11 @@ urlpatterns = [
     path('facturacion/consulta-cfdis/', consulta_cfdis_facturama, name='consulta_cfdis_facturama'),
     path('facturacion/descargar-cfdi/<str:id>/', descargar_cfdi_facturama, name='descargar_cfdi_facturama'),
     path('otros-ingresos/timbrar/<int:pk>/', timbrar_factura_otros_ingresos, name='timbrar_factura_otros_ingresos'),
-    path('visitante/timbrar-factura/<int:pk>/', visitante_timbrar_factura, name='visitante_timbrar_factura'),
+    path('visitante/timbrar-factura/<int:pk>/', visitante_timbrar_factura, name='visitante_timbrar_factura'),   
     path('contrato/generar/<int:area_id>/', generar_contrato, name='generar_contrato'),
     path('carga-masiva/', carga_masiva_proveedores, name='carga_masiva_proveedores'),
     path('plantilla-proveedores/', plantilla_proveedores_excel, name='plantilla_proveedores_excel'),
-    path('comparativo-anual/', comparativo_anual_total, name='comparativo_anual_total'),
+    path('comparativo-anual-gastos/', comparativo_anual_gastos, name='comparativo_anual_gastos'),
     path('comparativo-anual-ingresos/', comparativo_anual_ingresos, name='comparativo_anual_ingresos'),
     path("vales/<int:vale_id>/eliminar/", eliminar_vale_caja, name="eliminar_vale_caja"),
     path("gastos_caja_chica/<int:gasto_id>/eliminar/",eliminar_gasto_caja, name="eliminar_gasto_caja"),

@@ -4261,9 +4261,13 @@ def crear_factura_otros_ingresos(request):
 def eliminar_factura_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
 
-    # Solo permitir si está pendiente y no tiene cobros registrados
+    # NUEVO -- se compara el MONTO NETO cobrado (no si existen registros).
+    # Un cobro reversado crea un registro compensatorio negativo, así que
+    # la factura puede tener 2 registros de cobro (positivo + negativo)
+    # que se cancelan entre sí -- eso cuenta como "sin cobro real".
     cobros_validos = factura.cobros.exclude(forma_cobro="nota_credito")
-    tiene_cobros = cobros_validos.exists()
+    monto_neto_cobrado = cobros_validos.aggregate(t=Sum("monto"))["t"] or Decimal("0")
+    tiene_cobros = monto_neto_cobrado != 0
     puede_eliminar = factura.estatus == "pendiente" and not tiene_cobros
 
     if not puede_eliminar:

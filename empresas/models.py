@@ -75,6 +75,14 @@ class Empresa(models.Model):
         max_length=20, blank=True, null=True,
         help_text="Número de Twilio para SMS, formato +521234567890."
     )
+    absorber_comision_stripe = models.BooleanField(
+        default=True,
+        help_text=(
+            "Si está activo, la empresa absorbe la comisión de Stripe -- el cliente paga "
+            "exactamente el monto de la factura. Si está apagado, la comisión se le agrega "
+            "al cliente por separado, y la empresa recibe el monto completo de la factura."
+        ),
+    )
 
     
     def __str__(self):

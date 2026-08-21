@@ -46,9 +46,9 @@
             {% endfor %}
                 <div class="d-flex justify-content-between mt-3">
                     <button type="submit" class="btn btn-primary">Guardar</button>
-                    <a href="https://repse.stps.gob.mx/app/" target="_blank" class="btn btn-info">
+                    {% comment %} <a href="https://repse.stps.gob.mx/app/" target="_blank" class="btn btn-info">
                         Consultar REPSE
-                    </a>
+                    </a> {% endcomment %}
                     <a href="{% url 'proveedor_lista' %}" class="btn btn-secondary">Cancelar</a>
                 </div>
             </form>

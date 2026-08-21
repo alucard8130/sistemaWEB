@@ -29,7 +29,7 @@ class CuentaContable(models.Model):
 
     class Meta:
         unique_together = ('empresa', 'codigo')
-        ordering = ['codigo']
+        ordering = ['codigo']  # noqa: RUF012
 
     def __str__(self):
         return f"{self.codigo} — {self.nombre}"
@@ -74,7 +74,7 @@ class CargaCatalogoFila(models.Model):
     tipo_gasto_elegido = models.ForeignKey('TipoGasto', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
 
     class Meta:
-        ordering = ['fila_excel']
+        ordering = ['fila_excel']  # noqa: RUF012
 
 
 class GrupoGasto(models.Model):

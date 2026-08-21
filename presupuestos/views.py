@@ -1,5 +1,6 @@
 # Create your views here.
 import calendar
+import json
 from calendar import month_name
 from collections import defaultdict
 
@@ -31,6 +32,7 @@ from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
 from caja_chica.models import GastoCajaChica, ValeCaja
+from empleados.models import Empleado
 from empresas.models import Empresa
 from facturacion.models import (
     CobroOtrosIngresos,
@@ -39,14 +41,20 @@ from facturacion.models import (
     TipoOtroIngreso,
 )
 from gastos.models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
+from nomina.models import ReciboNomina
 
 from .forms import PresupuestoCargaMasivaForm
-from .models import Presupuesto, PresupuestoCierre, PresupuestoIngreso
+from .models import (
+    Presupuesto,
+    PresupuestoCierre,
+    PresupuestoIngreso,
+    PresupuestoNomina,
+)
 
 
 # matriz ppto gastos
 @login_required
-def matriz_presupuesto(request):
+def matriz_presupuesto_gastos(request):
     anio = int(request.GET.get("anio", now().year))
     now_year = now().year  # noqa: F841
     anios = list(
@@ -114,6 +122,7 @@ def matriz_presupuesto(request):
     # Estructura base
     tipos = (
         TipoGasto.objects.filter(empresa=empresa)
+        #.exclude(subgrupo__grupo__nombre="Gastos Nomina")
         .select_related("subgrupo", "subgrupo__grupo")
         .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
     )
@@ -222,7 +231,7 @@ def matriz_presupuesto(request):
                     obj.save()
                 return JsonResponse({"success": True, "created": created})
             return JsonResponse({"success": False, "error": "Missing data"}, status=400)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass  # No es JSON válido — dejar caer al bloque de form normal
 
     # --- GUARDADO OPTIMIZADO (NO AJAX) ---
@@ -336,7 +345,7 @@ def matriz_presupuesto(request):
     # Render tradicional
     return render(
         request,
-        "presupuestos/matriz.html",
+        "presupuestos/matriz_gastos.html",
         {
             "grupos": grupos,
             "meses": meses,
@@ -451,8 +460,7 @@ def exportar_presupuesto_excel(request):
 
 
 @login_required
-# reporte_comparativo.html
-# reporte comparativo presupuesto vs gasto
+# reporte comparativo presupuesto gastos vs gasto real
 def reporte_presupuesto_vs_gasto(request):
     anio = int(request.GET.get("anio", datetime.now().year))
     medicion = request.GET.get(
@@ -494,6 +502,7 @@ def reporte_presupuesto_vs_gasto(request):
 
     tipos = (
         TipoGasto.objects.filter(empresa=empresa)
+        #.exclude(subgrupo__grupo__nombre="Gastos Nomina")  #exclude gastos de nómina del presupuesto vs gasto
         .select_related("subgrupo", "subgrupo__grupo")
         .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
     )
@@ -608,7 +617,7 @@ def reporte_presupuesto_vs_gasto(request):
                 row["total_anual_gasto"] = anual_gasto
                 row["total_anual_var"] = anual_var
                 row["total_anual_pct"] = (
-                    int(round(anual_var / anual_presup * 100)) if anual_presup else ""
+                    int(round(anual_var / anual_presup * 100)) if anual_presup else ""  # noqa: RUF046
                 )
 
                 subgrupo_row["tipos"].append(row)
@@ -692,7 +701,7 @@ def reporte_presupuesto_vs_gasto(request):
 
     return render(
         request,
-        "presupuestos/reporte_comparativo.html",
+        "presupuestos/comparativo_presupuesto_vs_gastos.html",
         {
             "anio": anio,
             "anios": list(range(datetime.now().year, 2021, -1)),
@@ -925,7 +934,7 @@ def exportar_comparativo_excel(request):
     wb.save(response)
     return response
 
-
+#comparativo de presupuesto de gastos por año
 @login_required
 def comparativo_presupuesto_anio(request):
     # 1. Obtener lista de años disponibles
@@ -1132,7 +1141,6 @@ def descargar_plantilla_matriz_presupuesto(request):
 
 
 @login_required
-# presupuesto gastos
 def carga_masiva_presupuestos(request):
     if request.method == "POST":
         form = PresupuestoCargaMasivaForm(request.POST, request.FILES)
@@ -1253,6 +1261,7 @@ def carga_masiva_presupuestos(request):
     )
 
 
+#reporte comparativo de presupuesto de ingresos vs ingreso real
 @login_required
 def reporte_presupuesto_vs_ingreso(request):
     anio = int(request.GET.get("anio", datetime.now().year))
@@ -2215,11 +2224,6 @@ def carga_masiva_presupuesto_ingresos(request):
 
 @login_required
 def descargar_plantilla_matriz_presupuesto_ingresos(request):
-    import openpyxl
-    from openpyxl.styles import Font
-    from openpyxl.utils import get_column_letter
-    from django.http import HttpResponse
-
     meses_nombres = [
         "Ene",
         "Feb",
@@ -2583,10 +2587,10 @@ def copiar_presupuesto_ingresos_a_nuevo_anio(request):
     return redirect("matriz_presupuesto_ingresos")
 
 
-#comparativa presupuestal gastos vs real
-#comparativo_anual_total.html
+#comparativa presupuestal gastos anual vs gasto real anual
+#comparativo_anual_gastos.html
 @login_required
-def comparativo_anual_total(request):
+def comparativo_anual_gastos(request):
     try:
         anio = int(request.GET.get("anio", now().year))
     except (TypeError, ValueError):
@@ -2794,9 +2798,10 @@ def comparativo_anual_total(request):
         "pct_ejec_global": pct_ejec_global,
         "grupos": resultado,
     }
-    return render(request, "presupuestos/comparativo_anual_total.html", contexto)
+    return render(request, "presupuestos/comparativo_anual_gastos.html", contexto)
 
 
+# comparativa presupuestal ingresos anual vs ingreso real anual
 @login_required
 def comparativo_anual_ingresos(request):
     try:
@@ -2936,3 +2941,373 @@ def comparativo_anual_ingresos(request):
         }
     )
     return render(request, "presupuestos/comparativo_anual_ingresos.html", contexto)
+
+
+##############estas vistas de nomina no  se usan, se dejaron para referencia futura######################
+@login_required
+def matriz_presupuesto_nomina(request):
+    anio = int(request.GET.get("anio", now().year))
+    anios = list(
+        Presupuesto.objects.values_list("anio", flat=True).distinct().order_by("anio")
+    )
+
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    meses = list(range(1, 13))
+    meses_nombres = [month_name[m].capitalize() for m in meses]
+    mes_actual_num = now().month if anio == now().year else 0
+
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        and request.content_type == "application/json"
+    )
+
+    # ============================================================
+    # GUARDADO AJAX -- distingue por el tipo de payload que llegue:
+    # "tipo_id" -> cuenta contable (Presupuesto, igual que gastos)
+    # "empleado_id" -> por empleado (PresupuestoNomina)
+    # ============================================================
+    if request.method == "POST" and is_ajax:
+        try:
+            data = json.loads(request.body)
+
+            if "tipo_id" in data:
+                tipo_id = data.get("tipo_id")
+                mes = data.get("mes")
+                monto = data.get("monto")
+                if not tipo_id or not mes:
+                    return JsonResponse({"success": False, "error": "Missing data"}, status=400)
+                tipo_gasto = TipoGasto.objects.get(pk=tipo_id)
+                obj, created = Presupuesto.objects.get_or_create(
+                    empresa=empresa, anio=anio, tipo_gasto_id=tipo_id, mes=mes,
+                    defaults={
+                        "grupo_id": tipo_gasto.subgrupo.grupo.id,
+                        "subgrupo_id": tipo_gasto.subgrupo.id,
+                        "monto": monto,
+                    },
+                )
+                if not created:
+                    obj.monto = monto
+                    obj.save()
+                return JsonResponse({"success": True, "created": created})
+
+            elif "empleado_id" in data:
+                empleado_id = int(data.get("empleado_id"))
+                mes = int(data.get("mes"))
+                monto_raw = data.get("monto", "")
+                empleado = Empleado.objects.get(id=empleado_id, empresa=empresa)
+
+                if monto_raw in ("", None):
+                    PresupuestoNomina.objects.filter(
+                        empresa=empresa, empleado=empleado, anio=anio, mes=mes
+                    ).delete()
+                else:
+                    monto = Decimal(str(monto_raw))
+                    if monto < 0:
+                        raise ValueError("El monto no puede ser negativo.")
+                    PresupuestoNomina.objects.update_or_create(
+                        empresa=empresa, empleado=empleado, anio=anio, mes=mes,
+                        defaults={"monto": monto},
+                    )
+                return JsonResponse({"success": True})
+
+            return JsonResponse({"success": False, "error": "Missing data"}, status=400)
+        except (TipoGasto.DoesNotExist, Empleado.DoesNotExist, ValueError, InvalidOperation, TypeError, KeyError) as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    # ============================================================
+    # SECCION 1 -- Cuentas contables de "Gastos Nomina"
+    # (mismo patron que matriz_presupuesto_gastos, pero filtrado
+    # SOLO a ese grupo -- en vez de excluirlo)
+    # ============================================================
+    presupuestos_qs = (
+        Presupuesto.objects.filter(
+            empresa=empresa, anio=anio, grupo__nombre="Gastos Nomina"
+        )
+        .values("grupo_id", "subgrupo_id", "tipo_gasto_id", "mes")
+        .annotate(monto=Sum("monto"))
+    )
+
+    tipos_cuenta = (
+        TipoGasto.objects.filter(empresa=empresa, subgrupo__grupo__nombre="Gastos Nomina")
+        .select_related("subgrupo", "subgrupo__grupo")
+        .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
+    )
+
+    cuentas_grupos = []
+    cuentas_grupos_dict = {}
+    for tipo in tipos_cuenta:
+        grupo, subgrupo = tipo.subgrupo.grupo, tipo.subgrupo
+        cuentas_grupos_dict.setdefault(grupo.id, {
+            "id": grupo.id, "nombre": grupo.nombre, "subgrupos": {}, "subtotal": [0] * 12,
+        })
+        cuentas_grupos_dict[grupo.id]["subgrupos"].setdefault(subgrupo.id, {
+            "id": subgrupo.id, "nombre": subgrupo.nombre, "tipos": {}, "subtotal": [0] * 12,
+        })
+        cuentas_grupos_dict[grupo.id]["subgrupos"][subgrupo.id]["tipos"].setdefault(tipo.id, {
+            "id": tipo.id, "nombre": tipo.nombre, "montos": {m: 0 for m in meses}, "subtotal": [0] * 12,
+        })
+
+    for p in presupuestos_qs:
+        gid, sgid, tid, mes, monto = p["grupo_id"], p["subgrupo_id"], p["tipo_gasto_id"], p["mes"], p["monto"]
+        if gid in cuentas_grupos_dict and sgid in cuentas_grupos_dict[gid]["subgrupos"] \
+           and tid in cuentas_grupos_dict[gid]["subgrupos"][sgid]["tipos"]:
+            cuentas_grupos_dict[gid]["subgrupos"][sgid]["tipos"][tid]["montos"][mes] = monto
+
+    totales_mes_cuentas = [0] * 12
+    for grupo in cuentas_grupos_dict.values():
+        for subgrupo in grupo["subgrupos"].values():
+            for tipo in subgrupo["tipos"].values():
+                for i, mes in enumerate(meses):
+                    valor = tipo["montos"].get(mes, 0) or 0
+                    tipo["subtotal"][i] = valor
+                    subgrupo["subtotal"][i] += valor
+                    grupo["subtotal"][i] += valor
+                    totales_mes_cuentas[i] += valor
+
+    for grupo in cuentas_grupos_dict.values():
+        subgrupos_list = []
+        for subgrupo in grupo["subgrupos"].values():
+            subgrupo["tipos"] = list(subgrupo["tipos"].values())
+            subgrupos_list.append(subgrupo)
+        grupo["subgrupos"] = subgrupos_list
+        cuentas_grupos.append(grupo)
+
+    # ============================================================
+    # SECCION 2 -- Por empleado (PresupuestoNomina)
+    # ============================================================
+    empleados = Empleado.objects.filter(empresa=empresa, activo=True).order_by("departamento", "nombre")
+
+    presup_emp_dict = {}
+    for p in PresupuestoNomina.objects.filter(empresa=empresa, anio=anio):
+        presup_emp_dict.setdefault(p.empleado_id, {})[p.mes] = float(p.monto)
+
+    deptos_dict = defaultdict(list)
+    for emp in empleados:
+        montos_emp = presup_emp_dict.get(emp.id, {})
+        deptos_dict[emp.get_departamento_display()].append({
+            "id": emp.id, "nombre": emp.nombre, "montos": montos_emp,
+            "subtotal": [montos_emp.get(m, 0) for m in range(1, 13)],
+        })
+
+    deptos = []
+    totales_mes_empleados = [0] * 12
+    for depto_nombre, empleados_depto in deptos_dict.items():
+        depto_subtotal = [0] * 12
+        for emp_row in empleados_depto:
+            for i in range(12):
+                depto_subtotal[i] += emp_row["subtotal"][i]
+                totales_mes_empleados[i] += emp_row["subtotal"][i]
+        deptos.append({
+            "id": depto_nombre.replace(" ", "_"), "nombre": depto_nombre,
+            "subtotal": depto_subtotal, "empleados": empleados_depto,
+        })
+
+    return render(request, "presupuestos/matriz_nomina.html", {
+        "empresa": empresa, "empresas": empresas, "is_super": request.user.is_superuser,
+        "anio": anio, "anios": anios, "mes_actual_num": mes_actual_num,
+        "meses_nombres": meses_nombres,
+        "cuentas_grupos": cuentas_grupos,
+        "totales_mes_cuentas": totales_mes_cuentas,
+        "deptos": deptos,
+        "totales_mes_empleados": totales_mes_empleados,
+        "edicion_habilitada": True,
+        "bloqueado": False,
+    })
+
+
+
+# comparativa presupuestal nomina anual vs nomina real anual
+@login_required
+def reporte_presupuesto_vs_nomina(request):
+    anio = int(request.GET.get("anio", datetime.now().year))
+    medicion = request.GET.get("medicion", "curso")
+    meses = list(range(1, 13))
+    meses_nombres = [calendar.month_name[m] for m in meses]
+
+    if medicion == "mes":
+        mes_actual = int(request.GET.get("mes", datetime.now().month))
+        meses = [mes_actual]
+        meses_nombres = [calendar.month_name[mes_actual]]
+    elif medicion == "semestre1":
+        meses = list(range(1, 7))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "semestre2":
+        meses = list(range(7, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    elif medicion == "anual":
+        meses = list(range(1, 13))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+    else:  # 'curso' o default
+        if anio == datetime.now().year:
+            mes_actual = datetime.now().month
+        else:
+            mes_actual = 12
+        meses = list(range(1, mes_actual + 1))
+        meses_nombres = [calendar.month_name[m] for m in meses]
+
+    # Empresa y permisos
+    if request.user.is_superuser:
+        empresas = Empresa.objects.all()
+        empresa_id = request.GET.get("empresa")
+        empresa = Empresa.objects.get(pk=empresa_id) if empresa_id else empresas.first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+        empresas = None
+
+    empleados = Empleado.objects.filter(empresa=empresa, activo=True).order_by(
+        "departamento", "nombre"
+    )
+
+    # Diccionario: {(empleado_id, mes): monto presupuestado}
+    presupuestos = PresupuestoNomina.objects.filter(empresa=empresa, anio=anio)
+    presup_dict = {(p.empleado_id, p.mes): float(p.monto) for p in presupuestos}
+
+    # Diccionario: {(empleado_id, mes): monto realmente dispersado}
+    # -- solo recibos de dispersiones CONFIRMADAS, estatus "ok" (no
+    # duplicados/errores/sin_match, que nunca generaron gasto real).
+    recibos = (
+        ReciboNomina.objects.annotate(
+            anio_pago=ExtractYear("fecha_pago"),
+            mes_pago=ExtractMonth("fecha_pago"),
+        )
+        .filter(
+            anio_pago=anio,
+            dispersion__empresa=empresa,
+            dispersion__estatus="confirmado",
+            estatus="ok",
+        )
+        .values("empleado_id", "mes_pago")
+        .annotate(total=Sum("neto_pagado"))
+    )
+    real_dict = {(r["empleado_id"], r["mes_pago"]): float(r["total"]) for r in recibos}
+
+    # Estructura: departamento > empleados
+    deptos_dict = defaultdict(list)
+    for emp in empleados:
+        deptos_dict[emp.get_departamento_display()].append(emp)
+
+    comparativo = []
+    total_general_presup = 0
+    total_general_real = 0
+    total_general_var = 0
+
+    num_meses = len(meses)
+    meses_idx = list(range(num_meses))
+
+    for depto_nombre, empleados_depto in deptos_dict.items():
+        depto_row = {
+            "nombre": depto_nombre,
+            "empleados": [],
+            "total": [0] * num_meses,
+            "total_real": [0] * num_meses,
+            "total_var": [0] * num_meses,
+            "pct_var": [None] * num_meses,
+        }
+        depto_total_presup = 0
+        depto_total_real = 0
+        depto_total_var = 0
+
+        for emp in empleados_depto:
+            row = {"nombre": emp.nombre, "meses": []}
+            anual_presup = 0
+            anual_real = 0
+            anual_var = 0
+
+            for i, mes in enumerate(meses):
+                presupuesto = presup_dict.get((emp.id, mes), 0)
+                real = real_dict.get((emp.id, mes), 0)
+                variacion = real - presupuesto
+                row["meses"].append({
+                    "presupuesto": presupuesto, "real": real,
+                    "variacion": variacion, "mes": mes,
+                })
+                depto_row["total"][i] += presupuesto
+                depto_row["total_real"][i] += real
+                depto_row["total_var"][i] += variacion
+
+                anual_presup += presupuesto
+                anual_real += real
+                anual_var += variacion
+
+            row["total_anual_presup"] = anual_presup
+            row["total_anual_real"] = anual_real
+            row["total_anual_var"] = anual_var
+            row["total_anual_pct"] = (
+                int(round(anual_var / anual_presup * 100)) if anual_presup else ""  # noqa: RUF046
+            )
+
+            depto_row["empleados"].append(row)
+            depto_total_presup += anual_presup
+            depto_total_real += anual_real
+            depto_total_var += anual_var
+
+        for i in range(num_meses):
+            if depto_row["total"][i]:
+                depto_row["pct_var"][i] = round(depto_row["total_var"][i] / depto_row["total"][i] * 100)
+            else:
+                depto_row["pct_var"][i] = ""
+        depto_row["total_anual_presup"] = depto_total_presup
+        depto_row["total_anual_real"] = depto_total_real
+        depto_row["total_anual_var"] = depto_total_var
+        depto_row["total_anual_pct"] = (
+            int(round(depto_total_var / depto_total_presup * 100)) if depto_total_presup else ""  # noqa: RUF046
+        )
+
+        comparativo.append(depto_row)
+        total_general_presup += depto_total_presup
+        total_general_real += depto_total_real
+        total_general_var += depto_total_var
+
+    tot_gen_presup = [0] * num_meses
+    tot_gen_real = [0] * num_meses
+    tot_gen_var = [0] * num_meses
+    tot_gen_pct = [None] * num_meses
+
+    for i in range(num_meses):
+        for depto in comparativo:
+            tot_gen_presup[i] += depto["total"][i]
+            tot_gen_real[i] += depto["total_real"][i]
+            tot_gen_var[i] += depto["total_var"][i]
+        tot_gen_pct[i] = round(tot_gen_var[i] / tot_gen_presup[i] * 100) if tot_gen_presup[i] else None
+
+    total_general_pct = (
+        int(round(total_general_var / total_general_presup * 100)) if total_general_presup else ""  # noqa: RUF046
+    )
+
+    return render(
+        request,
+        "presupuestos/reporte_comparativo_nomina.html",
+        {
+            "anio": anio,
+            "anios": list(range(datetime.now().year, 2021, -1)),  # noqa: DTZ005
+            "empresa": empresa,
+            "empresas": empresas,
+            "meses": meses,
+            "meses_nombres": meses_nombres,
+            "meses_idx": meses_idx,
+            "medicion": medicion,
+            "comparativo": comparativo,
+            "tot_gen_presup": tot_gen_presup,
+            "tot_gen_real": tot_gen_real,
+            "tot_gen_var": tot_gen_var,
+            "tot_gen_pct": tot_gen_pct,
+            "total_general_presup": total_general_presup,
+            "total_general_real": total_general_real,
+            "total_general_var": total_general_var,
+            "total_general_pct": total_general_pct,
+            "medicion_opciones": [
+                ("curso", "Período actual"),
+                ("mes", "Mes actual"),
+                ("semestre1", "1er semestre"),
+                ("semestre2", "2do semestre"),
+                ("anual", "Año completo"),
+            ],
+        },
+    )

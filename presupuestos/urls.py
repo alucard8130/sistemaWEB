@@ -1,9 +1,10 @@
 # presupuestos/urls.py
 from django.urls import path
+
 from . import views
 
 urlpatterns = [
-    path('presupuestos/matriz/', views.matriz_presupuesto, name='matriz_presupuesto'),
+    path('presupuestos/matriz-gastos/', views.matriz_presupuesto_gastos, name='matriz_presupuesto_gastos'),
     #path('presupuestos/matriz_simple/', views.matriz_simple_presupuesto, name='matriz_simple_presupuesto'),
     path('presupuestos/exportar_excel/', views.exportar_presupuesto_excel, name='exportar_presupuesto_excel'),
     path('presupuestos/comparativo/', views.reporte_presupuesto_vs_gasto, name='reporte_presupuesto_vs_gasto'),
@@ -18,6 +19,8 @@ urlpatterns = [
     path('descargar-plantilla-matriz-presupuesto-ingresos/', views.descargar_plantilla_matriz_presupuesto_ingresos, name='descargar_plantilla_matriz_presupuesto_ingresos'),
     path('presupuestos/copiar-gastos/', views.copiar_presupuesto_gastos_a_nuevo_anio, name='copiar_presupuesto_gastos_a_nuevo_anio'),
     path('presupuestos/copiar-ingresos/', views.copiar_presupuesto_ingresos_a_nuevo_anio, name='copiar_presupuesto_ingresos_a_nuevo_anio'),
+    path('presupuestos/comparativo-nomina/', views.reporte_presupuesto_vs_nomina, name='reporte_presupuesto_vs_nomina'),
+    path('presupuestos/matriz-nomina/', views.matriz_presupuesto_nomina, name='matriz_presupuesto_nomina'),
 
 ]
 
