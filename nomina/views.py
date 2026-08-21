@@ -15,7 +15,7 @@ from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria
 from gastos.models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
-from nomina.models import DispersionNomina, ReciboNomina
+from nomina.models import ConceptoNomina, DispersionNomina, MapeoConceptoNomina, ReciboNomina
 from nomina.utils import XMLNominaInvalido, parsear_xml_nomina
 from sanitarios.views import _empresa_actual
 
@@ -37,7 +37,7 @@ def validar_periodo_nomina(cuenta, periodo_inicio, periodo_fin, user=None):
 
 @login_required
 def nueva_dispersion_nomina(request):
-    empresa = _empresa_actual(request)  # ajusta a tu helper real de empresa actual
+    empresa = _empresa_actual(request)  
     if not empresa:
         messages.error(request, "No se pudo determinar tu empresa.")
         return redirect("dashboard_inicio")
@@ -56,8 +56,7 @@ def nueva_dispersion_nomina(request):
         if not archivos:
             messages.error(request, "Sube al menos un archivo XML.")
             return redirect("nueva_dispersion_nomina")
-        
-        
+
         with transaction.atomic():
             dispersion = DispersionNomina.objects.create(
                 empresa=empresa, cuenta_bancaria=cuenta, registrado_por=request.user,
@@ -67,6 +66,8 @@ def nueva_dispersion_nomina(request):
 
             for archivo in archivos:
                 recibo = ReciboNomina(dispersion=dispersion, archivo_xml=archivo)
+                datos = None  # NUEVO -- se usa despues del save() para saber si hay conceptos que guardar
+
                 try:
                     contenido = archivo.read()
                     datos = parsear_xml_nomina(contenido)
@@ -89,13 +90,13 @@ def nueva_dispersion_nomina(request):
                     if datos["periodo_fin"]:
                         periodos_fin.append(datos["periodo_fin"])
 
-                    # ¿Ya se había procesado este folio fiscal antes? (en cualquier dispersión)
+                    # Ya se habia procesado este folio fiscal antes? (en cualquier dispersion)
                     if datos["uuid_fiscal"] and ReciboNomina.objects.filter(
                         uuid_fiscal=datos["uuid_fiscal"]
                     ).exclude(dispersion=dispersion).exists():
                         recibo.estatus = "duplicado"
                     else:
-                        # Cruce automático por RFC, dentro de la misma empresa
+                        # Cruce automatico por RFC, dentro de la misma empresa
                         empleado = Empleado.objects.filter(
                             empresa=empresa, rfc=datos["rfc_receptor"], activo=True
                         ).first()
@@ -105,7 +106,7 @@ def nueva_dispersion_nomina(request):
                         else:
                             recibo.estatus = "sin_match"
 
-                    # Validación del período
+                    # Validacion del periodo
                     permitido, error = validar_periodo_nomina(
                         cuenta,
                         recibo.periodo_inicio,
@@ -117,17 +118,33 @@ def nueva_dispersion_nomina(request):
                         recibo.estatus = "error"
                         recibo.error_detalle = (
                             f"Periodo {recibo.periodo_inicio} a {recibo.periodo_fin} "
-                            f"no está abierto para dispersión: {error}"
+                            f"no esta abierto para dispersion: {error}"
                         )
 
                 except XMLNominaInvalido as e:
                     recibo.estatus = "error"
                     recibo.error_detalle = str(e)
 
-            
                 recibo.save()
 
-            # Autocompleta fecha/periodo de la dispersión con lo que traían los XML
+                # NUEVO -- guarda el detalle de conceptos (percepciones,
+                # deducciones, otros pagos), si el XML se pudo leer. Se
+                # guarda sin importar el estatus final del recibo (ok,
+                # sin_match, duplicado) -- solo se omite si el XML ni
+                # siquiera se pudo parsear.
+                if datos and datos.get("conceptos"):
+                    ConceptoNomina.objects.bulk_create([
+                        ConceptoNomina(
+                            recibo=recibo,
+                            tipo=c["tipo"],
+                            clave=c["clave"],
+                            concepto=c["concepto"],
+                            importe=c["importe"],
+                        )
+                        for c in datos["conceptos"]
+                    ])
+
+            # Autocompleta fecha/periodo de la dispersion con lo que traian los XML
             if fechas_pago:
                 dispersion.fecha_pago = max(fechas_pago)
             if periodos_inicio:
@@ -271,7 +288,39 @@ def confirmar_dispersion_nomina(request, dispersion_id):
         )
         return redirect("revisar_dispersion_nomina", dispersion_id=dispersion.id)
 
-    # Asegura que exista el Grupo/Tipo de gasto fijo para nómina
+    recibos_ok = list(
+        dispersion.recibos.filter(estatus="ok").select_related("empleado").prefetch_related("conceptos")
+    )
+
+    # ============================================================
+    # NUEVO -- valida que TODOS los conceptos de deduccion/otro pago
+    # de esta dispersion ya tengan un mapeo a una cuenta contable
+    # existente. Si falta alguno, se bloquea la confirmacion -- GESAC
+    # nunca adivina ni crea una cuenta nueva para estos.
+    # ============================================================
+    conceptos_a_mapear = set()
+    for recibo in recibos_ok:
+        for concepto in recibo.conceptos.all():
+            if concepto.tipo in ("deduccion", "otro_pago") and concepto.importe > 0:
+                conceptos_a_mapear.add(concepto.concepto)
+
+    mapeos_existentes = set(
+        MapeoConceptoNomina.objects.filter(empresa=empresa, concepto_xml__in=conceptos_a_mapear)
+        .values_list("concepto_xml", flat=True)
+    )
+    conceptos_sin_mapear = conceptos_a_mapear - mapeos_existentes
+
+    if conceptos_sin_mapear:
+        messages.error(
+            request,
+            "Hay conceptos de deduccion/otro pago sin mapear a una cuenta contable: "
+            + ", ".join(sorted(conceptos_sin_mapear))
+            + ". Mapealos en \"Mapeo de Conceptos de Nomina\" antes de confirmar.",
+        )
+        return redirect("revisar_dispersion_nomina", dispersion_id=dispersion.id)
+
+    # Asegura que exista el Grupo/Subgrupo fijo para nomina -- igual que
+    # como ya se registran las solicitudes manuales de sueldo.
     grupo_nomina, _ = GrupoGasto.objects.get_or_create(
         nombre="Gastos Nomina", defaults={"es_exento_iva": True}
     )
@@ -282,47 +331,86 @@ def confirmar_dispersion_nomina(request, dispersion_id):
     subgrupo_nomina, _ = SubgrupoGasto.objects.get_or_create(
         grupo=grupo_nomina, nombre="Sueldos y salarios"
     )
-    # tipo_gasto_nomina, _ = TipoGasto.objects.get_or_create(
-    #     empresa=empresa, subgrupo=subgrupo_nomina, nombre="Dispersión de Nómina",
-    # )
-    
+
     creados = 0
     with transaction.atomic():
-        for recibo in dispersion.recibos.filter(estatus="ok"):
-            # NUEVO -- un TipoGasto POR EMPLEADO (ej. "Sueldo Ana Rocha"),
-            # igual que ya haces al registrar sueldos manualmente. Si ya
-            # existe (porque ese empleado ya cobró antes), se reutiliza
-            # el mismo -- nunca se duplica.
-            tipo_gasto_empleado, _ = TipoGasto.objects.get_or_create(
-            empresa=empresa, subgrupo=subgrupo_nomina,
-            nombre=f"Sueldo {recibo.empleado.nombre}",
-            )
+        for recibo in recibos_ok:
+            gasto_sueldo_base = None  # el que queda como "recibo.gasto" al final
 
-            gasto = Gasto.objects.create(
-                empresa=empresa,
-                empleado=recibo.empleado,
-                tipo_gasto=tipo_gasto_empleado,
-                descripcion=f"Nómina {recibo.periodo_inicio} a {recibo.periodo_fin} — {recibo.empleado.nombre}",
-                fecha=recibo.fecha_pago or dispersion.fecha_pago,
-                monto=recibo.neto_pagado,
-                folio_comprobante=recibo.uuid_fiscal,
-                estatus="pendiente",
-                observaciones="Generado automáticamente desde Dispersión de Nómina.",
-            )
-            PagoGasto.objects.create(
-                gasto=gasto,
-                fecha_pago=recibo.fecha_pago or dispersion.fecha_pago,
-                monto=recibo.neto_pagado,
-                forma_pago="transferencia",
-                referencia=f"Dispersión de nómina — folio fiscal {recibo.uuid_fiscal or 'N/D'}",
-                registrado_por=request.user,
-                cuenta_bancaria=dispersion.cuenta_bancaria,
-            )
-            gasto.actualizar_estatus()
+            for concepto in recibo.conceptos.all():
+                if concepto.importe <= 0:
+                    continue  # no genera gasto de $0
 
-            recibo.gasto = gasto
+                if concepto.tipo == "percepcion":
+                    # NUEVO -- el sueldo base (clave SAT "001") SIEMPRE
+                    # usa el nombre ya establecido "Sueldo {empleado}"
+                    # (singular), sin importar como venga redactado el
+                    # concepto en el XML ("Sueldos", "Sueldo", etc.) --
+                    # evita duplicar la cuenta que ya corregimos.
+                    if concepto.clave == "001":
+                        nombre_cuenta = f"Sueldo {recibo.empleado.nombre}"
+                    else:
+                        nombre_cuenta = f"{concepto.concepto} {recibo.empleado.nombre}"
+
+                    tipo_gasto, _ = TipoGasto.objects.get_or_create(
+                        empresa=empresa, subgrupo=subgrupo_nomina, nombre=nombre_cuenta,
+                    )
+                else:
+                    # Deduccion u Otro Pago -- SIEMPRE via el mapeo ya
+                    # validado arriba, nunca se crea una cuenta nueva aqui.
+                    mapeo = MapeoConceptoNomina.objects.filter(
+                        empresa=empresa, concepto_xml=concepto.concepto
+                    ).first()
+                    if not mapeo:
+                        continue  # defensivo -- ya se valido que existe
+                    tipo_gasto = mapeo.tipo_gasto
+
+                gasto = Gasto.objects.create(
+                    empresa=empresa,
+                    empleado=recibo.empleado,
+                    tipo_gasto=tipo_gasto,
+                    descripcion=(
+                        f"Nómina {recibo.periodo_inicio} a {recibo.periodo_fin} — "
+                        f"{recibo.empleado.nombre} — {concepto.concepto}"
+                    ),
+                    fecha=recibo.fecha_pago or dispersion.fecha_pago,
+                    monto=concepto.importe,
+                    folio_comprobante=recibo.uuid_fiscal,
+                    estatus="pendiente",
+                    observaciones=f"Dispersión de Nómina ({concepto.get_tipo_display()}).",
+                )
+
+                # NUEVO -- solo las PERCEPCIONES y OTROS PAGOS representan
+                # salida real de efectivo en este momento (van directo en
+                # la transferencia al empleado). Las DEDUCCIONES son
+                # retenciones -- el dinero YA esta descontado del neto
+                # pagado, pero la empresa todavia no se lo entrega al SAT/
+                # IMSS/etc., asi que ese Gasto se queda "pendiente" hasta
+                # que se registre ese pago por separado, como cualquier
+                # otro gasto normal.
+                if concepto.tipo in ("percepcion", "otro_pago"):
+                    PagoGasto.objects.create(
+                        gasto=gasto,
+                        fecha_pago=recibo.fecha_pago or dispersion.fecha_pago,
+                        monto=concepto.importe,
+                        forma_pago="transferencia",
+                        referencia=f"Dispersión de nómina — folio fiscal {recibo.uuid_fiscal or 'N/D'}",
+                        registrado_por=request.user,
+                        cuenta_bancaria=dispersion.cuenta_bancaria,
+                    )
+                    gasto.actualizar_estatus()
+
+                concepto.gasto = gasto
+                concepto.save(update_fields=["gasto"])
+                creados += 1
+
+                if concepto.tipo == "percepcion" and concepto.clave == "001":
+                    gasto_sueldo_base = gasto
+
+            # recibo.gasto se queda como referencia rapida al gasto del
+            # sueldo base -- el detalle completo vive en recibo.conceptos.
+            recibo.gasto = gasto_sueldo_base
             recibo.save(update_fields=["gasto"])
-            creados += 1
 
         dispersion.estatus = "confirmado"
         dispersion.fecha_confirmacion = django_timezone.now()
@@ -330,7 +418,7 @@ def confirmar_dispersion_nomina(request, dispersion_id):
 
     messages.success(
         request,
-        f"✅ Dispersión confirmada -- {creados} gasto(s) de nómina generado(s) y marcado(s) como pagados.",
+        f"✅ Dispersión confirmada -- {creados} gasto(s) generado(s) (sueldos, deducciones y otros pagos detallados).",
     )
     return redirect("detalle_dispersion_nomina", dispersion_id=dispersion.id)
 
@@ -618,3 +706,68 @@ def exportar_dispersiones_nomina_excel(request):
     response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
     wb.save(response)
     return response
+
+
+
+@login_required
+def gestionar_mapeo_conceptos_nomina(request):
+    empresa = _empresa_actual(request)
+
+    if request.method == "POST":
+        concepto_xml = request.POST.get("concepto_xml", "").strip()
+        tipo_gasto_id = request.POST.get("tipo_gasto_id")
+
+        if not concepto_xml or not tipo_gasto_id:
+            messages.error(request, "Selecciona el concepto y la cuenta contable.")
+            return redirect("gestionar_mapeo_conceptos_nomina")
+
+        tipo_gasto = get_object_or_404(TipoGasto, id=tipo_gasto_id, empresa=empresa)
+
+        MapeoConceptoNomina.objects.update_or_create(
+            empresa=empresa, concepto_xml=concepto_xml,
+            defaults={"tipo_gasto": tipo_gasto},
+        )
+        messages.success(request, f"\"{concepto_xml}\" ahora se registra en la cuenta \"{tipo_gasto.nombre}\".")
+        return redirect("gestionar_mapeo_conceptos_nomina")
+
+    # Mapeos ya capturados
+    mapeos = MapeoConceptoNomina.objects.filter(empresa=empresa).select_related("tipo_gasto").order_by("concepto_xml")
+
+    # NUEVO -- detecta automaticamente que conceptos de deduccion/otro
+    # pago han aparecido en tus XML pero todavia no tienen mapeo, para
+    # que no tengas que adivinar cuales capturar.
+    conceptos_vistos = set(
+        ConceptoNomina.objects.filter(
+            recibo__dispersion__empresa=empresa, tipo__in=["deduccion", "otro_pago"],
+        ).values_list("concepto", flat=True).distinct()
+    )
+    conceptos_mapeados = set(mapeos.values_list("concepto_xml", flat=True))
+    conceptos_pendientes = sorted(conceptos_vistos - conceptos_mapeados)
+
+    # Cuentas disponibles para el selector -- todo el catalogo de gastos
+    # de la empresa (no solo las de nomina, por si acaso alguna
+    # deduccion se quiere mandar a otra cuenta).
+    cuentas_disponibles = (
+        TipoGasto.objects.filter(empresa=empresa)
+        .select_related("subgrupo", "subgrupo__grupo")
+        .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
+    )
+
+    return render(request, "nomina/mapeo_conceptos.html", {
+        "mapeos": mapeos,
+        "conceptos_pendientes": conceptos_pendientes,
+        "cuentas_disponibles": cuentas_disponibles,
+    })
+
+
+@login_required
+def eliminar_mapeo_concepto_nomina(request, mapeo_id):
+    empresa = _empresa_actual(request)
+    mapeo = get_object_or_404(MapeoConceptoNomina, id=mapeo_id, empresa=empresa)
+
+    if request.method == "POST":
+        concepto = mapeo.concepto_xml
+        mapeo.delete()
+        messages.success(request, f"Se quito el mapeo de \"{concepto}\".")
+
+    return redirect("gestionar_mapeo_conceptos_nomina")

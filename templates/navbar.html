@@ -170,6 +170,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_gasto' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Cuentas Gastos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_cuota' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Tipos de Cuota</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_otro_ingreso' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Otros Ingresos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'gestionar_mapeo_conceptos_nomina' %}"><i class="bi bi-gear me-2"></i>Mapeo de Conceptos Nómina</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'empleado_lista' %}"><i class="bi bi-person me-2"></i>Empleados</a></li>
               <li><hr class="dropdown-divider"></li>
@@ -371,7 +372,11 @@
               Nomina <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
+              {% if request.user.perfilusuario.empresa.es_premium  %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_dispersiones_nomina' %}"><i class="bi bi-cash-coin me-2"></i>Dispersión de Nómina</a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-cash-coin me-2"></i>Dispersión de Nómina (PREMIUM)</a></li>
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}"><i class="bi bi-list-ul me-2"></i>Incidencias</a></li>
               {% if request.user.perfilusuario.empresa.es_premium %}

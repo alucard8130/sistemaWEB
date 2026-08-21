@@ -1,0 +1,147 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapeo de Conceptos de Nómina — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .mc-header {
+            background: linear-gradient(135deg, #1a0533 0%, #4a1080 60%, #7b2fbe 100%);
+            color: white; border-radius: 16px; padding: 22px 28px; margin-bottom: 22px;
+        }
+        .mc-titulo { font-size: 1.3rem; font-weight: 700; }
+        .card-pendiente { border-left: 4px solid #d4ac0d; background: #fffbeb; }
+        .card-mapeado { border-left: 4px solid #1e8449; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-2 container mt-3">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container mt-3 pb-5">
+
+        <div class="mc-header">
+            <div class="mc-titulo"><i class="bi bi-diagram-3-fill me-2"></i>Mapeo de Conceptos de Nómina</div>
+            <div style="font-size:0.85rem;opacity:0.8;margin-top:4px;">
+                Indica a qué cuenta contable va cada deducción u otro pago que aparece en tus XML de nómina (ISR, IMSS, etc.).
+                Las percepciones (Sueldo, Vacaciones, Aguinaldo...) no necesitan mapeo -- se registran automáticamente por empleado.
+            </div>
+        </div>
+
+        {% if conceptos_pendientes %}
+        <div class="card card-pendiente mb-4">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>Conceptos sin mapear ({{ conceptos_pendientes|length }})</h5>
+                <p class="text-muted small">Estos conceptos ya aparecieron en algún XML que subiste, pero todavía no tienen cuenta asignada -- sin esto, no vas a poder confirmar dispersiones que los incluyan.</p>
+
+                {% for concepto in conceptos_pendientes %}
+                <form method="post" class="row g-2 align-items-end mb-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="concepto_xml" value="{{ concepto }}">
+                    <div class="col-auto">
+                        <span class="badge bg-warning text-dark" style="font-size:0.85rem;">{{ concepto }}</span>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-arrow-right text-muted"></i>
+                    </div>
+                    <div class="col-auto" style="min-width:280px;">
+                        <select name="tipo_gasto_id" class="form-select form-select-sm" required>
+                            <option value="">Selecciona la cuenta contable...</option>
+                            {% for cuenta in cuentas_disponibles %}
+                                <option value="{{ cuenta.id }}">{{ cuenta.subgrupo.grupo.nombre }} / {{ cuenta.subgrupo.nombre }} / {{ cuenta.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold">
+                            <i class="bi bi-check-lg"></i> Mapear
+                        </button>
+                    </div>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card card-mapeado">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-check-circle-fill text-success me-1"></i>Mapeos ya capturados ({{ mapeos|length }})</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle mt-2">
+                        <thead>
+                            <tr>
+                                <th>Concepto (XML)</th>
+                                <th>Cuenta contable</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mapeo in mapeos %}
+                            <tr>
+                                <td><span class="badge bg-secondary">{{ mapeo.concepto_xml }}</span></td>
+                                <td>{{ mapeo.tipo_gasto.subgrupo.grupo.nombre }} / {{ mapeo.tipo_gasto.subgrupo.nombre }} / <strong>{{ mapeo.tipo_gasto.nombre }}</strong></td>
+                                <td>
+                                    <form method="post" action="{% url 'eliminar_mapeo_concepto_nomina' mapeo.id %}" style="display:inline;"
+                                          onsubmit="return confirm('¿Quitar este mapeo? Las próximas dispersiones con este concepto se bloquearán hasta que lo vuelvas a mapear.');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Quitar mapeo">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted">Todavía no has capturado ningún mapeo.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-plus-circle me-1"></i>Agregar mapeo manualmente</h5>
+                <form method="post" class="row g-2 align-items-end">
+                    {% csrf_token %}
+                    <div class="col-md-5">
+                        <label class="form-label small">Concepto exacto (como aparece en el XML)</label>
+                        <input type="text" name="concepto_xml" class="form-control form-control-sm" placeholder="ej. ISR" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small">Cuenta contable</label>
+                        <select name="tipo_gasto_id" class="form-select form-select-sm" required>
+                            <option value="">Selecciona...</option>
+                            {% for cuenta in cuentas_disponibles %}
+                                <option value="{{ cuenta.id }}">{{ cuenta.subgrupo.grupo.nombre }} / {{ cuenta.subgrupo.nombre }} / {{ cuenta.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-save me-1"></i>Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

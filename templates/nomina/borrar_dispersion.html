@@ -98,7 +98,7 @@
                         <strong>{{ dispersion.notas|default:"Sin notas" }}</strong>
                     </div>
 
-                    <form method="post" class="mt-4">
+                    <form method="post" class="mt-4" >
                         {% csrf_token %}
                         <div class="d-flex justify-content-between pt-3 border-top reporte-link">
                             <a href="{% url 'lista_dispersiones_nomina' %}" class="btn-gesac-outline">

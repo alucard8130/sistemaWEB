@@ -85,6 +85,42 @@ def parsear_xml_nomina(archivo_bytes):
     # El neto realmente pagado -- percepciones + otros pagos, menos deducciones.
     neto_pagado = total_percepciones + total_otros_pagos - total_deducciones
 
+     # ---- NUEVO: detalle concepto por concepto ----
+    conceptos = []
+ 
+    nodo_percepciones = nomina.find("nomina12:Percepciones", NS)
+    if nodo_percepciones is not None:
+        for p in nodo_percepciones.findall("nomina12:Percepcion", NS):
+            gravado = _to_decimal(p.get("ImporteGravado"))
+            exento = _to_decimal(p.get("ImporteExento"))
+            conceptos.append({
+                "tipo": "percepcion",
+                "clave": p.get("Clave") or p.get("TipoPercepcion"),
+                "concepto": (p.get("Concepto") or "Percepcion sin nombre").strip(),
+                "importe": gravado + exento,
+            })
+ 
+    nodo_deducciones = nomina.find("nomina12:Deducciones", NS)
+    if nodo_deducciones is not None:
+        for d in nodo_deducciones.findall("nomina12:Deduccion", NS):
+            conceptos.append({
+                "tipo": "deduccion",
+                "clave": d.get("Clave") or d.get("TipoDeduccion"),
+                "concepto": (d.get("Concepto") or "Deduccion sin nombre").strip(),
+                "importe": _to_decimal(d.get("Importe")),
+            })
+ 
+    nodo_otros_pagos = nomina.find("nomina12:OtrosPagos", NS)
+    if nodo_otros_pagos is not None:
+        for o in nodo_otros_pagos.findall("nomina12:OtroPago", NS):
+            conceptos.append({
+                "tipo": "otro_pago",
+                "clave": o.get("Clave") or o.get("TipoOtroPago"),
+                "concepto": (o.get("Concepto") or "Otro pago sin nombre").strip(),
+                "importe": _to_decimal(o.get("Importe")),
+            })
+
+
     # --- Folio fiscal (UUID) -- para detectar duplicados ---
     tfd = complemento.find("tfd:TimbreFiscalDigital", NS)
     uuid_fiscal = tfd.get("UUID") if tfd is not None else None
@@ -103,4 +139,5 @@ def parsear_xml_nomina(archivo_bytes):
         "total_deducciones": total_deducciones,
         "total_otros_pagos": total_otros_pagos,
         "neto_pagado": neto_pagado,
+        "conceptos": conceptos,
     }
