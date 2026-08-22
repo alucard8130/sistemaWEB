@@ -37,6 +37,7 @@ class CuentaContable(models.Model):
     @property
     def es_cuenta_mayor(self):
         return self.cuenta_padre_id is None
+
     
 class CargaCatalogoSesion(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -48,6 +49,7 @@ class CargaCatalogoSesion(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente_revision')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
 
 class CargaCatalogoFila(models.Model):
     sesion = models.ForeignKey(CargaCatalogoSesion, on_delete=models.CASCADE, related_name='filas')
@@ -87,6 +89,7 @@ class GrupoGasto(models.Model):
     def __str__(self):
         return self.nombre
 
+
 class SubgrupoGasto(models.Model):
     grupo = models.ForeignKey('GrupoGasto', on_delete=models.CASCADE, related_name='subgrupos')
     nombre = models.CharField(max_length=100)
@@ -107,6 +110,7 @@ class TipoGasto(models.Model):
 
     def __str__(self):
         return f"{self.subgrupo.nombre}/{self.nombre}"
+
 
 class Gasto(models.Model):
     empresa = models.ForeignKey(Empresa,on_delete=models.CASCADE,null=True,blank=True)
@@ -183,7 +187,6 @@ class Gasto(models.Model):
         self.save()
    
         
-
 class PagoGasto(models.Model):
     gasto = models.ForeignKey('Gasto', on_delete=models.CASCADE, related_name='pagos')
     fecha_pago = models.DateField()

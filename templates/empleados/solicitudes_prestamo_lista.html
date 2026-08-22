@@ -1,0 +1,236 @@
+{% load humanize %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitudes de Préstamo — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        .in-header {
+            background: linear-gradient(135deg, #5a4400 0%, #8A6D00 60%, #b9960a 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(138,109,0,0.2);
+            position: relative; overflow: hidden;
+        }
+        .in-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.08);
+        }
+        .in-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .in-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .in-toolbar {
+            background: white; border-radius: 14px; padding: 16px 20px;
+            margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        .btn-crear-prestamo {
+            background: linear-gradient(135deg, #8A6D00, #b9960a); color: white; border: none;
+            border-radius: 10px; padding: 9px 18px; font-weight: 600; font-size: 0.85rem;
+            transition: all 0.15s; box-shadow: 0 2px 8px rgba(138,109,0,0.25);
+        }
+        .btn-crear-prestamo:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(138,109,0,0.35); color: white; }
+
+        .in-table-wrap { background: white; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); overflow: hidden; }
+        .in-table-scroll { overflow-x: auto; }
+        table.in-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.85rem; }
+        table.in-table thead th {
+            background: #5a4400; color: white; font-weight: 600; font-size: 0.72rem;
+            text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 14px;
+            white-space: nowrap; border-bottom: 2px solid #b9960a;
+        }
+        table.in-table tbody tr { transition: background 0.1s; border-bottom: 1px solid #f1f5f9; }
+        table.in-table tbody tr:hover { background: #fffdf5; }
+        table.in-table tbody td { padding: 11px 14px; color: #374151; vertical-align: middle; }
+
+        .badge-estatus { font-size: 0.75rem; font-weight: 600; padding: 5px 12px; border-radius: 20px; display: inline-block; border: none; cursor: pointer; }
+        .badge-pendiente { background: #FDF6E3; color: #8A6D00; }
+        .badge-aprobada { background: #E9F7EF; color: #1E8449; }
+        .badge-rechazada { background: #FDF0F0; color: #9C2B2B; }
+        .badge-liquidada { background: #EAF1F8; color: #1F4E79; }
+
+        .btn-accion { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: white; transition: all 0.15s; }
+        .btn-accion:hover { transform: translateY(-1px); }
+        .btn-imprimir { color: #1E8449; }
+        .btn-imprimir:hover { background: #1E8449; color: white; border-color: #1E8449; }
+
+        .no-data-row td { text-align: center; padding: 40px !important; color: #9ca3af; font-size: 0.9rem; }
+
+        .form-select, .form-control { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.85rem; }
+        .form-select:focus, .form-control:focus { border-color: #8A6D00; box-shadow: 0 0 0 3px rgba(138,109,0,0.12); }
+
+        .pagination .page-link { border-radius: 8px; margin: 0 2px; border: 1px solid #e2e8f0; color: #6b5900; }
+        .pagination .page-item.disabled .page-link { color: #b0bec5; }
+
+        .select-estatus-inline { font-size: 0.78rem; padding: 3px 8px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible container mt-3">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+
+        <div class="in-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3" style="position:relative;z-index:1;">
+                <div>
+                    <div class="in-titulo"><i class="bi bi-cash-coin me-2 reporte-link"></i>Solicitudes de Préstamo</div>
+                    <div class="in-subtitulo">Historial completo de préstamos solicitados por empleado, con su estatus y monto por parcialidad</div>
+                </div>
+                <a href="{% url 'solicitud_prestamo_crear' %}" class="btn btn-crear-prestamo reporte-link">
+                    <i class="bi bi-plus-circle-fill me-1"></i> Nueva Solicitud de Préstamo
+                </a>
+            </div>
+        </div>
+
+        <div class="in-toolbar">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small fw-bold text-muted mb-1">Empleado</label>
+                    <select name="empleado" class="form-select form-select-sm">
+                        <option value="">Todos los empleados</option>
+                        {% for empleado in empleados %}
+                            <option value="{{ empleado.id }}" {% if empleado_id == empleado.id|stringformat:"s" %}selected{% endif %}>{{ empleado.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small fw-bold text-muted mb-1">Estatus</label>
+                    <select name="estatus" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for valor, etiqueta in estatus_choices %}
+                            <option value="{{ valor }}" {% if estatus_filtro == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small fw-bold text-muted mb-1">Fecha inicio</label>
+                    <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio|default:'' }}">
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small fw-bold text-muted mb-1">Fecha fin</label>
+                    <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin|default:'' }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-primary btn-sm reporte-link">
+                        <i class="bi bi-funnel-fill me-1"></i> Filtrar
+                    </button>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'solicitudes_prestamo_lista' %}" class="btn btn-outline-secondary btn-sm reporte-link">
+                        <i class="bi bi-x-circle-fill me-1"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="in-table-wrap">
+            <div class="in-table-scroll">
+                <table class="in-table">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Fecha solicitud</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-center">Parcialidades</th>
+                            <th class="text-end">Monto/parcialidad</th>
+                            <th>Motivo</th>
+                            <th>Estatus</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in solicitudes %}
+                        <tr>
+                            <td><strong>{{ s.empleado }}</strong></td>
+                            <td>{{ s.fecha_solicitud|date:"d/m/Y" }}</td>
+                            <td class="text-end"><strong>${{ s.monto|floatformat:2|intcomma }}</strong></td>
+                            <td class="text-center">{{ s.numero_parcialidades }}</td>
+                            <td class="text-end">{% if s.monto_parcialidad %}${{ s.monto_parcialidad|floatformat:2|intcomma }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                            <td>{{ s.motivo|default:"—"|truncatechars:40 }}</td>
+                            <td>
+                                <form method="post" action="{% url 'solicitud_prestamo_cambiar_estatus' s.id %}?next={{ request.get_full_path|urlencode }}" class="d-inline">
+                                    {% csrf_token %}
+                                    <select name="estatus" onchange="this.form.submit()" class="select-estatus-inline badge-estatus badge-{{ s.estatus }}">
+                                        {% for valor, etiqueta in estatus_choices %}
+                                            <option value="{{ valor }}" {% if s.estatus == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'solicitud_prestamo_pdf' s.id %}" class="btn-accion btn-imprimir" title="Imprimir solicitud" target="_blank">
+                                    <i class="bi bi-printer-fill"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr class="no-data-row">
+                            <td colspan="8"><i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>No hay solicitudes de préstamo registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if solicitudes.has_other_pages %}
+        <nav aria-label="Paginación" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if solicitudes.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ solicitudes.previous_page_number }}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">Página {{ solicitudes.number }} de {{ solicitudes.paginator.num_pages }}</span></li>
+                {% if solicitudes.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ solicitudes.next_page_number }}">Siguiente</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var overlay = document.getElementById('loading-overlay');
+            function mostrarOverlay() {
+                if (overlay) overlay.style.display = 'flex';
+            }
+            var formFiltros = document.querySelector('form[method="get"]');
+            if (formFiltros) {
+                formFiltros.addEventListener('submit', mostrarOverlay);
+            }
+            document.querySelectorAll('a[href]:not([href^="#"])').forEach(function(link) {
+                if (link.target === '_blank') return; // no bloquear la pestaña de impresión
+                link.addEventListener('click', mostrarOverlay);
+            });
+        });
+    </script>
+</body>
+</html>

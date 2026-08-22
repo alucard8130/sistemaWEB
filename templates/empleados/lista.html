@@ -56,11 +56,17 @@
                 </a>
             {% endif %}
         </form>
-
-        <a href="{% url 'empleado_crear' %}" class="btn btn-crear mb-3 reporte-link">
-            <i class="bi bi-plus-circle me-1"></i> Nuevo empleado
-        </a>
-
+        <div class="mb-3 d-flex flex-wrap gap-2">
+            <a href="{% url 'empleado_crear' %}" class="btn btn-crear reporte-link">
+                <i class="bi bi-plus-circle me-1"></i> Registrar empleado
+            </a>
+            <a href="{% url 'solicitud_prestamo_crear' %}" class="btn btn-success reporte-link" title="Nueva solicitud de préstamo">
+                <i class="bi bi-cash-coin"></i> Nueva solicitud de préstamo
+            </a>
+            <a href="{% url 'solicitudes_prestamo_lista' %}" class="btn btn-outline-secondary reporte-link" title="Lista de solicitudes de préstamo">
+                <i class="bi bi-list-ul"></i> Lista de solicitudes
+            </a>
+        </div>
         <!-- Employee table -->
         <div class="table-responsive rounded-3 border" style='font-size:0.9rem;'> 
             <table class="table align-middle mb-0 shadow-sm table-hover">

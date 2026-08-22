@@ -1,21 +1,23 @@
 from django import forms
-from .models import Empleado, Incidencia
+
+from .models import Empleado, Incidencia, SolicitudPrestamo
+
 
 class EmpleadoForm(forms.ModelForm):
     class Meta:
         model = Empleado
-        fields = ['empresa', 'nombre','rfc', 'puesto', 'departamento','telefono', 'email', 'activo','hora_entrada_esperada', 'hora_salida_esperada', 'tolerancia_minutos',]
+        fields = ['empresa', 'nombre','rfc', 'puesto', 'departamento','telefono', 'email', 'activo','hora_entrada_esperada', 'hora_salida_esperada', 'tolerancia_minutos',]  # noqa: RUF012
 
-        widgets = {
+        widgets = {  # noqa: RUF012
                 'hora_entrada_esperada': forms.TimeInput(attrs={'type': 'time'}),
                 'hora_salida_esperada': forms.TimeInput(attrs={'type': 'time'}),
             }
-        labels = {
+        labels = {  # noqa: RUF012
                 'hora_entrada_esperada': 'Hora de entrada esperada',
                 'hora_salida_esperada': 'Hora de salida esperada',
                 'tolerancia_minutos': 'Tolerancia de retardo (minutos)',
             }
-        help_texts = {
+        help_texts = {  # noqa: RUF012
                 'hora_entrada_esperada': 'Se usa para el checador de asistencia: si el empleado marca su entrada después de esta hora + la tolerancia, se registra un retardo automáticamente.',
                 'tolerancia_minutos': 'Minutos de gracia antes de contar retardo (ej. 10 = hasta 10 min tarde no cuenta).',
             }
@@ -43,11 +45,12 @@ class EmpleadoForm(forms.ModelForm):
             elif isinstance(widget, (forms.TextInput, forms.Select, forms.EmailInput, forms.Textarea,forms.NumberInput)):
                 widget.attrs['class'] = 'form-control'
 
+
 class IncidenciaForm(forms.ModelForm):
     class Meta:
         model = Incidencia
-        fields = ['empleado', 'tipo', 'fecha', 'fecha_fin', 'dias', 'descripcion', 'numero_incapacidad_imss', 'importe']
-        widgets = {
+        fields = ['empleado', 'tipo', 'fecha', 'fecha_fin', 'dias', 'descripcion', 'numero_incapacidad_imss', 'importe']  # noqa: RUF012
+        widgets = {  # noqa: RUF012
             'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'descripcion': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
@@ -69,5 +72,19 @@ class IncidenciaForm(forms.ModelForm):
         if tipo == 'incapacidad' and not numero_incapacidad:
             self.add_error('numero_incapacidad_imss', 'Este campo es obligatorio para incidencias de incapacidad.')
         return cleaned_data
-    
+
+
+# ============================================================
+# forms.py -- agregar junto a IncidenciaForm
+# ============================================================
+class SolicitudPrestamoForm(forms.ModelForm):
+    class Meta:
+        model = SolicitudPrestamo
+        fields = ['empleado', 'monto', 'numero_parcialidades', 'motivo', 'fecha_primer_descuento']  # noqa: RUF012
+        widgets = {  # noqa: RUF012
+            'fecha_primer_descuento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+        }
+
+
+ 
 

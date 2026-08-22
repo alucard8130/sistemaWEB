@@ -1,5 +1,6 @@
 
 import xml.etree.ElementTree as ET
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,8 +15,12 @@ from openpyxl.utils import get_column_letter
 from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria
-from gastos.models import Gasto, GrupoGasto, PagoGasto, SubgrupoGasto, TipoGasto
-from nomina.models import ConceptoNomina, DispersionNomina, MapeoConceptoNomina, ReciboNomina
+from gastos.models import Gasto, GrupoGasto, SubgrupoGasto, TipoGasto
+from nomina.models import (
+    ConceptoNomina,
+    DispersionNomina,
+    ReciboNomina,
+)
 from nomina.utils import XMLNominaInvalido, parsear_xml_nomina
 from sanitarios.views import _empresa_actual
 
@@ -34,10 +39,9 @@ def validar_periodo_nomina(cuenta, periodo_inicio, periodo_fin, user=None):
 # ============================================================
 # Vista 1 -- Subir los XML de un periodo de nómina
 # ============================================================
-
 @login_required
 def nueva_dispersion_nomina(request):
-    empresa = _empresa_actual(request)  
+    empresa = _empresa_actual(request)  # ajusta a tu helper real de empresa actual
     if not empresa:
         messages.error(request, "No se pudo determinar tu empresa.")
         return redirect("dashboard_inicio")
@@ -139,7 +143,8 @@ def nueva_dispersion_nomina(request):
                             tipo=c["tipo"],
                             clave=c["clave"],
                             concepto=c["concepto"],
-                            importe=c["importe"],
+                            importe_gravado=c["importe_gravado"],
+                            importe_exento=c["importe_exento"],
                         )
                         for c in datos["conceptos"]
                     ])
@@ -267,6 +272,161 @@ def revisar_dispersion_nomina(request, dispersion_id):
 # Vista 3 -- Confirmar: crea Gasto + PagoGasto por cada recibo OK
 # ============================================================
 
+# @login_required
+# def confirmar_dispersion_nomina(request, dispersion_id):
+#     empresa = _empresa_actual(request)
+#     dispersion = get_object_or_404(DispersionNomina, id=dispersion_id, empresa=empresa)
+
+#     if dispersion.estatus == "confirmado":
+#         messages.info(request, "Esta dispersión ya fue confirmada.")
+#         return redirect("detalle_dispersion_nomina", dispersion_id=dispersion.id)
+
+#     if request.method != "POST":
+#         return redirect("revisar_dispersion_nomina", dispersion_id=dispersion.id)
+
+#     recibos_pendientes = dispersion.recibos.filter(estatus="sin_match")
+#     if recibos_pendientes.exists():
+#         messages.error(
+#             request,
+#             f"Todavía hay {recibos_pendientes.count()} recibo(s) sin asignar a un empleado. "
+#             f"Asígnalos antes de confirmar.",
+#         )
+#         return redirect("revisar_dispersion_nomina", dispersion_id=dispersion.id)
+
+#     recibos_ok = list(
+#         dispersion.recibos.filter(estatus="ok").select_related("empleado").prefetch_related("conceptos")
+#     )
+
+#     # ============================================================
+#     # NUEVO -- valida que TODOS los conceptos de deduccion/otro pago
+#     # de esta dispersion ya tengan un mapeo a una cuenta contable
+#     # existente. Si falta alguno, se bloquea la confirmacion -- GESAC
+#     # nunca adivina ni crea una cuenta nueva para estos.
+#     # ============================================================
+#     conceptos_a_mapear = set()
+#     for recibo in recibos_ok:
+#         for concepto in recibo.conceptos.all():
+#             if concepto.tipo in ("deduccion", "otro_pago") and concepto.importe > 0:
+#                 conceptos_a_mapear.add(concepto.concepto)
+
+#     mapeos_existentes = set(
+#         MapeoConceptoNomina.objects.filter(empresa=empresa, concepto_xml__in=conceptos_a_mapear)
+#         .values_list("concepto_xml", flat=True)
+#     )
+#     conceptos_sin_mapear = conceptos_a_mapear - mapeos_existentes
+
+#     if conceptos_sin_mapear:
+#         messages.error(
+#             request,
+#             "Hay conceptos de deduccion/otro pago sin mapear a una cuenta contable: "
+#             + ", ".join(sorted(conceptos_sin_mapear))
+#             + ". Mapealos en \"Mapeo de Conceptos de Nomina\" antes de confirmar.",
+#         )
+#         return redirect("revisar_dispersion_nomina", dispersion_id=dispersion.id)
+
+#     # Asegura que exista el Grupo/Subgrupo fijo para nomina -- igual que
+#     # como ya se registran las solicitudes manuales de sueldo.
+#     grupo_nomina, _ = GrupoGasto.objects.get_or_create(
+#         nombre="Gastos Nomina", defaults={"es_exento_iva": True}
+#     )
+#     if not grupo_nomina.es_exento_iva:
+#         grupo_nomina.es_exento_iva = True
+#         grupo_nomina.save(update_fields=["es_exento_iva"])
+
+#     subgrupo_nomina, _ = SubgrupoGasto.objects.get_or_create(
+#         grupo=grupo_nomina, nombre="Sueldos y salarios"
+#     )
+
+#     creados = 0
+#     with transaction.atomic():
+#         for recibo in recibos_ok:
+#             gasto_sueldo_base = None  # el que queda como "recibo.gasto" al final
+
+#             for concepto in recibo.conceptos.all():
+#                 if concepto.importe <= 0:
+#                     continue  # no genera gasto de $0
+
+#                 if concepto.tipo == "percepcion":
+#                     # NUEVO -- el sueldo base (clave SAT "001") SIEMPRE
+#                     # usa el nombre ya establecido "Sueldo {empleado}"
+#                     # (singular), sin importar como venga redactado el
+#                     # concepto en el XML ("Sueldos", "Sueldo", etc.) --
+#                     # evita duplicar la cuenta que ya corregimos.
+#                     if concepto.clave == "001":
+#                         nombre_cuenta = f"Sueldo {recibo.empleado.nombre}"
+#                     else:
+#                         nombre_cuenta = f"{concepto.concepto} {recibo.empleado.nombre}"
+
+#                     tipo_gasto, _ = TipoGasto.objects.get_or_create(
+#                         empresa=empresa, subgrupo=subgrupo_nomina, nombre=nombre_cuenta,
+#                     )
+#                 else:
+#                     # Deduccion u Otro Pago -- SIEMPRE via el mapeo ya
+#                     # validado arriba, nunca se crea una cuenta nueva aqui.
+#                     mapeo = MapeoConceptoNomina.objects.filter(
+#                         empresa=empresa, concepto_xml=concepto.concepto
+#                     ).first()
+#                     if not mapeo:
+#                         continue  # defensivo -- ya se valido que existe
+#                     tipo_gasto = mapeo.tipo_gasto
+
+#                 gasto = Gasto.objects.create(
+#                     empresa=empresa,
+#                     empleado=recibo.empleado,
+#                     tipo_gasto=tipo_gasto,
+#                     descripcion=(
+#                         f"Nómina {recibo.periodo_inicio} a {recibo.periodo_fin} — "
+#                         f"{recibo.empleado.nombre} — {concepto.concepto}"
+#                     ),
+#                     fecha=recibo.fecha_pago or dispersion.fecha_pago,
+#                     monto=concepto.importe,
+#                     folio_comprobante=recibo.uuid_fiscal,
+#                     estatus="pendiente",
+#                     observaciones=f"Dispersión de Nómina ({concepto.get_tipo_display()}).",
+#                 )
+
+#                 # NUEVO -- solo las PERCEPCIONES y OTROS PAGOS representan
+#                 # salida real de efectivo en este momento (van directo en
+#                 # la transferencia al empleado). Las DEDUCCIONES son
+#                 # retenciones -- el dinero YA esta descontado del neto
+#                 # pagado, pero la empresa todavia no se lo entrega al SAT/
+#                 # IMSS/etc., asi que ese Gasto se queda "pendiente" hasta
+#                 # que se registre ese pago por separado, como cualquier
+#                 # otro gasto normal.
+#                 if concepto.tipo in ("percepcion", "otro_pago"):
+#                     PagoGasto.objects.create(
+#                         gasto=gasto,
+#                         fecha_pago=recibo.fecha_pago or dispersion.fecha_pago,
+#                         monto=concepto.importe,
+#                         forma_pago="transferencia",
+#                         referencia=f"Dispersión de nómina — folio fiscal {recibo.uuid_fiscal or 'N/D'}",
+#                         registrado_por=request.user,
+#                         cuenta_bancaria=dispersion.cuenta_bancaria,
+#                     )
+#                     gasto.actualizar_estatus()
+
+#                 concepto.gasto = gasto
+#                 concepto.save(update_fields=["gasto"])
+#                 creados += 1
+
+#                 if concepto.tipo == "percepcion" and concepto.clave == "001":
+#                     gasto_sueldo_base = gasto
+
+#             # recibo.gasto se queda como referencia rapida al gasto del
+#             # sueldo base -- el detalle completo vive en recibo.conceptos.
+#             recibo.gasto = gasto_sueldo_base
+#             recibo.save(update_fields=["gasto"])
+
+#         dispersion.estatus = "confirmado"
+#         dispersion.fecha_confirmacion = django_timezone.now()
+#         dispersion.save(update_fields=["estatus", "fecha_confirmacion"])
+
+#     messages.success(
+#         request,
+#         f"✅ Dispersión confirmada -- {creados} gasto(s) generado(s) (sueldos, deducciones y otros pagos detallados).",
+#     )
+#     return redirect("detalle_dispersion_nomina", dispersion_id=dispersion.id)
+
 @login_required
 def confirmar_dispersion_nomina(request, dispersion_id):
     empresa = _empresa_actual(request)
@@ -292,33 +452,6 @@ def confirmar_dispersion_nomina(request, dispersion_id):
         dispersion.recibos.filter(estatus="ok").select_related("empleado").prefetch_related("conceptos")
     )
 
-    # ============================================================
-    # NUEVO -- valida que TODOS los conceptos de deduccion/otro pago
-    # de esta dispersion ya tengan un mapeo a una cuenta contable
-    # existente. Si falta alguno, se bloquea la confirmacion -- GESAC
-    # nunca adivina ni crea una cuenta nueva para estos.
-    # ============================================================
-    conceptos_a_mapear = set()
-    for recibo in recibos_ok:
-        for concepto in recibo.conceptos.all():
-            if concepto.tipo in ("deduccion", "otro_pago") and concepto.importe > 0:
-                conceptos_a_mapear.add(concepto.concepto)
-
-    mapeos_existentes = set(
-        MapeoConceptoNomina.objects.filter(empresa=empresa, concepto_xml__in=conceptos_a_mapear)
-        .values_list("concepto_xml", flat=True)
-    )
-    conceptos_sin_mapear = conceptos_a_mapear - mapeos_existentes
-
-    if conceptos_sin_mapear:
-        messages.error(
-            request,
-            "Hay conceptos de deduccion/otro pago sin mapear a una cuenta contable: "
-            + ", ".join(sorted(conceptos_sin_mapear))
-            + ". Mapealos en \"Mapeo de Conceptos de Nomina\" antes de confirmar.",
-        )
-        return redirect("revisar_dispersion_nomina", dispersion_id=dispersion.id)
-
     # Asegura que exista el Grupo/Subgrupo fijo para nomina -- igual que
     # como ya se registran las solicitudes manuales de sueldo.
     grupo_nomina, _ = GrupoGasto.objects.get_or_create(
@@ -335,82 +468,63 @@ def confirmar_dispersion_nomina(request, dispersion_id):
     creados = 0
     with transaction.atomic():
         for recibo in recibos_ok:
-            gasto_sueldo_base = None  # el que queda como "recibo.gasto" al final
+            if recibo.neto_pagado is None or recibo.neto_pagado <= 0:
+                continue
 
-            for concepto in recibo.conceptos.all():
-                if concepto.importe <= 0:
-                    continue  # no genera gasto de $0
+            # ============================================================
+            # UNA SOLA solicitud de gasto por empleado -- el monto es el
+            # NETO PAGADO (percepciones + otros pagos - deducciones), es
+            # decir, lo que realmente sale del banco hacia el empleado.
+            # Las percepciones individuales (Vacaciones, Aguinaldo, etc.)
+            # y las deducciones (IMSS, INFONAVIT, etc.) NO generan cuentas
+            # ni gastos aparte -- solo quedan como informacion exportable
+            # en recibo.conceptos (ver Excel de la dispersion).
+            # ============================================================
+            tipo_gasto, _ = TipoGasto.objects.get_or_create(
+                empresa=empresa, subgrupo=subgrupo_nomina,
+                nombre=f"{recibo.empleado.nombre.capitalize()}",
+            )
 
-                if concepto.tipo == "percepcion":
-                    # NUEVO -- el sueldo base (clave SAT "001") SIEMPRE
-                    # usa el nombre ya establecido "Sueldo {empleado}"
-                    # (singular), sin importar como venga redactado el
-                    # concepto en el XML ("Sueldos", "Sueldo", etc.) --
-                    # evita duplicar la cuenta que ya corregimos.
-                    if concepto.clave == "001":
-                        nombre_cuenta = f"Sueldo {recibo.empleado.nombre}"
-                    else:
-                        nombre_cuenta = f"{concepto.concepto} {recibo.empleado.nombre}"
+            gasto = Gasto.objects.create(
+                empresa=empresa,
+                empleado=recibo.empleado,
+                tipo_gasto=tipo_gasto,
+                descripcion=(
+                    f"Nómina {recibo.periodo_inicio} a {recibo.periodo_fin} — {recibo.empleado.nombre.capitalize()}"
+                ),
+                fecha=recibo.fecha_pago or dispersion.fecha_pago,
+                monto=recibo.neto_pagado,
+                folio_comprobante=recibo.uuid_fiscal,
+                estatus="pendiente",
+                observaciones=(
+                    "Dispersión de Nómina."
+                ),
+            )
+            # NOTA -- ya NO se crea PagoGasto aqui. El Gasto queda
+            # "pendiente" y el usuario lo paga desde la pantalla normal
+            # de Gastos cuando corresponda.
 
-                    tipo_gasto, _ = TipoGasto.objects.get_or_create(
-                        empresa=empresa, subgrupo=subgrupo_nomina, nombre=nombre_cuenta,
-                    )
-                else:
-                    # Deduccion u Otro Pago -- SIEMPRE via el mapeo ya
-                    # validado arriba, nunca se crea una cuenta nueva aqui.
-                    mapeo = MapeoConceptoNomina.objects.filter(
-                        empresa=empresa, concepto_xml=concepto.concepto
-                    ).first()
-                    if not mapeo:
-                        continue  # defensivo -- ya se valido que existe
-                    tipo_gasto = mapeo.tipo_gasto
+            # ============================================================
+            # ISR retenido -- se detecta entre las deducciones del recibo,
+            # y se guarda en el campo de retencion de ESTE MISMO gasto,
+            # para que aparezca automatico en el Reporte de Retenciones.
+            # ============================================================
+            isr_detectado = Decimal("0")
+            for concepto in recibo.conceptos.filter(tipo="deduccion"):
+                if concepto.concepto.strip().upper() == "ISR":
+                    isr_detectado += concepto.importe
 
-                gasto = Gasto.objects.create(
-                    empresa=empresa,
-                    empleado=recibo.empleado,
-                    tipo_gasto=tipo_gasto,
-                    descripcion=(
-                        f"Nómina {recibo.periodo_inicio} a {recibo.periodo_fin} — "
-                        f"{recibo.empleado.nombre} — {concepto.concepto}"
-                    ),
-                    fecha=recibo.fecha_pago or dispersion.fecha_pago,
-                    monto=concepto.importe,
-                    folio_comprobante=recibo.uuid_fiscal,
-                    estatus="pendiente",
-                    observaciones=f"Dispersión de Nómina ({concepto.get_tipo_display()}).",
-                )
+            if isr_detectado > 0:
+                gasto.retencion_isr = isr_detectado
+                gasto.save(update_fields=["retencion_isr"])
 
-                # NUEVO -- solo las PERCEPCIONES y OTROS PAGOS representan
-                # salida real de efectivo en este momento (van directo en
-                # la transferencia al empleado). Las DEDUCCIONES son
-                # retenciones -- el dinero YA esta descontado del neto
-                # pagado, pero la empresa todavia no se lo entrega al SAT/
-                # IMSS/etc., asi que ese Gasto se queda "pendiente" hasta
-                # que se registre ese pago por separado, como cualquier
-                # otro gasto normal.
-                if concepto.tipo in ("percepcion", "otro_pago"):
-                    PagoGasto.objects.create(
-                        gasto=gasto,
-                        fecha_pago=recibo.fecha_pago or dispersion.fecha_pago,
-                        monto=concepto.importe,
-                        forma_pago="transferencia",
-                        referencia=f"Dispersión de nómina — folio fiscal {recibo.uuid_fiscal or 'N/D'}",
-                        registrado_por=request.user,
-                        cuenta_bancaria=dispersion.cuenta_bancaria,
-                    )
-                    gasto.actualizar_estatus()
+            # Vincula TODOS los conceptos del recibo a este unico gasto,
+            # para trazabilidad -- aunque ya no generen su propio gasto.
+            recibo.conceptos.update(gasto=gasto)
 
-                concepto.gasto = gasto
-                concepto.save(update_fields=["gasto"])
-                creados += 1
-
-                if concepto.tipo == "percepcion" and concepto.clave == "001":
-                    gasto_sueldo_base = gasto
-
-            # recibo.gasto se queda como referencia rapida al gasto del
-            # sueldo base -- el detalle completo vive en recibo.conceptos.
-            recibo.gasto = gasto_sueldo_base
+            recibo.gasto = gasto
             recibo.save(update_fields=["gasto"])
+            creados += 1
 
         dispersion.estatus = "confirmado"
         dispersion.fecha_confirmacion = django_timezone.now()
@@ -418,10 +532,11 @@ def confirmar_dispersion_nomina(request, dispersion_id):
 
     messages.success(
         request,
-        f"✅ Dispersión confirmada -- {creados} gasto(s) generado(s) (sueldos, deducciones y otros pagos detallados).",
+        f"✅ Dispersión confirmada -- {creados} solicitud(es) de gasto generada(s) (una por empleado, "
+        f"por el neto pagado), pendientes de pago. El detalle de percepciones y deducciones queda "
+        f"disponible para exportar.",
     )
     return redirect("detalle_dispersion_nomina", dispersion_id=dispersion.id)
-
 
 # ============================================================
 # Vista 4 -- Detalle de una dispersión (confirmada o en revisión)
@@ -481,52 +596,52 @@ def lista_dispersiones_nomina(request):
 
 
 
-def extraer_conceptos_nomina(xml_contenido):
-    """
-    Devuelve una lista de conceptos:
-    [
-        {"tipo": "percepcion", "clave": "001", "concepto": "Sueldo", "importe_gravado": 10000, "importe_exento": 0},
-        {"tipo": "deduccion", "clave": "003", "concepto": "ISR", "importe_gravado": 1500, "importe_exento": 0},
-    ]
-    """
-    conceptos = []
+# def extraer_conceptos_nomina(xml_contenido):
+#     """
+#     Devuelve una lista de conceptos:
+#     [
+#         {"tipo": "percepcion", "clave": "001", "concepto": "Sueldo", "importe_gravado": 10000, "importe_exento": 0},
+#         {"tipo": "deduccion", "clave": "003", "concepto": "ISR", "importe_gravado": 1500, "importe_exento": 0},
+#     ]
+#     """
+#     conceptos = []
 
-    if not xml_contenido:
-        return conceptos
+#     if not xml_contenido:
+#         return conceptos
 
-    try:
-        root = ET.fromstring(xml_contenido)
-    except Exception:  # noqa: BLE001
-        try:
-            root = ET.fromstring(xml_contenido.encode("utf-8"))
-        except Exception:  # noqa: BLE001
-            return conceptos
+#     try:
+#         root = ET.fromstring(xml_contenido)
+#     except Exception:  # noqa: BLE001
+#         try:
+#             root = ET.fromstring(xml_contenido.encode("utf-8"))
+#         except Exception:  # noqa: BLE001
+#             return conceptos
 
-    ns = {
-        "nomina12": "http://www.sat.gob.mx/nomina12",
-    }
+#     ns = {
+#         "nomina12": "http://www.sat.gob.mx/nomina12",
+#     }
 
-    percepciones = root.findall(".//nomina12:Percepciones/nomina12:Percepcion", ns)
-    for p in percepciones:
-        conceptos.append({
-            "tipo": "percepcion",
-            "clave": p.get("Clave", ""),
-            "concepto": p.get("Concepto", ""),
-            "importe_gravado": float(p.get("ImporteGravado", 0) or 0),
-            "importe_exento": float(p.get("ImporteExento", 0) or 0),
-        })
+#     percepciones = root.findall(".//nomina12:Percepciones/nomina12:Percepcion", ns)
+#     for p in percepciones:
+#         conceptos.append({
+#             "tipo": "percepcion",
+#             "clave": p.get("Clave", ""),
+#             "concepto": p.get("Concepto", ""),
+#             "importe_gravado": float(p.get("ImporteGravado", 0) or 0),
+#             "importe_exento": float(p.get("ImporteExento", 0) or 0),
+#         })
 
-    deducciones = root.findall(".//nomina12:Deducciones/nomina12:Deduccion", ns)
-    for d in deducciones:
-        conceptos.append({
-            "tipo": "deduccion",
-            "clave": d.get("Clave", ""),
-            "concepto": d.get("Concepto", ""),
-            "importe_gravado": float(d.get("ImporteGravado", 0) or 0),
-            "importe_exento": float(d.get("ImporteExento", 0) or 0),
-        })
+#     deducciones = root.findall(".//nomina12:Deducciones/nomina12:Deduccion", ns)
+#     for d in deducciones:
+#         conceptos.append({
+#             "tipo": "deduccion",
+#             "clave": d.get("Clave", ""),
+#             "concepto": d.get("Concepto", ""),
+#             "importe_gravado": float(d.get("ImporteGravado", 0) or 0),
+#             "importe_exento": float(d.get("ImporteExento", 0) or 0),
+#         })
 
-    return conceptos
+#     return conceptos
 
 
 @login_required
@@ -627,6 +742,12 @@ def exportar_dispersiones_nomina_excel(request):
     celda_total.font = Font(name=FUENTE, size=10, bold=True)
     celda_total.number_format = '$#,##0.00'
 
+    # ============================================================
+# por esto -- ya no vuelve a leer/parsear el XML, lee directo de
+# ConceptoNomina (mas rapido, y una sola fuente de verdad con lo
+# que genero los Gastos).
+# ============================================================
+
     # Hoja de detalle de conceptos
     ws_detalle = wb.create_sheet("Detalle conceptos")
     detalle_encabezados = [
@@ -644,48 +765,43 @@ def exportar_dispersiones_nomina_excel(request):
 
     fila_detalle = 2
 
-    for recibo in recibos:
-        try:
-            if recibo.archivo_xml:
-                xml_bytes = recibo.archivo_xml.read()
-                if isinstance(xml_bytes, bytes):
-                    xml_text = xml_bytes.decode("utf-8", errors="ignore")
-                else:
-                    xml_text = str(xml_bytes)
-            else:
-                xml_text = ""
-        except Exception:  # noqa: BLE001
-            xml_text = ""
+    # NUEVO -- lee directo de ConceptoNomina en vez de volver a abrir y
+    # parsear cada XML. Es la misma info que ya se uso para generar los
+    # Gastos, asi que el Excel y lo que ve GESAC siempre coinciden.
+    conceptos_qs = (
+        ConceptoNomina.objects.filter(recibo__in=recibos)
+        .select_related("recibo", "recibo__empleado", "recibo__dispersion", "recibo__dispersion__cuenta_bancaria")
+        .order_by("recibo__fecha_pago", "recibo__empleado__nombre", "tipo", "concepto")
+    )
 
-        conceptos = extraer_conceptos_nomina(xml_text)
+    for item in conceptos_qs:
+        recibo = item.recibo
+        cuenta_txt = ""
+        if recibo.dispersion and recibo.dispersion.cuenta_bancaria:
+            cuenta_txt = f"{recibo.dispersion.cuenta_bancaria.banco} — {recibo.dispersion.cuenta_bancaria.numero_cuenta}"
 
-        for item in conceptos:
-            cuenta_txt = ""
-            if recibo.dispersion and recibo.dispersion.cuenta_bancaria:
-                cuenta_txt = f"{recibo.dispersion.cuenta_bancaria.banco} — {recibo.dispersion.cuenta_bancaria.numero_cuenta}"
+        ws_detalle.append([
+            recibo.fecha_pago.strftime("%d/%m/%Y") if recibo.fecha_pago else "",
+            recibo.periodo_inicio.strftime("%d/%m/%Y") if recibo.periodo_inicio else "",
+            recibo.periodo_fin.strftime("%d/%m/%Y") if recibo.periodo_fin else "",
+            recibo.empleado.nombre if recibo.empleado else recibo.nombre_receptor,
+            recibo.rfc_receptor or "",
+            cuenta_txt,
+            item.get_tipo_display(),
+            item.clave or "",
+            item.concepto,
+            float(item.importe_gravado),
+            float(item.importe_exento),
+            recibo.uuid_fiscal or "",
+        ])
 
-            ws_detalle.append([
-                recibo.fecha_pago.strftime("%d/%m/%Y") if recibo.fecha_pago else "",
-                recibo.periodo_inicio.strftime("%d/%m/%Y") if recibo.periodo_inicio else "",
-                recibo.periodo_fin.strftime("%d/%m/%Y") if recibo.periodo_fin else "",
-                recibo.empleado.nombre if recibo.empleado else recibo.nombre_receptor,
-                recibo.rfc_receptor or "",
-                cuenta_txt,
-                item["tipo"],
-                item["clave"],
-                item["concepto"],
-                item["importe_gravado"],
-                item["importe_exento"],
-                recibo.uuid_fiscal or "",
-            ])
-
-            for col_idx in range(1, len(detalle_encabezados) + 1):
-                celda = ws_detalle.cell(row=fila_detalle, column=col_idx)
-                celda.font = font_normal
-                celda.border = border_thin
-                if col_idx in (10, 11):
-                    celda.number_format = '$#,##0.00'
-            fila_detalle += 1
+        for col_idx in range(1, len(detalle_encabezados) + 1):
+            celda = ws_detalle.cell(row=fila_detalle, column=col_idx)
+            celda.font = font_normal
+            celda.border = border_thin
+            if col_idx in (10, 11):
+                celda.number_format = '$#,##0.00'
+        fila_detalle += 1
 
     # Anchos
     anchos_resumen = [13, 13, 13, 26, 15, 16, 22, 16, 16, 16, 14, 24, 26, 14]
@@ -709,65 +825,65 @@ def exportar_dispersiones_nomina_excel(request):
 
 
 
-@login_required
-def gestionar_mapeo_conceptos_nomina(request):
-    empresa = _empresa_actual(request)
+# @login_required
+# def gestionar_mapeo_conceptos_nomina(request):
+#     empresa = _empresa_actual(request)
 
-    if request.method == "POST":
-        concepto_xml = request.POST.get("concepto_xml", "").strip()
-        tipo_gasto_id = request.POST.get("tipo_gasto_id")
+#     if request.method == "POST":
+#         concepto_xml = request.POST.get("concepto_xml", "").strip()
+#         tipo_gasto_id = request.POST.get("tipo_gasto_id")
 
-        if not concepto_xml or not tipo_gasto_id:
-            messages.error(request, "Selecciona el concepto y la cuenta contable.")
-            return redirect("gestionar_mapeo_conceptos_nomina")
+#         if not concepto_xml or not tipo_gasto_id:
+#             messages.error(request, "Selecciona el concepto y la cuenta contable.")
+#             return redirect("gestionar_mapeo_conceptos_nomina")
 
-        tipo_gasto = get_object_or_404(TipoGasto, id=tipo_gasto_id, empresa=empresa)
+#         tipo_gasto = get_object_or_404(TipoGasto, id=tipo_gasto_id, empresa=empresa)
 
-        MapeoConceptoNomina.objects.update_or_create(
-            empresa=empresa, concepto_xml=concepto_xml,
-            defaults={"tipo_gasto": tipo_gasto},
-        )
-        messages.success(request, f"\"{concepto_xml}\" ahora se registra en la cuenta \"{tipo_gasto.nombre}\".")
-        return redirect("gestionar_mapeo_conceptos_nomina")
+#         MapeoConceptoNomina.objects.update_or_create(
+#             empresa=empresa, concepto_xml=concepto_xml,
+#             defaults={"tipo_gasto": tipo_gasto},
+#         )
+#         messages.success(request, f"\"{concepto_xml}\" ahora se registra en la cuenta \"{tipo_gasto.nombre}\".")
+#         return redirect("gestionar_mapeo_conceptos_nomina")
 
-    # Mapeos ya capturados
-    mapeos = MapeoConceptoNomina.objects.filter(empresa=empresa).select_related("tipo_gasto").order_by("concepto_xml")
+#     # Mapeos ya capturados
+#     mapeos = MapeoConceptoNomina.objects.filter(empresa=empresa).select_related("tipo_gasto").order_by("concepto_xml")
 
-    # NUEVO -- detecta automaticamente que conceptos de deduccion/otro
-    # pago han aparecido en tus XML pero todavia no tienen mapeo, para
-    # que no tengas que adivinar cuales capturar.
-    conceptos_vistos = set(
-        ConceptoNomina.objects.filter(
-            recibo__dispersion__empresa=empresa, tipo__in=["deduccion", "otro_pago"],
-        ).values_list("concepto", flat=True).distinct()
-    )
-    conceptos_mapeados = set(mapeos.values_list("concepto_xml", flat=True))
-    conceptos_pendientes = sorted(conceptos_vistos - conceptos_mapeados)
+#     # NUEVO -- detecta automaticamente que conceptos de deduccion/otro
+#     # pago han aparecido en tus XML pero todavia no tienen mapeo, para
+#     # que no tengas que adivinar cuales capturar.
+#     conceptos_vistos = set(
+#         ConceptoNomina.objects.filter(
+#             recibo__dispersion__empresa=empresa, tipo__in=["deduccion", "otro_pago"],
+#         ).values_list("concepto", flat=True).distinct()
+#     )
+#     conceptos_mapeados = set(mapeos.values_list("concepto_xml", flat=True))
+#     conceptos_pendientes = sorted(conceptos_vistos - conceptos_mapeados)
 
-    # Cuentas disponibles para el selector -- todo el catalogo de gastos
-    # de la empresa (no solo las de nomina, por si acaso alguna
-    # deduccion se quiere mandar a otra cuenta).
-    cuentas_disponibles = (
-        TipoGasto.objects.filter(empresa=empresa)
-        .select_related("subgrupo", "subgrupo__grupo")
-        .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
-    )
+#     # Cuentas disponibles para el selector -- todo el catalogo de gastos
+#     # de la empresa (no solo las de nomina, por si acaso alguna
+#     # deduccion se quiere mandar a otra cuenta).
+#     cuentas_disponibles = (
+#         TipoGasto.objects.filter(empresa=empresa)
+#         .select_related("subgrupo", "subgrupo__grupo")
+#         .order_by("subgrupo__grupo__nombre", "subgrupo__nombre", "nombre")
+#     )
 
-    return render(request, "nomina/mapeo_conceptos.html", {
-        "mapeos": mapeos,
-        "conceptos_pendientes": conceptos_pendientes,
-        "cuentas_disponibles": cuentas_disponibles,
-    })
+#     return render(request, "nomina/mapeo_conceptos.html", {
+#         "mapeos": mapeos,
+#         "conceptos_pendientes": conceptos_pendientes,
+#         "cuentas_disponibles": cuentas_disponibles,
+#     })
 
 
-@login_required
-def eliminar_mapeo_concepto_nomina(request, mapeo_id):
-    empresa = _empresa_actual(request)
-    mapeo = get_object_or_404(MapeoConceptoNomina, id=mapeo_id, empresa=empresa)
+# @login_required
+# def eliminar_mapeo_concepto_nomina(request, mapeo_id):
+#     empresa = _empresa_actual(request)
+#     mapeo = get_object_or_404(MapeoConceptoNomina, id=mapeo_id, empresa=empresa)
 
-    if request.method == "POST":
-        concepto = mapeo.concepto_xml
-        mapeo.delete()
-        messages.success(request, f"Se quito el mapeo de \"{concepto}\".")
+#     if request.method == "POST":
+#         concepto = mapeo.concepto_xml
+#         mapeo.delete()
+#         messages.success(request, f"Se quito el mapeo de \"{concepto}\".")
 
-    return redirect("gestionar_mapeo_conceptos_nomina")
+#     return redirect("gestionar_mapeo_conceptos_nomina")

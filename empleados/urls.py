@@ -1,6 +1,7 @@
 from django.urls import path
 
 from empleados import reportes, views_asistencia
+
 from . import views
 
 urlpatterns = [
@@ -18,6 +19,13 @@ urlpatterns = [
     path('reporte/', reportes.reporte_asistencia, name='reporte_asistencia'),
     path('reporte/exportar/', reportes.exportar_reporte_asistencia, name='exportar_reporte_asistencia'),
     path('reporte/detectar-faltas/', reportes.detectar_faltas_manual, name='detectar_faltas_manual'),
+
+    path('empleados/vacaciones/<int:incidencia_id>/pdf/', views.generar_solicitud_vacaciones_pdf, name='solicitud_vacaciones_pdf'),
+    path('empleados/permiso/<int:incidencia_id>/pdf/', views.generar_solicitud_permiso_pdf, name='solicitud_permiso_pdf'),
+    path('empleados/prestamo/<int:solicitud_id>/pdf/', views.generar_solicitud_prestamo_pdf, name='solicitud_prestamo_pdf'),
+    path('empleados/prestamo/nuevo/', views.solicitud_prestamo_crear, name='solicitud_prestamo_crear'),
+    path('empleados/prestamos/', views.solicitudes_prestamo_lista, name='solicitudes_prestamo_lista'),
+    path('empleados/prestamos/<int:solicitud_id>/estatus/', views.solicitud_prestamo_cambiar_estatus, name='solicitud_prestamo_cambiar_estatus'), 
 
    
 ]

@@ -1,10 +1,13 @@
 
 # Create your models here.
 import uuid
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import models
+from django.utils import timezone
 
 from empresas.models import Empresa
+from django.contrib.auth.models import User
 
 
 class Empleado(models.Model):
@@ -151,7 +154,7 @@ class RegistroAsistencia(models.Model):
         verbose_name = 'Registro de Asistencia'
         verbose_name_plural = 'Registros de Asistencia'
         unique_together = ('empleado', 'fecha')  # un registro por empleado por día
-        ordering = ['-fecha'] 
+        ordering = ['-fecha']  # noqa: RUF012
 
 
 class UbicacionEnVivo(models.Model):
@@ -167,3 +170,46 @@ class UbicacionEnVivo(models.Model):
 
     def __str__(self):
         return f"Ubicación de {self.empleado.nombre} — {self.actualizado_en}"
+
+
+# ============================================================
+# Agregar a empleados/models.py (o donde viva tu modelo
+# Incidencia), como un modelo NUEVO e independiente.
+# ============================================================
+
+
+
+class SolicitudPrestamo(models.Model):
+    ESTATUS_CHOICES = [  # noqa: RUF012
+        ('pendiente', 'Pendiente de autorización'),
+        ('aprobada', 'Aprobada'),
+        ('rechazada', 'Rechazada'),
+        ('liquidada', 'Liquidada'),
+    ]
+
+    empleado = models.ForeignKey(Empleado, on_delete=models.CASCADE, related_name='solicitudes_prestamo')
+    fecha_solicitud = models.DateField(default=timezone.now)
+    monto = models.DecimalField(max_digits=10, decimal_places=2, help_text="Monto total solicitado")
+    motivo = models.TextField(blank=True)
+    numero_parcialidades = models.PositiveIntegerField(default=1, help_text="Número de descuentos en los que se pagará")
+    monto_parcialidad = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text="Se calcula automático (monto / parcialidades) si se deja en blanco"
+    )
+    fecha_primer_descuento = models.DateField(blank=True, null=True)
+    estatus = models.CharField(max_length=20, choices=ESTATUS_CHOICES, default='pendiente')
+    registrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha_solicitud']  # noqa: RUF012
+
+    def save(self, *args, **kwargs):
+        if self.monto and self.numero_parcialidades and not self.monto_parcialidad:
+            self.monto_parcialidad = (
+                Decimal(str(self.monto)) / self.numero_parcialidades
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.empleado.nombre} — Préstamo ${self.monto} ({self.numero_parcialidades} parcialidad(es))"    

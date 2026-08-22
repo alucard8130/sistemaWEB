@@ -1,0 +1,115 @@
+{% load static %}
+{% load widget_tweaks %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Solicitud de Préstamo — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        .in-header {
+            background: linear-gradient(135deg, #5a4400 0%, #8A6D00 60%, #b9960a 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(138,109,0,0.2);
+            position: relative; overflow: hidden;
+        }
+        .in-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.08);
+        }
+        .in-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .in-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .in-form-card {
+            background: white; border-radius: 16px; padding: 28px 30px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+        }
+
+        .form-label { font-weight: 600; font-size: 0.8rem; color: #6b5900; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 5px; }
+        .form-select, .form-control {
+            border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; padding: 8px 12px;
+            transition: all 0.15s;
+        }
+        .form-select:focus, .form-control:focus {
+            border-color: #8A6D00; box-shadow: 0 0 0 3px rgba(138,109,0,0.12);
+        }
+        .form-text { font-size: 0.78rem; }
+
+        .btn-guardar {
+            background: linear-gradient(135deg, #8A6D00, #b9960a); color: white; border: none;
+            border-radius: 10px; padding: 10px 24px; font-weight: 600; font-size: 0.9rem;
+            transition: all 0.15s; box-shadow: 0 2px 8px rgba(138,109,0,0.25);
+        }
+        .btn-guardar:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(138,109,0,0.35); color: white; }
+        .btn-cancelar {
+            border-radius: 10px; padding: 10px 22px; font-weight: 600; font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 900px;">
+
+        <div class="in-header">
+            <div class="in-titulo"><i class="bi bi-cash-coin me-2"></i>Nueva Solicitud de Préstamo</div>
+            <div class="in-subtitulo">El monto por parcialidad se calcula automáticamente si lo dejas en blanco</div>
+        </div>
+
+        <div class="in-form-card">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    {% for field in form %}
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field|add_class:"form-control" }}
+                        {% if field.help_text %}
+                            <small class="form-text text-muted d-block mt-1">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% for error in field.errors %}
+                            <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <hr class="my-4">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-guardar">
+                        <i class="bi bi-save-fill me-1"></i> Guardar
+                    </button>
+                    <a href="{% url 'empleado_lista' %}" class="btn btn-outline-secondary btn-cancelar">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var overlay = document.getElementById('loading-overlay');
+            var formPrincipal = document.querySelector('form[method="post"]');
+            if (formPrincipal && overlay) {
+                formPrincipal.addEventListener('submit', function() {
+                    overlay.style.display = 'flex';
+                });
+            }
+            document.querySelectorAll('.btn-outline-secondary').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

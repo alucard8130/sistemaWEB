@@ -1,12 +1,14 @@
 
 import datetime
+import re
 import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation
 
-# ============================================================#
-# Parsea un XML de CFDI con Complemento de Nómina (1.2), y regresa
-# un diccionario con los datos que necesitamos. No calcula nada,
-# no valida el sello fiscal -- solo LEE lo que ya viene timbrado.
+#============================================================
+# nomina/utils.py -- reemplaza tu funcion parsear_xml_nomina()
+# completa por esta version. Se conservan los mismos totales de
+# siempre, y se agrega la lista "conceptos" con el detalle linea
+# por linea de percepciones, deducciones, y otros pagos.
 # ============================================================
 
 
@@ -16,13 +18,21 @@ NS = {
     "tfd": "http://www.sat.gob.mx/TimbreFiscalDigital",
 }
 
+# NUEVO -- patrón estándar de UUID (el mismo formato que usa el SAT para
+# el folio fiscal). Se valida ANTES de tocar la base de datos, para que
+# un XML manipulado o corrupto se marque como "error" de forma limpia,
+# en vez de tronar con un error de base de datos a media transacción.
+_PATRON_UUID = re.compile(
+    r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+)
+
 
 class XMLNominaInvalido(Exception):
     pass
 
 
 def _to_decimal(valor):
-    if valor is None:
+    if valor is None or valor == "":
         return Decimal("0")
     try:
         return Decimal(str(valor))
@@ -34,60 +44,51 @@ def _to_date(valor):
     if not valor:
         return None
     try:
-        # Los XML de nómina traen fechas como "2026-08-15" o con hora "2026-08-15T00:00:00"
         return datetime.date.fromisoformat(valor[:10])
     except ValueError:
         return None
 
 
-def parsear_xml_nomina(archivo_bytes):
+def parsear_xml_nomina(contenido_xml):
     """
-    archivo_bytes: contenido crudo del archivo XML subido.
-    Regresa un dict con: uuid_fiscal, rfc_receptor, nombre_receptor,
-    fecha_pago, periodo_inicio, periodo_fin, total_percepciones,
-    total_deducciones, neto_pagado.
-
-    Lanza XMLNominaInvalido si el archivo no es un CFDI de nómina válido
-    (por ejemplo, si le suben un XML de otro tipo, o un archivo corrupto).
+    Parsea un CFDI de Nomina 1.2 y regresa un diccionario con los datos
+    del receptor, los totales (igual que antes), y AHORA TAMBIEN la
+    lista completa de conceptos individuales (percepciones, deducciones,
+    y otros pagos), tal como vienen desglosados en el XML.
     """
     try:
-        root = ET.fromstring(archivo_bytes)
+        root = ET.fromstring(contenido_xml)
     except ET.ParseError as e:
-        raise XMLNominaInvalido(f"El archivo no es un XML válido: {e}")
+        raise XMLNominaInvalido(f"El archivo no es un XML valido: {e}")
 
-    # --- Receptor (el empleado) ---
     receptor = root.find("cfdi:Receptor", NS)
     if receptor is None:
-        raise XMLNominaInvalido("No se encontró el nodo Receptor en el CFDI.")
+        raise XMLNominaInvalido("El XML no tiene un nodo cfdi:Receptor -- no parece ser un CFDI valido.")
 
     rfc_receptor = receptor.get("Rfc")
     nombre_receptor = receptor.get("Nombre")
+    if not rfc_receptor:
+        raise XMLNominaInvalido("El XML no trae el RFC del receptor.")
 
-    # --- Complemento de Nómina ---
     complemento = root.find("cfdi:Complemento", NS)
     if complemento is None:
-        raise XMLNominaInvalido("Este XML no trae Complemento -- no parece ser un CFDI de nómina.")
+        raise XMLNominaInvalido("El XML no tiene complemento -- no parece ser un CFDI de Nomina.")
 
     nomina = complemento.find("nomina12:Nomina", NS)
     if nomina is None:
-        raise XMLNominaInvalido("No se encontró el Complemento de Nómina (nomina12:Nomina) en este XML.")
+        raise XMLNominaInvalido("El XML no tiene el complemento de Nomina (nomina12:Nomina).")
 
     fecha_pago = _to_date(nomina.get("FechaPago"))
     periodo_inicio = _to_date(nomina.get("FechaInicialPago"))
     periodo_fin = _to_date(nomina.get("FechaFinalPago"))
     total_percepciones = _to_decimal(nomina.get("TotalPercepciones"))
     total_deducciones = _to_decimal(nomina.get("TotalDeducciones"))
-    # NUEVO -- "Otros Pagos" (ej. Subsidio para el Empleo) SÍ se le entrega
-    # al trabajador, aunque no sea una "percepción" fiscalmente -- hay que
-    # sumarlo también, o el neto sale por debajo de lo realmente depositado.
     total_otros_pagos = _to_decimal(nomina.get("TotalOtrosPagos"))
-
-    # El neto realmente pagado -- percepciones + otros pagos, menos deducciones.
     neto_pagado = total_percepciones + total_otros_pagos - total_deducciones
 
-     # ---- NUEVO: detalle concepto por concepto ----
+    # ---- NUEVO: detalle concepto por concepto ----
     conceptos = []
- 
+
     nodo_percepciones = nomina.find("nomina12:Percepciones", NS)
     if nodo_percepciones is not None:
         for p in nodo_percepciones.findall("nomina12:Percepcion", NS):
@@ -97,9 +98,10 @@ def parsear_xml_nomina(archivo_bytes):
                 "tipo": "percepcion",
                 "clave": p.get("Clave") or p.get("TipoPercepcion"),
                 "concepto": (p.get("Concepto") or "Percepcion sin nombre").strip(),
-                "importe": gravado + exento,
+                "importe_gravado": gravado,
+                "importe_exento": exento,
             })
- 
+
     nodo_deducciones = nomina.find("nomina12:Deducciones", NS)
     if nodo_deducciones is not None:
         for d in nodo_deducciones.findall("nomina12:Deduccion", NS):
@@ -107,9 +109,10 @@ def parsear_xml_nomina(archivo_bytes):
                 "tipo": "deduccion",
                 "clave": d.get("Clave") or d.get("TipoDeduccion"),
                 "concepto": (d.get("Concepto") or "Deduccion sin nombre").strip(),
-                "importe": _to_decimal(d.get("Importe")),
+                "importe_gravado": _to_decimal(d.get("Importe")),
+                "importe_exento": Decimal("0"),
             })
- 
+
     nodo_otros_pagos = nomina.find("nomina12:OtrosPagos", NS)
     if nodo_otros_pagos is not None:
         for o in nodo_otros_pagos.findall("nomina12:OtroPago", NS):
@@ -117,16 +120,19 @@ def parsear_xml_nomina(archivo_bytes):
                 "tipo": "otro_pago",
                 "clave": o.get("Clave") or o.get("TipoOtroPago"),
                 "concepto": (o.get("Concepto") or "Otro pago sin nombre").strip(),
-                "importe": _to_decimal(o.get("Importe")),
+                "importe_gravado": _to_decimal(o.get("Importe")),
+                "importe_exento": Decimal("0"),
             })
 
-
-    # --- Folio fiscal (UUID) -- para detectar duplicados ---
     tfd = complemento.find("tfd:TimbreFiscalDigital", NS)
     uuid_fiscal = tfd.get("UUID") if tfd is not None else None
-
-    if not rfc_receptor:
-        raise XMLNominaInvalido("El XML no trae RFC del receptor.")
+    if not uuid_fiscal:
+        raise XMLNominaInvalido("El XML no esta timbrado -- no tiene UUID fiscal (TimbreFiscalDigital).")
+    if not _PATRON_UUID.match(uuid_fiscal.strip()):
+        raise XMLNominaInvalido(
+            f"El folio fiscal (UUID) del XML no tiene un formato valido -- "
+            f"parece corrupto o manipulado: \"{uuid_fiscal[:60]}\""
+        )
 
     return {
         "uuid_fiscal": uuid_fiscal,
@@ -141,3 +147,5 @@ def parsear_xml_nomina(archivo_bytes):
         "neto_pagado": neto_pagado,
         "conceptos": conceptos,
     }
+
+

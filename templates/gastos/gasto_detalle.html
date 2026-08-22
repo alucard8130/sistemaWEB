@@ -3,13 +3,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- 
-        Created by: Jaime Estrada
-        Modified by: María Martínez
-        Date of creation: 05/06/2025
-        Date of modification: 13/07/2025
-        Description: Expenditure detail
-    -->
     <meta charset="UTF-8">
     <title>Historial Pagos Solicitudes</title>
     <!-- Bootstrap base styles -->
@@ -95,6 +88,42 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% if gasto.concepto_nomina.all %}
+        <div class="row justify-content-center mt-3 mb-4">
+            <div class="col-md-8 mx-auto">
+                <h4><i class="bi bi-file-earmark-spreadsheet me-1"></i>Detalle de Nómina</h4>
+                <p class="text-muted small">Percepciones, deducciones y otros pagos de este recibo, tal como vienen en el XML -- solo informativo, para que tu contador lo capture en su sistema.</p>
+
+                {% regroup gasto.concepto_nomina.all by get_tipo_display as conceptos_agrupados %}
+                {% for grupo in conceptos_agrupados %}
+                <table class="table table-sm table-bordered mb-3">
+                    <thead class="table-light">
+                        <tr>
+                            <th colspan="4">{{ grupo.grouper }}</th>
+                        </tr>
+                        <tr>
+                            <th>Clave</th>
+                            <th>Concepto</th>
+                            <th class="text-end">Gravado</th>
+                            <th class="text-end">Exento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in grupo.list %}
+                        <tr>
+                            <td>{{ c.clave|default:"—" }}</td>
+                            <td>{{ c.concepto }}</td>
+                            <td class="text-end">${{ c.importe_gravado|floatformat:2|intcomma }}</td>
+                            <td class="text-end">${{ c.importe_exento|floatformat:2|intcomma }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
         <a href="{% url 'gastos_lista' %}" class="btn btn-secondary">Regresar</a>
     </div>
 
