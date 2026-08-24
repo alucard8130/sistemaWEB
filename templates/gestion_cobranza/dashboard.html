@@ -80,7 +80,7 @@
         {% endif %}
 
         <div class="cb-header">
-            <h4><i class="bi bi-telephone-outbound me-2"></i>Cobranza</h4>
+            <h4><i class="bi bi-telephone-outbound me-2"></i>Gestión Cobranza</h4>
             <p><i class="bi bi-building me-1"></i>{{ empresa.nombre }} — Seguimiento a clientes con saldo vencido</p>
         </div>
 
@@ -167,7 +167,7 @@
                             <th class="text-center">Días atraso</th>
                             <th class="text-center">Antigüedad</th>
                             <th>Asignado a</th>
-                            <th class="text-center">Ver</th>
+                            <th class="text-center">Expediente</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -188,8 +188,8 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                <a href="{% url 'detalle_expediente' exp.id %}" class="btn btn-sm btn-outline-danger reporte-link">
-                                    <i class="bi bi-eye"></i>
+                                <a href="{% url 'detalle_expediente' exp.id %}" class="btn btn-sm btn-outline-danger reporte-link" title="Ver expediente">
+                                    <i class="bi bi-folder2-open"></i>
                                 </a>
                             </td>
                         </tr>

@@ -1,11 +1,12 @@
 from django import forms
+
 from .models import Proveedor
 
 
 class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedor
-        fields = [
+        fields = [  # noqa: RUF012
             "empresa",
             "nombre",
             "rfc",
@@ -16,7 +17,7 @@ class ProveedorForm(forms.ModelForm):
             "direccion",
             "activo",
         ]
-        widgets = {
+        widgets = {  # noqa: RUF012
             "repse_vigencia": forms.DateInput(format='%Y-%m-%d', attrs={"type": "date"}),
         }
 

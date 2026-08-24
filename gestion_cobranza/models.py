@@ -3,6 +3,7 @@ from decimal import Decimal
 from functools import cached_property
 
 from django.conf import settings
+from django.core.serializers import json
 from django.db import models
 from django.utils import timezone
 
@@ -158,7 +159,7 @@ class GestionCobranza(models.Model):
     mensaje_enviado = models.TextField(blank=True, null=True)
     envio_exitoso = models.BooleanField(null=True, blank=True)
     envio_id_externo = models.CharField(max_length=100, blank=True, null=True)
-    envio_error = models.CharField(max_length=255, blank=True, null=True)
+    envio_error = models.TextField(blank=True, null=True)
 
     # Recordatorio de seguimiento -- "la próxima acción"
     proxima_accion_fecha = models.DateField(null=True, blank=True)
@@ -194,35 +195,101 @@ class PlantillaCobranza(models.Model):
     asunto = models.CharField(max_length=200, blank=True, null=True, help_text="Solo aplica para correo.")
     cuerpo = models.TextField(
         help_text="Usa placeholders: {nombre_cliente}, {monto_vencido}, {dias_atraso}, "
-                   "{folios_pendientes}, {nombre_empresa}, {fecha_hoy}."
+                   "{folios_pendientes}, {propiedades},{nombre_empresa}, {fecha_hoy}."
     )
     activa = models.BooleanField(default=True)
+
+     # NUEVO -- solo se usan cuando canal="whatsapp" y quieres mandar por
+    # una plantilla ya aprobada en Twilio (Content Template), en vez de
+    # texto libre. Si content_sid esta vacio, WhatsApp sigue mandando
+    # "cuerpo" como texto libre, exactamente igual que hasta ahora.
+    content_sid = models.CharField(
+        max_length=50, blank=True, null=True,
+        help_text="Solo para WhatsApp -- el Content SID (empieza con HX) de tu plantilla ya aprobada en Twilio."
+    )
+    orden_variables = models.CharField(
+        max_length=300, blank=True, null=True,
+        help_text=(
+            "Solo para WhatsApp con content_sid -- lista los placeholders en el orden exacto "
+            "en que aparecen en tu plantilla de Twilio, separados por coma. Ej: nombre_cliente,monto_vencido,dias_atraso "
+            "-- el primero se manda como variable 1, el segundo como variable 2, etc."
+        )
+    )
 
     class Meta:
         ordering = ['canal', 'nombre']  # noqa: RUF012
 
+
     def __str__(self):
         return f"{self.get_canal_display()} — {self.nombre}"
 
-    def renderizar(self, expediente):
-        """Sustituye los placeholders con los datos reales del expediente."""
+
+    def _construir_contexto(self, expediente):
+        """Arma el diccionario de valores reales del expediente -- se
+        reutiliza tanto para texto libre (renderizar) como para
+        Content Templates de WhatsApp (renderizar_content_variables)."""
         facturas = expediente._facturas_vencidas_lista
         folios = ", ".join(f.folio for f in facturas) or "N/D"
-        contexto = {
+ 
+        propiedades_vistas = []
+        for f in facturas:
+            identificador = self._identificador_propiedad(f)
+            if identificador not in propiedades_vistas:
+                propiedades_vistas.append(identificador)
+        propiedades = ", ".join(propiedades_vistas) or "N/D"
+ 
+        return {
             "nombre_cliente": expediente.cliente.nombre,
             "monto_vencido": f"${expediente.saldo_vencido_total:,.2f}",
             "dias_atraso": str(expediente.dias_atraso_maximo),
             "folios_pendientes": folios,
+            "propiedades": propiedades,
             "nombre_empresa": expediente.empresa.nombre,
             "fecha_hoy": self._hoy_formateada(),
         }
+
+    def renderizar(self, expediente):
+        """Sustituye los placeholders con los datos reales del expediente
+        -- para texto libre (correo, SMS, carta, o WhatsApp sin content_sid)."""
+        contexto = self._construir_contexto(expediente)
         cuerpo = self.cuerpo
         asunto = self.asunto or ""
         for clave, valor in contexto.items():
             cuerpo = cuerpo.replace("{" + clave + "}", valor)
             asunto = asunto.replace("{" + clave + "}", valor)
         return asunto, cuerpo
+ 
+    def renderizar_content_variables(self, expediente):
+        """Arma el JSON de content_variables que pide Twilio para un
+        Content Template de WhatsApp, ej: '{"1":"Ana Rocha","2":"$7,000.00"}'.
+        Usa el orden definido en 'orden_variables'. Regresa None si esta
+        plantilla no tiene content_sid configurado."""
+        from json import dumps as _json_dumps  # import local -- evita el
+        # conflicto con cualquier otro "json" ya importado en este archivo
 
+        if not self.content_sid or not self.orden_variables:
+            return None
+
+        contexto = self._construir_contexto(expediente)
+        claves_en_orden = [c.strip() for c in self.orden_variables.split(",") if c.strip()]
+
+        variables = {}
+        for i, clave in enumerate(claves_en_orden, start=1):
+            variables[str(i)] = contexto.get(clave, "")
+
+        return _json_dumps(variables, ensure_ascii=False)
+ 
+    @staticmethod
+    def _identificador_propiedad(factura):
+        """Regresa 'Local {numero}' o 'Área {nombre}' según de dónde
+        venga la factura -- ajusta los nombres de campo (numero/nombre)
+        si en tu modelo real se llaman distinto."""
+        if getattr(factura, "local_id", None) and factura.local:
+            return f"Local {factura.local.numero}"
+        if getattr(factura, "area_comun_id", None) and factura.area_comun:
+            return f"Área {factura.area_comun.nombre}"
+        return "N/D"
+    
     @staticmethod
     def _hoy_formateada():
         return timezone.now().strftime("%d de %B de %Y")

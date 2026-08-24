@@ -89,12 +89,11 @@
                         <th>RFC</th>
                         <th>Tipo Contribuyente</th>
                         <th>Régimen Fiscal</th>
-                        {% comment %} <th>Domicilio Fiscal</th> {% endcomment %}
                         <th>Código Postal</th>
                         <th>Uso CFDI</th>
-                        <th>Objeto de Impuesto</th>
+                        <th>Objeto Imp.</th>
+                        <th>Whatsapp</th>
                         <th>Email</th>
-                        {% comment %} <th>Factura Global</th>                         {% endcomment %}
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -118,6 +117,7 @@
                         <td>{{ cliente.codigo_postal|default:"—" }}</td>
                         <td>{{ cliente.uso_cfdi|default:"—" }}</td>
                         <td>{{ cliente.objeto_impuesto|default:"—" }}</td>
+                        <td>{{ cliente.telefono|default:"—" }}</td>
                         <td>{{ cliente.email|default:"—" }}</td>
                         <td class="text-nowrap">
                             <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar cliente">

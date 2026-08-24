@@ -246,7 +246,7 @@
                             {% csrf_token %}
                             <input type="hidden" name="plantilla_id" value="{{ pl.id }}">
                             <span>{{ pl.get_canal_display }} — {{ pl.nombre }}</span>
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <button type="submit" class="btn btn-sm btn-outline-danger reporte-link">
                                 <i class="bi bi-send"></i>
                             </button>
                         </form>

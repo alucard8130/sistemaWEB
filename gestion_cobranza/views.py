@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -43,8 +43,6 @@ from .models import (
     PlanDePago,
     PlantillaCobranza,
 )
-from django.db.models import Sum
-
 
 # ============================================================
 # Detección automática -- abre un expediente para cualquier cliente
@@ -391,7 +389,17 @@ def _normalizar_telefono_mx(telefono):
     return f"+{digitos}"
 
 
-def enviar_whatsapp(empresa, telefono_destino, mensaje):
+def enviar_whatsapp(empresa, telefono_destino, mensaje, content_sid=None, content_variables=None):
+    """
+    Envia un WhatsApp via Twilio.
+
+    - Si 'content_sid' viene (plantilla ya aprobada en Twilio), se manda
+      con content_sid + content_variables -- necesario en produccion,
+      fuera de la ventana de 24h, o para el primer contacto con alguien.
+    - Si NO viene 'content_sid', se manda como texto libre (body=mensaje)
+      -- funciona en modo sandbox, o dentro de una conversacion activa
+      de 24h ya iniciada por el cliente.
+    """
     if not (empresa.twilio_account_sid and empresa.twilio_auth_token and empresa.twilio_whatsapp_number):
         return False, None, "Esta empresa no tiene configurada su cuenta de Twilio para WhatsApp."
 
@@ -401,11 +409,20 @@ def enviar_whatsapp(empresa, telefono_destino, mensaje):
 
     try:
         client = Client(empresa.twilio_account_sid, empresa.twilio_auth_token)
-        msg = client.messages.create(
-            from_=f"whatsapp:{empresa.twilio_whatsapp_number}",
-            body=mensaje,
-            to=f"whatsapp:{destino}",
-        )
+
+        parametros = {
+            "from_": f"whatsapp:{empresa.twilio_whatsapp_number}",
+            "to": f"whatsapp:{destino}",
+        }
+
+        if content_sid:
+            parametros["content_sid"] = content_sid
+            if content_variables:
+                parametros["content_variables"] = content_variables
+        else:
+            parametros["body"] = mensaje
+
+        msg = client.messages.create(**parametros)
         return True, msg.sid, None
     except TwilioRestException as e:
         return False, None, str(e)
@@ -474,8 +491,18 @@ def enviar_mensaje_plantilla(request, expediente_id):
     asunto, cuerpo = plantilla.renderizar(expediente)
  
     if plantilla.canal == "whatsapp":
-        exitoso, id_externo, error = enviar_whatsapp(empresa, expediente.cliente.telefono, cuerpo)
+        # NUEVO -- si la plantilla tiene content_sid configurado (una
+        # plantilla ya aprobada en Twilio), se manda con esa plantilla
+        # en vez de texto libre. Si no, sigue funcionando exactamente
+        # igual que antes (texto libre, modo sandbox).
+        content_sid = plantilla.content_sid or None
+        content_variables = plantilla.renderizar_content_variables(expediente) if content_sid else None
+        exitoso, id_externo, error = enviar_whatsapp(
+            empresa, expediente.cliente.telefono, cuerpo,
+            content_sid=content_sid, content_variables=content_variables,
+        )
         tipo_gestion = "whatsapp"
+
     elif plantilla.canal == "sms":
         exitoso, id_externo, error = enviar_sms(empresa, expediente.cliente.telefono, cuerpo)
         tipo_gestion = "sms"
@@ -534,6 +561,9 @@ def crear_plantilla(request):
         etapa_sugerida = request.POST.get("etapa_sugerida") or None
         asunto = request.POST.get("asunto", "").strip()
         cuerpo = request.POST.get("cuerpo", "").strip()
+        # NUEVO -- campos de Content Template de WhatsApp (Twilio)
+        content_sid = request.POST.get("content_sid", "").strip()
+        orden_variables = request.POST.get("orden_variables", "").strip()
 
         if canal not in dict(PlantillaCobranza.CANAL_CHOICES):
             messages.error(request, "Selecciona un canal válido.")
@@ -545,6 +575,7 @@ def crear_plantilla(request):
         PlantillaCobranza.objects.create(
             empresa=empresa, canal=canal, nombre=nombre,
             etapa_sugerida=etapa_sugerida, asunto=asunto or None, cuerpo=cuerpo,
+            content_sid=content_sid or None, orden_variables=orden_variables or None,
         )
         messages.success(request, f'Plantilla "{nombre}" creada correctamente.')
         return redirect("lista_plantillas")
@@ -568,6 +599,9 @@ def editar_plantilla(request, plantilla_id):
         etapa_sugerida = request.POST.get("etapa_sugerida") or None
         asunto = request.POST.get("asunto", "").strip()
         cuerpo = request.POST.get("cuerpo", "").strip()
+        # NUEVO -- campos de Content Template de WhatsApp (Twilio)
+        content_sid = request.POST.get("content_sid", "").strip()
+        orden_variables = request.POST.get("orden_variables", "").strip()
 
         if canal not in dict(PlantillaCobranza.CANAL_CHOICES):
             messages.error(request, "Selecciona un canal válido.")
@@ -581,6 +615,8 @@ def editar_plantilla(request, plantilla_id):
         plantilla.etapa_sugerida = etapa_sugerida
         plantilla.asunto = asunto or None
         plantilla.cuerpo = cuerpo
+        plantilla.content_sid = content_sid or None
+        plantilla.orden_variables = orden_variables or None
         plantilla.save()
 
         messages.success(request, "Plantilla actualizada correctamente.")

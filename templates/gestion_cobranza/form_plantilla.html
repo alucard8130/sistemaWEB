@@ -62,7 +62,7 @@
             <div class="placeholders-box">
                 <strong><i class="bi bi-info-circle me-1"></i>Placeholders disponibles:</strong><br>
                 <code>{nombre_cliente}</code> <code>{monto_vencido}</code> <code>{dias_atraso}</code>
-                <code>{folios_pendientes}</code> <code>{nombre_empresa}</code> <code>{fecha_hoy}</code>
+                <code>{folios_pendientes}</code> <code>{propiedades}</code> <code>{nombre_empresa}</code> <code>{fecha_hoy}</code>
             </div>
 
             <div class="field-block">
@@ -102,7 +102,23 @@
                 <textarea name="cuerpo" class="form-control" rows="8" required
                           placeholder="Hola {nombre_cliente}, te recordamos que tienes un saldo pendiente de {monto_vencido}...">{{ plantilla.cuerpo|default:'' }}</textarea>
             </div>
+            <div class="field-block" id="campo-content-sid" style="display:none;">
+                <label>Content SID de Twilio (opcional)</label>
+                <input type="text" name="content_sid" class="form-control"
+                       placeholder="HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="{{ plantilla.content_sid|default:'' }}">
+                <small class="text-muted d-block mt-1">
+                    Solo si ya tienes una plantilla aprobada en Twilio para WhatsApp. Si lo dejas vacío, se manda el "Cuerpo del mensaje" como texto libre.
+                </small>
+            </div>
 
+            <div class="field-block" id="campo-orden-variables" style="display:none;">
+                <label>Orden de variables (solo si capturaste Content SID)</label>
+                <input type="text" name="orden_variables" class="form-control"
+                       placeholder="nombre_cliente,monto_vencido,dias_atraso" value="{{ plantilla.orden_variables|default:'' }}">
+                <small class="text-muted d-block mt-1">
+                    Lista los placeholders en el mismo orden en que aparecen las variables de tu plantilla en Twilio, separados por coma -- el primero será la variable 1, el segundo la variable 2, etc.
+                </small>
+            </div>
             <div class="d-flex justify-content-between mt-4 pt-2 border-top">
                 <a href="{% url 'lista_plantillas' %}" class="btn-gesac-outline reporte-link">
                     Cancelar
@@ -132,6 +148,21 @@
                 if (overlay) overlay.style.display = 'flex';
             });
         });
+        // Muestra los campos de Content SID solo cuando el canal es WhatsApp
+        function actualizarCamposWhatsApp() {
+            var canalSelect = document.querySelector('select[name="canal"]');
+            if (!canalSelect) return;
+            var esWhatsapp = canalSelect.value === 'whatsapp';
+            var campoSid = document.getElementById('campo-content-sid');
+            var campoOrden = document.getElementById('campo-orden-variables');
+            if (campoSid) campoSid.style.display = esWhatsapp ? 'block' : 'none';
+            if (campoOrden) campoOrden.style.display = esWhatsapp ? 'block' : 'none';
+        }
+        actualizarCamposWhatsApp();
+        var canalSelect = document.querySelector('select[name="canal"]');
+        if (canalSelect) {
+            canalSelect.addEventListener('change', actualizarCamposWhatsApp);
+        }
     });
     </script>
 </body>
