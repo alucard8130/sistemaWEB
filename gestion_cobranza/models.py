@@ -271,7 +271,13 @@ class PlantillaCobranza(models.Model):
             return None
 
         contexto = self._construir_contexto(expediente)
-        claves_en_orden = [c.strip() for c in self.orden_variables.split(",") if c.strip()]
+        # NUEVO -- acepta el nombre con o sin llaves ({fecha_hoy} o
+        # fecha_hoy), para que no importe cómo lo hayas capturado.
+        claves_en_orden = [
+            c.strip().lstrip("{").rstrip("}").strip()
+            for c in self.orden_variables.split(",")
+            if c.strip()
+        ]
 
         variables = {}
         for i, clave in enumerate(claves_en_orden, start=1):
