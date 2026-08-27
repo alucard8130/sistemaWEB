@@ -1,8 +1,11 @@
 from datetime import date
+from decimal import Decimal
+
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
+
 from facturacion.models import Factura
-from decimal import Decimal
+
 
 def _siguiente_folio(prefix, empresa):
     last_folio = (
@@ -20,6 +23,7 @@ def _siguiente_folio(prefix, empresa):
     else:
         last_num = 0
     return f"{prefix}{last_num + 1:05d}"
+
 
 def generar_facturas_area(area, hasta=None):
     """

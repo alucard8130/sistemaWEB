@@ -2,7 +2,7 @@
 
 Sistema web para la administración integral de condominios, plazas comerciales, unidades habitacionales y propiedades en renta: cobranza, facturación fiscal (CFDI), gastos, presupuestos y reportes financieros en tiempo real.
 
-**Sitio comercial:** https://www.gesacadmin.com
+**Sitio comercial:** https://www.devsoftheron.com.mx
 
 ## Apps móviles
 
@@ -136,4 +136,4 @@ Ver [LICENSE.TXT](./LICENSE.TXT).
 
 ## Contacto y soporte
 
-Para soporte o información comercial, visitar [gesacadmin.com](https://www.gesacadmin.com).
+Para soporte o información comercial, visitar [Dev Soft Heron](https://www.devsoftheron.com.mx).

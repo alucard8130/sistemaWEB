@@ -2183,7 +2183,7 @@ def visitante_recuperar_password(request):
             mensaje = (
                 f"Hola {visitante.nombre},\n\n"
                 f"Tu nueva contraseña es: {nueva_password}\n"
-                "Accesa con ella en https://adminsoftheron.onrender.com/visitante/login/ \n\n"
+                "Accesa con ella en https://www.gesac.com.mx/visitante/login/ \n\n"
                 "Atentamente,\nEl equipo de Softheron. \n\n"
                 "Pagina de Softheron: https://www.devsoftheron.com.mx/ \n\n"
             )

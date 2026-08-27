@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 
 #from clientes.models import Cliente
+from catalogos.utils import generar_referencia_pago_propiedad
 from empresas.models import Empresa
 
 
@@ -54,7 +55,6 @@ class AreaComun(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.referencia_pago and self.cliente_id:
-            from clientes.utils import generar_referencia_pago_propiedad
             nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'A', self.numero)
             intentos = 0
             while AreaComun.objects.filter(referencia_pago=nueva_ref).exists() and intentos < 5:

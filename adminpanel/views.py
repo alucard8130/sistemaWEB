@@ -60,7 +60,7 @@ def toggle_activo_visitante(request, visitante_id):
     if visitante.activo:
         mensaje = (
             f"Hola {visitante.nombre},\n\n"
-            "Tu cuenta ha sido activada por el sistema GESAC. Ya puedes ingresar: https://adminsoftheron.onrender.com/visitante/login/ \n\n"
+            "Tu cuenta ha sido activada por el sistema GESAC. Ya puedes ingresar: https://www.gesac.com.mx/visitante/login/ \n\n"
             "Atentamente,\n"
             "El equipo de SoftHeron. \n\n" 
             "Gracias por utilizar nuestro sistema. Visita nuestra página web: \n"
