@@ -64,7 +64,7 @@ def toggle_activo_visitante(request, visitante_id):
             "Atentamente,\n"
             "El equipo de SoftHeron. \n\n" 
             "Gracias por utilizar nuestro sistema. Visita nuestra página web: \n"
-            "https://paginaweb-ro9v.onrender.com \n"
+            "https://www.devsoftheron.com.mx \n"
             
         )
         send_mail(

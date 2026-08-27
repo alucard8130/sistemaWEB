@@ -15,7 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from empresas.models import Empresa
 
-from .models import AccesoEmpresa, UsuarioAcceso
+from .models import AccesoEmpresa, AlertaGesac, UsuarioAcceso
 
 ####################APP ACCESO PORTAL EMPRESAS DE ADMINISTRACION Y MIEMBROS DEL COMITE####################
 
@@ -423,7 +423,7 @@ def activar_usuario(request, ua_pk):
     ua = get_object_or_404(UsuarioAcceso, pk=ua_pk)
     if request.method == 'POST':
         ua.activo = True
-        ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
+        ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)  # noqa: DTZ011
         ua.save()
         messages.success(request, f"Usuario {ua} activado correctamente.")
     return redirect('acceso_superuser_panel')
@@ -631,3 +631,22 @@ def password_reset_confirm(request, token):
 
 def password_reset_complete(request):
     return render(request, 'acceso_empresas/password_reset_complete.html')
+
+
+
+
+######## ALERTAS GESAC ########
+@requiere_acceso
+def alerta_marcar_leida(request, alerta_id):
+    alerta = get_object_or_404(AlertaGesac, id=alerta_id, usuario_acceso=request.ua)
+    alerta.leida = True
+    alerta.save(update_fields=['leida'])
+    next_url = request.GET.get('next') or request.POST.get('next')
+    return redirect(next_url or 'acceso_dashboard')
+
+
+@requiere_acceso
+def alertas_marcar_todas_leidas(request):
+    AlertaGesac.objects.filter(usuario_acceso=request.ua, leida=False).update(leida=True)
+    next_url = request.GET.get('next') or request.POST.get('next')
+    return redirect(next_url or 'acceso_dashboard')

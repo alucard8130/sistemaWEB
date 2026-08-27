@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 
 
@@ -82,6 +84,10 @@ class Empresa(models.Model):
             "exactamente el monto de la factura. Si está apagado, la comisión se le agrega "
             "al cliente por separado, y la empresa recibe el monto completo de la factura."
         ),
+    )
+    umbral_alerta_gastos = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("50000.00"),
+        help_text="Monto a partir del cual se genera una alerta de gasto alto para los usuarios del portal con esa notificación activada."
     )
 
     

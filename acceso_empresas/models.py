@@ -113,3 +113,33 @@ class AccesoEmpresa(models.Model):
 
     class Meta:
         unique_together = ('usuario_acceso', 'empresa')
+
+
+# ============================================================
+# 2. Modelo nuevo -- vive en el mismo archivo (acceso_empresas/models.py)
+# ============================================================
+
+class AlertaGesac(models.Model):
+    """Notificacion interna para usuarios del portal (UsuarioAcceso) --
+    hoy se usa para avisar de gastos/solicitudes de monto alto, pero el
+    diseno es generico para poder reutilizarse con otros tipos de aviso
+    despues."""
+
+    usuario_acceso = models.ForeignKey(
+        'UsuarioAcceso', on_delete=models.CASCADE, related_name='alertas'
+    )
+    empresa = models.ForeignKey(
+    'empresas.Empresa', on_delete=models.CASCADE, related_name='alertas_usuarios'
+    )
+    mensaje = models.CharField(max_length=255)
+    # Referencia generica al Gasto que origino la alerta -- opcional,
+    # para poder armar un link directo desde la notificacion.
+    gasto_id = models.PositiveIntegerField(null=True, blank=True)
+    leida = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha_creacion']  # noqa: RUF012
+
+    def __str__(self):
+        return f"{self.usuario_acceso.nombre} — {self.mensaje[:50]}"        

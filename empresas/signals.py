@@ -1,11 +1,13 @@
 from django.db import transaction
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+from acceso_empresas.models import AccesoEmpresa, AlertaGesac
 from caja_chica.models import FondeoCajaChica
 from empresas.models import CuentaBancaria
-from facturacion.models import Pago, CobroOtrosIngresos
-from gastos.models import PagoGasto
-from django.db.models import Q
+from facturacion.models import CobroOtrosIngresos, Pago
+from gastos.models import Gasto, PagoGasto
 
 
 @transaction.atomic
@@ -57,35 +59,6 @@ def poblar_cuenta_bancaria_inicial(
     }
 
 
-# def poblar_cuenta_bancaria_inicial(cuenta_bancaria):
-#     empresa = cuenta_bancaria.empresa
-
-#     # Solo se autopuebla si es la primera cuenta bancaria de la empresa.
-#     # Si ya hay varias, ya no es seguro decidir cuál corresponde.
-#     if CuentaBancaria.objects.filter(empresa=empresa).count() != 1:
-#         return
-
-#     Pago.objects.filter(
-#         factura__empresa=empresa,
-#         cuenta_bancaria__isnull=True,
-#     ).update(cuenta_bancaria=cuenta_bancaria)
-
-#     CobroOtrosIngresos.objects.filter(
-#         factura__empresa=empresa,
-#         cuenta_bancaria__isnull=True,
-#     ).update(cuenta_bancaria=cuenta_bancaria)
-
-#     PagoGasto.objects.filter(
-#         gasto__empresa=empresa,
-#         cuenta_bancaria__isnull=True,
-#     ).update(cuenta_bancaria=cuenta_bancaria)
-
-#     FondeoCajaChica.objects.filter(
-#         empresa=empresa,
-#         cuenta_bancaria__isnull=True,
-#     ).update(cuenta_bancaria=cuenta_bancaria)
-
-
 @receiver(post_save, sender=CuentaBancaria)
 def backfill_primera_cuenta_bancaria(sender, instance, created, **kwargs):
     if not created:
@@ -98,34 +71,56 @@ def backfill_primera_cuenta_bancaria(sender, instance, created, **kwargs):
     )
 
 
-# def backfill_primera_cuenta_bancaria(sender, instance, created, **kwargs):
-#     if not created:
-#         return
 
-#     empresa = instance.empresa
+# ===============================================
+# acceso_empresas/signals.py (archivo nuevo),
+# en acceso_empresas/apps.py, dentro de ready():
+#     import acceso_empresas.signals
 
-#     # Solo autopoblar si es la primera cuenta bancaria de la empresa
-#     if CuentaBancaria.objects.filter(empresa=empresa).count() != 1:
-#         return
 
-#     with transaction.atomic():
-#         Pago.objects.filter(
-#             empresa=empresa,
-#             factura__empresa=empresa,
-#             cuenta_bancaria__isnull=True,
-#         ).update(cuenta_bancaria=instance)
+@receiver(post_save, sender=Gasto)
+def crear_alerta_gasto_alto(sender, instance, created, **kwargs):
+    """Al crear un Gasto por encima del umbral configurado en la empresa
+    (sin importar si vino de captura manual o de Dispersion de Nomina),
+    avisa a cada usuario del portal que tenga 'recibir_alertas_gastos'
+    activado para esa empresa."""
+    if not created:
+        return
+    if instance.monto is None:
+        return
+    if not instance.empresa_id:
+        return
 
-#         CobroOtrosIngresos.objects.filter(
-#             factura__empresa=empresa,
-#             cuenta_bancaria__isnull=True,
-#         ).update(cuenta_bancaria=instance)
+    # El umbral es por empresa, no un numero fijo global.
+    umbral = instance.empresa.umbral_alerta_gastos
+    if umbral is None or instance.monto <= umbral:
+        return
 
-#         PagoGasto.objects.filter(
-#             gasto__empresa=empresa,
-#             cuenta_bancaria__isnull=True,
-#         ).update(cuenta_bancaria=instance)
+    accesos = AccesoEmpresa.objects.filter(
+        empresa_id=instance.empresa_id, activo=True, recibir_alertas_gastos=True,
+    ).select_related("usuario_acceso")
 
-#         FondeoCajaChica.objects.filter(
-#             empresa=empresa,
-#             cuenta_bancaria__isnull=True,
-#         ).update(cuenta_bancaria=instance)
+    if not accesos:
+        return
+
+    proveedor_o_empleado = (
+        instance.proveedor.nombre if instance.proveedor
+        else instance.empleado.nombre if instance.empleado
+        else "Sin proveedor/empleado"
+    )
+    mensaje = (
+        f"Nueva solicitud de gasto por ${instance.monto:,.2f} "
+        f"({proveedor_o_empleado})"
+        + (f" -- {instance.tipo_gasto.nombre}" if instance.tipo_gasto_id else "")
+    )
+
+    alertas_nuevas = [
+        AlertaGesac(
+            usuario_acceso=acceso.usuario_acceso,
+            empresa_id=instance.empresa_id,
+            mensaje=mensaje,
+            gasto_id=instance.id,
+        )
+        for acceso in accesos
+    ]
+    AlertaGesac.objects.bulk_create(alertas_nuevas)

@@ -846,7 +846,6 @@ def reiniciar_sistema(request):
     )
 
 
-
 @staff_member_required
 def respaldo_empresa_excel(request):
     # Si no hay empresa seleccionada, muestra el formulario
@@ -1153,7 +1152,6 @@ def respaldo_empresa_excel(request):
     return response
 
 
-
 @staff_member_required
 def reporte_auditoria(request):
     modelo = request.GET.get("modelo")
@@ -1181,7 +1179,6 @@ def crear_evento(request):
         evento.save()
         return JsonResponse({"ok": True, "id": evento.id})
     return JsonResponse({"ok": False}, status=400)
-
 
 
 @csrf_exempt
@@ -2120,7 +2117,7 @@ def registro_visitante(request):
             "Te notificaremos cuando tu cuenta sea activada.\n\n"
             "Atentamente,\nEl equipo de Softheron.\n\n"
             "Gracias. \n\n"
-            "Página de Softheron: https://paginaweb-ro9v.onrender.com \n\n"
+            "Página de Softheron: https://www.devsoftheron.com.mx/ \n\n"
         )
         send_mail(
             "Registro recibido - Pendiente de validación",
@@ -2188,7 +2185,7 @@ def visitante_recuperar_password(request):
                 f"Tu nueva contraseña es: {nueva_password}\n"
                 "Accesa con ella en https://adminsoftheron.onrender.com/visitante/login/ \n\n"
                 "Atentamente,\nEl equipo de Softheron. \n\n"
-                "Pagina de Softheron: https://paginaweb-ro9v.onrender.com \n\n"
+                "Pagina de Softheron: https://www.devsoftheron.com.mx/ \n\n"
             )
             send_mail(
                 "Recuperación de contraseña",
@@ -5193,7 +5190,7 @@ def enviar_recordatorio_morosidad(request):
                                                style="display:inline-block; background:#000000; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:bold; margin: 0 6px;">
                                                 🍎 App Store
                                             </a>
-                                            <a href="https://paginaweb-ro9v.onrender.com/beta"
+                                            <a href="https://devsoftheron.com.mx/beta"
                                                style="display:inline-block; background:#2d7a27; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:bold; margin: 0 6px; opacity:0.7;">
                                                 🤖 Google Play (testers)
                                             </a>

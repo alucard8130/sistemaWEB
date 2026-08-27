@@ -18,12 +18,12 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 #SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 #DEBUG = True
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,www.gesacadmin.com").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,www.gesac.com.mx").split(",")
 #ALLOWED_HOSTS = ["192.168.0.159", '*']  # For development purposes, change this in production
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
-    "https://gesac.up.railway.app,https://adminsoftheron.onrender.com,https://gesacadmin.com,https://www.gesacadmin.com"
+    "https://gesac.up.railway.app,https://adminsoftheron.onrender.com,https://gesac.com.mx,https://www.gesac.com.mx"
 ).split(",")
 
 # Application definition
@@ -93,6 +93,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 'empresas.context_processors.empresa_actual',  #nuevo context processor para exponer la empresa actual en todos los templates
+                'acceso_empresas.context_processors.alertas_portal_context',  #nuevo context processor para exponer las alertas del portal en todos los templates
             ],
         },
     },
@@ -119,23 +120,23 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # }
 
 #desarrollo postgres
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
-#         'USER': os.getenv('DB_USER'),         # tu usuario de postgres
-#         'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
-#         'HOST': os.getenv('DB_HOST', 'localhost'),
-#         'PORT': os.getenv('DB_PORT', '5432'),
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
+        'USER': os.getenv('DB_USER'),         # tu usuario de postgres
+        'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+    }
+}
 
 #produccion
-DATABASES = {
-    "default": dj_database_url.config(
-        default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
-    )
-}
+# DATABASES = {
+#     "default": dj_database_url.config(
+#         default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
+#     )
+# }
 
 
 
@@ -242,7 +243,7 @@ FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")
 
 
-PORTAL_PAGOS_URL = os.getenv("PORTAL_PAGOS_URL", "https://www.gesacadmin.com/visitante/login/")
+PORTAL_PAGOS_URL = os.getenv("PORTAL_PAGOS_URL", "https://www.gesac.com.mx/visitante/login/")
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 

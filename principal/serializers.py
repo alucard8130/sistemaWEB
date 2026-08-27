@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from facturacion.models import Factura
 
 
@@ -11,7 +12,7 @@ class FacturaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Factura
-        fields = ['empresa', 'id', 'folio', 'tipo_cuota', 'local', 'area_comun', 'locales_grupo', 'estatus', 'monto', 'saldo_pendiente', 'fecha_vencimiento', 'cliente']
+        fields = ['empresa', 'id', 'folio', 'tipo_cuota', 'local', 'area_comun', 'locales_grupo', 'estatus', 'monto', 'saldo_pendiente', 'fecha_vencimiento', 'cliente']  # noqa: RUF012
 
     def get_local(self, obj):
         return str(obj.local) if obj.local else ''

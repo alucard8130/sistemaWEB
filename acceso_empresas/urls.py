@@ -39,6 +39,9 @@ urlpatterns = [
     path('password/reset/<str:token>/', views.password_reset_confirm, name='acceso_password_reset_confirm'),
     path('password/reset/complete/', views.password_reset_complete, name='acceso_password_reset_complete'),
 
+    path('alertas/<int:alerta_id>/leida/', views.alerta_marcar_leida, name='alerta_marcar_leida'),
+    path('alertas/marcar-todas/', views.alertas_marcar_todas_leidas, name='alertas_marcar_todas_leidas'),
+
         
     path('upgrade/<str:nuevo_plan>/', views.upgrade_plan, name='acceso_upgrade'),
 ]

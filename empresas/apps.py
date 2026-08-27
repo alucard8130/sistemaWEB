@@ -6,4 +6,5 @@ class EmpresasConfig(AppConfig):
     name = 'empresas'
 
     def ready(self):
-        import empresas.signals  # Asegúrate de importar el módulo de señales para registrar los handlers
+        import acceso_empresas.signals  # noqa: F401
+        import empresas.signals  # Asegúrate de importar el módulo de señales para registrar los handlers  # noqa: F401
