@@ -120,23 +120,23 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # }
 
 #desarrollo postgres
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
-        'USER': os.getenv('DB_USER'),         # tu usuario de postgres
-        'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
+#         'USER': os.getenv('DB_USER'),         # tu usuario de postgres
+#         'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
+#         'HOST': os.getenv('DB_HOST', 'localhost'),
+#         'PORT': os.getenv('DB_PORT', '5432'),
+#     }
+# }
 
 #produccion
-# DATABASES = {
-#     "default": dj_database_url.config(
-#         default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
-#     )
-# }
+DATABASES = {
+    "default": dj_database_url.config(
+        default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
+    )
+}
 
 
 
