@@ -8,7 +8,6 @@ from calendar import monthrange
 # from django.db.models import Sum
 from collections import OrderedDict, defaultdict
 from datetime import date, datetime, timedelta
-from datetime import date as date_cls
 
 # from django.db.models import Q
 # from facturacion.models import Pago
@@ -43,7 +42,6 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateformat import DateFormat
 from django.utils.timezone import now
-from numpy import rint
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -59,7 +57,7 @@ from facturacion.utils import (
     calcular_total_vencida_rapido,
     variacion,
 )
-from gastos.models import CuentaContable, Gasto, PagoGasto, TipoGasto
+from gastos.models import CuentaContable, Gasto, PagoGasto
 from gastos.views import _empresa_del_usuario
 from locales.models import LocalComercial
 from presupuestos.models import PresupuestoIngreso
@@ -87,6 +85,51 @@ from .models import (
     TipoCuotaHomologacion,
     TipoOtroIngreso,
 )
+
+
+def _generar_y_guardar_folio(factura, prefix, intentos_maximos=5):
+    """
+    Genera el folio automático y guarda la factura -- protegido contra
+    la condición de carrera de 2 guardados casi simultáneos.
+
+    - select_for_update() bloquea la fila del último folio existente
+      mientras dura la transacción, así que si dos solicitudes llegan
+      casi al mismo tiempo, la segunda espera a que la primera termine
+      de guardar, en vez de leer el mismo "último folio" que la primera.
+    - Como red de seguridad extra (por si el bloqueo no alcanza a
+      prevenirlo en algún caso raro), si de todos modos se llega a
+      chocar con un folio ya usado, reintenta automáticamente con el
+      siguiente número, hasta 5 veces, en vez de tronar.
+    """
+    for intento in range(intentos_maximos):
+        try:
+            with transaction.atomic():
+                last_folio = (
+                    Factura.objects.select_for_update()
+                    .filter(empresa=factura.empresa, folio__startswith=prefix)
+                    .order_by("-folio")
+                    .values_list("folio", flat=True)
+                    .first()
+                )
+
+                if last_folio:
+                    try:
+                        last_num = int(last_folio.replace(prefix, ""))
+                    except Exception:  # noqa: BLE001
+                        last_num = 0
+                else:
+                    last_num = 0
+
+                factura.folio = f"{prefix}{last_num + 1:05d}"
+                factura.save()
+            return  # éxito -- el "with" ya cerró limpio, listo
+        except IntegrityError:
+            # El "except" está FUERA del "with" a propósito -- así Django
+            # alcanza a hacer el rollback correcto del savepoint antes de
+            # que reintentemos, en vez de dejar la transacción rota.
+            if intento == intentos_maximos - 1:
+                raise
+            continue
 
 
 @login_required
@@ -247,26 +290,27 @@ def crear_factura(request):
                         elif tipo == "area_comun":
                             prefix = "AC-F"
 
-                        # Busca el último folio para la empresa y tipo
-                        last_folio = (
-                            Factura.objects.filter(
-                                empresa=factura.empresa, folio__startswith=prefix
-                            )
-                            .order_by("-folio")
-                            .values_list("folio", flat=True)
-                            .first()
-                        )
+                        # # Busca el último folio para la empresa y tipo
+                        # last_folio = (
+                        #     Factura.objects.filter(
+                        #         empresa=factura.empresa, folio__startswith=prefix
+                        #     )
+                        #     .order_by("-folio")
+                        #     .values_list("folio", flat=True)
+                        #     .first()
+                        # )
 
-                        if last_folio:
-                            try:
-                                last_num = int(last_folio.replace(prefix, ""))
-                            except Exception:
-                                last_num = 0
-                        else:
-                            last_num = 0
+                        # if last_folio:
+                        #     try:
+                        #         last_num = int(last_folio.replace(prefix, ""))
+                        #     except Exception:  
+                        #         last_num = 0
+                        # else:
+                        #     last_num = 0
 
-                        factura.folio = f"{prefix}{last_num + 1:05d}"
-                        factura.save()
+                        # factura.folio = f"{prefix}{last_num + 1:05d}"
+                        # factura.save()
+                        _generar_y_guardar_folio(factura, prefix)
 
                         # Asignar cliente a local/área si está vacío o si hay conflicto autorizado
                         if factura.local and (
@@ -313,7 +357,7 @@ def crear_factura(request):
                             return redirect(next_url)
                         return redirect("lista_facturas")
 
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     form.add_error(None, f"Error al guardar: {e}")
 
         else:

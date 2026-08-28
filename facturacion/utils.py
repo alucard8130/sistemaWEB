@@ -240,7 +240,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
         if max_folio:
             try:
                 return int(max_folio.replace(prefix, ""))
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return 0
         return 0
 
@@ -345,7 +345,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 facturas_omitidas += 1
                 continue
 
-            monto_total = locales_vacantes.aggregate(t=Sum("cuota"))["t"] or Decimal("0")
+            monto_total = locales_vacantes.aggregate(t=Sum("cuota"))["t"] or Decimal("0")  # noqa: FURB157
             if monto_total <= 0:
                 continue
 

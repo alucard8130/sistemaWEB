@@ -151,6 +151,7 @@ from principal.views import (
     cancelar_suscripcion,
     cancelar_suscripcion_premium,
     cerrar_wizard,
+    confirmar_pago_transferencia,
     consulta_cfdis_facturama,
     crear_contador,
     crear_evento,
@@ -173,6 +174,7 @@ from principal.views import (
     enviar_recordatorio_morosidad,
     guardar_datos_empresa,
     lista_contadores,
+    lista_pagos_transferencia_pendientes,
     lista_temas,
     lista_tickets,
     membresia_pago_exitoso,
@@ -184,6 +186,7 @@ from principal.views import (
     reporte_auditoria,
     respaldo_empresa_excel,
     resultados_votacion,
+    solicitar_pago_transferencia,
     stripe_checkout_visitante,
     stripe_webhook,
     stripe_webhook_membresia,
@@ -428,6 +431,10 @@ urlpatterns = [
     path('nomina/', include('nomina.urls')),
     path('gestion_cobranza/', include('gestion_cobranza.urls')),
     path('cuentas-bancarias/<int:cuenta_id>/toggle-referencia-pago/', cuenta_bancaria_toggle_referencia_pago, name='cuenta_bancaria_toggle_referencia_pago'),
+    #### Pagos por transferencia usuarios GESAC#########
+    path('solicitar-pago-transferencia/', solicitar_pago_transferencia, name='solicitar_pago_transferencia'),
+    path('lista-pagos-transferencia-pendientes/', lista_pagos_transferencia_pendientes, name='lista_pagos_transferencia_pendientes'),
+    path('confirmar-pago-transferencia/', confirmar_pago_transferencia, name='confirmar_pago_transferencia'),
 ]
 
     

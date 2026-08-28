@@ -196,3 +196,51 @@ class CapturarEmailForm(forms.Form):
     email = forms.EmailField(label="Email del cliente", required=True)
 
 
+
+
+###################### Modulo de pagos de membresía ususrios GESAC por transferencia bancaria ######################
+
+class PagoMembresiaTransferencia(models.Model):
+    PLAN_CHOICES = [  # noqa: RUF012
+        ('plus', 'Plus'),
+        ('premium', 'Premium'),
+    ]
+    ESTATUS_CHOICES = [  # noqa: RUF012
+        ('pendiente', 'Pendiente de revisión'),
+        ('confirmado', 'Confirmado'),
+        ('rechazado', 'Rechazado'),
+    ]
+
+    perfil_usuario = models.ForeignKey(
+        PerfilUsuario, on_delete=models.CASCADE, related_name='pagos_transferencia'
+    )
+    plan_solicitado = models.CharField(max_length=20, choices=PLAN_CHOICES)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    meses_cubiertos = models.PositiveIntegerField(
+        default=1, help_text="Cuántos meses de membresía cubre este pago."
+    )
+    fecha_transferencia = models.DateField(
+        help_text="Fecha en que el cliente dice haber hecho la transferencia."
+    )
+    referencia = models.CharField(
+        max_length=100, blank=True, null=True,
+        help_text="Número de referencia o folio de la transferencia, si lo tienen."
+    )
+    comprobante = models.FileField(upload_to='comprobantes_membresia/')
+    estatus = models.CharField(max_length=20, choices=ESTATUS_CHOICES, default='pendiente')
+    fecha_solicitud = models.DateTimeField(auto_now_add=True)
+    confirmado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='pagos_membresia_confirmados'
+    )
+    fecha_confirmacion = models.DateTimeField(null=True, blank=True)
+    motivo_rechazo = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-fecha_solicitud']  # noqa: RUF012
+
+    def __str__(self):
+        return (
+            f"{self.perfil_usuario.usuario.username} — {self.get_plan_solicitado_display()} "
+            f"— ${self.monto} ({self.get_estatus_display()})"
+        )

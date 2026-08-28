@@ -102,6 +102,7 @@ from .models import (
     Aviso,
     CapturarEmailForm,
     Evento,
+    PagoMembresiaTransferencia,
     PerfilUsuario,
     SeguimientoTicket,
     TemaGeneral,
@@ -5084,7 +5085,7 @@ def enviar_recordatorio_morosidad(request):
         return redirect(next_url or "lista_facturas")
 
     def formato_importe(importe):
-        return "${:,.2f}".format(round(importe, 2))
+        return "${:,.2f}".format(round(importe, 2))  # noqa: UP032
 
     def construir_correo_html(
         cliente, facturas, empresa_nombre, email_empresa, tipo="local"
@@ -5349,3 +5350,151 @@ def enviar_recordatorio_morosidad(request):
             "Debes seleccionar un local o un área común antes de enviar el recordatorio.",
         )
         return redirect(next_url or "lista_facturas")
+
+
+
+######################## Modulo de pagos de membresía por transferencia bancaria 270826########################
+
+def _renovar_vencimiento_transferencia(perfil, meses=1):
+    """Extiende fecha_vencimiento -- si todavia no vence, suma los meses
+    A PARTIR de la fecha que ya tenia (no se pierde tiempo pagado por
+    adelantado); si ya vencio, cuenta a partir de hoy."""
+    ahora = timezone.now()
+    dias = meses * 30
+    if perfil.fecha_vencimiento and perfil.fecha_vencimiento > ahora:
+        perfil.fecha_vencimiento += timedelta(days=dias)
+    else:
+        perfil.fecha_vencimiento = ahora + timedelta(days=dias)
+
+
+# ============================================================
+# 1. SOLICITAR -- lo usa el usuario de la empresa (dueno de la cuenta GESAC)
+# ============================================================
+@login_required
+def solicitar_pago_transferencia(request):
+    perfil = get_object_or_404(PerfilUsuario, usuario=request.user)
+
+    if request.method == 'POST':
+        plan_solicitado = request.POST.get('plan_solicitado')
+        monto = request.POST.get('monto')
+        meses_cubiertos = request.POST.get('meses_cubiertos') or 1
+        fecha_transferencia = request.POST.get('fecha_transferencia')
+        referencia = request.POST.get('referencia', '').strip()
+        comprobante = request.FILES.get('comprobante')
+
+        if plan_solicitado not in dict(PagoMembresiaTransferencia.PLAN_CHOICES):
+            messages.error(request, "Selecciona un plan valido.")
+            return redirect('solicitar_pago_transferencia')
+        if not monto or not fecha_transferencia or not comprobante:
+            messages.error(request, "El monto, la fecha de transferencia, y el comprobante son obligatorios.")
+            return redirect('solicitar_pago_transferencia')
+
+        PagoMembresiaTransferencia.objects.create(
+            perfil_usuario=perfil,
+            plan_solicitado=plan_solicitado,
+            monto=monto,
+            meses_cubiertos=meses_cubiertos,
+            fecha_transferencia=fecha_transferencia,
+            referencia=referencia or None,
+            comprobante=comprobante,
+        )
+        messages.success(
+            request,
+            "Tu comprobante fue enviado -- lo revisaremos y activaremos tu membresia en cuanto lo confirmemos."
+        )
+        return redirect('dashboard_inicio')
+
+    return render(request, 'membresias/solicitar_pago_transferencia.html', {
+        'plan_choices': PagoMembresiaTransferencia.PLAN_CHOICES,
+    })
+
+
+# ============================================================
+# 2. LISTA de pendientes -- solo superusuario
+# ============================================================
+@login_required
+def lista_pagos_transferencia_pendientes(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para ver esta pantalla.")
+        return redirect('dashboard_inicio')
+
+    pagos_pendientes = (
+        PagoMembresiaTransferencia.objects.filter(estatus='pendiente')
+        .select_related('perfil_usuario', 'perfil_usuario__usuario', 'perfil_usuario__empresa')
+        .order_by('fecha_solicitud')
+    )
+    pagos_procesados = (
+        PagoMembresiaTransferencia.objects.exclude(estatus='pendiente')
+        .select_related('perfil_usuario', 'perfil_usuario__usuario')
+        .order_by('-fecha_confirmacion')[:20]
+    )
+
+    return render(request, 'membresias/lista_pagos_transferencia.html', {
+        'pagos_pendientes': pagos_pendientes,
+        'pagos_procesados': pagos_procesados,
+    })
+
+
+# ============================================================
+# 3. CONFIRMAR -- solo superusuario
+# ============================================================
+@login_required
+def confirmar_pago_transferencia(request, pago_id):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para confirmar pagos.")
+        return redirect('dashboard_inicio')
+
+    pago = get_object_or_404(PagoMembresiaTransferencia, id=pago_id)
+
+    if pago.estatus != 'pendiente':
+        messages.info(request, "Este pago ya fue procesado antes.")
+        return redirect('lista_pagos_transferencia_pendientes')
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            pago.estatus = 'confirmado'
+            pago.confirmado_por = request.user
+            pago.fecha_confirmacion = timezone.now()
+            pago.save()
+
+            perfil = pago.perfil_usuario
+            perfil.tipo_usuario = pago.plan_solicitado
+            _renovar_vencimiento_transferencia(perfil, meses=pago.meses_cubiertos)
+            perfil.save()
+
+        messages.success(
+            request,
+            f"Pago confirmado -- {perfil.usuario.username} actualizado a {pago.get_plan_solicitado_display()}, "
+            f"vigente hasta {perfil.fecha_vencimiento:%d/%m/%Y}."
+        )
+        return redirect('lista_pagos_transferencia_pendientes')
+
+    return render(request, 'membresias/confirmar_pago_transferencia.html', {'pago': pago})
+
+
+# ============================================================
+# 4. RECHAZAR -- solo superusuario
+# ============================================================
+@login_required
+def rechazar_pago_transferencia(request, pago_id):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para rechazar pagos.")
+        return redirect('dashboard_inicio')
+
+    pago = get_object_or_404(PagoMembresiaTransferencia, id=pago_id)
+
+    if pago.estatus != 'pendiente':
+        messages.info(request, "Este pago ya fue procesado antes.")
+        return redirect('lista_pagos_transferencia_pendientes')
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo', '').strip()
+        pago.estatus = 'rechazado'
+        pago.motivo_rechazo = motivo or None
+        pago.confirmado_por = request.user
+        pago.fecha_confirmacion = timezone.now()
+        pago.save()
+        messages.success(request, "Pago marcado como rechazado.")
+        return redirect('lista_pagos_transferencia_pendientes')
+
+    return redirect('lista_pagos_transferencia_pendientes')

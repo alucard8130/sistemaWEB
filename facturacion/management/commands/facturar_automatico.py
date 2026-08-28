@@ -1,7 +1,9 @@
 import datetime as dt
-from django.core.management.base import BaseCommand
-from django.core.mail import EmailMessage
+
 from django.conf import settings
+from django.core.mail import EmailMessage
+from django.core.management.base import BaseCommand
+
 from empresas.models import Empresa
 from facturacion.utils import generar_facturas_mes
 
@@ -10,7 +12,7 @@ class Command(BaseCommand):
     help = "Genera automáticamente la facturación mensual de cuotas para empresas que no la hayan hecho, a partir del día 3 del mes."
 
     def handle(self, *args, **options):
-        hoy = dt.date.today()
+        hoy = dt.date.today()  # noqa: DTZ011
 
         if hoy.day < 3:
             self.stdout.write(f"Hoy es día {hoy.day} -- todavía no toca facturación automática (a partir del día 3).")
