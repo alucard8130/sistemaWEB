@@ -2,6 +2,7 @@ import datetime
 import secrets
 from datetime import timedelta
 
+import stripe
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -169,9 +170,6 @@ def pago_exitoso(request):
 
 
 def checkout_suscripcion(request):
-    import stripe
-    from django.conf import settings
-
     ua_id = request.session.get('ua_id')
     if not ua_id:
         return redirect('acceso_login')
@@ -189,16 +187,30 @@ def checkout_suscripcion(request):
         return redirect('acceso_pago_pendiente')
 
     try:
-        if ua.stripe_customer_id:
-            customer_id = ua.stripe_customer_id
-        else:
+        customer_id = ua.stripe_customer_id
+
+        # NUEVO -- si ya hay un customer_id guardado, verifica que
+        # REALMENTE exista en el modo actual de Stripe (test/live)
+        # antes de confiar en el. Si no existe (por ejemplo, quedo
+        # guardado de cuando el sistema usaba llaves de prueba por
+        # error), se crea uno nuevo automaticamente -- sin que el
+        # usuario vea ningun error ni tenga que hacer nada distinto.
+        customer_valido = False
+        if customer_id:
+            try:
+                stripe.Customer.retrieve(customer_id)
+                customer_valido = True
+            except Exception:  # noqa: BLE001
+                customer_valido = False
+
+        if not customer_valido:
             customer = stripe.Customer.create(
                 email=ua.email,
                 name=ua.nombre,
                 metadata={'usuario_acceso_id': ua.id, 'plan': ua.plan}
             )
             ua.stripe_customer_id = customer.id
-            ua.save()
+            ua.save(update_fields=['stripe_customer_id'])
             customer_id = customer.id
 
         session = stripe.checkout.Session.create(
@@ -217,6 +229,92 @@ def checkout_suscripcion(request):
         return redirect('acceso_pago_pendiente')
 
 
+@requiere_acceso
+def upgrade_plan(request, nuevo_plan):
+    ua = request.ua
+    planes_validos = {
+        'basico': ['profesional', 'enterprise'],
+        'profesional': ['enterprise'],
+    }
+
+    if nuevo_plan not in planes_validos.get(ua.plan, []):
+        messages.error(request, "Plan no válido.")
+        return redirect('acceso_dashboard')
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    price_id = settings.STRIPE_PORTAL_PRICES.get(nuevo_plan)
+
+    try:
+        session = stripe.checkout.Session.create(
+            customer=ua.stripe_customer_id,
+            payment_method_types=['card'],
+            line_items=[{'price': price_id, 'quantity': 1}],
+            mode='subscription',
+            success_url=request.build_absolute_uri('/portal/pago-exitoso/'),
+            cancel_url=request.build_absolute_uri('/portal/'),
+            metadata={'usuario_acceso_id': ua.id, 'plan': nuevo_plan},
+        )
+        return redirect(session.url, permanent=False)
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        return redirect('acceso_dashboard')
+
+
+@csrf_exempt
+def stripe_webhook_portal(request):
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    webhook_secret = settings.STRIPE_PORTAL_WEBHOOK_SECRET
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except (ValueError, stripe.SignatureVerificationError):
+        return HttpResponse(status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        usuario_acceso_id = session.get('metadata', {}).get('usuario_acceso_id')
+        nuevo_plan = session.get('metadata', {}).get('plan')
+        subscription_id = session.get('subscription')
+        if usuario_acceso_id:
+            try:
+                ua = UsuarioAcceso.objects.get(pk=usuario_acceso_id)
+                ua.activo = True
+                ua.stripe_subscription_id = subscription_id
+                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
+                if nuevo_plan in ['basico', 'profesional', 'enterprise']:
+                    ua.plan = nuevo_plan
+                ua.save()
+            except UsuarioAcceso.DoesNotExist:
+                pass
+
+    elif event['type'] == 'invoice.payment_succeeded':
+        subscription_id = event['data']['object'].get('subscription')
+        if subscription_id:
+            try:
+                ua = UsuarioAcceso.objects.get(stripe_subscription_id=subscription_id)
+                ua.activo = True
+                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
+                ua.save()
+            except UsuarioAcceso.DoesNotExist:
+                pass
+
+    elif event['type'] in ['customer.subscription.deleted', 'invoice.payment_failed']:
+        subscription_id = event['data']['object'].get('id') or \
+                         event['data']['object'].get('subscription')
+        if subscription_id:
+            try:
+                ua = UsuarioAcceso.objects.get(stripe_subscription_id=subscription_id)
+                ua.activo = False
+                ua.save()
+            except UsuarioAcceso.DoesNotExist:
+                pass
+
+    return HttpResponse(status=200)    
+
+
+
+###### DASHBOARD Y GESTIÓN DE EMPRESAS ACTIVAS ######
 @requiere_acceso
 def dashboard(request):
     ua = request.ua
@@ -361,39 +459,6 @@ def reporte_gestion_cobranza(request):
     from gestion_cobranza.views import resumen_cobranza_portal
     return resumen_cobranza_portal(request)
 
-
-@requiere_acceso
-def upgrade_plan(request, nuevo_plan):
-    import stripe
-    from django.conf import settings
-
-    ua = request.ua
-    planes_validos = {
-        'basico': ['profesional', 'enterprise'],
-        'profesional': ['enterprise'],
-    }
-
-    if nuevo_plan not in planes_validos.get(ua.plan, []):
-        messages.error(request, "Plan no válido.")
-        return redirect('acceso_dashboard')
-
-    stripe.api_key = settings.STRIPE_SECRET_KEY
-    price_id = settings.STRIPE_PORTAL_PRICES.get(nuevo_plan)
-
-    try:
-        session = stripe.checkout.Session.create(
-            customer=ua.stripe_customer_id,
-            payment_method_types=['card'],
-            line_items=[{'price': price_id, 'quantity': 1}],
-            mode='subscription',
-            success_url=request.build_absolute_uri('/portal/pago-exitoso/'),
-            cancel_url=request.build_absolute_uri('/portal/'),
-            metadata={'usuario_acceso_id': ua.id, 'plan': nuevo_plan},
-        )
-        return redirect(session.url, permanent=False)
-    except Exception as e:
-        messages.error(request, f"Error: {str(e)}")
-        return redirect('acceso_dashboard')
     
 # ============ PANEL SUPERUSUARIO ============
 
@@ -488,61 +553,6 @@ def editar_permisos(request, acceso_id):
 
     return render(request, 'acceso_empresas/editar_permisos.html', {'acceso': acceso})
 
-
-@csrf_exempt
-def stripe_webhook_portal(request):
-    import stripe
-    from django.conf import settings
-
-    payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    webhook_secret = settings.STRIPE_PORTAL_WEBHOOK_SECRET
-
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except (ValueError, stripe.SignatureVerificationError):
-        return HttpResponse(status=400)
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        usuario_acceso_id = session.get('metadata', {}).get('usuario_acceso_id')
-        nuevo_plan = session.get('metadata', {}).get('plan')
-        subscription_id = session.get('subscription')
-        if usuario_acceso_id:
-            try:
-                ua = UsuarioAcceso.objects.get(pk=usuario_acceso_id)
-                ua.activo = True
-                ua.stripe_subscription_id = subscription_id
-                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
-                if nuevo_plan in ['basico', 'profesional', 'enterprise']:
-                    ua.plan = nuevo_plan
-                ua.save()
-            except UsuarioAcceso.DoesNotExist:
-                pass
-
-    elif event['type'] == 'invoice.payment_succeeded':
-        subscription_id = event['data']['object'].get('subscription')
-        if subscription_id:
-            try:
-                ua = UsuarioAcceso.objects.get(stripe_subscription_id=subscription_id)
-                ua.activo = True
-                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
-                ua.save()
-            except UsuarioAcceso.DoesNotExist:
-                pass
-
-    elif event['type'] in ['customer.subscription.deleted', 'invoice.payment_failed']:
-        subscription_id = event['data']['object'].get('id') or \
-                         event['data']['object'].get('subscription')
-        if subscription_id:
-            try:
-                ua = UsuarioAcceso.objects.get(stripe_subscription_id=subscription_id)
-                ua.activo = False
-                ua.save()
-            except UsuarioAcceso.DoesNotExist:
-                pass
-
-    return HttpResponse(status=200)
 
 
 def cerrar_wizard(request):

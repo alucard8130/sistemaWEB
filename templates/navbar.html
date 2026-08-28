@@ -478,8 +478,8 @@
               Membresía<i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item reporte-link" href="{% url 'crear_sesion_pago' %}"><i class="bi bi-credit-card-fill me-2"></i>Pagar Plus (Tarjeta)</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'crear_sesion_pago_premium' %}"><i class="bi bi-credit-card-2-front-fill me-2"></i>Pagar Premium (Tarjeta)</a></li>
+              <li><a class="dropdown-item" href="#" id="navbar-stripe-plus-btn"><i class="bi bi-credit-card-fill me-2"></i>Pagar Plus (Tarjeta)</a></li>
+              <li><a class="dropdown-item" href="#" id="navbar-stripe-premium-btn"><i class="bi bi-credit-card-2-front-fill me-2"></i>Pagar Premium (Tarjeta)</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Pagar por Transferencia</a></li>
               {% if request.user.is_superuser %}
               <li><hr class="dropdown-divider"></li>

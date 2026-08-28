@@ -442,16 +442,6 @@ def dashboard_inicio(request):
         gastos_pagados_6.append(gpagados)
         gastos_pendientes_6.append(gpendientes)
 
-
-    # Membresía, la deshabilité porque no funcionaba bien, se puede reactivar si se arregla el perfil de empresa
-    # membresia_label = ''
-    # try:
-    #     nivel = empresa.perfil.nivel if hasattr(empresa, 'perfil') else None
-    #     if nivel:
-    #         membresia_label = nivel.capitalize()
-    # except Exception:
-    #     pass
-
     mensaje_pago = None
     if request.GET.get("pago") == "ok":
         mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."    
@@ -515,6 +505,7 @@ def dashboard_inicio(request):
         'bancos_choices': CuentaBancaria.BANCOS_CHOICES,
         'moneda_choices': CuentaBancaria.TIPO_MONEDA,
         'tipo_cuenta_choices': CuentaBancaria.TIPO_CUENTA,
+        'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY,  # NUEVO
     })
 
 
@@ -1696,9 +1687,7 @@ def cancelar_suscripcion(request):
     plus_subscription_id = (
         perfil.stripe_plus_subscription_id or perfil.stripe_subscription_id
     )
-    # if not plus_subscription_id:
-    #     return JsonResponse({"status": "no encontrada"}, status=404)
-
+   
     try:
         _safe_cancel_subscription(plus_subscription_id)
 

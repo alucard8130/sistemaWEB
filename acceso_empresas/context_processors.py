@@ -1,5 +1,4 @@
 # ============================================================
-# Colocalo en: acceso_empresas/context_processors.py (archivo nuevo)
 #
 # Y registralo en settings.py, dentro de TEMPLATES -> OPTIONS ->
 # context_processors (agrega esta linea a la lista que ya tienes):

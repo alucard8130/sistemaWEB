@@ -16,11 +16,9 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
-# DEBUG = True
-ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS", "gesac.up.railway.app,adminsoftheron.onrender.com,www.gesac.com.mx"
-).split(",")
-# ALLOWED_HOSTS = ["192.168.0.159", '*']  # For development purposes, change this in production
+#DEBUG = True
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,www.gesac.com.mx").split(",")
+#ALLOWED_HOSTS = ["192.168.0.159","*",]  # For development purposes, change this in production
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
@@ -95,6 +93,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "empresas.context_processors.empresa_actual",  # nuevo context processor para exponer la empresa actual en todos los templates
                 "acceso_empresas.context_processors.alertas_portal_context",  # nuevo context processor para exponer las alertas del portal en todos los templates
+                "principal.context_processors.stripe_context",  # nuevo context processor para exponer la clave pública de Stripe en todos los templates
             ],
         },
     },
@@ -122,13 +121,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # desarrollo postgres
 # DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('DB_NAME'),         # nombre de tu base clonada
-#         'USER': os.getenv('DB_USER'),         # tu usuario de postgres
-#         'PASSWORD': os.getenv('DB_PASSWORD'), # tu contraseña
-#         'HOST': os.getenv('DB_HOST', 'localhost'),
-#         'PORT': os.getenv('DB_PORT', '5432'),
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": os.getenv("DB_NAME"),  # nombre de tu base clonada
+#         "USER": os.getenv("DB_USER"),  # tu usuario de postgres
+#         "PASSWORD": os.getenv("DB_PASSWORD"),  # tu contraseña
+#         "HOST": os.getenv("DB_HOST", "localhost"),
+#         "PORT": os.getenv("DB_PORT", "5432"),
 #     }
 # }
 
@@ -191,49 +190,27 @@ LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/login/"
 
 
-# if os.getenv("DEBUG", "True") == "False":
-#     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
-#     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY_TEST")
-#     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET_TEST")
-#     ## STRIPE_PORTAL_PRICES ADMINISTRADORES Y/O COMITE
-#     STRIPE_PORTAL_WEBHOOK_SECRET = os.getenv("STRIPE_PORTAL_WEBHOOK_SECRET_TEST")
-#     STRIPE_PORTAL_PRICES = {
-#         'basico': os.getenv("STRIPE_PORTAL_PRICE_BASICO_TEST"),
-#         'profesional': os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL_TEST"),
-#         'enterprise': os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE_TEST"),
-#     }
-# else:
-#     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-#     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
-#     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
-#     ## STRIPE_PORTAL_PRICES ADMINISTRADORES Y/O COMITE
-#     STRIPE_PORTAL_WEBHOOK_SECRET = os.getenv("STRIPE_PORTAL_WEBHOOK_SECRET")
-#     STRIPE_PORTAL_PRICES = {
-#         'basico': os.getenv("STRIPE_PORTAL_PRICE_BASICO"),
-#         'profesional': os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL"),
-#         'enterprise': os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE"),
-#     }
 if os.getenv("DEBUG", "True") == "False":
-    # Producción -- usa las llaves REALES
-    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-    STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
-    STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
-    STRIPE_PORTAL_WEBHOOK_SECRET = os.getenv("STRIPE_PORTAL_WEBHOOK_SECRET")
-    STRIPE_PORTAL_PRICES = {
-        "basico": os.getenv("STRIPE_PORTAL_PRICE_BASICO"),
-        "profesional": os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL"),
-        "enterprise": os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE"),
-    }
-else:
-    # Desarrollo -- usa las llaves de PRUEBA
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY_TEST")
     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET_TEST")
+    ## STRIPE_PORTAL_PRICES ADMINISTRADORES Y/O COMITE
     STRIPE_PORTAL_WEBHOOK_SECRET = os.getenv("STRIPE_PORTAL_WEBHOOK_SECRET_TEST")
     STRIPE_PORTAL_PRICES = {
-        "basico": os.getenv("STRIPE_PORTAL_PRICE_BASICO_TEST"),
-        "profesional": os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL_TEST"),
-        "enterprise": os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE_TEST"),
+        'basico': os.getenv("STRIPE_PORTAL_PRICE_BASICO_TEST"),
+        'profesional': os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL_TEST"),
+        'enterprise': os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE_TEST"),
+    }
+else:
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+    STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
+    STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET")
+    ## STRIPE_PORTAL_PRICES ADMINISTRADORES Y/O COMITE
+    STRIPE_PORTAL_WEBHOOK_SECRET = os.getenv("STRIPE_PORTAL_WEBHOOK_SECRET")
+    STRIPE_PORTAL_PRICES = {
+        'basico': os.getenv("STRIPE_PORTAL_PRICE_BASICO"),
+        'profesional': os.getenv("STRIPE_PORTAL_PRICE_PROFESIONAL"),
+        'enterprise': os.getenv("STRIPE_PORTAL_PRICE_ENTERPRISE"),
     }
 
 

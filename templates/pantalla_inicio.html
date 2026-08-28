@@ -111,8 +111,8 @@
     </div>
     {% endif %}
 
-    <!-- Cargar Stripe UNA SOLA VEZ al inicio -->
-    <script src="https://js.stripe.com/v3/"></script>
+    <!-- Cargar Stripe UNA SOLA VEZ al inicio 
+    <script src="https://js.stripe.com/v3/"></script> -->
 
    {% if not empresa.es_plus and not empresa.es_premium %}
       <div style="
@@ -1401,6 +1401,47 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }]
     });
+});
+</script>
+<!-- Stripe.js -- se carga una sola vez aquí en el navbar, disponible
+     en cualquier pantalla donde se necesite -->
+<script src="https://js.stripe.com/v3/"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function pagarConStripe(url) {
+        var overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.style.display = 'flex';
+        fetch(url)
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.id) {
+                    throw new Error(data.detail || data.status || 'No se pudo crear la sesión de pago.');
+                }
+                var stripe = Stripe("{{ STRIPE_PUBLIC_KEY|escapejs }}");
+                return stripe.redirectToCheckout({ sessionId: data.id });
+            })
+            .catch(function (error) {
+                if (overlay) overlay.style.display = 'none';
+                alert('Error al crear la sesión de pago: ' + error.message);
+            });
+    }
+
+    var navbarPlusBtn = document.getElementById('navbar-stripe-plus-btn');
+    if (navbarPlusBtn) {
+        navbarPlusBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            pagarConStripe("{% url 'crear_sesion_pago' %}");
+        });
+    }
+
+    var navbarPremiumBtn = document.getElementById('navbar-stripe-premium-btn');
+    if (navbarPremiumBtn) {
+        navbarPremiumBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            pagarConStripe("{% url 'crear_sesion_pago_premium' %}");
+        });
+    }
 });
 </script>
 <script src="{% static 'js/script.js' %}"></script>
