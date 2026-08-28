@@ -1,0 +1,136 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisar Pago — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        .mb-header {
+            background: linear-gradient(135deg, #3B0764 0%, #6D28D9 60%, #9333EA 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(59,7,100,0.2);
+            position: relative; overflow: hidden;
+        }
+        .mb-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.08);
+        }
+        .mb-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .mb-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .mb-card { background: white; border-radius: 16px; padding: 26px 28px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .mb-card h5 { font-size: 0.95rem; font-weight: 700; color: #4a3070; margin-bottom: 14px; }
+
+        table.datos-pago { width: 100%; font-size: 0.9rem; }
+        table.datos-pago td { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+        table.datos-pago td:first-child { font-weight: 600; color: #6b7280; width: 40%; }
+
+        .comprobante-preview { border: 2px dashed #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; }
+        .comprobante-preview img { max-width: 100%; max-height: 500px; border-radius: 8px; }
+
+        .btn-confirmar { background: linear-gradient(135deg, #1E8449, #27ae60); color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: 600; }
+        .btn-confirmar:hover { color: white; transform: translateY(-1px); }
+        .btn-rechazar { background: white; border: 1px solid #9C2B2B; color: #9C2B2B; border-radius: 10px; padding: 10px 24px; font-weight: 600; }
+        .btn-rechazar:hover { background: #9C2B2B; color: white; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible container mt-3">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 800px;">
+
+        <div class="mb-header">
+            <div class="mb-titulo"><i class="bi bi-search me-2"></i>Revisar Comprobante</div>
+            <div class="mb-subtitulo">{{ pago.perfil_usuario.usuario.username }} — {{ pago.perfil_usuario.empresa.nombre|default:"Sin empresa" }}</div>
+        </div>
+
+        <div class="mb-card">
+            <h5><i class="bi bi-card-list me-1"></i>Datos de la solicitud</h5>
+            <table class="datos-pago">
+                <tr><td>Plan solicitado</td><td>{{ pago.get_plan_solicitado_display }}</td></tr>
+                <tr><td>Monto transferido</td><td><strong>${{ pago.monto|floatformat:2|intcomma }}</strong></td></tr>
+                <tr><td>Meses que cubre</td><td>{{ pago.meses_cubiertos }}</td></tr>
+                <tr><td>Fecha de la transferencia</td><td>{{ pago.fecha_transferencia|date:"d/m/Y" }}</td></tr>
+                <tr><td>Referencia</td><td>{{ pago.referencia|default:"—" }}</td></tr>
+                <tr><td>Vencimiento actual del perfil</td><td>{{ pago.perfil_usuario.fecha_vencimiento|date:"d/m/Y H:i"|default:"Sin vencimiento previo" }}</td></tr>
+                <tr><td>Tipo de usuario actual</td><td>{{ pago.perfil_usuario.get_tipo_usuario_display }}</td></tr>
+            </table>
+        </div>
+
+        <div class="mb-card">
+            <h5><i class="bi bi-file-earmark-image me-1"></i>Comprobante</h5>
+            <div class="comprobante-preview">
+                {% if pago.comprobante.url|slice:"-4:" == ".pdf" %}
+                    <a href="{{ pago.comprobante.url }}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF del comprobante
+                    </a>
+                {% else %}
+                    <a href="{{ pago.comprobante.url }}" target="_blank">
+                        <img src="{{ pago.comprobante.url }}" alt="Comprobante de transferencia">
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-card">
+            <h5><i class="bi bi-check2-circle me-1"></i>Confirmar pago</h5>
+            <p class="text-muted small">Al confirmar, el usuario pasa a "{{ pago.get_plan_solicitado_display }}" y su vencimiento se extiende {{ pago.meses_cubiertos }} mes(es).</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-confirmar">
+                    <i class="bi bi-check-lg me-1"></i>Confirmar y activar
+                </button>
+            </form>
+        </div>
+
+        <div class="mb-card">
+            <h5><i class="bi bi-x-circle me-1"></i>Rechazar</h5>
+            <form method="post" action="{% url 'rechazar_pago_transferencia' pago.id %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Motivo del rechazo (opcional)</label>
+                    <input type="text" name="motivo" class="form-control" placeholder="Ej. comprobante ilegible, monto incorrecto...">
+                </div>
+                <button type="submit" class="btn btn-rechazar" onclick="return confirm('¿Seguro que quieres rechazar este pago?');">
+                    <i class="bi bi-x-lg me-1"></i>Rechazar
+                </button>
+            </form>
+        </div>
+
+        <a href="{% url 'lista_pagos_transferencia_pendientes' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Regresar a la lista
+        </a>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var overlay = document.getElementById('loading-overlay');
+            document.querySelectorAll('form').forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

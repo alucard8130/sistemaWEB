@@ -473,10 +473,25 @@
               <li><hr class="dropdown-divider"></li>
             </ul>
           </li>
-
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Membresías">
+              Usuario <i style="font-size: 1.5em;"></i>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item reporte-link" href="{% url 'crear_sesion_pago' %}"><i class="bi bi-credit-card-fill me-2"></i>Pagar Plus (Tarjeta)</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'crear_sesion_pago_premium' %}"><i class="bi bi-credit-card-2-front-fill me-2"></i>Pagar Premium (Tarjeta)</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Pagar por Transferencia</a></li>
+              {% if request.user.is_superuser %}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_membresias' %}"><i class="bi bi-bar-chart-fill me-2"></i>Estatus Membresías</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'configurar_membresia' %}"><i class="bi bi-gear-fill me-2"></i>Configurar Precios Membresías</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_pagos_transferencia_pendientes' %}"><i class="bi bi-hourglass-split me-2"></i>Revisar Pagos Membresías</a></li>
+              {% endif %}
+            </ul>
+          </li>
         </ul>
       </div>
-
+      
       <div class="d-flex align-items-center gap-3">
         <button type="button" class="btn btn-sm btn-ayuda reporte-link"
           data-bs-toggle="modal"
@@ -533,7 +548,7 @@
               <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PLUS</button>
             {% endif %}
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-          </div>
+          </div>  
         </div>
       </div>
     </div>

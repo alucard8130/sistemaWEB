@@ -33,7 +33,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
 from django.core.mail import EmailMessage, send_mail
 from django.core.paginator import Paginator
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import (
     Case,
     CharField,
@@ -101,6 +101,7 @@ from .forms import AvisoForm, ContadorForm, CSDUploadForm, EditarContadorForm
 from .models import (
     Aviso,
     CapturarEmailForm,
+    ConfiguracionMembresia,
     Evento,
     PagoMembresiaTransferencia,
     PerfilUsuario,
@@ -765,12 +766,12 @@ def reenviar_credenciales_contador(request, perfil_id):
 
 
 
-################### INFORMACION ADICIONAL DE PLANES Y SUSCRIPCIONES ########################
 @login_required
 def info_plus(request):
     return render(request, 'planes/info_plus.html', {
         'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
     })
+
 
 @staff_member_required
 @login_required
@@ -5373,7 +5374,7 @@ def _renovar_vencimiento_transferencia(perfil, meses=1):
 @login_required
 def solicitar_pago_transferencia(request):
     perfil = get_object_or_404(PerfilUsuario, usuario=request.user)
-
+ 
     if request.method == 'POST':
         plan_solicitado = request.POST.get('plan_solicitado')
         monto = request.POST.get('monto')
@@ -5381,14 +5382,14 @@ def solicitar_pago_transferencia(request):
         fecha_transferencia = request.POST.get('fecha_transferencia')
         referencia = request.POST.get('referencia', '').strip()
         comprobante = request.FILES.get('comprobante')
-
+ 
         if plan_solicitado not in dict(PagoMembresiaTransferencia.PLAN_CHOICES):
             messages.error(request, "Selecciona un plan valido.")
             return redirect('solicitar_pago_transferencia')
         if not monto or not fecha_transferencia or not comprobante:
             messages.error(request, "El monto, la fecha de transferencia, y el comprobante son obligatorios.")
             return redirect('solicitar_pago_transferencia')
-
+ 
         PagoMembresiaTransferencia.objects.create(
             perfil_usuario=perfil,
             plan_solicitado=plan_solicitado,
@@ -5403,9 +5404,10 @@ def solicitar_pago_transferencia(request):
             "Tu comprobante fue enviado -- lo revisaremos y activaremos tu membresia en cuanto lo confirmemos."
         )
         return redirect('dashboard_inicio')
-
+ 
     return render(request, 'membresias/solicitar_pago_transferencia.html', {
         'plan_choices': PagoMembresiaTransferencia.PLAN_CHOICES,
+        'config': ConfiguracionMembresia.obtener(),
     })
 
 
@@ -5462,6 +5464,18 @@ def confirmar_pago_transferencia(request, pago_id):
             _renovar_vencimiento_transferencia(perfil, meses=pago.meses_cubiertos)
             perfil.save()
 
+            # NUEVO -- la empresa también se marca en el campo correcto
+            # según el plan confirmado -- otras partes del sistema (los
+            # candados PREMIUM/PLUS del navbar) revisan estos campos
+            # directo en Empresa, no el tipo_usuario del perfil.
+            if perfil.empresa:
+                if pago.plan_solicitado == 'premium':
+                    perfil.empresa.es_premium = True
+                    perfil.empresa.save(update_fields=['es_premium'])
+                elif pago.plan_solicitado == 'plus':
+                    perfil.empresa.es_plus = True
+                    perfil.empresa.save(update_fields=['es_plus'])
+
         messages.success(
             request,
             f"Pago confirmado -- {perfil.usuario.username} actualizado a {pago.get_plan_solicitado_display()}, "
@@ -5498,3 +5512,131 @@ def rechazar_pago_transferencia(request, pago_id):
         return redirect('lista_pagos_transferencia_pendientes')
 
     return redirect('lista_pagos_transferencia_pendientes')
+
+
+#### DASHBOARD DE MEMBRESIAS#####
+@login_required
+def dashboard_membresias(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para ver esta pantalla.")
+        return redirect('dashboard_inicio')
+ 
+    ahora = timezone.now()
+    pronto = ahora + timedelta(days=7)
+ 
+    # NUEVO -- si nadie ha capturado ConfiguracionMembresia todavía, se
+    # avisa arriba del dashboard -- sin esto, los clientes ven la
+    # pantalla de solicitar sin saber a dónde depositar.
+    config_membresia_faltante = not ConfiguracionMembresia.objects.exists()
+ 
+    tipo_filtro = request.GET.get('tipo')
+    estatus_filtro = request.GET.get('estatus')
+    buscar = request.GET.get('buscar', '').strip()
+ 
+    perfiles = (
+        PerfilUsuario.objects.select_related('usuario', 'empresa')
+        .order_by('fecha_vencimiento')
+    )
+ 
+    if tipo_filtro:
+        perfiles = perfiles.filter(tipo_usuario=tipo_filtro)
+    if buscar:
+        perfiles = perfiles.filter(
+            models.Q(usuario__username__icontains=buscar)
+            | models.Q(empresa__nombre__icontains=buscar)
+        )
+ 
+    # NUEVO -- calcula el estatus de cada perfil en Python (vigente,
+    # vencida, vence_pronto, sin_fecha), ya que no es un campo guardado
+    # sino algo que depende de "ahora".
+    filas = []
+    conteos = {'vigente': 0, 'vence_pronto': 0, 'vencida': 0, 'sin_fecha': 0}
+ 
+    for perfil in perfiles:
+        if not perfil.fecha_vencimiento:
+            estatus = 'sin_fecha'
+        elif perfil.fecha_vencimiento < ahora:
+            estatus = 'vencida'
+        elif perfil.fecha_vencimiento <= pronto:
+            estatus = 'vence_pronto'
+        else:
+            estatus = 'vigente'
+ 
+        conteos[estatus] += 1
+ 
+        if estatus_filtro and estatus != estatus_filtro:
+            continue
+ 
+        filas.append({'perfil': perfil, 'estatus': estatus})
+ 
+    return render(request, 'membresias/dashboard_membresias.html', {
+        'filas': filas,
+        'conteos': conteos,
+        'tipo_filtro': tipo_filtro,
+        'estatus_filtro': estatus_filtro,
+        'buscar': buscar,
+        'tipo_choices': PerfilUsuario.TIPO_USUARIOS,
+        'config_membresia_faltante': config_membresia_faltante,
+    })
+ 
+ 
+@login_required
+def historial_pagos_perfil(request, perfil_id):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para ver esta pantalla.")
+        return redirect('dashboard_inicio')
+ 
+    perfil = PerfilUsuario.objects.select_related('usuario', 'empresa').get(id=perfil_id)
+    pagos = (
+        PagoMembresiaTransferencia.objects.filter(perfil_usuario=perfil)
+        .select_related('confirmado_por')
+        .order_by('-fecha_solicitud')
+    )
+ 
+    return render(request, 'membresias/historial_pagos_perfil.html', {
+        'perfil': perfil,
+        'pagos': pagos,
+    })
+
+
+@login_required
+def configurar_membresia(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para ver esta pantalla.")
+        return redirect('dashboard_inicio')
+
+    config = ConfiguracionMembresia.obtener()
+
+    if request.method == 'POST':
+        banco = request.POST.get('banco', '').strip()
+        titular = request.POST.get('titular', '').strip()
+        clabe = request.POST.get('clabe', '').strip()
+        numero_cuenta = request.POST.get('numero_cuenta', '').strip()
+        precio_plus = request.POST.get('precio_plus')
+        precio_premium = request.POST.get('precio_premium')
+
+        if not banco or not titular or not precio_plus or not precio_premium:
+            messages.error(request, "Banco, titular, y ambos precios son obligatorios.")
+            return redirect('configurar_membresia')
+
+        if config:
+            # Ya existe -- se actualiza el mismo registro (nunca se crea
+            # uno nuevo, para que siga siendo un solo registro unico).
+            config.banco = banco
+            config.titular = titular
+            config.clabe = clabe or None
+            config.numero_cuenta = numero_cuenta or None
+            config.precio_plus = precio_plus
+            config.precio_premium = precio_premium
+            config.save()
+        else:
+            ConfiguracionMembresia.objects.create(
+                banco=banco, titular=titular, clabe=clabe or None,
+                numero_cuenta=numero_cuenta or None,
+                precio_plus=precio_plus, precio_premium=precio_premium,
+            )
+
+        messages.success(request, "Configuración de membresía guardada correctamente.")
+        return redirect('configurar_membresia')
+
+    return render(request, 'membresias/configurar_membresia.html', {'config': config})    

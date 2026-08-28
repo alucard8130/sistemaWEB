@@ -1,4 +1,5 @@
 
+from decimal import ROUND_HALF_UP, Decimal
 import secrets
 
 from django import forms
@@ -244,3 +245,40 @@ class PagoMembresiaTransferencia(models.Model):
             f"{self.perfil_usuario.usuario.username} — {self.get_plan_solicitado_display()} "
             f"— ${self.monto} ({self.get_estatus_display()})"
         )
+
+
+class ConfiguracionMembresia(models.Model):
+    """Configuración global de GESAC para el pago de membresías por
+    transferencia -- se captura UNA sola vez desde el admin (no es por
+    empresa, es la cuenta a la que TODOS los clientes le depositan)."""
+
+    banco = models.CharField(max_length=100, help_text="Ej. BBVA, Santander, etc.")
+    titular = models.CharField(max_length=150, help_text="A nombre de quién está la cuenta.")
+    clabe = models.CharField(max_length=18, blank=True, null=True, help_text="CLABE interbancaria (18 dígitos).")
+    numero_cuenta = models.CharField(max_length=30, blank=True, null=True, help_text="Número de cuenta, si aplica además de la CLABE.")
+    precio_plus = models.DecimalField(max_digits=10, decimal_places=2, help_text="Precio mensual fijo del plan Plus.")
+    precio_premium = models.DecimalField(max_digits=10, decimal_places=2, help_text="Precio mensual fijo del plan Premium.")
+
+    class Meta:
+        verbose_name = "Configuración de Membresía"
+        verbose_name_plural = "Configuración de Membresía"
+
+    def __str__(self):
+        return f"Cuenta para pagos de membresía — {self.banco}"
+
+    IVA_TASA = Decimal("0.16")
+
+    @property
+    def precio_plus_con_iva(self):
+        return (self.precio_plus * (1 + self.IVA_TASA)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def precio_premium_con_iva(self):
+        return (self.precio_premium * (1 + self.IVA_TASA)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    
+    @classmethod
+    def obtener(cls):
+        """Regresa la configuración activa -- siempre debe existir un
+        solo registro. Si por alguna razón hay más de uno, usa el más
+        reciente en vez de tronar."""
+        return cls.objects.order_by('-id').first()    

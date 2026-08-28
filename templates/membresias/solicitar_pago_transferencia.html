@@ -1,0 +1,254 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagar por Transferencia — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        .mb-header {
+            background: linear-gradient(135deg, #3B0764 0%, #6D28D9 60%, #9333EA 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(59,7,100,0.2);
+            position: relative; overflow: hidden;
+        }
+        .mb-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.08);
+        }
+        .mb-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .mb-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .mb-form-card { background: white; border-radius: 16px; padding: 28px 30px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
+
+        .plan-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+        .plan-opcion { border: 2px solid #e2e8f0; border-radius: 14px; padding: 16px; cursor: pointer; transition: all 0.15s; text-align: center; }
+        .plan-opcion:hover { border-color: #9333EA; }
+        .plan-opcion input[type="radio"] { display: none; }
+        .plan-opcion input[type="radio"]:checked + .plan-contenido { color: #6D28D9; }
+        .plan-opcion:has(input[type="radio"]:checked) { border-color: #9333EA; background: #FAF5FF; }
+        .plan-nombre { font-weight: 700; font-size: 1rem; }
+        .plan-desc { font-size: 0.78rem; color: #6b7280; margin-top: 4px; }
+
+        .periodicidad-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+        .periodo-opcion { border: 2px solid #e2e8f0; border-radius: 14px; padding: 14px; cursor: pointer; transition: all 0.15s; text-align: center; }
+        .periodo-opcion:hover { border-color: #9333EA; }
+        .periodo-opcion input[type="radio"] { display: none; }
+        .periodo-opcion:has(input[type="radio"]:checked) { border-color: #9333EA; background: #FAF5FF; }
+        .periodo-nombre { font-weight: 700; font-size: 0.92rem; }
+        .periodo-desc { font-size: 0.76rem; color: #6b7280; margin-top: 3px; }
+        .badge-gratis { background: #E9F7EF; color: #1E8449; font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+
+        .form-label { font-weight: 600; font-size: 0.8rem; color: #4a3070; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 5px; }
+        .form-control { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; padding: 9px 12px; }
+        .form-control:focus { border-color: #9333EA; box-shadow: 0 0 0 3px rgba(147,51,234,0.12); }
+
+        .btn-enviar {
+            background: linear-gradient(135deg, #6D28D9, #9333EA); color: white; border: none;
+            border-radius: 10px; padding: 11px 26px; font-weight: 600; font-size: 0.92rem;
+            box-shadow: 0 2px 8px rgba(109,40,217,0.3);
+        }
+        .btn-enviar:hover { color: white; transform: translateY(-1px); }
+
+        .info-box { background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 12px; padding: 14px 18px; font-size: 0.85rem; color: #4a3070; margin-bottom: 22px; }
+
+        .cuenta-box { background: white; border: 2px solid #9333EA; border-radius: 14px; padding: 18px 22px; margin-bottom: 22px; }
+        .cuenta-titulo { font-weight: 700; color: #6D28D9; font-size: 0.95rem; margin-bottom: 10px; }
+        .cuenta-tabla { width: 100%; font-size: 0.88rem; }
+        .cuenta-tabla td { padding: 5px 0; }
+        .cuenta-tabla td:first-child { color: #6b7280; width: 40%; }
+
+        .cuenta-box-faltante { background: #FDF0F0; border: 1px solid #f5b5b5; border-radius: 12px; padding: 14px 18px; font-size: 0.85rem; color: #9C2B2B; margin-bottom: 22px; font-weight: 500; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 720px;">
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="mb-header">
+            <div class="mb-titulo"><i class="bi bi-bank2 me-2"></i>Pagar Membresía por Transferencia</div>
+            <div class="mb-subtitulo">Sube tu comprobante y activamos tu plan en cuanto lo confirmemos</div>
+        </div>
+
+        <div class="info-box">
+            <i class="bi bi-info-circle-fill me-1"></i>
+            Tu pago no se activa al momento -- un administrador revisa el comprobante y confirma manualmente, normalmente en menos de 24 horas.
+        </div>
+
+        {% if config %}
+        <div class="cuenta-box">
+            <div class="cuenta-titulo"><i class="bi bi-bank2 me-1"></i>Deposita a esta cuenta</div>
+            <table class="cuenta-tabla">
+                <tr><td>Banco</td><td><strong>{{ config.banco }}</strong></td></tr>
+                <tr><td>Titular</td><td><strong>{{ config.titular }}</strong></td></tr>
+                {% if config.clabe %}<tr><td>CLABE</td><td><strong>{{ config.clabe }}</strong></td></tr>{% endif %}
+                {% if config.numero_cuenta %}<tr><td>Número de cuenta</td><td><strong>{{ config.numero_cuenta }}</strong></td></tr>{% endif %}
+            </table>
+        </div>
+        {% else %}
+        <div class="cuenta-box-faltante">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            La cuenta bancaria y los precios todavía no están configurados -- contacta directo al equipo de GESAC antes de hacer tu transferencia, para confirmar a dónde depositar.
+        </div>
+        {% endif %}
+
+        <div class="mb-form-card">
+            <form method="post" enctype="multipart/form-data" id="formPagoTransferencia">
+                {% csrf_token %}
+
+                <label class="form-label mb-2">Plan que deseas activar</label>
+                <div class="plan-selector">
+                    {% for valor, etiqueta in plan_choices %}
+                    <label class="plan-opcion">
+                        <input type="radio" name="plan_solicitado" value="{{ valor }}"
+                               data-precio="{% if valor == 'plus' %}{{ config.precio_plus_con_iva|default:'0' }}{% else %}{{ config.precio_premium_con_iva|default:'0' }}{% endif %}"
+                               class="input-plan" required>
+                        <div class="plan-contenido">
+                            <div class="plan-nombre">{{ etiqueta }}</div>
+                            <div class="plan-desc">
+                                {% if valor == 'plus' %}
+                                    ${{ config.precio_plus|default:"—"|floatformat:2 }} + IVA = <strong>${{ config.precio_plus_con_iva|default:"—"|floatformat:2 }}</strong> / mes
+                                {% else %}
+                                    ${{ config.precio_premium|default:"—"|floatformat:2 }} + IVA = <strong>${{ config.precio_premium_con_iva|default:"—"|floatformat:2 }}</strong> / mes
+                                {% endif %}
+                            </div>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <label class="form-label mb-2">Periodicidad</label>
+                <div class="periodicidad-selector">
+                    <label class="periodo-opcion">
+                        <input type="radio" name="periodicidad" value="mensual" id="idPeriodoMensual" class="input-periodo" checked>
+                        <div class="periodo-contenido">
+                            <div class="periodo-nombre">Mensual</div>
+                            <div class="periodo-desc">Paga mes a mes</div>
+                        </div>
+                    </label>
+                    <label class="periodo-opcion">
+                        <input type="radio" name="periodicidad" value="anual" id="idPeriodoAnual" class="input-periodo">
+                        <div class="periodo-contenido">
+                            <div class="periodo-nombre">Anual <span class="badge-gratis">1 mes gratis</span></div>
+                            <div class="periodo-desc">Paga 11 meses, cubre 12</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Monto a transferir</label>
+                        <input type="number" step="0.01" name="monto" id="idMonto" class="form-control" placeholder="0.00" required>
+                        <small class="text-muted d-block mt-1">Se calcula solo (con IVA incluido) al elegir el plan y los meses -- ajústalo si transferiste distinto.</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Meses que cubre este pago</label>
+                        <input type="number" name="meses_cubiertos" id="idMeses" class="form-control" value="1" min="1" required>
+                        <small class="text-muted d-block mt-1" id="notaMeses"></small>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de la transferencia</label>
+                        <input type="date" name="fecha_transferencia" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Referencia / folio (opcional)</label>
+                        <input type="text" name="referencia" class="form-control" placeholder="Ej. folio bancario">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Comprobante de la transferencia</label>
+                    <input type="file" name="comprobante" class="form-control" accept="image/*,application/pdf" required>
+                    <small class="text-muted d-block mt-1">Foto o PDF del comprobante bancario.</small>
+                </div>
+
+                <hr class="my-4">
+                <button type="submit" class="btn btn-enviar">
+                    <i class="bi bi-send-fill me-1"></i> Enviar comprobante
+                </button>
+                <a href="{% url 'dashboard_inicio' %}" class="btn btn-secondary ms-2">
+                    <i class="bi bi-arrow-left me-1"></i> Cancelar
+                </a>
+            </form>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var overlay = document.getElementById('loading-overlay');
+            var form = document.querySelector('form[enctype]');
+            if (form && overlay) {
+                form.addEventListener('submit', function() { overlay.style.display = 'flex'; });
+            }
+
+            // Calcula el monto: mensual = precio × meses (editable);
+            // anual = precio × 11 (1 mes gratis), y "meses" se fija en
+            // 12 automáticamente, para que la fecha de vencimiento se
+            // extienda el año completo aunque solo se cobren 11 meses.
+            function actualizarMontoSugerido() {
+                var planSeleccionado = document.querySelector('input[name="plan_solicitado"]:checked');
+                var periodoAnual = document.getElementById('idPeriodoAnual').checked;
+                var idMonto = document.getElementById('idMonto');
+                var idMeses = document.getElementById('idMeses');
+                var notaMeses = document.getElementById('notaMeses');
+                if (!planSeleccionado || !idMonto) return;
+
+                var precio = parseFloat(planSeleccionado.getAttribute('data-precio')) || 0;
+
+                if (periodoAnual) {
+                    idMeses.value = 12;
+                    idMeses.readOnly = true;
+                    idMonto.value = (precio * 11).toFixed(2);
+                    notaMeses.textContent = 'Anual: se fija en 12 meses -- solo se cobran 11 (1 mes gratis).';
+                } else {
+                    idMeses.readOnly = false;
+                    var meses = parseInt(idMeses.value) || 1;
+                    idMonto.value = (precio * meses).toFixed(2);
+                    notaMeses.textContent = 'Se calcula solo (con IVA incluido) al elegir el plan y los meses -- ajústalo si transferiste distinto.';
+                }
+            }
+            document.querySelectorAll('.input-plan').forEach(function(radio) {
+                radio.addEventListener('change', actualizarMontoSugerido);
+            });
+            document.querySelectorAll('.input-periodo').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    // NUEVO -- al regresar a "Mensual", resetea el campo
+                    // de meses a 1 -- si no, se queda pegado en 12 (lo
+                    // que dejó "Anual") y el cálculo sale mal.
+                    if (!document.getElementById('idPeriodoAnual').checked) {
+                        document.getElementById('idMeses').value = 1;
+                    }
+                    actualizarMontoSugerido();
+                });
+            });
+            var idMeses = document.getElementById('idMeses');
+            if (idMeses) {
+                idMeses.addEventListener('input', actualizarMontoSugerido);
+            }
+            actualizarMontoSugerido();
+        });
+    </script>
+</body>
+</html>

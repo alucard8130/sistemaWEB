@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Membresía — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+
+        .mb-header {
+            background: linear-gradient(135deg, #3B0764 0%, #6D28D9 60%, #9333EA 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(59,7,100,0.2);
+            position: relative; overflow: hidden;
+        }
+        .mb-header::before {
+            content:''; position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.08);
+        }
+        .mb-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .mb-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .mb-form-card { background: white; border-radius: 16px; padding: 28px 30px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
+
+        .form-label { font-weight: 600; font-size: 0.8rem; color: #4a3070; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 5px; }
+        .form-control { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; padding: 9px 12px; }
+        .form-control:focus { border-color: #9333EA; box-shadow: 0 0 0 3px rgba(147,51,234,0.12); }
+
+        .seccion-form { font-size: 0.85rem; font-weight: 700; color: #6D28D9; margin: 22px 0 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .seccion-form:first-child { margin-top: 0; }
+
+        .btn-guardar {
+            background: linear-gradient(135deg, #6D28D9, #9333EA); color: white; border: none;
+            border-radius: 10px; padding: 11px 26px; font-weight: 600; font-size: 0.92rem;
+            box-shadow: 0 2px 8px rgba(109,40,217,0.3);
+        }
+        .btn-guardar:hover { color: white; transform: translateY(-1px); }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 720px;">
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="mb-header">
+            <div class="mb-titulo"><i class="bi bi-gear-fill me-2"></i>Configurar Membresía</div>
+            <div class="mb-subtitulo">Cuenta bancaria y precios que verán tus clientes al pagar por transferencia</div>
+        </div>
+
+        <div class="mb-form-card">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="seccion-form"><i class="bi bi-bank2 me-1"></i>Cuenta bancaria</div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Banco</label>
+                        <input type="text" name="banco" class="form-control" placeholder="Ej. BBVA" value="{{ config.banco|default:'' }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Titular de la cuenta</label>
+                        <input type="text" name="titular" class="form-control" placeholder="Nombre completo o razón social" value="{{ config.titular|default:'' }}" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">CLABE interbancaria</label>
+                        <input type="text" name="clabe" class="form-control" placeholder="18 dígitos" maxlength="18" value="{{ config.clabe|default:'' }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Número de cuenta (opcional)</label>
+                        <input type="text" name="numero_cuenta" class="form-control" placeholder="Si aplica, además de la CLABE" value="{{ config.numero_cuenta|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="seccion-form"><i class="bi bi-tag-fill me-1"></i>Precios mensuales fijos</div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Precio Plan Plus</label>
+                        <input type="number" step="0.01" name="precio_plus" class="form-control" placeholder="0.00" value="{{ config.precio_plus|default:'' }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Precio Plan Premium</label>
+                        <input type="number" step="0.01" name="precio_premium" class="form-control" placeholder="0.00" value="{{ config.precio_premium|default:'' }}" required>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <button type="submit" class="btn btn-guardar">
+                    <i class="bi bi-save-fill me-1"></i> Guardar configuración
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var overlay = document.getElementById('loading-overlay');
+            var form = document.querySelector('form');
+            if (form && overlay) {
+                form.addEventListener('submit', function() { overlay.style.display = 'flex'; });
+            }
+        });
+    </script>
+</body>
+</html>

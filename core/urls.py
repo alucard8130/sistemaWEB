@@ -151,6 +151,7 @@ from principal.views import (
     cancelar_suscripcion,
     cancelar_suscripcion_premium,
     cerrar_wizard,
+    configurar_membresia,
     confirmar_pago_transferencia,
     consulta_cfdis_facturama,
     crear_contador,
@@ -179,6 +180,7 @@ from principal.views import (
     lista_tickets,
     membresia_pago_exitoso,
     panel_contador,
+    rechazar_pago_transferencia,
     reenviar_credenciales_contador,
     registro_usuario,
     registro_visitante,
@@ -432,9 +434,13 @@ urlpatterns = [
     path('gestion_cobranza/', include('gestion_cobranza.urls')),
     path('cuentas-bancarias/<int:cuenta_id>/toggle-referencia-pago/', cuenta_bancaria_toggle_referencia_pago, name='cuenta_bancaria_toggle_referencia_pago'),
     #### Pagos por transferencia usuarios GESAC#########
-    path('solicitar-pago-transferencia/', solicitar_pago_transferencia, name='solicitar_pago_transferencia'),
-    path('lista-pagos-transferencia-pendientes/', lista_pagos_transferencia_pendientes, name='lista_pagos_transferencia_pendientes'),
-    path('confirmar-pago-transferencia/', confirmar_pago_transferencia, name='confirmar_pago_transferencia'),
+    path('membresias/solicitar/', solicitar_pago_transferencia, name='solicitar_pago_transferencia'),
+    path('membresias/pendientes/', lista_pagos_transferencia_pendientes, name='lista_pagos_transferencia_pendientes'),
+    path('membresias/<int:pago_id>/confirmar/', confirmar_pago_transferencia, name='confirmar_pago_transferencia'),
+    path('membresias/<int:pago_id>/rechazar/', rechazar_pago_transferencia, name='rechazar_pago_transferencia'),
+    path('membresias/dashboard/', views.dashboard_membresias, name='dashboard_membresias'),
+    path('membresias/<int:perfil_id>/historial/', views.historial_pagos_perfil, name='historial_pagos_perfil'),
+    path('membresias/configurar/', configurar_membresia, name='configurar_membresia'),
 ]
 
     
