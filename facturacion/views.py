@@ -89,36 +89,33 @@ from .models import (
 
 def _generar_y_guardar_folio(factura, prefix, intentos_maximos=5):
     """
-    Genera el folio automático y guarda la factura -- protegido contra
-    la condición de carrera de 2 guardados casi simultáneos.
+    Genera el folio automático y guarda la factura -- protegido contra:
 
-    - select_for_update() bloquea la fila del último folio existente
-      mientras dura la transacción, así que si dos solicitudes llegan
-      casi al mismo tiempo, la segunda espera a que la primera termine
-      de guardar, en vez de leer el mismo "último folio" que la primera.
-    - Como red de seguridad extra (por si el bloqueo no alcanza a
-      prevenirlo en algún caso raro), si de todos modos se llega a
-      chocar con un folio ya usado, reintenta automáticamente con el
-      siguiente número, hasta 5 veces, en vez de tronar.
+    1. Condición de carrera (2 guardados casi simultáneos) -- vía
+       select_for_update() + reintento ante colisión.
+    2. Folios con formato inconsistente (ej. "CM-F9" sin relleno de
+       ceros, de alguna captura vieja) -- en vez de confiar en el orden
+       alfabético de SQL (que NO coincide con el orden numérico real),
+       trae todos los folios de ese prefijo y calcula el máximo
+       comparando NÚMEROS, no texto.
     """
     for intento in range(intentos_maximos):
         try:
             with transaction.atomic():
-                last_folio = (
+                folios_existentes = list(
                     Factura.objects.select_for_update()
                     .filter(empresa=factura.empresa, folio__startswith=prefix)
-                    .order_by("-folio")
                     .values_list("folio", flat=True)
-                    .first()
                 )
 
-                if last_folio:
+                numeros = []
+                for f in folios_existentes:
                     try:
-                        last_num = int(last_folio.replace(prefix, ""))
-                    except Exception:  # noqa: BLE001
-                        last_num = 0
-                else:
-                    last_num = 0
+                        numeros.append(int(f.replace(prefix, "")))
+                    except (ValueError, TypeError):
+                        continue  # folio con formato raro -- se ignora, no truena
+
+                last_num = max(numeros) if numeros else 0
 
                 factura.folio = f"{prefix}{last_num + 1:05d}"
                 factura.save()
