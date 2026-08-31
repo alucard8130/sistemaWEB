@@ -163,6 +163,7 @@ from principal.views import (
     crear_tema_y_enviar,
     crear_ticket,
     create_payment_intent,
+    cuenta_bloqueada,
     dashboard_inicio,
     descargar_cfdi_facturama,
     descargar_estado_cuenta_pdf,
@@ -440,7 +441,8 @@ urlpatterns = [
     path('membresias/<int:pago_id>/rechazar/', rechazar_pago_transferencia, name='rechazar_pago_transferencia'),
     path('membresias/dashboard/', views.dashboard_membresias, name='dashboard_membresias'),
     path('membresias/<int:perfil_id>/historial/', views.historial_pagos_perfil, name='historial_pagos_perfil'),
-    path('membresias/configurar/', configurar_membresia, name='configurar_membresia'),
+    path('membresias/configurar/', configurar_membresia, name='configurar_membresia'),  
+    path('cuenta-bloqueada/', cuenta_bloqueada, name='cuenta_bloqueada'),
 ]
 
     

@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Membresía vencida — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif; background: linear-gradient(135deg, #3B0764 0%, #6D28D9 60%, #9333EA 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .bloqueo-card {
+            background: white; border-radius: 20px; padding: 40px 36px; max-width: 480px; width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25); text-align: center;
+        }
+        .bloqueo-icono { font-size: 3rem; color: #9C2B2B; margin-bottom: 16px; }
+        .bloqueo-titulo { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; }
+        .bloqueo-texto { color: #6b7280; font-size: 0.92rem; line-height: 1.6; margin-bottom: 26px; }
+        .bloqueo-fecha { background: #FDF0F0; color: #9C2B2B; border-radius: 10px; padding: 10px 16px; font-size: 0.85rem; font-weight: 600; margin-bottom: 26px; }
+        .btn-renovar {
+            background: linear-gradient(135deg, #6D28D9, #9333EA); color: white; border: none;
+            border-radius: 10px; padding: 12px 28px; font-weight: 700; font-size: 0.95rem;
+            text-decoration: none; display: inline-block; box-shadow: 0 2px 8px rgba(109,40,217,0.3);
+        }
+        .btn-renovar:hover { color: white; transform: translateY(-1px); }
+        .btn-salir { display: block; margin-top: 18px; color: #9ca3af; font-size: 0.82rem; text-decoration: none; }
+        .btn-salir:hover { color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="bloqueo-card">
+        <div class="bloqueo-icono"><i class="bi bi-lock-fill"></i></div>
+        <div class="bloqueo-titulo">Tu membresía venció</div>
+        <div class="bloqueo-texto">
+            Para seguir usando GESAC necesitas renovar tu membresía. En cuanto se confirme tu pago, recuperas el acceso automáticamente.
+        </div>
+        {% if perfil.fecha_vencimiento %}
+        <div class="bloqueo-fecha">
+            <i class="bi bi-calendar-x me-1"></i> Venció el {{ perfil.fecha_vencimiento|date:"d/m/Y" }}
+        </div>
+        {% endif %}
+        <a href="{% url 'solicitar_pago_transferencia' %}" class="btn-renovar">
+            <i class="bi bi-bank2 me-1"></i> Renovar por Transferencia
+        </a>
+        <div class="mt-2">
+            <a href="{% url 'crear_sesion_pago' %}" class="btn-renovar" style="margin-top:10px;">
+                <i class="bi bi-credit-card-fill me-1"></i> Renovar con Tarjeta
+            </a>
+        </div>
+        <a href="{% url 'logout' %}" class="btn-salir">Cerrar sesión</a>
+    </div>
+</body>
+</html>

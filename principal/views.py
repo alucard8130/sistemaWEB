@@ -5503,6 +5503,11 @@ def rechazar_pago_transferencia(request, pago_id):
     return redirect('lista_pagos_transferencia_pendientes')
 
 
+@login_required
+def cuenta_bloqueada(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    return render(request, 'membresias/cuenta_bloqueada.html', {'perfil': perfil})
+
 #### DASHBOARD DE MEMBRESIAS#####
 @login_required
 def dashboard_membresias(request):

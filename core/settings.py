@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-import dj_database_url
+import dj_database_url  # noqa: F401, RUF100
 import sentry_sdk
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -75,6 +75,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.MembresiaBloqueoMiddleware", # Middleware para bloquear el acceso a usuarios con membresía vencida
 ]
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
@@ -149,7 +150,7 @@ EMAIL_BACKEND = os.getenv(
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 EMAIL_HOST = os.getenv("EMAIL_HOST")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", 465))
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 465))  # noqa: PLW1508
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True") == "True"
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")

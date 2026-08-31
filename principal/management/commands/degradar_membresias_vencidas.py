@@ -6,28 +6,31 @@ from django.utils import timezone
 
 from principal.models import PerfilUsuario
 
-#
-# Uso (corre esto diario, via cron o el scheduler que ya uses):
-#   python manage.py degradar_membresias_vencidas
-#
 # Degrada a "demo" cualquier PerfilUsuario cuya fecha_vencimiento ya
-# paso hace mas de DIAS_GRACIA dias -- sin importar si esa membresia
-# se pago por Stripe o por transferencia, ambos usan el mismo campo
-# fecha_vencimiento.
-# ============================================================
+# paso hace mas de DIAS_ANTES_DEGRADAR dias -- sin importar si esa
+# membresia se pago por Stripe o por transferencia, ambos usan el
+# mismo campo fecha_vencimiento.
+#
+# NOTA -- este es el SEGUNDO paso del ciclo de vencimiento. El primer
+# paso (bloqueo total de acceso a los 5 dias) lo hace
+# MembresiaBloqueoMiddleware, no este comando -- este solo se encarga
+# de la degradacion final si sigue sin renovar despues de eso.
 
 
-DIAS_GRACIA = 5
+
+# 5 dias de gracia antes del bloqueo (ver middleware.py) + 15 dias
+# adicionales bloqueado sin renovar = 20 dias totales desde que vencio.
+DIAS_ANTES_DEGRADAR = 20
  
  
 class Command(BaseCommand):
     help = (
         f"Degrada a 'demo' cualquier PerfilUsuario cuya membresia vencio "
-        f"hace mas de {DIAS_GRACIA} dias sin renovarse."
+        f"hace mas de {DIAS_ANTES_DEGRADAR} dias sin renovarse."
     )
  
     def handle(self, *args, **options):
-        limite = timezone.now() - timedelta(days=DIAS_GRACIA)
+        limite = timezone.now() - timedelta(days=DIAS_ANTES_DEGRADAR)
  
         # Nunca se toca 'demo' (ya esta ahi) ni 'gratis' (nivel permanente,
         # no depende de fecha_vencimiento). Tampoco se toca a nadie sin

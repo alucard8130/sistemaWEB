@@ -479,14 +479,12 @@
             </a>
             <ul class="dropdown-menu">
             {% if request.user.perfilusuario.empresa.es_premium %}
-            <li><a class="dropdown-item" href="#" id="navbar-stripe-premium-btn"><i class="bi bi-credit-card-2-front-fill me-2"></i>Renovar Premium con Tarjeta</a></li>
+            <li><a class="dropdown-item" href="#" id="navbar-stripe-premium-btn"><i class="bi bi-credit-card-2-front-fill me-2"></i>Renovar con Tarjeta</a></li>
             <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar por Transferencia</a></li>
             {% elif request.user.perfilusuario.empresa.es_plus %}
-            <li><a class="dropdown-item" href="#" id="navbar-stripe-plus-btn"><i class="bi bi-credit-card-fill me-2"></i>Renovar Plus con Tarjeta</a></li>  
+            <li><a class="dropdown-item" href="#" id="navbar-stripe-plus-btn"><i class="bi bi-credit-card-fill me-2"></i>Renovar con Tarjeta</a></li>  
             <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar por Transferencia</a></li>
             {% else %}
-            <li><a class="dropdown-item" href="#" id="navbar-stripe-plus-btn"><i class="bi bi-credit-card-fill me-2"></i>Renovar Plus con Tarjeta</a></li>  
-            <li><a class="dropdown-item" href="#" id="navbar-stripe-premium-btn"><i class="bi bi-credit-card-2-front-fill me-2"></i>Renovar Premium con Tarjeta</a></li>
             <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar por Transferencia</a></li>
             {% endif %}
               {% if request.user.is_superuser %}
