@@ -1433,7 +1433,7 @@ def stripe_webhook(request):
         #"price_1RnT1IPW7xPgzk0myWccMWtW",  # pruebas plus
     }
     premium_prices = {
-        "price_1Tpa52PYnlfwKZQHWUWxDAuE",  # produccion premium
+        "price_1UAbRWPYnlfwKZQHczJkwjN7",  # produccion premium
         #"price_1RnSzMPW7xPgzk0mLslR8vT5",  # pruebas premium
     }
 
@@ -1628,7 +1628,7 @@ def crear_sesion_pago_premium(request):
 
     session_kwargs = {
         "payment_method_types": ["card"],
-        "line_items": [{"price": "price_1Tpa52PYnlfwKZQHWUWxDAuE", "quantity": 1}], #produccion
+        "line_items": [{"price": "price_1UAbRWPYnlfwKZQHczJkwjN7", "quantity": 1}], #produccion
         #"line_items": [{"price": "price_1RnSzMPW7xPgzk0mLslR8vT5", "quantity": 1}], #desarrollo
         "mode": "subscription",
         "success_url": success,
