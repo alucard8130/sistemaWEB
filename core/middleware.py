@@ -23,7 +23,7 @@ class EmpresaSeleccionMiddleware:
 
 #middleware de bloqueo de membresía#############
 
-DIAS_GRACIA_BLOQUEO = 5
+DIAS_GRACIA_BLOQUEO = 1
 
 # Nombres de URL que SIEMPRE deben quedar accesibles aunque la cuenta
 # este bloqueada -- si falta alguno aqui, el usuario queda atrapado
