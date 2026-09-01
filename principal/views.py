@@ -7,7 +7,7 @@ import logging
 import os
 import zipfile
 from datetime import date, datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from functools import wraps
 
 # from urllib import response
@@ -24,7 +24,7 @@ import weasyprint
 from babel.dates import format_date
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import get_user_model, update_session_auth_hash
 
 # import uuid
 from django.contrib.auth.decorators import login_required
@@ -116,47 +116,61 @@ from .serializers import FacturaSerializer
 
 # pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 
-MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+MESES = [
+    "Ene",
+    "Feb",
+    "Mar",
+    "Abr",
+    "May",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dic",
+]
 
 
 @login_required
 def dashboard_inicio(request):
     # NUEVO -- redirige a los contadores directo a su panel dedicado 03/08/26
     if not request.user.is_superuser:
-        perfil = getattr(request.user, 'perfilusuario', None)
+        perfil = getattr(request.user, "perfilusuario", None)
         # NUEVO -- primero verifica si debe cambiar contraseña
         if perfil and perfil.debe_cambiar_password:
-            return redirect('cambiar_password_obligatorio')
+            return redirect("cambiar_password_obligatorio")
         if perfil and perfil.es_contador:
-            return redirect('panel_contador')
-
+            return redirect("panel_contador")
 
     hoy = date.today()
     mes_actual = hoy.month
     anio_actual = hoy.year
- 
+
     # Empresa
     if request.user.is_superuser:
         empresa_id = request.session.get("empresa_id")
         empresa = Empresa.objects.filter(id=empresa_id).first()
     else:
         empresa = request.user.perfilusuario.empresa
- 
+
     if not empresa:
-        return render(request, 'pantalla_inicio.html', {'empresa': None})
- 
+        return render(request, "pantalla_inicio.html", {"empresa": None})
+
     # ── INGRESOS DEL MES (cuotas + otros ingresos) ──
     ingresos_mes_cuotas = Pago.objects.filter(
         factura__empresa=empresa,
         fecha_pago__year=anio_actual,
-        fecha_pago__month=mes_actual
-    ).exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        fecha_pago__month=mes_actual,
+    ).exclude(forma_pago="nota_credito").aggregate(total=Sum("monto"))[
+        "total"
+    ] or Decimal("0")
 
     ingresos_mes_otros = CobroOtrosIngresos.objects.filter(
         factura__empresa=empresa,
         fecha_cobro__year=anio_actual,
-        fecha_cobro__month=mes_actual
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        fecha_cobro__month=mes_actual,
+    ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
 
     ingresos_mes = ingresos_mes_cuotas + ingresos_mes_otros
 
@@ -165,126 +179,141 @@ def dashboard_inicio(request):
     anio_ant = anio_actual if mes_actual > 1 else anio_actual - 1
 
     ingresos_mes_ant_cuotas = Pago.objects.filter(
-        factura__empresa=empresa,
-        fecha_pago__year=anio_ant,
-        fecha_pago__month=mes_ant
-    ).exclude(forma_pago='nota_credito').aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        factura__empresa=empresa, fecha_pago__year=anio_ant, fecha_pago__month=mes_ant
+    ).exclude(forma_pago="nota_credito").aggregate(total=Sum("monto"))[
+        "total"
+    ] or Decimal("0")
 
     ingresos_mes_ant_otros = CobroOtrosIngresos.objects.filter(
-        factura__empresa=empresa,
-        fecha_cobro__year=anio_ant,
-        fecha_cobro__month=mes_ant
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+        factura__empresa=empresa, fecha_cobro__year=anio_ant, fecha_cobro__month=mes_ant
+    ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
 
     ingresos_mes_ant = ingresos_mes_ant_cuotas + ingresos_mes_ant_otros
 
-    delta_ingresos = round(float((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100), 1) if ingresos_mes_ant > 0 else None
+    delta_ingresos = (
+        round(float((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100), 1)
+        if ingresos_mes_ant > 0
+        else None
+    )
 
     # Subquery para pagos parciales (cuotas)
-    total_pagado_sq = Pago.objects.filter(
-        factura=OuterRef('pk')
-    ).values('factura').annotate(total=Sum('monto')).values('total')
+    total_pagado_sq = (
+        Pago.objects.filter(factura=OuterRef("pk"))
+        .values("factura")
+        .annotate(total=Sum("monto"))
+        .values("total")
+    )
 
     # Subquery para cobros parciales (otros ingresos)
-    total_cobrado_otros_sq = CobroOtrosIngresos.objects.filter(
-        factura=OuterRef('pk')
-    ).values('factura').annotate(total=Sum('monto')).values('total')
+    total_cobrado_otros_sq = (
+        CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"))
+        .values("factura")
+        .annotate(total=Sum("monto"))
+        .values("total")
+    )
 
     # Por cobrar del mes -- cuotas (facturas pendientes con vencimiento en el mes)
     por_cobrar_mes_cuotas = Factura.objects.filter(
         empresa=empresa,
-        estatus='pendiente',
+        estatus="pendiente",
         activo=True,
         fecha_vencimiento__year=anio_actual,
-        fecha_vencimiento__month=mes_actual).annotate(
+        fecha_vencimiento__month=mes_actual,
+    ).annotate(
         total_pagado_ann=Coalesce(
             Subquery(total_pagado_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField())
+            Value(0, output_field=DecimalField()),
         ),
         saldo_real=ExpressionWrapper(
-            F('monto') - F('total_pagado_ann'),
-            output_field=DecimalField()
-        )
-    ).aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
+            F("monto") - F("total_pagado_ann"), output_field=DecimalField()
+        ),
+    ).aggregate(total=Sum("saldo_real"))["total"] or Decimal("0")
 
     # Por cobrar del mes -- otros ingresos
     por_cobrar_mes_otros = FacturaOtrosIngresos.objects.filter(
         empresa=empresa,
-        estatus='pendiente',
+        estatus="pendiente",
         activo=True,
         fecha_vencimiento__year=anio_actual,
-        fecha_vencimiento__month=mes_actual).annotate(
+        fecha_vencimiento__month=mes_actual,
+    ).annotate(
         total_cobrado_ann=Coalesce(
             Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField())
+            Value(0, output_field=DecimalField()),
         ),
         saldo_real=ExpressionWrapper(
-            F('monto') - F('total_cobrado_ann'),
-            output_field=DecimalField()
-        )
-    ).aggregate(total=Sum('saldo_real'))['total'] or Decimal('0')
+            F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
+        ),
+    ).aggregate(total=Sum("saldo_real"))["total"] or Decimal("0")
 
     por_cobrar_mes = por_cobrar_mes_cuotas + por_cobrar_mes_otros
 
     total_posible_ingresos = ingresos_mes + por_cobrar_mes
-    pct_cobrado = round(float(ingresos_mes / total_posible_ingresos * 100)) if total_posible_ingresos > 0 else 0
+    pct_cobrado = (
+        round(float(ingresos_mes / total_posible_ingresos * 100))
+        if total_posible_ingresos > 0
+        else 0
+    )
     pct_por_cobrar = 100 - pct_cobrado
- 
+
     # ── GASTOS DEL MES ──
     gastos_pagados_mes = PagoGasto.objects.filter(
         gasto__empresa=empresa,
         fecha_pago__year=anio_actual,
         fecha_pago__month=mes_actual,
-        monto__gt=0
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
- 
+        monto__gt=0,
+    ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
     gastos_pendientes_mes = Gasto.objects.filter(
         empresa=empresa,
         fecha__year=anio_actual,
         fecha__month=mes_actual,
-        estatus='pendiente'
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
- 
+        estatus="pendiente",
+    ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
     gastos_mes_ant = PagoGasto.objects.filter(
         gasto__empresa=empresa,
         fecha_pago__year=anio_ant,
         fecha_pago__month=mes_ant,
-        monto__gt=0
-    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
-    delta_gastos = round(float((gastos_pagados_mes - gastos_mes_ant) / gastos_mes_ant * 100), 1) if gastos_mes_ant > 0 else None
- 
+        monto__gt=0,
+    ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+    delta_gastos = (
+        round(float((gastos_pagados_mes - gastos_mes_ant) / gastos_mes_ant * 100), 1)
+        if gastos_mes_ant > 0
+        else None
+    )
+
     total_gastos_mes = gastos_pagados_mes + gastos_pendientes_mes
     resultado_mes = ingresos_mes - gastos_pagados_mes
-    pct_gastos = round(float(gastos_pagados_mes / ingresos_mes * 100)) if ingresos_mes > 0 else 0
+    pct_gastos = (
+        round(float(gastos_pagados_mes / ingresos_mes * 100)) if ingresos_mes > 0 else 0
+    )
     pct_margen = 100 - pct_gastos
- 
+
     # Calcular cartera manualmente si no hay annotate_saldo
     facturas_pend_qs = Factura.objects.filter(
-        empresa=empresa, estatus='pendiente', activo=True
+        empresa=empresa, estatus="pendiente", activo=True
     ).annotate(
         total_pagado_ann=Coalesce(
             Subquery(total_pagado_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField())
+            Value(0, output_field=DecimalField()),
         ),
         saldo_real=ExpressionWrapper(
-            F('monto') - F('total_pagado_ann'),
-            output_field=DecimalField()
-        )
+            F("monto") - F("total_pagado_ann"), output_field=DecimalField()
+        ),
     )
-   
+
     facturas_otros_pend_qs = FacturaOtrosIngresos.objects.filter(
-        empresa=empresa, estatus='pendiente', activo=True
+        empresa=empresa, estatus="pendiente", activo=True
     ).annotate(
         total_cobrado_ann=Coalesce(
             Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField())
+            Value(0, output_field=DecimalField()),
         ),
         saldo_real=ExpressionWrapper(
-            F('monto') - F('total_cobrado_ann'),
-            output_field=DecimalField()
-        )
+            F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
+        ),
     )
-
 
     # ── CARTERA VENCIDA — todo en 1 sola consulta por tipo (antes eran ~14) ──
     fecha_30 = hoy - timedelta(days=30)
@@ -293,36 +322,122 @@ def dashboard_inicio(request):
     fecha_180 = hoy - timedelta(days=180)
 
     resumen_cuotas = facturas_pend_qs.aggregate(
-        total=Sum('saldo_real'),
-        cantidad=Count('id'),
-        b_0_30=Sum(Case(When(fecha_vencimiento__gte=fecha_30, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_31_60=Sum(Case(When(fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_61_90=Sum(Case(When(fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_91_180=Sum(Case(When(fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_181_mas=Sum(Case(When(fecha_vencimiento__lt=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        total=Sum("saldo_real"),
+        cantidad=Count("id"),
+        b_0_30=Sum(
+            Case(
+                When(fecha_vencimiento__gte=fecha_30, then=F("saldo_real")),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_31_60=Sum(
+            Case(
+                When(
+                    fecha_vencimiento__lt=fecha_30,
+                    fecha_vencimiento__gte=fecha_60,
+                    then=F("saldo_real"),
+                ),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_61_90=Sum(
+            Case(
+                When(
+                    fecha_vencimiento__lt=fecha_60,
+                    fecha_vencimiento__gte=fecha_90,
+                    then=F("saldo_real"),
+                ),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_91_180=Sum(
+            Case(
+                When(
+                    fecha_vencimiento__lt=fecha_90,
+                    fecha_vencimiento__gte=fecha_180,
+                    then=F("saldo_real"),
+                ),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_181_mas=Sum(
+            Case(
+                When(fecha_vencimiento__lt=fecha_180, then=F("saldo_real")),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
     )
 
     resumen_otros = facturas_otros_pend_qs.aggregate(
-        total=Sum('saldo_real'),
-        cantidad=Count('id'),
-        b_0_30=Sum(Case(When(fecha_vencimiento__gte=fecha_30, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_31_60=Sum(Case(When(fecha_vencimiento__lt=fecha_30, fecha_vencimiento__gte=fecha_60, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_61_90=Sum(Case(When(fecha_vencimiento__lt=fecha_60, fecha_vencimiento__gte=fecha_90, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_91_180=Sum(Case(When(fecha_vencimiento__lt=fecha_90, fecha_vencimiento__gte=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
-        b_181_mas=Sum(Case(When(fecha_vencimiento__lt=fecha_180, then=F('saldo_real')), default=0, output_field=DecimalField())),
+        total=Sum("saldo_real"),
+        cantidad=Count("id"),
+        b_0_30=Sum(
+            Case(
+                When(fecha_vencimiento__gte=fecha_30, then=F("saldo_real")),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_31_60=Sum(
+            Case(
+                When(
+                    fecha_vencimiento__lt=fecha_30,
+                    fecha_vencimiento__gte=fecha_60,
+                    then=F("saldo_real"),
+                ),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_61_90=Sum(
+            Case(
+                When(
+                    fecha_vencimiento__lt=fecha_60,
+                    fecha_vencimiento__gte=fecha_90,
+                    then=F("saldo_real"),
+                ),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_91_180=Sum(
+            Case(
+                When(
+                    fecha_vencimiento__lt=fecha_90,
+                    fecha_vencimiento__gte=fecha_180,
+                    then=F("saldo_real"),
+                ),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
+        b_181_mas=Sum(
+            Case(
+                When(fecha_vencimiento__lt=fecha_180, then=F("saldo_real")),
+                default=0,
+                output_field=DecimalField(),
+            )
+        ),
     )
 
     def _s(dic, key):
-        return dic.get(key) or Decimal('0')
+        return dic.get(key) or Decimal("0")
 
-    cartera_vencida = _s(resumen_cuotas, 'total') + _s(resumen_otros, 'total')
-    facturas_vencidas_count = (resumen_cuotas['cantidad'] or 0) + (resumen_otros['cantidad'] or 0)
+    cartera_vencida = _s(resumen_cuotas, "total") + _s(resumen_otros, "total")
+    facturas_vencidas_count = (resumen_cuotas["cantidad"] or 0) + (
+        resumen_otros["cantidad"] or 0
+    )
 
-    saldo_0_30 = _s(resumen_cuotas, 'b_0_30') + _s(resumen_otros, 'b_0_30')
-    saldo_31_60 = _s(resumen_cuotas, 'b_31_60') + _s(resumen_otros, 'b_31_60')
-    saldo_61_90 = _s(resumen_cuotas, 'b_61_90') + _s(resumen_otros, 'b_61_90')
-    saldo_91_180 = _s(resumen_cuotas, 'b_91_180') + _s(resumen_otros, 'b_91_180')
-    saldo_181_mas = _s(resumen_cuotas, 'b_181_mas') + _s(resumen_otros, 'b_181_mas')
+    saldo_0_30 = _s(resumen_cuotas, "b_0_30") + _s(resumen_otros, "b_0_30")
+    saldo_31_60 = _s(resumen_cuotas, "b_31_60") + _s(resumen_otros, "b_31_60")
+    saldo_61_90 = _s(resumen_cuotas, "b_61_90") + _s(resumen_otros, "b_61_90")
+    saldo_91_180 = _s(resumen_cuotas, "b_91_180") + _s(resumen_otros, "b_91_180")
+    saldo_181_mas = _s(resumen_cuotas, "b_181_mas") + _s(resumen_otros, "b_181_mas")
 
     saldo_31_90 = float(saldo_31_60) + float(saldo_61_90)
     saldo_90_mas = float(saldo_91_180) + float(saldo_181_mas)
@@ -330,35 +445,48 @@ def dashboard_inicio(request):
     # ── TOP DEUDORES (cuotas + otros ingresos combinados) ──
     top_deudores = []
 
-    for f in facturas_pend_qs.select_related('cliente', 'local', 'area_comun').prefetch_related('locales_incluidos').order_by('-monto')[:10]:
+    for f in (
+        facturas_pend_qs.select_related("cliente", "local", "area_comun")
+        .prefetch_related("locales_incluidos")
+        .order_by("-monto")[:10]
+    ):
         dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
         if f.local:
             local_label = f.local.numero
         elif f.locales_incluidos.exists():
-            local_label = "Grupo: " + ", ".join(l.numero for l in f.locales_incluidos.all())
+            local_label = "Grupo: " + ", ".join(
+                l.numero for l in f.locales_incluidos.all()
+            )
         else:
             local_label = None
-        top_deudores.append({
-            'cliente__nombre': f.cliente.nombre if f.cliente else '—',
-            'local__numero': local_label,
-            'area_comun__numero': f.area_comun.numero if f.area_comun else None,
-            'saldo': float(f.monto),
-            'dias_vencido': max(dias, 0),
-        })
+        top_deudores.append(
+            {
+                "cliente__nombre": f.cliente.nombre if f.cliente else "—",
+                "local__numero": local_label,
+                "area_comun__numero": f.area_comun.numero if f.area_comun else None,
+                "saldo": float(f.monto),
+                "dias_vencido": max(dias, 0),
+            }
+        )
 
-    for f in facturas_otros_pend_qs.select_related('cliente', 'tipo_ingreso').order_by('-monto')[:10]:
+    for f in facturas_otros_pend_qs.select_related("cliente", "tipo_ingreso").order_by(
+        "-monto"
+    )[:10]:
         dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
-        top_deudores.append({
-            'cliente__nombre': f.cliente.nombre if f.cliente else '—',
-            'local__numero': None,
-            'area_comun__numero': f.tipo_ingreso.nombre if f.tipo_ingreso else 'Otro ingreso',
-            'saldo': float(f.monto),
-            'dias_vencido': max(dias, 0),
-        })
+        top_deudores.append(
+            {
+                "cliente__nombre": f.cliente.nombre if f.cliente else "—",
+                "local__numero": None,
+                "area_comun__numero": f.tipo_ingreso.nombre
+                if f.tipo_ingreso
+                else "Otro ingreso",
+                "saldo": float(f.monto),
+                "dias_vencido": max(dias, 0),
+            }
+        )
 
-    top_deudores = sorted(top_deudores, key=lambda x: x['saldo'], reverse=True)[:5]
- 
-    
+    top_deudores = sorted(top_deudores, key=lambda x: x["saldo"], reverse=True)[:5]
+
     # ── DATOS 6 MESES — agrupado, 4 consultas en total (antes eran ~24) ──
     meses_6 = []
     claves_mes = []  # lista de (año, mes) en el mismo orden que meses_6, preservando tu cálculo original
@@ -372,58 +500,94 @@ def dashboard_inicio(request):
 
     # 1 consulta: cobros de cuotas agrupados por mes
     cobrado_cuotas_qs = (
-        Pago.objects.filter(factura__empresa=empresa, fecha_pago__gte=fecha_rango_inicio)
-        .exclude(forma_pago='nota_credito')
-        .annotate(mes_trunc=TruncMonth('fecha_pago'))
-        .values('mes_trunc')
-        .annotate(total=Sum('monto'))
+        Pago.objects.filter(
+            factura__empresa=empresa, fecha_pago__gte=fecha_rango_inicio
+        )
+        .exclude(forma_pago="nota_credito")
+        .annotate(mes_trunc=TruncMonth("fecha_pago"))
+        .values("mes_trunc")
+        .annotate(total=Sum("monto"))
     )
-    cobrado_cuotas_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in cobrado_cuotas_qs}
+    cobrado_cuotas_dict = {
+        (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+        for x in cobrado_cuotas_qs
+    }
 
     # 1 consulta: cobros de otros ingresos agrupados por mes
     cobrado_otros_qs = (
-        CobroOtrosIngresos.objects.filter(factura__empresa=empresa, fecha_cobro__gte=fecha_rango_inicio)
-        .annotate(mes_trunc=TruncMonth('fecha_cobro'))
-        .values('mes_trunc')
-        .annotate(total=Sum('monto'))
+        CobroOtrosIngresos.objects.filter(
+            factura__empresa=empresa, fecha_cobro__gte=fecha_rango_inicio
+        )
+        .annotate(mes_trunc=TruncMonth("fecha_cobro"))
+        .values("mes_trunc")
+        .annotate(total=Sum("monto"))
     )
-    cobrado_otros_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in cobrado_otros_qs}
+    cobrado_otros_dict = {
+        (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+        for x in cobrado_otros_qs
+    }
 
     # 1 consulta: facturas de cuotas pendientes agrupadas por mes de vencimiento
     porcobrar_cuotas_qs = (
-        Factura.objects.filter(empresa=empresa, estatus='pendiente', activo=True, fecha_vencimiento__gte=fecha_rango_inicio)
-        .annotate(mes_trunc=TruncMonth('fecha_vencimiento'))
-        .values('mes_trunc')
-        .annotate(total=Sum('monto'))
+        Factura.objects.filter(
+            empresa=empresa,
+            estatus="pendiente",
+            activo=True,
+            fecha_vencimiento__gte=fecha_rango_inicio,
+        )
+        .annotate(mes_trunc=TruncMonth("fecha_vencimiento"))
+        .values("mes_trunc")
+        .annotate(total=Sum("monto"))
     )
-    porcobrar_cuotas_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in porcobrar_cuotas_qs}
+    porcobrar_cuotas_dict = {
+        (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+        for x in porcobrar_cuotas_qs
+    }
 
     # 1 consulta: facturas de otros ingresos pendientes agrupadas por mes
     porcobrar_otros_qs = (
-        FacturaOtrosIngresos.objects.filter(empresa=empresa, estatus='pendiente', activo=True, fecha_vencimiento__gte=fecha_rango_inicio)
-        .annotate(mes_trunc=TruncMonth('fecha_vencimiento'))
-        .values('mes_trunc')
-        .annotate(total=Sum('monto'))
+        FacturaOtrosIngresos.objects.filter(
+            empresa=empresa,
+            estatus="pendiente",
+            activo=True,
+            fecha_vencimiento__gte=fecha_rango_inicio,
+        )
+        .annotate(mes_trunc=TruncMonth("fecha_vencimiento"))
+        .values("mes_trunc")
+        .annotate(total=Sum("monto"))
     )
-    porcobrar_otros_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in porcobrar_otros_qs}
+    porcobrar_otros_dict = {
+        (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+        for x in porcobrar_otros_qs
+    }
 
     # 1 consulta: gastos pagados agrupados por mes
     gpagados_qs = (
-        PagoGasto.objects.filter(gasto__empresa=empresa, fecha_pago__gte=fecha_rango_inicio, monto__gt=0)
-        .annotate(mes_trunc=TruncMonth('fecha_pago'))
-        .values('mes_trunc')
-        .annotate(total=Sum('monto'))
+        PagoGasto.objects.filter(
+            gasto__empresa=empresa, fecha_pago__gte=fecha_rango_inicio, monto__gt=0
+        )
+        .annotate(mes_trunc=TruncMonth("fecha_pago"))
+        .values("mes_trunc")
+        .annotate(total=Sum("monto"))
     )
-    gpagados_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in gpagados_qs}
+    gpagados_dict = {
+        (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+        for x in gpagados_qs
+    }
 
     # 1 consulta: gastos pendientes agrupados por mes
     gpendientes_qs = (
-        Gasto.objects.filter(empresa=empresa, estatus='pendiente', fecha__gte=fecha_rango_inicio)
-        .annotate(mes_trunc=TruncMonth('fecha'))
-        .values('mes_trunc')
-        .annotate(total=Sum('monto'))
+        Gasto.objects.filter(
+            empresa=empresa, estatus="pendiente", fecha__gte=fecha_rango_inicio
+        )
+        .annotate(mes_trunc=TruncMonth("fecha"))
+        .values("mes_trunc")
+        .annotate(total=Sum("monto"))
     )
-    gpendientes_dict = {(x['mes_trunc'].year, x['mes_trunc'].month): float(x['total'] or 0) for x in gpendientes_qs}
+    gpendientes_dict = {
+        (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+        for x in gpendientes_qs
+    }
 
     # Arma las 4 listas finales, en el mismo orden que antes, leyendo de los diccionarios (sin más consultas)
     ingresos_cobrados_6 = []
@@ -433,7 +597,9 @@ def dashboard_inicio(request):
 
     for a, m in claves_mes:
         cobrado = cobrado_cuotas_dict.get((a, m), 0) + cobrado_otros_dict.get((a, m), 0)
-        porcobrar = porcobrar_cuotas_dict.get((a, m), 0) + porcobrar_otros_dict.get((a, m), 0)
+        porcobrar = porcobrar_cuotas_dict.get((a, m), 0) + porcobrar_otros_dict.get(
+            (a, m), 0
+        )
         gpagados = gpagados_dict.get((a, m), 0)
         gpendientes = gpendientes_dict.get((a, m), 0)
 
@@ -444,91 +610,103 @@ def dashboard_inicio(request):
 
     mensaje_pago = None
     if request.GET.get("pago") == "ok":
-        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."    
+        mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
 
     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
 
-    mostrar_wizard = request.user.perfilusuario.mostrar_wizard and not request.session.get("wizard_cerrado", False)
+    mostrar_wizard = (
+        request.user.perfilusuario.mostrar_wizard
+        and not request.session.get("wizard_cerrado", False)
+    )
     # NUEVO: cuentas bancarias ya existentes (por si vienen del periodo demo)
     cuentas_existentes = CuentaBancaria.objects.filter(empresa=empresa, activa=True)
 
-    return render(request, 'pantalla_inicio.html', {
-        'empresa': empresa,
-        'hoy': hoy,
-        'mes_nombre': MESES[mes_actual-1],
-        # Ingresos
-        'ingresos_mes': ingresos_mes,
-        'por_cobrar_mes': por_cobrar_mes,
-        'ingresos_mes_cuotas': ingresos_mes_cuotas,
-        'ingresos_mes_otros': ingresos_mes_otros,
-        'por_cobrar_mes_cuotas': por_cobrar_mes_cuotas,
-        'por_cobrar_mes_otros': por_cobrar_mes_otros,
-        'total_posible_ingresos': total_posible_ingresos,
-        'pct_cobrado': pct_cobrado,
-        'pct_por_cobrar': pct_por_cobrar,
-        'delta_ingresos': delta_ingresos,
-        # Gastos
-        'gastos_pagados_mes': gastos_pagados_mes,
-        'gastos_pendientes_mes': gastos_pendientes_mes,
-        'total_gastos_mes': total_gastos_mes,
-        'delta_gastos': delta_gastos,
-        # Resultado
-        'resultado_mes': resultado_mes,
-        'pct_gastos': pct_gastos,
-        'pct_margen': pct_margen,
-        # Cartera
-        'cartera_vencida': cartera_vencida,
-        'facturas_vencidas_count': facturas_vencidas_count,
-        'saldo_0_30': saldo_0_30,
-        'saldo_31_60': saldo_31_60,
-        'saldo_61_90': saldo_61_90,
-        'saldo_91_180': saldo_91_180,
-        'saldo_181_mas': saldo_181_mas,
-        'saldo_31_90': saldo_31_90,
-        'saldo_90_mas': saldo_90_mas,
-        # Top deudores
-        'top_deudores': top_deudores,
-        # Gráficas 6 meses
-        'meses_6': json.dumps(meses_6),
-        'ingresos_cobrados_6': json.dumps(ingresos_cobrados_6),
-        'ingresos_porcobrar_6': json.dumps(ingresos_porcobrar_6),
-        'gastos_pagados_6': json.dumps(gastos_pagados_6),
-        'gastos_pendientes_6': json.dumps(gastos_pendientes_6),
-        # Membresía
-        #'membresia_label': membresia_label,
-        # Recordatorio facturación
-        'mostrar_recordatorio': mostrar_recordatorio,
-        'mostrar_wizard': mostrar_wizard,
-        'mensaje_pago': mensaje_pago,
-        'cuentas_existentes': cuentas_existentes,
-        'regimen_choices': Empresa.REGIMEN_CHOICES,
-        'bancos_choices': CuentaBancaria.BANCOS_CHOICES,
-        'moneda_choices': CuentaBancaria.TIPO_MONEDA,
-        'tipo_cuenta_choices': CuentaBancaria.TIPO_CUENTA,
-        'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY,  # NUEVO
-    })
+    return render(
+        request,
+        "pantalla_inicio.html",
+        {
+            "empresa": empresa,
+            "hoy": hoy,
+            "mes_nombre": MESES[mes_actual - 1],
+            # Ingresos
+            "ingresos_mes": ingresos_mes,
+            "por_cobrar_mes": por_cobrar_mes,
+            "ingresos_mes_cuotas": ingresos_mes_cuotas,
+            "ingresos_mes_otros": ingresos_mes_otros,
+            "por_cobrar_mes_cuotas": por_cobrar_mes_cuotas,
+            "por_cobrar_mes_otros": por_cobrar_mes_otros,
+            "total_posible_ingresos": total_posible_ingresos,
+            "pct_cobrado": pct_cobrado,
+            "pct_por_cobrar": pct_por_cobrar,
+            "delta_ingresos": delta_ingresos,
+            # Gastos
+            "gastos_pagados_mes": gastos_pagados_mes,
+            "gastos_pendientes_mes": gastos_pendientes_mes,
+            "total_gastos_mes": total_gastos_mes,
+            "delta_gastos": delta_gastos,
+            # Resultado
+            "resultado_mes": resultado_mes,
+            "pct_gastos": pct_gastos,
+            "pct_margen": pct_margen,
+            # Cartera
+            "cartera_vencida": cartera_vencida,
+            "facturas_vencidas_count": facturas_vencidas_count,
+            "saldo_0_30": saldo_0_30,
+            "saldo_31_60": saldo_31_60,
+            "saldo_61_90": saldo_61_90,
+            "saldo_91_180": saldo_91_180,
+            "saldo_181_mas": saldo_181_mas,
+            "saldo_31_90": saldo_31_90,
+            "saldo_90_mas": saldo_90_mas,
+            # Top deudores
+            "top_deudores": top_deudores,
+            # Gráficas 6 meses
+            "meses_6": json.dumps(meses_6),
+            "ingresos_cobrados_6": json.dumps(ingresos_cobrados_6),
+            "ingresos_porcobrar_6": json.dumps(ingresos_porcobrar_6),
+            "gastos_pagados_6": json.dumps(gastos_pagados_6),
+            "gastos_pendientes_6": json.dumps(gastos_pendientes_6),
+            # Membresía
+            #'membresia_label': membresia_label,
+            # Recordatorio facturación
+            "mostrar_recordatorio": mostrar_recordatorio,
+            "mostrar_wizard": mostrar_wizard,
+            "mensaje_pago": mensaje_pago,
+            "cuentas_existentes": cuentas_existentes,
+            "regimen_choices": Empresa.REGIMEN_CHOICES,
+            "bancos_choices": CuentaBancaria.BANCOS_CHOICES,
+            "moneda_choices": CuentaBancaria.TIPO_MONEDA,
+            "tipo_cuenta_choices": CuentaBancaria.TIPO_CUENTA,
+            "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,  # NUEVO
+        },
+    )
 
 
 ####PANEL DEDICADO PARA DESPACHOS DE CONTADORES########################03/08/26
 @login_required
 def panel_contador(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
+    perfil = getattr(request.user, "perfilusuario", None)
     if not (perfil and perfil.es_contador) and not request.user.is_superuser:
         messages.error(request, "No tienes acceso a este panel.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     empresa = perfil.empresa if perfil else None
 
-    return render(request, 'contador/panel_contador.html', {
-        'empresa': empresa,
-    })
+    return render(
+        request,
+        "contador/panel_contador.html",
+        {
+            "empresa": empresa,
+        },
+    )
 
-#alta usuario contador
+
+# alta usuario contador
 @login_required
-def crear_contador(request):  
+def crear_contador(request):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para acceder a esta sección.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     if request.method == "POST":
         form = ContadorForm(request.POST)
@@ -537,7 +715,8 @@ def crear_contador(request):
             empresa_principal = empresas_seleccionadas.first()
             username = form.cleaned_data["username"]
             temp_password = get_random_string(
-                length=12, allowed_chars="abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+                length=12,
+                allowed_chars="abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789",
             )
 
             with transaction.atomic():
@@ -556,7 +735,9 @@ def crear_contador(request):
                         "debe_cambiar_password": True,
                     },
                 )
-                perfil.empresas_contador.set(empresas_seleccionadas)  # NUEVO -- guarda todas
+                perfil.empresas_contador.set(
+                    empresas_seleccionadas
+                )  # NUEVO -- guarda todas
 
             nombres_empresas = ", ".join(e.nombre for e in empresas_seleccionadas)
 
@@ -574,11 +755,18 @@ def crear_contador(request):
                 f"Si tienes acceso a más de un condominio, podrás cambiar entre ellos desde el menú superior.\n\n"
                 f"Saludos,\nEquipo GESAC"
             )
-            send_mail(subject=asunto_contador, message=mensaje_contador,
-                      from_email=settings.DEFAULT_FROM_EMAIL,
-                      recipient_list=[user.email], fail_silently=True)
+            send_mail(
+                subject=asunto_contador,
+                message=mensaje_contador,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
 
-            messages.success(request, f"✅ Contador '{user.username}' dado de alta con acceso a {len(empresas_seleccionadas)} empresa(s).")
+            messages.success(
+                request,
+                f"✅ Contador '{user.username}' dado de alta con acceso a {len(empresas_seleccionadas)} empresa(s).",
+            )
             return redirect("lista_contadores")
     else:
         form = ContadorForm()
@@ -598,7 +786,9 @@ def cambiar_password_obligatorio(request):
             form.save()
             perfil.debe_cambiar_password = False
             perfil.save(update_fields=["debe_cambiar_password"])
-            update_session_auth_hash(request, request.user)  # evita que se cierre la sesión al cambiar la contraseña
+            update_session_auth_hash(
+                request, request.user
+            )  # evita que se cierre la sesión al cambiar la contraseña
             messages.success(request, "✅ Contraseña actualizada correctamente.")
             return redirect("dashboard_inicio")
     else:
@@ -611,31 +801,37 @@ def cambiar_password_obligatorio(request):
 def lista_contadores(request):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para acceder a esta sección.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     empresa_filtro = request.GET.get("empresa")
 
-    contadores = PerfilUsuario.objects.filter(
-        es_contador=True
-    ).select_related("usuario", "empresa").order_by("empresa__nombre", "usuario__username")
+    contadores = (
+        PerfilUsuario.objects.filter(es_contador=True)
+        .select_related("usuario", "empresa")
+        .order_by("empresa__nombre", "usuario__username")
+    )
 
     if empresa_filtro and empresa_filtro.isdigit():
         contadores = contadores.filter(empresa_id=empresa_filtro)
 
     empresas = Empresa.objects.all().order_by("nombre")
 
-    return render(request, "contador/lista_contadores.html", {
-        "contadores": contadores,
-        "empresas": empresas,
-        "empresa_filtro": empresa_filtro,
-    })
+    return render(
+        request,
+        "contador/lista_contadores.html",
+        {
+            "contadores": contadores,
+            "empresas": empresas,
+            "empresa_filtro": empresa_filtro,
+        },
+    )
 
 
 @login_required
 def toggle_acceso_contador(request, perfil_id):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para realizar esta acción.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     perfil = get_object_or_404(PerfilUsuario, pk=perfil_id, es_contador=True)
 
@@ -643,33 +839,36 @@ def toggle_acceso_contador(request, perfil_id):
     perfil.usuario.save(update_fields=["is_active"])
 
     estado = "reactivado" if perfil.usuario.is_active else "restringido"
-    messages.success(request, f"✅ Acceso {estado} para '{perfil.usuario.username}' ({perfil.empresa.nombre if perfil.empresa else 'sin empresa'}).")
+    messages.success(
+        request,
+        f"✅ Acceso {estado} para '{perfil.usuario.username}' ({perfil.empresa.nombre if perfil.empresa else 'sin empresa'}).",
+    )
     return redirect("lista_contadores")
 
 
 @login_required
 def cambiar_empresa_contador(request, empresa_id):
-    perfil = getattr(request.user, 'perfilusuario', None)
+    perfil = getattr(request.user, "perfilusuario", None)
     if not perfil or not perfil.es_contador:
         messages.error(request, "No tienes permiso para esta acción.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     empresa = perfil.empresas_contador.filter(id=empresa_id).first()
     if not empresa:
         messages.error(request, "No tienes acceso a esa empresa.")
-        return redirect('panel_contador')
+        return redirect("panel_contador")
 
     perfil.empresa = empresa
-    perfil.save(update_fields=['empresa'])
+    perfil.save(update_fields=["empresa"])
     messages.success(request, f"Ahora estás viendo: {empresa.nombre}")
-    return redirect('panel_contador')
+    return redirect("panel_contador")
 
 
 @login_required
 def editar_empresas_contador(request, perfil_id):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para acceder a esta sección.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     perfil = get_object_or_404(PerfilUsuario, pk=perfil_id, es_contador=True)
 
@@ -679,9 +878,19 @@ def editar_empresas_contador(request, perfil_id):
             nuevo_email = form.cleaned_data["email"]
 
             # Verifica que el correo no esté siendo usado por otro usuario
-            if User.objects.filter(email=nuevo_email).exclude(pk=perfil.usuario.pk).exists():
-                messages.error(request, "Ese correo ya está registrado por otro usuario.")
-                return render(request, "contador/editar_empresas_contador.html", {"form": form, "perfil": perfil})
+            if (
+                User.objects.filter(email=nuevo_email)
+                .exclude(pk=perfil.usuario.pk)
+                .exists()
+            ):
+                messages.error(
+                    request, "Ese correo ya está registrado por otro usuario."
+                )
+                return render(
+                    request,
+                    "contador/editar_empresas_contador.html",
+                    {"form": form, "perfil": perfil},
+                )
 
             perfil.usuario.email = nuevo_email
             perfil.usuario.save(update_fields=["email"])
@@ -690,42 +899,59 @@ def editar_empresas_contador(request, perfil_id):
             perfil.empresas_contador.set(empresas_seleccionadas)
 
             if perfil.empresa not in empresas_seleccionadas:
-                perfil.empresa = empresas_seleccionadas.first() if empresas_seleccionadas else None
-                perfil.save(update_fields=['empresa'])
+                perfil.empresa = (
+                    empresas_seleccionadas.first() if empresas_seleccionadas else None
+                )
+                perfil.save(update_fields=["empresa"])
 
-            nombres_empresas = ", ".join(e.nombre for e in empresas_seleccionadas) or "ninguna"
-            messages.success(request, f"✅ Datos actualizados para '{perfil.usuario.username}'. Correo: {nuevo_email}. Empresas: {nombres_empresas}.")
+            nombres_empresas = (
+                ", ".join(e.nombre for e in empresas_seleccionadas) or "ninguna"
+            )
+            messages.success(
+                request,
+                f"✅ Datos actualizados para '{perfil.usuario.username}'. Correo: {nuevo_email}. Empresas: {nombres_empresas}.",
+            )
             return redirect("lista_contadores")
     else:
-        form = EditarContadorForm(initial={
-            "empresas": perfil.empresas_contador.all(),
-            "email": perfil.usuario.email,
-        })
+        form = EditarContadorForm(
+            initial={
+                "empresas": perfil.empresas_contador.all(),
+                "email": perfil.usuario.email,
+            }
+        )
 
-    return render(request, "contador/editar_empresas_contador.html", {
-        "form": form,
-        "perfil": perfil,
-    })
+    return render(
+        request,
+        "contador/editar_empresas_contador.html",
+        {
+            "form": form,
+            "perfil": perfil,
+        },
+    )
 
 
 @login_required
 def reenviar_credenciales_contador(request, perfil_id):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para realizar esta acción.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     if request.method != "POST":
-        return redirect('lista_contadores')
+        return redirect("lista_contadores")
 
     perfil = get_object_or_404(PerfilUsuario, pk=perfil_id, es_contador=True)
 
     if not perfil.usuario.email:
-        messages.error(request, f"'{perfil.usuario.username}' no tiene correo registrado. Edítalo primero.")
-        return redirect('lista_contadores')
+        messages.error(
+            request,
+            f"'{perfil.usuario.username}' no tiene correo registrado. Edítalo primero.",
+        )
+        return redirect("lista_contadores")
 
     # Genera una contraseña temporal NUEVA (la original nunca quedó guardada en texto plano)
     temp_password = get_random_string(
-        length=12, allowed_chars="abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+        length=12,
+        allowed_chars="abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789",
     )
     perfil.usuario.set_password(temp_password)
     perfil.usuario.save(update_fields=["password"])
@@ -733,7 +959,9 @@ def reenviar_credenciales_contador(request, perfil_id):
     perfil.debe_cambiar_password = True
     perfil.save(update_fields=["debe_cambiar_password"])
 
-    nombres_empresas = ", ".join(e.nombre for e in perfil.empresas_contador.all()) or "ninguna"
+    nombres_empresas = (
+        ", ".join(e.nombre for e in perfil.empresas_contador.all()) or "ninguna"
+    )
     login_url = request.build_absolute_uri(reverse("login"))
     asunto = "Acceso a GESAC"
     mensaje = (
@@ -747,21 +975,26 @@ def reenviar_credenciales_contador(request, perfil_id):
         f"Saludos,\nEquipo GESAC"
     )
     send_mail(
-        subject=asunto, message=mensaje,
+        subject=asunto,
+        message=mensaje,
         from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[perfil.usuario.email], fail_silently=True,
+        recipient_list=[perfil.usuario.email],
+        fail_silently=True,
     )
 
     messages.success(request, f"✅ Credenciales reenviadas a {perfil.usuario.email}.")
     return redirect("lista_contadores")
 
 
-
 @login_required
 def info_plus(request):
-    return render(request, 'planes/info_plus.html', {
-        'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
-    })
+    return render(
+        request,
+        "planes/info_plus.html",
+        {
+            "stripe_public_key": settings.STRIPE_PUBLIC_KEY,
+        },
+    )
 
 
 @staff_member_required
@@ -1155,6 +1388,7 @@ def reporte_auditoria(request):
         request, "auditoria/reporte.html", {"auditorias": queryset, "modelo": modelo}
     )
 
+
 @csrf_exempt
 @login_required
 def crear_evento(request):
@@ -1226,6 +1460,7 @@ def enviar_correo_evento(request, evento_id):
             )
     return JsonResponse({"ok": False}, status=400)
 
+
 ###########################APP REGISTRO DE USUARIO GESAC########################
 # registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
 def registro_usuario(request):
@@ -1247,7 +1482,9 @@ def registro_usuario(request):
             user = User.objects.create_user(
                 username=username, password=password, email=email, first_name=nombre
             )
-            nombre_empresa_demo = "CONDOMINIO DEMO" if segmento == "habitacional" else "EMPRESA DEMO"
+            nombre_empresa_demo = (
+                "CONDOMINIO DEMO" if segmento == "habitacional" else "EMPRESA DEMO"
+            )
             empresa = Empresa.objects.create(
                 nombre=nombre_empresa_demo,
                 rfc=f"DEMO{uuid4().hex[:8].upper()}",
@@ -1260,7 +1497,7 @@ def registro_usuario(request):
             perfil.save()
 
             # --- Correo de aviso al admin: nuevo usuario registrado ---
-         
+
             resumen = (
                 f"Nuevo usuario registrado en GESAC:\n\n"
                 f"Nombre: {nombre}\n"
@@ -1430,11 +1667,11 @@ def stripe_webhook(request):
 
     plus_prices = {
         "price_1TrLU4PYnlfwKZQHncNKhhvd",  # produccion plus
-        #"price_1RnT1IPW7xPgzk0myWccMWtW",  # pruebas plus
+        # "price_1RnT1IPW7xPgzk0myWccMWtW",  # pruebas plus
     }
     premium_prices = {
         "price_1UAbRWPYnlfwKZQHczJkwjN7",  # produccion premium
-        #"price_1RnSzMPW7xPgzk0mLslR8vT5",  # pruebas premium
+        # "price_1RnSzMPW7xPgzk0mLslR8vT5",  # pruebas premium
     }
 
     # Alta inicial o upgrade por Checkout
@@ -1448,19 +1685,20 @@ def stripe_webhook(request):
         if not perfil:
             print("No se encontró PerfilUsuario para checkout.session.completed")
             return HttpResponse(status=200)
-        
+
         # Si el usuario se registró sin correo, se toma el que Stripe le pidió
         # (y confirmó) durante el checkout. customer_details.email es el dato
         # real que el cliente tecleó en la pantalla de pago; es más confiable
         # que customer_email (que solo refleja lo que nosotros le mandamos,
         # si es que le mandamos algo).
         if perfil.usuario and not perfil.usuario.email:
-            email_stripe = (session.get("customer_details") or {}).get("email") or session.get("customer_email")
+            email_stripe = (session.get("customer_details") or {}).get(
+                "email"
+            ) or session.get("customer_email")
             if email_stripe:
                 perfil.usuario.email = email_stripe
                 perfil.usuario.save(update_fields=["email"])
                 print(f"Email tomado de Stripe checkout: {email_stripe}")
-
 
         tenia_suscripcion = bool(
             perfil.stripe_plus_subscription_id or perfil.stripe_premium_subscription_id
@@ -1481,7 +1719,6 @@ def stripe_webhook(request):
             perfil.stripe_subscription_id = subscription_id
 
         elif price_id in premium_prices:
-        
             perfil.stripe_premium_subscription_id = subscription_id
             # legacy/fallback temporal
             perfil.stripe_subscription_id = subscription_id
@@ -1490,7 +1727,6 @@ def stripe_webhook(request):
             print("Price ID no reconocido:", price_id)
             return HttpResponse(status=200)
 
-   
         _sync_membership_state(perfil)
         perfil.save()
 
@@ -1564,7 +1800,7 @@ def crear_sesion_pago(request):
     if perfil.stripe_plus_subscription_id:
         return JsonResponse(
             {"status": "error", "detail": "Ya tienes membresía PLUS activa."},
-            status=400
+            status=400,
         )
 
     success = request.build_absolute_uri(reverse("dashboard_inicio") + "?pago=ok")
@@ -1572,8 +1808,10 @@ def crear_sesion_pago(request):
 
     session_kwargs = {
         "payment_method_types": ["card"],
-        "line_items": [{"price": "price_1TrLU4PYnlfwKZQHncNKhhvd", "quantity": 1}], #produccion
-        #"line_items": [{"price": "price_1RnT1IPW7xPgzk0myWccMWtW", "quantity": 1}], #desarrollo
+        "line_items": [
+            {"price": "price_1TrLU4PYnlfwKZQHncNKhhvd", "quantity": 1}
+        ],  # produccion
+        # "line_items": [{"price": "price_1RnT1IPW7xPgzk0myWccMWtW", "quantity": 1}], #desarrollo
         "mode": "subscription",
         "success_url": success,
         "cancel_url": cancel,
@@ -1597,7 +1835,9 @@ def crear_sesion_pago(request):
         # (típico al alternar entre llaves test/live). Se limpia el id
         # inválido y se reintenta, dejando que Stripe cree un customer nuevo.
         if "No such customer" in str(e) and perfil.stripe_customer_id:
-            print(f"Customer inválido {perfil.stripe_customer_id}, se limpia y reintenta")
+            print(
+                f"Customer inválido {perfil.stripe_customer_id}, se limpia y reintenta"
+            )
             perfil.stripe_customer_id = None
             perfil.save(update_fields=["stripe_customer_id"])
 
@@ -1620,7 +1860,7 @@ def crear_sesion_pago_premium(request):
     if perfil.stripe_premium_subscription_id:
         return JsonResponse(
             {"status": "error", "detail": "Ya tienes membresía PREMIUM activa."},
-            status=400
+            status=400,
         )
 
     success = request.build_absolute_uri(reverse("dashboard_inicio") + "?pago=ok")
@@ -1628,8 +1868,10 @@ def crear_sesion_pago_premium(request):
 
     session_kwargs = {
         "payment_method_types": ["card"],
-        "line_items": [{"price": "price_1UAbRWPYnlfwKZQHczJkwjN7", "quantity": 1}], #produccion
-        #"line_items": [{"price": "price_1RnSzMPW7xPgzk0mLslR8vT5", "quantity": 1}], #desarrollo
+        "line_items": [
+            {"price": "price_1UAbRWPYnlfwKZQHczJkwjN7", "quantity": 1}
+        ],  # produccion
+        # "line_items": [{"price": "price_1RnSzMPW7xPgzk0mLslR8vT5", "quantity": 1}], #desarrollo
         "mode": "subscription",
         "success_url": success,
         "cancel_url": cancel,
@@ -1653,7 +1895,9 @@ def crear_sesion_pago_premium(request):
         # (típico al alternar entre llaves test/live). Se limpia el id
         # inválido y se reintenta, dejando que Stripe cree un customer nuevo.
         if "No such customer" in str(e) and perfil.stripe_customer_id:
-            print(f"Customer inválido {perfil.stripe_customer_id}, se limpia y reintenta")
+            print(
+                f"Customer inválido {perfil.stripe_customer_id}, se limpia y reintenta"
+            )
             perfil.stripe_customer_id = None
             perfil.save(update_fields=["stripe_customer_id"])
 
@@ -1687,7 +1931,7 @@ def cancelar_suscripcion(request):
     plus_subscription_id = (
         perfil.stripe_plus_subscription_id or perfil.stripe_subscription_id
     )
-   
+
     try:
         _safe_cancel_subscription(plus_subscription_id)
 
@@ -1725,7 +1969,7 @@ def cancelar_suscripcion_premium(request):
 
         perfil.stripe_premium_subscription_id = None
 
-        # legacy: si el id legacy era el premium cancelado, volverlo al plus (si existe), si no existe que sea None 
+        # legacy: si el id legacy era el premium cancelado, volverlo al plus (si existe), si no existe que sea None
         # y que el tipo_usuario se ajuste a plus
 
         if perfil.stripe_subscription_id == premium_subscription_id:
@@ -1757,6 +2001,7 @@ def guardar_datos_empresa(request):
 
     if not nuevo_rfc:
         from uuid import uuid4
+
         nuevo_rfc = f"SINRFC{uuid4().hex[:7].upper()}"
 
     if Empresa.objects.filter(rfc=nuevo_rfc).exclude(id=empresa.id).exists():
@@ -1979,6 +2224,7 @@ def detalle_ticket(request, ticket_id):
         {"ticket": ticket, "seguimientos": seguimientos},
     )
 
+
 @login_required
 def tickets_asignados(request):
     empresa = request.user.perfilusuario.empresa
@@ -2003,6 +2249,7 @@ def tickets_asignados(request):
         },
     )
 
+
 @login_required
 def lista_tickets(request):
     if request.user.is_superuser:
@@ -2021,8 +2268,8 @@ def lista_tickets(request):
     return render(request, "mantenimiento/lista_tickets.html", {"tickets": tickets})
 
 
-
 ############### modulo visitantes consulta adeudos y pagos de facturas via WEB  ##############################
+
 
 def registro_visitante(request):
     empresas = Empresa.objects.all()
@@ -2281,12 +2528,16 @@ def visitante_consulta_facturas(request):
     )
     facturas = Factura.objects.none()
     if local_id:
-        facturas = Factura.objects.filter(
-            Q(local_id=local_id, local__in=locales)
-            | Q(locales_incluidos__id=local_id, locales_incluidos__in=locales),
-            empresa=empresa,
-            monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
-        ).distinct().order_by("-fecha_vencimiento")
+        facturas = (
+            Factura.objects.filter(
+                Q(local_id=local_id, local__in=locales)
+                | Q(locales_incluidos__id=local_id, locales_incluidos__in=locales),
+                empresa=empresa,
+                monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
+            )
+            .distinct()
+            .order_by("-fecha_vencimiento")
+        )
     elif area_id:
         facturas = Factura.objects.filter(
             area_comun_id=area_id,
@@ -2295,11 +2546,17 @@ def visitante_consulta_facturas(request):
             monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
         ).order_by("-fecha_vencimiento")
     else:
-        facturas = Factura.objects.filter(
-            Q(local__in=locales) | Q(area_comun__in=areas) | Q(locales_incluidos__in=locales),
-            empresa=empresa,
-            monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
-        ).distinct().order_by("-fecha_vencimiento")
+        facturas = (
+            Factura.objects.filter(
+                Q(local__in=locales)
+                | Q(area_comun__in=areas)
+                | Q(locales_incluidos__in=locales),
+                empresa=empresa,
+                monto__gt=0,  # Solo mostrar facturas con monto mayor a 0
+            )
+            .distinct()
+            .order_by("-fecha_vencimiento")
+        )
 
     # Obtén los años únicos de las facturas
     anios_unicos = (
@@ -2333,7 +2590,9 @@ def visitante_consulta_facturas(request):
     factura_pendiente_id = (
         factura_pendiente_mas_antigua.id if factura_pendiente_mas_antigua else None
     )
-    facturas = facturas.select_related("local", "area_comun").prefetch_related("locales_incluidos")
+    facturas = facturas.select_related("local", "area_comun").prefetch_related(
+        "locales_incluidos"
+    )
     # paginacion
     page_number = request.GET.get("page", 1)
     paginator = Paginator(facturas, 10)  # Mostrar 10 facturas por página
@@ -2396,7 +2655,8 @@ def descargar_estado_cuenta_pdf(request):
         facturas = Factura.objects.filter(
             Q(local_id=local_id, local__in=locales)
             | Q(locales_incluidos__id=local_id, locales_incluidos__in=locales),
-            empresa=empresa, monto__gt=0,
+            empresa=empresa,
+            monto__gt=0,
         ).distinct()
     elif area_id:
         facturas = Factura.objects.filter(
@@ -2404,8 +2664,11 @@ def descargar_estado_cuenta_pdf(request):
         )
     else:
         facturas = Factura.objects.filter(
-            Q(local__in=locales) | Q(area_comun__in=areas) | Q(locales_incluidos__in=locales),
-            empresa=empresa, monto__gt=0,
+            Q(local__in=locales)
+            | Q(area_comun__in=areas)
+            | Q(locales_incluidos__in=locales),
+            empresa=empresa,
+            monto__gt=0,
         ).distinct()
 
     if anio and anio.isdigit():
@@ -2458,7 +2721,9 @@ def visitante_factura_detalle(request, factura_id):
         return redirect("visitante_login")
     visitante = VisitanteAcceso.objects.get(id=visitante_id)
     factura = get_object_or_404(
-        Factura.objects.select_related("local", "area_comun").prefetch_related("locales_incluidos"),
+        Factura.objects.select_related("local", "area_comun").prefetch_related(
+            "locales_incluidos"
+        ),
         id=factura_id,
     )
 
@@ -2562,6 +2827,7 @@ def visitante_timbrar_factura(request, pk):
 COMISION_STRIPE_PORCENTAJE = Decimal("0.036")  # 3.6%
 COMISION_STRIPE_FIJA = Decimal("3.00")  # $3.00 MXN
 
+
 def calcular_monto_a_cobrar_stripe(monto_neto_deseado):
     """
     Regresa el monto TOTAL que hay que cobrarle al cliente para que,
@@ -2573,7 +2839,9 @@ def calcular_monto_a_cobrar_stripe(monto_neto_deseado):
         total = (neto + 3) / (1 - 0.036)
     """
     monto_neto_deseado = Decimal(str(monto_neto_deseado))
-    total = (monto_neto_deseado + COMISION_STRIPE_FIJA) / (Decimal("1") - COMISION_STRIPE_PORCENTAJE)  # noqa: FURB157
+    total = (monto_neto_deseado + COMISION_STRIPE_FIJA) / (
+        Decimal("1") - COMISION_STRIPE_PORCENTAJE
+    )  # noqa: FURB157
     # Redondea HACIA ARRIBA al centavo -- así la empresa nunca recibe
     # ni un centavo menos del monto real de la factura por un
     # redondeo desfavorable.
@@ -2611,11 +2879,11 @@ def stripe_checkout_visitante(request, factura_id):
     # mayor que ya incluye la comisión de Stripe (empresa recibe íntegro).
     monto_a_cobrar = factura.saldo_pendiente
     nombre_producto = f"Pago factura {factura.folio}"
-    
+
     if not empresa.absorber_comision_stripe:
         monto_a_cobrar = calcular_monto_a_cobrar_stripe(factura.saldo_pendiente)
         nombre_producto = f"Pago factura {factura.folio} (incluye comisión Stripe)"
-    
+
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         line_items=[
@@ -2635,9 +2903,8 @@ def stripe_checkout_visitante(request, factura_id):
             f"/visitante/consulta/?pagook=1&factura_id={factura.id}"
         ),
         cancel_url=request.build_absolute_uri("/visitante/consulta/?pagocancel=1"),
-
-    #     metadata={"factura_id": factura.id},
-    # )
+        #     metadata={"factura_id": factura.id},
+        # )
         # NUEVO -- "monto_neto" viaja en la metadata para que el webhook
         # sepa exactamente cuánto debe registrar en el Pago -- nunca el
         # monto grossed-up que realmente se le cobró a la tarjeta, que
@@ -2647,9 +2914,12 @@ def stripe_checkout_visitante(request, factura_id):
         # automáticamente la metadata de la Session al PaymentIntent --
         # y el webhook puede recibir cualquiera de los dos tipos de evento.
         payment_intent_data={
-            "metadata": {"factura_id": factura.id, "monto_neto": str(factura.saldo_pendiente)},
+            "metadata": {
+                "factura_id": factura.id,
+                "monto_neto": str(factura.saldo_pendiente),
+            },
         },
-    )    
+    )
     return redirect(session.url)
 
 
@@ -2934,7 +3204,8 @@ def enviar_votacion(tema, lista_correos, request):
 
         # Evita duplicados: reutiliza el registro y el token si ya existía
         votacion, creado = VotacionCorreo.objects.get_or_create(
-            tema=tema, email=correo,
+            tema=tema,
+            email=correo,
             defaults={"token": uuid4().hex},
         )
 
@@ -2944,9 +3215,15 @@ def enviar_votacion(tema, lista_correos, request):
             continue
 
         token = votacion.token
-        url_si = request.build_absolute_uri(reverse("votar_tema_correo", args=[token, "si"]))
-        url_no = request.build_absolute_uri(reverse("votar_tema_correo", args=[token, "no"]))
-        url_abstencion = request.build_absolute_uri(reverse("votar_tema_correo", args=[token, "abstencion"]))
+        url_si = request.build_absolute_uri(
+            reverse("votar_tema_correo", args=[token, "si"])
+        )
+        url_no = request.build_absolute_uri(
+            reverse("votar_tema_correo", args=[token, "no"])
+        )
+        url_abstencion = request.build_absolute_uri(
+            reverse("votar_tema_correo", args=[token, "abstencion"])
+        )
 
         asunto = f"Votación: {tema.titulo} - {nombre_empresa}"
         mensaje = (
@@ -2993,27 +3270,39 @@ def votar_tema_correo(request, token, respuesta):
     votacion = get_object_or_404(VotacionCorreo, token=token)
 
     if respuesta not in ["si", "no", "abstencion"]:
-        return render(request, "votaciones/voto_confirmacion.html", {
-            "estado": "error",
-            "mensaje": "El enlace de votación no es válido.",
-        })
+        return render(
+            request,
+            "votaciones/voto_confirmacion.html",
+            {
+                "estado": "error",
+                "mensaje": "El enlace de votación no es válido.",
+            },
+        )
 
     if votacion.ya_voto():
-        return render(request, "votaciones/voto_confirmacion.html", {
-            "estado": "ya_voto",
-            "tema": votacion.tema,
-            "voto_registrado": votacion.get_voto_display(),
-        })
+        return render(
+            request,
+            "votaciones/voto_confirmacion.html",
+            {
+                "estado": "ya_voto",
+                "tema": votacion.tema,
+                "voto_registrado": votacion.get_voto_display(),
+            },
+        )
 
     votacion.voto = respuesta
     votacion.fecha_voto = timezone.now()
     votacion.save()
 
-    return render(request, "votaciones/voto_confirmacion.html", {
-        "estado": "exito",
-        "tema": votacion.tema,
-        "voto_registrado": votacion.get_voto_display(),
-    })
+    return render(
+        request,
+        "votaciones/voto_confirmacion.html",
+        {
+            "estado": "exito",
+            "tema": votacion.tema,
+            "voto_registrado": votacion.get_voto_display(),
+        },
+    )
 
 
 def resultados_votacion(request, tema_id):
@@ -3097,21 +3386,35 @@ def crear_tema_y_enviar(request):
 
             partes = []
             if resumen["enviados"]:
-                partes.append(f"{resumen['enviados']} invitación(es) nueva(s) enviada(s)")
+                partes.append(
+                    f"{resumen['enviados']} invitación(es) nueva(s) enviada(s)"
+                )
             if resumen["reenviados"]:
                 partes.append(f"{resumen['reenviados']} recordatorio(s) reenviado(s)")
             if resumen["ya_votaron_omitidos"]:
-                partes.append(f"{resumen['ya_votaron_omitidos']} ya habían votado (sin reenvío)")
+                partes.append(
+                    f"{resumen['ya_votaron_omitidos']} ya habían votado (sin reenvío)"
+                )
 
-            mensaje_final = "✅ Asunto guardado. " + (", ".join(partes) if partes else "No había correos nuevos que notificar.")
+            mensaje_final = "✅ Asunto guardado. " + (
+                ", ".join(partes)
+                if partes
+                else "No había correos nuevos que notificar."
+            )
             messages.success(request, mensaje_final)
 
             if resumen["fallidos"]:
                 from django.utils.safestring import mark_safe
+
                 fallos_html = "<br>".join(resumen["fallidos"][:15])
                 if len(resumen["fallidos"]) > 15:
-                    fallos_html += f"<br>...y {len(resumen['fallidos'])-15} más."
-                messages.warning(request, mark_safe(f"⚠️ {len(resumen['fallidos'])} correo(s) no se pudieron enviar:<br>{fallos_html}"))
+                    fallos_html += f"<br>...y {len(resumen['fallidos']) - 15} más."
+                messages.warning(
+                    request,
+                    mark_safe(
+                        f"⚠️ {len(resumen['fallidos'])} correo(s) no se pudieron enviar:<br>{fallos_html}"
+                    ),
+                )
 
             return redirect("lista_temas")
     else:
@@ -3167,6 +3470,7 @@ def aviso_eliminar(request, aviso_id):
         aviso.delete()
         return redirect("avisos_lista")
     return render(request, "avisos/aviso_confirmar_eliminar.html", {"aviso": aviso})
+
 
 #################################################################################################
 # Modulo de timbrado de facturas con FACTURAMA PENDIENTE PROBAR EN PRODUCCION
@@ -3371,15 +3675,15 @@ def timbrar_factura(request, pk):
 
 
 FORMA_PAGO_SAT_MAP = {
-    'efectivo': '01',
-    'cheque': '02',
-    'transferencia': '03',
-    'deposito': '01',   # confirmado: efectivo
-    'tarjeta': '28',    # confirmado: tarjeta de débito
-    'stripe': '28',     # confirmado: tarjeta de débito
-    'nota_credito': '99',
-    'rendimiento_inversion': '99',
-    'otro': '99',
+    "efectivo": "01",
+    "cheque": "02",
+    "transferencia": "03",
+    "deposito": "01",  # confirmado: efectivo
+    "tarjeta": "28",  # confirmado: tarjeta de débito
+    "stripe": "28",  # confirmado: tarjeta de débito
+    "nota_credito": "99",
+    "rendimiento_inversion": "99",
+    "otro": "99",
 }
 
 
@@ -3388,15 +3692,20 @@ def obtener_forma_pago_sat_factura(factura):
     de la factura. Regresa (codigo, None) si todos los pagos coinciden en
     forma de pago, o (None, mensaje_error) si hay formas de pago mezcladas."""
     formas_usadas = set(
-        factura.pagos.exclude(forma_pago='nota_credito').values_list('forma_pago', flat=True)
+        factura.pagos.exclude(forma_pago="nota_credito").values_list(
+            "forma_pago", flat=True
+        )
     )
     if not formas_usadas:
         return None, "La factura no tiene pagos registrados."
     if len(formas_usadas) > 1:
-        return None, f"Tiene pagos con formas de pago distintas ({', '.join(formas_usadas)}) — requiere timbrado manual."
+        return (
+            None,
+            f"Tiene pagos con formas de pago distintas ({', '.join(formas_usadas)}) — requiere timbrado manual.",
+        )
 
     forma_pago_interna = formas_usadas.pop()
-    codigo_sat = FORMA_PAGO_SAT_MAP.get(forma_pago_interna, '99')
+    codigo_sat = FORMA_PAGO_SAT_MAP.get(forma_pago_interna, "99")
     return codigo_sat, None
 
 
@@ -3413,7 +3722,9 @@ def timbrar_masivo_mes(request):
         return redirect("dashboard_inicio")
 
     if not empresa.es_premium:
-        messages.error(request, "El timbrado masivo solo está disponible en la versión PREMIUM.")
+        messages.error(
+            request, "El timbrado masivo solo está disponible en la versión PREMIUM."
+        )
         return redirect("dashboard_inicio")
 
     hoy = date.today()
@@ -3422,8 +3733,10 @@ def timbrar_masivo_mes(request):
 
     facturas_qs = (
         Factura.objects.filter(
-            empresa=empresa, estatus="cobrada",
-            pagos__fecha_pago__year=anio_actual, pagos__fecha_pago__month=mes_actual,
+            empresa=empresa,
+            estatus="cobrada",
+            pagos__fecha_pago__year=anio_actual,
+            pagos__fecha_pago__month=mes_actual,
         )
         .filter(Q(uuid__isnull=True) | Q(uuid=""))
         .select_related("cliente", "local", "area_comun")
@@ -3440,7 +3753,9 @@ def timbrar_masivo_mes(request):
         if error:
             facturas_excluidas.append({"factura": factura, "motivo": error})
         else:
-            facturas_listas.append({"factura": factura, "forma_pago_sat": codigo_forma_pago})
+            facturas_listas.append(
+                {"factura": factura, "forma_pago_sat": codigo_forma_pago}
+            )
 
     if request.method == "POST":
         exitosas = []
@@ -3461,10 +3776,14 @@ def timbrar_masivo_mes(request):
                     fallidas.append((factura.folio, resultado["error"]))
                     continue
 
-                uuid = resultado.get("Uuid") or resultado.get("Complement", {}).get("TaxStamp", {}).get("Uuid")
+                uuid = resultado.get("Uuid") or resultado.get("Complement", {}).get(
+                    "TaxStamp", {}
+                ).get("Uuid")
                 facturama_id = resultado.get("Id")
                 if not uuid or not facturama_id:
-                    fallidas.append((factura.folio, "Respuesta inesperada de Facturama"))
+                    fallidas.append(
+                        (factura.folio, "Respuesta inesperada de Facturama")
+                    )
                     continue
 
                 factura.uuid = uuid
@@ -3476,23 +3795,36 @@ def timbrar_masivo_mes(request):
                 fallidas.append((factura.folio, str(e)))
 
         if exitosas:
-            messages.success(request, f"✅ {len(exitosas)} factura(s) timbrada(s) correctamente: {', '.join(exitosas)}")
+            messages.success(
+                request,
+                f"✅ {len(exitosas)} factura(s) timbrada(s) correctamente: {', '.join(exitosas)}",
+            )
         if fallidas:
-            detalle_fallidas = "; ".join(f"{folio} ({error})" for folio, error in fallidas)
-            messages.error(request, f"⚠️ {len(fallidas)} factura(s) con error: {detalle_fallidas}")
+            detalle_fallidas = "; ".join(
+                f"{folio} ({error})" for folio, error in fallidas
+            )
+            messages.error(
+                request, f"⚠️ {len(fallidas)} factura(s) con error: {detalle_fallidas}"
+            )
         if not exitosas and not fallidas:
-            messages.info(request, "No había facturas listas para timbrar automáticamente.")
+            messages.info(
+                request, "No había facturas listas para timbrar automáticamente."
+            )
 
         return redirect("lista_facturas")
 
-    return render(request, "facturacion/timbrar_masivo_mes.html", {
-        "empresa": empresa,
-        "facturas_listas": facturas_listas,
-        "facturas_excluidas": facturas_excluidas,
-        "total_listas": len(facturas_listas),
-        "total_excluidas": len(facturas_excluidas),
-        "mes_actual_nombre": hoy.strftime("%B").capitalize(),
-    })
+    return render(
+        request,
+        "facturacion/timbrar_masivo_mes.html",
+        {
+            "empresa": empresa,
+            "facturas_listas": facturas_listas,
+            "facturas_excluidas": facturas_excluidas,
+            "total_listas": len(facturas_listas),
+            "total_excluidas": len(facturas_excluidas),
+            "mes_actual_nombre": hoy.strftime("%B").capitalize(),
+        },
+    )
 
 
 @login_required
@@ -3783,6 +4115,7 @@ def timbrar_factura_otros_ingresos(request, pk):
 
 # Modulo APIS visitantes via APLICACIONES MOVILES
 
+
 # Decorador para verificar token de visitante
 def visitante_token_required(view_func):
     @wraps(view_func)
@@ -3928,7 +4261,6 @@ def visitante_registro_api(request):
     )
 
 
-
 # API login visitante
 @api_view(["POST"])
 def visitante_login_api(request):
@@ -3975,19 +4307,28 @@ def visitante_facturas_api(request):
         return Response({"error": "Debe seleccionar una empresa"}, status=400)
     locales = visitante.locales.filter(empresa_id=empresa_id)
     areas = visitante.areas.filter(empresa_id=empresa_id)
-    facturas = Factura.objects.filter(
-        Q(local__in=locales) | Q(area_comun__in=areas) | Q(locales_incluidos__in=locales),
-        empresa_id=empresa_id,
-    ).exclude(
-        # NUEVO -- una factura de Pool de Vacancia se factura a un
-        # tercero (el cliente que cubre), NUNCA al visitante -- aunque
-        # su local aparezca en locales_incluidos (porque estuvo vacío
-        # en ese periodo), esa factura jamás fue suya y no debe
-        # mostrarse en su Estado de Cuenta.
-        pool_vacancia__isnull=False,
-    ).select_related("cliente", "empresa", "local", "area_comun").prefetch_related("locales_incluidos").distinct()
+    facturas = (
+        Factura.objects.filter(
+            Q(local__in=locales)
+            | Q(area_comun__in=areas)
+            | Q(locales_incluidos__in=locales),
+            empresa_id=empresa_id,
+        )
+        .exclude(
+            # NUEVO -- una factura de Pool de Vacancia se factura a un
+            # tercero (el cliente que cubre), NUNCA al visitante -- aunque
+            # su local aparezca en locales_incluidos (porque estuvo vacío
+            # en ese periodo), esa factura jamás fue suya y no debe
+            # mostrarse en su Estado de Cuenta.
+            pool_vacancia__isnull=False,
+        )
+        .select_related("cliente", "empresa", "local", "area_comun")
+        .prefetch_related("locales_incluidos")
+        .distinct()
+    )
     serializer = FacturaSerializer(facturas, many=True)
     return Response({"facturas": serializer.data})
+
 
 # API crear Payment Intent con Stripe
 @api_view(["POST"])
@@ -4103,7 +4444,6 @@ def api_reporte_ingresos_vs_gastos(request):
         except locale.Error:
             locale.setlocale(locale.LC_TIME, "C")  # Fallback seguro
 
-
     mes_letra = ""
     if fecha_inicio and fecha_fin:
         if (
@@ -4127,7 +4467,7 @@ def api_reporte_ingresos_vs_gastos(request):
 
     # PAGOS POR IDENTIFICAR
     pagos_por_identificar = Pago.objects.filter(
-        factura__isnull=True, identificado=False,empresa=empresa
+        factura__isnull=True, identificado=False, empresa=empresa
     )
 
     # Aplica filtros de fecha
@@ -4352,7 +4692,9 @@ def api_dashboard_saldos_visitante(request):
             pass
 
     # NUEVO — evita N+1 al serializar cliente/empresa/local/área_comun
-    facturas = facturas.select_related("cliente", "empresa", "local", "area_comun").prefetch_related("locales_incluidos")  # Evita N+1 al serializar locales_incluidos
+    facturas = facturas.select_related(
+        "cliente", "empresa", "local", "area_comun"
+    ).prefetch_related("locales_incluidos")  # Evita N+1 al serializar locales_incluidos
 
     pagos_subquery = (
         Pago.objects.filter(factura=OuterRef("pk"))
@@ -4427,7 +4769,7 @@ def api_dashboard_saldos_visitante(request):
             pass
 
     # NUEVO — evita N+1 al serializar cliente/empresa/tipo_ingreso
-    facturas_otros = facturas_otros.select_related("cliente", "empresa", "tipo_ingreso")  
+    facturas_otros = facturas_otros.select_related("cliente", "empresa", "tipo_ingreso")
 
     cobros_subquery = (
         CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"))
@@ -4512,7 +4854,9 @@ def api_dashboard_saldos_visitante(request):
             "empresa": f.empresa.nombre if f.empresa else "",
             "local": f.local.numero if f.local else "",
             "area_comun": f.area_comun.numero if f.area_comun else "",
-            "locales_grupo": [l.numero for l in f.locales_incluidos.all()] if not f.local_id and not f.area_comun_id else [],
+            "locales_grupo": [l.numero for l in f.locales_incluidos.all()]
+            if not f.local_id and not f.area_comun_id
+            else [],
             "monto": float(f.monto),
             "saldo_pendiente": float(f.saldo_pendiente_dash),
             "fecha_vencimiento": f.fecha_vencimiento,
@@ -4587,30 +4931,46 @@ def api_estado_resultados(request):
     if empresa_id:
         meses_anios = (
             Factura.objects.filter(empresa_id=empresa_id)
-            .annotate(mes=ExtractMonth("fecha_vencimiento"), anio=ExtractYear("fecha_vencimiento"))
-            .values("mes", "anio").distinct()
+            .annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
         )
         meses_anios_otros = (
             FacturaOtrosIngresos.objects.filter(empresa_id=empresa_id)
-            .annotate(mes=ExtractMonth("fecha_vencimiento"), anio=ExtractYear("fecha_vencimiento"))
-            .values("mes", "anio").distinct()
+            .annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
         )
     else:
         meses_anios = (
-            Factura.objects
-            .annotate(mes=ExtractMonth("fecha_vencimiento"), anio=ExtractYear("fecha_vencimiento"))
-            .values("mes", "anio").distinct()
+            Factura.objects.annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
         )
         meses_anios_otros = (
-            FacturaOtrosIngresos.objects
-            .annotate(mes=ExtractMonth("fecha_vencimiento"), anio=ExtractYear("fecha_vencimiento"))
-            .values("mes", "anio").distinct()
+            FacturaOtrosIngresos.objects.annotate(
+                mes=ExtractMonth("fecha_vencimiento"),
+                anio=ExtractYear("fecha_vencimiento"),
+            )
+            .values("mes", "anio")
+            .distinct()
         )
 
-    meses_anios_set = set((x["mes"], x["anio"]) for x in list(meses_anios) + list(meses_anios_otros))
+    meses_anios_set = set(
+        (x["mes"], x["anio"]) for x in list(meses_anios) + list(meses_anios_otros)
+    )
     meses_anios_list = sorted(
         [t for t in meses_anios_set if t[0] is not None and t[1] is not None],
-        key=lambda x: (x[1], x[0])
+        key=lambda x: (x[1], x[0]),
     )
     meses_unicos = sorted(set(m for m, y in meses_anios_list if m))
     anios_unicos = sorted(set(y for m, y in meses_anios_list if y))
@@ -4621,7 +4981,9 @@ def api_estado_resultados(request):
 
     if periodo == "mes_actual":
         fecha_inicio = hoy.replace(day=1)
-        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        fecha_fin = (hoy.replace(day=1) + timedelta(days=32)).replace(
+            day=1
+        ) - timedelta(days=1)
         mes = hoy.month
         anio = hoy.year
     elif periodo == "periodo_actual":
@@ -4634,7 +4996,11 @@ def api_estado_resultados(request):
             mes = int(mes)
             anio = int(anio)
             fecha_inicio = date(anio, mes, 1)
-            fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1) if mes < 12 else date(anio, 12, 31)
+            fecha_fin = (
+                date(anio, mes + 1, 1) - timedelta(days=1)
+                if mes < 12
+                else date(anio, 12, 31)
+            )
         except Exception:
             fecha_inicio = None
             fecha_fin = None
@@ -4665,18 +5031,29 @@ def api_estado_resultados(request):
 
     mes_letra = ""
     if fecha_inicio and fecha_fin:
-        if fecha_inicio == fecha_fin.replace(day=1) and fecha_inicio.month == fecha_fin.month:
+        if (
+            fecha_inicio == fecha_fin.replace(day=1)
+            and fecha_inicio.month == fecha_fin.month
+        ):
             mes_letra = fecha_inicio.strftime("%B %Y").capitalize()
         else:
             mes_letra = f"{fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}"
 
-    saldo_inicial_empresa = float(
-        CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
-        .aggregate(t=Sum("saldo_inicial"))["t"] or 0
-    ) if empresa_id else 0.0
+    saldo_inicial_empresa = (
+        float(
+            CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True).aggregate(
+                t=Sum("saldo_inicial")
+            )["t"]
+            or 0
+        )
+        if empresa_id
+        else 0.0
+    )
 
     pagos = Pago.objects.exclude(forma_pago="nota_credito")
-    cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
+    cobros_otros = CobroOtrosIngresos.objects.select_related(
+        "factura", "factura__empresa"
+    )
     gastos_modo = PagoGasto.objects.all()
 
     if empresa_id:
@@ -4737,7 +5114,9 @@ def api_estado_resultados(request):
     saldo_inicial = saldo_inicial_empresa
     if empresa and empresa_id and fecha_inicio:
         saldo_inicial = 0.0
-        cuentas_empresa = CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
+        cuentas_empresa = CuentaBancaria.objects.filter(
+            empresa_id=empresa_id, activa=True
+        )
         for cuenta in cuentas_empresa:
             periodo, _ = get_o_crear_periodo(
                 cuenta, empresa, fecha_inicio.year, fecha_inicio.month
@@ -4753,14 +5132,20 @@ def api_estado_resultados(request):
         cobros_otros = cobros_otros.filter(fecha_cobro__lte=fecha_fin)
         gastos_modo = gastos_modo.filter(fecha_pago__lte=fecha_fin)
 
-    pagos_por_identificar = Pago.objects.filter(factura__isnull=True, identificado=False)
+    pagos_por_identificar = Pago.objects.filter(
+        factura__isnull=True, identificado=False
+    )
     if empresa_id:
         pagos_por_identificar = pagos_por_identificar.filter(empresa_id=empresa_id)
     if fecha_inicio:
-        pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__gte=fecha_inicio)
+        pagos_por_identificar = pagos_por_identificar.filter(
+            fecha_pago__gte=fecha_inicio
+        )
     if fecha_fin:
         pagos_por_identificar = pagos_por_identificar.filter(fecha_pago__lte=fecha_fin)
-    total_pagos_por_identificar = float(pagos_por_identificar.aggregate(t=Sum("monto"))["t"] or 0)
+    total_pagos_por_identificar = float(
+        pagos_por_identificar.aggregate(t=Sum("monto"))["t"] or 0
+    )
 
     # --- INGRESOS por origen (mismas etiquetas que la vista web) ---
     ingresos_por_origen = OrderedDict()
@@ -4781,14 +5166,19 @@ def api_estado_resultados(request):
                 output_field=CharField(),
             )
         )
-        .values("origen").annotate(total=Sum("monto")).order_by("origen")
+        .values("origen")
+        .annotate(total=Sum("monto"))
+        .order_by("origen")
     )
     for x in ingresos_qs:
-        ingresos_por_origen[(x["origen"] or "Sin origen").strip().title()] = float(x["total"])
+        ingresos_por_origen[(x["origen"] or "Sin origen").strip().title()] = float(
+            x["total"]
+        )
 
     otros_qs = (
         cobros_otros.select_related("factura__tipo_ingreso")
-        .values("factura__tipo_ingreso__nombre").annotate(total=Sum("monto"))
+        .values("factura__tipo_ingreso__nombre")
+        .annotate(total=Sum("monto"))
     )
     for x in otros_qs:
         tipo = (x["factura__tipo_ingreso__nombre"] or "Otros ingresos").strip().title()
@@ -4801,19 +5191,24 @@ def api_estado_resultados(request):
     estructura_gastos = OrderedDict()
 
     def agregar_a_estructura(qs, grupo_key, subgrupo_key, tipo_key, monto_key):
-        for g in qs.values(grupo_key, subgrupo_key, tipo_key).annotate(total=Sum(monto_key)):
+        for g in qs.values(grupo_key, subgrupo_key, tipo_key).annotate(
+            total=Sum(monto_key)
+        ):
             grupo = (g[grupo_key] or "Sin grupo").strip().title()
             subgrupo = (g[subgrupo_key] or "Sin subgrupo").strip().title()
             tipo = (g[tipo_key] or "Sin tipo").strip().title()
             total = float(g["total"])
             estructura_gastos.setdefault(grupo, OrderedDict()).setdefault(subgrupo, {})
-            estructura_gastos[grupo][subgrupo][tipo] = estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            estructura_gastos[grupo][subgrupo][tipo] = (
+                estructura_gastos[grupo][subgrupo].get(tipo, 0) + total
+            )
 
     agregar_a_estructura(
         gastos_modo,
         "gasto__tipo_gasto__subgrupo__grupo__nombre",
         "gasto__tipo_gasto__subgrupo__nombre",
-        "gasto__tipo_gasto__nombre", "monto",
+        "gasto__tipo_gasto__nombre",
+        "monto",
     )
 
     filtros_fondeo = {}
@@ -4828,7 +5223,9 @@ def api_estado_resultados(request):
     total_fondeos = float(fondeos_periodo.aggregate(t=Sum("importe_cheque"))["t"] or 0)
     if total_fondeos > 0:
         estructura_gastos.setdefault("Caja Chica", OrderedDict())
-        estructura_gastos["Caja Chica"]["Fondeos"] = [{"tipo": "Fondeo de caja chica", "total": total_fondeos}]
+        estructura_gastos["Caja Chica"]["Fondeos"] = [
+            {"tipo": "Fondeo de caja chica", "total": total_fondeos}
+        ]
 
     for grupo in estructura_gastos:
         for subgrupo in estructura_gastos[grupo]:
@@ -4848,25 +5245,27 @@ def api_estado_resultados(request):
     saldo_final_flujo = saldo_inicial + total_ingresos - total_gastos
     saldo = total_ingresos - total_gastos
 
-    return Response({
-        "ingresos_por_origen": ingresos_por_origen,
-        "estructura_gastos": estructura_gastos,
-        "total_ingresos": total_ingresos,
-        "total_gastos": total_gastos,
-        "saldo": saldo,
-        "empresa_id": str(empresa_id or ""),
-        "fecha_inicio": fecha_inicio.strftime('%Y-%m-%d') if fecha_inicio else '',
-        "fecha_fin": fecha_fin.strftime('%Y-%m-%d') if fecha_fin else '',
-        "mes": str(mes or ""),
-        "anio": str(anio or ""),
-        "periodo": periodo,
-        "saldo_inicial": saldo_inicial,
-        "saldo_final_flujo": saldo_final_flujo,
-        "meses_unicos": meses_unicos,
-        "anios_unicos": anios_unicos,
-        "mes_letra": mes_letra,
-        "total_pagos_por_identificar": total_pagos_por_identificar,
-    })
+    return Response(
+        {
+            "ingresos_por_origen": ingresos_por_origen,
+            "estructura_gastos": estructura_gastos,
+            "total_ingresos": total_ingresos,
+            "total_gastos": total_gastos,
+            "saldo": saldo,
+            "empresa_id": str(empresa_id or ""),
+            "fecha_inicio": fecha_inicio.strftime("%Y-%m-%d") if fecha_inicio else "",
+            "fecha_fin": fecha_fin.strftime("%Y-%m-%d") if fecha_fin else "",
+            "mes": str(mes or ""),
+            "anio": str(anio or ""),
+            "periodo": periodo,
+            "saldo_inicial": saldo_inicial,
+            "saldo_final_flujo": saldo_final_flujo,
+            "meses_unicos": meses_unicos,
+            "anios_unicos": anios_unicos,
+            "mes_letra": mes_letra,
+            "total_pagos_por_identificar": total_pagos_por_identificar,
+        }
+    )
 
 
 # vista API para avisos
@@ -4911,7 +5310,9 @@ def api_amenidades_lista(request):
     if not empresa_id:
         return Response({"error": "Debe seleccionar una empresa"}, status=400)
 
-    amenidades = Amenidad.objects.filter(empresa_id=empresa_id, activa=True).order_by("nombre")
+    amenidades = Amenidad.objects.filter(empresa_id=empresa_id, activa=True).order_by(
+        "nombre"
+    )
     data = [
         {
             "id": a.id,
@@ -4938,7 +5339,9 @@ def api_reservar_amenidad(request, amenidad_id):
     if not empresa_id:
         return Response({"error": "Debe seleccionar una empresa"}, status=400)
 
-    amenidad = Amenidad.objects.filter(id=amenidad_id, empresa_id=empresa_id, activa=True).first()
+    amenidad = Amenidad.objects.filter(
+        id=amenidad_id, empresa_id=empresa_id, activa=True
+    ).first()
     if not amenidad:
         return Response({"error": "Amenidad no encontrada"}, status=404)
 
@@ -4956,35 +5359,54 @@ def api_reservar_amenidad(request, amenidad_id):
         return Response({"error": "Fecha u hora inválida"}, status=400)
 
     if hora_fin <= hora_inicio:
-        return Response({"error": "La hora de fin debe ser posterior a la hora de inicio"}, status=400)
-
-    if hora_inicio < amenidad.hora_apertura or hora_fin > amenidad.hora_cierre:
         return Response(
-            {"error": f"La amenidad solo está disponible de {amenidad.hora_apertura} a {amenidad.hora_cierre}"},
+            {"error": "La hora de fin debe ser posterior a la hora de inicio"},
             status=400,
         )
 
-    duracion_horas = (datetime.combine(fecha, hora_fin) - datetime.combine(fecha, hora_inicio)).total_seconds() / 3600
+    if hora_inicio < amenidad.hora_apertura or hora_fin > amenidad.hora_cierre:
+        return Response(
+            {
+                "error": f"La amenidad solo está disponible de {amenidad.hora_apertura} a {amenidad.hora_cierre}"
+            },
+            status=400,
+        )
+
+    duracion_horas = (
+        datetime.combine(fecha, hora_fin) - datetime.combine(fecha, hora_inicio)
+    ).total_seconds() / 3600
     if duracion_horas > amenidad.duracion_maxima_horas:
-        return Response({"error": f"Duración máxima permitida: {amenidad.duracion_maxima_horas} horas"}, status=400)
+        return Response(
+            {
+                "error": f"Duración máxima permitida: {amenidad.duracion_maxima_horas} horas"
+            },
+            status=400,
+        )
 
     fecha_minima = date.today() + timedelta(days=amenidad.dias_anticipacion_minima)
     if fecha < fecha_minima:
         return Response(
-            {"error": f"Debes reservar con al menos {amenidad.dias_anticipacion_minima} día(s) de anticipación"},
+            {
+                "error": f"Debes reservar con al menos {amenidad.dias_anticipacion_minima} día(s) de anticipación"
+            },
             status=400,
         )
 
     traslape = Reservacion.objects.filter(
-        amenidad=amenidad, fecha=fecha, estado="confirmada",
-        hora_inicio__lt=hora_fin, hora_fin__gt=hora_inicio,
+        amenidad=amenidad,
+        fecha=fecha,
+        estado="confirmada",
+        hora_inicio__lt=hora_fin,
+        hora_fin__gt=hora_inicio,
     ).exists()
     if traslape:
         return Response({"error": "Ese horario ya está ocupado"}, status=400)
 
     propiedad = visitante.locales.filter(empresa_id=empresa_id, activo=True).first()
     if not propiedad or not propiedad.cliente:
-        return Response({"error": "No se encontró tu propiedad o cliente asociado"}, status=400)
+        return Response(
+            {"error": "No se encontró tu propiedad o cliente asociado"}, status=400
+        )
 
     reservacion = Reservacion.objects.create(
         empresa_id=empresa_id,
@@ -4998,11 +5420,13 @@ def api_reservar_amenidad(request, amenidad_id):
         observaciones=observaciones,
     )
 
-    return Response({
-        "ok": True,
-        "mensaje": "Reservación confirmada",
-        "reservacion_id": reservacion.id,
-    })
+    return Response(
+        {
+            "ok": True,
+            "mensaje": "Reservación confirmada",
+            "reservacion_id": reservacion.id,
+        }
+    )
 
 
 # API mis reservaciones
@@ -5018,9 +5442,11 @@ def api_mis_reservaciones(request):
     if not propiedad or not propiedad.cliente:
         return Response([])
 
-    reservaciones = Reservacion.objects.filter(
-        empresa_id=empresa_id, cliente=propiedad.cliente
-    ).select_related("amenidad").order_by("-fecha", "-hora_inicio")
+    reservaciones = (
+        Reservacion.objects.filter(empresa_id=empresa_id, cliente=propiedad.cliente)
+        .select_related("amenidad")
+        .order_by("-fecha", "-hora_inicio")
+    )
 
     data = [
         {
@@ -5048,7 +5474,10 @@ def api_cancelar_reservacion(request, reservacion_id):
         return Response({"error": "No autorizado"}, status=403)
 
     reservacion = Reservacion.objects.filter(
-        id=reservacion_id, empresa_id=empresa_id, cliente=propiedad.cliente, estado="confirmada"
+        id=reservacion_id,
+        empresa_id=empresa_id,
+        cliente=propiedad.cliente,
+        estado="confirmada",
     ).first()
     if not reservacion:
         return Response({"error": "Reservación no encontrada"}, status=404)
@@ -5091,7 +5520,9 @@ def enviar_recordatorio_morosidad(request):
                 if factura.local:
                     ubicacion = f"Local: {factura.local.numero}"
                 elif factura.locales_incluidos.exists():
-                    numeros = ", ".join(l.numero for l in factura.locales_incluidos.all())
+                    numeros = ", ".join(
+                        l.numero for l in factura.locales_incluidos.all()
+                    )
                     ubicacion = f"Locales: {numeros}"
                 else:
                     ubicacion = "Sin ubicación"
@@ -5342,8 +5773,72 @@ def enviar_recordatorio_morosidad(request):
         return redirect(next_url or "lista_facturas")
 
 
-
 ######################## Modulo de pagos de membresía por transferencia bancaria 270826########################
+
+def _notificar_superusuarios_nueva_solicitud(pago):
+    """Avisa por correo a la dirección de administración (DEFAULT_FROM_EMAIL)
+    -- se llama justo después de crear una solicitud de pago por
+    transferencia. Adjunta el comprobante, por lo que usa EmailMessage
+    en vez de send_mail (que no soporta adjuntos)."""
+    if not settings.DEFAULT_FROM_EMAIL:
+        return
+ 
+    empresa_nombre = pago.perfil_usuario.empresa.nombre if pago.perfil_usuario.empresa else "Sin empresa"
+    asunto = f"Nueva solicitud de pago por transferencia — {pago.perfil_usuario.usuario.username}"
+    mensaje = (
+        f"Usuario: {pago.perfil_usuario.usuario.username}\n"
+        f"Empresa: {empresa_nombre}\n"
+        f"Plan solicitado: {pago.get_plan_solicitado_display()}\n"
+        f"Monto: ${pago.monto:,.2f}\n"
+        f"Meses cubiertos: {pago.meses_cubiertos}\n"
+        f"Fecha de transferencia: {pago.fecha_transferencia}\n\n"
+        f"Revisa y confirma desde el Panorama de Membresias en GESAC."
+    )
+ 
+    email = EmailMessage(asunto, mensaje, None, [settings.DEFAULT_FROM_EMAIL])
+ 
+    if pago.comprobante:
+        try:
+            pago.comprobante.open('rb')
+            nombre_archivo = os.path.basename(pago.comprobante.name)
+            email.attach(nombre_archivo, pago.comprobante.read())
+        except Exception:  # noqa: BLE001, S110
+            pass  # si el adjunto falla, igual se manda el aviso sin él
+        finally:
+            pago.comprobante.close()
+ 
+    email.send(fail_silently=True)
+ 
+ 
+def _notificar_cliente_resultado_pago(pago, confirmado):
+    """Avisa por correo al cliente si su pago fue confirmado o rechazado
+    -- se llama justo despues de procesar la decision. El cliente real
+    es la EMPRESA, no el usuario -- prioriza empresa.email, y solo si
+    no está capturado, cae al email del usuario como respaldo."""
+    empresa = pago.perfil_usuario.empresa
+    email_cliente = (empresa.email if empresa else None) or pago.perfil_usuario.usuario.email
+    if not email_cliente:
+        return
+ 
+    if confirmado:
+        asunto = "Tu pago de membresía fue confirmado — GESAC"
+        mensaje = (
+            f"Hola {pago.perfil_usuario.usuario.username},\n\n"
+            f"Tu pago de {pago.get_plan_solicitado_display()} por ${pago.monto:,.2f} fue confirmado.\n"
+            f"Tu membresía ya está activa."
+        )
+    else:
+        motivo_txt = f"\n\nMotivo: {pago.motivo_rechazo}" if pago.motivo_rechazo else ""
+        asunto = "Tu pago de membresía no pudo confirmarse — GESAC"
+        mensaje = (
+            f"Hola {pago.perfil_usuario.usuario.username},\n\n"
+            f"Tu comprobante de pago por transferencia no pudo ser confirmado.{motivo_txt}\n\n"
+            f"Puedes volver a intentarlo desde GESAC."
+        )
+ 
+    send_mail(asunto, mensaje, None, [email_cliente], fail_silently=True)
+
+
 
 def _renovar_vencimiento_transferencia(perfil, meses=1):
     """Extiende fecha_vencimiento -- si todavia no vence, suma los meses
@@ -5363,23 +5858,36 @@ def _renovar_vencimiento_transferencia(perfil, meses=1):
 @login_required
 def solicitar_pago_transferencia(request):
     perfil = get_object_or_404(PerfilUsuario, usuario=request.user)
- 
-    if request.method == 'POST':
-        plan_solicitado = request.POST.get('plan_solicitado')
-        monto = request.POST.get('monto')
-        meses_cubiertos = request.POST.get('meses_cubiertos') or 1
-        fecha_transferencia = request.POST.get('fecha_transferencia')
-        referencia = request.POST.get('referencia', '').strip()
-        comprobante = request.FILES.get('comprobante')
- 
+
+    if request.method == "POST":
+        plan_solicitado = request.POST.get("plan_solicitado")
+        monto_raw = request.POST.get("monto")
+        meses_cubiertos = request.POST.get("meses_cubiertos") or 1
+        fecha_transferencia = request.POST.get("fecha_transferencia")
+        referencia = request.POST.get("referencia", "").strip()
+        comprobante = request.FILES.get("comprobante")
+
         if plan_solicitado not in dict(PagoMembresiaTransferencia.PLAN_CHOICES):
             messages.error(request, "Selecciona un plan valido.")
-            return redirect('solicitar_pago_transferencia')
-        if not monto or not fecha_transferencia or not comprobante:
-            messages.error(request, "El monto, la fecha de transferencia, y el comprobante son obligatorios.")
-            return redirect('solicitar_pago_transferencia')
- 
-        PagoMembresiaTransferencia.objects.create(
+            return redirect("solicitar_pago_transferencia")
+        if not monto_raw or not fecha_transferencia or not comprobante:
+            messages.error(
+                request,
+                "El monto, la fecha de transferencia, y el comprobante son obligatorios.",
+            )
+            return redirect("solicitar_pago_transferencia")
+
+        # NUEVO -- convierte el monto a Decimal aquí mismo, en vez de
+        # dejarlo como texto crudo -- así el objeto que regresa .create()
+        # ya trae un número real, listo para darle formato (ej. en los
+        # correos de notificación).
+        try:
+            monto = Decimal(monto_raw)
+        except (InvalidOperation, TypeError):
+            messages.error(request, "El monto capturado no es válido.")
+            return redirect("solicitar_pago_transferencia")
+
+        pago_creado = PagoMembresiaTransferencia.objects.create(
             perfil_usuario=perfil,
             plan_solicitado=plan_solicitado,
             monto=monto,
@@ -5388,16 +5896,22 @@ def solicitar_pago_transferencia(request):
             referencia=referencia or None,
             comprobante=comprobante,
         )
+        # NUEVO -- avisa a los superusuarios que hay una solicitud nueva
+        _notificar_superusuarios_nueva_solicitud(pago_creado)
         messages.success(
             request,
-            "Tu comprobante fue enviado -- lo revisaremos y activaremos tu membresia en cuanto lo confirmemos."
+            "Tu comprobante fue enviado -- lo revisaremos y activaremos tu membresia en cuanto lo confirmemos.",
         )
-        return redirect('dashboard_inicio')
- 
-    return render(request, 'membresias/solicitar_pago_transferencia.html', {
-        'plan_choices': PagoMembresiaTransferencia.PLAN_CHOICES,
-        'config': ConfiguracionMembresia.obtener(),
-    })
+        return redirect("dashboard_inicio")
+
+    return render(
+        request,
+        "membresias/solicitar_pago_transferencia.html",
+        {
+            "plan_choices": PagoMembresiaTransferencia.PLAN_CHOICES,
+            "config": ConfiguracionMembresia.obtener(),
+        },
+    )
 
 
 # ============================================================
@@ -5407,23 +5921,29 @@ def solicitar_pago_transferencia(request):
 def lista_pagos_transferencia_pendientes(request):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para ver esta pantalla.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     pagos_pendientes = (
-        PagoMembresiaTransferencia.objects.filter(estatus='pendiente')
-        .select_related('perfil_usuario', 'perfil_usuario__usuario', 'perfil_usuario__empresa')
-        .order_by('fecha_solicitud')
+        PagoMembresiaTransferencia.objects.filter(estatus="pendiente")
+        .select_related(
+            "perfil_usuario", "perfil_usuario__usuario", "perfil_usuario__empresa"
+        )
+        .order_by("fecha_solicitud")
     )
     pagos_procesados = (
-        PagoMembresiaTransferencia.objects.exclude(estatus='pendiente')
-        .select_related('perfil_usuario', 'perfil_usuario__usuario')
-        .order_by('-fecha_confirmacion')[:20]
+        PagoMembresiaTransferencia.objects.exclude(estatus="pendiente")
+        .select_related("perfil_usuario", "perfil_usuario__usuario")
+        .order_by("-fecha_confirmacion")[:20]
     )
 
-    return render(request, 'membresias/lista_pagos_transferencia.html', {
-        'pagos_pendientes': pagos_pendientes,
-        'pagos_procesados': pagos_procesados,
-    })
+    return render(
+        request,
+        "membresias/lista_pagos_transferencia.html",
+        {
+            "pagos_pendientes": pagos_pendientes,
+            "pagos_procesados": pagos_procesados,
+        },
+    )
 
 
 # ============================================================
@@ -5433,17 +5953,17 @@ def lista_pagos_transferencia_pendientes(request):
 def confirmar_pago_transferencia(request, pago_id):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para confirmar pagos.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     pago = get_object_or_404(PagoMembresiaTransferencia, id=pago_id)
 
-    if pago.estatus != 'pendiente':
+    if pago.estatus != "pendiente":
         messages.info(request, "Este pago ya fue procesado antes.")
-        return redirect('lista_pagos_transferencia_pendientes')
+        return redirect("lista_pagos_transferencia_pendientes")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         with transaction.atomic():
-            pago.estatus = 'confirmado'
+            pago.estatus = "confirmado"
             pago.confirmado_por = request.user
             pago.fecha_confirmacion = timezone.now()
             pago.save()
@@ -5457,22 +5977,32 @@ def confirmar_pago_transferencia(request, pago_id):
             # según el plan confirmado -- otras partes del sistema (los
             # candados PREMIUM/PLUS del navbar) revisan estos campos
             # directo en Empresa, no el tipo_usuario del perfil.
+            # Son mutuamente excluyentes -- al confirmar un plan, se
+            # apaga el otro, para no dejar es_plus=True y es_premium=True
+            # a la vez si el usuario sube o baja de plan.
             if perfil.empresa:
                 if pago.plan_solicitado == 'premium':
                     perfil.empresa.es_premium = True
-                    perfil.empresa.save(update_fields=['es_premium'])
+                    perfil.empresa.es_plus = False
+                    perfil.empresa.save(update_fields=['es_premium', 'es_plus'])
                 elif pago.plan_solicitado == 'plus':
                     perfil.empresa.es_plus = True
-                    perfil.empresa.save(update_fields=['es_plus'])
+                    perfil.empresa.es_premium = False
+                    perfil.empresa.save(update_fields=['es_plus', 'es_premium'])
+
+            # NUEVO -- avisa al cliente que su pago fue confirmado
+        _notificar_cliente_resultado_pago(pago, confirmado=True)
 
         messages.success(
             request,
             f"Pago confirmado -- {perfil.usuario.username} actualizado a {pago.get_plan_solicitado_display()}, "
-            f"vigente hasta {perfil.fecha_vencimiento:%d/%m/%Y}."
+            f"vigente hasta {perfil.fecha_vencimiento:%d/%m/%Y}.",
         )
-        return redirect('lista_pagos_transferencia_pendientes')
+        return redirect("lista_pagos_transferencia_pendientes")
 
-    return render(request, 'membresias/confirmar_pago_transferencia.html', {'pago': pago})
+    return render(
+        request, "membresias/confirmar_pago_transferencia.html", {"pago": pago}
+    )
 
 
 # ============================================================
@@ -5482,56 +6012,58 @@ def confirmar_pago_transferencia(request, pago_id):
 def rechazar_pago_transferencia(request, pago_id):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para rechazar pagos.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     pago = get_object_or_404(PagoMembresiaTransferencia, id=pago_id)
 
-    if pago.estatus != 'pendiente':
+    if pago.estatus != "pendiente":
         messages.info(request, "Este pago ya fue procesado antes.")
-        return redirect('lista_pagos_transferencia_pendientes')
+        return redirect("lista_pagos_transferencia_pendientes")
 
-    if request.method == 'POST':
-        motivo = request.POST.get('motivo', '').strip()
-        pago.estatus = 'rechazado'
+    if request.method == "POST":
+        motivo = request.POST.get("motivo", "").strip()
+        pago.estatus = "rechazado"
         pago.motivo_rechazo = motivo or None
         pago.confirmado_por = request.user
         pago.fecha_confirmacion = timezone.now()
         pago.save()
+        # NUEVO -- avisa al cliente que su pago fue rechazado
+        _notificar_cliente_resultado_pago(pago, confirmado=False)
         messages.success(request, "Pago marcado como rechazado.")
-        return redirect('lista_pagos_transferencia_pendientes')
+        return redirect("lista_pagos_transferencia_pendientes")
 
-    return redirect('lista_pagos_transferencia_pendientes')
+    return redirect("lista_pagos_transferencia_pendientes")
 
 
 @login_required
 def cuenta_bloqueada(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    return render(request, 'membresias/cuenta_bloqueada.html', {'perfil': perfil})
+    perfil = getattr(request.user, "perfilusuario", None)
+    return render(request, "membresias/cuenta_bloqueada.html", {"perfil": perfil})
+
 
 #### DASHBOARD DE MEMBRESIAS#####
 @login_required
 def dashboard_membresias(request):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para ver esta pantalla.")
-        return redirect('dashboard_inicio')
- 
+        return redirect("dashboard_inicio")
+
     ahora = timezone.now()
     pronto = ahora + timedelta(days=7)
- 
+
     # NUEVO -- si nadie ha capturado ConfiguracionMembresia todavía, se
     # avisa arriba del dashboard -- sin esto, los clientes ven la
     # pantalla de solicitar sin saber a dónde depositar.
     config_membresia_faltante = not ConfiguracionMembresia.objects.exists()
- 
-    tipo_filtro = request.GET.get('tipo')
-    estatus_filtro = request.GET.get('estatus')
-    buscar = request.GET.get('buscar', '').strip()
- 
-    perfiles = (
-        PerfilUsuario.objects.select_related('usuario', 'empresa')
-        .order_by('fecha_vencimiento')
+
+    tipo_filtro = request.GET.get("tipo")
+    estatus_filtro = request.GET.get("estatus")
+    buscar = request.GET.get("buscar", "").strip()
+
+    perfiles = PerfilUsuario.objects.select_related("usuario", "empresa").order_by(
+        "fecha_vencimiento"
     )
- 
+
     if tipo_filtro:
         perfiles = perfiles.filter(tipo_usuario=tipo_filtro)
     if buscar:
@@ -5539,79 +6071,89 @@ def dashboard_membresias(request):
             models.Q(usuario__username__icontains=buscar)
             | models.Q(empresa__nombre__icontains=buscar)
         )
- 
+
     # NUEVO -- calcula el estatus de cada perfil en Python (vigente,
     # vencida, vence_pronto, sin_fecha), ya que no es un campo guardado
     # sino algo que depende de "ahora".
     filas = []
-    conteos = {'vigente': 0, 'vence_pronto': 0, 'vencida': 0, 'sin_fecha': 0}
- 
+    conteos = {"vigente": 0, "vence_pronto": 0, "vencida": 0, "sin_fecha": 0}
+
     for perfil in perfiles:
         if not perfil.fecha_vencimiento:
-            estatus = 'sin_fecha'
+            estatus = "sin_fecha"
         elif perfil.fecha_vencimiento < ahora:
-            estatus = 'vencida'
+            estatus = "vencida"
         elif perfil.fecha_vencimiento <= pronto:
-            estatus = 'vence_pronto'
+            estatus = "vence_pronto"
         else:
-            estatus = 'vigente'
- 
+            estatus = "vigente"
+
         conteos[estatus] += 1
- 
+
         if estatus_filtro and estatus != estatus_filtro:
             continue
- 
-        filas.append({'perfil': perfil, 'estatus': estatus})
- 
-    return render(request, 'membresias/dashboard_membresias.html', {
-        'filas': filas,
-        'conteos': conteos,
-        'tipo_filtro': tipo_filtro,
-        'estatus_filtro': estatus_filtro,
-        'buscar': buscar,
-        'tipo_choices': PerfilUsuario.TIPO_USUARIOS,
-        'config_membresia_faltante': config_membresia_faltante,
-    })
- 
- 
+
+        filas.append({"perfil": perfil, "estatus": estatus})
+
+    return render(
+        request,
+        "membresias/dashboard_membresias.html",
+        {
+            "filas": filas,
+            "conteos": conteos,
+            "tipo_filtro": tipo_filtro,
+            "estatus_filtro": estatus_filtro,
+            "buscar": buscar,
+            "tipo_choices": PerfilUsuario.TIPO_USUARIOS,
+            "config_membresia_faltante": config_membresia_faltante,
+        },
+    )
+
+
 @login_required
 def historial_pagos_perfil(request, perfil_id):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para ver esta pantalla.")
-        return redirect('dashboard_inicio')
- 
-    perfil = PerfilUsuario.objects.select_related('usuario', 'empresa').get(id=perfil_id)
+        return redirect("dashboard_inicio")
+
+    perfil = PerfilUsuario.objects.select_related("usuario", "empresa").get(
+        id=perfil_id
+    )
     pagos = (
         PagoMembresiaTransferencia.objects.filter(perfil_usuario=perfil)
-        .select_related('confirmado_por')
-        .order_by('-fecha_solicitud')
+        .select_related("confirmado_por")
+        .order_by("-fecha_solicitud")
     )
- 
-    return render(request, 'membresias/historial_pagos_perfil.html', {
-        'perfil': perfil,
-        'pagos': pagos,
-    })
+
+    return render(
+        request,
+        "membresias/historial_pagos_perfil.html",
+        {
+            "perfil": perfil,
+            "pagos": pagos,
+        },
+    )
 
 
 @login_required
 def configurar_membresia(request):
     if not request.user.is_superuser:
         messages.error(request, "No tienes permiso para ver esta pantalla.")
-        return redirect('dashboard_inicio')
+        return redirect("dashboard_inicio")
 
     config = ConfiguracionMembresia.obtener()
 
-    if request.method == 'POST':
-        banco = request.POST.get('banco', '').strip()
-        titular = request.POST.get('titular', '').strip()
-        clabe = request.POST.get('clabe', '').strip()
-        numero_cuenta = request.POST.get('numero_cuenta', '').strip()
-        precio_plus = request.POST.get('precio_plus')
-        precio_premium = request.POST.get('precio_premium')
+    if request.method == "POST":
+        banco = request.POST.get("banco", "").strip()
+        titular = request.POST.get("titular", "").strip()
+        clabe = request.POST.get("clabe", "").strip()
+        numero_cuenta = request.POST.get("numero_cuenta", "").strip()
+        precio_plus = request.POST.get("precio_plus")
+        precio_premium = request.POST.get("precio_premium")
 
         if not banco or not titular or not precio_plus or not precio_premium:
             messages.error(request, "Banco, titular, y ambos precios son obligatorios.")
-            return redirect('configurar_membresia')
+            return redirect("configurar_membresia")
 
         if config:
             # Ya existe -- se actualiza el mismo registro (nunca se crea
@@ -5625,12 +6167,15 @@ def configurar_membresia(request):
             config.save()
         else:
             ConfiguracionMembresia.objects.create(
-                banco=banco, titular=titular, clabe=clabe or None,
+                banco=banco,
+                titular=titular,
+                clabe=clabe or None,
                 numero_cuenta=numero_cuenta or None,
-                precio_plus=precio_plus, precio_premium=precio_premium,
+                precio_plus=precio_plus,
+                precio_premium=precio_premium,
             )
 
         messages.success(request, "Configuración de membresía guardada correctamente.")
-        return redirect('configurar_membresia')
+        return redirect("configurar_membresia")
 
-    return render(request, 'membresias/configurar_membresia.html', {'config': config})    
+    return render(request, "membresias/configurar_membresia.html", {"config": config})

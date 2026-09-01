@@ -32,7 +32,17 @@
     </style>
 </head>
 <body>
+  
+        
     <div class="bloqueo-card">
+          {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible mb-2">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
         <div class="bloqueo-icono"><i class="bi bi-lock-fill"></i></div>
         <div class="bloqueo-titulo">Tu membresía venció</div>
         <div class="bloqueo-texto">
