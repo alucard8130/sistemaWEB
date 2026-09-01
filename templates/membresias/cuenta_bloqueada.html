@@ -47,11 +47,48 @@
             <i class="bi bi-bank2 me-1"></i> Renovar por Transferencia
         </a>
         <div class="mt-2">
-            <a href="{% url 'crear_sesion_pago' %}" class="btn-renovar" style="margin-top:10px;">
-                <i class="bi bi-credit-card-fill me-1"></i> Renovar con Tarjeta
+            <a href="#" id="btn-renovar-tarjeta"
+               data-url-plus="{% url 'crear_sesion_pago' %}"
+               data-url-premium="{% url 'crear_sesion_pago_premium' %}"
+               data-tipo="{{ perfil.tipo_usuario }}"
+               class="btn-renovar" style="margin-top:10px;">
+                <i class="bi bi-credit-card-fill me-1"></i> Renovar {{ perfil.get_tipo_usuario_display }} con Tarjeta
             </a>
         </div>
-        <a href="{% url 'login' %}" class="btn-salir">Cerrar sesión</a>
+        <form method="post" action="{% url 'logout' %}" class="mt-3">
+            {% csrf_token %}
+            <button type="submit" class="btn-salir" style="background:none;border:none;padding:0;">Cerrar sesión</button>
+        </form>
     </div>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var btnTarjeta = document.getElementById('btn-renovar-tarjeta');
+            if (btnTarjeta) {
+                btnTarjeta.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    // NUEVO -- usa el endpoint correcto según el plan que
+                    // tenía el usuario (Plus o Premium), para no cobrarle
+                    // un plan distinto al que ya tenía.
+                    var url = btnTarjeta.getAttribute('data-tipo') === 'premium'
+                        ? btnTarjeta.getAttribute('data-url-premium')
+                        : btnTarjeta.getAttribute('data-url-plus');
+                    fetch(url)
+                        .then(function (response) { return response.json(); })
+                        .then(function (data) {
+                            if (!data.id) {
+                                throw new Error(data.detail || 'No se pudo crear la sesión de pago.');
+                            }
+                            var stripe = Stripe("{{ STRIPE_PUBLIC_KEY|escapejs }}");
+                            return stripe.redirectToCheckout({ sessionId: data.id });
+                        })
+                        .catch(function (error) {
+                            alert('Error al crear la sesión de pago: ' + error.message);
+                        });
+                });
+            }
+        });
+    </script>
 </body>
 </html>
