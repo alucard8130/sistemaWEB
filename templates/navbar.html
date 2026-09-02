@@ -194,7 +194,9 @@
               <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:saldos_periodo' %}"><i class="bi bi-calendar me-2"></i>Saldos por período</a></li>
+              {% if request.user.is_staff %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:reiniciar_saldos_cuentas' %}"><i class="bi bi-arrow-counterclockwise me-2"></i>Reiniciar saldos</a></li>
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_traspasos' %}"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios</a></li>
               {% else %}
