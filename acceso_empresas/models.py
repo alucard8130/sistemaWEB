@@ -107,6 +107,10 @@ class AccesoEmpresa(models.Model):
     ver_cobranza = models.BooleanField(default=False)
     ver_gastos = models.BooleanField(default=False)
     gestion_cobranza = models.BooleanField(default=False)
+    recibir_alertas_gastos = models.BooleanField(
+        default=False,
+        help_text="Si este usuario recibe una alerta cuando se registre un gasto/solicitud de más de $50,000 en esta empresa."
+    )
 
     def __str__(self):
         return f"{self.usuario_acceso} → {self.empresa.nombre}"
