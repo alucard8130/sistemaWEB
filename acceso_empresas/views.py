@@ -255,7 +255,7 @@ def upgrade_plan(request, nuevo_plan):
             metadata={'usuario_acceso_id': ua.id, 'plan': nuevo_plan},
         )
         return redirect(session.url, permanent=False)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         messages.error(request, f"Error: {str(e)}")
         return redirect('acceso_dashboard')
 
@@ -281,7 +281,7 @@ def stripe_webhook_portal(request):
                 ua = UsuarioAcceso.objects.get(pk=usuario_acceso_id)
                 ua.activo = True
                 ua.stripe_subscription_id = subscription_id
-                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)
+                ua.fecha_vencimiento = datetime.date.today() + datetime.timedelta(days=30)  # noqa: DTZ011
                 if nuevo_plan in ['basico', 'profesional', 'enterprise']:
                     ua.plan = nuevo_plan
                 ua.save()
@@ -645,7 +645,7 @@ def password_reset_complete(request):
 
 
 
-######## ALERTAS GESAC ########
+######## ALERTAS gastos umbral mayor a 50,000 mil GESAC en el portal de administradores y comites########
 @requiere_acceso
 def alerta_marcar_leida(request, alerta_id):
     alerta = get_object_or_404(AlertaGesac, id=alerta_id, usuario_acceso=request.ua)

@@ -215,6 +215,42 @@
                 <h4 class="mb-0">Bienvenido, {{ ua.nombre }}</h4>
                 <small class="text-muted">{{ ua.get_tipo_display }} — Plan {{ ua.get_plan_display }}</small>
             </div>
+            <span class="dropdown position-relative">
+                <a href="#" class="position-relative text-dark" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none; font-size:1.4rem;">
+                    <i class="bi bi-bell"></i>
+                    {% if alertas_no_leidas_count %}
+                    <span class="position-absolute badge rounded-pill bg-danger" style="top:-4px; right:-8px; font-size:0.62rem; padding:3px 5px;">
+                        {{ alertas_no_leidas_count }}
+                    </span>
+                    {% endif %}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width:320px; max-height:400px; overflow-y:auto;">
+                    <li class="d-flex justify-content-between align-items-center px-3 py-2">
+                        <strong style="font-size:0.85rem; color:#152A52;">Notificaciones</strong>
+                        {% if alertas_no_leidas_count %}
+                        <form method="post" action="{% url 'alertas_marcar_todas_leidas' %}?next={{ request.get_full_path|urlencode }}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:0.75rem;">Marcar todas leídas</button>
+                        </form>
+                        {% endif %}
+                    </li>
+                    <li><hr class="dropdown-divider m-0"></li>
+                    {% for alerta in alertas_recientes %}
+                    <li>
+                        <form method="post" action="{% url 'alerta_marcar_leida' alerta.id %}?next={{ request.get_full_path|urlencode }}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item text-wrap py-2" style="white-space:normal; font-size:0.82rem; border-left:3px solid #D9A441;">
+                                <div class="fw-semibold" style="color:#152A52;">{{ alerta.empresa.nombre|truncatechars:30 }}</div>
+                                <div class="text-muted">{{ alerta.mensaje }}</div>
+                                <div class="text-muted" style="font-size:0.72rem;">{{ alerta.fecha_creacion|timesince }} atrás</div>
+                            </button>
+                        </form>
+                    </li>
+                    {% empty %}
+                    <li><span class="dropdown-item-text text-muted text-center py-3" style="font-size:0.82rem;">Sin notificaciones nuevas</span></li>
+                    {% endfor %}
+                </ul>
+            </span>
         </div>
 
         {% if not accesos %}
