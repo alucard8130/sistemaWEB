@@ -18,7 +18,7 @@ from principal.models import PerfilUsuario
 
 
 
-# 1 dia de gracia antes del bloqueo (ver middleware.py) + 15 dias
+# 4 dias de gracia antes del bloqueo (ver middleware.py) + 16 dias
 # adicionales bloqueado sin renovar = 20 dias totales desde que vencio.
 DIAS_ANTES_DEGRADAR = 20
  
