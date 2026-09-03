@@ -9,4 +9,5 @@ urlpatterns = [
     path('pools-vacancia/', views.lista_pools_vacancia, name='lista_pools_vacancia'),
     path('pools-vacancia/nuevo/', views.crear_pool_vacancia, name='crear_pool_vacancia'),
     path('pools-vacancia/<int:pool_id>/editar/', views.editar_pool_vacancia, name='editar_pool_vacancia'),
+    path('locales/exportar/', views.exportar_locales_excel, name='exportar_locales_excel'),
 ]

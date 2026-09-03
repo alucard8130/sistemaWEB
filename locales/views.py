@@ -1,4 +1,5 @@
 
+import io
 from decimal import Decimal, InvalidOperation
 
 import openpyxl
@@ -10,6 +11,9 @@ from django.db.models import Avg, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.safestring import mark_safe
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from unidecode import unidecode
 
 from clientes.models import Cliente
@@ -487,6 +491,87 @@ def plantilla_locales_excel(request):
     nombre_archivo = 'plantilla_viviendas.xlsx' if es_habitacional else 'plantilla_locales.xlsx'
     response['Content-Disposition'] = f'attachment; filename={nombre_archivo}'
     wb.save(response)
+    return response
+
+
+def exportar_locales_excel(request):
+    if request.user.is_superuser:
+        empresa_id = request.session.get("empresa_id")
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+    else:
+        empresa = request.user.perfilusuario.empresa
+ 
+    locales = (
+        LocalComercial.objects.filter(empresa=empresa)
+        .select_related('cliente', 'grupo_facturacion', 'pool_vacancia')
+        .order_by('numero')
+    )
+ 
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Propiedades"
+ 
+    encabezados = [
+        "Número", "Tipo", "Propietario", "Cliente", "Ubicación",
+        "Superficie m²", "Giro", "Cuota", "¿Cuota anual?", "Status",
+        "Activo", "Proindiviso %", "Grupo de Facturación", "Pool de Vacancia",
+        "Referencia de pago", "Observaciones", "Fecha de creación",
+    ]
+ 
+    header_fill = PatternFill(start_color="0F2D52", end_color="0F2D52", fill_type="solid")
+    header_font = Font(name="Arial", bold=True, color="FFFFFF", size=10)
+ 
+    for col_num, encabezado in enumerate(encabezados, start=1):
+        celda = ws.cell(row=1, column=col_num, value=encabezado)
+        celda.font = header_font
+        celda.fill = header_fill
+        celda.alignment = Alignment(horizontal="center", vertical="center")
+ 
+    fila = 2
+    for local in locales:
+        ws.cell(row=fila, column=1, value=local.numero)
+        ws.cell(row=fila, column=2, value=local.get_tipo_propiedad_display())
+        ws.cell(row=fila, column=3, value=local.propietario)
+        ws.cell(row=fila, column=4, value=local.cliente.nombre if local.cliente else "")
+        ws.cell(row=fila, column=5, value=local.ubicacion or "")
+        ws.cell(row=fila, column=6, value=float(local.superficie_m2) if local.superficie_m2 is not None else None)
+        ws.cell(row=fila, column=7, value=local.giro or "")
+        ws.cell(row=fila, column=8, value=float(local.cuota))
+        ws.cell(row=fila, column=9, value="Sí" if local.es_cuota_anual else "No")
+        ws.cell(row=fila, column=10, value=local.get_status_display())
+        ws.cell(row=fila, column=11, value="Sí" if local.activo else "No")
+        ws.cell(row=fila, column=12, value=float(local.proindiviso) if local.proindiviso is not None else None)
+        ws.cell(row=fila, column=13, value=local.grupo_facturacion.nombre if local.grupo_facturacion else "")
+        ws.cell(row=fila, column=14, value=local.pool_vacancia.nombre if local.pool_vacancia else "")
+        ws.cell(row=fila, column=15, value=local.referencia_pago or "")
+        ws.cell(row=fila, column=16, value=local.observaciones or "")
+        ws.cell(row=fila, column=17, value=local.fecha_creacion.strftime("%d/%m/%Y") if local.fecha_creacion else "")
+ 
+        for col_num in range(1, len(encabezados) + 1):
+            ws.cell(row=fila, column=col_num).font = Font(name="Arial", size=10)
+ 
+        fila += 1
+ 
+    for row in range(2, fila):
+        celda_cuota = ws.cell(row=row, column=8)
+        celda_cuota.number_format = '$#,##0.00'
+ 
+    anchos = [12, 14, 22, 22, 22, 13, 16, 13, 12, 12, 9, 13, 20, 20, 18, 26, 15]
+    for i, ancho in enumerate(anchos, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+ 
+    ws.freeze_panes = "A2"
+ 
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+ 
+    nombre_empresa = empresa.nombre.replace(" ", "_") if empresa else "GESAC"
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="Propiedades_{nombre_empresa}.xlsx"'
     return response
 
 
