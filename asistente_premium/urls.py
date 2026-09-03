@@ -1,11 +1,10 @@
 """Rutas del asistente"""
-from django.urls import path, include
+from django.urls import include, path
+
 #from django.views.generic import TemplateView
 from rest_framework.routers import DefaultRouter
 
-
 from .views import ChatView, ConversacionAsistenteViewSet, procesar_constancia_fiscal
-
 
 router = DefaultRouter()
 router.register(r'conversaciones', ConversacionAsistenteViewSet, basename='conversacion')

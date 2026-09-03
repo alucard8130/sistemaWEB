@@ -115,12 +115,11 @@
     {# ===== NAVBAR COMPLETO PARA USUARIOS NORMALES ===== #}
     <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-0 shadow-navbar">
     <div class="container-fluid">
-      {% comment %} <a href="https://devsoftheron.com.mx/gestor_administrativo" target="_blank">
-        <img src="{% static 'img/iconoGESAC.png' %}" alt="Logo" class="welcome-logo" style="max-width:35px; margin: 0 auto;">
-      </a> {% endcomment %}
-
-      <a href="{% url 'dashboard_inicio' %}" class="btn btn-sm btn-light reporte-link" title="Inicio">
+      {% comment %} <a href="{% url 'dashboard_inicio' %}" class="btn btn-sm btn-light reporte-link" title="Inicio">
         <i class="bi bi-house me-1"></i>
+      </a> {% endcomment %}
+      <a href="{% url 'dashboard_inicio' %}" class="icono-navbar-simple reporte-link" title="Inicio">
+        <i class="bi bi-house-fill"></i>
       </a>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarOpciones" aria-controls="navbarOpciones" aria-expanded="false" aria-label="Toggle navigation">
@@ -139,13 +138,13 @@
               <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Panel Administrador</a></li>
               <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
               <li><a class="dropdown-item" href="{% url 'anuncios_publicos' %}">Anuncios Institucionales</a></li>
+              <li><a class="dropdown-item" href="{% url 'lista_notificaciones_sistema' %}">Notificaciones del Sistema</a></li>
               <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
               <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
               <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Empresa</a></li>
               <li><a class="dropdown-item" href="{% url 'subir_csd_facturama' %}">Subir CSD a Facturama</a></li>
               <li><a class="dropdown-item" href="{% url 'consulta_cfdis_facturama' %}">Consulta CFDIs</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_inicial_completa' %}"><i class="bi bi-cloud-upload-fill me-2"></i>Carga Inicial de Plaza</a></li>
-              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_contadores' %}"><i class="bi bi-calculator-fill me-2"></i>Contadores con acceso</a></li>
               <li><a class="dropdown-item" href="{% url 'usuarios_demo' %}">Usuarios GESAC Demo</a></li>
               <li><a class="dropdown-item" href="{% url 'lista_usuarios_normales' %}">Usuarios GESAC Paga</a></li>
@@ -501,19 +500,55 @@
       </div>
       
       <div class="d-flex align-items-center gap-3">
-        <button type="button" class="btn btn-sm btn-ayuda reporte-link"
+        <!-- AQUÍ va el bloque nuevo de notificaciones del sistema -->
+        <span class="dropdown d-inline-block position-relative">
+            {% csrf_token %}
+            <a href="#" class="position-relative" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none;">
+                <i class="bi bi-bell-fill" style="color:rgba(255,255,255,0.85); font-size:1.05rem;"></i>
+                <span id="notif-sistema-badge" class="position-absolute badge rounded-pill bg-danger" style="top:-6px; right:-8px; font-size:0.6rem; padding:3px 5px; {% if not notif_sistema_count %}display:none;{% endif %}">
+                    {{ notif_sistema_count }}
+                </span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width:320px; max-height:400px; overflow-y:auto;">
+                <li class="d-flex justify-content-between align-items-center px-3 py-2">
+                    <strong style="font-size:0.85rem; color:#0f2d52;">Notificaciones</strong>
+                    <button type="button" id="notif-sistema-marcar-todas" class="btn btn-link btn-sm p-0" style="font-size:0.75rem; {% if not notif_sistema_count %}display:none;{% endif %}">Marcar todas leídas</button>
+                </li>
+                <li><hr class="dropdown-divider m-0"></li>
+                {% for notif in notif_sistema_recientes %}
+                <li>
+                    <div class="dropdown-item text-wrap py-2 notif-sistema-item {% if not notif.leida %}notif-sistema-no-leida{% endif %}"
+                         data-notif-id="{{ notif.id }}"
+                         style="cursor:pointer; white-space:normal; font-size:0.82rem; border-left:3px solid #2471a3;">
+                        <div class="notif-sistema-titulo" style="color:#0f2d52;">{{ notif.titulo }}</div>
+                        <div class="notif-sistema-msg text-muted">{{ notif.mensaje|truncatechars:120 }}</div>
+                        <div class="text-muted" style="font-size:0.72rem;">{{ notif.fecha_creacion|timesince }} atrás</div>
+                    </div>
+                </li>
+                {% empty %}
+                <li><span class="dropdown-item-text text-muted text-center py-3" style="font-size:0.82rem;">Sin notificaciones</span></li>
+                {% endfor %}
+            </ul>
+        </span>
+
+        <style>
+            .notif-sistema-titulo, .notif-sistema-msg { font-weight: 400; }
+            .notif-sistema-no-leida .notif-sistema-titulo,
+            .notif-sistema-no-leida .notif-sistema-msg { font-weight: 700; }
+        </style>
+
+        <button type="button" class="icono-navbar-simple reporte-link"
           data-bs-toggle="modal"
           data-bs-target="#modalAyuda"
           aria-label="Abrir ayuda"
           title="Ayuda">
           <i class="bi bi-question-circle-fill"></i>
-          <span></span>
         </button>
 
-        <form method="post" action="{% url 'logout' %}" class="mb-0">
+        <form method="post" action="{% url 'logout' %}" class="mb-0 d-inline">
           {% csrf_token %}
-          <button type="submit" class="btn btn-primary btn-sm" title="Cerrar sesión">
-            <i class="bi bi-box-arrow-right me-1"></i>
+          <button type="submit" class="icono-navbar-simple" title="Cerrar sesión">
+            <i class="bi bi-box-arrow-right"></i>
           </button>
         </form>
       </div>
@@ -621,6 +656,61 @@ document.addEventListener('DOMContentLoaded', function () {
   else media.addListener(onChange);
 });
 </script>
+<script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function getCsrfToken() {
+                var input = document.querySelector('input[name=csrfmiddlewaretoken]');
+                return input ? input.value : '';
+            }
+
+            document.querySelectorAll('.notif-sistema-item').forEach(function (item) {
+                item.addEventListener('click', function () {
+                    if (!item.classList.contains('notif-sistema-no-leida')) return;
+
+                    var notifId = item.getAttribute('data-notif-id');
+                    fetch('/notificaciones/' + notifId + '/leida-ajax/', {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': getCsrfToken() },
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.ok) return;
+                            item.classList.remove('notif-sistema-no-leida');
+
+                            var badge = document.getElementById('notif-sistema-badge');
+                            var btnTodas = document.getElementById('notif-sistema-marcar-todas');
+                            if (data.count > 0) {
+                                if (badge) { badge.textContent = data.count; badge.style.display = ''; }
+                                if (btnTodas) btnTodas.style.display = '';
+                            } else {
+                                if (badge) badge.style.display = 'none';
+                                if (btnTodas) btnTodas.style.display = 'none';
+                            }
+                        });
+                });
+            });
+
+            var btnTodas = document.getElementById('notif-sistema-marcar-todas');
+            if (btnTodas) {
+                btnTodas.addEventListener('click', function () {
+                    fetch('/notificaciones/marcar-todas-ajax/', {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': getCsrfToken() },
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.ok) return;
+                            document.querySelectorAll('.notif-sistema-item').forEach(function (item) {
+                                item.classList.remove('notif-sistema-no-leida');
+                            });
+                            var badge = document.getElementById('notif-sistema-badge');
+                            if (badge) badge.style.display = 'none';
+                            btnTodas.style.display = 'none';
+                        });
+                });
+            }
+        });
+        </script>
 <style>
 /* ── NAVBAR GESAC — Solo mejoras visuales ── */
 .navbar, .navbar * { font-family: 'Rubik', sans-serif !important; }
@@ -727,4 +817,20 @@ body.dark-mode .navbar .dropdown-menu {
 }
 body.dark-mode .navbar .dropdown-item { color: #e2e8f0 !important; }
 body.dark-mode .navbar .dropdown-item:hover { background: #2d3748 !important; }
+
+.icono-navbar-simple {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.85);
+    font-size: 1.05rem;
+    padding: 4px 6px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+}
+.icono-navbar-simple:hover {
+    color: white;
+}
 </style>

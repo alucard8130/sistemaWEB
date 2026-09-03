@@ -1,0 +1,118 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificaciones — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .nt-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 60%, #2471a3 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,45,82,0.2);
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+        }
+        .nt-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .nt-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .btn-nueva { background: white; color: #0f2d52; border: none; border-radius: 10px; padding: 10px 22px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; }
+        .btn-nueva:hover { color: #0f2d52; transform: translateY(-1px); }
+
+        .nt-table-wrap { background: white; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); overflow: hidden; }
+        table.nt-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.85rem; }
+        table.nt-table thead th {
+            background: #0f2d52; color: white; font-weight: 600; font-size: 0.72rem;
+            text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 14px; white-space: nowrap;
+        }
+        table.nt-table tbody tr { border-bottom: 1px solid #f1f5f9; }
+        table.nt-table tbody tr:hover { background: #f0f7ff; }
+        table.nt-table tbody td { padding: 11px 14px; color: #374151; vertical-align: middle; }
+
+        .badge-tipo { font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #eaf2fb; color: #1a5276; }
+        .badge-activa { font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #E9F7EF; color: #1E8449; }
+        .badge-inactiva { font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #F0F4F8; color: #6b7280; }
+
+        .btn-desactivar { padding: 5px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; border: 1px solid #9C2B2B; color: #9C2B2B; background: white; }
+        .btn-desactivar:hover { background: #9C2B2B; color: white; }
+        .no-data-row td { text-align: center; padding: 40px !important; color: #9ca3af; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible container mt-3">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+        <div class="nt-header">
+            <div>
+                <div class="nt-titulo"><i class="bi bi-megaphone-fill me-2"></i>Notificaciones del Sistema</div>
+                <div class="nt-subtitulo">Administra los anuncios visibles en la campanita de todos los usuarios</div>
+            </div>
+            <a href="{% url 'crear_notificacion_sistema' %}" class="btn-nueva reporte-link">
+                <i class="bi bi-plus-circle-fill me-1"></i> Nueva Notificación
+            </a>
+        </div>
+
+        <div class="nt-table-wrap">
+            <table class="nt-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Título</th>
+                        <th>Mensaje</th>
+                        <th>Publicada</th>
+                        <th>Estatus</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for notif in notificaciones %}
+                    <tr>
+                        <td><span class="badge-tipo">{{ notif.get_tipo_display }}</span></td>
+                        <td><strong>{{ notif.titulo }}</strong></td>
+                        <td>{{ notif.mensaje|truncatechars:80 }}</td>
+                        <td>{{ notif.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if notif.activa %}
+                                <span class="badge-activa">Activa</span>
+                            {% else %}
+                                <span class="badge-inactiva">Desactivada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if notif.activa %}
+                            <form method="post" action="{% url 'desactivar_notificacion_sistema' notif.id %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-desactivar" onclick="return confirm('¿Desactivar esta notificación? Ya no se le mostrará a nadie.');">
+                                    <i class="bi bi-eye-slash-fill me-1"></i>Desactivar
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="no-data-row">
+                        <td colspan="6"><i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>Aún no has publicado ninguna notificación.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

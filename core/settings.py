@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "sanitarios",
     "nomina",
     "gestion_cobranza",
+    "notificaciones_sistema",
 ]
 
 
@@ -95,6 +96,7 @@ TEMPLATES = [
                 "empresas.context_processors.empresa_actual",  # nuevo context processor para exponer la empresa actual en todos los templates
                 "acceso_empresas.context_processors.alertas_portal_context",  # nuevo context processor para exponer las alertas del portal en todos los templates
                 "principal.context_processors.stripe_context",  # nuevo context processor para exponer la clave pública de Stripe en todos los templates
+                "notificaciones_sistema.context_processors.notificaciones_sistema_context",  # nuevo context processor para exponer las notificaciones del sistema en todos los templates
             ],
         },
     },

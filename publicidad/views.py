@@ -1,9 +1,11 @@
+from django.core.mail import send_mail
 from django.shortcuts import render
-from .models import Anuncio
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
+from .models import Anuncio
 from .serializers import AnuncioSerializer
-from django.core.mail import send_mail
+
 
 def anuncios_publicos(request):
     anuncios = Anuncio.objects.filter(activo=True).order_by('-fecha_publicacion')

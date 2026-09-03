@@ -443,6 +443,8 @@ urlpatterns = [
     path('membresias/<int:perfil_id>/historial/', views.historial_pagos_perfil, name='historial_pagos_perfil'),
     path('membresias/configurar/', configurar_membresia, name='configurar_membresia'),  
     path('cuenta-bloqueada/', cuenta_bloqueada, name='cuenta_bloqueada'),
+    ### Notificaciones sistema ###
+    path('notificaciones/', include('notificaciones_sistema.urls')),
 ]
 
     
