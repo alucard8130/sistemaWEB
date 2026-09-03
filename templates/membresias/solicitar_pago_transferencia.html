@@ -82,13 +82,13 @@
         {% endif %}
 
         <div class="mb-header">
-            <div class="mb-titulo"><i class="bi bi-bank2 me-2"></i>Pagar Membresía por Transferencia</div>
+            <div class="mb-titulo"><i class="bi bi-bank2 me-2"></i>Renovar Membresía por Transferencia, Deposito o Cheque</div>
             <div class="mb-subtitulo">Sube tu comprobante y activamos tu plan en cuanto lo confirmemos</div>
         </div>
 
         <div class="info-box">
             <i class="bi bi-info-circle-fill me-1"></i>
-            Tu pago no se activa al momento -- un administrador revisa el comprobante y confirma. El CFDI se enviará a tu correo electrónico.
+            Tu pago no se activa al momento de realizar la transferencia, depósito o cheque -- un administrador revisa el comprobante y confirma. El CFDI se enviará a tu correo electrónico.
         </div>
 
         {% if config %}
@@ -153,7 +153,7 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Monto a transferir</label>
+                        <label class="form-label">Monto a pagar</label>
                         <input type="number" step="0.01" name="monto" id="idMonto" class="form-control" placeholder="0.00" required>
                         <small class="text-muted d-block mt-1">Se calcula solo (con IVA incluido) al elegir el plan y los meses -- ajústalo si transferiste distinto.</small>
                     </div>
@@ -166,7 +166,7 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Fecha de la transferencia</label>
+                        <label class="form-label">Fecha del pago</label>
                         <input type="date" name="fecha_transferencia" class="form-control" required>
                     </div>
                     <div class="col-md-6 mb-3">
@@ -176,7 +176,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Comprobante de la transferencia</label>
+                    <label class="form-label">Comprobante del pago</label>
                     <input type="file" name="comprobante" class="form-control" accept="image/*,application/pdf" required>
                     <small class="text-muted d-block mt-1">Foto o PDF del comprobante bancario.</small>
                 </div>
