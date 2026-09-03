@@ -201,6 +201,9 @@
                 </a>
                 <a href="{% url 'exportar_cartera_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success" title="Exportar a Excel">
                 <i class="bi bi-file-earmark-excel-fill"></i></a>
+                <button type="button" id="btn-toggle-todo" class="btn btn-outline-secondary btn-sm" onclick="toggleTodosLosRangos()">
+                    <i class="bi bi-arrows-collapse me-1"></i><span id="btn-toggle-todo-texto">Agrupar todo</span>
+                </button>
             </form>
         </div>
 
@@ -302,6 +305,23 @@
             body.style.display = 'none';
             if (icon) icon.className = 'bi bi-chevron-right';
         }
+    }
+    </script>
+    <script>
+    var rangosAgrupados = false; // false = todos visibles (estado inicial de la pagina)
+
+    function toggleTodosLosRangos() {
+        rangosAgrupados = !rangosAgrupados;
+
+        document.querySelectorAll('[id^="body-"]').forEach(function(body) {
+            body.style.display = rangosAgrupados ? 'none' : '';
+        });
+        document.querySelectorAll('[id^="icon-"]').forEach(function(icon) {
+            icon.className = rangosAgrupados ? 'bi bi-chevron-right' : 'bi bi-chevron-down';
+        });
+
+        var texto = document.getElementById('btn-toggle-todo-texto');
+        if (texto) texto.textContent = rangosAgrupados ? 'Desagrupar todo' : 'Agrupar todo';
     }
     </script>
     <script>

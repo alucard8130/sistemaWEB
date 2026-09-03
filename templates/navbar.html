@@ -515,6 +515,17 @@
                     <button type="button" id="notif-sistema-marcar-todas" class="btn btn-link btn-sm p-0" style="font-size:0.75rem; {% if not notif_sistema_count %}display:none;{% endif %}">Marcar todas leídas</button>
                 </li>
                 <li><hr class="dropdown-divider m-0"></li>
+ 
+                {% for alerta in alertas_automaticas %}
+                <li>
+                    <a href="{{ alerta.url }}" class="dropdown-item text-wrap py-2" style="white-space:normal; font-size:0.82rem; border-left:3px solid {{ alerta.color }};">
+                        <div class="fw-bold" style="color:{{ alerta.color }};"><i class="bi bi-{{ alerta.icono }} me-1"></i>{{ alerta.titulo }}</div>
+                        <div class="text-muted">{{ alerta.mensaje }}</div>
+                    </a>
+                </li>
+                {% endfor %}
+                {% if alertas_automaticas %}<li><hr class="dropdown-divider m-0"></li>{% endif %}
+ 
                 {% for notif in notif_sistema_recientes %}
                 <li>
                     <div class="dropdown-item text-wrap py-2 notif-sistema-item {% if not notif.leida %}notif-sistema-no-leida{% endif %}"
@@ -525,12 +536,13 @@
                         <div class="text-muted" style="font-size:0.72rem;">{{ notif.fecha_creacion|timesince }} atrás</div>
                     </div>
                 </li>
-                {% empty %}
-                <li><span class="dropdown-item-text text-muted text-center py-3" style="font-size:0.82rem;">Sin notificaciones</span></li>
                 {% endfor %}
+                {% if not alertas_automaticas and not notif_sistema_recientes %}
+                <li><span class="dropdown-item-text text-muted text-center py-3" style="font-size:0.82rem;">Sin notificaciones</span></li>
+                {% endif %}
             </ul>
         </span>
-
+ 
         <style>
             .notif-sistema-titulo, .notif-sistema-msg { font-weight: 400; }
             .notif-sistema-no-leida .notif-sistema-titulo,
@@ -662,11 +674,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 var input = document.querySelector('input[name=csrfmiddlewaretoken]');
                 return input ? input.value : '';
             }
-
+ 
             document.querySelectorAll('.notif-sistema-item').forEach(function (item) {
                 item.addEventListener('click', function () {
                     if (!item.classList.contains('notif-sistema-no-leida')) return;
-
+ 
                     var notifId = item.getAttribute('data-notif-id');
                     fetch('/notificaciones/' + notifId + '/leida-ajax/', {
                         method: 'POST',
@@ -676,7 +688,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         .then(function (data) {
                             if (!data.ok) return;
                             item.classList.remove('notif-sistema-no-leida');
-
+ 
                             var badge = document.getElementById('notif-sistema-badge');
                             var btnTodas = document.getElementById('notif-sistema-marcar-todas');
                             if (data.count > 0) {
@@ -689,7 +701,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                 });
             });
-
+ 
             var btnTodas = document.getElementById('notif-sistema-marcar-todas');
             if (btnTodas) {
                 btnTodas.addEventListener('click', function () {

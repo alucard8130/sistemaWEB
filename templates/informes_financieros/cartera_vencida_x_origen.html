@@ -199,6 +199,9 @@
                 </a>
                 <a href="{% url 'exportar_cartera_vencida_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success" title="Exportar a Excel">
                 <i class="bi bi-file-earmark-excel-fill"></i></a>
+                <button type="button" id="btn-toggle-todo-origen" class="btn btn-outline-secondary btn-sm" onclick="toggleTodosLosOrigenes()">
+                    <i class="bi bi-arrows-collapse me-1"></i><span id="btn-toggle-todo-origen-texto">Agrupar todo</span>
+                </button>
             </form>
         </div>
 
@@ -293,6 +296,23 @@
             body.style.display = 'none';
             if (icon) icon.className = 'bi bi-chevron-right';
         }
+    }
+    </script>
+    <script>
+    var origenesAgrupados = false; // false = todos visibles (estado inicial de la pagina)
+
+    function toggleTodosLosOrigenes() {
+        origenesAgrupados = !origenesAgrupados;
+
+        document.querySelectorAll('[id^="origen-"]').forEach(function(body) {
+            body.style.display = origenesAgrupados ? 'none' : '';
+        });
+        document.querySelectorAll('[id^="ico-"]').forEach(function(icon) {
+            icon.className = origenesAgrupados ? 'bi bi-chevron-right' : 'bi bi-chevron-down';
+        });
+
+        var texto = document.getElementById('btn-toggle-todo-origen-texto');
+        if (texto) texto.textContent = origenesAgrupados ? 'Desagrupar todo' : 'Agrupar todo';
     }
     </script>
 </body>
