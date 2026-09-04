@@ -67,11 +67,15 @@
                     <label class="form-label">Mensaje</label>
                     <textarea name="mensaje" class="form-control" rows="5" placeholder="Describe la notificación..." required></textarea>
                 </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" name="dispara_tour" id="dispara_tour" class="form-check-input">
-                    <label class="form-check-label" for="dispara_tour" style="font-size: 0.85rem;">
-                        Al hacer clic, también inicia el tour guiado del sistema
-                    </label>
+                <div class="mb-3">
+                    <label class="form-label">Tour a disparar (opcional)</label>
+                    <select name="tour_a_disparar" class="form-select">
+                        <option value="">Ninguno</option>
+                        {% for valor, etiqueta in tour_choices %}
+                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted d-block mt-1">Si eliges uno, al hacer clic en esta notificación también se abrirá ese recorrido guiado.</small>
                 </div>
 
                 <hr class="my-4">

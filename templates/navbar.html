@@ -460,7 +460,7 @@
                 <li>
                     <div class="dropdown-item text-wrap py-2 notif-sistema-item {% if not notif.leida %}notif-sistema-no-leida{% endif %}"
                          data-notif-id="{{ notif.id }}"
-                         data-dispara-tour="{% if notif.dispara_tour %}true{% else %}false{% endif %}"
+                         data-tour="{{ notif.tour_a_disparar|default:'' }}"
                          style="cursor:pointer; white-space:normal; font-size:0.82rem; border-left:3px solid #2471a3;">
                         <div class="notif-sistema-titulo" style="color:#0f2d52;">{{ notif.titulo }}</div>
                         <div class="notif-sistema-msg text-muted">{{ notif.mensaje|truncatechars:120 }}</div>
@@ -539,15 +539,53 @@
       </div>
     </div>
 {% endif %}
+<!-- Driver.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
+
+<!-- URLs que el JS estático necesita, resueltas aquí por Django -->
+<script>
+    window.GESAC_URLS = {
+        marcarTourVisto: "{% url 'marcar_tour_visto' %}"
+    };
+
+    // NUEVO -- a dónde redirigir si un tour se dispara desde una
+    // pantalla donde sus elementos no existen. "navbar" no necesita
+    // entrada aquí porque sus elementos viven en el navbar mismo,
+    // presente en cualquier pantalla.
+    window.GESAC_TOUR_URLS = {
+        facturacion: "{% url 'lista_facturas' %}"
+    };
+</script>
+
+<!-- Librería de tours -- vive en un archivo aparte, esto solo la carga -->
+<script src="{% static 'js/gesac_tours.js' %}"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('a.reporte-link').forEach(function(link) {
-    link.addEventListener('click', function() {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.notif-sistema-item[data-tour]').forEach(function (item) {
+        var nombreTour = item.getAttribute('data-tour');
+        if (!nombreTour) return;
+        item.addEventListener('click', function () {
+            window.iniciarTour(nombreTour);
+        });
     });
-  });
+
+    // NUEVO -- si veníamos de una redirección (el tour se disparó desde
+    // otra pantalla), en cuanto carga la pantalla correcta se lanza solo.
+    var tourPendiente = sessionStorage.getItem('gesac_tour_pendiente');
+    if (tourPendiente) {
+        sessionStorage.removeItem('gesac_tour_pendiente');
+        if (window.iniciarTour) {
+            window.iniciarTour(tourPendiente);
+        }
+    } else {
+        {% if mostrar_tour_inicial %}
+        if (window.iniciarTour) {
+            window.iniciarTour('navbar');
+        }
+        {% endif %}
+    }
 });
 </script>
 
@@ -654,77 +692,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         </script>
-        <!-- Driver.js se carga siempre, disponible en cualquier pantalla -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
-<script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
-<script>
-function getCsrfTokenGesac() {
-    var input = document.querySelector('input[name=csrfmiddlewaretoken]');
-    return input ? input.value : '';
-}
-
-window.iniciarTourGesac = function () {
-    var modalRecordatorio = document.getElementById('modalRecordatorio');
-    if (modalRecordatorio) {
-        modalRecordatorio.style.display = 'none';
-    }
-
-    function marcarTourVisto() {
-        fetch("{% url 'marcar_tour_visto' %}", {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCsrfTokenGesac() },
-        });
-        if (modalRecordatorio) {
-            modalRecordatorio.style.display = 'flex';
-        }
-    }
-
-    var pasosDefinidos = [
-        { id: 'tour-inicio', title: '¡Bienvenido al tour por el nuevo y mejorado MENU!', description:' BOTON INICIO: Este botón siempre te regresa a tu pantalla de inicio, con el resumen de tu condominio.' },
-        { id: 'tour-catalogos', title: 'Catálogos', description: 'MENU CATALOGOS: Aquí administras tus clientes, proveedores, y el catálogo contable.' },
-        { id: 'tour-tesoreria', title: 'Tesorería', description: 'MENU TESORERIA: Tus cuentas bancarias y tu caja chica, en un solo lugar.' },
-        { id: 'tour-propiedades', title: 'Propiedades', description: 'MENU PROPIEDADES: El listado de locales o unidades de tu condominio, con sus cuotas.' },
-        { id: 'tour-areas', title: 'Áreas / Amenidades', description: 'MENU AREAS / AMENIDADES: Administra tus áreas comunes o amenidades, según el tipo de tu condominio.' },
-        { id: 'tour-facturacion', title: 'Facturación', description: 'MENU FACTURACION: Aquí generas la facturación mensual de cuotas, y consultas o cobras las facturas ya emitidas.' },
-        { id: 'tour-ingresos', title: 'Ingresos y Cartera', description: 'MENU INGRESOS Y CARTERA: Consulta tus depósitos, y da seguimiento a la cartera vencida de tus clientes.' },
-        { id: 'tour-gastos', title: 'Gastos', description: 'MENU GASTOS: Registra y da seguimiento a las solicitudes de gasto de tu condominio. realiza pagos y controla el presupuesto de gastos.' },
-        { id: 'tour-nomina', title: 'Nómina', description: 'MENU NOMINA: Dispersión de nómina e incidencias de tus empleados.' },
-        { id: 'tour-presupuestos', title: 'Presupuestos y Reportes', description: 'MENU PRESUPUESTOS Y REPORTES: Tus matrices de presupuesto, y los comparativos contra lo real.' },
-        { id: 'tour-comunicacion', title: 'Comunicación', description: 'MENU COMUNICACION: Asuntos generales y avisos para tus condóminos.' },
-        { id: 'tour-cuenta', title: 'Mi cuenta', description: 'MENU MI CUENTA: Renueva tu membresía, o invita a un colaborador a tu equipo.' },
-        { id: 'tour-campanita', title: 'Notificaciones', description: 'CAMPANITA NOTIFICACIONES: Aquí verás avisos importantes -- membresía por vencer, recordatorios, y novedades del sistema.' },
-        { id: 'tour-ayuda', title: '¿Necesitas ayuda?', description: 'BOTON AYUDA: Descarga el manual completo, o consulta tutoriales en video, cuando lo necesites.' },
-    ];
-
-    var steps = pasosDefinidos
-        .filter(function (p) { return document.getElementById(p.id) !== null; })
-        .map(function (p) {
-            return { element: '#' + p.id, popover: { title: p.title, description: p.description } };
-        });
-
-    if (steps.length === 0) return;
-
-    var driverObj = window.driver.js.driver({
-        showProgress: true,
-        nextBtnText: 'Siguiente',
-        prevBtnText: 'Atrás',
-        doneBtnText: 'Terminar',
-        progressText: '{% templatetag openvariable %}current{% templatetag closevariable %} de {% templatetag openvariable %}total{% templatetag closevariable %}',
-        onDestroyed: marcarTourVisto,
-        steps: steps,
-    });
-
-    driverObj.drive();
-};
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.notif-sistema-item[data-dispara-tour="true"]').forEach(function (item) {
-        item.addEventListener('click', function () {
-            window.iniciarTourGesac();
-        });
-    });
-});
-</script>
 <style>
 /* ── NAVBAR GESAC — Solo mejoras visuales ── */
 .navbar, .navbar * { font-family: 'Rubik', sans-serif !important; }

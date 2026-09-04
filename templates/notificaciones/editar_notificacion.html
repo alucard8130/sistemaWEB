@@ -73,7 +73,16 @@
                         Al hacer clic, también inicia el tour guiado del sistema
                     </label>
                 </div>
-
+                <div class="mb-3">
+                    <label class="form-label">Tour a disparar (opcional)</label>
+                    <select name="tour_a_disparar" class="form-select">
+                        <option value="" {% if not notif.tour_a_disparar %}selected{% endif %}>Ninguno</option>
+                        {% for valor, etiqueta in tour_choices %}
+                            <option value="{{ valor }}" {% if notif.tour_a_disparar == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted d-block mt-1">Si eliges uno, al hacer clic en esta notificación también se abrirá ese recorrido guiado.</small>
+                </div>
                 <hr class="my-4">
                 <button type="submit" class="btn btn-publicar">
                     <i class="bi bi-check-lg me-1"></i> Guardar cambios

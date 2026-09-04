@@ -17,7 +17,7 @@ def crear_notificacion_sistema(request):
         tipo = request.POST.get('tipo')
         titulo = request.POST.get('titulo', '').strip()
         mensaje = request.POST.get('mensaje', '').strip()
-        dispara_tour = request.POST.get('dispara_tour') == 'on'  # NUEVO
+        tour_a_disparar = request.POST.get('tour_a_disparar', '').strip()
 
         if tipo not in dict(NotificacionSistema.TIPO_CHOICES):
             messages.error(request, "Selecciona un tipo válido.")
@@ -25,27 +25,20 @@ def crear_notificacion_sistema(request):
         if not titulo or not mensaje:
             messages.error(request, "El título y el mensaje son obligatorios.")
             return redirect('crear_notificacion_sistema')
+        if tour_a_disparar and tour_a_disparar not in dict(NotificacionSistema.TOUR_CHOICES):
+            messages.error(request, "Selecciona un tour válido.")
+            return redirect('crear_notificacion_sistema')
 
         NotificacionSistema.objects.create(
-            tipo=tipo, titulo=titulo, mensaje=mensaje, creado_por=request.user, dispara_tour=dispara_tour,  # NUEVO
+            tipo=tipo, titulo=titulo, mensaje=mensaje, creado_por=request.user,
+            tour_a_disparar=tour_a_disparar or None,
         )
         messages.success(request, "Notificación publicada correctamente.")
         return redirect('lista_notificaciones_sistema')
 
     return render(request, 'notificaciones/crear_notificacion.html', {
         'tipo_choices': NotificacionSistema.TIPO_CHOICES,
-    })
-
-
-@login_required
-def lista_notificaciones_sistema(request):
-    if not request.user.is_superuser:
-        messages.error(request, "No tienes permiso para ver esta pantalla.")
-        return redirect('dashboard_inicio')
-
-    notificaciones = NotificacionSistema.objects.all()
-    return render(request, 'notificaciones/lista_notificaciones.html', {
-        'notificaciones': notificaciones,
+        'tour_choices': NotificacionSistema.TOUR_CHOICES,
     })
 
 
@@ -61,7 +54,7 @@ def editar_notificacion_sistema(request, notif_id):
         tipo = request.POST.get('tipo')
         titulo = request.POST.get('titulo', '').strip()
         mensaje = request.POST.get('mensaje', '').strip()
-        dispara_tour = request.POST.get('dispara_tour') == 'on'
+        tour_a_disparar = request.POST.get('tour_a_disparar', '').strip()
 
         if tipo not in dict(NotificacionSistema.TIPO_CHOICES):
             messages.error(request, "Selecciona un tipo válido.")
@@ -69,11 +62,14 @@ def editar_notificacion_sistema(request, notif_id):
         if not titulo or not mensaje:
             messages.error(request, "El título y el mensaje son obligatorios.")
             return redirect('editar_notificacion_sistema', notif_id=notif_id)
+        if tour_a_disparar and tour_a_disparar not in dict(NotificacionSistema.TOUR_CHOICES):
+            messages.error(request, "Selecciona un tour válido.")
+            return redirect('editar_notificacion_sistema', notif_id=notif_id)
 
         notif.tipo = tipo
         notif.titulo = titulo
         notif.mensaje = mensaje
-        notif.dispara_tour = dispara_tour
+        notif.tour_a_disparar = tour_a_disparar or None
         notif.save()
 
         messages.success(request, "Notificación actualizada correctamente.")
@@ -82,7 +78,21 @@ def editar_notificacion_sistema(request, notif_id):
     return render(request, 'notificaciones/editar_notificacion.html', {
         'notif': notif,
         'tipo_choices': NotificacionSistema.TIPO_CHOICES,
+        'tour_choices': NotificacionSistema.TOUR_CHOICES,
     })
+
+
+@login_required
+def lista_notificaciones_sistema(request):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para ver esta pantalla.")
+        return redirect('dashboard_inicio')
+
+    notificaciones = NotificacionSistema.objects.all()
+    return render(request, 'notificaciones/lista_notificaciones.html', {
+        'notificaciones': notificaciones,
+    })
+
 
 
 @login_required

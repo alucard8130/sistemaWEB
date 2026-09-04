@@ -1446,7 +1446,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <script src="{% static 'js/script.js' %}"></script>
 <!-- Driver.js -- solo se carga si hace falta mostrar el tour -->
-{% if mostrar_tour_inicial %}
+{% comment %} {% if mostrar_tour_inicial %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     if (window.iniciarTourGesac) {
@@ -1454,7 +1454,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-{% endif %}
+{% endif %} {% endcomment %}
 
 {% if user.is_authenticated and request.user.perfilusuario.empresa %}
     {% include 'asistente_premium/chat_widget.html' %}

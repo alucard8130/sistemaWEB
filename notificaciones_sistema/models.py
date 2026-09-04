@@ -18,9 +18,15 @@ class NotificacionSistema(models.Model):
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
     )
-    dispara_tour = models.BooleanField(
-        default=False,
-        help_text="Si al hacer clic en esta notificación, también debe iniciar el tour guiado del sistema."
+    TOUR_CHOICES = [  # noqa: RUF012
+        ('navbar', 'Recorrido del menú principal'),
+        ('facturacion', 'Recorrido de Facturación'),
+        ('gastos', 'Recorrido de Gastos'),
+        ('cartera', 'Recorrido de Cartera Vencida'),
+    ]
+    tour_a_disparar = models.CharField(
+        max_length=30, choices=TOUR_CHOICES, blank=True, null=True,
+        help_text="Si al hacer clic en esta notificación, también debe iniciar un tour guiado específico. Déjalo vacío si no aplica."
     )
 
     class Meta:
