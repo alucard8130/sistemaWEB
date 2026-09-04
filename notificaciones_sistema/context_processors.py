@@ -32,7 +32,7 @@ def _generar_alertas_automaticas(request):
         if perfil.fecha_vencimiento < ahora:
             alertas.append({
                 'titulo': 'Tu membresía venció',
-                'mensaje': f'Venció el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva para seguir usando GESAC sin límites.',
+                'mensaje': f'Venció el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva para seguir usando el sistema.Tienes 4 dias de gracia',
                 'url': reverse('solicitar_pago_transferencia'),
                 'icono': 'exclamation-triangle-fill',
                 'color': '#9C2B2B',
@@ -40,7 +40,7 @@ def _generar_alertas_automaticas(request):
         elif perfil.fecha_vencimiento <= pronto:
             alertas.append({
                 'titulo': 'Tu membresía está por vencer',
-                'mensaje': f'Vence el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva a tiempo para no perder el acceso.',
+                'mensaje': f'Vence el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva a tiempo para no perder el acceso.Tienes 4 dias de gracia',
                 'url': reverse('solicitar_pago_transferencia'),
                 'icono': 'hourglass-split',
                 'color': '#8A6D00',

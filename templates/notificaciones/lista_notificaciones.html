@@ -91,8 +91,11 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
+                            <a href="{% url 'editar_notificacion_sistema' notif.id %}" class="btn-desactivar reporte-link" style="border-color:#1a5276; color:#1a5276; text-decoration:none; margin-right:6px;">
+                                <i class="bi bi-pencil-fill me-1"></i>Editar
+                            </a>
                             {% if notif.activa %}
-                            <form method="post" action="{% url 'desactivar_notificacion_sistema' notif.id %}" class="m-0">
+                            <form method="post" action="{% url 'desactivar_notificacion_sistema' notif.id %}" class="m-0 d-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-desactivar" onclick="return confirm('¿Desactivar esta notificación? Ya no se le mostrará a nadie.');">
                                     <i class="bi bi-eye-slash-fill me-1"></i>Desactivar

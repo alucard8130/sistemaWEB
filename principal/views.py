@@ -666,9 +666,6 @@ def dashboard_inicio(request):
             "ingresos_porcobrar_6": json.dumps(ingresos_porcobrar_6),
             "gastos_pagados_6": json.dumps(gastos_pagados_6),
             "gastos_pendientes_6": json.dumps(gastos_pendientes_6),
-            # Membresía
-            #'membresia_label': membresia_label,
-            # Recordatorio facturación
             "mostrar_recordatorio": mostrar_recordatorio,
             "mostrar_wizard": mostrar_wizard,
             "mensaje_pago": mensaje_pago,
@@ -678,6 +675,7 @@ def dashboard_inicio(request):
             "moneda_choices": CuentaBancaria.TIPO_MONEDA,
             "tipo_cuenta_choices": CuentaBancaria.TIPO_CUENTA,
             "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,  # NUEVO
+            'mostrar_tour_inicial': not perfil.ha_visto_tour_inicial if request.user.perfilusuario else False,
         },
     )
 
@@ -2053,6 +2051,18 @@ def guardar_datos_empresa(request):
     perfil.save()
     messages.success(request, "¡Datos de empresa configurados correctamente!")
     return redirect("dashboard_inicio")
+
+
+#### MODULO DE TOUR INICIAL USUARIOS GESAC##############
+@login_required
+@require_POST
+def marcar_tour_visto(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if perfil:
+        perfil.ha_visto_tour_inicial = True
+        perfil.save(update_fields=['ha_visto_tour_inicial'])
+    return JsonResponse({'ok': True})
+
 
 
 # MODULO DE TICKETS DE MANTENIMIENTO-- NO ESTA EN FUNCION-SUSTITUIDO POR APP MANTPRO, EN UN FUTURO ENLAZAR CON MANTPRO>

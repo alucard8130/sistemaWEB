@@ -1,5 +1,4 @@
-<!-- Navbar HTML  NUEVA VERSION MENU AGRUPADO POR SECCIONES 030926-->
-  
+
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">    
 
 {% load static %}
@@ -110,7 +109,7 @@
     {# ===== NAVBAR COMPLETO PARA USUARIOS NORMALES ===== #}
     <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-0 shadow-navbar">
     <div class="container-fluid">
-      <a href="{% url 'dashboard_inicio' %}" id="tour-inicio" class="icono-navbar-simple reporte-link" title="Inicio">
+      <a href="{% url 'dashboard_inicio' %}" class="icono-navbar-simple reporte-link" title="Inicio">
         <i class="bi bi-house-fill"></i>
       </a>
 
@@ -130,6 +129,7 @@
               <li><a class="dropdown-item" href="{% url 'admin:auth_user_add' %}">Panel Administrador</a></li>
               <li><a class="dropdown-item" href="{% url 'empresa_lista' %}">Empresas</a></li>
               <li><a class="dropdown-item" href="{% url 'anuncios_publicos' %}">Anuncios Institucionales</a></li>
+              <li><a class="dropdown-item" href="{% url 'lista_notificaciones_sistema' %}">Notificaciones del Sistema</a></li>
               <li><a class="dropdown-item" href="{% url 'reporte_auditoria' %}">Auditoría</a></li>
               <li><a class="dropdown-item" href="{% url 'respaldo_empresa_excel' %}">BackUp</a></li>
               <li><a class="dropdown-item" href="{% url 'reiniciar_sistema' %}">Reiniciar Empresa</a></li>
@@ -144,7 +144,7 @@
           </li>
           {% else %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-catalogos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Catalogos">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Catalogos">
               Catálogos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -174,32 +174,44 @@
           </li>
           {% endif %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-tesoreria" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Tesorería">
-              Tesorería <i style="font-size: 1.5em;"></i>
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Bancos">
+              Bancos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><h6 class="dropdown-header">Cuentas Bancarias</h6></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cuentas_bancarias_lista' %}"><i class="bi bi-bank me-2"></i>Cuentas Bancarias</a></li>
+              <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:saldos_periodo' %}"><i class="bi bi-calendar me-2"></i>Saldos por período</a></li>
               {% if request.user.is_staff %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:reiniciar_saldos_cuentas' %}"><i class="bi bi-arrow-counterclockwise me-2"></i>Reiniciar saldos</a></li>
               {% endif %}
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_traspasos' %}"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios</a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#"><i class="bi bi-calendar me-2"></i>Saldos por período (PLUS)</a></li>
+                <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item disabled" href="#"><i class="bi bi-arrow-left-right me-2"></i>Traspasos bancarios (PLUS)</a></li>
               {% endif %}
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Caja Chica">
+              Caja <i style="font-size: 1.5em;"></i>
+            </a>
+            <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
-              <li><h6 class="dropdown-header">Caja Chica</h6></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_fondeos' %}"><i class="bi bi-list-ul me-2"></i>Fondeos Caja Chica</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_gastos_caja_chica' %}"><i class="bi bi-list-ul me-2"></i>Gastos Caja Chica</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_vales_caja_chica' %}"><i class="bi bi-list-ul me-2"></i>Vales Caja Chica</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_caja_chica' %}"><i class="bi bi-file-text me-2"></i>Reporte Caja</a></li>
             </ul>
           </li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle"  id="tour-propiedades" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Propiedades">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Propiedades">
               Propiedades <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -214,7 +226,7 @@
           </li>
            {% if empresa_actual.segmento != 'habitacional' %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-areas" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Áreas Comunes">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Áreas Comunes">
               Areas <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -229,7 +241,7 @@
           {% endif %}
           {% if empresa_actual.segmento == 'habitacional' %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle"  id="tour-areas" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Amenidades">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Amenidades">
               Amenidades <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -242,7 +254,7 @@
           </li>
           {% endif %}
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-facturacion" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Facturacion">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Facturacion y Pagos">
               Facturación <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -266,17 +278,20 @@
           </li>
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-ingresos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ingresos y Cartera">
-              Ingresos y Cartera <i style="font-size: 1.5em;"></i>
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ingresos">
+              Ingresos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><h6 class="dropdown-header">Depósitos y cobros</h6></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'pagos_por_origen' %}?tipo=local" title="Reporte Depositos por Cuotas de mantenimiento y areas comunes"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Cuotas</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cobros_otros_ingresos' %}" title="Reporte de Depositos Otros Ingresos"><i class="bi bi-cash-stack me-2"></i>Reporte Depositos Otros Ingresos</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_ingresos_mensual' %}" title="Grafico de Ingresos Mensuales"><i class="bi bi-bar-chart me-2"></i>Grafico de Ingresos</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado"><i class="bi bi-question-circle me-2"></i>Depositos no identificados</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_saldos_a_favor' %}" title="Busca saldos a favor de clientes"><i class="bi bi-piggy-bank-fill me-2"></i>Saldos a Favor</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Inversiones</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Inversiones</a></li> 
               {% if request.user.perfilusuario.empresa.es_premium %}
                   <li><a class="dropdown-item reporte-link" href="{% url 'lista_sesiones_estado_cuenta' %}">
                       <i class="bi bi-bank me-1"></i> Cobro cuotas por IA
@@ -286,6 +301,8 @@
                       <i class="bi bi-bank me-1"></i> Cobro cuotas por IA (PREMIUM)
                   </a></li>
               {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <!-- Estacionamiento -->
               {% if request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.empresa.es_premium %}
                 <li><a class="dropdown-item reporte-link" href="{% url 'lista_cortes_estacionamiento' %}">
                     <i class="bi bi-p-circle me-1"></i>Estacionamiento
@@ -298,21 +315,51 @@
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
               {% endif %}
+              <li><hr class="dropdown-divider"></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_ingresos' %}" title="Exportar Póliza de Ingresos"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos (PREMIUM)</a></li>
               {% endif %}
-
-              <li><hr class="dropdown-divider"></li>
-              <li><h6 class="dropdown-header">Cartera vencida</h6></li>
+            </ul>
+          </li>
+         {% if request.user.is_staff or empresa_actual.precio_sanitario or empresa_actual.precio_papel or empresa_actual.precio_toalla %}
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Sanitarios">
+        Sanitarios <i style="font-size: 1.5em;"></i>
+    </a>
+    <ul class="dropdown-menu">
+        {% if empresa_actual.precio_sanitario or empresa_actual.precio_papel or empresa_actual.precio_toalla %}
+        <li><a class="dropdown-item reporte-link" href="{% url 'sanitarios_corte_diario' %}"><i class="bi bi-clock-history me-2"></i>Historial de Cortes</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item reporte-link" href="{% url 'lista_gafetes_acceso' %}"><i class="bi bi-person-badge-fill me-2"></i>Gafetes de Acceso</a></li>
+        {% if empresa_actual.precio_toalla %}
+        <li><a class="dropdown-item reporte-link" href="{% url 'registrar_lote_toallas' %}"><i class="bi bi-box-seam-fill me-2"></i>Inventario de Toallas</a></li>
+        {% endif %}
+        <li><hr class="dropdown-divider"></li>
+        {% endif %}
+        <li><a class="dropdown-item reporte-link" href="{% url 'configurar_precio_sanitario' %}"><i class="bi bi-gear me-2"></i>Configurar Precios</a></li>
+       {% if empresa_actual.usa_boletos_fisicos_sanitario or empresa_actual.usa_boletos_fisicos_papel %}
+        <li><a class="dropdown-item reporte-link" href="{% url 'cargar_boletos_fisicos' %}"><i class="bi bi-ticket-perforated-fill me-2"></i>Cargar Boletos Físicos</a></li>
+        {% endif %}
+        <li><a class="dropdown-item reporte-link" href="{% url 'lista_casetas_sanitario' %}"><i class="bi bi-display me-2"></i>Configuar Casetas</a></li>
+    </ul>
+</li>
+{% endif %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Cartera Vencida">
+              Cartera<i style="font-size: 1.5em;"></i>
+            </a>
+            <ul class="dropdown-menu">
               {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_cobranza' %}"><i class="bi bi-telephone-outbound me-2"></i>Gestion Cobranza</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-telephone-outbound me-2"></i>Gestion Cobranza (PREMIUM)</a></li>
               {% endif %}
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_saldos_antiguedad' %}"><i class="bi bi-file-text me-2"></i>Reporte Antiguedad Saldos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}"><i class="bi bi-file-text me-2"></i>Reporte Detalle Saldos</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}"><i class="bi bi-bar-chart me-2"></i>Grafico Cartera </a></li>
               {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cartera_vencida' %}"><i class="bi bi-exclamation-triangle me-2"></i>Comparativo Cartera</a></li>
@@ -322,7 +369,7 @@
             </ul>
           </li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-gastos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Gastos">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Gastos">
               Gastos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -346,7 +393,7 @@
             </ul>
           </li>
            <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-nomina" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Nomina">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Nomina">
               Nomina <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -365,45 +412,54 @@
             </ul>
           </li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle"  id="tour-presupuestos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Presupuestos y Reportes">
-              Presupuestos y Reportes <i style="font-size: 1.5em;"></i>
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Presupuestos">
+              Presupuestos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><h6 class="dropdown-header">Matrices de presupuesto</h6></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_gastos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Gastos</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_ingresos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Ingresos</a></li>
-
               <li><hr class="dropdown-divider"></li>
-              <li><h6 class="dropdown-header">Comparativos y resultados</h6></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_ingresos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Ingresos</a></li>
+            </ul>
+          </li>
+
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Reportes">
+              Reportes <i style="font-size: 1.5em;"></i>
+            </a>
+            <ul class="dropdown-menu">
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}"><i class="bi bi-file-text me-2"></i>Reporte de Resultados</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Gastos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_gastos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Gtos</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Ingresos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_ingresos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Ing</a></li>
+              <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_vs_gastos' %}"><i class="bi bi-bar-chart me-2"></i>Grafico Ingresos vs Gastos</a></li>
             </ul>
           </li>
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-comunicacion" href="#" role="button" data-bs-toggle="dropdown" title="Comunicacion">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Comunicacion">
               Comunicacion <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_temas' %}"><i class="bi bi-list-ul me-2"></i>Asuntos Generales</a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
-              <li><a class="dropdown-item reporte-link" href="{% url 'avisos_lista' %}"><i class="bi bi-bell me-2"></i>Avisos App GESAC</a></li>
-              {% else %}
-              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-bell me-2"></i>Avisos App GESAC (PREMIUM)</a></li>
-              {% endif %}
-              {% if request.user.is_staff %}
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'lista_notificaciones_sistema' %}"><i class="bi bi-megaphone-fill me-2"></i>Notificaciones del Sistema</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'lista_temas' %}"><i class="bi bi-list-ul me-2"></i>Asuntos Generales</a></li>
+              <li><hr class="dropdown-divider"></li>
+               {% if request.user.perfilusuario.empresa.es_premium %}
+                <li><a class="dropdown-item reporte-link" href="{% url 'avisos_lista' %}"><i class="bi bi-bell me-2"></i>Avisos App GESAC</a></li>
+              {% else %}
+                <li><a class="dropdown-item disabled" href="#"><i class="bi bi-bell me-2"></i>Avisos App GESAC (PREMIUM)</a></li>  
               {% endif %}
+              <li><hr class="dropdown-divider"></li>
             </ul>
           </li>
-
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="tour-cuenta" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Membresías">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Membresías">
               Mi cuenta<i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
@@ -431,7 +487,7 @@
       
       <div class="d-flex align-items-center gap-3">
         <!-- AQUÍ va el bloque nuevo de notificaciones del sistema -->
-        <span id="tour-campanita" class="dropdown d-inline-block position-relative">
+        <span class="dropdown d-inline-block position-relative">
             {% csrf_token %}
             <a href="#" class="position-relative" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none;">
                 <i class="bi bi-bell-fill" style="color:rgba(255,255,255,0.85); font-size:1.05rem;"></i>
@@ -460,7 +516,6 @@
                 <li>
                     <div class="dropdown-item text-wrap py-2 notif-sistema-item {% if not notif.leida %}notif-sistema-no-leida{% endif %}"
                          data-notif-id="{{ notif.id }}"
-                         data-dispara-tour="{% if notif.dispara_tour %}true{% else %}false{% endif %}"
                          style="cursor:pointer; white-space:normal; font-size:0.82rem; border-left:3px solid #2471a3;">
                         <div class="notif-sistema-titulo" style="color:#0f2d52;">{{ notif.titulo }}</div>
                         <div class="notif-sistema-msg text-muted">{{ notif.mensaje|truncatechars:120 }}</div>
@@ -480,7 +535,7 @@
             .notif-sistema-no-leida .notif-sistema-msg { font-weight: 700; }
         </style>
 
-        <button type="button" id="tour-ayuda" class="icono-navbar-simple reporte-link"
+        <button type="button" class="icono-navbar-simple reporte-link"
           data-bs-toggle="modal"
           data-bs-target="#modalAyuda"
           aria-label="Abrir ayuda"
@@ -654,77 +709,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         </script>
-        <!-- Driver.js se carga siempre, disponible en cualquier pantalla -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
-<script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
-<script>
-function getCsrfTokenGesac() {
-    var input = document.querySelector('input[name=csrfmiddlewaretoken]');
-    return input ? input.value : '';
-}
-
-window.iniciarTourGesac = function () {
-    var modalRecordatorio = document.getElementById('modalRecordatorio');
-    if (modalRecordatorio) {
-        modalRecordatorio.style.display = 'none';
-    }
-
-    function marcarTourVisto() {
-        fetch("{% url 'marcar_tour_visto' %}", {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCsrfTokenGesac() },
-        });
-        if (modalRecordatorio) {
-            modalRecordatorio.style.display = 'flex';
-        }
-    }
-
-    var pasosDefinidos = [
-        { id: 'tour-inicio', title: '¡Bienvenido al tour por el nuevo y mejorado MENU!', description:' BOTON INICIO: Este botón siempre te regresa a tu pantalla de inicio, con el resumen de tu condominio.' },
-        { id: 'tour-catalogos', title: 'Catálogos', description: 'MENU CATALOGOS: Aquí administras tus clientes, proveedores, y el catálogo contable.' },
-        { id: 'tour-tesoreria', title: 'Tesorería', description: 'MENU TESORERIA: Tus cuentas bancarias y tu caja chica, en un solo lugar.' },
-        { id: 'tour-propiedades', title: 'Propiedades', description: 'MENU PROPIEDADES: El listado de locales o unidades de tu condominio, con sus cuotas.' },
-        { id: 'tour-areas', title: 'Áreas / Amenidades', description: 'MENU AREAS / AMENIDADES: Administra tus áreas comunes o amenidades, según el tipo de tu condominio.' },
-        { id: 'tour-facturacion', title: 'Facturación', description: 'MENU FACTURACION: Aquí generas la facturación mensual de cuotas, y consultas o cobras las facturas ya emitidas.' },
-        { id: 'tour-ingresos', title: 'Ingresos y Cartera', description: 'MENU INGRESOS Y CARTERA: Consulta tus depósitos, y da seguimiento a la cartera vencida de tus clientes.' },
-        { id: 'tour-gastos', title: 'Gastos', description: 'MENU GASTOS: Registra y da seguimiento a las solicitudes de gasto de tu condominio. realiza pagos y controla el presupuesto de gastos.' },
-        { id: 'tour-nomina', title: 'Nómina', description: 'MENU NOMINA: Dispersión de nómina e incidencias de tus empleados.' },
-        { id: 'tour-presupuestos', title: 'Presupuestos y Reportes', description: 'MENU PRESUPUESTOS Y REPORTES: Tus matrices de presupuesto, y los comparativos contra lo real.' },
-        { id: 'tour-comunicacion', title: 'Comunicación', description: 'MENU COMUNICACION: Asuntos generales y avisos para tus condóminos.' },
-        { id: 'tour-cuenta', title: 'Mi cuenta', description: 'MENU MI CUENTA: Renueva tu membresía, o invita a un colaborador a tu equipo.' },
-        { id: 'tour-campanita', title: 'Notificaciones', description: 'CAMPANITA NOTIFICACIONES: Aquí verás avisos importantes -- membresía por vencer, recordatorios, y novedades del sistema.' },
-        { id: 'tour-ayuda', title: '¿Necesitas ayuda?', description: 'BOTON AYUDA: Descarga el manual completo, o consulta tutoriales en video, cuando lo necesites.' },
-    ];
-
-    var steps = pasosDefinidos
-        .filter(function (p) { return document.getElementById(p.id) !== null; })
-        .map(function (p) {
-            return { element: '#' + p.id, popover: { title: p.title, description: p.description } };
-        });
-
-    if (steps.length === 0) return;
-
-    var driverObj = window.driver.js.driver({
-        showProgress: true,
-        nextBtnText: 'Siguiente',
-        prevBtnText: 'Atrás',
-        doneBtnText: 'Terminar',
-        progressText: '{% templatetag openvariable %}current{% templatetag closevariable %} de {% templatetag openvariable %}total{% templatetag closevariable %}',
-        onDestroyed: marcarTourVisto,
-        steps: steps,
-    });
-
-    driverObj.drive();
-};
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.notif-sistema-item[data-dispara-tour="true"]').forEach(function (item) {
-        item.addEventListener('click', function () {
-            window.iniciarTourGesac();
-        });
-    });
-});
-</script>
 <style>
 /* ── NAVBAR GESAC — Solo mejoras visuales ── */
 .navbar, .navbar * { font-family: 'Rubik', sans-serif !important; }

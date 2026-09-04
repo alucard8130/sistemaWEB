@@ -9,5 +9,6 @@ urlpatterns = [
     path('registro/', registro_usuario, name='registro'),
     
     
+    
 ]
 

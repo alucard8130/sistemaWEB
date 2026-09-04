@@ -445,6 +445,7 @@ urlpatterns = [
     path('cuenta-bloqueada/', cuenta_bloqueada, name='cuenta_bloqueada'),
     ### Notificaciones sistema ###
     path('notificaciones/', include('notificaciones_sistema.urls')),
+    path('empresa/usuarios/', include('usuarios_extra.urls')),
 ]
 
     

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Notificación — GESAC</title>
+    <title>Editar Notificación — GESAC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -40,8 +40,8 @@
         {% endif %}
 
         <div class="nt-header">
-            <div class="nt-titulo"><i class="bi bi-megaphone-fill me-2"></i>Nueva Notificación</div>
-            <div class="nt-subtitulo">Se le mostrará a todos los usuarios de GESAC en su campanita</div>
+            <div class="nt-titulo"><i class="bi bi-pencil-fill me-2"></i>Editar Notificación</div>
+            <div class="nt-subtitulo">Los cambios se ven de inmediato para todos los usuarios</div>
         </div>
 
         <div class="nt-form-card">
@@ -51,24 +51,24 @@
                 <div class="mb-3">
                     <label class="form-label">Tipo</label>
                     <select name="tipo" class="form-select" required>
-                        <option value="">Selecciona...</option>
                         {% for valor, etiqueta in tipo_choices %}
-                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                            <option value="{{ valor }}" {% if notif.tipo == valor %}selected{% endif %}>{{ etiqueta }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Título</label>
-                    <input type="text" name="titulo" class="form-control" placeholder="Ej. Nueva función: Reporte de Propiedades" required maxlength="150">
+                    <input type="text" name="titulo" class="form-control" value="{{ notif.titulo }}" required maxlength="150">
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Mensaje</label>
-                    <textarea name="mensaje" class="form-control" rows="5" placeholder="Describe la notificación..." required></textarea>
+                    <textarea name="mensaje" class="form-control" rows="5" required>{{ notif.mensaje }}</textarea>
                 </div>
+
                 <div class="mb-3 form-check">
-                    <input type="checkbox" name="dispara_tour" id="dispara_tour" class="form-check-input">
+                    <input type="checkbox" name="dispara_tour" id="dispara_tour" class="form-check-input" {% if notif.dispara_tour %}checked{% endif %}>
                     <label class="form-check-label" for="dispara_tour" style="font-size: 0.85rem;">
                         Al hacer clic, también inicia el tour guiado del sistema
                     </label>
@@ -76,7 +76,7 @@
 
                 <hr class="my-4">
                 <button type="submit" class="btn btn-publicar">
-                    <i class="bi bi-send-fill me-1"></i> Publicar
+                    <i class="bi bi-check-lg me-1"></i> Guardar cambios
                 </button>
                 <a href="{% url 'lista_notificaciones_sistema' %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
             </form>

@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "nomina",
     "gestion_cobranza",
     "notificaciones_sistema",
+    "usuarios_extra",
 ]
 
 

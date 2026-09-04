@@ -1,11 +1,8 @@
 
-from decimal import ROUND_HALF_UP, Decimal
 import secrets
+from decimal import ROUND_HALF_UP, Decimal
 
 from django import forms
-
-#from django.conf import settings
-#from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
 from django.db import models
@@ -14,8 +11,6 @@ from areas.models import AreaComun
 from empresas.models import Empresa
 from locales.models import LocalComercial
 
-#from django.db import models
-#from django.contrib.auth.models import User
 
 #perfil de usuario extendido
 class PerfilUsuario(models.Model):
@@ -49,9 +44,14 @@ class PerfilUsuario(models.Model):
         Empresa, blank=True, related_name='contadores',
         help_text="Empresas a las que este contador tiene acceso (solo aplica si es_contador=True)."
     )
+    ha_visto_tour_inicial = models.BooleanField(
+        default=False,
+        help_text="Si ya vio el recorrido guiado de bienvenida al sistema."
+    )
     
     def __str__(self):
        return f"{self.usuario.username} → {self.empresa.nombre if self.empresa else 'Sin empresa'}"
+
 
 # Modulo de auditoria 
 class AuditoriaCambio(models.Model):

@@ -18,6 +18,10 @@ class NotificacionSistema(models.Model):
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
     )
+    dispara_tour = models.BooleanField(
+        default=False,
+        help_text="Si al hacer clic en esta notificación, también debe iniciar el tour guiado del sistema."
+    )
 
     class Meta:
         ordering = ['-fecha_creacion']  # noqa: RUF012

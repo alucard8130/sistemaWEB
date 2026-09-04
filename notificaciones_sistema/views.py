@@ -17,6 +17,7 @@ def crear_notificacion_sistema(request):
         tipo = request.POST.get('tipo')
         titulo = request.POST.get('titulo', '').strip()
         mensaje = request.POST.get('mensaje', '').strip()
+        dispara_tour = request.POST.get('dispara_tour') == 'on'  # NUEVO
 
         if tipo not in dict(NotificacionSistema.TIPO_CHOICES):
             messages.error(request, "Selecciona un tipo válido.")
@@ -26,7 +27,7 @@ def crear_notificacion_sistema(request):
             return redirect('crear_notificacion_sistema')
 
         NotificacionSistema.objects.create(
-            tipo=tipo, titulo=titulo, mensaje=mensaje, creado_por=request.user,
+            tipo=tipo, titulo=titulo, mensaje=mensaje, creado_por=request.user, dispara_tour=dispara_tour,  # NUEVO
         )
         messages.success(request, "Notificación publicada correctamente.")
         return redirect('lista_notificaciones_sistema')
@@ -45,6 +46,42 @@ def lista_notificaciones_sistema(request):
     notificaciones = NotificacionSistema.objects.all()
     return render(request, 'notificaciones/lista_notificaciones.html', {
         'notificaciones': notificaciones,
+    })
+
+
+@login_required
+def editar_notificacion_sistema(request, notif_id):
+    if not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para ver esta pantalla.")
+        return redirect('dashboard_inicio')
+
+    notif = get_object_or_404(NotificacionSistema, id=notif_id)
+
+    if request.method == 'POST':
+        tipo = request.POST.get('tipo')
+        titulo = request.POST.get('titulo', '').strip()
+        mensaje = request.POST.get('mensaje', '').strip()
+        dispara_tour = request.POST.get('dispara_tour') == 'on'
+
+        if tipo not in dict(NotificacionSistema.TIPO_CHOICES):
+            messages.error(request, "Selecciona un tipo válido.")
+            return redirect('editar_notificacion_sistema', notif_id=notif_id)
+        if not titulo or not mensaje:
+            messages.error(request, "El título y el mensaje son obligatorios.")
+            return redirect('editar_notificacion_sistema', notif_id=notif_id)
+
+        notif.tipo = tipo
+        notif.titulo = titulo
+        notif.mensaje = mensaje
+        notif.dispara_tour = dispara_tour
+        notif.save()
+
+        messages.success(request, "Notificación actualizada correctamente.")
+        return redirect('lista_notificaciones_sistema')
+
+    return render(request, 'notificaciones/editar_notificacion.html', {
+        'notif': notif,
+        'tipo_choices': NotificacionSistema.TIPO_CHOICES,
     })
 
 
