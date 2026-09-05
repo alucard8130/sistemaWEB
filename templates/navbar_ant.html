@@ -324,28 +324,28 @@
             </ul>
           </li>
          {% if request.user.is_staff or empresa_actual.precio_sanitario or empresa_actual.precio_papel or empresa_actual.precio_toalla %}
-<li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Sanitarios">
-        Sanitarios <i style="font-size: 1.5em;"></i>
-    </a>
-    <ul class="dropdown-menu">
-        {% if empresa_actual.precio_sanitario or empresa_actual.precio_papel or empresa_actual.precio_toalla %}
-        <li><a class="dropdown-item reporte-link" href="{% url 'sanitarios_corte_diario' %}"><i class="bi bi-clock-history me-2"></i>Historial de Cortes</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item reporte-link" href="{% url 'lista_gafetes_acceso' %}"><i class="bi bi-person-badge-fill me-2"></i>Gafetes de Acceso</a></li>
-        {% if empresa_actual.precio_toalla %}
-        <li><a class="dropdown-item reporte-link" href="{% url 'registrar_lote_toallas' %}"><i class="bi bi-box-seam-fill me-2"></i>Inventario de Toallas</a></li>
+          <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Sanitarios">
+                  Sanitarios <i style="font-size: 1.5em;"></i>
+              </a>
+              <ul class="dropdown-menu">
+                  {% if empresa_actual.precio_sanitario or empresa_actual.precio_papel or empresa_actual.precio_toalla %}
+                  <li><a class="dropdown-item reporte-link" href="{% url 'sanitarios_corte_diario' %}"><i class="bi bi-clock-history me-2"></i>Historial de Cortes</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item reporte-link" href="{% url 'lista_gafetes_acceso' %}"><i class="bi bi-person-badge-fill me-2"></i>Gafetes de Acceso</a></li>
+                  {% if empresa_actual.precio_toalla %}
+                  <li><a class="dropdown-item reporte-link" href="{% url 'registrar_lote_toallas' %}"><i class="bi bi-box-seam-fill me-2"></i>Inventario de Toallas</a></li>
+                  {% endif %}
+                  <li><hr class="dropdown-divider"></li>
+                  {% endif %}
+                  <li><a class="dropdown-item reporte-link" href="{% url 'configurar_precio_sanitario' %}"><i class="bi bi-gear me-2"></i>Configurar Precios</a></li>
+                {% if empresa_actual.usa_boletos_fisicos_sanitario or empresa_actual.usa_boletos_fisicos_papel %}
+                  <li><a class="dropdown-item reporte-link" href="{% url 'cargar_boletos_fisicos' %}"><i class="bi bi-ticket-perforated-fill me-2"></i>Cargar Boletos Físicos</a></li>
+                  {% endif %}
+                  <li><a class="dropdown-item reporte-link" href="{% url 'lista_casetas_sanitario' %}"><i class="bi bi-display me-2"></i>Configuar Casetas</a></li>
+              </ul>
+          </li>
         {% endif %}
-        <li><hr class="dropdown-divider"></li>
-        {% endif %}
-        <li><a class="dropdown-item reporte-link" href="{% url 'configurar_precio_sanitario' %}"><i class="bi bi-gear me-2"></i>Configurar Precios</a></li>
-       {% if empresa_actual.usa_boletos_fisicos_sanitario or empresa_actual.usa_boletos_fisicos_papel %}
-        <li><a class="dropdown-item reporte-link" href="{% url 'cargar_boletos_fisicos' %}"><i class="bi bi-ticket-perforated-fill me-2"></i>Cargar Boletos Físicos</a></li>
-        {% endif %}
-        <li><a class="dropdown-item reporte-link" href="{% url 'lista_casetas_sanitario' %}"><i class="bi bi-display me-2"></i>Configuar Casetas</a></li>
-    </ul>
-</li>
-{% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Cartera Vencida">
               Cartera<i style="font-size: 1.5em;"></i>

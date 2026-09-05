@@ -11,6 +11,7 @@ from datetime import timedelta
 from django.urls import reverse
 from django.utils import timezone
 
+from areas.models import AreaComun
 from facturacion.utils import debe_mostrar_recordatorio_facturacion
 from notificaciones_sistema.models import NotificacionLeida, NotificacionSistema
 
@@ -57,6 +58,55 @@ def _generar_alertas_automaticas(request):
             'icono': 'calendar-check',
             'color': '#8A6D00',
         })
+
+    # 3. NUEVO -- Contratos de areas comunes vencidos o por vencer
+    # (30/60/90 dias) -- se agrupan por urgencia en vez de una alerta
+    # por cada area, para no saturar la campanita si hay varias.
+    if empresa:
+        hoy = timezone.now().date()
+        areas_activas = AreaComun.objects.filter(empresa=empresa, activo=True, fecha_fin__isnull=False)
+
+        areas_vencidas = areas_activas.filter(fecha_fin__lt=hoy).count()
+        areas_30 = areas_activas.filter(fecha_fin__gte=hoy, fecha_fin__lte=hoy + timedelta(days=30)).count()
+        areas_60 = areas_activas.filter(
+            fecha_fin__gt=hoy + timedelta(days=30), fecha_fin__lte=hoy + timedelta(days=60)
+        ).count()
+        areas_90 = areas_activas.filter(
+            fecha_fin__gt=hoy + timedelta(days=60), fecha_fin__lte=hoy + timedelta(days=90)
+        ).count()
+
+        if areas_vencidas:
+            alertas.append({
+                'titulo': f'{areas_vencidas} contrato(s) de área vencido(s)',
+                'mensaje': 'Revisa si renuevan, desocupan, o hay que actualizar su estatus.',
+                'url': reverse('lista_areas') + '?vencimiento=vencido',
+                'icono': 'exclamation-triangle-fill',
+                'color': '#9C2B2B',
+            })
+        if areas_30:
+            alertas.append({
+                'titulo': f'{areas_30} contrato(s) vence(n) en 30 días',
+                'mensaje': 'Da seguimiento a tiempo para renovación o búsqueda de nuevo arrendatario.',
+                'url': reverse('lista_areas') + '?vencimiento=30',
+                'icono': 'hourglass-split',
+                'color': '#9C2B2B',
+            })
+        if areas_60:
+            alertas.append({
+                'titulo': f'{areas_60} contrato(s) vence(n) en 60 días',
+                'mensaje': 'Empieza a planear la renovación o búsqueda de nuevo arrendatario.',
+                'url': reverse('lista_areas') + '?vencimiento=60',
+                'icono': 'hourglass-split',
+                'color': '#8A6D00',
+            })
+        if areas_90:
+            alertas.append({
+                'titulo': f'{areas_90} contrato(s) vence(n) en 90 días',
+                'mensaje': 'Aún tienes tiempo, pero vale la pena tenerlos en el radar.',
+                'url': reverse('lista_areas') + '?vencimiento=90',
+                'icono': 'calendar3',
+                'color': '#8A6D00',
+            })    
  
     return alertas
 

@@ -1,12 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import openpyxl
 from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-
-#from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Avg, Q, Sum
@@ -18,9 +16,6 @@ from unidecode import unidecode
 from areas.utility import generar_facturas_area
 from clientes.models import Cliente
 from empresas.models import Empresa
-
-#from facturacion.views import crear_factura
-#from locales.forms import LocalComercialForm
 from principal.models import AuditoriaCambio
 
 from .forms import (
@@ -36,6 +31,7 @@ from .models import AreaComun
 def lista_areas(request):
     user = request.user
     query = request.GET.get("q", "")
+    vencimiento = request.GET.get("vencimiento", "")  # NUEVO
     empresa_id = request.session.get("empresa_id")
     if user.is_superuser and empresa_id:
         areas = AreaComun.objects.filter(empresa_id=empresa_id, activo=True).order_by('numero')
@@ -50,6 +46,23 @@ def lista_areas(request):
             Q(numero__icontains=query) | Q(cliente__nombre__icontains=query)
         )
 
+    # NUEVO -- filtro de vencimiento (usado por las alertas de la
+    # campanita: contratos vencidos, o que vencen en 30/60/90 dias).
+    if vencimiento:
+        hoy = datetime.now().date()  # noqa: DTZ005
+        if vencimiento == 'vencido':
+            areas = areas.filter(fecha_fin__lt=hoy)
+        elif vencimiento == '30':
+            areas = areas.filter(fecha_fin__gte=hoy, fecha_fin__lte=hoy + timedelta(days=30))
+        elif vencimiento == '60':
+            areas = areas.filter(
+                fecha_fin__gt=hoy + timedelta(days=30), fecha_fin__lte=hoy + timedelta(days=60)
+            )
+        elif vencimiento == '90':
+            areas = areas.filter(
+                fecha_fin__gt=hoy + timedelta(days=60), fecha_fin__lte=hoy + timedelta(days=90)
+            )
+
     areas = areas.order_by('numero')
     total_areas = areas.count()
     total_cuotas = areas.aggregate(total=Sum('cuota'))['total'] or 0
@@ -57,37 +70,31 @@ def lista_areas(request):
     superficie_total = areas.aggregate(total=Sum('superficie_m2'))['total'] or 0
     promedio_precio_m2 = total_cuotas / superficie_total if superficie_total > 0 else 0
 
-    status_vencido = areas.filter(fecha_fin__lt=datetime.now()).count()
-    status_vigente = areas.filter(fecha_fin__gte=datetime.now()).count()
-    # NUEVO -- las áreas "Disponible" no tienen fecha_fin (se limpia al
-    # liberarlas), así que no caen ni en vigente ni en vencido -- se
-    # cuentan aparte, para que el desglose siga sumando el total.
+    status_vencido = areas.filter(fecha_fin__lt=datetime.now()).count()  # noqa: DTZ005
+    status_vigente = areas.filter(fecha_fin__gte=datetime.now()).count()  # noqa: DTZ005
     status_disponible = areas.filter(status="disponible").count()
 
-    # NUEVO -- el porcentaje ahora se calcula sobre las áreas que SÍ
-    # tienen contrato (vigente + vencido), no sobre el total -- si no,
-    # las Disponibles diluyen el porcentaje y lo hacen ver más bajo de
-    # lo real.
     con_contrato = status_vigente + status_vencido
     porcentaje_vencido = (status_vencido / con_contrato * 100) if con_contrato > 0 else 0
-     
-    
+
     paginator = Paginator(areas, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'areas/lista_areas.html', {'areas': page_obj, 
-                                                      'q': query, 
-                                                      'total_areas': total_areas, 
-                                                      'total_cuotas': total_cuotas,
-                                                        'promedio_cuotas': promedio_cuotas, 
-                                                        'superficie_total': superficie_total,
-                                                          'promedio_precio_m2': promedio_precio_m2,
-                                                          'status_vencido': status_vencido,
-                                                          'status_vigente': status_vigente,
-                                                            'porcentaje_vencido': porcentaje_vencido,
-                                                            'status_disponible': status_disponible
-                                                      })
+    return render(request, 'areas/lista_areas.html', {
+        'areas': page_obj,
+        'q': query,
+        'vencimiento': vencimiento,  # NUEVO
+        'total_areas': total_areas,
+        'total_cuotas': total_cuotas,
+        'promedio_cuotas': promedio_cuotas,
+        'superficie_total': superficie_total,
+        'promedio_precio_m2': promedio_precio_m2,
+        'status_vencido': status_vencido,
+        'status_vigente': status_vigente,
+        'porcentaje_vencido': porcentaje_vencido,
+        'status_disponible': status_disponible,
+    })
 
 
 @login_required
