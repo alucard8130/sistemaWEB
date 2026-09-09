@@ -123,7 +123,7 @@
                             <a href="{% url 'editar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar cliente">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-danger reporte-link"
+                            <a href="{% url 'eliminar_cliente' cliente.pk %}" class="btn btn-sm btn-outline-danger"
                                title="Inactivar cliente"
                                onclick="return confirm('¿Seguro que quieres inactivar a &quot;{{ cliente.nombre|escapejs }}&quot;?');">
                                 <i class="bi bi-slash-circle"></i>

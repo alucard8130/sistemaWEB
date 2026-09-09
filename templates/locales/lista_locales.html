@@ -171,12 +171,12 @@
                         <th>Sup.(m²)</th>
                         <th>% Ind.</th>
                         <th>Cuota</th>
-                        <th>Fact.Anual</th>
+                        <th>C.Anual</th>
                         {% if empresa_actual.segmento != 'habitacional' %}
                         <th>Giro</th>
                         {% endif %}
+                        <th>Ubicacion</th>
                         <th>Status</th>
-                        <th>Facturas</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -219,13 +219,14 @@
                             {% if empresa_actual.segmento != 'habitacional' %}
                             <td class="col-giro" title="{{ local.giro|default:'' }}">{{ local.giro|default:""|truncatechars:15 }}</td>
                             {% endif %}
-                            <td>{{ local.get_status_display }}</td>
                             <td>
-                                <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas asociadas a esta propiedad y registra nuevos pagos">
+                                <span class="badge bg-secondary" title="Ubicación">{{ local.ubicacion|default:"—" }}</span>
+                            </td>
+                            <td>{{ local.get_status_display }}</td>
+                            <td class="text-nowrap">
+                                 <a href="{% url 'lista_facturas' %}?local_id={{ local.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas asociadas a esta propiedad y registra nuevos pagos">
                                     <i class="bi bi-receipt"></i>
                                 </a>
-                            </td>
-                            <td class="text-nowrap">
                                 <a href="{% url 'editar_local' local.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar propiedad">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
