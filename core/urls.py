@@ -81,6 +81,7 @@ from empleados.views import (
     incidencias_lista,
 )
 from empresas.views import (
+    configurar_comision_stripe,
     cuenta_bancaria_crear,
     cuenta_bancaria_editar,
     cuenta_bancaria_eliminar,
@@ -232,6 +233,7 @@ urlpatterns = [
     path('empresas/resetear/<int:empresa_id>/', resetear_empresa, name='resetear_empresa'),
     path('empresas/editar/<int:pk>/', empresa_editar, name='empresa_editar'),
     path('empresas/eliminar/<int:pk>/', empresa_eliminar, name='empresa_eliminar'),
+    path('empresa/comision-stripe/', configurar_comision_stripe, name='configurar_comision_stripe'),
     path('cuentas-bancarias/editar/<int:pk>/', cuenta_bancaria_editar, name='cuenta_bancaria_editar'),
     path('cuenta-bancaria/crear/', cuenta_bancaria_crear, name='cuenta_bancaria_crear'),
     path('cuentas-bancarias/', cuentas_bancarias_lista, name='cuentas_bancarias_lista'),

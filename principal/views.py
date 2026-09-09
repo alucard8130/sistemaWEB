@@ -1,5 +1,6 @@
 # import csv
 import base64
+import calendar
 import io
 import json
 import locale
@@ -22,6 +23,7 @@ import requests
 import stripe
 import weasyprint
 from babel.dates import format_date
+from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model, update_session_auth_hash
@@ -5851,15 +5853,19 @@ def _notificar_cliente_resultado_pago(pago, confirmado):
 
 
 def _renovar_vencimiento_transferencia(perfil, meses=1):
-    """Extiende fecha_vencimiento -- si todavia no vence, suma los meses
-    A PARTIR de la fecha que ya tenia (no se pierde tiempo pagado por
-    adelantado); si ya vencio, cuenta a partir de hoy."""
-    ahora = timezone.now()
-    dias = meses * 30
-    if perfil.fecha_vencimiento and perfil.fecha_vencimiento > ahora:
-        perfil.fecha_vencimiento += timedelta(days=dias)
-    else:
-        perfil.fecha_vencimiento = ahora + timedelta(days=dias)
+    """Extiende fecha_vencimiento -- SIEMPRE al ultimo dia del mes,
+    sin importar cuando se pague ni cual era el vencimiento anterior.
+ 
+    Con meses=1 (mensual), termina al fin de ESTE mismo mes.
+    Con meses=12 (anual), cubre 12 meses completos, terminando al fin
+    del mes que esta 11 meses adelante de hoy.
+    """
+    hoy = timezone.now().date()
+    mes_objetivo = hoy + relativedelta(months=meses - 1)
+    ultimo_dia = calendar.monthrange(mes_objetivo.year, mes_objetivo.month)[1]
+    perfil.fecha_vencimiento = date(mes_objetivo.year, mes_objetivo.month, ultimo_dia)
+    perfil.save(update_fields=['fecha_vencimiento'])
+
 
 
 # ============================================================

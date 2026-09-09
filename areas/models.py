@@ -51,58 +51,7 @@ class AreaComun(models.Model):
                    "cada vez que el usuario factura manualmente esta área. Esta "
                    "área nunca se incluye en la facturación mensual automática."
     )
-    # ============================================================
-    # NUEVO -- expediente de contrato de arrendamiento comercial 040926
-    # ============================================================
-
-    plazo_forzoso_meses = models.PositiveIntegerField(
-        blank=True, null=True,
-        help_text="Meses durante los cuales el arrendatario NO puede rescindir sin penalización."
-    )
-    renovacion_automatica = models.BooleanField(
-        default=False, verbose_name="¿Renovación automática al vencer?"
-    )
-
-    TIPO_INCREMENTO_CHOICES = [  # noqa: RUF012
-        ('ninguno', 'Sin incremento automático'),
-        ('porcentaje_fijo', 'Porcentaje fijo'),
-        ('inpc', 'Indexado a INPC'),
-    ]
-    tipo_incremento = models.CharField(
-        max_length=20, choices=TIPO_INCREMENTO_CHOICES, default='ninguno'
-    )
-    porcentaje_incremento = models.DecimalField(
-        max_digits=5, decimal_places=2, blank=True, null=True,
-        help_text="% a aplicar cada aniversario del contrato (si el tipo es porcentaje fijo)."
-    )
-    fecha_ultimo_incremento = models.DateField(
-        blank=True, null=True,
-        help_text="Última vez que se aplicó un incremento a la cuota de esta área."
-    )
-
-    penalizacion_atraso_porcentaje = models.DecimalField(
-        max_digits=5, decimal_places=2, blank=True, null=True,
-        help_text="% de recargo por atraso en el pago, según contrato."
-    )
-
-    ESTATUS_DEPOSITO_CHOICES = [  # noqa: RUF012
-        ('retenido', 'Retenido'),
-        ('devuelto', 'Devuelto'),
-        ('aplicado_danos', 'Aplicado a daños'),
-    ]
-    estatus_deposito = models.CharField(
-        max_length=20, choices=ESTATUS_DEPOSITO_CHOICES, default='retenido', blank=True, null=True
-    )
-
-    clausulas_especiales = models.TextField(
-        blank=True, null=True,
-        help_text="Exclusividad de zona, restricciones de uso, u otras condiciones especiales del contrato."
-    )
-
-    contrato_pdf = models.FileField(
-        upload_to='contratos_areas/', blank=True, null=True,
-        help_text="Documento del contrato de arrendamiento firmado."
-    )
+   
 
 
     def save(self, *args, **kwargs):
@@ -133,23 +82,3 @@ class AreaComun(models.Model):
         unique_together = ('empresa', 'numero')
 
 
-### Historial de incrementos de renta de áreas comunes############
-
-class HistorialIncrementoArea(models.Model):
-    """Registra cada incremento de renta aplicado a un area -- para
-    tener trazabilidad de cuanto y cuando cambio la cuota."""
-    area = models.ForeignKey('AreaComun', on_delete=models.CASCADE, related_name='historial_incrementos')
-    fecha_aplicacion = models.DateField(auto_now_add=True)
-    cuota_anterior = models.DecimalField(max_digits=10, decimal_places=2)
-    cuota_nueva = models.DecimalField(max_digits=10, decimal_places=2)
-    porcentaje_aplicado = models.DecimalField(max_digits=5, decimal_places=2)
-    aplicado_por = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-        help_text="Vacío si el incremento lo aplicó el comando automático."
-    )
-
-    class Meta:
-        ordering = ['-fecha_aplicacion']  # noqa: RUF012
-
-    def __str__(self):
-        return f"{self.area.numero}: ${self.cuota_anterior} → ${self.cuota_nueva} ({self.porcentaje_aplicado}%)"

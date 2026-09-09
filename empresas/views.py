@@ -56,6 +56,24 @@ def empresa_eliminar(request, pk):
     return render(request, 'empresas/eliminar.html', {'empresa': empresa})
 
 
+
+def configurar_comision_stripe(request):
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if not perfil or not perfil.empresa:
+        messages.error(request, "No tienes una empresa asociada.")
+        return redirect('dashboard_inicio')
+ 
+    empresa = perfil.empresa
+ 
+    if request.method == 'POST':
+        empresa.absorber_comision_stripe = request.POST.get('absorber_comision_stripe') == 'on'
+        empresa.save(update_fields=['absorber_comision_stripe'])
+        messages.success(request, "Configuración de comisión de Stripe actualizada correctamente.")
+        return redirect('configurar_comision_stripe')
+ 
+    return render(request, 'membresias/configurar_comision_stripe.html', {'empresa': empresa})
+
+
 ############################
 # Vistas para cuentas bancarias
 @login_required

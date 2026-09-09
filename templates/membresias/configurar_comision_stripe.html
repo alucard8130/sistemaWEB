@@ -1,0 +1,96 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comisión de Pagos con Tarjeta — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .cs-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 60%, #2471a3 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,45,82,0.2);
+        }
+        .cs-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .cs-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .opcion-card {
+            background: white; border: 2px solid #e2e8f0; border-radius: 14px;
+            padding: 20px 22px; margin-bottom: 14px; cursor: pointer; transition: all 0.15s;
+        }
+        .opcion-card:hover { border-color: #2471a3; }
+        .opcion-card.seleccionada { border-color: #2471a3; background: #eaf2fb; }
+        .opcion-card input[type="radio"] { width: 1.15em; height: 1.15em; margin-right: 10px; }
+        .opcion-titulo { font-weight: 700; font-size: 0.95rem; color: #0f2d52; display: flex; align-items: center; }
+        .opcion-desc { font-size: 0.84rem; color: #6b7280; margin-top: 6px; margin-left: 28px; }
+        .opcion-ejemplo { font-size: 0.78rem; color: #1E8449; margin-top: 8px; margin-left: 28px; font-weight: 600; }
+
+        .btn-guardar { background: linear-gradient(135deg, #1a5276, #2471a3); color: white; border: none; border-radius: 10px; padding: 11px 26px; font-weight: 600; font-size: 0.92rem; }
+        .btn-guardar:hover { color: white; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 680px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="cs-header">
+            <div class="cs-titulo"><i class="bi bi-credit-card-2-front-fill me-2"></i>Comisión de Pagos con Tarjeta</div>
+            <div class="cs-subtitulo">Elige cómo se maneja la comisión de Stripe cuando tus condóminos pagan con tarjeta</div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <label class="opcion-card {% if empresa.absorber_comision_stripe %}seleccionada{% endif %}">
+                <div class="opcion-titulo">
+                    <input type="radio" name="absorber_comision_stripe" value="on" {% if empresa.absorber_comision_stripe %}checked{% endif %}>
+                    Yo absorbo la comisión
+                </div>
+                <div class="opcion-desc">El condómino paga exactamente el monto de su factura -- la comisión de Stripe se descuenta de lo que recibes tú.</div>
+                <div class="opcion-ejemplo">Ej. Factura de $1,000 → el condómino paga $1,000 → tú recibes $1,000 menos la comisión.</div>
+            </label>
+
+            <label class="opcion-card {% if not empresa.absorber_comision_stripe %}seleccionada{% endif %}">
+                <div class="opcion-titulo">
+                    <input type="radio" name="absorber_comision_stripe" value="" {% if not empresa.absorber_comision_stripe %}checked{% endif %}>
+                    El condómino paga la comisión
+                </div>
+                <div class="opcion-desc">Se le agrega la comisión de Stripe por separado al momento de pagar -- tú recibes el monto completo de la factura, sin descuentos.</div>
+                <div class="opcion-ejemplo">Ej. Factura de $1,000 → el condómino paga $1,000 + comisión → tú recibes $1,000 completos.</div>
+            </label>
+
+            <button type="submit" class="btn-guardar mt-3">
+                <i class="bi bi-check-lg me-1"></i> Guardar preferencia
+            </button>
+        </form>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.opcion-card input[type="radio"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('.opcion-card').forEach(function(card) {
+                    card.classList.remove('seleccionada');
+                });
+                this.closest('.opcion-card').classList.add('seleccionada');
+            });
+        });
+    </script>
+</body>
+</html>
