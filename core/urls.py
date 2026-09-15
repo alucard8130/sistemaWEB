@@ -223,11 +223,9 @@ from publicidad.views import anuncios_api, anuncios_publicos, solicitud_publicid
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    #path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
     path('login/', auth_views.LoginView.as_view(template_name='login.html',authentication_form=EmpresaAuthenticationForm,), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('', dashboard_inicio, name='dashboard_inicio'),
-    #path('', bienvenida, name='bienvenida'),
     path('empresas/nueva/', empresa_crear, name='empresa_crear'),
     path('empresas/', empresa_lista, name='empresa_lista'),
     path('empresas/resetear/<int:empresa_id>/', resetear_empresa, name='resetear_empresa'),
@@ -257,7 +255,6 @@ urlpatterns = [
     path('clientes/carga-masiva/', carga_masiva_clientes, name='carga_masiva_clientes'),
     path('clientes/plantilla-clientes/', plantilla_clientes_excel, name='plantilla_clientes_excel'),
     path('clientes/<int:cliente_id>/actualizar_factura_global/',actualizar_factura_global, name='actualizar_factura_global'),
-    #path('clientes/<int:cliente_id>/instrucciones_pago_pdf/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
     path('facturas/', include('facturacion.urls')),
     path('locales/', include('locales.urls')),
     path('areas/', include('areas.urls')),
@@ -277,10 +274,8 @@ urlpatterns = [
     path('evento/enviar_correo/<int:evento_id>/', enviar_correo_evento, name='enviar_correo_evento'),
     path('registro/', registro_usuario, name='registro_usuario'),
     path('stripe/webhook/', stripe_webhook, name='stripe_webhook'),
-    #path('stripe/webhook-premium/', stripe_webhook_premium, name='stripe_webhook_premium'),
     path('stripe/crear-sesion/', crear_sesion_pago, name='crear_sesion_pago'),
     path('stripe/crear-sesion-premium/', crear_sesion_pago_premium, name='crear_sesion_pago_premium'),
-    #path('premium/', info_premium, name='info_premium'),
     path('stripe/cancelar-suscripcion/', cancelar_suscripcion, name='cancelar_suscripcion'),
     path('stripe/cancelar-suscripcion-premium/', cancelar_suscripcion_premium, name='cancelar_suscripcion_premium'),
     path('guardar-datos-empresa/', guardar_datos_empresa, name='guardar_datos_empresa'),
@@ -308,14 +303,11 @@ urlpatterns = [
     path("tickets/<int:ticket_id>/", detalle_ticket, name="detalle_ticket"),
     path("tickets/<int:ticket_id>/agregar_seguimiento/", agregar_seguimiento, name="agregar_seguimiento"),
     path("tickets/<int:ticket_id>/actualizar/", actualizar_ticket, name="actualizar_ticket"),
-    # path('seleccionar-empresa/', seleccionar_empresa, name='seleccionar_empresa'),
     path('incidencias/', incidencias_lista, name='incidencias_lista'),
     path('incidencias/nueva/', incidencia_crear, name='incidencia_crear'),
     path('incidencias/exportar/', exportar_incidencias_excel, name='exportar_incidencias_excel'),
     path('incidencias/<int:pk>/editar/', incidencia_editar, name='incidencia_editar'),
     path('incidencias/<int:pk>/cancelar/', incidencia_cancelar, name='incidencia_cancelar'),
-    #path('consulta-facturas/', consulta_facturas, name='consulta_facturas'),
-    #path('consulta-facturas/exportar/', exportar_consulta_facturas_excel, name='exportar_consulta_facturas_excel'),
     path('visitante/registro/', registro_visitante, name='registro_visitante'),
     path('visitante/login/', visitante_login, name='visitante_login'),
     path('visitante/recuperar-password/', visitante_recuperar_password, name='visitante_recuperar_password'),
@@ -405,7 +397,6 @@ urlpatterns = [
     path('planes/plus/', views.info_plus, name='info_plus'),
     path('traspasos/', include('traspasos.urls')),
     path("reporte/", reporte_caja_chica, name="reporte_caja_chica"),
-    #path('clientes/<int:cliente_id>/instrucciones-pago/', instrucciones_pago_pdf, name='instrucciones_pago_pdf'),
     path('propiedades/<str:tipo>/<int:propiedad_id>/instrucciones-pago/', instrucciones_pago_propiedad_pdf, name='instrucciones_pago_propiedad_pdf'),
     path('amenidades/', lista_amenidades, name='lista_amenidades'),
     path('amenidades/<int:amenidad_id>/reservar/', reservar_amenidad, name='reservar_amenidad'),
@@ -447,7 +438,10 @@ urlpatterns = [
     path('cuenta-bloqueada/', cuenta_bloqueada, name='cuenta_bloqueada'),
     ### Notificaciones sistema ###
     path('notificaciones/', include('notificaciones_sistema.urls')),
+    ## Usuarios Extra ##
     path('empresa/usuarios/', include('usuarios_extra.urls')),
+    ## Arrendamientos ##
+    path('contratos/', include('arrendamientos.urls')),
 ]
 
     

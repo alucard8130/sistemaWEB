@@ -287,26 +287,6 @@ def crear_factura(request):
                         elif tipo == "area_comun":
                             prefix = "AC-F"
 
-                        # # Busca el último folio para la empresa y tipo
-                        # last_folio = (
-                        #     Factura.objects.filter(
-                        #         empresa=factura.empresa, folio__startswith=prefix
-                        #     )
-                        #     .order_by("-folio")
-                        #     .values_list("folio", flat=True)
-                        #     .first()
-                        # )
-
-                        # if last_folio:
-                        #     try:
-                        #         last_num = int(last_folio.replace(prefix, ""))
-                        #     except Exception:  
-                        #         last_num = 0
-                        # else:
-                        #     last_num = 0
-
-                        # factura.folio = f"{prefix}{last_num + 1:05d}"
-                        # factura.save()
                         _generar_y_guardar_folio(factura, prefix)
 
                         # Asignar cliente a local/área si está vacío o si hay conflicto autorizado

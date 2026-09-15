@@ -50,7 +50,7 @@
                                placeholder="Buscar por nombre o RFC..." value="{{ proveedor_nombre }}">
                         <button type="submit" class="btn btn-primary">Buscar</button>
                         {% if proveedor_nombre %}
-                            <a href="{% url 'lista_proveedores' %}" class="btn btn-outline-secondary reporte-link" title="Quitar filtro">
+                            <a href="{% url 'proveedor_lista' %}" class="btn btn-outline-secondary reporte-link" title="Quitar filtro">
                                 <i class="bi bi-x-lg"></i>
                             </a>
                         {% endif %}

@@ -1,0 +1,113 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captura de Ventas — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .cv-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 60%, #2471a3 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,45,82,0.2);
+        }
+        .cv-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .cv-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .form-card { background: white; border-radius: 16px; padding: 24px 26px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .form-label { font-weight: 600; font-size: 0.78rem; color: #1a5276; text-transform: uppercase; margin-bottom: 5px; }
+        .form-control { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.88rem; padding: 8px 11px; }
+        .btn-calcular { background: linear-gradient(135deg, #1a5276, #2471a3); color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: 600; font-size: 0.9rem; }
+        .btn-calcular:hover { color: white; }
+
+        table.tabla-ventas { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.8rem; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+        table.tabla-ventas thead th { background: #0f2d52; color: white; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; padding: 10px 10px; }
+        table.tabla-ventas tbody td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; color: #374151; }
+        .no-data { text-align: center; padding: 40px 20px; color: #9ca3af; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 850px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="cv-header">
+            <div class="cv-titulo"><i class="bi bi-graph-up me-2"></i>Captura de Ventas -- Área {{ contrato.area.numero }}</div>
+            <div class="cv-subtitulo">
+                {{ contrato.cliente.nombre }} -- Renta {{ contrato.get_tipo_renta_display }} ({{ contrato.porcentaje_ventas }}% sobre ventas)
+                {% if contrato.tipo_renta == 'mixta' %} + ${{ contrato.cuota|floatformat:2|intcomma }} base{% endif %}
+                {% if contrato.tipo_renta == 'variable' and contrato.cuota %} -- mínima garantizada ${{ contrato.cuota|floatformat:2|intcomma }}{% endif %}
+                {% if contrato.incluye_mantenimiento %} + ${{ contrato.cuota_mantenimiento|floatformat:2|intcomma }} mantenimiento{% endif %}
+            </div>
+        </div>
+
+        <div class="form-card">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Inicio del periodo</label>
+                        <input type="date" name="periodo_inicio" class="form-control" required>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Fin del periodo</label>
+                        <input type="date" name="periodo_fin" class="form-control" required>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Monto de ventas del periodo</label>
+                        <input type="number" step="0.01" name="monto_ventas" class="form-control" placeholder="0.00" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-calcular mt-3">
+                    <i class="bi bi-calculator me-1"></i>Calcular y registrar
+                </button>
+            </form>
+        </div>
+
+        <div class="table-responsive">
+        <table class="tabla-ventas">
+            <thead>
+                <tr>
+                    <th>Periodo</th>
+                    <th class="text-end">Ventas</th>
+                    <th class="text-end">Renta variable</th>
+                    <th class="text-end">Renta base</th>
+                    <th class="text-end">Total a cobrar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reportes %}
+                <tr>
+                    <td>{{ r.periodo_inicio|date:"d/m/Y" }} — {{ r.periodo_fin|date:"d/m/Y" }}</td>
+                    <td class="text-end">${{ r.monto_ventas|floatformat:2|intcomma }}</td>
+                    <td class="text-end">${{ r.renta_variable_calculada|floatformat:2|intcomma }} ({{ r.porcentaje_aplicado }}%)</td>
+                    <td class="text-end">${{ r.renta_base_del_periodo|floatformat:2|intcomma }}</td>
+                    <td class="text-end fw-bold" style="color:#1E8449;">${{ r.total_a_cobrar|floatformat:2|intcomma }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="no-data">Todavía no se han capturado ventas para este contrato.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

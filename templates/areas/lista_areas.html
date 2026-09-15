@@ -67,6 +67,30 @@
             text-overflow: ellipsis;
             white-space: nowrap !important;
         }
+        .btn-accion {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            border: none;
+            margin-right: 5px;
+            font-size: 1rem;
+            transition: transform 0.1s ease;
+        }
+        .btn-accion:hover { transform: translateY(-1px); }
+        .btn-accion:last-child { margin-right: 0; }
+        .btn-historial { background-color: #EAF2FB; color: #1a5276; }
+        .btn-historial:hover { background-color: #1a5276; color: white; }
+        .btn-cobranza { background-color: #E9F7EF; color: #1E8449; }
+        .btn-cobranza:hover { background-color: #1E8449; color: white; }
+        .btn-editar { background-color: #E0F5F3; color: #0F766E; }
+        .btn-editar:hover { background-color: #0F766E; color: white; }
+        .btn-eliminar { background-color: #FDECEC; color: #B91C1C; }
+        .btn-eliminar:hover { background-color: #B91C1C; color: white; }
+        .btn-qr { background-color: #FDF6E3; color: #8A6D00; }
+        .btn-qr:hover { background-color: #8A6D00; color: white; }
     </style>
   </head>
   <body>
@@ -88,7 +112,7 @@
     <div class="container-fluid mt-2 px-3">
 
         <!-- Tarjetas KPI -->
-        <div class="mb-3 areas-toolbar" style="gap:15px;">
+        <div class="mb-3 areas-toolbar" id="tour-la-kpis" style="gap:15px;">
             <div class="kpi-card card">
                 <div class="card-header text-white">
                     <i class="bi bi-bar-chart-fill me-2"></i>Indicadores KPIs
@@ -154,7 +178,7 @@
                     <i class="bi bi-search"></i><span class="d-none d-sm-inline ms-1">Buscar</span>
                 </button>
             </form>
-            <a href="{% url 'crear_area' %}" class="btn btn-outline-success flex-shrink-0 reporte-link" title="Nueva Area Comun">
+            <a href="{% url 'crear_area' %}" id="tour-la-nueva" class="btn btn-outline-success flex-shrink-0 reporte-link" title="Nueva Area Comun">
                 <i class="bi bi-plus-lg"></i> Nueva Area Comun
             </a>
         </div>
@@ -171,112 +195,60 @@
                         {% endif %}
                         <th>Tipo</th>
                         <th>Sup.(m²)</th>
-                        <th>Cuota</th>
-                        <th>D.G.</th>
-                        <th>Fact.Anual</th>
-                        <th>Giro</th>
-                        <th>Fecha Ini</th>
-                        <th>Fecha Fin</th>
-                        <th>Vigencia</th>
-                        <th>Facturas</th>
-                        <th>Contrato</th>
-                        <th>Acciones</th>
+                        <th id="tour-la-th-estado">Estado</th>
+                        <th id="tour-la-th-opciones">Opciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for area in areas %}
                     <tr>
                         <td>{{ area.numero }}</td>
-                        <td>{{ area.cliente.nombre }}</td>
+                        <td>{{ area.cliente.nombre|default:"—" }}</td>
                         {% if request.user.is_superuser %}
                         <td>{{ area.empresa.nombre }}</td>
                         {% endif %}
                         <td>{{ area.get_tipo_area_display }}</td>
                         <td>{{ area.superficie_m2|floatformat:2|intcomma }}</td>
                         <td>
-                            {% if area.es_cuota_variable %}
-                                <span class="badge bg-warning text-dark" title="El importe se captura cada vez que se factura">Variable</span>
-                            {% else %}
-                                ${{ area.cuota|floatformat:2|intcomma }}
-                            {% endif %}
-                        </td>
-                        <td>${{ area.deposito|floatformat:2|intcomma }}</td>
-                        <td>
-                            {% if area.es_cuota_anual %}
-                                <span class="badge bg-info">Si</span>
-                            {% else %}
-                                <span class="badge bg-success">No</span>
-                            {% endif %}
-                        </td>
-                        <td class="col-giro" title="{{ area.giro|default:'' }}">{{ area.giro|default:""|truncatechars:15 }}</td>
-
-                        <td>{{ area.fecha_inicial|date:"d/b/y"|upper }}</td>
-                        <td>{{ area.fecha_fin|date:"d/b/y"|upper }}</td>
-                        <td>
                             {% if area.status == 'disponible' %}
-                            <span class="badge bg-secondary">Disponible</span>
-                            {% elif area.estado_vigencia == "Vencido" %}
-                            <span class="badge bg-danger" title="Edita Fechas para Renovar Contrato">{{ area.estado_vigencia }}</span>
+                            <span class="badge" style="background-color:#F1F5F9; color:#64748B; font-weight:600;">Disponible</span>
                             {% else %}
-                            <span class="badge bg-success">{{ area.estado_vigencia }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if area.status == 'disponible' %}
-                            <span class="text-muted small">—</span>
-                            {% else %}
-                            <a href="{% url 'lista_facturas' %}?area_id={{ area.id }}" class="btn btn-outline-primary btn-sm reporte-link" title="Muestra las facturas relacionadas a esta área y registrar nuevos pagos">
-                                <i class="bi bi-receipt"></i>
-                            </a>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if area.status == 'disponible' %}
-                            <span class="text-muted small">—</span>
-                            {% else %}
-                                {% if area.empresa.es_premium %}
-                                    {% if area.estado_vigencia == "Vigente" %}
-                                    <button onclick="window.open('{% url 'contrato_formulario' area.pk %}', 'contrato_{{ area.pk }}', 'width=1000,height=800,scrollbars=yes')" class="btn btn-sm btn-outline-primary m-1" title="Generar contrato">
-                                        <i class="bi bi-file-earmark-text"></i>
-                                    </button>
-                                    {% else %}
-                                    <span class="btn btn-sm btn-secondary m-1" title="Renovar contrato para descargar">
-                                        <i class="bi bi-file-earmark-text"></i>
-                                    </span>
-                                    {% endif %}
-                                {% else %}
-                                    <a href="#" class="btn btn-sm btn-primary m-1" title="Contrato solo PREMIUM">
-                                        <i class="bi bi-file-earmark-text"></i>
-                                    </a>
-                                {% endif %}
+                            <span class="badge" style="background-color:#E9F7EF; color:#1E8449; font-weight:600;">Ocupado</span>
                             {% endif %}
                         </td>
                         <td class="text-nowrap">
-                            <a href="{% url 'editar_area' area.pk %}" class="btn btn-sm btn-outline-primary me-1 reporte-link" title="Editar area">
-                                <i class="bi bi-pencil-square"></i>
+                            {% if area.status == 'disponible' %}
+                             <a href="{% url 'historial_contratos_area' area.pk %}" class="btn-accion btn-historial reporte-link" title="Contrato Nuevo">
+                                    <i class="bi bi-plus-circle-fill"></i>
+                                </a>
+                            {% else %}
+                            <a href="{% url 'historial_contratos_area' area.pk %}" class="btn-accion btn-historial reporte-link" title="Historial de contratos">
+                                    <i class="bi bi-file-earmark-text-fill"></i>
+                                </a>
+                            <a href="{% url 'lista_facturas' %}?area_id={{ area.id }}" class="btn-accion btn-cobranza reporte-link" title="Facturas y cobranza">
+                                <i class="bi bi-receipt"></i>
                             </a>
-                            <a href="{% url 'eliminar_area' area.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar area">
-                                <i class="bi bi-slash-circle"></i>
+                            {% endif %}
+                            <a href="{% url 'editar_area' area.pk %}" class="btn-accion btn-editar reporte-link" title="Editar área">
+                                <i class="bi bi-pencil-fill"></i>
+                            </a>
+                            <a href="{% url 'eliminar_area' area.pk %}" class="btn-accion btn-eliminar reporte-link" title="Inactivar área">
+                                <i class="bi bi-slash-circle-fill"></i>
                             </a>
                             {% if area.status != 'disponible' %}
                                 {% if area.referencia_pago %}
-                                <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de Instrucciones de Pago">
+                                <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn-accion btn-qr" title="Instrucciones de pago (QR)">
                                     <i class="bi bi-qr-code"></i>
                                 </a>
                                 {% else %}
                                 <span class="text-muted small" title="Asigna un cliente primero">Sin referencia</span>
                                 {% endif %}
                             {% endif %}
-                            {% if area.status == 'disponible' %}
-                            <a href="{% url 'asignar_cliente' area.pk %}" class="btn btn-outline-success btn-sm reporte-link" title="Asignar cliente a área">
-                                <i class="bi bi-person-plus"></i>
-                            </a>
-                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr class="no-data-row">
-                        <td colspan="{% if request.user.is_superuser %}14{% else %}13{% endif %}" class="text-center text-muted py-4">
+                        <td colspan="{% if request.user.is_superuser %}7{% else %}6{% endif %}" class="text-center text-muted py-4">
                             <i class="bi bi-building fs-3 d-block mb-2"></i>
                             No hay áreas registradas.
                         </td>

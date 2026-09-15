@@ -31,7 +31,34 @@ window.GESAC_TOURS = {
         { id: 'tour-fact-exportar', title: 'Descargar Adeudos', description: 'Exporta a Excel el estado de cuenta de la propiedad que tengas filtrada.' },
         { id: 'tour-fact-tabla', title: 'Detalle de facturas', description: 'Aquí ves cada factura con su saldo, estatus, y las acciones disponibles -- registrar pago, editar, timbrar, o generar una nueva.' },
     ],
+    // ============================================================
+// Agrega estas 3 entradas dentro de tu objeto window.GESAC_TOURS
+// existente, junto a navbar y facturacion.
+// ============================================================
 
+lista_areas: [
+    { id: 'tour-la-kpis', title: 'Indicadores generales', description: 'Aquí ves de un vistazo cuántas áreas tienes, sus cuotas, y qué tan ocupada está tu propiedad.' },
+    { id: 'form-filtros', title: 'Buscar un área', description: 'Busca por número de área o por nombre del cliente que la ocupa.' },
+    { id: 'tour-la-nueva', title: 'Registrar un área nueva', description: 'Solo se piden los datos físicos del área (número, tipo, superficie) -- nace disponible, sin arrendatario. El contrato se asigna después, desde su Historial.' },
+    { id: 'tour-la-th-estado', title: 'Estado del área', description: 'Solo tiene 2 valores: Disponible (sin arrendatario) u Ocupado (con un contrato activo). Los detalles del contrato -- renta, fechas, estatus exacto -- viven en el Historial de Contratos.' },
+    { id: 'tour-la-th-opciones', title: 'Opciones por área', description: 'Cada botón tiene un color distinto: azul es el Historial de Contratos, verde es Facturas y cobranza, verde-azulado es Editar, rojo es Inactivar, y dorado es el QR de instrucciones de pago.' },
+],
+
+historial_contratos: [
+    { id: 'tour-hc-header', title: 'Historial de esta área', description: 'Aquí ves TODOS los contratos que ha tenido esta área específica, del más reciente al más antiguo.' },
+    { id: 'tour-hc-renovar', title: 'Renovar o crear contrato', description: 'Si el área ya tiene un contrato activo, este botón te lleva a un borrador de renovación con todo precargado. Si está disponible, te deja capturar un contrato nuevo desde cero.' },
+    { id: 'tour-hc-badge', title: 'Estatus del contrato', description: 'Vigente (todo en orden), Vencido -- Mes a mes (nadie lo renovó, pero se sigue facturando y extendiendo solo), Renovado, o Terminado.' },
+    { id: 'tour-hc-tarjeta', title: 'Detalle del contrato', description: 'Cliente, giro, tipo de renta, fechas, días de gracia, plazo, incremento pactado, y periodicidad de facturación -- todo en un solo lugar.' },
+    { id: 'tour-hc-acciones', title: 'Acciones del contrato activo', description: 'Generar el documento PDF (solo plan Premium), Capturar Ventas (si es renta variable o mixta), o Terminar el contrato sin renovar.' },
+],
+
+expediente_contratos: [
+    { id: 'tour-ex-header', title: 'Expediente de Contratos', description: 'A diferencia del Historial (que es por área), aquí ves TODOS los contratos de TODAS tus áreas en una sola tabla.' },
+    { id: 'tour-ex-toolbar', title: 'Buscar y filtrar', description: 'Busca por área o cliente, y filtra por estatus -- por ejemplo, para ver de un vistazo cuántos contratos están "Mes a mes" en toda tu propiedad.' },
+    { id: 'tour-ex-primera-fila', title: 'Número de área', description: 'Da clic aquí para ir directo a Lista de Áreas, ya filtrada a esta área específica.' },
+    { id: 'tour-ex-th-estatus', title: 'Estatus del contrato', description: 'Mismo criterio que en el Historial -- Vigente, Mes a mes, Renovado, o Terminado.' },
+    { id: 'tour-ex-th-acciones', title: 'Acciones rápidas', description: 'El botón "Historial" siempre está disponible. Si el contrato está activo, también verás las opciones de renovación (simple, con % pactado, o con INPC) y "Liberar".' },
+],
     // gastos: [ ... ] -- se agrega cuando construyamos ese tour
     // cartera: [ ... ] -- se agrega cuando construyamos ese tour
 };

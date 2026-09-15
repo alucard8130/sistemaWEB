@@ -23,6 +23,9 @@ class NotificacionSistema(models.Model):
         ('facturacion', 'Recorrido de Facturación'),
         ('gastos', 'Recorrido de Gastos'),
         ('cartera', 'Recorrido de Cartera Vencida'),
+        ('lista_areas', 'Lista de Áreas'),
+        ('historial_contratos', 'Historial de Contratos'),
+        ('expediente_contratos', 'Expediente de Contratos'),
     ]
     tour_a_disparar = models.CharField(
         max_length=30, choices=TOUR_CHOICES, blank=True, null=True,

@@ -76,6 +76,14 @@
         }
         .btn-gesac-outline:hover { color: #33475b; background: #f7f9fc; }
 
+        .contrato-info-box {
+            background: #eaf2fb; border-left: 3px solid #2471a3; border-radius: 0 10px 10px 0;
+            padding: 14px 16px; margin-bottom: 26px; font-size: 0.85rem; color: #1a5276;
+        }
+        .contrato-info-box strong { color: #0f2d52; }
+        .contrato-info-box a { color: #2471a3; font-weight: 700; text-decoration: none; }
+        .contrato-info-box a:hover { text-decoration: underline; }
+
         @media (max-width: 576px) {
             .page-wrap { padding: 16px 10px 40px; }
             .form-header { padding: 18px 18px; }
@@ -106,11 +114,22 @@
 
         <div class="form-header">
             <h4><i class="bi bi-pencil-square me-2"></i>Editar área común</h4>
-            <p>Actualiza los datos, el uso y la vigencia del contrato de esta área.</p>
+            <p>Datos físicos del área -- el cliente, fechas, y estatus se manejan desde Contratos.</p>
         </div>
 
         <form method="post" class="form-card" id="areaEditForm">
             {% csrf_token %}
+
+            <div class="contrato-info-box">
+                <i class="bi bi-info-circle-fill me-1"></i>
+                {% if area.cliente %}
+                    <strong>{{ area.cliente.nombre }}</strong> -- {{ area.get_status_display }}
+                    {% if area.fecha_fin %} -- vence {{ area.fecha_fin|date:"d/m/Y" }}{% endif %}
+                {% else %}
+                    <strong>Disponible</strong> -- sin arrendatario asignado
+                {% endif %}
+                · <a href="{% url 'historial_contratos_area' area.pk %}">Ver historial de contratos</a>
+            </div>
 
             <div class="field-section">
                 <div class="section-title"><i class="bi bi-hash"></i>Identificación</div>
@@ -126,20 +145,18 @@
                         {{ form.tipo_area.errors }}
                     </div>
                 </div>
+                {% if request.user.is_superuser %}
                 <div class="field-row">
-                    <div class="field-col">
-                        {{ form.cliente.label_tag }}
-                        {{ form.cliente }}
-                        {{ form.cliente.errors }}
-                    </div>
-                    {% if request.user.is_superuser %}
                     <div class="field-col">
                         {{ form.empresa.label_tag }}
                         {{ form.empresa }}
                         {{ form.empresa.errors }}
                     </div>
-                    {% endif %}
                 </div>
+                {% else %}
+                    {{ form.empresa }}
+                    {{ form.empresa.errors }}
+                {% endif %}
             </div>
 
             <div class="field-section">
@@ -158,7 +175,7 @@
                 </div>
             </div>
 
-            <div class="field-section">
+            {% comment %} <div class="field-section">
                 <div class="section-title"><i class="bi bi-cash-coin"></i>Cuota</div>
                 <div class="field-row">
                     <div class="field-col">
@@ -177,7 +194,7 @@
                     {{ form.es_cuota_anual }}
                     <div>
                         {{ form.es_cuota_anual.label_tag }}
-                        <div class="hint">Se genera una sola factura al año en vez de mensual.</div>
+                       
                         {{ form.es_cuota_anual.errors }}
                     </div>
                 </div>
@@ -185,46 +202,18 @@
                     {{ form.es_cuota_variable }}
                     <div>
                         {{ form.es_cuota_variable.label_tag }}
-                        <div class="hint">El importe se captura cada vez que se factura -- no se cobra automático cada mes.</div>
+                        
                         {{ form.es_cuota_variable.errors }}
                     </div>
                 </div>
-            </div>
+            </div> {% endcomment %}
 
             <div class="field-section">
-                <div class="section-title"><i class="bi bi-shop"></i>Uso del área</div>
-                <div class="field-row">
-                    <div class="field-col">
-                        {{ form.giro.label_tag }}
-                        {{ form.giro }}
-                        {{ form.giro.errors }}
-                    </div>
-                    <div class="field-col">
-                        {{ form.status.label_tag }}
-                        {{ form.status }}
-                        {{ form.status.errors }}
-                    </div>
-                </div>
+                <div class="section-title"><i class="bi bi-geo-alt"></i>Ubicación</div>
                 <div class="mb-3">
                     {{ form.ubicacion.label_tag }}
                     {{ form.ubicacion }}
                     {{ form.ubicacion.errors }}
-                </div>
-            </div>
-
-            <div class="field-section">
-                <div class="section-title"><i class="bi bi-calendar-range"></i>Vigencia del contrato</div>
-                <div class="field-row">
-                    <div class="field-col">
-                        {{ form.fecha_inicial.label_tag }}
-                        {{ form.fecha_inicial }}
-                        {{ form.fecha_inicial.errors }}
-                    </div>
-                    <div class="field-col">
-                        {{ form.fecha_fin.label_tag }}
-                        {{ form.fecha_fin }}
-                        {{ form.fecha_fin.errors }}
-                    </div>
                 </div>
             </div>
 

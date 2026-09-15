@@ -5,6 +5,7 @@ from dateutil.relativedelta import relativedelta
 from django.db import transaction
 
 from facturacion.models import Factura
+from facturacion.utils import _calcular_monto_periodo, _debe_facturar_periodo
 
 
 def _siguiente_folio(prefix, empresa):
@@ -25,23 +26,125 @@ def _siguiente_folio(prefix, empresa):
     return f"{prefix}{last_num + 1:05d}"
 
 
+# def generar_facturas_area(area, hasta=None):
+#     """
+#     Genera factura de depósito (si area.deposito>0) y facturas de cuota
+#     desde area.fecha_inicial hasta 'hasta' (o hoy). Devuelve lista de Factura creadas.
+#     Requiere que `area.cliente` y `area.empresa` estén presentes.
+#     """
+#     if not area or not area.empresa or not area.cliente:
+#         raise ValueError("Area debe tener 'empresa' y 'cliente' asignados.")
+
+#     hoy = hasta or date.today()
+#     if not area.fecha_inicial:
+#         return []
+
+#     facturas_creadas = []
+
+#     with transaction.atomic():
+#         # Depósito en garantía (único)
+#         if area.deposito and Decimal(area.deposito) > 0:
+#             existe_deposito = Factura.objects.filter(
+#                 empresa=area.empresa,
+#                 cliente=area.cliente,
+#                 area_comun=area,
+#                 tipo_cuota='deposito'
+#             ).exists()
+#             if not existe_deposito:
+#                 folio_dep = _siguiente_folio("DG-F", area.empresa)
+#                 factura_dep = Factura.objects.create(
+#                     empresa=area.empresa,
+#                     cliente=area.cliente,
+#                     area_comun=area,
+#                     folio=folio_dep,
+#                     fecha_emision=hoy,
+#                     fecha_vencimiento=hoy,
+#                     monto=area.deposito,
+#                     tipo_cuota='deposito',
+#                     estatus='pendiente',
+#                     observaciones='Depósito en garantía'
+#                 )
+#                 facturas_creadas.append(factura_dep)
+
+#         # Facturas de renta/cuota: anual o mensual
+#         if area.es_cuota_anual:
+#             inicio_ano = area.fecha_inicial.year
+#             tope_ano = min(hoy.year, area.fecha_fin.year if area.fecha_fin else hoy.year)
+#             for ano in range(inicio_ano, tope_ano + 1):
+#                 existe_anual = Factura.objects.filter(
+#                     empresa=area.empresa,
+#                     cliente=area.cliente,
+#                     area_comun=area,
+#                     tipo_cuota='renta',
+#                     fecha_emision__year=ano,
+#                     observaciones__icontains='anual'
+#                 ).exists()
+#                 if not existe_anual:
+#                     folio = _siguiente_folio("AC-F", area.empresa)
+#                     factura = Factura.objects.create(
+#                         empresa=area.empresa,
+#                         cliente=area.cliente,
+#                         area_comun=area,
+#                         folio=folio,
+#                         fecha_emision=date(ano, 1, 1),
+#                         fecha_vencimiento=date(ano, 1, 1),
+#                         monto=area.cuota * Decimal('12'),
+#                         tipo_cuota='renta',
+#                         estatus='pendiente',
+#                         observaciones=f"Cuota anual de {area.fecha_inicial.strftime('%B %Y')} a {area.fecha_fin.strftime('%B %Y')}"
+#                     )
+#                     facturas_creadas.append(factura)
+#         else:
+#             fecha_tope = min(hoy, area.fecha_fin) if area.fecha_fin else hoy
+#             periodo = date(area.fecha_inicial.year, area.fecha_inicial.month, 1)
+#             while periodo <= date(fecha_tope.year, fecha_tope.month, 1):
+#                 existe = Factura.objects.filter(
+#                     empresa=area.empresa,
+#                     cliente=area.cliente,
+#                     area_comun=area,
+#                     tipo_cuota='renta',
+#                     fecha_emision__year=periodo.year,
+#                     fecha_emision__month=periodo.month
+#                 ).exists()
+#                 if not existe:
+#                     folio = _siguiente_folio("AC-F", area.empresa)
+#                     factura = Factura.objects.create(
+#                         empresa=area.empresa,
+#                         cliente=area.cliente,
+#                         area_comun=area,
+#                         folio=folio,
+#                         fecha_emision=periodo,
+#                         fecha_vencimiento=periodo,
+#                         monto=area.cuota,
+#                         tipo_cuota='renta',
+#                         estatus='pendiente',
+#                         observaciones=f"Cuota mensual {periodo.strftime('%B %Y')}"
+#                     )
+#                     facturas_creadas.append(factura)
+#                 periodo = periodo + relativedelta(months=1)
+
+#     return facturas_creadas
 def generar_facturas_area(area, hasta=None):
     """
-    Genera factura de depósito (si area.deposito>0) y facturas de cuota
-    desde area.fecha_inicial hasta 'hasta' (o hoy). Devuelve lista de Factura creadas.
-    Requiere que `area.cliente` y `area.empresa` estén presentes.
+    Genera factura de deposito (si area.deposito>0) y facturas de cuota
+    desde area.fecha_inicial hasta 'hasta' (o hoy) -- respetando la
+    periodicidad real del area (mensual/trimestral/semestral/anual).
+    Devuelve lista de Factura creadas.
+    Requiere que `area.cliente` y `area.empresa` esten presentes.
     """
     if not area or not area.empresa or not area.cliente:
         raise ValueError("Area debe tener 'empresa' y 'cliente' asignados.")
 
-    hoy = hasta or date.today()
+    hoy = hasta or date.today()  # noqa: DTZ011
     if not area.fecha_inicial:
         return []
 
     facturas_creadas = []
+    MULTIPLICADOR_PERIODO = {'mensual': 1, 'trimestral': 3, 'semestral': 6, 'anual': 12}
+    periodicidad = area.periodicidad_facturacion or 'mensual'
+    multiplicador = MULTIPLICADOR_PERIODO.get(periodicidad, 1)
 
     with transaction.atomic():
-        # Depósito en garantía (único)
         if area.deposito and Decimal(area.deposito) > 0:
             existe_deposito = Factura.objects.filter(
                 empresa=area.empresa,
@@ -65,48 +168,60 @@ def generar_facturas_area(area, hasta=None):
                 )
                 facturas_creadas.append(factura_dep)
 
-        # Facturas de renta/cuota: anual o mensual
-        if area.es_cuota_anual:
-            inicio_ano = area.fecha_inicial.year
-            tope_ano = min(hoy.year, area.fecha_fin.year if area.fecha_fin else hoy.year)
-            for ano in range(inicio_ano, tope_ano + 1):
-                existe_anual = Factura.objects.filter(
-                    empresa=area.empresa,
-                    cliente=area.cliente,
-                    area_comun=area,
-                    tipo_cuota='renta',
-                    fecha_emision__year=ano,
-                    observaciones__icontains='anual'
-                ).exists()
-                if not existe_anual:
-                    folio = _siguiente_folio("AC-F", area.empresa)
-                    factura = Factura.objects.create(
-                        empresa=area.empresa,
-                        cliente=area.cliente,
-                        area_comun=area,
-                        folio=folio,
-                        fecha_emision=date(ano, 1, 1),
-                        fecha_vencimiento=date(ano, 1, 1),
-                        monto=area.cuota * Decimal('12'),
-                        tipo_cuota='renta',
-                        estatus='pendiente',
-                        observaciones=f"Cuota anual de {area.fecha_inicial.strftime('%B %Y')} a {area.fecha_fin.strftime('%B %Y')}"
-                    )
-                    facturas_creadas.append(factura)
-        else:
-            fecha_tope = min(hoy, area.fecha_fin) if area.fecha_fin else hoy
-            periodo = date(area.fecha_inicial.year, area.fecha_inicial.month, 1)
-            while periodo <= date(fecha_tope.year, fecha_tope.month, 1):
+        fecha_tope = min(hoy, area.fecha_fin) if area.fecha_fin else hoy
+        periodo = date(area.fecha_inicial.year, area.fecha_inicial.month, 1)
+        while periodo <= date(fecha_tope.year, fecha_tope.month, 1):
+            if _debe_facturar_periodo(area.fecha_inicial, periodicidad, periodo.year, periodo.month):
                 existe = Factura.objects.filter(
                     empresa=area.empresa,
                     cliente=area.cliente,
                     area_comun=area,
                     tipo_cuota='renta',
                     fecha_emision__year=periodo.year,
-                    fecha_emision__month=periodo.month
+                    fecha_emision__month=periodo.month,
                 ).exists()
+                # if not existe:
+                #     folio = _siguiente_folio("AC-F", area.empresa)
+                #     monto_periodo = area.cuota * multiplicador
+                #     if multiplicador == 1:
+                #         observaciones = f"Cuota mensual {periodo.strftime('%B %Y')}"
+                #     else:
+                #         observaciones = (
+                #             f"Cuota {area.get_periodicidad_facturacion_display().lower()} "
+                #             f"({periodo.strftime('%B %Y')})"
+                #         )
+                #     factura = Factura.objects.create(
+                #         empresa=area.empresa,
+                #         cliente=area.cliente,
+                #         area_comun=area,
+                #         folio=folio,
+                #         fecha_emision=periodo,
+                #         fecha_vencimiento=periodo,
+                #         monto=monto_periodo,
+                #         tipo_cuota='renta',
+                #         estatus='pendiente',
+                #         observaciones=observaciones,
+                #     )
+                #     facturas_creadas.append(factura)
                 if not existe:
                     folio = _siguiente_folio("AC-F", area.empresa)
+                    monto_periodo, fue_prorrateado, dias_cub, dias_tot = _calcular_monto_periodo(
+                        area.cuota, periodicidad, area.fecha_inicial, periodo.year, periodo.month
+                    )
+                    etiqueta_periodo = (
+                        "mensual" if multiplicador == 1
+                        else area.get_periodicidad_facturacion_display().lower()
+                    )
+                    if fue_prorrateado:
+                        observaciones = (
+                            f"Cuota {etiqueta_periodo} prorrateada ({dias_cub} de {dias_tot} días) "
+                            f"{periodo.strftime('%B %Y')}"
+                        )
+                    elif multiplicador == 1:
+                        observaciones = f"Cuota mensual {periodo.strftime('%B %Y')}"
+                    else:
+                        observaciones = f"Cuota {etiqueta_periodo} ({periodo.strftime('%B %Y')})"
+
                     factura = Factura.objects.create(
                         empresa=area.empresa,
                         cliente=area.cliente,
@@ -114,12 +229,12 @@ def generar_facturas_area(area, hasta=None):
                         folio=folio,
                         fecha_emision=periodo,
                         fecha_vencimiento=periodo,
-                        monto=area.cuota,
+                        monto=monto_periodo,
                         tipo_cuota='renta',
                         estatus='pendiente',
-                        observaciones=f"Cuota mensual {periodo.strftime('%B %Y')}"
+                        observaciones=observaciones,
                     )
                     facturas_creadas.append(factura)
-                periodo = periodo + relativedelta(months=1)
+            periodo = periodo + relativedelta(months=1)
 
     return facturas_creadas

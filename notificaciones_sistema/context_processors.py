@@ -59,26 +59,40 @@ def _generar_alertas_automaticas(request):
             'color': '#8A6D00',
         })
 
-    # 3. NUEVO -- Contratos de areas comunes vencidos o por vencer
-    # (30/60/90 dias) -- se agrupan por urgencia en vez de una alerta
-    # por cada area, para no saturar la campanita si hay varias.
+ 
+    # NUEVO -- "vencido" ahora se basa en el ESTATUS real del contrato
+    # (vencido_ocupado), no en fecha_fin directo -- porque el cron de
+    # extension mensual mueve fecha_fin hacia adelante cada mes, asi
+    # que con el criterio viejo esas areas dejaban de aparecer como
+    # vencidas en cuanto se procesaban. Los rangos 30/60/90 si siguen
+    # usando fecha_fin, pero solo sobre contratos VIGENTES (su fecha
+    # todavia es la fecha real pactada, no una extendida por el cron).
     if empresa:
         hoy = timezone.now().date()
-        areas_activas = AreaComun.objects.filter(empresa=empresa, activo=True, fecha_fin__isnull=False)
+        areas_activas = AreaComun.objects.filter(empresa=empresa, activo=True)
 
-        areas_vencidas = areas_activas.filter(fecha_fin__lt=hoy).count()
-        areas_30 = areas_activas.filter(fecha_fin__gte=hoy, fecha_fin__lte=hoy + timedelta(days=30)).count()
-        areas_60 = areas_activas.filter(
+        areas_vencidas = areas_activas.filter(
+            contratos__estatus='vencido_ocupado'
+        ).distinct().count()
+
+        areas_vigentes_con_fecha = areas_activas.filter(
+            contratos__estatus='vigente', fecha_fin__isnull=False
+        ).distinct()
+
+        areas_30 = areas_vigentes_con_fecha.filter(
+            fecha_fin__gte=hoy, fecha_fin__lte=hoy + timedelta(days=30)
+        ).count()
+        areas_60 = areas_vigentes_con_fecha.filter(
             fecha_fin__gt=hoy + timedelta(days=30), fecha_fin__lte=hoy + timedelta(days=60)
         ).count()
-        areas_90 = areas_activas.filter(
+        areas_90 = areas_vigentes_con_fecha.filter(
             fecha_fin__gt=hoy + timedelta(days=60), fecha_fin__lte=hoy + timedelta(days=90)
         ).count()
 
         if areas_vencidas:
             alertas.append({
-                'titulo': f'{areas_vencidas} contrato(s) de área vencido(s)',
-                'mensaje': 'Revisa si renuevan, desocupan, o hay que actualizar su estatus.',
+                'titulo': f'{areas_vencidas} contrato(s) "mes a mes"',
+                'mensaje': 'Vencieron sin renovarse -- el sistema los extiende solo, pero conviene decidir si renuevan o desocupan.',
                 'url': reverse('lista_areas') + '?vencimiento=vencido',
                 'icono': 'exclamation-triangle-fill',
                 'color': '#9C2B2B',
@@ -106,7 +120,7 @@ def _generar_alertas_automaticas(request):
                 'url': reverse('lista_areas') + '?vencimiento=90',
                 'icono': 'calendar3',
                 'color': '#8A6D00',
-            })    
+            }) 
  
     return alertas
 

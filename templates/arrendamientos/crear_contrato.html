@@ -1,0 +1,270 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if contrato_vigente %}Renovar{% else %}Nuevo{% endif %} Contrato — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .cc-header {
+            background: linear-gradient(135deg, #0f2d52 0%, #1a5276 60%, #2471a3 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,45,82,0.2);
+        }
+        .cc-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .cc-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .cc-aviso { background: #FDF6E3; border-left: 4px solid #8A6D00; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.85rem; color: #8A6D00; }
+        .cc-aviso-borrador { background: #EAF2FB; border-left: 4px solid #2471A3; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.85rem; color: #1a5276; }
+
+        .form-card { background: white; border-radius: 16px; padding: 26px 28px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
+        .form-seccion { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #1a5276; background: #eaf2fb; padding: 6px 12px; border-left: 3px solid #2471a3; border-radius: 0 6px 6px 0; margin: 20px -6px 14px; }
+        .form-seccion:first-of-type { margin-top: 0; }
+        .form-label { font-weight: 600; font-size: 0.78rem; color: #1a5276; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 5px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.88rem; padding: 8px 11px; }
+        .form-control:focus, .form-select:focus { border-color: #2471a3; box-shadow: 0 0 0 3px rgba(36,113,163,0.12); }
+        .btn-guardar { background: linear-gradient(135deg, #1a5276, #2471a3); color: white; border: none; border-radius: 10px; padding: 11px 26px; font-weight: 600; font-size: 0.92rem; }
+        .btn-guardar:hover { color: white; }
+        .form-hint { font-size: 0.72rem; color: #9ca3af; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 780px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="cc-header">
+            <div class="cc-titulo">
+                <i class="bi bi-file-earmark-plus me-2"></i>
+                {% if contrato_vigente %}Renovar Contrato{% else %}Nuevo Contrato{% endif %} -- Área {{ area.numero }}
+            </div>
+            <div class="cc-subtitulo">{% if contrato_vigente %}El contrato actual se marcará como "Renovado" al confirmar{% else %}Registra los términos del arrendamiento{% endif %}</div>
+        </div>
+
+        {% if es_borrador_renovacion %}
+        <div class="cc-aviso-borrador">
+            <i class="bi bi-pencil-square me-1"></i>
+            Este es un <strong>borrador</strong> -- se calcularon las fechas y, si aplica, el incremento, copiando el resto de las condiciones del contrato anterior. Revisa todo con calma y ajusta lo que necesites antes de guardar.
+        </div>
+        {% elif contrato_vigente %}
+        <div class="cc-aviso">
+            <i class="bi bi-info-circle-fill me-1"></i>
+            Contrato actual: <strong>{{ contrato_vigente.cliente.nombre }}</strong>, ${{ contrato_vigente.cuota|floatformat:2 }}, vence el {{ contrato_vigente.fecha_fin|date:"d/m/Y" }}.
+        </div>
+        {% endif %}
+
+        <div class="form-card">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="form-seccion">Datos del arrendatario</div>
+                <div class="row g-3">
+                    <div class="col-12 col-md-8">
+                        <label class="form-label">Cliente</label>
+                        <select name="cliente" class="form-select" required>
+                            <option value="">Selecciona...</option>
+                            {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}" {% if borrador.cliente_id == cliente.id %}selected{% endif %}>{{ cliente.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Giro comercial</label>
+                        <input type="text" name="giro" class="form-control" placeholder="Ej. Restaurante" value="{{ borrador.giro|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-seccion">Fechas</div>
+                <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Fecha de firma</label>
+                        <input type="date" name="fecha_firma" class="form-control" value="{{ borrador.fecha_firma|date:'Y-m-d'|default:'' }}" required>
+                        <div class="form-hint">Puede ser antes del inicio (genera días de gracia).</div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Fecha inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" value="{{ borrador.fecha_inicio|date:'Y-m-d'|default:'' }}" required>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Plazo forzoso (meses)</label>
+                        <input type="number" name="plazo_forzoso_meses" class="form-control" placeholder="Ej. 12" value="{{ borrador.plazo_forzoso_meses|default:'' }}">
+                        <div class="form-hint">Captura este O la fecha fin -- el otro se calcula solo.</div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Fecha fin (opcional si diste el plazo)</label>
+                        <input type="date" name="fecha_fin" class="form-control" value="{{ borrador.fecha_fin|date:'Y-m-d'|default:'' }}">
+                    </div>
+                    <div class="col-6 col-md-4 d-flex align-items-end">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="renovacion_automatica" name="renovacion_automatica" {% if borrador.renovacion_automatica %}checked{% endif %}>
+                            <label class="form-check-label" for="renovacion_automatica" style="font-size:0.85rem;">¿Renovación automática al vencer?</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-seccion">Periodicidad de facturación</div>
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Periodicidad</label>
+                        <select name="periodicidad_facturacion" class="form-select">
+                            {% for valor, etiqueta in periodicidad_choices %}
+                                <option value="{{ valor }}" {% if borrador.periodicidad_facturacion %}{% if valor == borrador.periodicidad_facturacion %}selected{% endif %}{% elif valor == 'mensual' %}selected{% endif %}>{{ etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-seccion">Tipo de renta</div>
+                <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Tipo</label>
+                        <select name="tipo_renta" id="tipo_renta" class="form-select" onchange="actualizarCamposRenta()">
+                            {% for valor, etiqueta in tipo_renta_choices %}
+                                <option value="{{ valor }}" {% if valor == borrador.tipo_renta %}selected{% endif %}>{{ etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Renta fija / base / mínima</label>
+                        <input type="number" step="0.01" name="cuota" class="form-control" placeholder="0.00" value="{{ borrador.cuota|default:'' }}" required>
+                        <div class="form-hint" id="hint_cuota">Renta mensual fija.</div>
+                    </div>
+                    <div class="col-6 col-md-4" id="bloque_porcentaje_ventas" style="display:none;">
+                        <label class="form-label">% sobre ventas netas</label>
+                        <input type="number" step="0.01" name="porcentaje_ventas" class="form-control" placeholder="Ej. 5" value="{{ borrador.porcentaje_ventas|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-seccion">Mantenimiento (cargo aparte, opcional)</div>
+                <div class="row g-3">
+                    <div class="col-6 col-md-4 d-flex align-items-end">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="incluye_mantenimiento" name="incluye_mantenimiento" {% if borrador.incluye_mantenimiento %}checked{% endif %} onchange="document.getElementById('bloque_mantenimiento').style.display = this.checked ? 'block' : 'none';">
+                            <label class="form-check-label" for="incluye_mantenimiento" style="font-size:0.85rem;">¿Incluye mantenimiento?</label>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4" id="bloque_mantenimiento" style="display:none;">
+                        <label class="form-label">Cuota de mantenimiento</label>
+                        <input type="number" step="0.01" name="cuota_mantenimiento" class="form-control" placeholder="0.00" value="{{ borrador.cuota_mantenimiento|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-seccion">Depósito e incremento pactado</div>
+                <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Depósito en garantía</label>
+                        <input type="number" step="0.01" name="deposito" class="form-control" placeholder="0.00" value="{{ borrador.deposito|default:'' }}">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Incremento pactado</label>
+                        <select name="tipo_incremento" id="tipo_incremento" class="form-select" onchange="actualizarCamposIncremento()">
+                            {% for valor, etiqueta in tipo_incremento_choices %}
+                                <option value="{{ valor }}" {% if valor == borrador.tipo_incremento %}selected{% endif %}>{{ etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-4" id="bloque_pct_incremento" style="display:none;">
+                        <label class="form-label">% de incremento</label>
+                        <input type="number" step="0.01" name="porcentaje_incremento" class="form-control" placeholder="Ej. 8" value="{{ borrador.porcentaje_incremento|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="form-seccion">Otras condiciones</div>
+                <div class="row g-3">
+                    <div class="col-6 col-md-6">
+                        <label class="form-label">Penalización por atraso (%)</label>
+                        <input type="number" step="0.01" name="penalizacion_atraso_porcentaje" class="form-control" placeholder="Ej. 5" value="{{ borrador.penalizacion_atraso_porcentaje|default:'' }}">
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-12">
+                        <label class="form-label">Cláusulas especiales (opcional)</label>
+                        <textarea name="clausulas_especiales" class="form-control" rows="3" placeholder="Exclusividad de zona, restricciones de uso, etc.">{{ borrador.clausulas_especiales|default:'' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="form-seccion">Documento firmado (opcional)</div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Contrato en PDF -- el área puede no tener contrato físico</label>
+                        <input type="file" name="contrato_pdf" class="form-control" accept="application/pdf">
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <button type="submit" class="btn-guardar">
+                    <i class="bi bi-check-lg me-1"></i>
+                    {% if contrato_vigente %}Confirmar Renovación{% else %}Guardar Contrato{% endif %}
+                </button>
+                <a href="{% url 'historial_contratos_area' area.id %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
+            </form>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function actualizarCamposRenta() {
+            var tipo = document.getElementById('tipo_renta').value;
+            var bloquePct = document.getElementById('bloque_porcentaje_ventas');
+            var hintCuota = document.getElementById('hint_cuota');
+            if (tipo === 'variable') {
+                bloquePct.style.display = 'block';
+                hintCuota.textContent = 'Renta mínima garantizada (o $0 si no hay mínima).';
+            } else if (tipo === 'mixta') {
+                bloquePct.style.display = 'block';
+                hintCuota.textContent = 'Renta base fija -- se le suma el % sobre ventas.';
+            } else {
+                bloquePct.style.display = 'none';
+                hintCuota.textContent = 'Renta mensual fija.';
+            }
+        }
+
+        function actualizarCamposIncremento() {
+            var tipo = document.getElementById('tipo_incremento').value;
+            document.getElementById('bloque_pct_incremento').style.display = (tipo === 'porcentaje_fijo') ? 'block' : 'none';
+        }
+
+        function actualizarBloqueMantenimiento() {
+            var checkbox = document.getElementById('incluye_mantenimiento');
+            document.getElementById('bloque_mantenimiento').style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            actualizarCamposRenta();
+            actualizarCamposIncremento();
+            actualizarBloqueMantenimiento();
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('form').forEach(function(form) {
+                form.addEventListener('submit', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+            document.querySelectorAll('a.reporte-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

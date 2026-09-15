@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "gestion_cobranza",
     "notificaciones_sistema",
     "usuarios_extra",
+    "arrendamientos",
 ]
 
 
@@ -161,6 +162,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 DEFAULT_FROM_EMAIL_MEMBRESIAS = os.getenv("DEFAULT_FROM_EMAIL_MEMBRESIAS")
 SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+BANXICO_TOKEN = os.environ.get('BANXICO_TOKEN', '')
 
 
 AUTH_PASSWORD_VALIDATORS = [

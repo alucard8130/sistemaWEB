@@ -10,32 +10,204 @@ from .models import AreaComun
 #from empresas.models import Empresa
 
 
+# class AreaComunForm(forms.ModelForm):
+#     class Meta:
+#         model = AreaComun
+#         fields = [  # noqa: RUF012
+#             "numero",
+#             "cliente",
+#             "empresa",
+#             "superficie_m2",
+#             "tipo_area",
+#             "cantidad_areas",
+#             "cuota",
+#             "deposito",
+#             "giro",
+#             "ubicacion",
+#             "fecha_inicial",
+#             "fecha_fin",
+#             "status",
+#             "observaciones",
+#             "es_cuota_anual",
+#             "es_cuota_variable",
+#         ]
+#         widgets = {  # noqa: RUF012
+#             "numero": forms.TextInput(
+#                 attrs={"class": "form-control", "placeholder": "Número, Codigo o Id."}
+#             ),
+#             "cliente": forms.Select(attrs={"class": "form-control"}),
+#             "empresa": forms.Select(attrs={"class": "form-control"}),
+#             "superficie_m2": forms.TextInput(
+#                 attrs={"class": "form-control", "placeholder": "Superficie_m2"}
+#             ),
+#             "tipo_area": forms.Select(attrs={"class": "form-control"}),
+#             "cantidad_areas": forms.TextInput(attrs={"class": "form-control"}),
+#             "cuota": forms.TextInput(
+#                 attrs={"class": "form-control", "placeholder": "Importe Cuota Mensual"}
+#             ),
+#             "es_cuota_anual": forms.CheckboxInput(
+#                 attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
+#             ),
+#             "es_cuota_variable": forms.CheckboxInput(
+#                 attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
+#             ),
+#             "deposito": forms.TextInput(
+#                 attrs={"class": "form-control", "placeholder": "Importe Depósito Garantía"}
+#             ),
+#             "giro": forms.TextInput(
+#                 attrs={"class": "form-control", "placeholder": "Giro"}
+#             ),
+#             "ubicacion": forms.Textarea(
+#                 attrs={"rows": 2, "class": "form-control", "placeholder": "Ubicación"}
+#             ),
+#             "fecha_inicial": forms.DateInput(
+#                 attrs={"type": "date", "class": "form-control"}, format="%Y-%m-%d"
+#             ),
+#             "fecha_fin": forms.DateInput(
+#                 attrs={"type": "date", "class": "form-control"}, format="%Y-%m-%d"
+#             ),
+#             "status": forms.Select(attrs={"class": "form-control"}),
+#             "observaciones": forms.Textarea(
+#                 attrs={
+#                     "rows": 2,
+#                     "class": "form-control",
+#                     "placeholder": "Observaciones",
+#                 }
+#             ),
+#         }
+#         labels = {  # noqa: RUF012
+#             "numero": "Número, Codigo o Id.",
+#             "tipo_area": "Tipo de área",
+#             "cantidad_areas": "Cantidad de áreas",
+#             "deposito": "Depósito en garantía",
+#             "ubicacion": "Ubicación",
+#             "status": "Estatus",
+#             "cliente": "Cliente",
+#             "es_cuota_anual": "Es cuota anual",
+#             "es_cuota_variable": "Es cuota variable",
+#         }
+
+#     def __init__(self, *args, **kwargs):
+#         # self.user = kwargs.pop('user', None)
+#         user = kwargs.pop("user", None)
+#         super().__init__(*args, **kwargs)
+
+#         if user and not user.is_superuser:
+#             self.fields["empresa"].widget = forms.HiddenInput()
+#             empresa = user.perfilusuario.empresa
+#             self.fields["empresa"].initial = empresa  # <-- Asigna el valor aquí
+#             self.fields["cliente"].queryset = Cliente.objects.filter(empresa=empresa)
+#         else:
+#             self.fields["cliente"].queryset = Cliente.objects.all()
+
+    
+#         if self.instance and self.instance.pk:
+#             self.fields["numero"].disabled = True
+#             # NUEVO -- cliente y status ya NO se deshabilitan: se necesitan
+#             # editables para que las reglas automáticas de clean() (más abajo)
+#             # puedan aplicar -- mismo criterio que LocalComercialForm.
+
+#         # NUEVO -- estos campos dependen del status resultante (ver clean()),
+#         # así que se aflojan aquí y clean() decide si son obligatorios o no.
+#         self.fields["cuota"].required = False
+#         self.fields["giro"].required = False
+#         self.fields["fecha_inicial"].required = False
+#         self.fields["fecha_fin"].required = False
+
+
+#     def clean_cuota(self):
+#         cuota = self.cleaned_data.get("cuota")
+#         es_variable = self.data.get("es_cuota_variable") or self.initial.get("es_cuota_variable")
+#         if es_variable:
+#             return cuota or Decimal("0")
+#         if cuota is None or cuota <= 0:
+#             raise forms.ValidationError(
+#                 "La cuota debe ser mayor a $0.00 -- no se puede dejar en cero. "
+#                 "Si el importe de esta área varía cada vez, marca \"¿Cuota variable?\"."
+#             )
+#         return cuota
+ 
+#     def clean(self):
+#         cleaned_data = super().clean()
+#         numero = cleaned_data.get("numero")
+#         empresa = cleaned_data.get("empresa")
+#         status = cleaned_data.get("status")
+#         cliente = cleaned_data.get("cliente")
+
+#         if numero and empresa:
+#             qs = AreaComun.objects.filter(
+#                 numero__iexact=numero, empresa=empresa, activo=True
+#             )
+#             if self.instance.pk:
+#                 qs = qs.exclude(pk=self.instance.pk)
+#             if qs.exists():
+#                 raise forms.ValidationError(
+#                     "Ya existe un área común con ese número en esta empresa."
+#                 )
+
+#         # ---- Reglas automáticas de cliente/status (mismo criterio que Locales) ----
+#         cliente_original_id = self.instance.cliente_id if self.instance.pk else None
+#         cliente_nuevo_id = cliente.id if cliente else None
+#         se_asigno_cliente_nuevo = (
+#             cliente_nuevo_id is not None and cliente_nuevo_id != cliente_original_id
+#         )
+
+#         if se_asigno_cliente_nuevo:
+#             # Se asignó un cliente nuevo/distinto -- el área pasa a "Ocupado"
+#             # automáticamente, sin importar qué status se haya seleccionado.
+#             cleaned_data["status"] = "ocupado"
+#             status = "ocupado"
+#         elif status == "disponible":
+#             # NUEVO -- al quedar Disponible, se limpia TODO lo relacionado
+#             # al contrato anterior: cliente, giro, fecha_inicial, fecha_fin.
+#             # La cuota NO se toca (se queda capturada para la próxima renta).
+#             cleaned_data["cliente"] = None
+#             cleaned_data["giro"] = None
+#             cleaned_data["fecha_inicial"] = None
+#             cleaned_data["fecha_fin"] = None
+
+#         # ---- Campos obligatorios SOLO si el área queda "Ocupado" ----
+#         if status == "ocupado":
+#             if not cleaned_data.get("fecha_inicial"):
+#                 raise forms.ValidationError(
+#                     "Debe ingresar la fecha inicial del contrato -- el área quedará Ocupada."
+#                 )
+#             if not cleaned_data.get("fecha_fin"):
+#                 raise forms.ValidationError(
+#                     "Debe ingresar la fecha fin del contrato -- el área quedará Ocupada."
+#                 )
+#             if not cleaned_data.get("giro"):
+#                 raise forms.ValidationError(
+#                     "Debe ingresar el giro del cliente -- el área quedará Ocupada."
+#                 )
+
+#         fecha_inicial = cleaned_data.get("fecha_inicial")
+#         fecha_fin = cleaned_data.get("fecha_fin")
+#         if fecha_inicial and fecha_fin and fecha_inicial > fecha_fin:
+#             raise forms.ValidationError(
+#                 "La fecha inicial no puede ser posterior a la fecha fin."
+#             )
+
+#         return cleaned_data
+
 class AreaComunForm(forms.ModelForm):
     class Meta:
         model = AreaComun
         fields = [  # noqa: RUF012
             "numero",
-            "cliente",
             "empresa",
             "superficie_m2",
             "tipo_area",
             "cantidad_areas",
             "cuota",
             "deposito",
-            "giro",
             "ubicacion",
-            "fecha_inicial",
-            "fecha_fin",
-            "status",
             "observaciones",
-            "es_cuota_anual",
-            "es_cuota_variable",
         ]
         widgets = {  # noqa: RUF012
             "numero": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Número, Codigo o Id."}
             ),
-            "cliente": forms.Select(attrs={"class": "form-control"}),
             "empresa": forms.Select(attrs={"class": "form-control"}),
             "superficie_m2": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Superficie_m2"}
@@ -45,28 +217,12 @@ class AreaComunForm(forms.ModelForm):
             "cuota": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Importe Cuota Mensual"}
             ),
-            "es_cuota_anual": forms.CheckboxInput(
-                attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
-            ),
-            "es_cuota_variable": forms.CheckboxInput(
-                attrs={"class": "form-check-input", "style": "margin-top: 0.3rem;"}
-            ),
             "deposito": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Importe Depósito Garantía"}
-            ),
-            "giro": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Giro"}
             ),
             "ubicacion": forms.Textarea(
                 attrs={"rows": 2, "class": "form-control", "placeholder": "Ubicación"}
             ),
-            "fecha_inicial": forms.DateInput(
-                attrs={"type": "date", "class": "form-control"}, format="%Y-%m-%d"
-            ),
-            "fecha_fin": forms.DateInput(
-                attrs={"type": "date", "class": "form-control"}, format="%Y-%m-%d"
-            ),
-            "status": forms.Select(attrs={"class": "form-control"}),
             "observaciones": forms.Textarea(
                 attrs={
                     "rows": 2,
@@ -81,58 +237,30 @@ class AreaComunForm(forms.ModelForm):
             "cantidad_areas": "Cantidad de áreas",
             "deposito": "Depósito en garantía",
             "ubicacion": "Ubicación",
-            "status": "Estatus",
-            "cliente": "Cliente",
-            "es_cuota_anual": "Es cuota anual",
-            "es_cuota_variable": "Es cuota variable",
         }
 
     def __init__(self, *args, **kwargs):
-        # self.user = kwargs.pop('user', None)
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
         if user and not user.is_superuser:
             self.fields["empresa"].widget = forms.HiddenInput()
             empresa = user.perfilusuario.empresa
-            self.fields["empresa"].initial = empresa  # <-- Asigna el valor aquí
-            self.fields["cliente"].queryset = Cliente.objects.filter(empresa=empresa)
-        else:
-            self.fields["cliente"].queryset = Cliente.objects.all()
+            self.fields["empresa"].initial = empresa
 
-    
         if self.instance and self.instance.pk:
             self.fields["numero"].disabled = True
-            # NUEVO -- cliente y status ya NO se deshabilitan: se necesitan
-            # editables para que las reglas automáticas de clean() (más abajo)
-            # puedan aplicar -- mismo criterio que LocalComercialForm.
 
-        # NUEVO -- estos campos dependen del status resultante (ver clean()),
-        # así que se aflojan aquí y clean() decide si son obligatorios o no.
         self.fields["cuota"].required = False
-        self.fields["giro"].required = False
-        self.fields["fecha_inicial"].required = False
-        self.fields["fecha_fin"].required = False
-
 
     def clean_cuota(self):
         cuota = self.cleaned_data.get("cuota")
-        es_variable = self.data.get("es_cuota_variable") or self.initial.get("es_cuota_variable")
-        if es_variable:
-            return cuota or Decimal("0")
-        if cuota is None or cuota <= 0:
-            raise forms.ValidationError(
-                "La cuota debe ser mayor a $0.00 -- no se puede dejar en cero. "
-                "Si el importe de esta área varía cada vez, marca \"¿Cuota variable?\"."
-            )
-        return cuota
- 
+        return cuota or Decimal("0")
+
     def clean(self):
         cleaned_data = super().clean()
         numero = cleaned_data.get("numero")
         empresa = cleaned_data.get("empresa")
-        status = cleaned_data.get("status")
-        cliente = cleaned_data.get("cliente")
 
         if numero and empresa:
             qs = AreaComun.objects.filter(
@@ -145,52 +273,8 @@ class AreaComunForm(forms.ModelForm):
                     "Ya existe un área común con ese número en esta empresa."
                 )
 
-        # ---- Reglas automáticas de cliente/status (mismo criterio que Locales) ----
-        cliente_original_id = self.instance.cliente_id if self.instance.pk else None
-        cliente_nuevo_id = cliente.id if cliente else None
-        se_asigno_cliente_nuevo = (
-            cliente_nuevo_id is not None and cliente_nuevo_id != cliente_original_id
-        )
-
-        if se_asigno_cliente_nuevo:
-            # Se asignó un cliente nuevo/distinto -- el área pasa a "Ocupado"
-            # automáticamente, sin importar qué status se haya seleccionado.
-            cleaned_data["status"] = "ocupado"
-            status = "ocupado"
-        elif status == "disponible":
-            # NUEVO -- al quedar Disponible, se limpia TODO lo relacionado
-            # al contrato anterior: cliente, giro, fecha_inicial, fecha_fin.
-            # La cuota NO se toca (se queda capturada para la próxima renta).
-            cleaned_data["cliente"] = None
-            cleaned_data["giro"] = None
-            cleaned_data["fecha_inicial"] = None
-            cleaned_data["fecha_fin"] = None
-
-        # ---- Campos obligatorios SOLO si el área queda "Ocupado" ----
-        if status == "ocupado":
-            if not cleaned_data.get("fecha_inicial"):
-                raise forms.ValidationError(
-                    "Debe ingresar la fecha inicial del contrato -- el área quedará Ocupada."
-                )
-            if not cleaned_data.get("fecha_fin"):
-                raise forms.ValidationError(
-                    "Debe ingresar la fecha fin del contrato -- el área quedará Ocupada."
-                )
-            if not cleaned_data.get("giro"):
-                raise forms.ValidationError(
-                    "Debe ingresar el giro del cliente -- el área quedará Ocupada."
-                )
-
-        fecha_inicial = cleaned_data.get("fecha_inicial")
-        fecha_fin = cleaned_data.get("fecha_fin")
-        if fecha_inicial and fecha_fin and fecha_inicial > fecha_fin:
-            raise forms.ValidationError(
-                "La fecha inicial no puede ser posterior a la fecha fin."
-            )
-
         return cleaned_data
-
-
+    
 
 class AsignarClienteForm(forms.ModelForm):
     class Meta:

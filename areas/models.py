@@ -1,6 +1,5 @@
 
 from django import forms
-from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -25,23 +24,24 @@ class AreaComun(models.Model):
         ]
     tipo_area = models.CharField(max_length=20, choices=TIPO_AREA_CHOICES, default='Modulo')
     cantidad_areas = models.PositiveIntegerField(default=1, blank=True, null=True)
-    cuota = models.DecimalField(max_digits=10, decimal_places=2)
+    cuota = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True)
     deposito = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     giro = models.CharField(max_length=100, blank=True, null=True)
-    ubicacion = models.CharField(blank=True, null=True)
+    ubicacion = models.CharField(max_length=100, blank=True, null=True)
     activo = models.BooleanField(default=True)
     STATUS_CHOICES = [  # noqa: RUF012
         ('ocupado', 'Ocupado'),
         ('disponible', 'Disponible'),
         ('mantenimiento', 'Mantenimiento'),
+        ('en_juicio', 'En juicio'),
     ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ocupado')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='disponible')
     fecha_inicial = models.DateField(blank=True, null=True)
     fecha_fin = models.DateField(blank=True, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     fecha_baja = models.DateTimeField(blank=True, null=True)
-    observaciones = models.CharField(blank=True, null=True)
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota global? un solo pago")
     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
     es_cuota_variable = models.BooleanField(
@@ -50,6 +50,17 @@ class AreaComun(models.Model):
         help_text="Si está activo, el importe NO se captura aquí -- se determina "
                    "cada vez que el usuario factura manualmente esta área. Esta "
                    "área nunca se incluye en la facturación mensual automática."
+    )
+    PERIODICIDAD_CHOICES = [  # noqa: RUF012
+        ('mensual', 'Mensual'),
+        ('trimestral', 'Trimestral'),
+        ('semestral', 'Semestral'),
+        ('anual', 'Anual'),
+    ]
+    periodicidad_facturacion = models.CharField(
+        max_length=20, choices=PERIODICIDAD_CHOICES, default='mensual',
+        help_text="Se sincroniza automáticamente desde el contrato vigente -- "
+                   "determina cada cuánto se factura esta área."
     )
    
 
@@ -63,6 +74,17 @@ class AreaComun(models.Model):
                 intentos += 1
             self.referencia_pago = nueva_ref
         super().save(*args, **kwargs)
+
+
+    @property
+    def estado_contrato_actual(self):
+        """Estatus real del contrato vigente/vencido_ocupado de esta
+        area -- reemplaza el criterio antiguo basado solo en fecha_fin
+        (que se volvia obsoleto en cuanto el contrato se extendia mes
+        a mes via el comando de renovacion automatica)."""
+        contrato = self.contratos.filter(estatus__in=['vigente', 'vencido_ocupado']).first()
+        return contrato.estatus if contrato else None
+
         
     @property
     def estado_vigencia(self):

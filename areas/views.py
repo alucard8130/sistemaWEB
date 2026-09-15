@@ -28,10 +28,77 @@ from .models import AreaComun
 
 
 @login_required
+# def lista_areas(request):
+#     user = request.user
+#     query = request.GET.get("q", "")
+#     vencimiento = request.GET.get("vencimiento", "")  # NUEVO
+#     empresa_id = request.session.get("empresa_id")
+#     if user.is_superuser and empresa_id:
+#         areas = AreaComun.objects.filter(empresa_id=empresa_id, activo=True).order_by('numero')
+#     elif user.is_superuser:
+#         areas = AreaComun.objects.filter(activo=True).order_by('numero')
+#     else:
+#         empresa = user.perfilusuario.empresa
+#         areas = AreaComun.objects.filter(empresa=empresa, activo=True).order_by('numero')
+
+#     if query:
+#         areas = areas.filter(
+#             Q(numero__icontains=query) | Q(cliente__nombre__icontains=query)
+#         )
+
+#     # NUEVO -- filtro de vencimiento (usado por las alertas de la
+#     # campanita: contratos vencidos, o que vencen en 30/60/90 dias).
+#     if vencimiento:
+#         hoy = datetime.now().date()  # noqa: DTZ005
+#         if vencimiento == 'vencido':
+#             areas = areas.filter(fecha_fin__lt=hoy)
+#         elif vencimiento == '30':
+#             areas = areas.filter(fecha_fin__gte=hoy, fecha_fin__lte=hoy + timedelta(days=30))
+#         elif vencimiento == '60':
+#             areas = areas.filter(
+#                 fecha_fin__gt=hoy + timedelta(days=30), fecha_fin__lte=hoy + timedelta(days=60)
+#             )
+#         elif vencimiento == '90':
+#             areas = areas.filter(
+#                 fecha_fin__gt=hoy + timedelta(days=60), fecha_fin__lte=hoy + timedelta(days=90)
+#             )
+
+#     areas = areas.order_by('numero')
+#     total_areas = areas.count()
+#     total_cuotas = areas.aggregate(total=Sum('cuota'))['total'] or 0
+#     promedio_cuotas = areas.aggregate(promedio=Avg('cuota'))['promedio'] or 0
+#     superficie_total = areas.aggregate(total=Sum('superficie_m2'))['total'] or 0
+#     promedio_precio_m2 = total_cuotas / superficie_total if superficie_total > 0 else 0
+
+#     status_vencido = areas.filter(fecha_fin__lt=datetime.now()).count()  # noqa: DTZ005
+#     status_vigente = areas.filter(fecha_fin__gte=datetime.now()).count()  # noqa: DTZ005
+#     status_disponible = areas.filter(status="disponible").count()
+
+#     con_contrato = status_vigente + status_vencido
+#     porcentaje_vencido = (status_vencido / con_contrato * 100) if con_contrato > 0 else 0
+
+#     paginator = Paginator(areas, 25)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+
+#     return render(request, 'areas/lista_areas.html', {
+#         'areas': page_obj,
+#         'q': query,
+#         'vencimiento': vencimiento,  # NUEVO
+#         'total_areas': total_areas,
+#         'total_cuotas': total_cuotas,
+#         'promedio_cuotas': promedio_cuotas,
+#         'superficie_total': superficie_total,
+#         'promedio_precio_m2': promedio_precio_m2,
+#         'status_vencido': status_vencido,
+#         'status_vigente': status_vigente,
+#         'porcentaje_vencido': porcentaje_vencido,
+#         'status_disponible': status_disponible,
+#     })
 def lista_areas(request):
     user = request.user
     query = request.GET.get("q", "")
-    vencimiento = request.GET.get("vencimiento", "")  # NUEVO
+    vencimiento = request.GET.get("vencimiento", "")
     empresa_id = request.session.get("empresa_id")
     if user.is_superuser and empresa_id:
         areas = AreaComun.objects.filter(empresa_id=empresa_id, activo=True).order_by('numero')
@@ -46,12 +113,17 @@ def lista_areas(request):
             Q(numero__icontains=query) | Q(cliente__nombre__icontains=query)
         )
 
-    # NUEVO -- filtro de vencimiento (usado por las alertas de la
-    # campanita: contratos vencidos, o que vencen en 30/60/90 dias).
+    # NUEVO -- 'vencido' ahora se basa en el estatus REAL del contrato
+    # (vencido_ocupado), no en fecha_fin directo -- porque el cron
+    # extiende fecha_fin cada mes, y con el criterio viejo esas areas
+    # dejaban de verse como "vencidas" en cuanto se procesaban.
+    # Los rangos 30/60/90 si siguen usando fecha_fin, porque son sobre
+    # contratos VIGENTES que se acercan a su fecha -- ahi la fecha
+    # real sigue siendo el dato correcto a usar.
     if vencimiento:
         hoy = datetime.now().date()  # noqa: DTZ005
         if vencimiento == 'vencido':
-            areas = areas.filter(fecha_fin__lt=hoy)
+            areas = areas.filter(contratos__estatus='vencido_ocupado').distinct()
         elif vencimiento == '30':
             areas = areas.filter(fecha_fin__gte=hoy, fecha_fin__lte=hoy + timedelta(days=30))
         elif vencimiento == '60':
@@ -70,8 +142,10 @@ def lista_areas(request):
     superficie_total = areas.aggregate(total=Sum('superficie_m2'))['total'] or 0
     promedio_precio_m2 = total_cuotas / superficie_total if superficie_total > 0 else 0
 
-    status_vencido = areas.filter(fecha_fin__lt=datetime.now()).count()  # noqa: DTZ005
-    status_vigente = areas.filter(fecha_fin__gte=datetime.now()).count()  # noqa: DTZ005
+    # NUEVO -- ambos KPIs ahora leen el estatus real del contrato
+    # (a traves de la relacion 'contratos'), no fecha_fin directo.
+    status_vencido = areas.filter(contratos__estatus='vencido_ocupado').distinct().count()
+    status_vigente = areas.filter(contratos__estatus='vigente').distinct().count()
     status_disponible = areas.filter(status="disponible").count()
 
     con_contrato = status_vigente + status_vencido
@@ -84,7 +158,7 @@ def lista_areas(request):
     return render(request, 'areas/lista_areas.html', {
         'areas': page_obj,
         'q': query,
-        'vencimiento': vencimiento,  # NUEVO
+        'vencimiento': vencimiento,
         'total_areas': total_areas,
         'total_cuotas': total_cuotas,
         'promedio_cuotas': promedio_cuotas,
@@ -114,7 +188,12 @@ def crear_area(request):
                 area.empresa = perfil.empresa
             with transaction.atomic():
                 area.save()
-                generar_facturas_area(area)
+                # Un área recién creada nace disponible, sin cliente --
+                # no hay nada que facturar todavía. Eso pasa hasta que
+                # se le asigne un contrato desde el módulo de Contratos
+                # (arrendamientos), que sí trae cliente/cuota/fechas.
+                if area.cliente:
+                    generar_facturas_area(area)
             
             messages.success(request, "Área común creada correctamente.")
             return redirect('lista_areas')
@@ -422,9 +501,11 @@ def plantilla_areas_excel(request):
 
 try:
     from weasyprint import HTML
-except Exception:
+except Exception:  # noqa: BLE001
     HTML = None
-    
+
+
+# Generación de contratos en PDF para áreas comunes
 @login_required
 def generar_contrato(request, area_id):
     area = get_object_or_404(AreaComun, pk=area_id)
@@ -449,6 +530,8 @@ def generar_contrato(request, area_id):
     return HttpResponse(html_string)
 
 
+
+# Formulario para capturar los datos necesarios para generar el contrato
 @login_required
 def contrato_formulario(request, area_id):
     area = get_object_or_404(AreaComun, pk=area_id)
