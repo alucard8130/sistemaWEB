@@ -218,11 +218,8 @@
               Areas <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              
               <li><a class="dropdown-item reporte-link" href="{% url 'gestion_contratos_areas' %}"><i class="bi bi-file-earmark-check me-2"></i>Gestión de Contratos</a></li>
-              {% else %}
-              <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-check me-2"></i>Gestión de Contratos (Solo Premium)</a></li>
-              {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_areas' %}"><i class="bi bi-building me-2"></i>Áreas Comunes</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'areas_inactivas' %}"><i class="bi bi-building me-2"></i>Áreas Inactivas</a></li>

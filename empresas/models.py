@@ -14,6 +14,7 @@ class Empresa(models.Model):
     SEGMENTO_CHOICES = [  # noqa: RUF012
         ('comercial', 'Comercial (plaza / centro comercial)'),
         ('habitacional', 'Habitacional (condominio residencial)'),
+        ('escolar', 'Escuela'),
     ]
     ESTADO_CHOICES = [  # noqa: RUF012
         ('activa', 'Activa'),
@@ -93,6 +94,10 @@ class Empresa(models.Model):
     
     def __str__(self):
         return self.nombre
+
+    @property
+    def es_escuela(self):
+        return self.segmento == 'escuela'
     
     @property
     def es_habitacional(self):
