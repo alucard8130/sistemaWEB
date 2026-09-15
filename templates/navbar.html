@@ -198,6 +198,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_caja_chica' %}"><i class="bi bi-file-text me-2"></i>Reporte Caja</a></li>
             </ul>
           </li>
+          {% if empresa_actual.segmento != 'escuela' %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle"  id="tour-propiedades" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Propiedades">
               Propiedades <i style="font-size: 1.5em;"></i>
@@ -212,7 +213,8 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_locales' %}"><i class="bi bi-upload me-2"></i>Carga Masiva</a></li>
             </ul>
           </li>
-           {% if empresa_actual.segmento != 'habitacional' %}
+          {% endif %}
+          {% if empresa_actual.segmento == 'comercial' %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-areas" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Áreas Comunes">
               Areas <i style="font-size: 1.5em;"></i>
@@ -243,6 +245,7 @@
             </ul>
           </li>
           {% endif %}
+          {% if empresa_actual.segmento != 'escuela' %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-facturacion" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Facturacion">
               Facturación <i style="font-size: 1.5em;"></i>
@@ -266,7 +269,9 @@
               {% endif %}
             </ul>
           </li>
+          {% endif %}
 
+        {% if empresa_actual.segmento != 'escuela' %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-ingresos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ingresos y Cartera">
               Ingresos y Cartera <i style="font-size: 1.5em;"></i>
@@ -344,8 +349,19 @@
                   <li><a class="dropdown-item reporte-link" href="{% url 'lista_casetas_sanitario' %}"><i class="bi bi-display me-2"></i>Configuar Casetas</a></li>
               </ul>
           </li>
+          {% endif %}
         {% endif %}
-        
+          <!-- Menu exclusivo para Escuelas -->
+          {% if empresa_actual.segmento == 'escuela' %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ingresos">
+              Ingresos <i style="font-size: 1.5em;"></i>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_excel' %}"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Ingresos (Excel)</a></li>
+            </ul>
+          </li>
+          {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-gastos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Gastos">
               Gastos <i style="font-size: 1.5em;"></i>

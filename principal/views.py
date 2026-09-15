@@ -1463,6 +1463,63 @@ def enviar_correo_evento(request, evento_id):
 
 ###########################APP REGISTRO DE USUARIO GESAC########################
 # registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
+# def registro_usuario(request):
+#     mensaje = ""
+#     if request.method == "POST":
+#         nombre = request.POST["nombre"]
+#         username = request.POST["username"]
+#         password = request.POST["password"]
+#         email = request.POST["email"]
+#         segmento = request.POST.get("segmento", "comercial")  # NUEVO
+#         # telefono = request.POST['telefono']
+
+#         if segmento not in ("comercial", "habitacional"):
+#             segmento = "comercial"
+
+#         if User.objects.filter(username=username).exists():
+#             mensaje = "El nombre de usuario ya está en uso. Por favor elige otro."
+#         else:
+#             user = User.objects.create_user(
+#                 username=username, password=password, email=email, first_name=nombre
+#             )
+#             nombre_empresa_demo = (
+#                 "CONDOMINIO DEMO" if segmento == "habitacional" else "EMPRESA DEMO"
+#             )
+#             empresa = Empresa.objects.create(
+#                 nombre=nombre_empresa_demo,
+#                 rfc=f"DEMO{uuid4().hex[:8].upper()}",
+#                 segmento=segmento,
+#             )
+#             perfil = user.perfilusuario
+#             perfil.empresa = empresa
+#             if not user.is_superuser:
+#                 perfil.tipo_usuario = "demo"
+#             perfil.save()
+
+#             # --- Correo de aviso al admin: nuevo usuario registrado ---
+
+#             resumen = (
+#                 f"Nuevo usuario registrado en GESAC:\n\n"
+#                 f"Nombre: {nombre}\n"
+#                 f"Usuario: {username}\n"
+#                 f"Email: {email}\n"
+#                 f"Segmento: {segmento}\n"
+#                 f"Empresa demo asignada: {empresa.nombre}\n"
+#             )
+#             send_mail(
+#                 "Nuevo registro en GESAC",
+#                 resumen,
+#                 settings.DEFAULT_FROM_EMAIL,
+#                 [settings.EMAIL_HOST_USER],
+#                 fail_silently=True,
+#             )
+
+#             messages.success(
+#                 request,
+#                 "¡Registro exitoso! Por favor inicia sesión con tus credenciales.",
+#             )
+#             return redirect("login")
+#     return render(request, "registro.html", {"mensaje": mensaje})
 def registro_usuario(request):
     mensaje = ""
     if request.method == "POST":
@@ -1470,10 +1527,11 @@ def registro_usuario(request):
         username = request.POST["username"]
         password = request.POST["password"]
         email = request.POST["email"]
-        segmento = request.POST.get("segmento", "comercial")  # NUEVO
-        # telefono = request.POST['telefono']
+        segmento = request.POST.get("segmento", "comercial")
 
-        if segmento not in ("comercial", "habitacional"):
+        # NUEVO -- 'escuela' se agrega como segmento valido, junto a los
+        # 2 que ya tenias.
+        if segmento not in ("comercial", "habitacional", "escuela"):
             segmento = "comercial"
 
         if User.objects.filter(username=username).exists():
@@ -1482,9 +1540,16 @@ def registro_usuario(request):
             user = User.objects.create_user(
                 username=username, password=password, email=email, first_name=nombre
             )
-            nombre_empresa_demo = (
-                "CONDOMINIO DEMO" if segmento == "habitacional" else "EMPRESA DEMO"
-            )
+
+            # NUEVO -- nombre de empresa demo segun el segmento (3 casos
+            # en vez de 2).
+            if segmento == "habitacional":
+                nombre_empresa_demo = "CONDOMINIO DEMO"
+            elif segmento == "escuela":
+                nombre_empresa_demo = "ESCUELA DEMO"
+            else:
+                nombre_empresa_demo = "EMPRESA DEMO"
+
             empresa = Empresa.objects.create(
                 nombre=nombre_empresa_demo,
                 rfc=f"DEMO{uuid4().hex[:8].upper()}",
@@ -1495,8 +1560,6 @@ def registro_usuario(request):
             if not user.is_superuser:
                 perfil.tipo_usuario = "demo"
             perfil.save()
-
-            # --- Correo de aviso al admin: nuevo usuario registrado ---
 
             resumen = (
                 f"Nuevo usuario registrado en GESAC:\n\n"
@@ -1518,8 +1581,20 @@ def registro_usuario(request):
                 request,
                 "¡Registro exitoso! Por favor inicia sesión con tus credenciales.",
             )
+
+            # NUEVO -- si es escuela, manda al login con la marca correcta
+            # en vez del login normal.
+            if segmento == "escuela":
+                return redirect("login_escuela")
             return redirect("login")
-    return render(request, "registro.html", {"mensaje": mensaje})
+
+    # NUEVO -- si la URL que se visito fue la de registro de escuelas
+    # (distinta name, misma vista), usa el template con esa marca.
+    template = "registro.html"
+    if request.resolver_match and request.resolver_match.url_name == "registro_usuario_escuela":
+        template = "escuelas/registro_escuela.html"
+
+    return render(request, template, {"mensaje": mensaje})
 
 
 # lista usurios demo

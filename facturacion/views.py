@@ -1804,6 +1804,8 @@ def exportar_depositos_por_identificar_excel(request):
     wb.save(response)
     return response
 
+from django.db.models.functions import ExtractMonth, ExtractYear
+
 
 #################################REPORTES
 # pagos_por_origen.html
@@ -1911,6 +1913,35 @@ def pagos_por_origen(request):
         pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria).order_by("fecha_pago")
 
     pagos_validos = pagos.exclude(forma_pago="nota_credito")
+    
+    # NUEVO -- de los pagos ya filtrados, separa cuanto corresponde a
+    # cuotas del MES en que se facturaron (pagadas a tiempo, mismo mes
+    # que su factura__fecha_emision) vs cuotas de meses ANTERIORES
+    # (atrasadas -- se estan pagando ahora, pero son de un periodo ya
+    # pasado).
+    pagos_anotados = pagos_validos.annotate(
+        anio_pago=ExtractYear('fecha_pago'),
+        mes_pago=ExtractMonth('fecha_pago'),
+        anio_factura=ExtractYear('factura__fecha_emision'),
+        mes_factura=ExtractMonth('factura__fecha_emision'),
+    ).filter(factura__fecha_emision__isnull=False)
+
+    total_cuotas_mes_corriente = pagos_anotados.filter(
+        anio_pago=F('anio_factura'), mes_pago=F('mes_factura')
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    total_cuotas_atrasadas = pagos_anotados.exclude(
+        anio_pago=F('anio_factura'), mes_pago=F('mes_factura')
+    ).aggregate(total=Sum('monto'))['total'] or 0
+
+    total_desglosado = total_cuotas_mes_corriente + total_cuotas_atrasadas
+    porcentaje_corriente = ( 
+        (total_cuotas_mes_corriente / total_desglosado * 100) if total_desglosado > 0 else 0
+    )
+    porcentaje_atrasado = (  
+        (total_cuotas_atrasadas / total_desglosado * 100) if total_desglosado > 0 else 0
+    )
+
     total_pagos = pagos_validos.aggregate(total=Sum("monto"))["total"] or 0
     pagos_por_tipo = pagos.values("factura__tipo_cuota").annotate(total=Sum("monto"))
     pagos_por_forma = pagos.values("forma_pago").annotate(total=Sum("monto"))
@@ -1918,11 +1949,11 @@ def pagos_por_origen(request):
 
     # Fechas
      # Fechas -- año/mes de referencia basado en el filtro, no siempre "hoy"
-    hoy = date.today()
+    hoy = date.today()  # noqa: DTZ011
     if fecha_fin:
         try:
-            fecha_referencia = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
-        except Exception:
+            fecha_referencia = datetime.strptime(fecha_fin, "%Y-%m-%d").date()  # noqa: DTZ007
+        except Exception:  # noqa: BLE001
             fecha_referencia = hoy
     else:
         fecha_referencia = hoy
@@ -2016,7 +2047,6 @@ def pagos_por_origen(request):
             "areas": areas,
             "local_id": local_id,
             "area_id": area_id,
-            #'pagos': page_obj,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
             "tipo_cuota": tipo_cuota,
@@ -2038,9 +2068,11 @@ def pagos_por_origen(request):
             "ingresos_acumulados": ingresos_acumulados,
             "pagos_por_cuenta": list(pagos_por_cuenta),
             "FORMAS_PAGO": Pago.FORMAS_PAGO,
-            #'cuenta_labels': cuenta_labels,
-            #'cuenta_data': cuenta_data,
             "cuentas_bancarias": cuentas_bancarias,
+            "total_cuotas_mes_corriente": total_cuotas_mes_corriente,
+            "total_cuotas_atrasadas": total_cuotas_atrasadas,
+            "porcentaje_corriente": porcentaje_corriente,
+            "porcentaje_atrasado": porcentaje_atrasado,
         },
     )
 
@@ -3464,7 +3496,7 @@ def exportar_pagos_excel(request):
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
     tipo_cuota = request.GET.get("tipo_cuota")
-    forma_pago = request.GET.get("forma_pago")  # NUEVO -- faltaba por completo
+    forma_pago = request.GET.get("forma_pago")
     cuenta_bancaria = request.GET.get("cuenta_bancaria")
 
     pagos = Pago.objects.select_related(
@@ -3486,33 +3518,28 @@ def exportar_pagos_excel(request):
     if area_id:
         pagos = pagos.filter(factura__area_comun_id=area_id)
 
-    # NUEVO -- mismo default de fechas que la pantalla (enero a hoy si no hay filtros)
     filtros_aplicados = any([empresa_id, local_id, area_id, fecha_inicio, fecha_fin, tipo_cuota, forma_pago, cuenta_bancaria])
     if not filtros_aplicados:
-        fecha_inicio = date.today().replace(month=1, day=1).strftime("%Y-%m-%d")
-        fecha_fin = date.today().strftime("%Y-%m-%d")
+        fecha_inicio = date.today().replace(month=1, day=1).strftime("%Y-%m-%d")  # noqa: DTZ011
+        fecha_fin = date.today().strftime("%Y-%m-%d")  # noqa: DTZ011
 
     if fecha_inicio and fecha_fin:
         try:
-            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()  # noqa: DTZ007
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()  # noqa: DTZ007
             pagos = pagos.filter(fecha_pago__range=[fecha_i, fecha_f])
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
     if tipo_cuota:
         pagos = pagos.filter(factura__tipo_cuota=tipo_cuota)
-    if forma_pago:  # NUEVO
+    if forma_pago:
         pagos = pagos.filter(forma_pago=forma_pago)
     if cuenta_bancaria:
         pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria)
 
-    # NUEVO -- orden garantizado siempre, sin importar qué filtros se apliquen
     pagos = pagos.order_by("fecha_pago")
-
-    # NUEVO -- excluye notas de crédito, igual que el total mostrado en pantalla
     pagos = pagos.exclude(forma_pago="nota_credito")
 
-    # Crear libro y hoja
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Ingresos"
@@ -3520,10 +3547,13 @@ def exportar_pagos_excel(request):
     ws.append([
         "Local/Área", "Cliente", "Monto Cobro", "Banco", "Numero Cuenta",
         "Tipo Cuota", "Forma de Cobro", "Folio Factura", "Empresa",
-        "Fecha Cobro", "Observaciones",
+        "Fecha Cobro", "Observaciones", "Estatus",
     ])
 
     total_general = 0
+    total_corriente = 0
+    total_atrasado = 0
+
     for pago in pagos:
         factura = pago.factura
         if factura.local:
@@ -3536,6 +3566,19 @@ def exportar_pagos_excel(request):
         else:
             local_area = "-"
 
+        if factura.fecha_emision:
+            es_corriente = (
+                pago.fecha_pago.year == factura.fecha_emision.year
+                and pago.fecha_pago.month == factura.fecha_emision.month
+            )
+            estatus = "Mes corriente" if es_corriente else "Atrasada"
+            if es_corriente:
+                total_corriente += float(pago.monto)
+            else:
+                total_atrasado += float(pago.monto)
+        else:
+            estatus = "N/A"
+
         ws.append([
             local_area,
             factura.cliente.nombre,
@@ -3543,16 +3586,18 @@ def exportar_pagos_excel(request):
             pago.cuenta_bancaria.banco if pago.cuenta_bancaria else "",
             pago.cuenta_bancaria.numero_cuenta if pago.cuenta_bancaria else "",
             factura.get_tipo_cuota_display() if hasattr(factura, "get_tipo_cuota_display") else factura.tipo_cuota,
-            pago.get_forma_pago_display(),  # antes: pago.forma_pago (mostraba la clave, no el texto legible)
+            pago.get_forma_pago_display(),
             factura.folio,
             factura.empresa.nombre,
             pago.fecha_pago,
             pago.observaciones or "",
+            estatus,
         ])
         total_general += float(pago.monto)
 
-    # NUEVO -- fila de total, para poder comparar directo contra el KPI de pantalla
-    ws.append(["", "", "", "", "", "", "", "", "", "TOTAL:", total_general])
+    ws.append(["", "", "", "", "", "", "", "", "", "TOTAL:", total_general, ""])
+    ws.append(["", "", "", "", "", "", "", "", "", "Total mes corriente:", total_corriente, ""])
+    ws.append(["", "", "", "", "", "", "", "", "", "Total atrasado:", total_atrasado, ""])
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -3560,6 +3605,7 @@ def exportar_pagos_excel(request):
     response["Content-Disposition"] = "attachment; filename=pagos.xlsx"
     wb.save(response)
     return response
+
 
 
 def buscar_por_id_o_nombre(modelo, valor, campo="nombre", empresa=None):
@@ -3574,10 +3620,10 @@ def buscar_por_id_o_nombre(modelo, valor, campo="nombre", empresa=None):
         if empresa is not None:
             obj_emp_id = getattr(obj, "empresa_id", None)
             if obj_emp_id is None and getattr(obj, "empresa", None):
-                obj_emp_id = getattr(obj, "empresa").id
+                obj_emp_id = getattr(obj, "empresa").id  # noqa: B009
             empresa_id = empresa.id if hasattr(empresa, "id") else empresa
             if obj_emp_id != empresa_id:
-                raise Exception(
+                raise Exception(  # noqa: TRY002
                     f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada"
                 )
         return obj
@@ -3603,8 +3649,8 @@ def buscar_por_id_o_nombre(modelo, valor, campo="nombre", empresa=None):
             eid = getattr(o, "empresa_id", None)
             if eid is None and getattr(o, "empresa", None):
                 try:
-                    return getattr(o, "empresa").id
-                except Exception:
+                    return getattr(o, "empresa").id  # noqa: B009
+                except Exception:  # noqa: BLE001
                     return None
             return eid
 
@@ -3619,14 +3665,14 @@ def buscar_por_id_o_nombre(modelo, valor, campo="nombre", empresa=None):
                     for obj in candidatos_same
                 ]
             )
-            raise Exception(
+            raise Exception(  # noqa: TRY002
                 f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__} para la misma empresa: {conflicto}"
             )
         # no hay coincidencias en la misma empresa:
         if candidatos:
             # existen coincidencias en otras empresas -> no considerarlo conflicto para esta empresa
             return None
-        raise Exception(
+        raise Exception(  # noqa: TRY002
             f"No se encontró '{valor}' en {modelo.__name__} para la empresa seleccionada"
         )
     else:
@@ -3637,10 +3683,10 @@ def buscar_por_id_o_nombre(modelo, valor, campo="nombre", empresa=None):
             conflicto = "; ".join(
                 [f"ID={obj.pk}, {campo}='{getattr(obj, campo)}'" for obj in candidatos]
             )
-            raise Exception(
+            raise Exception(  # noqa: TRY002
                 f"Conflicto: '{valor}' coincide con varios registros en {modelo.__name__}: {conflicto}"
             )
-        raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")
+        raise Exception(f"No se encontró '{valor}' en {modelo.__name__}")  # noqa: TRY002
 
 
 

@@ -1,0 +1,115 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear cuenta — ERP Escolar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Rubik', sans-serif; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0F5132 0%, #146C43 45%, #D9812C 100%);
+            padding: 20px;
+        }
+        .registro-wrap { width: 100%; max-width: 440px; }
+        .registro-logo { text-align: center; margin-bottom: 22px; color: white; }
+        .registro-logo .icono {
+            width: 62px; height: 62px; border-radius: 18px;
+            background: rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px; font-size: 1.8rem;
+        }
+        .registro-logo .marca { font-weight: 800; font-size: 1.4rem; letter-spacing: -0.02em; }
+        .registro-logo .subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
+
+        .registro-card { background: white; border-radius: 18px; padding: 32px 30px; box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
+        .registro-card h5 { font-weight: 700; color: #0F5132; margin-bottom: 6px; text-align: center; }
+        .registro-card .registro-hint { text-align: center; font-size: 0.82rem; color: #6b7280; margin-bottom: 22px; }
+
+        .registro-form label {
+            font-weight: 600; font-size: 0.78rem; color: #146C43;
+            text-transform: uppercase; letter-spacing: 0.02em;
+            margin-bottom: 5px; display: block;
+        }
+        .registro-form .field-wrap { margin-bottom: 16px; }
+        .registro-form input {
+            width: 100%; border: 1px solid #dde3ec; border-radius: 10px;
+            padding: 10px 13px; font-size: 0.92rem; transition: all 0.15s;
+        }
+        .registro-form input:focus {
+            outline: none; border-color: #146C43;
+            box-shadow: 0 0 0 3px rgba(20,108,67,0.15);
+        }
+
+        .registro-alert { background: #FDECEC; color: #B91C1C; border-radius: 10px; padding: 12px 14px; font-size: 0.85rem; margin-bottom: 18px; }
+
+        .btn-crear-cuenta {
+            width: 100%;
+            background: linear-gradient(135deg, #146C43, #0F5132);
+            color: white; border: none; border-radius: 10px;
+            padding: 12px; font-weight: 700; font-size: 0.94rem;
+            margin-top: 6px;
+        }
+        .btn-crear-cuenta:hover { opacity: 0.92; color: white; }
+
+        .registro-footer { text-align: center; margin-top: 18px; }
+        .registro-footer a { color: rgba(255,255,255,0.9); font-size: 0.85rem; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="registro-wrap">
+        <div class="registro-logo">
+            <div class="icono"><i class="bi bi-mortarboard-fill"></i></div>
+            <div class="marca">ERP Escolar</div>
+            <div class="subtitulo">Administración financiera para instituciones educativas</div>
+        </div>
+
+        <div class="registro-card">
+            <h5>Crea tu cuenta</h5>
+            <div class="registro-hint">Regístrate y empieza a usar el sistema al instante</div>
+
+            {% if mensaje %}
+                <div class="registro-alert">{{ mensaje }}</div>
+            {% endif %}
+
+            <form method="post" class="registro-form">
+                {% csrf_token %}
+                <input type="hidden" name="segmento" value="escuela">
+
+                <div class="field-wrap">
+                    <label for="id_nombre">Tu nombre</label>
+                    <input type="text" id="id_nombre" name="nombre" required>
+                </div>
+                <div class="field-wrap">
+                    <label for="id_username">Usuario</label>
+                    <input type="text" id="id_username" name="username" required>
+                </div>
+                <div class="field-wrap">
+                    <label for="id_email">Correo electrónico</label>
+                    <input type="email" id="id_email" name="email" required>
+                </div>
+                <div class="field-wrap">
+                    <label for="id_password">Contraseña</label>
+                    <input type="password" id="id_password" name="password" required>
+                </div>
+
+                <button type="submit" class="btn-crear-cuenta">
+                    <i class="bi bi-check-circle me-1"></i>Crear cuenta
+                </button>
+            </form>
+        </div>
+
+        <div class="registro-footer">
+            <a href="{% url 'login_escuela' %}">¿Ya tienes cuenta? Inicia sesión</a>
+        </div>
+    </div>
+</body>
+</html>

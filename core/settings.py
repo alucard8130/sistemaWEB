@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "notificaciones_sistema",
     "usuarios_extra",
     "arrendamientos",
+    "escuelas",
 ]
 
 

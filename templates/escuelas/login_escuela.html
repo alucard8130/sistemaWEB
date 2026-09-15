@@ -1,0 +1,131 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso — ERP Escolar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Rubik', sans-serif; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0F5132 0%, #146C43 45%, #D9812C 100%);
+            padding: 20px;
+        }
+        .login-wrap { width: 100%; max-width: 400px; }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 22px;
+            color: white;
+        }
+        .login-logo .icono {
+            width: 62px; height: 62px; border-radius: 18px;
+            background: rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px; font-size: 1.8rem;
+        }
+        .login-logo .marca { font-weight: 800; font-size: 1.4rem; letter-spacing: -0.02em; }
+        .login-logo .subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
+
+        .login-card {
+            background: white;
+            border-radius: 18px;
+            padding: 32px 30px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+        }
+        .login-card h5 { font-weight: 700; color: #0F5132; margin-bottom: 22px; text-align: center; }
+
+        .login-form label {
+            font-weight: 600; font-size: 0.78rem; color: #146C43;
+            text-transform: uppercase; letter-spacing: 0.02em;
+            margin-bottom: 5px; display: block;
+        }
+        .login-form .field-wrap { margin-bottom: 16px; }
+        .login-form input[type="text"],
+        .login-form input[type="password"],
+        .login-form input[type="email"],
+        .login-form select {
+            width: 100%;
+            border: 1px solid #dde3ec;
+            border-radius: 10px;
+            padding: 10px 13px;
+            font-size: 0.92rem;
+            transition: all 0.15s;
+        }
+        .login-form input:focus, .login-form select:focus {
+            outline: none;
+            border-color: #146C43;
+            box-shadow: 0 0 0 3px rgba(20,108,67,0.15);
+        }
+        .login-form .form-text-error {
+            color: #B91C1C; font-size: 0.78rem; margin-top: 4px;
+        }
+        .login-alert {
+            background: #FDECEC; color: #B91C1C; border-radius: 10px;
+            padding: 12px 14px; font-size: 0.85rem; margin-bottom: 18px;
+        }
+
+        .btn-acceder {
+            width: 100%;
+            background: linear-gradient(135deg, #146C43, #0F5132);
+            color: white; border: none; border-radius: 10px;
+            padding: 12px; font-weight: 700; font-size: 0.94rem;
+            margin-top: 6px;
+        }
+        .btn-acceder:hover { opacity: 0.92; color: white; }
+
+        .login-footer { text-align: center; margin-top: 18px; color: rgba(255,255,255,0.75); font-size: 0.78rem; }
+    </style>
+</head>
+<body>
+    <div class="login-wrap">
+        <div class="login-logo">
+            <div class="icono"><i class="bi bi-mortarboard-fill"></i></div>
+            <div class="marca">ERP Escolar</div>
+            <div class="subtitulo">Administración financiera para instituciones educativas</div>
+        </div>
+
+        <div class="login-card">
+            <h5>Iniciar sesión</h5>
+
+            {% if form.non_field_errors %}
+                <div class="login-alert">
+                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="post" class="login-form">
+                {% csrf_token %}
+                {% for field in form.visible_fields %}
+                <div class="field-wrap">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="form-text-error">{{ field.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <button type="submit" class="btn-acceder">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Entrar
+                </button>
+            </form>
+        </div>
+
+        <div class="registro-footer" style="text-align:center; margin-top:18px;">
+            <a href="{% url 'registro_usuario_escuela' %}" style="color: rgba(255,255,255,0.9); font-size: 0.85rem; text-decoration: underline;">¿No tienes cuenta? Regístrate</a>
+        </div>
+
+        <div class="login-footer">© {% now "Y" %} ERP Escolar -- Todos los derechos reservados</div>
+    </div>
+</body>
+</html>

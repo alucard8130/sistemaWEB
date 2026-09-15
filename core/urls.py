@@ -442,6 +442,8 @@ urlpatterns = [
     path('empresa/usuarios/', include('usuarios_extra.urls')),
     ## Arrendamientos ##
     path('contratos/', include('arrendamientos.urls')),
+    #escuelas
+    path('escuelas/', include('escuelas.urls')),
 ]
 
     
