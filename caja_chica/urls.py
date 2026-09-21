@@ -23,5 +23,10 @@ urlpatterns = [
         views.imprimir_vale_caja,
         name="imprimir_vale_caja",
     ),
+    path(
+        "comprobar_vale/<int:vale_id>/",
+        views.comprobar_vale,
+        name="comprobar_vale",
+    ),
     
 ]

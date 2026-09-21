@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 #DEBUG = True
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,www.gesac.com.mx").split(",")
-#ALLOWED_HOSTS = ["192.168.0.159","*",]  # For development purposes, change this in production
+#ALLOWED_HOSTS = ["192.168.0.159","*",".ngrok-free.dev"]  # For development purposes, change this in production
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
@@ -164,6 +164,7 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 DEFAULT_FROM_EMAIL_MEMBRESIAS = os.getenv("DEFAULT_FROM_EMAIL_MEMBRESIAS")
 SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 BANXICO_TOKEN = os.environ.get('BANXICO_TOKEN', '')
+HUBSPOT_WEBHOOK_TOKEN = os.environ.get('HUBSPOT_WEBHOOK_TOKEN', '')
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -256,3 +257,17 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 1800
 SESSION_SAVE_EVERY_REQUEST = True
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}

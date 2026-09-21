@@ -15,8 +15,13 @@
         </span>
 
         <span style="color:rgba(255,255,255,0.75);">
+            {% if request.user.perfilusuario.empresa.segmento == 'escuela' %}
+            <i class="bi bi-mortarboard-fill me-1"></i>
+            Escuela: <strong style="color:white;">{{ request.user.perfilusuario.empresa }}</strong>
+            {% else %}
             <i class="bi bi-building me-1"></i>
             Condominio: <strong style="color:white;">{{ request.user.perfilusuario.empresa }}</strong>
+            {% endif %}
         </span>
 
         <span>
@@ -37,7 +42,11 @@
         </span>
 
         <span style="color:rgba(255,255,255,0.5);font-size:0.72rem;">
+            {% if request.user.perfilusuario.empresa.segmento == 'escuela' %}
+            © {% now "Y" %} ERP Escolar &nbsp;·&nbsp; Powered by GESAC
+            {% else %}
             © {% now "Y" %} GESAC &nbsp;·&nbsp; Created By Jaime M Estrada B.
+            {% endif %}
         </span>
 
     </div>

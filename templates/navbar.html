@@ -158,17 +158,21 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_catalogo_cuentas' %}"><i class="bi bi-diagram-3 me-2"></i>Cuentas Contables</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_catalogo_cuentas' %}"><i class="bi bi-upload me-2"></i>Cargar Cuentas Contables</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_gasto' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Cuentas Gastos</a></li>
+              {% if empresa_actual.segmento != 'escuela' %}
               <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_cuota' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Tipos de Cuota</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'homologar_tipos_otro_ingreso' %}"><i class="bi bi-link-45deg me-2"></i>Homologar Otros Ingresos</a></li>
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'empleado_lista' %}"><i class="bi bi-person me-2"></i>Empleados</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'proveedor_lista' %}"><i class="bi bi-truck me-2"></i>Proveedores</a></li>
               <li><hr class="dropdown-divider"></li>
+              {% if empresa_actual.segmento != 'escuela' %}
               {% if request.user.perfilusuario.empresa.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_plantillas' %}"><i class="bi bi-chat-square-text me-2"></i>Plantillas de Cobranza</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-chat-square-text me-2"></i>Plantillas de Cobranza (PREMIUM)</a></li>
+              {% endif %}
               {% endif %}
             </ul>
           </li>
@@ -358,10 +362,14 @@
               Ingresos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_excel' %}"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Ingresos (Excel)</a></li>
+               <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_admisiones' %}"><i class="bi bi-funnel-fill me-2"></i>Admisiones</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_excel' %}"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Cobranza (Excel)</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_fiserv' %}"><i class="bi bi-credit-card-fill me-2"></i>Importar Pagos FiServ</a></li>
             </ul>
           </li>
           {% endif %}
+          <!-- Fin del menú exclusivo para Escuelas -->
+      
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-gastos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Gastos">
               Gastos <i style="font-size: 1.5em;"></i>
@@ -412,20 +420,24 @@
             <ul class="dropdown-menu">
               <li><h6 class="dropdown-header">Matrices de presupuesto</h6></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_gastos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Gastos</a></li>
+              {% if empresa_actual.segmento != 'escuela' %}
               <li><a class="dropdown-item reporte-link" href="{% url 'matriz_presupuesto_ingresos' %}"><i class="bi bi-list-ul me-2"></i>Matriz Ppto Ingresos</a></li>
+              {% endif %}
 
               <li><hr class="dropdown-divider"></li>
               <li><h6 class="dropdown-header">Comparativos y resultados</h6></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'estado_resultados' %}"><i class="bi bi-file-text me-2"></i>Reporte de Resultados</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_gasto' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Gastos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_gastos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Gtos</a></li>
+              {% if empresa_actual.segmento != 'escuela' %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Ingresos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_ingresos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Ing</a></li>
+              {% endif %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_vs_gastos' %}"><i class="bi bi-bar-chart me-2"></i>Grafico Ingresos vs Gastos</a></li>
             </ul>
           </li>
 
-          <li class="nav-item dropdown">
+            {% if empresa_actual.segmento != 'escuela' %}
             <a class="nav-link dropdown-toggle" id="tour-comunicacion" href="#" role="button" data-bs-toggle="dropdown" title="Comunicacion">
               Comunicacion <i style="font-size: 1.5em;"></i>
             </a>
@@ -442,21 +454,26 @@
               {% endif %}
             </ul>
           </li>
+          {% endif %}
 
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-cuenta" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Membresías">
               Mi cuenta<i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
+            {% if request.user.perfilusuario.empresa.segmento == 'escuela' %}
+            <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia_escuela' %}"><i class="bi bi-bank2 me-2"></i>Renovar membresía</a></li>
+            {% else %}
             <li><a class="dropdown-item reporte-link" href="{% url 'configurar_comision_stripe' %}"><i class="bi bi-credit-card-2-front-fill me-2"></i>Configurar Comision Stripe</a></li>
             {% if request.user.perfilusuario.empresa.es_premium %}
-            <li><a class="dropdown-item" href="#" id="navbar-stripe-premium-btn"><i class="bi bi-credit-card-2-front-fill me-2"></i>Renovar membresia con Tarjeta</a></li>
-            <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar con otros medios de pago</a></li>
+            <li><a class="dropdown-item" href="#" id="navbar-stripe-premium-btn"><i class="bi bi-credit-card-2-front-fill me-2"></i>Renovar  con Tarjeta</a></li>
+            <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar con otros Medios de pago</a></li>
             {% elif request.user.perfilusuario.empresa.es_plus %}
-            <li><a class="dropdown-item" href="#" id="navbar-stripe-plus-btn"><i class="bi bi-credit-card-fill me-2"></i>Renovar membresia con Tarjeta</a></li>  
-            <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar con otros medios de pago</a></li>
+            <li><a class="dropdown-item" href="#" id="navbar-stripe-plus-btn"><i class="bi bi-credit-card-fill me-2"></i>Renovar con Tarjeta</a></li>  
+            <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar con otros Medios de pago</a></li>
             {% else %}
-            <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar membresia con otros medios de pago</a></li>
+            <li><a class="dropdown-item reporte-link" href="{% url 'solicitar_pago_transferencia' %}"><i class="bi bi-bank2 me-2"></i>Renovar con otros Medios de pago</a></li>
+            {% endif %}
             {% endif %}
               {% if request.user.is_superuser %}
               <li><hr class="dropdown-divider"></li>
@@ -473,6 +490,7 @@
       
       <div class="d-flex align-items-center gap-3">
         <!-- AQUÍ va el bloque nuevo de notificaciones del sistema -->
+      {% if empresa_actual.segmento != 'escuela' %}
         <span id="tour-campanita" class="dropdown d-inline-block position-relative">
             {% csrf_token %}
             <a href="#" class="position-relative" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none;">
@@ -515,13 +533,13 @@
                 {% endif %}
             </ul>
         </span>
- 
+      {% endif %}
         <style>
             .notif-sistema-titulo, .notif-sistema-msg { font-weight: 400; }
             .notif-sistema-no-leida .notif-sistema-titulo,
             .notif-sistema-no-leida .notif-sistema-msg { font-weight: 700; }
         </style>
-
+         {% if empresa_actual.segmento != 'escuela' %}
         <button type="button" id="tour-ayuda" class="icono-navbar-simple reporte-link"
           data-bs-toggle="modal"
           data-bs-target="#modalAyuda"
@@ -529,6 +547,7 @@
           title="Ayuda">
           <i class="bi bi-question-circle-fill"></i>
         </button>
+        {% endif %}
 
         <form method="post" action="{% url 'logout' %}" class="mb-0 d-inline">
           {% csrf_token %}

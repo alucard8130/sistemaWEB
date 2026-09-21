@@ -13,7 +13,6 @@ from django.utils import timezone
 from num2words import num2words
 from openpyxl import Workbook
 
-from acceso_empresas.decorators import login_o_portal_required
 from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado, Incidencia
 from empresas.models import Empresa
@@ -566,7 +565,7 @@ def lista_vales_caja_chica(request):
     page_number = request.GET.get("page")
     vales = paginator.get_page(page_number)
 
-    hoy = date.today()
+    hoy = date.today()  # noqa: DTZ011
 
     return render(
         request, "caja_chica/lista_vales_caja_chica.html",
@@ -832,7 +831,7 @@ def comprobar_vale(request, vale_id):
                     if diferencia == Decimal("0.00"):
                         vale.status = "comprobado"
                         if hasattr(vale, "importe_comprobado"):
-                            setattr(vale, "importe_comprobado", comprobado)
+                            setattr(vale, "importe_comprobado", comprobado)  # noqa: B010
                         if descripcion and hasattr(vale, "observaciones"):
                             vale.observaciones = (vale.observaciones or "") + "\nComprobación: " + descripcion
                         vale.save()
@@ -870,14 +869,14 @@ def comprobar_vale(request, vale_id):
                     #vale.status = getattr(vale, "status", "comprobado") or "comprobado"
                     vale.status = "comprobado"
                     if hasattr(vale, "importe_comprobado"):
-                        setattr(vale, "importe_comprobado", comprobado)
+                        setattr(vale, "importe_comprobado", comprobado)  # noqa: B010
                     if descripcion and hasattr(vale, "observaciones"):
                         vale.observaciones = (vale.observaciones or "") + "\nComprobación: " + descripcion
                     vale.save()
 
                 messages.success(request, "Vale comprobado correctamente.")
                 return redirect("lista_vales_caja_chica")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 messages.error(request, f"Error al comprobar el vale: {e}")
     else:
         initial = {"importe_comprobado": getattr(vale, "importe", None)}

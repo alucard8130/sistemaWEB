@@ -26,7 +26,7 @@ from babel.dates import format_date
 from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import get_user_model, update_session_auth_hash
+from django.contrib.auth import get_user_model, logout, update_session_auth_hash
 
 # import uuid
 from django.contrib.auth.decorators import login_required
@@ -62,14 +62,8 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-
-# from rest_framework.authtoken.models import Token
-# from rest_framework.authentication import TokenAuthentication
-# from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import (
     api_view,
-    # authentication_classes,
-    # permission_classes,
     parser_classes,
 )
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -118,28 +112,39 @@ from .serializers import FacturaSerializer
 
 # pantalla principal del sistema, con indicadores clave de desempeño (KPIs) y gráficos de resumen
 
-MESES = [
-    "Ene",
-    "Feb",
-    "Mar",
-    "Abr",
-    "May",
-    "Jun",
-    "Jul",
-    "Ago",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dic",
-]
+MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"]
 
 
 @login_required
 def dashboard_inicio(request):
+    # NUEVO -- perfil se obtiene UNA sola vez, para cualquier tipo de
+    # usuario (incluido superusuario), y se reutiliza en el resto de la
+    # funcion -- corrige el UnboundLocalError de antes, donde 'perfil'
+    # solo existia dentro del bloque "not is_superuser".
+    perfil = getattr(request.user, "perfilusuario", None)
+
+    # NUEVO -- si el usuario (o, para un superusuario, la empresa que
+    # tiene seleccionada en sesion) es de una escuela, redirige a su
+    # propio dashboard -- asi, sin importar por donde entre, cae en el
+    # lugar correcto.
+    if request.user.is_superuser:
+        empresa_id_sesion = request.session.get("empresa_id")
+        empresa_sesion = (
+            Empresa.objects.filter(id=empresa_id_sesion).first() if empresa_id_sesion else None
+        )
+        if empresa_sesion and empresa_sesion.segmento == "escuela":
+            return redirect("dashboard_inicio_escuela")
+
     # NUEVO -- redirige a los contadores directo a su panel dedicado 03/08/26
     if not request.user.is_superuser:
         perfil = getattr(request.user, "perfilusuario", None)
-        # NUEVO -- primero verifica si debe cambiar contraseña
+
+        # NUEVO -- si es de una escuela, redirige antes que cualquier
+        # otra cosa.
+        if perfil and perfil.empresa and perfil.empresa.segmento == "escuela":
+            return redirect("dashboard_inicio_escuela")
+
+        # NUEVO -- primero verifica si debe cambiar contrasena
         if perfil and perfil.debe_cambiar_password:
             return redirect("cambiar_password_obligatorio")
         if perfil and perfil.es_contador:
@@ -155,9 +160,6 @@ def dashboard_inicio(request):
         empresa = Empresa.objects.filter(id=empresa_id).first()
     else:
         empresa = request.user.perfilusuario.empresa
-
-    if not empresa:
-        return render(request, "pantalla_inicio.html", {"empresa": None})
 
     # ── INGRESOS DEL MES (cuotas + otros ingresos) ──
     ingresos_mes_cuotas = Pago.objects.filter(
@@ -677,9 +679,23 @@ def dashboard_inicio(request):
             "moneda_choices": CuentaBancaria.TIPO_MONEDA,
             "tipo_cuenta_choices": CuentaBancaria.TIPO_CUENTA,
             "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,  # NUEVO
-            'mostrar_tour_inicial': not perfil.ha_visto_tour_inicial if request.user.perfilusuario else False,
+            'mostrar_tour_inicial': not perfil.ha_visto_tour_inicial if perfil else False,
         },
     )
+
+
+def logout_view(request):
+    """Reemplaza a auth_views.LogoutView -- revisa el segmento del
+    usuario ANTES de cerrar la sesion (una vez cerrada, ya no hay forma
+    de saber a quien pertenecia), y lo manda al login correspondiente."""
+    perfil = getattr(request.user, 'perfilusuario', None)
+    es_escuela = bool(perfil and perfil.empresa and perfil.empresa.segmento == 'escuela')
+ 
+    logout(request)
+ 
+    if es_escuela:
+        return redirect('login_escuela')
+    return redirect('login')
 
 
 ####PANEL DEDICADO PARA DESPACHOS DE CONTADORES########################03/08/26
@@ -1528,6 +1544,7 @@ def registro_usuario(request):
         password = request.POST["password"]
         email = request.POST["email"]
         segmento = request.POST.get("segmento", "comercial")
+        nombre_escuela = request.POST.get("nombre_escuela", "").strip()  # NUEVO
 
         # NUEVO -- 'escuela' se agrega como segmento valido, junto a los
         # 2 que ya tenias.
@@ -1546,9 +1563,12 @@ def registro_usuario(request):
             if segmento == "habitacional":
                 nombre_empresa_demo = "CONDOMINIO DEMO"
             elif segmento == "escuela":
-                nombre_empresa_demo = "ESCUELA DEMO"
+                # NUEVO -- usa el nombre real que capturo, y solo cae en
+                # el generico si por alguna razon vino vacio.
+                nombre_empresa_demo = nombre_escuela or "ESCUELA DEMO"
             else:
                 nombre_empresa_demo = "EMPRESA DEMO"
+
 
             empresa = Empresa.objects.create(
                 nombre=nombre_empresa_demo,
@@ -5949,35 +5969,59 @@ def _renovar_vencimiento_transferencia(perfil, meses=1):
 @login_required
 def solicitar_pago_transferencia(request):
     perfil = get_object_or_404(PerfilUsuario, usuario=request.user)
-
+ 
+    es_escuela = (
+        request.resolver_match
+        and request.resolver_match.url_name == "solicitar_pago_transferencia_escuela"
+    )
+ 
+    config = ConfiguracionMembresia.obtener()
+ 
     if request.method == "POST":
-        plan_solicitado = request.POST.get("plan_solicitado")
-        monto_raw = request.POST.get("monto")
+        #plan_solicitado = "plus" if es_escuela else request.POST.get("plan_solicitado")
+        plan_solicitado = "premium" if es_escuela else request.POST.get("plan_solicitado")
         meses_cubiertos = request.POST.get("meses_cubiertos") or 1
         fecha_transferencia = request.POST.get("fecha_transferencia")
         referencia = request.POST.get("referencia", "").strip()
         comprobante = request.FILES.get("comprobante")
-
+ 
+        if es_escuela:
+            if not config or config.precio_plus_escuela_con_iva is None:
+                messages.error(
+                    request,
+                    "Todavía no se ha configurado el precio de la membresía escolar -- contacta a soporte.",
+                )
+                return redirect("solicitar_pago_transferencia_escuela")
+            try:
+                meses_int = int(meses_cubiertos)
+            except (TypeError, ValueError):
+                meses_int = 1
+            monto = config.precio_plus_escuela_con_iva * meses_int
+        else:
+            monto_raw = request.POST.get("monto")
+            if not monto_raw:
+                messages.error(request, "El monto es obligatorio.")
+                return redirect("solicitar_pago_transferencia")
+            try:
+                monto = Decimal(monto_raw)
+            except (InvalidOperation, TypeError):
+                messages.error(request, "El monto capturado no es válido.")
+                return redirect("solicitar_pago_transferencia")
+ 
         if plan_solicitado not in dict(PagoMembresiaTransferencia.PLAN_CHOICES):
             messages.error(request, "Selecciona un plan valido.")
-            return redirect("solicitar_pago_transferencia")
-        if not monto_raw or not fecha_transferencia or not comprobante:
+            return redirect(
+                "solicitar_pago_transferencia_escuela" if es_escuela else "solicitar_pago_transferencia"
+            )
+        if not fecha_transferencia or not comprobante:
             messages.error(
                 request,
-                "El monto, la fecha de transferencia, y el comprobante son obligatorios.",
+                "La fecha de transferencia y el comprobante son obligatorios.",
             )
-            return redirect("solicitar_pago_transferencia")
-
-        # NUEVO -- convierte el monto a Decimal aquí mismo, en vez de
-        # dejarlo como texto crudo -- así el objeto que regresa .create()
-        # ya trae un número real, listo para darle formato (ej. en los
-        # correos de notificación).
-        try:
-            monto = Decimal(monto_raw)
-        except (InvalidOperation, TypeError):
-            messages.error(request, "El monto capturado no es válido.")
-            return redirect("solicitar_pago_transferencia")
-
+            return redirect(
+                "solicitar_pago_transferencia_escuela" if es_escuela else "solicitar_pago_transferencia"
+            )
+ 
         pago_creado = PagoMembresiaTransferencia.objects.create(
             perfil_usuario=perfil,
             plan_solicitado=plan_solicitado,
@@ -5987,20 +6031,25 @@ def solicitar_pago_transferencia(request):
             referencia=referencia or None,
             comprobante=comprobante,
         )
-        # NUEVO -- avisa a los superusuarios que hay una solicitud nueva
         _notificar_superusuarios_nueva_solicitud(pago_creado)
         messages.success(
             request,
             "Tu comprobante fue enviado -- lo revisaremos y activaremos tu membresia en cuanto lo confirmemos.",
         )
         return redirect("dashboard_inicio")
-
+ 
+    template = (
+        "escuelas/solicitar_pago_transferencia_escuela.html"
+        if es_escuela
+        else "membresias/solicitar_pago_transferencia.html"
+    )
+ 
     return render(
         request,
-        "membresias/solicitar_pago_transferencia.html",
+        template,
         {
             "plan_choices": PagoMembresiaTransferencia.PLAN_CHOICES,
-            "config": ConfiguracionMembresia.obtener(),
+            "config": config,
         },
     )
 

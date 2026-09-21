@@ -180,6 +180,7 @@ from principal.views import (
     lista_pagos_transferencia_pendientes,
     lista_temas,
     lista_tickets,
+    logout_view,
     membresia_pago_exitoso,
     panel_contador,
     rechazar_pago_transferencia,
@@ -224,7 +225,8 @@ from publicidad.views import anuncios_api, anuncios_publicos, solicitud_publicid
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', auth_views.LoginView.as_view(template_name='login.html',authentication_form=EmpresaAuthenticationForm,), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    #path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    path('logout/', logout_view, name='logout'),
     path('', dashboard_inicio, name='dashboard_inicio'),
     path('empresas/nueva/', empresa_crear, name='empresa_crear'),
     path('empresas/', empresa_lista, name='empresa_lista'),

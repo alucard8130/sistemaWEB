@@ -149,12 +149,12 @@
             <div class="kpi-box dorado">
                 <div class="kpi-label"><i class="bi bi-clock-history me-1"></i>Pendientes</div>
                 <div class="kpi-val" style="color:#d4ac0d;">${{ total_pendientes|floatformat:2|intcomma }}</div>
-                <div class="kpi-sub">{{ count_pendientes }} vales sin pagar</div>
+                <div class="kpi-sub">{{ count_pendientes }} vales sin comprobar</div>
             </div>
             <div class="kpi-box verde">
-                <div class="kpi-label"><i class="bi bi-check-circle me-1"></i>Pagados</div>
+                <div class="kpi-label"><i class="bi bi-check-circle me-1"></i>Comprobados</div>
                 <div class="kpi-val text-success">${{ total_comprobados|floatformat:2|intcomma }}</div>
-                <div class="kpi-sub">{{ count_pagados }} vales liquidados</div>
+                <div class="kpi-sub">{{ count_pagados }} vales comprobados</div>
             </div>
         </div>
 
@@ -164,7 +164,7 @@
                 <select name="estatus" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                     <option value="">Todos los estatus</option>
                     <option value="pendiente" {% if estatus_sel == 'pendiente' %}selected{% endif %}>Pendiente</option>
-                    <option value="pagado" {% if estatus_sel == 'pagado' %}selected{% endif %}>Pagado</option>
+                    <option value="comprobado" {% if estatus_sel == 'comprobado' %}selected{% endif %}>Comprobado</option>
                     <option value="cancelado" {% if estatus_sel == 'cancelado' %}selected{% endif %}>Cancelado</option>
                 </select>
 
@@ -233,7 +233,7 @@
                             <td class="text-center no-print">
                                 <div class="d-flex align-items-center justify-content-center gap-1">
                                     {% if vale.status == 'pendiente' %}
-                                    <a href="{% url 'pagar_vale_caja' vale.id %}" class="btn-accion pagar" title="Marcar como pagado">
+                                    <a href="{% url 'comprobar_vale' vale.id %}" class="btn-accion pagar" title="Comprobar vale">
                                         <i class="bi bi-check-lg"></i>
                                     </a>
                                     {% endif %}

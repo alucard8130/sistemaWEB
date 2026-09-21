@@ -82,7 +82,12 @@
 
             <form method="post" class="registro-form">
                 {% csrf_token %}
+                
                 <input type="hidden" name="segmento" value="escuela">
+                <div class="field-wrap">
+                    <label for="id_nombre_escuela">Nombre de la escuela</label>
+                    <input type="text" id="id_nombre_escuela" name="nombre_escuela" required>
+                </div>
 
                 <div class="field-wrap">
                     <label for="id_nombre">Tu nombre</label>

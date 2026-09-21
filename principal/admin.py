@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 from areas.models import AreaComun
 from locales.models import LocalComercial
 
-from .models import PerfilUsuario, VisitanteAcceso
+from .models import ConfiguracionMembresia, PerfilUsuario, VisitanteAcceso
 
 
 # Register your models here.
@@ -73,3 +73,6 @@ class VisitanteAccesoAdmin(admin.ModelAdmin):
 admin.site.register(VisitanteAcceso, VisitanteAccesoAdmin)
 
 
+@admin.register(ConfiguracionMembresia)
+class ConfiguracionMembresiaAdmin(admin.ModelAdmin):
+    list_display = ('banco', 'titular', 'precio_plus', 'precio_premium', 'precio_plus_escuela')

@@ -85,6 +85,7 @@
     </style>
 </head>
 <body>
+    
     <div class="login-wrap">
         <div class="login-logo">
             <div class="icono"><i class="bi bi-mortarboard-fill"></i></div>
@@ -94,6 +95,13 @@
 
         <div class="login-card">
             <h5>Iniciar sesión</h5>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible">
+                        {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
 
             {% if form.non_field_errors %}
                 <div class="login-alert">

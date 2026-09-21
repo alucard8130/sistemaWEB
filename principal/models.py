@@ -258,7 +258,15 @@ class ConfiguracionMembresia(models.Model):
     numero_cuenta = models.CharField(max_length=30, blank=True, null=True, help_text="Número de cuenta, si aplica además de la CLABE.")
     precio_plus = models.DecimalField(max_digits=10, decimal_places=2, help_text="Precio mensual fijo del plan Plus.")
     precio_premium = models.DecimalField(max_digits=10, decimal_places=2, help_text="Precio mensual fijo del plan Premium.")
+    # NUEVO -- precio del Plus para escuelas, aparte del precio_plus de
+    # GESAC (son productos distintos, con precios distintos). Ajusta este
+    # unico valor cada vez que suba la renta anual.
+    precio_plus_escuela = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Precio mensual fijo del plan Plus para el ERP Escolar."
+    )
 
+    
     class Meta:
         verbose_name = "Configuración de Membresía"
         verbose_name_plural = "Configuración de Membresía"
@@ -275,10 +283,19 @@ class ConfiguracionMembresia(models.Model):
     @property
     def precio_premium_con_iva(self):
         return (self.precio_premium * (1 + self.IVA_TASA)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def precio_plus_escuela_con_iva(self):
+        if self.precio_plus_escuela is None:
+            return None
+        return (self.precio_plus_escuela * (1 + self.IVA_TASA)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
     
     @classmethod
     def obtener(cls):
         """Regresa la configuración activa -- siempre debe existir un
         solo registro. Si por alguna razón hay más de uno, usa el más
         reciente en vez de tronar."""
-        return cls.objects.order_by('-id').first()    
+        return cls.objects.order_by('-id').first()
+
+        
