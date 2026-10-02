@@ -25,6 +25,20 @@
         .funnel-etapa .numero { font-size: 1.6rem; font-weight: 800; color: #146C43; }
         .funnel-etapa .etiqueta { font-size: 0.72rem; color: #6b7280; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
 
+        .funnel-etapa.etapa-prospecto { border-top: 4px solid #2E5BFF; }
+        .funnel-etapa.etapa-contacto { border-top: 4px solid #C0392B; }
+        .funnel-etapa.etapa-visita_agendada { border-top: 4px solid #E91E8C; }
+        .funnel-etapa.etapa-visita_realizada { border-top: 4px solid #8E44EC; }
+        .funnel-etapa.etapa-solicitud { border-top: 4px solid #D4A017; }
+        .funnel-etapa.etapa-inscrito { border-top: 4px solid #27AE60; }
+ 
+        .badge-etapa.etapa-prospecto { background: #EAF0FF; color: #2E5BFF; }
+        .badge-etapa.etapa-contacto { background: #FBEAE8; color: #C0392B; }
+        .badge-etapa.etapa-visita_agendada { background: #FDE8F3; color: #E91E8C; }
+        .badge-etapa.etapa-visita_realizada { background: #F1E7FD; color: #8E44EC; }
+        .badge-etapa.etapa-solicitud { background: #FBF3DC; color: #A5790F; }
+        .badge-etapa.etapa-inscrito { background: #E6F7ED; color: #27AE60; }
+
         table.tabla-solicitudes { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.82rem; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
         table.tabla-solicitudes thead th { background: #0f2d52; color: white; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; padding: 10px 10px; }
         table.tabla-solicitudes tbody td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; color: #374151; }
@@ -58,7 +72,7 @@
 
         <div class="funnel-wrap">
             {% for item in conteo_por_etapa %}
-            <div class="funnel-etapa">
+            <div class="funnel-etapa etapa-{{ item.etapa }}">
                 <div class="numero">{{ item.total }}</div>
                 <div class="etiqueta">{{ item.etiqueta }}</div>
             </div>
@@ -84,7 +98,7 @@
                     <td>{{ s.telefono|default:"—" }}</td>
                     <td>{{ s.email|default:"—" }}</td>
                     <td>{{ s.nivel_de_interes|default:"—" }}</td>
-                    <td><span class="badge-etapa">{{ s.get_etapa_display }}</span></td>
+                    <td><span class="badge-etapa etapa-{{ s.etapa }}">{{ s.get_etapa_display }}</span></td>
                     <td>{{ s.fecha_actualizacion|date:"d/m/Y H:i" }}</td>
                 </tr>
                 {% empty %}

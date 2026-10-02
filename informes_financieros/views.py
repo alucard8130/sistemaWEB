@@ -362,7 +362,7 @@ def estado_resultados(request):
     mes = request.GET.get("mes")
     anio = request.GET.get("anio")
     periodo = request.GET.get("periodo")
-    hoy = datetime.date.today()
+    hoy = datetime.date.today()  # noqa: DTZ011
 
     if not request.user.is_superuser:
         # Verificar si viene del portal de acceso
@@ -427,7 +427,7 @@ def estado_resultados(request):
             anio = int(anio)
             fecha_inicio = datetime.date(anio, mes, 1)
             fecha_fin = datetime.date(anio, mes + 1, 1) - datetime.timedelta(days=1) if mes < 12 else datetime.date(anio, 12, 31)
-        except Exception:
+        except Exception:  # noqa: BLE001
             fecha_inicio = None
             fecha_fin = None
     elif fecha_inicio and fecha_fin:
@@ -440,12 +440,12 @@ def estado_resultados(request):
     if isinstance(fecha_inicio, str):
         try:
             fecha_inicio = datetime.datetime.strptime(fecha_inicio, "%Y-%m-%d").date()  # noqa: DTZ007
-        except Exception:
+        except Exception:  # noqa: BLE001
             fecha_inicio = None
     if isinstance(fecha_fin, str):
         try:
             fecha_fin = datetime.datetime.strptime(fecha_fin, "%Y-%m-%d").date()  # noqa: DTZ007
-        except Exception:
+        except Exception:  # noqa: BLE001
             fecha_fin = None
 
     # --- Etiqueta del periodo ---
@@ -656,7 +656,7 @@ def exportar_estado_resultados_excel(request):
     mes = request.GET.get("mes")
     anio = request.GET.get("anio")
     periodo = request.GET.get("periodo")
-    hoy = datetime.date.today()
+    hoy = datetime.date.today()  # noqa: DTZ011
 
     if not request.user.is_superuser:
         empresa_id = str(request.user.perfilusuario.empresa.id)

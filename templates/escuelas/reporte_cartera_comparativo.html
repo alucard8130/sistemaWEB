@@ -1,0 +1,145 @@
+{% load static %}
+{% load humanize %}
+{% load escuela_extras %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartera Vencida — Comparativo — ERP Escolar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .rc-header {
+            background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2);
+        }
+        .rc-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .rc-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+        .card-panel { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px 22px; margin-bottom: 20px; }
+        .card-panel h6 { font-weight: 700; color: #0F5132; margin-bottom: 14px; }
+
+        table.tabla-comparativo { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.8rem; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+        table.tabla-comparativo thead th { background: #9C2B2B; color: white; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; padding: 9px 8px; text-align: center; white-space: nowrap; }
+        table.tabla-comparativo tbody td { padding: 8px 8px; border-bottom: 1px solid #f1f5f9; text-align: right; }
+        table.tabla-comparativo tbody tr.fila-total td { font-weight: 700; background: #f8fafc; border-top: 2px solid #9C2B2B; }
+        .col-categoria { text-align: left !important; font-weight: 600; color: #0f2d52; padding-left: 10px !important; white-space: nowrap; }
+        .variacion-sube { color: #9C2B2B; font-size: 0.72rem; display: block; }
+        .variacion-baja { color: #1E8449; font-size: 0.72rem; display: block; }
+
+        .no-data { text-align: center; padding: 60px 20px; color: #9ca3af; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="rc-header">
+            <div class="rc-titulo"><i class="bi bi-graph-up me-2"></i>Cartera Vencida — Comparativo</div>
+            <div class="rc-subtitulo">Cómo ha cambiado la deuda de la escuela, corte a corte</div>
+        </div>
+
+        {% if fechas_corte %}
+        <div class="card-panel">
+            <h6><i class="bi bi-bar-chart-fill me-1"></i>Tendencia del total vencido</h6>
+            <canvas id="graficoTendenciaCartera" height="80"></canvas>
+        </div>
+
+        <div class="table-responsive">
+        <table class="tabla-comparativo">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Categoría</th>
+                    {% for f in fechas_corte %}
+                    <th>{{ f|date:"d/m/y" }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for categoria, etiqueta in categorias %}
+                <tr>
+                    <td class="col-categoria">{{ etiqueta }}</td>
+                    {% for f in fechas_corte %}
+                    <td>${{ matriz|get_item:categoria|get_item:f|floatformat:0|intcomma }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                <tr class="fila-total">
+                    <td class="col-categoria">Total</td>
+                    {% for total in totales_por_fecha %}
+                    <td>
+                        ${{ total|floatformat:0|intcomma }}
+                        {% with variacion=variaciones|index:forloop.counter0 %}
+                        {% if variacion != None %}
+                            {% if variacion >= 0 %}
+                            <span class="variacion-sube">▲ ${{ variacion|floatformat:0|intcomma }}</span>
+                            {% else %}
+                            <span class="variacion-baja">▼ ${{ variacion|floatformat:0|intcomma }}</span>
+                            {% endif %}
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="card-panel">
+            <div class="no-data">
+                <i class="bi bi-inbox display-4 d-block mb-3"></i>
+                Aún no hay ningún corte de Cartera Vencida importado -- sube al menos uno para empezar a ver la tendencia.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const labelsGrafico = {{ labels_grafico|safe }};
+        const totalesGrafico = {{ totales_por_fecha_float|safe }};
+
+        if (labelsGrafico.length > 0) {
+            new Chart(document.getElementById('graficoTendenciaCartera').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labelsGrafico,
+                    datasets: [{
+                        label: 'Total vencido',
+                        data: totalesGrafico,
+                        borderColor: '#9C2B2B',
+                        backgroundColor: 'rgba(156,43,43,0.08)',
+                        fill: true,
+                        tension: 0.25,
+                        pointBackgroundColor: '#9C2B2B',
+                    }],
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: function (value) { return '$' + value.toLocaleString(); } } },
+                        x: { ticks: { font: { size: 10 } } },
+                    },
+                },
+            });
+        }
+    </script>
+</body>
+</html>

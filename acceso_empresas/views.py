@@ -151,7 +151,28 @@ def portal_registro(request):
         )
         ua.set_password(password)
         ua.save()
-
+        # NUEVO -- avisa al superadmin por correo cada vez que alguien
+        # se registra en el portal de acceso administradores/comite.
+        try:
+            send_mail(
+                subject=f"Nuevo registro en el Portal — {nombre_organizacion}",
+                message=(
+                    f"Se registró una cuenta nueva en el Portal de Acceso.\n\n"
+                    f"Nombre: {nombre} {apellido}\n"
+                    f"Correo: {email}\n"
+                    f"Teléfono: {telefono}\n"
+                    f"Organización: {nombre_organizacion}\n"
+                    f"Tipo: {tipo}\n"
+                    f"Plan: {plan}\n\n"
+                    f"Aún no ha pagado -- queda activo hasta que complete el checkout."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.DEFAULT_FROM_EMAIL],
+                fail_silently=True,
+            )
+        except Exception:  # noqa: BLE001, S110
+            pass  # el registro no debe fallar aunque el correo falle
+        
         # Guardar en sesión
         request.session['ua_id'] = ua.id
 
@@ -161,7 +182,29 @@ def portal_registro(request):
     return render(request, 'acceso_empresas/registro.html', {'planes': PLANES})
 
 
+# def pago_pendiente(request):
+#     return render(request, 'acceso_empresas/pago_pendiente.html')
 def pago_pendiente(request):
+    """Pagina que Stripe muestra cuando el usuario cancela el
+    checkout -- si la cuenta nunca llego a pagar, se borra aqui
+    mismo, para no dejar cuentas huerfanas."""
+    ua_id = request.session.get('ua_id')
+    if ua_id:
+        try:
+            ua = UsuarioAcceso.objects.get(pk=ua_id, activo=False)
+        except UsuarioAcceso.DoesNotExist:
+            ua = None
+
+        if ua:
+            ua.delete()
+            del request.session['ua_id']
+            messages.info(
+                request,
+                "Tu registro no se completó porque el pago fue cancelado. "
+                "Puedes registrarte de nuevo cuando quieras.",
+            )
+            return redirect('acceso_registro')
+
     return render(request, 'acceso_empresas/pago_pendiente.html')
 
 

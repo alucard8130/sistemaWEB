@@ -32,6 +32,20 @@ class NotificacionSistema(models.Model):
         help_text="Si al hacer clic en esta notificación, también debe iniciar un tour guiado específico. Déjalo vacío si no aplica."
     )
 
+    # NUEVO -- controla a que segmento le llega este aviso. Vacio (el
+    # default) significa "solo GESAC" -- asi, todos los avisos que ya
+    # existen (todos de funciones de GESAC) quedan excluidos de escuela
+    # automaticamente, sin tener que editarlos uno por uno.
+    SEGMENTO_OBJETIVO_CHOICES = [  # noqa: RUF012
+        ('', 'Solo GESAC (comercial/habitacional) -- default'),
+        ('escuela', 'Solo Escuela'),
+        ('todos', 'Todos los segmentos'),
+    ]
+    segmento_objetivo = models.CharField(
+        max_length=20, choices=SEGMENTO_OBJETIVO_CHOICES, blank=True, default='',
+        help_text="A qué tipo de cliente le llega este aviso. Vacío = solo GESAC."
+    )
+
     class Meta:
         ordering = ['-fecha_creacion']  # noqa: RUF012
 

@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from areas.models import AreaComun
+from escuelas.models import CarteraVencida
 from facturacion.utils import debe_mostrar_recordatorio_facturacion
 from notificaciones_sistema.models import NotificacionLeida, NotificacionSistema
 
@@ -47,9 +48,39 @@ def _generar_alertas_automaticas(request):
                 'color': '#8A6D00',
             })
  
+    
+    empresa = perfil.empresa
+     # NUEVO -- de aqui en adelante, las alertas se ramifican segun el
+    # segmento -- escuela tiene sus propios avisos (nada de GESAC le
+    # aplica), y GESAC sigue exactamente igual que antes.
+    if empresa and empresa.segmento == 'escuela':
+        hoy = timezone.now().date()
+ 
+        # NUEVO -- recordatorio: bajar el reporte de Deudores de
+        # Academic+ a partir del dia 11 de cada mes (cuando vencen
+        # colegiaturas, talleres, transporte, etc.), si todavia no se
+        # ha importado este mes.
+        if hoy.day >= 11:
+            ya_importo_este_mes = CarteraVencida.objects.filter(
+                empresa=empresa,
+                fecha_importacion__year=hoy.year,
+                fecha_importacion__month=hoy.month,
+            ).exists()
+            if not ya_importo_este_mes:
+                alertas.append({
+                    'titulo': 'Actualiza tu Cartera Vencida',
+                    'mensaje': 'Ya pasó el día 11 -- baja el reporte de Deudores de Academic+ e impórtalo para tener tus números al día.',
+                    'url': reverse('importar_cartera_vencida'),
+                    'icono': 'exclamation-triangle-fill',
+                    'color': '#8A6D00',
+                })
+ 
+        return alertas
+ 
+    # -- A partir de aqui, todo es especifico de GESAC (condominios /
+    # plazas) -- nunca se evalua para escuela. --
     # 2. Recordatorio de facturacion mensual -- reutiliza la MISMA
     # funcion que ya dispara el modal en la pantalla de inicio.
-    empresa = perfil.empresa
     if empresa and debe_mostrar_recordatorio_facturacion(empresa):
         alertas.append({
             'titulo': 'Falta la facturación mensual',
@@ -135,17 +166,29 @@ def notificaciones_sistema_context(request):
         NotificacionLeida.objects.filter(usuario=request.user)
         .values_list('notificacion_id', flat=True)
     )
+    # NUEVO -- filtra los avisos manuales segun el segmento del usuario.
+    # Vacio ('') = solo GESAC -- asi, todos los avisos ya existentes
+    # (creados antes de que existiera escuela) quedan excluidos de
+    # escuela automaticamente, sin tocarlos uno por uno.
+    perfil = getattr(request.user, 'perfilusuario', None)
+    empresa = perfil.empresa if perfil else None
 
     # NUEVO -- ya no se excluyen las leidas, se mandan TODAS las activas
     # (hasta 5), marcando cada una con .leida = True/False -- asi el
     # template decide como mostrarla (negritas o normal) sin que
     # desaparezca de la lista al leerla.
-    activas = list(NotificacionSistema.objects.filter(activa=True).order_by('-fecha_creacion')[:5])
+    activas_qs = NotificacionSistema.objects.filter(activa=True)
+    if empresa and empresa.segmento == 'escuela':
+        activas_qs = activas_qs.filter(segmento_objetivo__in=['escuela', 'todos'])
+    else:
+        activas_qs = activas_qs.filter(segmento_objetivo__in=['', 'todos'])
+ 
+    activas = list(activas_qs.order_by('-fecha_creacion')[:5])
     for n in activas:
         n.leida = n.id in ids_leidas
-
-    no_leidas_count = sum(1 for n in activas if not n.leida)+ len(alertas_automaticas)
-
+ 
+    no_leidas_count = sum(1 for n in activas if not n.leida) + len(alertas_automaticas)
+ 
     return {
         'notif_sistema_count': no_leidas_count,
         'notif_sistema_recientes': activas,

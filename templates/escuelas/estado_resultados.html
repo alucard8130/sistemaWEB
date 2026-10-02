@@ -1,0 +1,160 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado de Resultados — ERP Escolar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .er-header {
+            background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%);
+            color: white; border-radius: 16px; padding: 22px 28px;
+            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2);
+        }
+        .er-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .er-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .er-periodo-label { font-size: 0.95rem; opacity: 0.95; margin-top: 8px; font-weight: 600; }
+
+        .filtro-card { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px 20px; margin-bottom: 20px; }
+        .filtro-card .form-label { font-weight: 600; font-size: 0.72rem; color: #146C43; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .filtro-card select, .filtro-card input[type="date"] { border-radius: 8px; border: 1px solid #e2e8f0; padding: 7px 10px; font-size: 0.85rem; }
+        .btn-periodo { border-radius: 8px; border: 1px solid #146C43; color: #146C43; background: white; padding: 7px 16px; font-size: 0.82rem; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+        .btn-periodo.activo, .btn-periodo:hover { background: #146C43; color: white; }
+        .btn-filtrar { background: linear-gradient(135deg, #146C43, #0F5132); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-weight: 600; font-size: 0.85rem; }
+        .btn-filtrar:hover { color: white; }
+
+        .row-resultado { display: flex; gap: 16px; margin-bottom: 20px; }
+        .card-total { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px; flex: 1; text-align: center; }
+        .card-total .label { font-size: 0.78rem; color: #6b7280; font-weight: 600; text-transform: uppercase; }
+        .card-total .valor { font-size: 1.6rem; font-weight: 800; margin-top: 6px; }
+        .valor-verde { color: #146C43; }
+        .valor-rojo { color: #9C2B2B; }
+
+        .card-panel { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px 22px; margin-bottom: 20px; }
+        .card-panel h6 { font-weight: 700; color: #0F5132; margin-bottom: 14px; }
+        .categoria-item { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+        .categoria-item:last-child { border-bottom: none; }
+        .categoria-total { display: flex; justify-content: space-between; padding-top: 10px; margin-top: 4px; border-top: 2px solid #146C43; font-weight: 700; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 780px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="er-header">
+            <div class="er-titulo"><i class="bi bi-file-earmark-bar-graph-fill me-2"></i>Estado de Resultados</div>
+            <div class="er-subtitulo">Ingresos, gastos, y resultado neto del periodo</div>
+            {% if mes_letra %}
+            <div class="er-periodo-label"><i class="bi bi-calendar3 me-1"></i>{{ mes_letra }}</div>
+            {% endif %}
+        </div>
+
+        <div class="filtro-card">
+            <div class="mb-3">
+                <a href="?periodo=mes_actual" class="btn-periodo {% if periodo == 'mes_actual' %}activo{% endif %}">Mes actual</a>
+                <a href="?periodo=periodo_actual" class="btn-periodo {% if periodo == 'periodo_actual' %}activo{% endif %}">Año a la fecha</a>
+            </div>
+
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label">Mes específico</label>
+                    <select name="mes">
+                        <option value="">--</option>
+                        {% for m in meses_unicos %}
+                        <option value="{{ m }}" {% if mes == m|stringformat:"s" %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">Año</label>
+                    <select name="anio">
+                        <option value="">--</option>
+                        {% for a in anios_unicos %}
+                        <option value="{{ a }}" {% if anio == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">O rango de fechas</label>
+                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}">
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">&nbsp;</label>
+                    <input type="date" name="fecha_fin" value="{{ fecha_fin }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn-filtrar"><i class="bi bi-search me-1"></i>Ver</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="row-resultado">
+            <div class="card-total">
+                <div class="label">Total Ingresos</div>
+                <div class="valor valor-verde">${{ total_ingresos|floatformat:2|intcomma }}</div>
+            </div>
+            <div class="card-total">
+                <div class="label">Total Gastos</div>
+                <div class="valor valor-rojo">${{ total_gastos|floatformat:2|intcomma }}</div>
+            </div>
+            <div class="card-total">
+                <div class="label">Resultado Neto</div>
+                <div class="valor {% if resultado_neto >= 0 %}valor-verde{% else %}valor-rojo{% endif %}">
+                    {% if resultado_neto >= 0 %}+{% endif %}${{ resultado_neto|floatformat:2|intcomma }}
+                </div>
+            </div>
+        </div>
+
+        <div class="card-panel">
+            <h6><i class="bi bi-graph-up-arrow me-1"></i>Ingresos por categoría</h6>
+            {% for categoria, monto in ingresos_por_categoria.items %}
+            <div class="categoria-item">
+                <span>{{ categoria }}</span>
+                <strong>${{ monto|floatformat:2|intcomma }}</strong>
+            </div>
+            {% empty %}
+            <div class="text-muted small">No hay ingresos en este periodo.</div>
+            {% endfor %}
+            <div class="categoria-total">
+                <span>Total Ingresos</span>
+                <span class="valor-verde">${{ total_ingresos|floatformat:2|intcomma }}</span>
+            </div>
+        </div>
+
+        <div class="card-panel">
+            <h6><i class="bi bi-graph-down-arrow me-1"></i>Gastos por categoría</h6>
+            {% for categoria, monto in gastos_por_categoria.items %}
+            <div class="categoria-item">
+                <span>{{ categoria }}</span>
+                <strong>${{ monto|floatformat:2|intcomma }}</strong>
+            </div>
+            {% empty %}
+            <div class="text-muted small">No hay gastos en este periodo.</div>
+            {% endfor %}
+            <div class="categoria-total">
+                <span>Total Gastos</span>
+                <span class="valor-rojo">${{ total_gastos|floatformat:2|intcomma }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

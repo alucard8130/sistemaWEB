@@ -18,6 +18,7 @@ def crear_notificacion_sistema(request):
         titulo = request.POST.get('titulo', '').strip()
         mensaje = request.POST.get('mensaje', '').strip()
         tour_a_disparar = request.POST.get('tour_a_disparar', '').strip()
+        segmento_objetivo = request.POST.get('segmento_objetivo', '').strip()
 
         if tipo not in dict(NotificacionSistema.TIPO_CHOICES):
             messages.error(request, "Selecciona un tipo válido.")
@@ -28,10 +29,14 @@ def crear_notificacion_sistema(request):
         if tour_a_disparar and tour_a_disparar not in dict(NotificacionSistema.TOUR_CHOICES):
             messages.error(request, "Selecciona un tour válido.")
             return redirect('crear_notificacion_sistema')
+        if segmento_objetivo and segmento_objetivo not in dict(NotificacionSistema.SEGMENTO_OBJETIVO_CHOICES):
+            messages.error(request, "Selecciona un destinatario válido.")
+            return redirect('crear_notificacion_sistema')
 
         NotificacionSistema.objects.create(
             tipo=tipo, titulo=titulo, mensaje=mensaje, creado_por=request.user,
             tour_a_disparar=tour_a_disparar or None,
+            segmento_objetivo=segmento_objetivo,
         )
         messages.success(request, "Notificación publicada correctamente.")
         return redirect('lista_notificaciones_sistema')
@@ -39,6 +44,7 @@ def crear_notificacion_sistema(request):
     return render(request, 'notificaciones/crear_notificacion.html', {
         'tipo_choices': NotificacionSistema.TIPO_CHOICES,
         'tour_choices': NotificacionSistema.TOUR_CHOICES,
+        'segmento_objetivo_choices': NotificacionSistema.SEGMENTO_OBJETIVO_CHOICES,
     })
 
 

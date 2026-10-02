@@ -462,7 +462,7 @@ def exportar_presupuesto_excel(request):
 @login_required
 # reporte comparativo presupuesto gastos vs gasto real
 def reporte_presupuesto_vs_gasto(request):
-    anio = int(request.GET.get("anio", datetime.now().year))
+    anio = int(request.GET.get("anio", datetime.now().year))  # noqa: DTZ005
     medicion = request.GET.get(
         "medicion", "curso"
     )  # 'mes', 'semestre1', 'semestre2', 'anual', 'curso'
@@ -471,7 +471,7 @@ def reporte_presupuesto_vs_gasto(request):
 
     # Determina el rango de meses según la medición
     if medicion == "mes":
-        mes_actual = int(request.GET.get("mes", datetime.now().month))
+        mes_actual = int(request.GET.get("mes", datetime.now().month))  # noqa: DTZ005
         meses = [mes_actual]
         meses_nombres = [calendar.month_name[mes_actual]]
     elif medicion == "semestre1":
@@ -484,8 +484,8 @@ def reporte_presupuesto_vs_gasto(request):
         meses = list(range(1, 13))
         meses_nombres = [calendar.month_name[m] for m in meses]
     else:  # 'curso' o default
-        if anio == datetime.now().year:
-            mes_actual = datetime.now().month
+        if anio == datetime.now().year:  # noqa: DTZ005
+            mes_actual = datetime.now().month  # noqa: DTZ005
         else:
             mes_actual = 12
         meses = list(range(1, mes_actual + 1))
@@ -638,7 +638,7 @@ def reporte_presupuesto_vs_gasto(request):
             subgrupo_row["total_anual_gasto"] = subgrupo_total_gasto
             subgrupo_row["total_anual_var"] = subgrupo_total_var
             subgrupo_row["total_anual_pct"] = (
-                int(round(subgrupo_total_var / subgrupo_total_presup * 100))
+                int(round(subgrupo_total_var / subgrupo_total_presup * 100))  # noqa: RUF046
                 if subgrupo_total_presup
                 else ""
             )
@@ -661,7 +661,7 @@ def reporte_presupuesto_vs_gasto(request):
         grupo_row["total_anual_gasto"] = grupo_total_gasto
         grupo_row["total_anual_var"] = grupo_total_var
         grupo_row["total_anual_pct"] = (
-            int(round(grupo_total_var / grupo_total_presup * 100))
+            int(round(grupo_total_var / grupo_total_presup * 100))  # noqa: RUF046
             if grupo_total_presup
             else ""
         )
@@ -694,7 +694,7 @@ def reporte_presupuesto_vs_gasto(request):
 
     # Totales anuales generales
     total_general_pct = (
-        int(round(total_general_var / total_general_presup * 100))
+        int(round(total_general_var / total_general_presup * 100))  # noqa: RUF046
         if total_general_presup
         else ""
     )
@@ -704,7 +704,7 @@ def reporte_presupuesto_vs_gasto(request):
         "presupuestos/comparativo_presupuesto_vs_gastos.html",
         {
             "anio": anio,
-            "anios": list(range(datetime.now().year, 2021, -1)),
+            "anios": list(range(datetime.now().year, 2021, -1)),  # noqa: DTZ005
             "empresa": empresa,
             "empresas": empresas,
             "meses": meses,
@@ -734,14 +734,14 @@ def reporte_presupuesto_vs_gasto(request):
 # Exportar comparativo a Excel
 @login_required
 def exportar_comparativo_excel(request):
-    anio = int(request.GET.get("anio", datetime.now().year))
+    anio = int(request.GET.get("anio", datetime.now().year))  # noqa: DTZ005
     medicion = request.GET.get("medicion", "curso")
     meses = list(range(1, 13))
     meses_nombres = [calendar.month_name[m] for m in meses]
 
     # Determina el rango de meses según la medición
     if medicion == "mes":
-        mes_actual = int(request.GET.get("mes", datetime.now().month))
+        mes_actual = int(request.GET.get("mes", datetime.now().month))  # noqa: DTZ005
         meses = [mes_actual]
         meses_nombres = [calendar.month_name[mes_actual]]
     elif medicion == "semestre1":
@@ -1526,13 +1526,11 @@ def reporte_presupuesto_vs_ingreso(request):
 
 @login_required
 def exportar_reporte_presupuesto_vs_ingreso(request):
-    from collections import defaultdict
-
-    anio = int(request.GET.get("anio", datetime.now().year))
+    anio = int(request.GET.get("anio", datetime.now().year))  # noqa: DTZ005
     medicion = request.GET.get("medicion", "curso")
     # --- Copia la lógica de selección de meses de tu vista principal ---
     if medicion == "mes":
-        mes_actual = int(request.GET.get("mes", datetime.now().month))
+        mes_actual = int(request.GET.get("mes", datetime.now().month))  # noqa: DTZ005
         meses = [mes_actual]
         meses_nombres = [calendar.month_name[mes_actual]]
     elif medicion == "semestre1":
@@ -1545,8 +1543,8 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
         meses = list(range(1, 13))
         meses_nombres = [calendar.month_name[m] for m in meses]
     else:  # 'curso' o default
-        if anio == datetime.now().year:
-            mes_actual = datetime.now().month
+        if anio == datetime.now().year:  # noqa: DTZ005
+            mes_actual = datetime.now().month  # noqa: DTZ005
         else:
             mes_actual = 12
         meses = list(range(1, mes_actual + 1))
@@ -1689,7 +1687,7 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
             try:
                 if cell.value is not None and len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
         ws.column_dimensions[col_letter].width = max_length + 2
 
@@ -1709,7 +1707,7 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
 @login_required
 def matriz_presupuesto_ingresos(request):
     anio = int(request.GET.get("anio", now().year))
-    now_year = now().year
+    now_year = now().year  # noqa: F841
     anios = (
         PresupuestoIngreso.objects.values_list("anio", flat=True)
         .distinct()
@@ -1935,7 +1933,7 @@ def matriz_presupuesto_ingresos(request):
 
         # Cerrar presupuesto solo si corresponde
         if "cerrar_presupuesto" in request.POST and edicion_habilitada:
-            cierre, created = PresupuestoCierre.objects.get_or_create(
+            cierre, created = PresupuestoCierre.objects.get_or_create(  # noqa: RUF059
                 empresa=empresa, anio=anio
             )
             cierre.cerrado = True
@@ -1991,7 +1989,7 @@ def matriz_presupuesto_ingresos(request):
     )
 
 
-# exportar presupuesto ingresos
+# exportar presupuesto ingresos 
 @login_required
 def exportar_matriz_presupuesto_ingresos_excel(request):
     anio = int(request.GET.get("anio", now().year))

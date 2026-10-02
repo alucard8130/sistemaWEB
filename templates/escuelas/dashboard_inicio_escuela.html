@@ -32,21 +32,13 @@
         .kpi-card { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px 22px; height: 100%; }
         .kpi-label { font-size: 0.78rem; color: #6b7280; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
         .kpi-valor { font-size: 1.7rem; font-weight: 800; color: #146C43; }
+        .kpi-valor.rojo { color: #9C2B2B; }
 
         .categoria-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
         .categoria-item:last-child { border-bottom: none; }
 
-        table.tabla-recientes { width: 100%; font-size: 0.82rem; }
-        table.tabla-recientes th { color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 0.68rem; padding: 6px 8px; border-bottom: 2px solid #f1f5f9; }
-        table.tabla-recientes td { padding: 8px; border-bottom: 1px solid #f8fafc; }
-
         .card-panel { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px 22px; height: 100%; }
         .card-panel h6 { font-weight: 700; color: #0F5132; margin-bottom: 14px; }
-
-        .btn-importar-ingresos { background: linear-gradient(135deg, #146C43, #0F5132); color: white; border: none; border-radius: 10px; padding: 9px 20px; font-weight: 600; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; }
-        .btn-importar-ingresos:hover { color: white; opacity: 0.92; }
-
-        .aviso-pendiente { background: #FDF6E3; border-left: 4px solid #D9812C; border-radius: 10px; padding: 12px 16px; font-size: 0.82rem; color: #8A6D00; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -67,15 +59,11 @@
             <div class="de-subtitulo">Panel financiero -- ERP Escolar</div>
         </div>
 
-        <div class="aviso-pendiente">
-            <i class="bi bi-info-circle-fill me-1"></i>Este panel todavía no incluye el comparativo contra Gastos -- se agrega en la siguiente actualización.
-        </div>
-
         <div class="filtro-mes-card">
-            <form method="get">
+            <form method="get" id="form-filtro-mes">
                 <div>
                     <label class="form-label">Mes</label>
-                    <select name="mes">
+                    <select name="mes" onchange="this.form.submit()">
                         {% for valor, nombre in meses_nombres %}
                         <option value="{{ valor }}" {% if valor == mes_sel %}selected{% endif %}>{{ nombre }}</option>
                         {% endfor %}
@@ -83,15 +71,18 @@
                 </div>
                 <div>
                     <label class="form-label">Año</label>
-                    <select name="anio">
+                    <select name="anio" onchange="this.form.submit()">
                         {% for anio in anios_disponibles %}
                         <option value="{{ anio }}" {% if anio == anio_sel %}selected{% endif %}>{{ anio }}</option>
                         {% endfor %}
                     </select>
                 </div>
+                <noscript>
                 <button type="submit" class="btn-filtrar-mes">
                     <i class="bi bi-search me-1"></i>Ver
                 </button>
+                </noscript>
+
                 {% if es_mes_actual %}
                 <span class="badge-mes-actual"><i class="bi bi-check-circle-fill me-1"></i>Mes actual</span>
                 {% else %}
@@ -109,10 +100,25 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="kpi-card">
-                    <div class="kpi-label">Ingresos acumulados (histórico)</div>
+                    <div class="kpi-label">Gastos del periodo</div>
+                    <div class="kpi-valor rojo">${{ total_gastos_mes|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-label">Ingresos acumulados</div>
                     <div class="kpi-valor">${{ ingresos_acumulados|floatformat:2|intcomma }}</div>
                 </div>
             </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-label">Cartera vencida</div>
+                    <div class="kpi-valor rojo">${{ cartera_vencida_total|floatformat:2|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
             <div class="col-12 col-md-6">
                 <div class="card-panel">
                     <h6><i class="bi bi-pie-chart-fill me-1"></i>Ingresos del periodo por categoría</h6>
@@ -126,36 +132,59 @@
                     {% endfor %}
                 </div>
             </div>
+            <div class="col-12 col-md-6">
+                <div class="card-panel">
+                    <h6><i class="bi bi-pie-chart-fill me-1"></i>Gastos del periodo por categoría</h6>
+                    {% for item in gastos_por_categoria %}
+                    <div class="categoria-item">
+                        <span>{{ item.tipo_gasto__nombre|default:"Sin categoría" }}</span>
+                        <strong>${{ item.total|floatformat:2|intcomma }}</strong>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted small">No hay gastos registrados en este periodo.</div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
                 <div class="card-panel">
                     <h6><i class="bi bi-people-fill me-1"></i>Alumnos</h6>
                     <div class="row g-2 text-center">
-                        <div class="col-6 col-md-3">
-                            <div class="kpi-valor" style="font-size:1.4rem;">{{ metricas_alumnos.alumnos_activos_mes }}</div>
-                            <div class="kpi-label" style="margin-bottom:0;">Activos en el periodo</div>
+                        <div class="col-6">
+                            <div class="kpi-valor" style="font-size:1.4rem;">{{ total_alumnos_activos }}</div>
+                            <div class="kpi-label" style="margin-bottom:0;">Total activos</div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="kpi-valor" style="font-size:1.4rem; color:#0F5132;">{{ metricas_alumnos.alumnos_nuevos_mes }}</div>
+                        <div class="col-6">
+                            <div class="kpi-valor" style="font-size:1.4rem; color:#0F5132;">{{ alumnos_nuevos_mes }}</div>
                             <div class="kpi-label" style="margin-bottom:0;">Nuevos en el periodo</div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="kpi-valor" style="font-size:1.4rem; color:#B91C1C;">{{ metricas_alumnos.alumnos_en_riesgo_baja }}</div>
-                            <div class="kpi-label" style="margin-bottom:0;">En riesgo de baja</div>
+                        <div class="col-6 mt-2">
+                            <div class="kpi-valor" style="font-size:1.1rem; color:#6b7280;">{{ alumnos_preescolar }} / {{ alumnos_primaria }}</div>
+                            <div class="kpi-label" style="margin-bottom:0;">Preescolar / Primaria</div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="kpi-valor" style="font-size:1.4rem; color:#6b7280;">{{ metricas_alumnos.total_alumnos_historicos }}</div>
-                            <div class="kpi-label" style="margin-bottom:0;">Total histórico</div>
+                        <div class="col-6 mt-2">
+                            <div class="kpi-valor rojo" style="font-size:1.4rem;">{{ bajas_recientes_count }}</div>
+                            <div class="kpi-label" style="margin-bottom:0;">Bajas en el periodo</div>
                         </div>
-                    </div>
-                    <div class="text-muted mt-2" style="font-size:0.72rem;">
-                        <i class="bi bi-info-circle me-1"></i>"En riesgo" es una aproximación, calculada como si estuvieras en el mes seleccionado -- alumnos sin pago de colegiatura en sus 2 meses completos anteriores.
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
+                <div class="card-panel">
+                    <h6><i class="bi bi-exclamation-triangle-fill me-1"></i>Cartera Vencida</h6>
+                    <div class="categoria-item">
+                        <span>Total vencido</span>
+                        <strong class="text-danger">${{ cartera_vencida_total|floatformat:2|intcomma }}</strong>
+                    </div>
+                    <div class="categoria-item">
+                        <span>Alumnos deudores</span>
+                        <strong>{{ cartera_vencida_alumnos }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
                 <div class="card-panel">
                     <h6><i class="bi bi-credit-card-fill me-1"></i>Plataforma Academic -- este periodo</h6>
                     <div class="categoria-item">
@@ -173,6 +202,7 @@
                 </div>
             </div>
         </div>
+
         <div class="row g-3">
             <div class="col-12">
                 <div class="card-panel">
@@ -191,39 +221,20 @@
         const labelsGrafico = {{ labels_grafico|safe }};
         const datosIngresos = {{ datos_ingresos|safe }};
         const datosGastos = {{ datos_gastos|safe }};
- 
+
         new Chart(document.getElementById('graficoIngresosGastos').getContext('2d'), {
             type: 'bar',
             data: {
                 labels: labelsGrafico,
                 datasets: [
-                    {
-                        label: 'Ingresos',
-                        data: datosIngresos,
-                        backgroundColor: '#146C43',
-                        borderRadius: 6,
-                    },
-                    {
-                        label: 'Gastos',
-                        data: datosGastos,
-                        backgroundColor: '#D9812C',
-                        borderRadius: 6,
-                    },
+                    { label: 'Ingresos', data: datosIngresos, backgroundColor: '#146C43', borderRadius: 6 },
+                    { label: 'Gastos', data: datosGastos, backgroundColor: '#D9812C', borderRadius: 6 },
                 ],
             },
             options: {
-            
-                plugins: {
-                    legend: { position: 'top', labels: { font: { size: 11 } } },
-                },
+                plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            font: { size: 10 },
-                            callback: function (value) { return '$' + value.toLocaleString(); },
-                        },
-                    },
+                    y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: function (value) { return '$' + value.toLocaleString(); } } },
                     x: { ticks: { font: { size: 10 } } },
                 },
             },
