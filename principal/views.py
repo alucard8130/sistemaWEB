@@ -91,6 +91,7 @@ from presupuestos.models import Presupuesto, PresupuestoIngreso
 # from principal.admin import VisitanteAccesoForm
 from principal.forms import TemaGeneralForm, VisitanteLoginForm
 from principal.models import AuditoriaCambio
+from principal.utils import normalizar_nombre_empresa
 from proveedores.models import Proveedor
 
 from .forms import AvisoForm, ContadorForm, CSDUploadForm, EditarContadorForm
@@ -1477,65 +1478,9 @@ def enviar_correo_evento(request, evento_id):
     return JsonResponse({"ok": False}, status=400)
 
 
-###########################APP REGISTRO DE USUARIO GESAC########################
+###########################APP REGISTRO DE USUARIO GESAC  y ERP ESCUELAS ########################
 # registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
-# def registro_usuario(request):
-#     mensaje = ""
-#     if request.method == "POST":
-#         nombre = request.POST["nombre"]
-#         username = request.POST["username"]
-#         password = request.POST["password"]
-#         email = request.POST["email"]
-#         segmento = request.POST.get("segmento", "comercial")  # NUEVO
-#         # telefono = request.POST['telefono']
 
-#         if segmento not in ("comercial", "habitacional"):
-#             segmento = "comercial"
-
-#         if User.objects.filter(username=username).exists():
-#             mensaje = "El nombre de usuario ya está en uso. Por favor elige otro."
-#         else:
-#             user = User.objects.create_user(
-#                 username=username, password=password, email=email, first_name=nombre
-#             )
-#             nombre_empresa_demo = (
-#                 "CONDOMINIO DEMO" if segmento == "habitacional" else "EMPRESA DEMO"
-#             )
-#             empresa = Empresa.objects.create(
-#                 nombre=nombre_empresa_demo,
-#                 rfc=f"DEMO{uuid4().hex[:8].upper()}",
-#                 segmento=segmento,
-#             )
-#             perfil = user.perfilusuario
-#             perfil.empresa = empresa
-#             if not user.is_superuser:
-#                 perfil.tipo_usuario = "demo"
-#             perfil.save()
-
-#             # --- Correo de aviso al admin: nuevo usuario registrado ---
-
-#             resumen = (
-#                 f"Nuevo usuario registrado en GESAC:\n\n"
-#                 f"Nombre: {nombre}\n"
-#                 f"Usuario: {username}\n"
-#                 f"Email: {email}\n"
-#                 f"Segmento: {segmento}\n"
-#                 f"Empresa demo asignada: {empresa.nombre}\n"
-#             )
-#             send_mail(
-#                 "Nuevo registro en GESAC",
-#                 resumen,
-#                 settings.DEFAULT_FROM_EMAIL,
-#                 [settings.EMAIL_HOST_USER],
-#                 fail_silently=True,
-#             )
-
-#             messages.success(
-#                 request,
-#                 "¡Registro exitoso! Por favor inicia sesión con tus credenciales.",
-#             )
-#             return redirect("login")
-#     return render(request, "registro.html", {"mensaje": mensaje})
 def registro_usuario(request):
     mensaje = ""
     if request.method == "POST":
@@ -1545,13 +1490,37 @@ def registro_usuario(request):
         email = request.POST["email"]
         segmento = request.POST.get("segmento", "comercial")
         nombre_escuela = request.POST.get("nombre_escuela", "").strip()  # NUEVO
+        confirmar_duplicado = request.POST.get("confirmar_duplicado") == "1"  # NUEVO
 
         # NUEVO -- 'escuela' se agrega como segmento valido, junto a los
         # 2 que ya tenias.
         if segmento not in ("comercial", "habitacional", "escuela"):
             segmento = "comercial"
 
-        if User.objects.filter(username=username).exists():
+        # NUEVO -- chequeo de duplicado, solo aplica a escuela porque es
+        # el único segmento donde el usuario captura un nombre real de
+        # empresa en el registro (los otros 2 siempre usan un nombre
+        # genérico de demo). Va ANTES de crear el User, para no dejar
+        # cuentas de usuario huérfanas si la persona cancela en el aviso.
+        empresa_parecida = None
+        if segmento == "escuela" and nombre_escuela and not confirmar_duplicado:
+            nombre_normalizado = normalizar_nombre_empresa(nombre_escuela)
+            if nombre_normalizado:
+                for existente in Empresa.objects.filter(segmento="escuela"):
+                    if normalizar_nombre_empresa(existente.nombre) == nombre_normalizado:
+                        empresa_parecida = existente
+                        break
+ 
+        if empresa_parecida:
+            mensaje = (
+                f'Ya existe una cuenta registrada con un nombre muy parecido a '
+                f'"{nombre_escuela}". Si tú trabajas en esa misma escuela, pide a '
+                f'quien la registró que te agregue como usuario adicional en vez de '
+                f'crear una cuenta nueva -- así comparten los mismos datos. Si tu '
+                f'escuela es distinta, marca la casilla de abajo y vuelve a enviar '
+                f'el formulario.'
+            )
+        elif User.objects.filter(username=username).exists():
             mensaje = "El nombre de usuario ya está en uso. Por favor elige otro."
         else:
             user = User.objects.create_user(
@@ -5978,7 +5947,6 @@ def solicitar_pago_transferencia(request):
     config = ConfiguracionMembresia.obtener()
  
     if request.method == "POST":
-        #plan_solicitado = "plus" if es_escuela else request.POST.get("plan_solicitado")
         plan_solicitado = "premium" if es_escuela else request.POST.get("plan_solicitado")
         meses_cubiertos = request.POST.get("meses_cubiertos") or 1
         fecha_transferencia = request.POST.get("fecha_transferencia")

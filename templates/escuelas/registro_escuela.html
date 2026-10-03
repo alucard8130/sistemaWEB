@@ -51,6 +51,26 @@
 
         .registro-alert { background: #FDECEC; color: #B91C1C; border-radius: 10px; padding: 12px 14px; font-size: 0.85rem; margin-bottom: 18px; }
 
+        /* NUEVO -- aviso de posible duplicado, en tono ámbar para
+           distinguirlo de un error real (rojo) */
+        .registro-alert-duplicado {
+            background: #FEF3E2; color: #92400E; border-radius: 10px;
+            padding: 12px 14px; font-size: 0.85rem; margin-bottom: 18px;
+            border: 1px solid #FBD79A;
+        }
+        .confirmar-duplicado-wrap {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: #F9FAFB; border: 1px solid #dde3ec; border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 16px;
+        }
+        .confirmar-duplicado-wrap input[type="checkbox"] {
+            width: 18px; height: 18px; margin-top: 2px; accent-color: #146C43; flex-shrink: 0;
+        }
+        .confirmar-duplicado-wrap label {
+            font-weight: 500; font-size: 0.85rem; color: #374151;
+            text-transform: none; letter-spacing: normal; margin: 0;
+        }
+
         .btn-crear-cuenta {
             width: 100%;
             background: linear-gradient(135deg, #146C43, #0F5132);
@@ -77,12 +97,16 @@
             <div class="registro-hint">Regístrate y empieza a usar el sistema al instante</div>
 
             {% if mensaje %}
-                <div class="registro-alert">{{ mensaje }}</div>
+                {% if "nombre muy parecido" in mensaje %}
+                    <div class="registro-alert-duplicado">{{ mensaje }}</div>
+                {% else %}
+                    <div class="registro-alert">{{ mensaje }}</div>
+                {% endif %}
             {% endif %}
 
             <form method="post" class="registro-form">
                 {% csrf_token %}
-                
+
                 <input type="hidden" name="segmento" value="escuela">
                 <div class="field-wrap">
                     <label for="id_nombre_escuela">Nombre de la escuela</label>
@@ -105,6 +129,16 @@
                     <label for="id_password">Contraseña</label>
                     <input type="password" id="id_password" name="password" required>
                 </div>
+
+                {% if "nombre muy parecido" in mensaje %}
+                <div class="confirmar-duplicado-wrap">
+                    <input type="hidden" name="confirmar_duplicado" value="0">
+                    <input type="checkbox" name="confirmar_duplicado" value="1" id="id_confirmar_duplicado">
+                    <label for="id_confirmar_duplicado">
+                        Confirmo que mi escuela es distinta a la que ya está registrada.
+                    </label>
+                </div>
+                {% endif %}
 
                 <button type="submit" class="btn-crear-cuenta">
                     <i class="bi bi-check-circle me-1"></i>Crear cuenta
