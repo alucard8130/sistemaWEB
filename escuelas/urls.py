@@ -1,6 +1,6 @@
 
 from django.contrib.auth import views as auth_views
-from django.urls import path
+from django.urls import path, reverse_lazy
 
 from escuelas.views import (
     dashboard_admisiones,
@@ -38,4 +38,36 @@ urlpatterns = [
     path('presupuesto-ingresos/', matriz_presupuesto_ingresos_escuela, name='matriz_presupuesto_ingresos_escuela'),
     path('estado-resultados/', estado_resultados_escuela, name='estado_resultados_escuela'),
     path('cartera-vencida/comparativo/', reporte_cartera_vencida_comparativo, name='reporte_cartera_vencida_comparativo'),
+    path(
+        'escuelas/restaurar-password/',
+        auth_views.PasswordResetView.as_view(
+            template_name='escuelas/restaurar_password.html',
+            email_template_name='escuelas/restaurar_password_email.txt',
+            subject_template_name='escuelas/restaurar_password_subject.txt',
+            success_url=reverse_lazy('escuela_password_reset_done'),
+        ),
+        name='escuela_password_reset',
+    ),
+    path(
+        'escuelas/restaurar-password/enviado/',
+        auth_views.PasswordResetDoneView.as_view(
+            template_name='escuelas/restaurar_password_done.html'
+        ),
+        name='escuela_password_reset_done',
+    ),
+    path(
+        'escuelas/restaurar-password/confirmar/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name='escuelas/restaurar_password_confirm.html',
+            success_url=reverse_lazy('escuela_password_reset_complete'),
+        ),
+        name='escuela_password_reset_confirm',
+    ),
+    path(
+        'escuelas/restaurar-password/completo/',
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name='escuelas/restaurar_password_complete.html'
+        ),
+        name='escuela_password_reset_complete',
+    ),
 ]

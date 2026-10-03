@@ -72,6 +72,12 @@
             padding: 12px 14px; font-size: 0.85rem; margin-bottom: 18px;
         }
 
+        /* NUEVO -- link de olvidé mi contraseña, alineado a la derecha
+           justo debajo del campo de contraseña */
+        .olvide-password { text-align: right; margin-top: -8px; margin-bottom: 16px; }
+        .olvide-password a { color: #146C43; font-size: 0.78rem; text-decoration: none; }
+        .olvide-password a:hover { text-decoration: underline; }
+
         .btn-acceder {
             width: 100%;
             background: linear-gradient(135deg, #146C43, #0F5132);
@@ -122,6 +128,11 @@
                 {% endfor %}
                 {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
                 <input type="hidden" name="next" value="{{ next }}">
+
+                <!-- NUEVO -->
+                <div class="olvide-password">
+                    <a href="{% url 'escuela_password_reset' %}">¿Olvidaste tu contraseña?</a>
+                </div>
 
                 <button type="submit" class="btn-acceder">
                     <i class="bi bi-box-arrow-in-right me-1"></i>Entrar
