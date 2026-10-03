@@ -1487,7 +1487,7 @@ def registro_usuario(request):
         nombre = request.POST["nombre"]
         username = request.POST["username"]
         password = request.POST["password"]
-        email = request.POST["email"]
+        email = request.POST["email"].strip()
         segmento = request.POST.get("segmento", "comercial")
         nombre_escuela = request.POST.get("nombre_escuela", "").strip()  # NUEVO
         confirmar_duplicado = request.POST.get("confirmar_duplicado") == "1"  # NUEVO
@@ -1522,6 +1522,16 @@ def registro_usuario(request):
             )
         elif User.objects.filter(username=username).exists():
             mensaje = "El nombre de usuario ya está en uso. Por favor elige otro."
+        # NUEVO -- bloque de validación de correo duplicado. Va después
+        # del de username para que, si ambos fallan, el usuario vea
+        # primero el de username (es el campo que está viendo arriba
+        # en el formulario).
+        elif User.objects.filter(email__iexact=email).exists():
+            mensaje = (
+                "Ya existe una cuenta registrada con ese correo. Si es tuya, usa "
+                "\"¿Olvidaste tu contraseña?\" en la pantalla de inicio de sesión "
+                "en vez de registrarte de nuevo."
+            )    
         else:
             user = User.objects.create_user(
                 username=username, password=password, email=email, first_name=nombre
