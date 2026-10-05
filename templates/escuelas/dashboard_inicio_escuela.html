@@ -5,7 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inicio — ERP Escolar</title>
+    <title>Inicio — GESAC Campus</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23146C43'/><g fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' transform='translate(12 12) scale(1.67)'><path d='M22 10 12 5 2 10l10 5 10-5Z'/><path d='M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5'/></g></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -56,14 +57,14 @@
 
         <div class="de-header">
             <div class="de-titulo"><i class="bi bi-mortarboard-fill me-2"></i>{{ empresa.nombre }}</div>
-            <div class="de-subtitulo">Panel financiero -- ERP Escolar</div>
+            <div class="de-subtitulo">Panel financiero -- GESAC Campus</div>
         </div>
 
         <div class="filtro-mes-card">
-            <form method="get" id="form-filtro-mes">
+            <form method="get">
                 <div>
                     <label class="form-label">Mes</label>
-                    <select name="mes" onchange="this.form.submit()">
+                    <select name="mes">
                         {% for valor, nombre in meses_nombres %}
                         <option value="{{ valor }}" {% if valor == mes_sel %}selected{% endif %}>{{ nombre }}</option>
                         {% endfor %}
@@ -71,18 +72,15 @@
                 </div>
                 <div>
                     <label class="form-label">Año</label>
-                    <select name="anio" onchange="this.form.submit()">
+                    <select name="anio">
                         {% for anio in anios_disponibles %}
                         <option value="{{ anio }}" {% if anio == anio_sel %}selected{% endif %}>{{ anio }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <noscript>
                 <button type="submit" class="btn-filtrar-mes">
                     <i class="bi bi-search me-1"></i>Ver
                 </button>
-                </noscript>
-
                 {% if es_mes_actual %}
                 <span class="badge-mes-actual"><i class="bi bi-check-circle-fill me-1"></i>Mes actual</span>
                 {% else %}

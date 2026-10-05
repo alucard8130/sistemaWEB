@@ -3,6 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
 from escuelas.views import (
+    LandingGesacCampusView,
     dashboard_admisiones,
     dashboard_inicio_escuela,
     estado_resultados_escuela,
@@ -70,4 +71,5 @@ urlpatterns = [
         ),
         name='escuela_password_reset_complete',
     ),
+    path('landing/', LandingGesacCampusView.as_view(), name='landing_gesac_campus'),
 ]

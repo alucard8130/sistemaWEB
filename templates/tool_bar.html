@@ -1,11 +1,11 @@
 <footer style="
-    background: linear-gradient(135deg, #0f2d52 0%, #1a5276 100%);
+    background: {% if request.user.perfilusuario.empresa.segmento == 'escuela' %}linear-gradient(135deg, #0F5132 0%, #146C43 100%){% else %}linear-gradient(135deg, #0f2d52 0%, #1a5276 100%){% endif %};
     border-top: none;
     padding: 10px 20px;
     position: sticky;
     bottom: 0;
     z-index: 999;
-    box-shadow: 0 -2px 10px rgba(15,45,82,0.15);
+    box-shadow: 0 -2px 10px {% if request.user.perfilusuario.empresa.segmento == 'escuela' %}rgba(15,81,50,0.2){% else %}rgba(15,45,82,0.15){% endif %};
 ">
     <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-2" style="font-size:0.76rem;">
 
@@ -43,7 +43,7 @@
 
         <span style="color:rgba(255,255,255,0.5);font-size:0.72rem;">
             {% if request.user.perfilusuario.empresa.segmento == 'escuela' %}
-            © {% now "Y" %} ERP Escolar &nbsp;·&nbsp; Powered by GESAC
+            © {% now "Y" %} GESAC Campus &nbsp;·&nbsp; Created By Jaime M Estrada B.
             {% else %}
             © {% now "Y" %} GESAC &nbsp;·&nbsp; Created By Jaime M Estrada B.
             {% endif %}

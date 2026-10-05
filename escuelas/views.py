@@ -20,6 +20,7 @@ from django.shortcuts import redirect, render
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.views.generic import TemplateView
 
 from gastos.models import Gasto
 from principal.models import ConfiguracionMembresia
@@ -1164,7 +1165,10 @@ def membresia_vencida_escuela(request):
     })
 
 
-
+# Vista -- no necesita lógica, solo renderiza el template.
+#vista para la landing page de Gesac Campus
+class LandingGesacCampusView(TemplateView):
+    template_name = "escuelas/landing_gesac_campus.html"
 
 
 

@@ -1,0 +1,197 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GESAC Campus — Claridad financiera para tu institución</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Rubik', system-ui, sans-serif; box-sizing: border-box; }
+        body { margin: 0; color: #1f2a24; background: #FAFAF7; }
+        a { color: inherit; text-decoration: none; }
+        .navlink { color: #4b5a52; font-weight: 500; font-size: 14px; }
+        .navlink:hover { color: #0F5132; }
+        .btn-outline:hover { background: #F2F6F3; }
+        .feature-card { transition: all .15s; }
+        .feature-card:hover { box-shadow: 0 10px 28px rgba(15,81,50,0.1); transform: translateY(-2px); }
+        .cta-primary:hover { opacity: 0.92; }
+        @media (max-width: 860px) {
+            .hero-row, .nav-row { flex-direction: column; align-items: flex-start !important; }
+            .features-grid { grid-template-columns: 1fr !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav-row" style="display:flex; align-items:center; justify-content:space-between; padding: 20px 64px; border-bottom: 1px solid #E7E9E4; flex-wrap: wrap; gap: 16px;">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#146C43,#0F5132); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10 12 5 2 10l10 5 10-5Z"/>
+                <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>
+            </svg>
+        </div>
+        <div style="font-weight:800; font-size:19px; letter-spacing:-0.02em; color:#0F5132;">GESAC <span style="color:#D9812C">Campus</span></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:28px; flex-wrap: wrap;">
+        <a href="#modulos" class="navlink">Módulos</a>
+        <a href="#precios" class="navlink">Precios</a>
+        <a href="{% url 'login_escuela' %}" class="navlink">Ingresar</a>
+        <a href="#precios" class="cta-primary" style="background:linear-gradient(135deg,#146C43,#0F5132); color:white; font-weight:600; font-size:14px; padding:10px 20px; border-radius:10px;">Solicitar demo</a>
+    </div>
+</div>
+
+<!-- HERO -->
+<div class="hero-row" style="display:flex; flex-wrap:wrap; gap:56px; align-items:center; padding: 72px 64px; max-width: 1360px; margin: 0 auto;">
+    <div style="flex: 999 1 420px; min-width: 0;">
+        <div style="display:inline-block; background:#F2F6F3; color:#146C43; font-weight:600; font-size:12px; letter-spacing:0.04em; text-transform:uppercase; padding:6px 14px; border-radius:999px; margin-bottom:20px;">Parte de la familia GESAC</div>
+        <h1 style="font-size:46px; line-height:1.12; font-weight:800; letter-spacing:-0.02em; margin:0 0 20px; color:#0F5132;">
+            Claridad financiera para tu institución educativa
+        </h1>
+        <p style="font-size:17px; line-height:1.6; color:#4b5a52; margin:0 0 32px; max-width:480px;">
+            Un solo lugar para administrar admisiones, alumnos, gastos, presupuestos y nómina — con tus números siempre al día, sin hojas de cálculo sueltas.
+        </p>
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <a href="{% url 'registro_usuario_escuela' %}" class="cta-primary" style="background:linear-gradient(135deg,#146C43,#0F5132); color:white; font-weight:700; font-size:15px; padding:14px 26px; border-radius:11px;">Solicitar acceso</a>
+            <a href="#modulos" class="btn-outline" style="border:1.5px solid #D7DDD8; color:#1f2a24; font-weight:600; font-size:15px; padding:14px 26px; border-radius:11px;">Ver qué incluye</a>
+        </div>
+    </div>
+
+    <div style="flex: 1 1 380px; min-width: 300px; max-width: 480px;">
+        <div style="background:white; border-radius:18px; box-shadow:0 20px 60px rgba(15,81,50,0.14); border:1px solid #EBEEE8; overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#146C43,#0F5132); padding:18px 22px; color:white; font-weight:700; font-size:14px;">Dashboard — Octubre 2026</div>
+            <div style="padding:22px; display:flex; flex-direction:column; gap:16px;">
+                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;">
+                    <div style="background:#F6F8F5; border-radius:12px; padding:14px;">
+                        <div style="font-size:11px; font-weight:600; color:#6b7b70; text-transform:uppercase;">Alumnos activos</div>
+                        <div style="font-size:24px; font-weight:800; color:#0F5132;">268</div>
+                    </div>
+                    <div style="background:#F6F8F5; border-radius:12px; padding:14px;">
+                        <div style="font-size:11px; font-weight:600; color:#6b7b70; text-transform:uppercase;">Ingresos del mes</div>
+                        <div style="font-size:24px; font-weight:800; color:#0F5132;">$481k</div>
+                    </div>
+                </div>
+                <div style="background:#FEF3E2; border-radius:12px; padding:14px; display:flex; align-items:center; justify-content:space-between;">
+                    <div>
+                        <div style="font-size:11px; font-weight:600; color:#92400E; text-transform:uppercase;">Cartera vencida</div>
+                        <div style="font-size:20px; font-weight:800; color:#92400E;">$52,400</div>
+                    </div>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D9812C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+                </div>
+                <div style="height:64px; display:flex; align-items:flex-end; gap:6px;">
+                    <div style="flex:1; height:34%; background:#CBE3D4; border-radius:4px 4px 0 0;"></div>
+                    <div style="flex:1; height:52%; background:#9FCDAF; border-radius:4px 4px 0 0;"></div>
+                    <div style="flex:1; height:41%; background:#CBE3D4; border-radius:4px 4px 0 0;"></div>
+                    <div style="flex:1; height:68%; background:#146C43; border-radius:4px 4px 0 0;"></div>
+                    <div style="flex:1; height:58%; background:#9FCDAF; border-radius:4px 4px 0 0;"></div>
+                    <div style="flex:1; height:80%; background:#0F5132; border-radius:4px 4px 0 0;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MÓDULOS -->
+<div id="modulos" style="padding: 24px 64px 72px; max-width:1360px; margin:0 auto;">
+    <div style="text-align:center; margin-bottom:48px;">
+        <h2 style="font-size:30px; font-weight:800; color:#0F5132; margin:0 0 10px; letter-spacing:-0.01em;">Todo lo que tu administración necesita</h2>
+        <p style="font-size:15px; color:#6b7b70; margin:0;">Seis módulos conectados entre sí — nada de capturar el mismo dato dos veces.</p>
+    </div>
+
+    <div class="features-grid" style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px;">
+
+        <div class="feature-card" style="background:white; border:1px solid #EBEEE8; border-radius:16px; padding:26px;">
+            <div style="width:42px; height:42px; border-radius:11px; background:#F2F6F3; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            </div>
+            <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Dashboard financiero</div>
+            <div style="font-size:14px; color:#6b7b70; line-height:1.55;">Ingresos, gastos, cartera vencida y alumnos activos, de un vistazo y siempre actualizados.</div>
+        </div>
+
+        <div class="feature-card" style="background:white; border:1px solid #EBEEE8; border-radius:16px; padding:26px;">
+            <div style="width:42px; height:42px; border-radius:11px; background:#F2F6F3; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+            </div>
+            <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Admisiones conectadas</div>
+            <div style="font-size:14px; color:#6b7b70; line-height:1.55;">Tu embudo de prospectos se sincroniza solo desde HubSpot — sin captura manual.</div>
+        </div>
+
+        <div class="feature-card" style="background:white; border:1px solid #EBEEE8; border-radius:16px; padding:26px;">
+            <div style="width:42px; height:42px; border-radius:11px; background:#F2F6F3; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="18" cy="9" r="2.4"/><path d="M15.5 14.2c2.6.3 4.5 2.4 4.5 5.1"/></svg>
+            </div>
+            <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Alumnos</div>
+            <div style="font-size:14px; color:#6b7b70; line-height:1.55;">Roster, altas y bajas automáticas, y cartera vencida con histórico mes a mes.</div>
+        </div>
+
+        <div class="feature-card" style="background:white; border:1px solid #EBEEE8; border-radius:16px; padding:26px;">
+            <div style="width:42px; height:42px; border-radius:11px; background:#F2F6F3; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>
+            </div>
+            <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Gastos y Tesorería</div>
+            <div style="font-size:14px; color:#6b7b70; line-height:1.55;">Solicitudes de gasto, pagos, caja chica y traspasos, con cierre de períodos.</div>
+        </div>
+
+        <div class="feature-card" style="background:white; border:1px solid #EBEEE8; border-radius:16px; padding:26px;">
+            <div style="width:42px; height:42px; border-radius:11px; background:#F2F6F3; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9l7 4"/><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Presupuestos y Resultados</div>
+            <div style="font-size:14px; color:#6b7b70; line-height:1.55;">Presupuesto de ingresos y de gastos, con validación automática y Estado de Resultados.</div>
+        </div>
+
+        <div class="feature-card" style="background:white; border:1px solid #EBEEE8; border-radius:16px; padding:26px;">
+            <div style="width:42px; height:42px; border-radius:11px; background:#F2F6F3; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M8 17c0-2 1.8-3.4 4-3.4s4 1.4 4 3.4"/></svg>
+            </div>
+            <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Nómina</div>
+            <div style="font-size:14px; color:#6b7b70; line-height:1.55;">Dispersión desde tus XML timbrados, incidencias y control de asistencia por celular.</div>
+        </div>
+
+    </div>
+</div>
+
+<!-- PRECIOS -->
+<div id="precios" style="background:#0F5132; padding:72px 64px;">
+    <div style="max-width:560px; margin:0 auto; text-align:center;">
+        <div style="color:#9FCDAF; font-weight:600; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:14px;">Membresía</div>
+        <h2 style="font-size:28px; font-weight:800; color:white; margin:0 0 28px;">Un solo plan, todo incluido</h2>
+
+        <div style="background:white; border-radius:18px; padding:36px 32px; text-align:left;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px; flex-wrap: wrap; gap: 6px;">
+                <div style="font-weight:800; font-size:20px; color:#0F5132;">Premium</div>
+                <div><span style="font-weight:800; font-size:30px; color:#0F5132;">$2,500</span><span style="font-size:14px; color:#6b7b70;"> + IVA / mes</span></div>
+            </div>
+            <div style="font-size:13px; color:#6b7b70; margin-bottom:22px;">10 días de prueba gratis, sin tarjeta.</div>
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:26px;">
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+                    <div style="font-size:14px; color:#374151;">Alumnos ilimitados, usuarios ilimitados</div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+                    <div style="font-size:14px; color:#374151;">Los 6 módulos: Dashboard, Admisiones, Alumnos, Gastos, Presupuestos y Nómina</div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#146C43" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+                    <div style="font-size:14px; color:#374151;">Sincronización con HubSpot para admisiones</div>
+                </div>
+            </div>
+            <a href="{% url 'registro_usuario_escuela' %}" class="cta-primary" style="display:block; text-align:center; background:linear-gradient(135deg,#146C43,#0F5132); color:white; font-weight:700; font-size:15px; padding:14px; border-radius:11px;">Comenzar prueba gratis</a>
+        </div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<div style="padding:28px 64px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+    <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#6b7b70;">
+        <div style="width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,#146C43,#0F5132);"></div>
+        GESAC Campus — parte de la familia GESAC
+    </div>
+    <div style="font-size:13px; color:#9aa59e;">© {% now "Y" %} GESAC. Todos los derechos reservados.</div>
+</div>
+
+</body>
+</html>

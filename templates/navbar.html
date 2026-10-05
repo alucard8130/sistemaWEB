@@ -9,7 +9,7 @@
   <i class="bi bi-list"></i> Menu
 </button>
 
-<div id="globalSidebarWrapper" class="global-sidebar-wrapper">
+<div id="globalSidebarWrapper" class="global-sidebar-wrapper{% if empresa_actual.segmento == 'escuela' %} tema-campus{% endif %}">
   <div id="navbar-hover-zone"></div>
   {% if request.user.perfilusuario.es_contador %}
 
@@ -110,6 +110,17 @@
     {# ===== NAVBAR COMPLETO PARA USUARIOS NORMALES ===== #}
     <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top py-0 shadow-navbar">
     <div class="container-fluid">
+    {% if empresa_actual.segmento == 'escuela' %}
+      <a href="{% url 'dashboard_inicio' %}" class="navbar-brand campus-brand reporte-link" title="GESAC Campus">
+        <span class="campus-logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10 12 5 2 10l10 5 10-5Z"/>
+            <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>
+          </svg>
+        </span>
+        <span>GESAC <span class="campus-accent">Campus</span></span>
+      </a>
+      {% endif %}
       <a href="{% url 'dashboard_inicio' %}" id="tour-inicio" class="icono-navbar-simple reporte-link" title="Inicio">
         <i class="bi bi-house-fill"></i>
       </a>
@@ -457,6 +468,7 @@
           </li>
 
             {% if empresa_actual.segmento != 'escuela' %}
+            <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-comunicacion" href="#" role="button" data-bs-toggle="dropdown" title="Comunicacion">
               Comunicacion <i style="font-size: 1.5em;"></i>
             </a>
@@ -556,7 +568,7 @@
             .notif-sistema-no-leida .notif-sistema-titulo,
             .notif-sistema-no-leida .notif-sistema-msg { font-weight: 700; }
         </style>
-         {% if empresa_actual.segmento != 'escuela' %}
+        
         <button type="button" id="tour-ayuda" class="icono-navbar-simple reporte-link"
           data-bs-toggle="modal"
           data-bs-target="#modalAyuda"
@@ -564,7 +576,7 @@
           title="Ayuda">
           <i class="bi bi-question-circle-fill"></i>
         </button>
-        {% endif %}
+      
 
         <form method="post" action="{% url 'logout' %}" class="mb-0 d-inline">
           {% csrf_token %}
@@ -588,6 +600,15 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
           </div>
           <div class="modal-body text-center">
+            {% if empresa_actual.segmento == 'escuela' %}
+            <h5 class="mb-3">Manual de Usuario GESAC Campus</h5>
+            <p class="text-muted" style="font-size:0.85rem;">
+              Guía paso a paso de cada módulo: alumnos, ingresos, gastos, tesorería, presupuestos y nómina.
+            </p>
+            <a href="{% static 'docs/Manual_GESAC_Campus.pdf' %}" target="_blank" class="btn btn-outline-success mb-3">
+              <i class="bi bi-file-earmark-pdf"></i> Descargar Manual
+            </a>
+            {% else %}
             <h5 class="mb-3">Manual de Operación Sistema GESAC</h5>
             <a href="{% static 'docs/Manual_GESAC_Unificado.pdf' %}" target="_blank" class="btn btn-outline-primary mb-3">
               <i class="bi bi-file-earmark-pdf"></i> Descargar Manual
@@ -604,12 +625,15 @@
                 <p class="mt-2">Ver más tutoriales.......</p>
               </a>
             </div>
+            {% endif %}
           </div>
           <div class="modal-footer">
-            {% if request.user.perfilusuario.empresa.es_premium %}
-              <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PREMIUM</button>
-            {% elif request.user.perfilusuario.empresa.es_plus %}
-              <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PLUS</button>
+           {% if empresa_actual.segmento != 'escuela' %}
+              {% if request.user.perfilusuario.empresa.es_premium %}
+                <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PREMIUM</button>
+              {% elif request.user.perfilusuario.empresa.es_plus %}
+                <button id="cancelar-suscripcion-btn" class="btn btn-danger">Cancelar Membresía PLUS</button>
+              {% endif %}
             {% endif %}
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
           </div>  
@@ -898,4 +922,37 @@ body.dark-mode .navbar .dropdown-item:hover { background: #2d3748 !important; }
 .icono-navbar-simple:hover {
     color: white;
 }
+/* ── TEMA GESAC CAMPUS (solo escuelas) ── */
+.tema-campus .navbar {
+    background: linear-gradient(135deg, #0F5132 0%, #146C43 100%) !important;
+    box-shadow: 0 2px 12px rgba(15,81,50,0.22) !important;
+}
+.tema-campus .navbar .dropdown-item:hover {
+    background: #F2F6F3 !important;
+    color: #0F5132 !important;
+}
+.tema-campus .navbar .dropdown-header {
+    color: #146C43 !important;
+    background: #EAF4EE !important;
+    border-left-color: #146C43 !important;
+}
+.tema-campus .notif-sistema-item { border-left-color: #146C43 !important; }
+body.dark-mode .tema-campus .navbar {
+    background: linear-gradient(135deg, #0a2e1d 0%, #0F5132 100%) !important;
+}
+ 
+.campus-brand {
+    display: flex !important;
+    align-items: center;
+    gap: 9px;
+    margin-right: 14px !important;
+    text-decoration: none;
+}
+.campus-logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: rgba(255,255,255,0.16);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.campus-accent { color: #F6B26B; }
 </style>
