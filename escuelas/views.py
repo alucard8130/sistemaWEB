@@ -654,6 +654,7 @@ def dashboard_inicio_escuela(request):
         'meses_nombres': MESES_NOMBRES,
         'anios_disponibles': anios_disponibles,
         'es_mes_actual': (mes_sel == hoy.month and anio_sel == hoy.year),
+        'hoy': hoy,
         'ingresos_mes_actual': ingresos_mes_actual,
         'ingresos_acumulados': ingresos_acumulados,
         'ingresos_por_categoria': ingresos_por_categoria,

@@ -1,5 +1,6 @@
 {% load static %}
 {% load humanize %}
+{% load membresia_extras %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -18,6 +19,15 @@
             color: white; border-radius: 16px; padding: 24px 28px;
             margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2);
         }
+        .empresa-banner {
+            background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%);
+            color: white; border-radius: 16px; padding: 16px 24px;
+            margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+            box-shadow: 0 6px 24px rgba(15,81,50,0.2);
+        }
+        .empresa-nombre { font-size: 1.1rem; font-weight: 700; }
+        .empresa-sub { font-size: 0.75rem; opacity: 0.75; }
+        .empresa-segmento { font-size: 0.85rem; opacity: 0.9; }
         .de-titulo { font-size: 1.35rem; font-weight: 700; margin: 0; }
         .de-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
 
@@ -55,9 +65,53 @@
             {% endfor %}
         {% endif %}
 
-        <div class="de-header">
-            <div class="de-titulo"><i class="bi bi-mortarboard-fill me-2"></i>{{ empresa.nombre }}</div>
-            <div class="de-subtitulo">Panel financiero -- GESAC Campus</div>
+        <div class="empresa-banner">
+            <div>
+                <div class="empresa-sub"><i class="bi bi-mortarboard-fill me-1"></i>Escuela activa</div>
+                <div class="empresa-nombre">{{ empresa.nombre }}</div>
+                <div class="empresa-segmento">
+                    <i class="bi bi-building me-1"></i>{{ empresa.get_segmento_display }} · GESAC Campus
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div style="text-align:right;">
+                    <div style="font-size:0.72rem;opacity:0.7;">{{ hoy|date:"l, d \d\e F Y" }}</div>
+                    <div style="font-size:0.82rem;font-weight:600;">{{ request.user.get_full_name|default:request.user.username }}</div>
+                </div>
+                <span class="d-flex flex-column align-items-end gap-1">
+                    {% if request.user.perfilusuario.empresa.es_premium or request.user.perfilusuario.tipo_usuario == "premium" %}
+                    <span style="background:#d4ac0d;color:#5a3e00;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">
+                        ⭐ Premium
+                    </span>
+                    {% elif request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.tipo_usuario == "plus" %}
+                    <span style="background:#00B0F0;color:white;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">
+                        Plus
+                    </span>
+                    {% else %}
+                    <span style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">
+                        Demo
+                    </span>
+                    {% endif %}
+
+                    {% if request.user.perfilusuario.tipo_usuario != "demo" and request.user.perfilusuario.tipo_usuario != "gratis" %}
+                        {% with estado=request.user.perfilusuario.fecha_vencimiento|estado_membresia %}
+                        {% if estado == "vigente" %}
+                        <span style="background:rgba(255,255,255,0.18);color:#eafaf1;padding:1px 9px;border-radius:20px;font-size:0.65rem;font-weight:600;">
+                            <i class="bi bi-check-circle-fill"></i> Vigente hasta {{ request.user.perfilusuario.fecha_vencimiento|date:"d/m/Y" }}
+                        </span>
+                        {% elif estado == "vence_pronto" %}
+                        <span style="background:rgba(212,172,13,0.3);color:#fff6da;padding:1px 9px;border-radius:20px;font-size:0.65rem;font-weight:600;">
+                            <i class="bi bi-hourglass-split"></i> Vence el {{ request.user.perfilusuario.fecha_vencimiento|date:"d/m/Y" }}
+                        </span>
+                        {% elif estado == "vencida" %}
+                        <span style="background:rgba(220,53,69,0.35);color:#ffe3e6;padding:1px 9px;border-radius:20px;font-size:0.65rem;font-weight:600;">
+                            <i class="bi bi-exclamation-triangle-fill"></i> Vencida desde {{ request.user.perfilusuario.fecha_vencimiento|date:"d/m/Y" }}
+                        </span>
+                        {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </span>
+            </div>
         </div>
 
         <div class="filtro-mes-card">
