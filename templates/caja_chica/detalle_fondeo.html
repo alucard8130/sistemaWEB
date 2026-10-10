@@ -21,7 +21,7 @@
         <div class="card-body">
           <h5 class="card-title">Cheque: {{ fondeo.numero_cheque }}</h5>
           <p><strong>Importe:</strong> ${{ fondeo.importe_cheque|floatformat:2|intcomma }}</p>
-          <p><strong>Empleado:</strong> {{ fondeo.empleado_asignado }}</p>
+          <p><strong>Empleado:</strong> {{ fondeo.empleado_asignado|default:"Dueño (cobros en efectivo)" }}</p>
           <p><strong>Fecha:</strong> {{ fondeo.fecha }}</p>
           <p><strong>Saldo actual:</strong> ${{ fondeo.saldo|floatformat:2|intcomma }}</p>
         </div>

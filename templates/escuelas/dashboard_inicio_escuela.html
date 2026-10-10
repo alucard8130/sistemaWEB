@@ -94,6 +94,10 @@
                 <div class="kpi-card">
                     <div class="kpi-label">Ingresos del periodo</div>
                     <div class="kpi-valor">${{ ingresos_mes_actual|floatformat:2|intcomma }}</div>
+                    <div class="small text-muted mt-1">
+                        <i class="bi bi-bank"></i> Bancos ${{ ingresos_banco_mes|floatformat:2|intcomma }}<br>
+                        <i class="bi bi-cash-coin"></i> Efectivo ${{ ingresos_efectivo_mes|floatformat:2|intcomma }}
+                    </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
@@ -104,15 +108,70 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="kpi-card">
-                    <div class="kpi-label">Ingresos acumulados</div>
-                    <div class="kpi-valor">${{ ingresos_acumulados|floatformat:2|intcomma }}</div>
+                    <div class="kpi-label">Resultado del periodo</div>
+                    <div class="kpi-valor {% if resultado_mes < 0 %}rojo{% endif %}">${{ resultado_mes|floatformat:2|intcomma }}</div>
+                    <div class="small text-muted mt-1">Acumulado de ingresos: ${{ ingresos_acumulados|floatformat:2|intcomma }}</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="kpi-card">
                     <div class="kpi-label">Cartera vencida</div>
                     <div class="kpi-valor rojo">${{ cartera_vencida_total|floatformat:2|intcomma }}</div>
+                    <a href="{% url 'reporte_cartera_detalle' %}" class="small">Ver detalle <i class="bi bi-arrow-right"></i></a>
                 </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+                <div class="card-panel">
+                    <h6><i class="bi bi-bank me-1"></i>Saldo en bancos (al cierre del periodo)</h6>
+                    {% for item in saldos_bancos %}
+                    <div class="categoria-item">
+                        <span>{{ item.cuenta.get_banco_display }} · {{ item.cuenta.numero_cuenta }}</span>
+                        <strong class="{% if item.saldo < 0 %}text-danger{% endif %}">${{ item.saldo|floatformat:2|intcomma }}</strong>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted small">No hay cuentas bancarias activas registradas.</div>
+                    {% endfor %}
+                    <div class="categoria-item" style="border-top:2px solid #146C43; font-weight:700;">
+                        <span>Total en bancos</span>
+                        <strong style="color:#146C43;">${{ saldo_bancos_total|floatformat:2|intcomma }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card-panel">
+                    <h6><i class="bi bi-cash-coin me-1"></i>Caja chica (dueño)</h6>
+                    <div class="categoria-item">
+                        <span>Efectivo cobrado (fondeos EFE-…)</span>
+                        <strong>${{ saldo_caja_efectivo|floatformat:2|intcomma }}</strong>
+                    </div>
+                    <div class="categoria-item">
+                        <span>Otros fondeos (cheque / transferencia)</span>
+                        <strong>${{ saldo_caja_otros|floatformat:2|intcomma }}</strong>
+                    </div>
+                    <div class="categoria-item" style="border-top:2px solid #146C43; font-weight:700;">
+                        <span>Saldo total de caja chica</span>
+                        <strong style="color:#146C43;">${{ saldo_caja_efectivo|add:saldo_caja_otros|floatformat:2|intcomma }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-panel mb-3" style="height:auto;">
+            <h6><i class="bi bi-lightning-charge-fill me-1"></i>Accesos rápidos</h6>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-success btn-sm" href="{% url 'importar_ingresos_excel' %}"><i class="bi bi-upload me-1"></i>Importar ingresos</a>
+                <a class="btn btn-outline-success btn-sm" href="{% url 'importar_ingresos_fiserv' %}"><i class="bi bi-credit-card me-1"></i>Cuadre Fiserv</a>
+                <a class="btn btn-outline-success btn-sm" href="{% url 'importar_cartera_vencida' %}"><i class="bi bi-exclamation-triangle me-1"></i>Importar cartera vencida</a>
+                <a class="btn btn-outline-success btn-sm" href="{% url 'importar_roster_alumnos' %}"><i class="bi bi-people me-1"></i>Importar alumnos</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'reporte_ingresos_forma_pago' %}"><i class="bi bi-wallet2 me-1"></i>Ingresos por forma de pago</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'reporte_ingresos_categoria' %}"><i class="bi bi-tags me-1"></i>Ingresos por categoría</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'reporte_cartera_detalle' %}"><i class="bi bi-list-ul me-1"></i>Cartera vencida detallada</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'estado_resultados_escuela' %}"><i class="bi bi-file-earmark-bar-graph me-1"></i>Estado de resultados</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'matriz_presupuesto_ingresos_escuela' %}"><i class="bi bi-grid-3x3 me-1"></i>Presupuesto de ingresos</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'dashboard_admisiones' %}"><i class="bi bi-person-plus me-1"></i>Admisiones</a>
             </div>
         </div>
 
@@ -184,17 +243,17 @@
             </div>
             <div class="col-12 col-md-4">
                 <div class="card-panel">
-                    <h6><i class="bi bi-credit-card-fill me-1"></i>Plataforma Academic -- este periodo</h6>
+                    <h6><i class="bi bi-credit-card-fill me-1"></i>Pagos con tarjeta (portal web) -- este periodo</h6>
                     <div class="categoria-item">
                         <span>Ingreso bruto</span>
                         <strong>${{ ingreso_bruto_plataforma|floatformat:2|intcomma }}</strong>
                     </div>
                     <div class="categoria-item">
-                        <span style="color:#B91C1C;">Comisión</span>
+                        <span style="color:#B91C1C;">Comisión estimada (referencia)</span>
                         <strong style="color:#B91C1C;">-${{ comision_plataforma|floatformat:2|intcomma }}</strong>
                     </div>
                     <div class="categoria-item" style="border-top:2px solid #146C43; font-weight:700;">
-                        <span>Neto a bancos</span>
+                        <span>Neto estimado</span>
                         <strong style="color:#146C43;">${{ ingreso_neto_plataforma|floatformat:2|intcomma }}</strong>
                     </div>
                 </div>
@@ -206,6 +265,22 @@
                 <div class="card-panel">
                     <h6><i class="bi bi-bar-chart-fill me-1"></i>Ingresos vs Gastos -- últimos 6 meses</h6>
                     <canvas id="graficoIngresosGastos" height="90"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-12">
+                <div class="card-panel" style="height:auto;">
+                    <h6><i class="bi bi-clock-history me-1"></i>Últimas importaciones de ingresos</h6>
+                    {% for l in ultimos_lotes %}
+                    <div class="categoria-item">
+                        <span>{{ l.fecha_importacion|date:"d/m/Y H:i" }} · {{ l.get_fuente_display|default:l.fuente }} · {{ l.filas }} filas</span>
+                        <strong>${{ l.total|floatformat:2|intcomma }}</strong>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted small">Aún no hay importaciones. Empieza con “Importar ingresos”.</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>

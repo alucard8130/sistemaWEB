@@ -386,8 +386,11 @@
               Ingresos <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_excel' %}"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Cobranza (Excel)</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_fiserv' %}"><i class="bi bi-credit-card-fill me-2"></i>Importar Pagos Plataforma</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_excel' %}"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Ingresos (Excel)</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'importar_ingresos_fiserv' %}"><i class="bi bi-credit-card-fill me-2"></i>Importar Ingresos Plataforma</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_forma_pago' %}"><i class="bi bi-file-text me-2"></i>Reporte Ingresos por Forma de Pago</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_categoria' %}"><i class="bi bi-file-text me-2"></i>Reporte Ingresos por Categoría</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cartera_detalle' %}"><i class="bi bi-file-text me-2"></i>Reporte Cartera Detalle</a></li>
             </ul>
           </li>
           {% endif %}

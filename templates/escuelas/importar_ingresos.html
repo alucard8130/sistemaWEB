@@ -53,20 +53,46 @@
 
         <div class="ie-header">
             <div class="ie-titulo"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Ingresos</div>
-            <div class="ie-subtitulo">Sube el reporte de ingresos exportado de tu sistema de cobranza (ej. Academic+ Control)</div>
+            <div class="ie-subtitulo">Sube el "Detalle de Pagos" de Academic+ (IPC, Cafetería o Colegiaturas)</div>
         </div>
 
         <div class="formato-card">
-            <i class="bi bi-check-circle-fill me-1"></i><strong>Sube el reporte tal cual lo exportas de Academic+</strong> 
-            -- no necesitas reformatear nada. El sistema reconoce el archivo .xls de "Cobranza" directo, incluyendo sus secciones 
-            por forma de pago (Efectivo, Tarjeta, Transferencia) y sus subtotales -- esos se omiten automáticamente, solo se importan los cobros individuales.
+            <i class="bi bi-info-circle-fill me-1"></i><strong>Cómo se registra cada cobro</strong>
+            <ul class="mb-0 mt-2" style="padding-left:18px;">
+                <li><strong>Efectivo</strong> nunca va a bancos: se suma a la <strong>caja chica</strong> en un fondeo por fuente y por mes (sin responsable).</li>
+                <li><strong>Transferencia y tarjeta</strong> entran a la cuenta bancaria que elijas, al <strong>100%</strong>. La comisión del portal la registras tú como gasto.</li>
+                <li>Se usa la <strong>Fecha Abono</strong> del archivo tal cual (fecha del banco).</li>
+                <li>Si vuelves a subir el mismo archivo no se duplica nada. Los subtotales del archivo se validan antes de importar.</li>
+            </ul>
         </div>
 
         <div class="form-card">
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-                <label class="form-label">Archivo de Cobranza (.xls -- exportado de Academic+)</label>
-                <input type="file" name="archivo_excel" class="form-control" accept=".xls" required>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Fuente del archivo</label>
+                        <select name="fuente" class="form-control" required>
+                            <option value="">-- Elige --</option>
+                            {% for valor, etiqueta in fuentes %}
+                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Cuenta bancaria donde se depositó <span class="text-muted fw-normal">(si hay transferencias / tarjetas)</span></label>
+                        <select name="cuenta_bancaria" class="form-control">
+                            <option value="">-- Sin cuenta (solo efectivo) --</option>
+                            {% for c in cuentas %}
+                            <option value="{{ c.id }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Archivo "Detalle de Pagos" (.xls)</label>
+                        <input type="file" name="archivo_excel" class="form-control" accept=".xls" required>
+                    </div>
+                </div>
                 <button type="submit" class="btn-importar mt-3">
                     <i class="bi bi-upload me-1"></i>Importar ingresos
                 </button>
@@ -77,24 +103,35 @@
         <table class="tabla-ingresos">
             <thead>
                 <tr>
-                    <th>Fecha</th>
-                    <th>Concepto</th>
-                    <th>Categoría</th>
-                    <th class="text-end">Monto</th>
+                    <th>Archivo</th>
+                    <th>Fuente</th>
+                    <th>Cuenta</th>
+                    <th class="text-end">Efectivo → caja</th>
+                    <th class="text-end">Bancos</th>
+                    <th class="text-end">Cobros</th>
                     <th>Importado</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
-                {% for ingreso in ingresos_recientes %}
+                {% for lote in lotes %}
                 <tr>
-                    <td>{{ ingreso.fecha|date:"d/m/Y" }}</td>
-                    <td>{{ ingreso.concepto }}</td>
-                    <td><span class="badge-categoria">{{ ingreso.get_categoria_display }}</span></td>
-                    <td class="text-end">${{ ingreso.monto|floatformat:2|intcomma }}</td>
-                    <td class="text-muted" style="font-size:0.76rem;">{{ ingreso.fecha_importacion|timesince }} atrás</td>
+                    <td>{{ lote.archivo }}</td>
+                    <td><span class="badge-categoria">{{ lote.get_fuente_display }}</span></td>
+                    <td style="font-size:0.76rem;">{{ lote.cuenta_bancaria|default:"—" }}</td>
+                    <td class="text-end">${{ lote.total_efectivo|floatformat:2|intcomma }}</td>
+                    <td class="text-end">${{ lote.total_banco|floatformat:2|intcomma }}</td>
+                    <td class="text-end">{{ lote.filas }}{% if lote.filas_duplicadas %} <span class="text-muted" title="Omitidas por ya estar importadas">(+{{ lote.filas_duplicadas }} dup.)</span>{% endif %}</td>
+                    <td class="text-muted" style="font-size:0.76rem;">{{ lote.fecha_importacion|date:"d/m/Y H:i" }}</td>
+                    <td class="text-end">
+                        <form method="post" action="{% url 'deshacer_lote_ingresos' lote.id %}" onsubmit="return confirm('¿Deshacer esta importación? Se borran sus ingresos y se resta el efectivo de la caja chica.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Deshacer importación"><i class="bi bi-arrow-counterclockwise"></i></button>
+                        </form>
+                    </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" class="no-data"><i class="bi bi-inbox display-4 d-block mb-3"></i>Todavía no se ha importado ningún ingreso.</td></tr>
+                <tr><td colspan="8" class="no-data"><i class="bi bi-inbox display-4 d-block mb-3"></i>Todavía no se ha importado ningún archivo.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

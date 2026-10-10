@@ -362,6 +362,11 @@
                     <span class="d-flex align-items-center">
                         <span class="dot"></span>
                         {{ origen|capfirst }}
+                        {% if origen == "Anticipos / Saldos A Favor" and not request.is_portal_acceso %}
+                            <a href="{% url 'lista_saldos_a_favor' %}" class="ms-1 small text-primary" title="Ver saldos a favor">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        {% endif %}
                     </span>
                     <span class="fw-semibold text-success">${{ monto|floatformat:2|intcomma }}</span>
                 </div>

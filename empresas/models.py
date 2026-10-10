@@ -14,7 +14,8 @@ class Empresa(models.Model):
     SEGMENTO_CHOICES = [  # noqa: RUF012
         ('comercial', 'Comercial (plaza / centro comercial)'),
         ('habitacional', 'Habitacional (condominio residencial)'),
-        ('escolar', 'Escuela'),
+        ('escuela', 'Escuela'),
+        ('arrendamiento', 'Arrendamiento (ERP inmobiliario)'),
     ]
     ESTADO_CHOICES = [  # noqa: RUF012
         ('activa', 'Activa'),
@@ -103,6 +104,10 @@ class Empresa(models.Model):
     def es_habitacional(self):
         return self.segmento == 'habitacional'
 
+    @property
+    def es_arrendamiento(self):
+        return self.segmento == 'arrendamiento'
+    
 
 class CuentaBancaria(models.Model):
     BANCOS_CHOICES = [  # noqa: RUF012

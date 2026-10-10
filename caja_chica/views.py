@@ -766,7 +766,15 @@ def eliminar_fondeo(request, fondeo_id):
         if not perfil or not getattr(perfil, "empresa", None) or perfil.empresa.id != fondeo_empresa_id:
             messages.error(request, "No tienes permiso para eliminar este fondeo.")
             return redirect("lista_fondeos")
-
+        
+    # verificar si el fondeo viene de cobros en efectivo importados
+    if fondeo.origen == "cobros_efectivo":
+        messages.error(
+            request,
+            "Este fondeo viene de cobros en efectivo importados. Para quitarlo usa «Deshacer» en Importar ingresos.",
+        )
+        return redirect("lista_fondeos")
+    
     # obtener importe_cheque y saldo como Decimal
     try:
         importe = Decimal(str(fondeo.importe_cheque or 0))

@@ -10,15 +10,10 @@ import zipfile
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from functools import wraps
-
-# from urllib import response
 from uuid import uuid4
 
-# from openai import base_url
 import openpyxl
 import pytz
-
-# from django.conf import settings
 import requests
 import stripe
 import weasyprint
@@ -26,9 +21,7 @@ from babel.dates import format_date
 from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import get_user_model, logout, update_session_auth_hash
-
-# import uuid
+from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.hashers import check_password, make_password
@@ -56,8 +49,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
-
-# from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.views.decorators.csrf import csrf_exempt
@@ -68,9 +59,8 @@ from rest_framework.decorators import (
 )
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
-from typing_extensions import OrderedDict
+from typing_extensions import OrderedDict  # noqa: UP035
 
-# from areas import models
 from amenidades.models import Amenidad, Reservacion
 from areas.models import AreaComun
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
@@ -78,17 +68,19 @@ from clientes.models import Cliente
 from conciliaciones.utils import get_o_crear_periodo
 from core import settings
 from empleados.models import Empleado
-
-# import empresas
 from empresas.models import CuentaBancaria, Empresa
 from facturacion.forms import TimbrarFacturaForm
-from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from facturacion.models import (
+    FORMAS_PAGO_NO_INGRESO,
+    CobroOtrosIngresos,
+    Factura,
+    FacturaOtrosIngresos,
+    Pago,
+)
 from facturacion.utils import debe_mostrar_recordatorio_facturacion
 from gastos.models import Gasto, PagoGasto, TipoGasto
 from locales.models import LocalComercial
 from presupuestos.models import Presupuesto, PresupuestoIngreso
-
-# from principal.admin import VisitanteAccesoForm
 from principal.forms import TemaGeneralForm, VisitanteLoginForm
 from principal.models import AuditoriaCambio
 from principal.utils import normalizar_nombre_empresa
@@ -167,7 +159,7 @@ def dashboard_inicio(request):
         factura__empresa=empresa,
         fecha_pago__year=anio_actual,
         fecha_pago__month=mes_actual,
-    ).exclude(forma_pago="nota_credito").aggregate(total=Sum("monto"))[
+    ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
         "total"
     ] or Decimal("0")
 
@@ -185,7 +177,7 @@ def dashboard_inicio(request):
 
     ingresos_mes_ant_cuotas = Pago.objects.filter(
         factura__empresa=empresa, fecha_pago__year=anio_ant, fecha_pago__month=mes_ant
-    ).exclude(forma_pago="nota_credito").aggregate(total=Sum("monto"))[
+    ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
         "total"
     ] or Decimal("0")
 
@@ -508,7 +500,7 @@ def dashboard_inicio(request):
         Pago.objects.filter(
             factura__empresa=empresa, fecha_pago__gte=fecha_rango_inicio
         )
-        .exclude(forma_pago="nota_credito")
+        .exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
         .annotate(mes_trunc=TruncMonth("fecha_pago"))
         .values("mes_trunc")
         .annotate(total=Sum("monto"))
@@ -1002,7 +994,7 @@ def reenviar_credenciales_contador(request, perfil_id):
     messages.success(request, f"✅ Credenciales reenviadas a {perfil.usuario.email}.")
     return redirect("lista_contadores")
 
-
+###############informacion version plus
 @login_required
 def info_plus(request):
     return render(
@@ -1013,10 +1005,12 @@ def info_plus(request):
         },
     )
 
-
+####reiniciar sistema
 @staff_member_required
 @login_required
 def reiniciar_sistema(request):
+    """Selector de empresa. El borrado real vive en adminpanel.resetear_empresa
+    (solo superusuario, con vista previa y confirmacion por nombre)."""
     if request.method == "POST":
         empresa_id = request.POST.get("empresa_id") or request.session.get("empresa_id")
         if not empresa_id:
@@ -1029,56 +1023,11 @@ def reiniciar_sistema(request):
             messages.error(request, "Empresa no encontrada.")
             return redirect("reiniciar_sistema")
 
-        try:
-            with transaction.atomic():
-                # 1) Romper bloqueos PROTECT por cliente
-                AreaComun.objects.filter(empresa=empresa).update(cliente=None)
-                LocalComercial.objects.filter(empresa=empresa).update(cliente=None)
+        if not request.user.is_superuser:
+            messages.error(request, "Solo un superusuario puede reiniciar una empresa.")
+            return redirect("reiniciar_sistema")
 
-                # 2) Facturacion otros ingresos (tiene cliente PROTECT)
-                CobroOtrosIngresos.objects.filter(factura__empresa=empresa).delete()
-                FacturaOtrosIngresos.objects.filter(empresa=empresa).delete()
-
-                # 3) Pagos por identificar (sin factura) de la empresa
-                Pago.objects.filter(empresa=empresa, factura__isnull=True).delete()
-
-                # 4) Facturas y pagos ligados a facturas
-                Factura.objects.filter(empresa=empresa).delete()
-
-                # 5) Caja chica
-                FondeoCajaChica.objects.filter(
-                    empresa=empresa
-                ).delete()  # cascada a gastos/vales
-
-                # 6) Gastos
-                Gasto.objects.filter(empresa=empresa).delete()
-                PagoGasto.objects.filter(gasto__empresa=empresa).delete()
-                TipoGasto.objects.filter(empresa=empresa).delete()
-
-                # 7) Catalogos y maestros por empresa
-                Presupuesto.objects.filter(empresa=empresa).delete()
-                PresupuestoIngreso.objects.filter(empresa=empresa).delete()
-                Proveedor.objects.filter(empresa=empresa).delete()
-                Empleado.objects.filter(empresa=empresa).delete()
-                Cliente.objects.filter(empresa=empresa).delete()
-                LocalComercial.objects.filter(empresa=empresa).delete()
-                AreaComun.objects.filter(empresa=empresa).delete()
-                Evento.objects.filter(empresa=empresa).delete()
-                TemaGeneral.objects.filter(empresa=empresa).delete()
-                Aviso.objects.filter(empresa=empresa).delete()
-
-                # 8) Dejar saldos en cero (empresa sigue activa)
-                # empresa.saldo_inicial = 0
-                # empresa.saldo_final = 0
-                # empresa.save(update_fields=["saldo_inicial", "saldo_final"])
-
-            messages.success(
-                request, f"Empresa {empresa.nombre} reiniciada en cero correctamente."
-            )
-        except Exception as e:
-            messages.error(request, f"Error al reiniciar empresa: {e}")
-
-        return redirect("reiniciar_sistema")
+        return redirect("resetear_empresa", empresa_id=empresa.pk)
 
     empresas = Empresa.objects.all().order_by("nombre")
     empresa_id = request.session.get("empresa_id")
@@ -4541,7 +4490,7 @@ def api_reporte_ingresos_vs_gastos(request):
             mes_letra = f"{fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}"
 
     # Filtra todos los objetos por la empresa del visitante
-    pagos = Pago.objects.exclude(forma_pago="nota_credito").filter(
+    pagos = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
         factura__empresa=empresa
     )
     pagos_gastos = PagoGasto.objects.filter(gasto__empresa=empresa)
@@ -5136,7 +5085,7 @@ def api_estado_resultados(request):
         else 0.0
     )
 
-    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    pagos = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
     cobros_otros = CobroOtrosIngresos.objects.select_related(
         "factura", "factura__empresa"
     )
@@ -5974,7 +5923,17 @@ def solicitar_pago_transferencia(request):
                 meses_int = int(meses_cubiertos)
             except (TypeError, ValueError):
                 meses_int = 1
-            monto = config.precio_plus_escuela_con_iva * meses_int
+            #monto = config.precio_plus_escuela_con_iva * meses_int
+            # NUEVO -- modalidad mensual o anual (anual = 12 meses pagando 11).
+            # El monto y los meses se calculan aqui, nunca se toman del navegador.
+            meses_anual_pagados = 11
+            if request.POST.get("modalidad") == "anual":
+                meses_int = 12
+                monto = config.precio_plus_escuela_con_iva * meses_anual_pagados
+            else:
+                meses_int = 1
+                monto = config.precio_plus_escuela_con_iva
+            meses_cubiertos = meses_int
         else:
             monto_raw = request.POST.get("monto")
             if not monto_raw:
@@ -6028,6 +5987,18 @@ def solicitar_pago_transferencia(request):
         {
             "plan_choices": PagoMembresiaTransferencia.PLAN_CHOICES,
             "config": config,
+            "precio_anual": (
+                config.precio_plus_escuela * 11
+                if config and config.precio_plus_escuela is not None else None
+            ),
+            "precio_anual_con_iva": (
+                config.precio_plus_escuela_con_iva * 11
+                if config and config.precio_plus_escuela_con_iva is not None else None
+            ),
+            "ahorro_anual_con_iva": (
+                config.precio_plus_escuela_con_iva
+                if config and config.precio_plus_escuela_con_iva is not None else None
+            ),
         },
     )
 

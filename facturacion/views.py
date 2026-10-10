@@ -76,6 +76,7 @@ from .forms import (
     TipoOtroIngresoForm,
 )
 from .models import (
+    FORMAS_PAGO_NO_INGRESO,
     CobroOtrosIngresos,
     Factura,
     FacturaOtrosIngresos,
@@ -1318,7 +1319,8 @@ def registrar_saldo_a_favor(request):
             return redirect("registrar_saldo_a_favor")
 
         # NUEVO -- valida forma de pago y la exigencia de cuenta bancaria
-        formas_validas = dict(Pago.FORMAS_PAGO).keys()
+        #formas_validas = dict(Pago.FORMAS_PAGO).keys()
+        formas_validas = set(dict(Pago.FORMAS_PAGO).keys()) - set(FORMAS_PAGO_NO_INGRESO)
         if not forma_pago or forma_pago not in formas_validas:
             messages.error(request, "Selecciona la forma de pago con la que se recibió el dinero.")
             return redirect("registrar_saldo_a_favor")
@@ -1885,8 +1887,8 @@ def pagos_por_origen(request):
 
     # Primera carga
     if not filtros_aplicados:
-        fecha_inicio = date.today().replace(month=1, day=1).strftime("%Y-%m-%d")
-        fecha_fin = date.today().strftime("%Y-%m-%d")
+        fecha_inicio = date.today().replace(month=1, day=1).strftime("%Y-%m-%d")  # noqa: DTZ011
+        fecha_fin = date.today().strftime("%Y-%m-%d")  # noqa: DTZ011
 
     if empresa_id:
         pagos = pagos.filter(factura__empresa_id=empresa_id).order_by("fecha_pago")
@@ -1899,10 +1901,10 @@ def pagos_por_origen(request):
 
     if fecha_inicio and fecha_fin:
         try:
-            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            fecha_i = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()  # noqa: DTZ007
+            fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()  # noqa: DTZ007
             pagos = pagos.filter(fecha_pago__range=[fecha_i, fecha_f])
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
     if tipo_cuota:
@@ -1912,7 +1914,7 @@ def pagos_por_origen(request):
     if cuenta_bancaria:
         pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria).order_by("fecha_pago")
 
-    pagos_validos = pagos.exclude(forma_pago="nota_credito")
+    pagos_validos = pagos.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
     
     # NUEVO -- de los pagos ya filtrados, separa cuanto corresponde a
     # cuotas del MES en que se facturaron (pagadas a tiempo, mismo mes
@@ -1943,9 +1945,9 @@ def pagos_por_origen(request):
     )
 
     total_pagos = pagos_validos.aggregate(total=Sum("monto"))["total"] or 0
-    pagos_por_tipo = pagos.values("factura__tipo_cuota").annotate(total=Sum("monto"))
+    pagos_por_tipo = pagos_validos.values("factura__tipo_cuota").annotate(total=Sum("monto"))
     pagos_por_forma = pagos.values("forma_pago").annotate(total=Sum("monto"))
-    pagos_por_cuenta = pagos.values("cuenta_bancaria").annotate(total=Sum("monto"))
+    pagos_por_cuenta = pagos_validos.values("cuenta_bancaria").annotate(total=Sum("monto"))
 
     # Fechas
      # Fechas -- año/mes de referencia basado en el filtro, no siempre "hoy"
@@ -1967,25 +1969,25 @@ def pagos_por_origen(request):
     ingresos_acumulados = pagos_validos.aggregate(total=Sum("monto"))["total"] or 0
 
     pagos_anio_actual = (
-        pagos_base.exclude(forma_pago="nota_credito")
+        pagos_base.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
         .filter(fecha_pago__year=anio_actual)
         .aggregate(total=Sum("monto"))["total"]
         or 0
     )
     pagos_anio_anterior = (
-        pagos_base.exclude(forma_pago="nota_credito")
+        pagos_base.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
         .filter(fecha_pago__year=anio_anterior)
         .aggregate(total=Sum("monto"))["total"]
         or 0
     )
     pagos_mes_actual = (
-        pagos_base.exclude(forma_pago="nota_credito")
+        pagos_base.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
         .filter(fecha_pago__year=anio_actual, fecha_pago__month=mes_actual)
         .aggregate(total=Sum("monto"))["total"]
         or 0
     )
     pagos_mes_anterior = (
-        pagos_base.exclude(forma_pago="nota_credito")
+        pagos_base.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
         .filter(fecha_pago__year=anio_mes_anterior, fecha_pago__month=mes_anterior)
         .aggregate(total=Sum("monto"))["total"]
         or 0
@@ -2461,7 +2463,7 @@ def dashboard_saldos(request):
 # dashboard Ingresos
 @login_required
 def dashboard_pagos(request):
-    anio_actual = datetime.now().year
+    anio_actual = datetime.now().year  # noqa: DTZ005
     anio = request.GET.get("anio")
     mes = request.GET.get("mes")
     anio_seleccionado = request.GET.get("anio", anio_actual)
@@ -2500,7 +2502,7 @@ def dashboard_pagos(request):
         filtro &= Q(factura__area_comun__isnull=False)
 
     pagos = (
-        Pago.objects.exclude(forma_pago="nota_credito")
+        Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
         .filter(filtro)
         .select_related("factura", "factura__empresa", "factura__cliente")
         .distinct()
@@ -3538,7 +3540,7 @@ def exportar_pagos_excel(request):
         pagos = pagos.filter(cuenta_bancaria=cuenta_bancaria)
 
     pagos = pagos.order_by("fecha_pago")
-    pagos = pagos.exclude(forma_pago="nota_credito")
+    pagos = pagos.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -5483,10 +5485,10 @@ def exportar_poliza_ingresos(request):
 
         # --- Pagos de cuotas ---
         pagos_cuotas = Pago.objects.filter(
-            factura__empresa=empresa,
+            Q(factura__empresa=empresa) | Q(factura__isnull=True, empresa=empresa),
             fecha_pago__gte=fecha_inicio,
             fecha_pago__lte=fecha_fin,
-        ).exclude(forma_pago='nota_credito').select_related(
+        ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).select_related(
             'factura', 'cuenta_bancaria', 'cuenta_bancaria__cuenta_contable', 'factura__cliente'
         )
 

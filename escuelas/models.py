@@ -55,8 +55,47 @@ class IngresoEscuela(models.Model):
     )
 
 
+    # ------------------------------------------------------------------
+    # NUEVO -- Detalle de Pagos de Academic+ (IPC, Cafeteria, Colegiaturas)
+    # ------------------------------------------------------------------
+    FUENTE_CHOICES = [  # noqa: RUF012
+        ('ipc', 'IPC (cursos, talleres, transporte, uniformes)'),
+        ('cafeteria', 'Cafetería'),
+        ('colegiaturas', 'Colegiaturas / inscripciones'),
+    ]
+    recibo = models.CharField(max_length=30, blank=True, null=True, db_index=True)
+    nivel = models.CharField(max_length=30, blank=True, default='')
+    # Concepto "limpio" (sin mes, ciclo, talla ni zona) para reportes por categoria.
+    rubro = models.CharField(max_length=60, blank=True, default='', db_index=True)
+    fuente = models.CharField(max_length=20, choices=FUENTE_CHOICES, blank=True, default='')
+    # Efectivo NUNCA pasa por bancos: va a un fondeo de caja chica.
+    es_efectivo = models.BooleanField(default=False, db_index=True)
+    # Banco donde cayo el ingreso (solo cuando NO es efectivo). Ingreso al 100%;
+    # la comision se registra a mano como gasto.
+    cuenta_bancaria = models.ForeignKey(
+        'empresas.CuentaBancaria', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ingresos_escuela',
+    )
+    # Fondeo de caja chica al que se sumo este cobro en efectivo.
+    fondeo = models.ForeignKey(
+        'caja_chica.FondeoCajaChica', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ingresos_escuela',
+    )
+    lote = models.ForeignKey(
+        'LoteImportacionIngresos', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='ingresos',
+    )
+    # Huella de la fila (recibo+matricula+concepto+importe+fecha+n.o de
+    # ocurrencia) para que re-subir el mismo archivo NO duplique ingresos.
+    clave_unica = models.CharField(max_length=40, blank=True, null=True)
+
     class Meta:
         ordering = ['-fecha']  # noqa: RUF012
+        constraints = [  # noqa: RUF012
+            models.UniqueConstraint(
+                fields=['empresa', 'clave_unica'], name='uniq_ingreso_escuela_clave'
+            ),
+        ]
 
 
     @property
@@ -67,6 +106,34 @@ class IngresoEscuela(models.Model):
 
     def __str__(self):
         return f"{self.fecha} -- {self.concepto}: ${self.monto}"
+
+
+class LoteImportacionIngresos(models.Model):
+    """Una subida de archivo 'Detalle de Pagos'. Sirve para auditar lo que
+    entro y para poder deshacer la importacion completa."""
+
+    empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='lotes_ingresos')
+    fuente = models.CharField(max_length=20, choices=IngresoEscuela.FUENTE_CHOICES)
+    archivo = models.CharField(max_length=255)
+    cuenta_bancaria = models.ForeignKey(
+        'empresas.CuentaBancaria', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='lotes_ingresos_escuela',
+    )
+    fecha_importacion = models.DateTimeField(auto_now_add=True)
+    importado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    filas = models.PositiveIntegerField(default=0)
+    filas_duplicadas = models.PositiveIntegerField(default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0'))  # noqa: FURB157
+    total_efectivo = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0'))  # noqa: FURB157
+    total_banco = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0'))  # noqa: FURB157
+
+    class Meta:
+        ordering = ['-fecha_importacion']  # noqa: RUF012
+
+    def __str__(self):
+        return f"{self.archivo} ({self.get_fuente_display()}) -- ${self.total}"
 
 
 ### Modelos relacionados con solicitudes de admisión
@@ -192,4 +259,4 @@ class PresupuestoIngresoEscuela(models.Model):
         unique_together = ('empresa', 'anio', 'mes', 'categoria')
 
     def __str__(self):
-        return f"{self.empresa} {self.get_categoria_display()} {self.mes}/{self.anio}: {self.monto_presupuestado}"    
+        return f"{self.empresa} {self.get_categoria_display()} {self.mes}/{self.anio}: {self.monto_presupuestado}"

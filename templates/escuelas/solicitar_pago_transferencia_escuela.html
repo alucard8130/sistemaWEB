@@ -24,6 +24,16 @@
         .precio-card .monto { font-size: 1.3rem; font-weight: 800; color: #146C43; }
         .precio-card .detalle { font-size: 0.76rem; color: #6b7280; }
 
+        .modalidad { display: flex; gap: 10px; margin-bottom: 16px; }
+        .modalidad label { flex: 1; cursor: pointer; margin: 0; }
+        .modalidad input { position: absolute; opacity: 0; pointer-events: none; }
+        .modalidad .op { display: block; border: 2px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; background: white; text-align: center; transition: all .15s; }
+        .modalidad .op .t { font-weight: 700; color: #33475b; }
+        .modalidad .op .p { font-size: 1.05rem; font-weight: 800; color: #146C43; }
+        .modalidad .op .s { font-size: 0.74rem; color: #6b7280; }
+        .modalidad input:checked + .op { border-color: #146C43; background: #E9F7EF; box-shadow: 0 0 0 3px rgba(20,108,67,.12); }
+        .modalidad input:focus-visible + .op { outline: 2px solid #146C43; outline-offset: 2px; }
+        .badge-gratis { display: inline-block; background: #D9812C; color: white; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-bottom: 4px; }
         .datos-transferencia { background: #EAF2FB; border-left: 4px solid #2471A3; border-radius: 10px; padding: 22px 24px; margin-bottom: 20px; font-size: 1rem; color: #1a5276; }
         .datos-transferencia strong { font-size: 1.05rem; }
         .datos-transferencia .mt-1 { line-height: 1.9; }
@@ -52,9 +62,25 @@
             <div class="pg-subtitulo">Sube tu comprobante de transferencia -- activamos tu cuenta en cuanto lo confirmemos</div>
         </div>
 
-        <div class="precio-card">
-            <div class="monto">${{ config.precio_plus_escuela|floatformat:2|intcomma }} <span style="font-size:1.1rem;">+ IVA</span></div>
-            <div class="detalle">Plan Premium -- mensual (${{ config.precio_plus_escuela_con_iva|floatformat:2|intcomma }} total)</div>
+        <div class="modalidad" role="radiogroup" aria-label="Modalidad de pago">
+            <label>
+                <input type="radio" name="modalidad_vista" value="mensual" checked>
+                <span class="op">
+                    <span class="t">Mensual</span><br>
+                    <span class="p">${{ config.precio_plus_escuela|floatformat:2|intcomma }} + IVA</span><br>
+                    <span class="s">${{ config.precio_plus_escuela_con_iva|floatformat:2|intcomma }} total · cubre 1 mes</span>
+                </span>
+            </label>
+            <label>
+                <input type="radio" name="modalidad_vista" value="anual">
+                <span class="op">
+                    <span class="badge-gratis">1 MES GRATIS</span><br>
+                    <span class="t">Anual</span><br>
+                    <span class="p">${{ precio_anual|floatformat:2|intcomma }} + IVA</span><br>
+                    <span class="s">${{ precio_anual_con_iva|floatformat:2|intcomma }} total · cubre 12 meses (pagas 11)</span><br>
+                    <span class="s" style="color:#146C43; font-weight:600;">Ahorras ${{ ahorro_anual_con_iva|floatformat:2|intcomma }} con IVA</span>
+                </span>
+            </label>
         </div>
 
         <div class="datos-transferencia">
@@ -69,12 +95,12 @@
         <div class="form-card">
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-                <input type="hidden" name="meses_cubiertos" value="1">
+                <input type="hidden" name="modalidad" id="modalidad" value="mensual">
 
                 <div class="mb-3">
                     <label class="form-label">Monto a transferir</label>
-                    <input type="text" class="form-control" value="${{ config.precio_plus_escuela_con_iva|floatformat:2|intcomma }}" disabled>
-                    <div class="form-text" style="font-size:0.75rem; color:#8592a6;">Este es el monto exacto de tu mensualidad -- transfiere esta cantidad.</div>
+                    <input type="text" class="form-control" id="monto_mostrado" value="${{ config.precio_plus_escuela_con_iva|floatformat:2|intcomma }}" disabled>
+                    <div class="form-text" id="monto_ayuda" style="font-size:0.75rem; color:#8592a6;">Este es el monto exacto de tu mensualidad -- transfiere esta cantidad.</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Fecha de la transferencia</label>
@@ -98,5 +124,23 @@
             </form>
         </div>
     </div>
+    <script>
+        (function () {
+            var montos = {
+                mensual: { txt: "${{ config.precio_plus_escuela_con_iva|floatformat:2|intcomma }}", ayuda: "Este es el monto exacto de tu mensualidad -- transfiere esta cantidad." },
+                anual:   { txt: "${{ precio_anual_con_iva|floatformat:2|intcomma }}", ayuda: "Pago anual: 12 meses de membresía pagando solo 11 -- transfiere esta cantidad." }
+            };
+            var hidden = document.getElementById("modalidad");
+            var campo = document.getElementById("monto_mostrado");
+            var ayuda = document.getElementById("monto_ayuda");
+            document.querySelectorAll('input[name="modalidad_vista"]').forEach(function (r) {
+                r.addEventListener("change", function () {
+                    hidden.value = r.value;
+                    campo.value = montos[r.value].txt;
+                    ayuda.textContent = montos[r.value].ayuda;
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

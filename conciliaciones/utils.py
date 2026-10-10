@@ -5,6 +5,7 @@ from django.db.models import Sum
 
 from caja_chica.models import FondeoCajaChica
 from conciliaciones.models import SaldoCuentaPeriodo
+from escuelas.models import IngresoEscuela
 from facturacion.models import CobroOtrosIngresos, Pago
 from gastos.models import PagoGasto
 from traspasos.models import TraspasoBancario
@@ -21,6 +22,13 @@ def calcular_saldo_cuenta_periodo(cuenta, anio, mes):
         cuenta_bancaria=cuenta,
         fecha_cobro__year=anio,
         fecha_cobro__month=mes
+    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+    
+    ingresos_escuela = IngresoEscuela.objects.filter(
+        cuenta_bancaria=cuenta,
+        es_efectivo=False,
+        fecha__year=anio,
+        fecha__month=mes
     ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
 
     pagos_gastos = PagoGasto.objects.filter(
@@ -49,7 +57,7 @@ def calcular_saldo_cuenta_periodo(cuenta, anio, mes):
         estado='completado'
     ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
 
-    total_ingresos = pagos + cobros_oi + traspasos_entrada
+    total_ingresos = pagos + cobros_oi + ingresos_escuela + traspasos_entrada
     total_egresos = pagos_gastos + fondeos + traspasos_salida
 
     return {
@@ -62,6 +70,7 @@ def calcular_saldo_cuenta_periodo(cuenta, anio, mes):
         'traspasos_salida': traspasos_salida,
         'total_egresos': total_egresos,
         'movimiento_neto': total_ingresos - total_egresos,
+        'ingresos_escuela': ingresos_escuela,
     }
 
 
@@ -77,6 +86,12 @@ def calcular_saldo_acumulado_hasta(cuenta, anio, mes):
     cobros_oi = CobroOtrosIngresos.objects.filter(
         cuenta_bancaria=cuenta,
         fecha_cobro__lt=fecha_limite
+    ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
+
+    ingresos_escuela = IngresoEscuela.objects.filter(
+        cuenta_bancaria=cuenta,
+        es_efectivo=False,
+        fecha__lt=fecha_limite
     ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
 
     pagos_gastos = PagoGasto.objects.filter(
@@ -101,7 +116,7 @@ def calcular_saldo_acumulado_hasta(cuenta, anio, mes):
         estado='completado'
     ).aggregate(total=Sum('monto'))['total'] or Decimal('0')
 
-    total_ingresos = pagos + cobros_oi + traspasos_entrada
+    total_ingresos = pagos + cobros_oi + ingresos_escuela + traspasos_entrada
     total_egresos = pagos_gastos + fondeos + traspasos_salida
 
     return (cuenta.saldo_inicial or Decimal('0')) + total_ingresos - total_egresos

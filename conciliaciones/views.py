@@ -16,6 +16,7 @@ from pandas.errors import EmptyDataError, ParserError
 from empresas.models import CuentaBancaria, Empresa
 
 #from httpcore import request
+from escuelas.models import IngresoEscuela
 from facturacion.models import CobroOtrosIngresos, Pago
 from gastos.models import PagoGasto
 
@@ -487,7 +488,29 @@ def _movimientos_sistema_desde_modelos(estado):
                 "origen": "PagoGasto",
             }
         )
+        # Fin del bucle de pagos de gastos
+    ingresos_escuela = IngresoEscuela.objects.filter(
+        empresa=estado.empresa,
+        cuenta_bancaria=estado.cuenta_bancaria,
+        es_efectivo=False,
+    ).order_by("fecha", "id")
 
+    if inicio_periodo and fin_periodo:
+        ingresos_escuela = ingresos_escuela.filter(fecha__range=(inicio_periodo, fin_periodo))
+
+    for ing in ingresos_escuela:
+        movimientos.append(
+            {
+                "id": f"ingreso-escuela-{ing.id}",
+                "fecha": ing.fecha,
+                "descripcion": f"{ing.concepto} - {ing.alumno or ''}".strip(" -"),
+                "monto": ing.monto,
+                "tipo": "abono",
+                "origen": "IngresoEscuela",
+            }
+        )
+        # Fin del bucle de ingresos de escuela
+            
     return movimientos
 
 

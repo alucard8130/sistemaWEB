@@ -9,13 +9,19 @@ from escuelas.views import (
     estado_resultados_escuela,
     importar_altas_alumnos,
     importar_cartera_vencida,
-    importar_ingresos_excel,
-    importar_ingresos_fiserv,
     importar_roster_alumnos,
     matriz_presupuesto_ingresos_escuela,
     membresia_vencida_escuela,
     reporte_cartera_vencida_comparativo,
     webhook_hubspot_admisiones,
+)
+from escuelas.views_ingresos import (
+    deshacer_lote_ingresos,
+    importar_ingresos_excel,
+    importar_ingresos_fiserv,
+    reporte_cartera_detalle,
+    reporte_ingresos_categoria,
+    reporte_ingresos_forma_pago,
 )
 from principal.forms import EmpresaAuthenticationForm
 from principal.views import registro_usuario, solicitar_pago_transferencia
@@ -26,6 +32,10 @@ urlpatterns = [
         authentication_form=EmpresaAuthenticationForm,
     ), name='login_escuela'),
     path('ingresos/importar/', importar_ingresos_excel, name='importar_ingresos_excel'),
+    path('ingresos/lote/<int:lote_id>/deshacer/', deshacer_lote_ingresos, name='deshacer_lote_ingresos'),
+    path('reportes/ingresos-forma-pago/', reporte_ingresos_forma_pago, name='reporte_ingresos_forma_pago'),
+    path('reportes/ingresos-categoria/', reporte_ingresos_categoria, name='reporte_ingresos_categoria'),
+    path('cartera-vencida/detalle/', reporte_cartera_detalle, name='reporte_cartera_detalle'),
     path('registro/', registro_usuario, name='registro_usuario_escuela'),
     path('dashboard/', dashboard_inicio_escuela, name='dashboard_inicio_escuela'),
     path('membresia-vencida/', membresia_vencida_escuela, name='membresia_vencida_escuela'),

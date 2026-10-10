@@ -5,40 +5,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Importar Pagos Plataforma — ERP Escolar</title>
+    <title>Cuadre Fiserv — ERP Escolar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
         body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
-        .ie-header {
-            background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%);
-            color: white; border-radius: 16px; padding: 22px 28px;
-            margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2);
-        }
-        .ie-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
-        .ie-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
-
-        .form-card { background: white; border-radius: 16px; padding: 24px 26px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .form-label { font-weight: 600; font-size: 0.82rem; color: #146C43; margin-bottom: 6px; }
-        .form-control { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; padding: 9px 12px; }
-        .btn-importar { background: linear-gradient(135deg, #146C43, #0F5132); color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: 600; font-size: 0.9rem; }
-        .btn-importar:hover { color: white; }
-
-        .formato-card { background: #EAF2FB; border-left: 4px solid #2471A3; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; font-size: 0.85rem; color: #1a5276; }
-
-        table.tabla-ingresos { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.82rem; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
-        table.tabla-ingresos thead th { background: #0f2d52; color: white; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; padding: 10px 10px; }
-        table.tabla-ingresos tbody td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; color: #374151; }
-        .no-data { text-align: center; padding: 40px 20px; color: #9ca3af; }
+        .rp-header { background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%); color: white; border-radius: 16px; padding: 22px 28px; margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2); }
+        .rp-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .rp-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .card-panel { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px 22px; margin-bottom: 20px; }
+        .card-panel h6 { font-weight: 700; color: #0F5132; margin-bottom: 12px; }
+        .form-label { font-weight: 600; font-size: 0.78rem; color: #146C43; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.85rem; }
+        .btn-filtrar { background: linear-gradient(135deg, #146C43, #0F5132); color: white; border: none; border-radius: 10px; padding: 8px 20px; font-weight: 600; font-size: 0.85rem; }
+        .btn-filtrar:hover { color: white; }
+        .kpi { background: white; border-radius: 14px; padding: 14px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); height: 100%; }
+        .kpi .kpi-label { font-size: 0.72rem; text-transform: uppercase; color: #6b7280; font-weight: 600; }
+        .kpi .kpi-valor { font-size: 1.35rem; font-weight: 700; color: #0F5132; }
+        .kpi .kpi-sub { font-size: 0.74rem; color: #6b7280; }
+        table.tabla-rep { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.8rem; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+        table.tabla-rep thead th { background: #0F5132; color: white; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; padding: 9px 8px; text-align: center; white-space: nowrap; }
+        table.tabla-rep tbody td { padding: 8px 8px; border-bottom: 1px solid #f1f5f9; text-align: right; }
+        table.tabla-rep tbody td.txt { text-align: left; font-weight: 600; color: #0f2d52; }
+        table.tabla-rep tbody tr.fila-total td { font-weight: 700; background: #f8fafc; border-top: 2px solid #0F5132; }
+        .badge-destino { font-size: 0.68rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+        .badge-caja { background: #FFF3E0; color: #B45309; }
+        .badge-banco { background: #E3F2FD; color: #1a5276; }
+        .no-data { text-align: center; padding: 50px 20px; color: #9ca3af; }
+        .chip { display:inline-block; padding:4px 12px; border-radius:20px; background:#e8f5ee; color:#146C43; font-size:0.76rem; font-weight:600; text-decoration:none; margin-right:6px; }
+        .chip:hover { background:#d4ecdf; color:#0F5132; }
     </style>
 </head>
 <body>
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 900px;">
+    <div class="container-fluid mt-3 px-3 pb-5">
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }} alert-dismissible">
@@ -47,56 +51,89 @@
             {% endfor %}
         {% endif %}
 
-        <div class="ie-header">
-            <div class="ie-titulo"><i class="bi bi-credit-card-fill me-2"></i>Importar Pagos -- Plataforma Academic</div>
-            <div class="ie-subtitulo">Sube el reporte de transacciones de la pasarela de pagos (Fiserv)</div>
+        <div class="rp-header">
+            <div class="rp-titulo"><i class="bi bi-credit-card-fill me-2"></i>Cuadre de Pagos — Plataforma Academic (Fiserv)</div>
+            <div class="rp-subtitulo">Compara las transacciones aprobadas del portal contra los cobros ya importados del Detalle de Pagos. Este archivo <strong>no crea ingresos</strong>.</div>
         </div>
 
-        <div class="formato-card">
-            <i class="bi bi-check-circle-fill me-1"></i><strong>Sube el reporte tal cual lo descargas</strong> -- el sistema solo importa las transacciones marcadas como <strong>APROBADO</strong>; los intentos rechazados o incompletos se omiten automáticamente, sin duplicar ningún cobro.
-        </div>
-
-        <div class="form-card">
-            <form method="post" enctype="multipart/form-data">
+        <div class="card-panel">
+            <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
                 {% csrf_token %}
-                <label class="form-label">Archivo de transacciones (.xls)</label>
-                <input type="file" name="archivo_excel" class="form-control" accept=".xls" required>
-                <button type="submit" class="btn-importar mt-3">
-                    <i class="bi bi-upload me-1"></i>Importar pagos
-                </button>
+                <div class="col-md-8">
+                    <label class="form-label">Archivo de transacciones (.xls) — se ignoran NEGADO, sin autorización y PRUEBA</label>
+                    <input type="file" name="archivo_excel" class="form-control" accept=".xls" required>
+                </div>
+                <div class="col-md-4"><button type="submit" class="btn-filtrar"><i class="bi bi-search me-1"></i>Cuadrar</button></div>
             </form>
+            <div class="mt-3 text-muted" style="font-size:0.78rem;">
+                Los ingresos con tarjeta del portal se registran al 100% desde el Detalle de Pagos. La comisión que aquí se muestra es <strong>solo de referencia</strong>
+                (débito {{ comisiones.debito }}%, crédito {{ comisiones.credito }}%, AMEX {{ comisiones.amex }}%): regístrala tú como gasto.
+            </div>
         </div>
 
-        <div class="table-responsive">
-        <table class="tabla-ingresos">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Alumno</th>
-                    <th>Concepto</th>
-                    <th>Forma de pago</th>
-                    <th class="text-end">Monto</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ingreso in ingresos_recientes %}
-                <tr>
-                    <td>{{ ingreso.fecha|date:"d/m/Y" }}</td>
-                    <td>{{ ingreso.alumno }}</td>
-                    <td>{{ ingreso.concepto }}</td>
-                    <td>{{ ingreso.forma_pago }}</td>
-                    <td class="text-end">${{ ingreso.monto|floatformat:2|intcomma }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5" class="no-data"><i class="bi bi-inbox display-4 d-block mb-3"></i>Todavía no se han importado pagos de la plataforma.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if resultado %}
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Pagos aprobados</div><div class="kpi-valor">{{ aprobados }}</div><div class="kpi-sub">{{ omitidos }} intento(s) no aprobados omitidos</div></div></div>
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Total aprobado</div><div class="kpi-valor">${{ total_aprobado|floatformat:2|intcomma }}</div><div class="kpi-sub">{{ archivo }}</div></div></div>
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Comisión de referencia</div><div class="kpi-valor">${{ comision_total|floatformat:2|intcomma }}</div><div class="kpi-sub">A registrar como gasto</div></div></div>
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Cuadran con cobranza</div><div class="kpi-valor">{{ ok }}</div><div class="kpi-sub">{{ sin_cobranza|length }} sin cobro · {{ monto_distinto|length }} con monto distinto</div></div></div>
         </div>
+
+        <div class="card-panel">
+            <h6>Comisión de referencia por tipo de tarjeta</h6>
+            <div class="table-responsive">
+            <table class="tabla-rep">
+                <thead><tr><th style="text-align:left;">Tipo</th><th>Pagos</th><th>Total cobrado</th><th>% comisión</th><th>Comisión</th></tr></thead>
+                <tbody>
+                {% for t in resumen_tipos %}
+                <tr><td class="txt">{{ t.etiqueta }}</td><td>{{ t.n }}</td><td>${{ t.total|floatformat:2|intcomma }}</td><td>{% if t.pct %}{{ t.pct }}%{% else %}—{% endif %}</td><td>${{ t.comision|floatformat:2|intcomma }}</td></tr>
+                {% endfor %}
+                <tr class="fila-total"><td class="txt">Total</td><td>{{ aprobados }}</td><td>${{ total_aprobado|floatformat:2|intcomma }}</td><td></td><td>${{ comision_total|floatformat:2|intcomma }}</td></tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        {% if sin_cobranza %}
+        <div class="card-panel" style="border-left:4px solid #B91C1C;">
+            <h6 style="color:#B91C1C;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Cobrado en el portal pero NO está en el Detalle de Pagos importado</h6>
+            <div class="table-responsive"><table class="tabla-rep">
+                <thead><tr><th>Fecha</th><th>Recibo</th><th style="text-align:left;">Alumno</th><th style="text-align:left;">Concepto</th><th>Monto</th></tr></thead>
+                <tbody>{% for a in sin_cobranza %}<tr><td>{{ a.fecha|date:"d/m/Y" }}</td><td>{{ a.recibo }}</td><td class="txt">{{ a.alumno }}</td><td style="text-align:left;">{{ a.descripcion }}</td><td>${{ a.monto|floatformat:2|intcomma }}</td></tr>{% endfor %}</tbody>
+            </table></div>
+        </div>
+        {% endif %}
+
+        {% if monto_distinto %}
+        <div class="card-panel" style="border-left:4px solid #D97706;">
+            <h6 style="color:#B45309;"><i class="bi bi-exclamation-circle-fill me-1"></i>Recibo encontrado, pero con monto distinto</h6>
+            <div class="table-responsive"><table class="tabla-rep">
+                <thead><tr><th>Recibo</th><th style="text-align:left;">Alumno</th><th>Portal</th><th>Sistema</th></tr></thead>
+                <tbody>{% for a in monto_distinto %}<tr><td>{{ a.recibo }}</td><td class="txt">{{ a.alumno }}</td><td>${{ a.monto|floatformat:2|intcomma }}</td><td>${{ a.monto_sistema|floatformat:2|intcomma }}</td></tr>{% endfor %}</tbody>
+            </table></div>
+        </div>
+        {% endif %}
+
+        {% if sin_fiserv %}
+        <div class="card-panel" style="border-left:4px solid #D97706;">
+            <h6 style="color:#B45309;"><i class="bi bi-question-circle-fill me-1"></i>En el Detalle de Pagos como "portal web", pero sin transacción aprobada en este archivo</h6>
+            <div class="table-responsive"><table class="tabla-rep">
+                <thead><tr><th>Fecha</th><th>Recibo</th><th style="text-align:left;">Alumno</th><th>Monto</th></tr></thead>
+                <tbody>{% for a in sin_fiserv %}<tr><td>{{ a.fecha|date:"d/m/Y" }}</td><td>{{ a.recibo }}</td><td class="txt">{{ a.alumno }}</td><td>${{ a.monto|floatformat:2|intcomma }}</td></tr>{% endfor %}</tbody>
+            </table></div>
+        </div>
+        {% endif %}
+
+        {% if not sin_cobranza and not monto_distinto and not sin_fiserv %}
+        <div class="alert alert-success"><i class="bi bi-check-circle-fill me-1"></i>Todo cuadra: cada pago aprobado del portal está en el Detalle de Pagos con el mismo monto.</div>
+        {% endif %}
+        {% endif %}
+
     </div>
 
     {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>

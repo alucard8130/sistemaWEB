@@ -1,0 +1,150 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartera vencida detalle — ERP Escolar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .rp-header { background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%); color: white; border-radius: 16px; padding: 22px 28px; margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2); }
+        .rp-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .rp-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .card-panel { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px 22px; margin-bottom: 20px; }
+        .card-panel h6 { font-weight: 700; color: #0F5132; margin-bottom: 12px; }
+        .form-label { font-weight: 600; font-size: 0.78rem; color: #146C43; margin-bottom: 4px; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.85rem; }
+        .btn-filtrar { background: linear-gradient(135deg, #146C43, #0F5132); color: white; border: none; border-radius: 10px; padding: 8px 20px; font-weight: 600; font-size: 0.85rem; }
+        .btn-filtrar:hover { color: white; }
+        .kpi { background: white; border-radius: 14px; padding: 14px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); height: 100%; }
+        .kpi .kpi-label { font-size: 0.72rem; text-transform: uppercase; color: #6b7280; font-weight: 600; }
+        .kpi .kpi-valor { font-size: 1.35rem; font-weight: 700; color: #0F5132; }
+        .kpi .kpi-sub { font-size: 0.74rem; color: #6b7280; }
+        table.tabla-rep { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.8rem; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+        table.tabla-rep thead th { background: #0F5132; color: white; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; padding: 9px 8px; text-align: center; white-space: nowrap; }
+        table.tabla-rep tbody td { padding: 8px 8px; border-bottom: 1px solid #f1f5f9; text-align: right; }
+        table.tabla-rep tbody td.txt { text-align: left; font-weight: 600; color: #0f2d52; }
+        table.tabla-rep tbody tr.fila-total td { font-weight: 700; background: #f8fafc; border-top: 2px solid #0F5132; }
+        .badge-destino { font-size: 0.68rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+        .badge-caja { background: #FFF3E0; color: #B45309; }
+        .badge-banco { background: #E3F2FD; color: #1a5276; }
+        .no-data { text-align: center; padding: 50px 20px; color: #9ca3af; }
+        .chip { display:inline-block; padding:4px 12px; border-radius:20px; background:#e8f5ee; color:#146C43; font-size:0.76rem; font-weight:600; text-decoration:none; margin-right:6px; }
+        .chip:hover { background:#d4ecdf; color:#0F5132; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="rp-header" style="background: linear-gradient(135deg, #7F1D1D 0%, #9C2B2B 60%, #D9812C 100%);">
+            <div class="rp-titulo"><i class="bi bi-person-lines-fill me-2"></i>Cartera Vencida — Detalle</div>
+            <div class="rp-subtitulo">{% if not sin_datos %}Corte al {{ fecha_corte|date:"d/m/Y" }} · por alumno, concepto y antigüedad{% else %}Sin cortes importados{% endif %}</div>
+        </div>
+
+        {% if sin_datos %}
+        <div class="card-panel"><div class="no-data"><i class="bi bi-inbox display-4 d-block mb-3"></i>Aún no hay ningún corte de Cartera Vencida importado.</div></div>
+        {% else %}
+        <div class="card-panel">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-6 col-md-2"><label class="form-label">Corte</label>
+                    <select name="fecha_corte" class="form-select">{% for f in fechas %}<option value="{{ f|date:'Y-m-d' }}" {% if f == fecha_corte %}selected{% endif %}>{{ f|date:"d/m/Y" }}</option>{% endfor %}</select></div>
+                <div class="col-6 col-md-2"><label class="form-label">Nivel</label>
+                    <select name="nivel" class="form-select"><option value="">Todos</option>{% for n in niveles %}<option value="{{ n }}" {% if n == f.nivel %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+                <div class="col-6 col-md-2"><label class="form-label">Grupo</label><input type="text" name="grupo" value="{{ f.grupo }}" class="form-control" placeholder="ej. 3B-PRIM"></div>
+                <div class="col-6 col-md-2"><label class="form-label">Categoría</label>
+                    <select name="categoria" class="form-select"><option value="">Todas</option>{% for v, e in categorias %}<option value="{{ v }}" {% if v == f.categoria %}selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
+                <div class="col-6 col-md-2"><label class="form-label">Antigüedad</label>
+                    <select name="antiguedad" class="form-select"><option value="">Todas</option>{% for v, e in buckets %}<option value="{{ v }}" {% if v == f.antiguedad %}selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
+                <div class="col-6 col-md-2"><label class="form-label">Saldo mínimo</label><input type="number" step="0.01" name="min_monto" value="{{ f.min_monto }}" class="form-control"></div>
+                <div class="col-12 col-md-4"><label class="form-label">Buscar alumno / matrícula</label><input type="text" name="q" value="{{ f.q }}" class="form-control"></div>
+                <div class="col-12 col-md-8">
+                    <button type="submit" class="btn-filtrar"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                    <button type="submit" name="exportar" value="xlsx" class="btn-filtrar" style="background:#1D6F42;"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+                    <a href="{% url 'reporte_cartera_vencida_comparativo' %}" class="chip" style="margin-left:8px;">Ver comparativo →</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Total vencido</div><div class="kpi-valor" style="color:#9C2B2B;">${{ total|floatformat:2|intcomma }}</div><div class="kpi-sub">{{ n_conceptos }} conceptos</div></div></div>
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Alumnos con adeudo</div><div class="kpi-valor">{{ n_alumnos }}</div><div class="kpi-sub">Promedio ${{ promedio|floatformat:0|intcomma }} por alumno</div></div></div>
+            {% if comparativo %}
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Vs corte {{ comparativo.fecha_anterior|date:"d/m/y" }}</div>
+                <div class="kpi-valor" style="color:{% if comparativo.variacion > 0 %}#9C2B2B{% else %}#1E8449{% endif %};">{% if comparativo.variacion > 0 %}▲{% else %}▼{% endif %} ${{ comparativo.variacion|floatformat:0|intcomma }}</div>
+                <div class="kpi-sub">Antes ${{ comparativo.total_anterior|floatformat:0|intcomma }} (todo el corte)</div></div></div>
+            <div class="col-6 col-md-3"><div class="kpi"><div class="kpi-label">Movimiento de deudores</div><div class="kpi-valor" style="font-size:1.05rem;">+{{ comparativo.nuevos }} nuevos · −{{ comparativo.saldados }} saldados</div>
+                <div class="kpi-sub">Nuevos ${{ comparativo.monto_nuevos|floatformat:0|intcomma }} · Saldados ${{ comparativo.monto_saldados|floatformat:0|intcomma }}</div></div></div>
+            {% endif %}
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6"><div class="card-panel h-100"><h6>Por antigüedad</h6><canvas id="grafAntig" height="110"></canvas>
+                <table class="tabla-rep mt-3"><thead><tr><th style="text-align:left;">Antigüedad</th><th>Alumnos</th><th>Total</th><th>%</th></tr></thead><tbody>
+                {% for x in por_antiguedad %}<tr><td class="txt">{{ x.etiqueta }}</td><td>{{ x.alumnos }}</td><td>${{ x.total|floatformat:0|intcomma }}</td><td>{{ x.pct|floatformat:1 }}%</td></tr>{% endfor %}</tbody></table></div></div>
+            <div class="col-md-6"><div class="card-panel h-100"><h6>Por categoría y nivel</h6>
+                <table class="tabla-rep"><thead><tr><th style="text-align:left;">Categoría</th><th>Alumnos</th><th>Total</th><th>%</th></tr></thead><tbody>
+                {% for x in por_categoria %}<tr><td class="txt">{{ x.etiqueta }}</td><td>{{ x.alumnos }}</td><td>${{ x.total|floatformat:0|intcomma }}</td><td>{{ x.pct|floatformat:1 }}%</td></tr>{% endfor %}</tbody></table>
+                <table class="tabla-rep mt-3"><thead><tr><th style="text-align:left;">Nivel</th><th>Alumnos</th><th>Total</th><th>%</th></tr></thead><tbody>
+                {% for x in por_nivel %}<tr><td class="txt">{{ x.etiqueta }}</td><td>{{ x.alumnos }}</td><td>${{ x.total|floatformat:0|intcomma }}</td><td>{{ x.pct|floatformat:1 }}%</td></tr>{% endfor %}</tbody></table></div></div>
+        </div>
+
+        <div class="card-panel"><h6>Por grupo</h6>
+            <div class="table-responsive"><table class="tabla-rep"><thead><tr><th style="text-align:left;">Grupo</th><th>Alumnos</th><th>Conceptos</th><th>Total</th><th>%</th></tr></thead><tbody>
+            {% for x in por_grupo %}<tr><td class="txt">{{ x.etiqueta }}</td><td>{{ x.alumnos }}</td><td>{{ x.n }}</td><td>${{ x.total|floatformat:0|intcomma }}</td><td>{{ x.pct|floatformat:1 }}%</td></tr>{% endfor %}</tbody></table></div></div>
+
+        <div class="card-panel"><h6>Detalle por alumno <span class="text-muted fw-normal" style="font-size:0.78rem;">(clic en el alumno para ver sus conceptos)</span></h6>
+            <div class="table-responsive"><table class="tabla-rep">
+            <thead><tr><th>Matrícula</th><th style="text-align:left;">Alumno</th><th>Nivel</th><th>Grupo</th><th>Conceptos</th><th>Máx. atraso</th><th>Total adeudado</th></tr></thead>
+            <tbody>
+            {% for a in alumnos %}
+            <tr style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}">
+                <td>{{ a.matricula }}</td><td class="txt">{{ a.nombre }}</td><td>{{ a.nivel }}</td><td>{{ a.grupo }}</td><td>{{ a.conceptos|length }}</td>
+                <td>{% if a.max_atraso != None %}{{ a.max_atraso }} mes{{ a.max_atraso|pluralize:"es" }}{% else %}—{% endif %}</td>
+                <td style="font-weight:700;color:#9C2B2B;">${{ a.total|floatformat:2|intcomma }}</td>
+            </tr>
+            <tr class="collapse" id="det{{ forloop.counter }}"><td colspan="7" style="background:#fafafa;padding:10px 24px;">
+                <table class="tabla-rep" style="box-shadow:none;"><thead><tr><th style="text-align:left;">Concepto</th><th>Categoría</th><th>Antigüedad</th><th>Monto</th></tr></thead><tbody>
+                {% for c in a.conceptos %}<tr><td style="text-align:left;">{{ c.concepto }}</td><td>{{ c.categoria }}</td><td>{{ c.bucket }}</td><td>${{ c.monto|floatformat:2|intcomma }}</td></tr>{% endfor %}
+                </tbody></table></td></tr>
+            {% empty %}
+            <tr><td colspan="7" class="no-data">Ningún alumno cumple los filtros.</td></tr>
+            {% endfor %}
+            {% if alumnos %}<tr class="fila-total"><td colspan="4" class="txt">Total</td><td>{{ n_conceptos }}</td><td></td><td>${{ total|floatformat:2|intcomma }}</td></tr>{% endif %}
+            </tbody></table></div></div>
+        {% endif %}
+
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% if not sin_datos %}
+    <script>
+        const la = {{ labels_antig|safe }}, da = {{ datos_antig|safe }};
+        const ca = document.getElementById('grafAntig');
+        if (ca && la.length) {
+            new Chart(ca.getContext('2d'), { type: 'bar',
+                data: { labels: la, datasets: [{ data: da, backgroundColor: '#9C2B2B' }] },
+                options: { plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v.toLocaleString() } } } } });
+        }
+    </script>
+    {% endif %}
+</body>
+</html>

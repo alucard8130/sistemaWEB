@@ -38,7 +38,7 @@
             <p><strong>Fecha:</strong> {{ fondeo.fecha|date:"d/m/Y" }}</p>
             <p><strong>Monto:</strong> ${{ fondeo.importe_cheque|floatformat:2|intcomma }}</p>
             <p><strong>Importe en letra:</strong> {{ monto_letra }}</p>
-            <p><strong>Responsable:</strong> {{ fondeo.empleado_asignado }}</p>
+            <p><strong>Responsable:</strong> {{ fondeo.empleado_asignado|default:"Dueño (cobros en efectivo)" }}</p>
             {% comment %} <p><strong>Observaciones:</strong> {{ fondeo.observaciones|default:"-" }}</p> {% endcomment %}
         </div>
         <table class="firmas-table">

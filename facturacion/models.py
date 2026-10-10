@@ -13,6 +13,8 @@ from locales.models import LocalComercial
 
 IVA_TASA = Decimal("0.16")
 
+FORMAS_PAGO_NO_INGRESO = ["nota_credito", "saldo_a_favor"]
+
 class Factura(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)

@@ -1,5 +1,4 @@
-# from django.db.models import Case, When, Value, CharField
-#import calendar
+
 import datetime
 import locale
 from collections import OrderedDict
@@ -13,6 +12,7 @@ from django.db.models import (
     F,
     IntegerField,
     OuterRef,
+    Q,
     Subquery,
     Sum,
     Value,
@@ -32,7 +32,14 @@ from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from clientes.models import Cliente
 from conciliaciones.utils import get_o_crear_periodo
 from empresas.models import CuentaBancaria, Empresa
-from facturacion.models import CobroOtrosIngresos, Factura, FacturaOtrosIngresos, Pago
+from facturacion.models import (
+    FORMAS_PAGO_NO_INGRESO,
+    CobroOtrosIngresos,
+    Factura,
+    FacturaOtrosIngresos,
+    Pago,
+    SaldoAFavor,
+)
 from gastos.models import PagoGasto
 
 
@@ -134,7 +141,7 @@ def reporte_ingresos_vs_gastos(request):
     elif fecha_inicio_dt and fecha_fin_dt:
         mes_letra = f"{fecha_inicio_dt.strftime('%d/%m/%Y')} al {fecha_fin_dt.strftime('%d/%m/%Y')}"
 
-    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    pagos = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
     pagos_gastos = PagoGasto.objects.all()
     cobros_otros = CobroOtrosIngresos.objects.select_related(
         "factura", "factura__empresa"
@@ -154,6 +161,7 @@ def reporte_ingresos_vs_gastos(request):
         gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
         pagos_por_identificar = pagos_por_identificar.filter(empresa_id=empresa_id)
+
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
         pagos_gastos = pagos_gastos.filter(fecha_pago__gte=fecha_inicio)
@@ -354,6 +362,24 @@ def reporte_ingresos_vs_gastos(request):
     )
 
 
+
+
+# estado_resultados -- VISTA COMPLETA CORREGIDA
+# Cambios respecto a tu version (buscalos por "CAMBIO"):
+#   1. Origen "Locales" ahora incluye cuotas de grupos de facturacion
+#      (facturas con locales_incluidos) -> ya no salen como "Sin origen".
+#   2. El deposito origen de un saldo a favor (factura=None, identificado)
+#      entra como ingreso del mes en que se deposito, en la linea
+#      "Anticipos / Saldos a favor".
+#   3. Sin empresa (superusuario) ya no se cuelan los depositos NO
+#      identificados en "Sin origen" (se duplicaban con su propia linea).
+#   4. La variable `periodo` ya no se pisa dentro del ciclo del saldo
+#      inicial (se renombra a periodo_cuenta).
+#
+# IMPORTS: asegurate de tener arriba del archivo (agrega solo los que falten):
+#   from django.db.models import Exists, OuterRef, Q
+#   (y que SaldoAFavor y Factura esten importados de facturacion.models)
+# =====================================================================
 @login_o_portal_required
 def estado_resultados(request):
     empresas = Empresa.objects.all()
@@ -479,18 +505,28 @@ def estado_resultados(request):
     ) if empresa_id else 0.0
 
     # --- Querysets base ---
-    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    pagos = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
     cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
     gastos_modo = PagoGasto.objects.all()
     gastos_caja_chica = GastoCajaChica.objects.all()
     vales_caja_chica = ValeCaja.objects.all()
 
     if empresa_id:
-        pagos = pagos.filter(factura__empresa_id=empresa_id)
+        # CAMBIO -- incluye el deposito origen de un saldo a favor
+        # (factura=None pero identificado=True). Los depositos NO
+        # identificados siguen yendo en su propia linea mas abajo.
+        pagos = pagos.filter(
+            Q(factura__empresa_id=empresa_id)
+            | Q(factura__isnull=True, identificado=True, empresa_id=empresa_id)
+        )
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos_modo = gastos_modo.filter(gasto__empresa_id=empresa_id)
         gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
+    else:
+        # CAMBIO -- sin empresa (superusuario) no cuela los no identificados
+        # (ya se suman aparte en "Depósitos no identificados").
+        pagos = pagos.exclude(factura__isnull=True, identificado=False)
 
 
     # --- Saldo inicial -- usa get_o_crear_periodo, la MISMA función que
@@ -505,13 +541,12 @@ def estado_resultados(request):
         saldo_inicial = 0.0
         cuentas_empresa = CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
         for cuenta in cuentas_empresa:
-            periodo, _ = get_o_crear_periodo(
+            # CAMBIO -- antes se llamaba `periodo` y pisaba el filtro de periodo
+            periodo_cuenta, _ = get_o_crear_periodo(
                 cuenta, empresa, fecha_inicio.year, fecha_inicio.month
             )
-            saldo_inicial += float(periodo.saldo_inicial)
-        # # Temporal — después del loop del saldo inicial
-        # print(f"DEBUG saldo_inicial calculado: {saldo_inicial}")
-        
+            saldo_inicial += float(periodo_cuenta.saldo_inicial)
+
     # --- Filtro por fechas ---
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
@@ -538,11 +573,23 @@ def estado_resultados(request):
 
     # --- INGRESOS por origen ---
     ingresos_por_origen = OrderedDict()
+
+    # CAMBIO -- cuotas de grupos de facturacion: la factura no tiene `local`
+    # propio, sus locales viven en `locales_incluidos`. Se usa Exists (no un
+    # join) para que el Sum no se infle cuando el grupo tiene varios locales.
+    es_grupo = Exists(
+        Factura.locales_incluidos.through.objects.filter(factura_id=OuterRef("factura_id"))
+    )
+    # CAMBIO -- deposito origen de un saldo a favor (factura=None).
+    es_anticipo = Exists(SaldoAFavor.objects.filter(origen_pago=OuterRef("pk")))
+
     ingresos_qs = (
         pagos.annotate(
             origen=Case(
                 When(factura__local__isnull=False, then=Value("Locales")),
+                When(es_grupo, then=Value("Locales")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
+                When(es_anticipo, then=Value("Anticipos / Saldos a favor")),
                 default=Value("Sin origen"),
                 output_field=CharField(),
             )
@@ -551,8 +598,16 @@ def estado_resultados(request):
         .annotate(total=Sum("monto"))
         .order_by("origen")
     )
+    # for x in ingresos_qs:
+    #     ingresos_por_origen[(x["origen"] or "Sin origen").strip().title()] = float(x["total"])
+    total_anticipos = 0.0
     for x in ingresos_qs:
-        ingresos_por_origen[(x["origen"] or "Sin origen").strip().title()] = float(x["total"])
+        nombre_origen = (x["origen"] or "Sin origen").strip().title()
+        if nombre_origen == "Anticipos / Saldos A Favor":
+            # Se agrega hasta el final de los ingresos (ver abajo)
+            total_anticipos = float(x["total"])
+            continue
+        ingresos_por_origen[nombre_origen] = float(x["total"])
 
     otros_qs = (
         cobros_otros.select_related("factura__tipo_ingreso")
@@ -564,6 +619,8 @@ def estado_resultados(request):
         ingresos_por_origen[f"Otros ingresos - {tipo}"] = float(x["total"])
 
     ingresos_por_origen["Depósitos no identificados"] = total_pagos_por_identificar
+    if total_anticipos:
+        ingresos_por_origen["Anticipos / Saldos A Favor"] = total_anticipos
     total_ingresos = float(sum(ingresos_por_origen.values()))
 
     # --- GASTOS por grupo/subgrupo/tipo ---
@@ -587,15 +644,14 @@ def estado_resultados(request):
     if fecha_fin:
         filtros_fondeo["fecha__lte"] = fecha_fin
 
-
-
     agregar_a_estructura(gastos_modo,
         "gasto__tipo_gasto__subgrupo__grupo__nombre",
         "gasto__tipo_gasto__subgrupo__nombre",
         "gasto__tipo_gasto__nombre", "monto")
-    
-    # Por esto — fondeos como una sola línea de egreso:
-    fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo)
+
+    # Fondeos como una sola línea de egreso:
+    #fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo)
+    fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo).exclude(origen="cobros_efectivo")
     total_fondeos = float(fondeos_periodo.aggregate(t=Sum("importe_cheque"))["t"] or 0)
     if total_fondeos > 0:
         estructura_gastos.setdefault("Caja Chica", OrderedDict())
@@ -649,6 +705,20 @@ def estado_resultados(request):
     )
 
 
+
+
+
+# Cambios respecto a tu version (buscalos por "CAMBIO"):
+#   1. Origen "Locales" incluye grupos de facturacion (ya no "Sin origen").
+#   2. Linea "Anticipos / Saldos a favor" (deposito origen, factura=None).
+#   3. Sin empresa no se cuelan los depositos no identificados.
+#   4. Saldo inicial: ahora usa get_o_crear_periodo, IGUAL que la vista web.
+#      Antes el Excel lo recalculaba mes por mes desde cero (ignoraba los
+#      periodos cerrados), asi que podia NO coincidir con la pantalla.
+#   5. Empresa: mismas reglas que la vista web (portal de acceso y empresa
+#      de sesion del superusuario), para que Excel y pantalla coincidan.
+#   6. Parseo de periodo igual que la vista web.
+# =====================================================================
 @login_o_portal_required 
 def exportar_estado_resultados_excel(request):
     fecha_inicio = request.GET.get("fecha_inicio")
@@ -658,10 +728,16 @@ def exportar_estado_resultados_excel(request):
     periodo = request.GET.get("periodo")
     hoy = datetime.date.today()  # noqa: DTZ011
 
+    # CAMBIO -- misma logica de empresa que la vista web
     if not request.user.is_superuser:
-        empresa_id = str(request.user.perfilusuario.empresa.id)
+        if getattr(request, 'is_portal_acceso', False):
+            empresa_id = str(request.session.get('empresa_id', ''))
+        else:
+            empresa_id = str(request.user.perfilusuario.empresa.id)
     else:
-        empresa_id = request.GET.get("empresa") or ""
+        empresa_id = request.GET.get("empresa") or request.session.get("empresa_id")
+        if not empresa_id or not str(empresa_id).isdigit():
+            empresa_id = ""
 
     empresa_nombre = ""
     empresa = None
@@ -680,7 +756,7 @@ def exportar_estado_resultados_excel(request):
     ) if empresa_id else 0.0
 
     # --- Querysets base ---
-    pagos = Pago.objects.exclude(forma_pago="nota_credito")
+    pagos = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
     cobros_otros = CobroOtrosIngresos.objects.select_related("factura", "factura__empresa")
 
     # --- Periodo ---
@@ -706,6 +782,11 @@ def exportar_estado_resultados_excel(request):
         except Exception:
             fecha_inicio = None
             fecha_fin = None
+    elif fecha_inicio and fecha_fin:
+        pass
+    else:
+        fecha_inicio = None
+        fecha_fin = None
 
     if isinstance(fecha_inicio, str):
         try:
@@ -719,63 +800,32 @@ def exportar_estado_resultados_excel(request):
             fecha_fin = None
 
     # --- Filtros por empresa ---
-    if empresa_id:
-        pagos = pagos.filter(factura__empresa_id=empresa_id)
-        cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
-
     gastos_modo = PagoGasto.objects.all()
     if empresa_id:
+        # CAMBIO -- incluye el deposito origen de un saldo a favor
+        # (factura=None pero identificado=True). Los NO identificados siguen
+        # en su propia linea.
+        pagos = pagos.filter(
+            Q(factura__empresa_id=empresa_id)
+            | Q(factura__isnull=True, identificado=True, empresa_id=empresa_id)
+        )
+        cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos_modo = gastos_modo.filter(gasto__empresa_id=empresa_id)
+    else:
+        # CAMBIO -- sin empresa no cuela los no identificados (se suman aparte)
+        pagos = pagos.exclude(factura__isnull=True, identificado=False)
 
-    # --- Saldo inicial dinámico acumulado ---
+    # --- Saldo inicial -- CAMBIO: MISMA logica que la vista web
+    # (get_o_crear_periodo respeta los periodos cerrados con saldo real).
     saldo_inicial = saldo_inicial_empresa
     if empresa and empresa_id and fecha_inicio:
-        anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
-
-        if mes and anio:
-            anio_tope = int(anio)
-            mes_tope = int(mes) - 1
-            if mes_tope == 0:
-                anio_tope -= 1
-                mes_tope = 12
-        else:
-            if fecha_inicio.month == 1:
-                anio_tope = fecha_inicio.year - 1
-                mes_tope = 12
-            else:
-                anio_tope = fecha_inicio.year
-                mes_tope = fecha_inicio.month - 1
-
-        if anio_tope >= anio_inicio:
-            for y in range(anio_inicio, anio_tope + 1):
-                mes_fin_loop = mes_tope if y == anio_tope else 12
-                for m in range(1, mes_fin_loop + 1):
-                    fi = datetime.date(y, m, 1)
-                    ff = datetime.date(y, m + 1, 1) - datetime.timedelta(days=1) if m < 12 else datetime.date(y, 12, 31)
-                    ing = float(
-                        Pago.objects.exclude(forma_pago="nota_credito")
-                        .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        CobroOtrosIngresos.objects
-                        .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
-                        .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        Pago.objects.filter(
-                            factura__isnull=True, identificado=False, empresa_id=empresa_id,
-                            fecha_pago__gte=fi, fecha_pago__lte=ff,
-                        ).aggregate(t=Sum("monto"))["t"] or 0
-                    )
-                    gto = float(
-                    PagoGasto.objects
-                    .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-                    .aggregate(t=Sum("monto"))["t"] or 0
-                    ) + float(
-                        FondeoCajaChica.objects
-                        .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-                        .aggregate(t=Sum("importe_cheque"))["t"] or 0
-                    )
-                    saldo_inicial += ing - gto
+        saldo_inicial = 0.0
+        cuentas_empresa = CuentaBancaria.objects.filter(empresa_id=empresa_id, activa=True)
+        for cuenta in cuentas_empresa:
+            periodo_cuenta, _ = get_o_crear_periodo(
+                cuenta, empresa, fecha_inicio.year, fecha_inicio.month
+            )
+            saldo_inicial += float(periodo_cuenta.saldo_inicial)
 
     # --- Filtros por fecha ---
     if fecha_inicio:
@@ -799,11 +849,22 @@ def exportar_estado_resultados_excel(request):
 
     # --- INGRESOS ---
     ingresos_por_origen = OrderedDict()
+
+    # CAMBIO -- cuotas de grupos de facturacion (locales_incluidos). Exists
+    # en lugar de join para que el Sum no se infle con varios locales.
+    es_grupo = Exists(
+        Factura.locales_incluidos.through.objects.filter(factura_id=OuterRef("factura_id"))
+    )
+    # CAMBIO -- deposito origen de un saldo a favor (factura=None).
+    es_anticipo = Exists(SaldoAFavor.objects.filter(origen_pago=OuterRef("pk")))
+
     ingresos_qs = (
         pagos.annotate(
             origen=Case(
                 When(factura__local__isnull=False, then=Value("Locales")),
+                When(es_grupo, then=Value("Locales")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
+                When(es_anticipo, then=Value("Anticipos / Saldos a favor")),
                 default=Value("Sin origen"),
                 output_field=CharField(),
             )
@@ -850,7 +911,8 @@ def exportar_estado_resultados_excel(request):
     if fecha_fin:
         filtros_fondeo["fecha__lte"] = fecha_fin
 
-    fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo)
+    #fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo)
+    fondeos_periodo = FondeoCajaChica.objects.filter(**filtros_fondeo).exclude(origen="cobros_efectivo")
     total_fondeos = float(fondeos_periodo.aggregate(t=Sum("importe_cheque"))["t"] or 0)
     if total_fondeos > 0:
         estructura_gastos.setdefault("Caja Chica", OrderedDict())

@@ -7,7 +7,7 @@
         Modified by: María Martínez
         Date of creation: 05/06/2025
         Date of modification: 30/06/2026
-        Description: Reinicia una empresa seleccionada (solo datos operativos)
+        Description: Selector de empresa; el borrado se confirma en adminpanel/resetear_empresa
     -->
     <meta charset="UTF-8">
     <title>Reiniciar Empresa</title>
@@ -33,21 +33,20 @@
         <div class="d-flex align-items-center justify-content-center min-vh-50">
             <div class="alert border border-danger p-4 rounded shadow-lg w-100" style="max-width: 720px;">
                 <h4 class="text-danger text-center mb-3">
-                    <i class="bi bi-exclamation-triangle-fill me-1"></i> ¡ATENCION!
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Poner una empresa en ceros
                 </h4>
 
                 <p class="mb-2">
-                    Esta accion <strong>borrara toda la informacion operativa de la empresa seleccionada</strong>
-                    <span class="text-muted">(facturas, pagos, gastos, locales, areas, clientes, etc.).</span>
+                    Selecciona la empresa. En la siguiente pantalla verás <strong>exactamente qué se borrará y cuántos registros</strong>,
+                    elegirás el modo y tendrás que escribir el nombre de la empresa para confirmar.
                 </p>
-                <p class="mb-3">La empresa seguira existiendo, pero quedara en cero.</p>
-                <p class="fw-bold">¿Estas seguro que deseas continuar?</p>
+                <p class="mb-3 text-muted">Aún no se borra nada en este paso. La empresa, sus usuarios y sus cuentas bancarias se conservan.</p>
 
                 <form method="post" class="p-0">
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Empresa a reiniciar</label>
+                        <label class="form-label fw-bold">Empresa</label>
                         <select name="empresa_id" class="form-select" required>
                             <option value="">Selecciona una empresa</option>
                             {% for e in empresas %}
@@ -58,16 +57,9 @@
                         </select>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="confirmacion" class="form-label fw-bold">
-                            Escribe <span class="text-danger">REINICIAR</span> para confirmar
-                        </label>
-                        <input id="confirmacion" type="text" class="form-control" autocomplete="off" required>
-                    </div>
-
                     <div class="d-flex justify-content-center gap-3">
-                        <button id="btnReiniciar" type="submit" class="btn btn-outline-danger" disabled>
-                            <i class="bi bi-trash me-1"></i> Reiniciar empresa
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-arrow-right-circle me-1"></i> Continuar
                         </button>
                         <a href="{% url 'dashboard_inicio' %}" class="btn btn-outline-secondary">Cancelar</a>
                     </div>
@@ -81,19 +73,6 @@
     </footer>
 
     <script src="{% static 'js/script.js' %}"></script>
-    <script>
-        (function () {
-            const input = document.getElementById("confirmacion");
-            const btn = document.getElementById("btnReiniciar");
-
-            function validar() {
-                btn.disabled = input.value.trim().toUpperCase() !== "REINICIAR";
-            }
-
-            input.addEventListener("input", validar);
-            validar();
-        })();
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

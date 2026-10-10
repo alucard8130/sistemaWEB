@@ -326,7 +326,7 @@
                                     <tr>
                                         <td class="ps-3 text-nowrap">{{ f.fecha|date:"d/m/y" }}</td>
                                         <td class="text-muted small">{{ f.numero_cheque }}</td>
-                                        <td>{{ f.empleado_asignado.nombre|truncatechars:18 }}</td>
+                                        <td>{% if f.origen == 'cobros_efectivo' %}<span class="badge bg-warning text-dark">Efectivo · {{ f.get_fuente_display|truncatechars:14 }}</span>{% else %}{{ f.empleado_asignado.nombre|truncatechars:18 }}{% endif %}</td>
                                         <td class="text-end pe-3 fw-bold text-success">${{ f.importe_cheque|floatformat:2|intcomma }}</td>
                                     </tr>
                                     {% endfor %}

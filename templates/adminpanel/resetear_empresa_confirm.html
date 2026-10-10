@@ -5,24 +5,63 @@
     <meta charset="UTF-8">
     <title>Resetear empresa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-<div class="container mt-5">
+<div class="container mt-4 mb-5" style="max-width: 860px;">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
     <div class="card border-danger">
         <div class="card-header bg-danger text-white">
-            <h3><i class="bi bi-exclamation-triangle-fill"></i> Confirmar reseteo de empresa</h3>
+            <h3 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Poner la empresa en ceros</h3>
         </div>
         <div class="card-body">
-            <h4 class="text-danger">Empresa: <strong>{{ empresa.nombre }}</strong></h4>
-            <p class="mb-4">
-                <strong>¡Advertencia!</strong> Esta acción eliminará <span class="text-danger fw-bold">todos los datos</span> relacionados a esta empresa, incluyendo facturas, clientes, locales, áreas, empleados, proveedores, presupuestos y más.<br>
-                <span class="text-danger">Esta acción no se puede deshacer.</span>
+            <h4 class="text-danger">Empresa: <strong>{{ empresa.nombre }}</strong> <small class="text-muted">({{ empresa.get_segmento_display }})</small></h4>
+
+            <p class="mb-3">
+                <strong>¡Advertencia!</strong> Esta acción elimina de forma <span class="text-danger fw-bold">permanente</span>
+                los registros que ves abajo. <span class="text-danger">No se puede deshacer.</span>
+                Se conservan la empresa, sus usuarios, su membresía y sus cuentas bancarias (con su saldo inicial).
             </p>
-            <form method="post">
+
+            <div class="mb-3">
+                {% for clave, etiqueta in modos.items %}
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="modo_vista" id="modo_{{ clave }}" value="{{ clave }}"
+                           {% if clave == modo %}checked{% endif %} onchange="window.location.search='?modo='+this.value;">
+                    <label class="form-check-label" for="modo_{{ clave }}">{{ etiqueta }}</label>
+                </div>
+                {% endfor %}
+            </div>
+
+            <table class="table table-sm align-middle">
+                <thead class="table-light"><tr><th>Qué se borra</th><th class="text-end">Registros</th></tr></thead>
+                <tbody>
+                {% for grupo, filas in grupos.items %}
+                    <tr class="table-secondary"><td colspan="2"><strong>{{ grupo }}</strong></td></tr>
+                    {% for f in filas %}
+                    <tr class="{% if f.n == 0 %}text-muted{% endif %}">
+                        <td class="ps-4">{{ f.etiqueta }}</td><td class="text-end">{{ f.n }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+                </tbody>
+                <tfoot><tr class="table-light"><th>Total</th><th class="text-end">{{ total_registros }}</th></tr></tfoot>
+            </table>
+
+            <form method="post" autocomplete="off">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-danger btn-lg">
-                    <i class="bi bi-trash"></i> Sí, borrar todo
+                <input type="hidden" name="modo" value="{{ modo }}">
+                <label for="confirmacion" class="form-label">
+                    Para confirmar, escribe el nombre exacto de la empresa: <strong>{{ empresa.nombre }}</strong>
+                </label>
+                <input type="text" id="confirmacion" name="confirmacion" class="form-control mb-3" required>
+                <button type="submit" id="btn-borrar" class="btn btn-danger btn-lg" disabled>
+                    <i class="bi bi-trash"></i> Sí, poner en ceros
                 </button>
                 <a href="{% url 'dashboard_inicio' %}" class="btn btn-secondary btn-lg ms-2">
                     <i class="bi bi-x-circle"></i> Cancelar
@@ -31,6 +70,16 @@
         </div>
     </div>
 </div>
+<script>
+    (function () {
+        var input = document.getElementById('confirmacion');
+        var btn = document.getElementById('btn-borrar');
+        var esperado = "{{ empresa.nombre|escapejs }}".trim().toLowerCase();
+        input.addEventListener('input', function () {
+            btn.disabled = input.value.trim().toLowerCase() !== esperado;
+        });
+    })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

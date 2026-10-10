@@ -30,6 +30,9 @@ class FondeoCajaChicaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["cuenta_bancaria"].required = True
+        # empleado_asignado ahora es null=True en el modelo (los fondeos por
+        # cobros en efectivo no tienen responsable); en el alta manual sigue obligatorio.
+        self.fields["empleado_asignado"].required = True
 
 class GastoCajaChicaForm(forms.ModelForm):
     class Meta:
