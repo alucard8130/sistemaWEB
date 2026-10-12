@@ -80,6 +80,14 @@
                             <div class="text-danger">{{ form.local.errors }}</div>
                         {% endif %}
                     </div>
+                     <div class="mb-3" id="campo_grupo">
+                        {{ form.grupo_facturacion.label_tag }}
+                        {{ form.grupo_facturacion }}
+                        <small class="text-muted">El cliente y los locales se toman del grupo.</small>
+                        {% if form.grupo_facturacion.errors %}
+                            <div class="text-danger">{{ form.grupo_facturacion.errors }}</div>
+                        {% endif %}
+                    </div>
                     <div class="mb-3" id="campo_area">
                         {{ form.area_comun.label_tag }}
                         {{ form.area_comun }}
@@ -139,6 +147,7 @@
         var tipo = document.getElementById("id_tipo_origen").value;
         document.getElementById("campo_local").style.display = tipo === "local" ? "block" : "none";
         document.getElementById("campo_area").style.display = tipo === "area_comun" ? "block" : "none";
+        document.getElementById("campo_grupo").style.display = tipo === "grupo" ? "block" : "none";
         
     }
     document.addEventListener("DOMContentLoaded", function() {

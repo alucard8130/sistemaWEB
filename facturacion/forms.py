@@ -11,6 +11,7 @@ from .models import (
     CobroOtrosIngresos,
     Factura,
     FacturaOtrosIngresos,
+    GrupoFacturacion,
     Pago,
     TipoOtroIngreso,
 )
@@ -20,9 +21,15 @@ class FacturaForm(forms.ModelForm):
     TIPO_ORIGEN_CHOICES = [  # noqa: RUF012
         ('local', 'Local Comercial'),
         ('area_comun', 'Área Común'),
+        ('grupo', 'Grupo de Facturación'),
     ]
     tipo_origen = forms.ChoiceField(choices=TIPO_ORIGEN_CHOICES, label="Origen de la factura", required=True, widget=forms.Select(attrs={'class': 'form-select'}))
-
+    # NUEVO -- factura manual consolidada de un Grupo de Facturación
+    grupo_facturacion = forms.ModelChoiceField(
+        queryset=GrupoFacturacion.objects.filter(activo=True), required=False,
+        label="Grupo de Facturación", widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+ 
     class Meta:
         model = Factura
         fields = ['cliente', 'local', 'area_comun', 'tipo_cuota', 'fecha_vencimiento', 'monto', 'observaciones']  # noqa: RUF012
@@ -39,57 +46,74 @@ class FacturaForm(forms.ModelForm):
             'cliente': 'Arrendatario/Inquilino',
             'observaciones': 'Comentario',
         }
-
+ 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-
+ 
         self.fields['local'].required = False
         self.fields['area_comun'].required = False
-
+        # NUEVO -- con origen "Grupo" el cliente sale del grupo; se valida en clean()
+        self.fields['cliente'].required = False
+ 
         empresa_usuario = None
-
+ 
         if self.user and not self.user.is_superuser:
             empresa_usuario = self.user.perfilusuario.empresa
             self.fields['cliente'].queryset = self.fields['cliente'].queryset.filter(empresa=empresa_usuario)
             self.fields['local'].queryset = self.fields['local'].queryset.filter(empresa=empresa_usuario)
             self.fields['area_comun'].queryset = self.fields['area_comun'].queryset.filter(empresa=empresa_usuario)
-
+            self.fields['grupo_facturacion'].queryset = self.fields['grupo_facturacion'].queryset.filter(empresa=empresa_usuario)
+ 
         # --- NUEVO: ajustes según segmento de la empresa ---
         # --- Ajustes según segmento de la empresa ---
         if empresa_usuario and empresa_usuario.segmento == 'habitacional':
             self.fields['cliente'].label = "Propietario / Residente"
-
+ 
             # "Renta" no aplica a viviendas -- se quita de las opciones
             self.fields['tipo_cuota'].choices = [
                 c for c in Factura.TIPO_CUOTA_CHOICES if c[0] != 'renta'
             ]
-
+ 
             # Las amenidades no generan factura ni nada fiscal -- solo se
             # puede facturar contra la vivienda.
             self.fields['tipo_origen'].choices = [
                 ('local', 'Vivienda'),
             ]
             self.fields['area_comun'].widget = forms.HiddenInput()
-
+ 
     def clean(self):
         cleaned_data = super().clean()
         monto = cleaned_data.get('monto')
         local = cleaned_data.get('local')
         area_comun = cleaned_data.get('area_comun')
-
-        if not local and not area_comun:
-            self.add_error(None, 'Debe seleccionar al menos un Local o Área Común.')
-
+        tipo_origen = cleaned_data.get('tipo_origen')
+        grupo = cleaned_data.get('grupo_facturacion')
+ 
+        if tipo_origen == 'grupo':
+            if not grupo:
+                self.add_error('grupo_facturacion', 'Selecciona el Grupo de Facturación.')
+            else:
+                # el cliente de la factura es siempre el del grupo
+                cleaned_data['cliente'] = grupo.cliente
+            cleaned_data['local'] = None
+            cleaned_data['area_comun'] = None
+        else:
+            if not cleaned_data.get('cliente'):
+                self.add_error('cliente', 'Este campo es obligatorio.')
+            if not local and not area_comun:
+                self.add_error(None, 'Debe seleccionar al menos un Local o Área Común.')
+ 
         if monto is None or monto <= 0:
             self.add_error('monto', 'El monto debe ser un valor positivo.')
         return cleaned_data
-
+ 
     def clean_fecha_vencimiento(self):
         fecha_vencimiento = self.cleaned_data.get('fecha_vencimiento')
         if not fecha_vencimiento:
             raise forms.ValidationError("La fecha de la factura es obligatoria.")
         return fecha_vencimiento
+
 
          
       

@@ -149,6 +149,12 @@ def crear_factura(request):
                 factura.area_comun = None
             elif tipo == "area_comun":
                 factura.local = None
+            # NUEVO -- factura manual de un Grupo de Facturación
+            grupo_sel = form.cleaned_data.get("grupo_facturacion") if tipo == "grupo" else None
+            if tipo == "grupo":
+                factura.local = None
+                factura.area_comun = None
+                factura.cliente = grupo_sel.cliente
             cliente = factura.cliente
 
             # ---- Validación duplicado ----
@@ -169,6 +175,13 @@ def crear_factura(request):
                     )
                 elif factura.area_comun:
                     duplicado_qs = duplicado_qs.filter(area_comun=factura.area_comun)
+                elif grupo_sel:
+                    # NUEVO -- duplicado si ya hay factura consolidada que cubra locales del grupo ese mes
+                    duplicado_qs = duplicado_qs.filter(
+                        locales_incluidos__in=grupo_sel.locales.filter(activo=True)
+                    ).distinct()
+                else:
+                    duplicado_qs = duplicado_qs.none()
 
                 if duplicado_qs.exists():
                     dup = duplicado_qs.first()
@@ -284,12 +297,23 @@ def crear_factura(request):
                             factura.fecha_emision = factura.fecha_vencimiento
                         factura.save()
                         # Generar folio
-                        if tipo == "local":
+                        if tipo in ("local", "grupo"):
                             prefix = "CM-F"
                         elif tipo == "area_comun":
                             prefix = "AC-F"
 
                         _generar_y_guardar_folio(factura, prefix)
+                        
+                        # NUEVO -- la factura de grupo cubre todos los locales activos del grupo
+                        if tipo == "grupo":
+                            locales_grupo = list(grupo_sel.locales.filter(activo=True).order_by("numero"))
+                            factura.locales_incluidos.set(locales_grupo)
+                            if factura.observaciones in (None, "", "factura manual"):
+                                factura.observaciones = (
+                                    f"Factura manual -- Grupo '{grupo_sel.nombre}' -- Locales: "
+                                    + ", ".join(l.numero for l in locales_grupo)
+                                )[:255]
+                                factura.save(update_fields=["observaciones"])
 
                         # Asignar cliente a local/área si está vacío o si hay conflicto autorizado
                         if factura.local and (
