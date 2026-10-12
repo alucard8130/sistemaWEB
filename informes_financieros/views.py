@@ -590,6 +590,9 @@ def estado_resultados(request):
                 When(es_grupo, then=Value("Locales")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
                 When(es_anticipo, then=Value("Anticipos / Saldos a favor")),
+                # Rendimientos registrados como depósito suelto (sin factura)
+                When(factura__isnull=True, forma_pago="rendimiento_inversion",
+                     then=Value("Rendimientos de inversión")),
                 default=Value("Sin origen"),
                 output_field=CharField(),
             )

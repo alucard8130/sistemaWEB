@@ -95,6 +95,49 @@
         <button type="submit" class="btn btn-success">Asignar Deposito</button>
         <a href="{% url 'lista_depositos_por_identificar' %}" class="btn btn-secondary reporte-link">Cancelar</a>
     </form>
+
+    <!-- Enviar el depósito completo a Saldo a Favor (pago adelantado de varios meses) -->
+    <div class="card mt-4 border-info">
+        <div class="card-body">
+            <h5 class="card-title">Enviar a Saldo a Favor</h5>
+            <p class="text-muted mb-3">
+                Si este depósito es un pago adelantado de varios meses, envíalo completo (${{ pago.monto|floatformat:2|intcomma }})
+                al saldo a favor del cliente. Conserva la fecha y el banco del depósito, y se aplicará
+                automáticamente conforme se generen sus facturas. El ingreso NO se vuelve a registrar al aplicarse.
+            </p>
+            <form method="post" class="row g-2">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="saldo_favor">
+                <div class="col-md-4">
+                    <label class="form-label mb-0">Cliente:</label>
+                    <select name="cliente_id" class="form-select" required>
+                        <option value="">Selecciona un cliente</option>
+                        {% for c in clientes %}
+                            <option value="{{ c.id }}">{{ c.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label mb-0">Propiedad (opcional):</label>
+                    <select name="propiedad" class="form-select">
+                        <option value="">Cualquier propiedad del cliente</option>
+                        {% for l in locales %}
+                            <option value="local:{{ l.id }}">Local {{ l.numero }}</option>
+                        {% endfor %}
+                        {% for a in areas %}
+                            <option value="area:{{ a.id }}">Área {{ a.numero }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 align-self-end">
+                    <button type="submit" class="btn btn-info"
+                            onclick="return confirm('¿Enviar este depósito completo a saldo a favor del cliente?');">
+                        Enviar a Saldo a Favor
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
  
 

@@ -53,6 +53,7 @@ from clientes.models import Cliente
 from conciliaciones.utils import validar_periodo_abierto
 from empresas.models import CuentaBancaria, Empresa
 from facturacion.utils import (
+    _debe_facturar_periodo,
     calcular_cartera_vencida,
     calcular_total_vencida_rapido,
     variacion,
@@ -714,7 +715,20 @@ def verificacion_facturacion(request):
         else:
             fin_de_mes = date(anio_eval, 12, 31)
         return fecha_creacion.date() <= fin_de_mes
-
+    
+    def area_debia_facturarse(area, anio_eval, mes_eval):
+        """Mismas reglas que generar_facturas_mes para áreas."""
+        if area.cliente_id is None or area.es_cuota_variable:
+            return False
+        if not area.cuota or area.cuota <= 0:
+            return False
+        fin_mes_eval = (date(anio_eval, mes_eval + 1, 1) - timedelta(days=1)) if mes_eval < 12 else date(anio_eval, 12, 31)
+        if area.fecha_inicial and area.fecha_inicial > fin_mes_eval:
+            return False
+        return _debe_facturar_periodo(
+            area.fecha_inicial, area.periodicidad_facturacion, anio_eval, mes_eval
+        )
+    
     # Armar resultado locales
     resultado_locales = []
     if mostrar_locales:
@@ -761,6 +775,12 @@ def verificacion_facturacion(request):
                     })
                     continue
                 tiene = m in meses_con_factura
+                if not tiene and not area_debia_facturarse(area, anio, m):
+                    meses_info.append({
+                        "mes": m, "nombre": MESES_NOMBRES[m - 1],
+                        "tiene": None, "corriente": False,  # No aplica
+                    })
+                    continue
                 if not tiene:
                     faltantes += 1
                 meses_info.append({
@@ -988,11 +1008,11 @@ def facturar_mes_actual(request, facturar_locales=True, facturar_areas=True):
 def confirmar_facturacion(request):
     hoy = now().date()
     año, mes = hoy.year, hoy.month
-
+ 
     empresa = None
     if not request.user.is_superuser:
         empresa = request.user.perfilusuario.empresa
-
+ 
     # FILTRAR locales y áreas activos con cliente (mensuales -- igual que antes)
     if request.user.is_superuser:
         locales = LocalComercial.objects.filter(
@@ -1009,37 +1029,54 @@ def confirmar_facturacion(request):
         areas = AreaComun.objects.filter(
             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=False
         )
-        filtro_facturas = Q(empresa=empresa)
-
+        filtro_facturas = Q(empresa=empresa)  # noqa: F841
+ 
     nombres_meses = [
         "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
     ]
-
+ 
+    def _areas_exigibles(fin_mes, anio_eval, mes_eval):
+        """Áreas que el generador SÍ factura ese mes (mismas reglas que
+        generar_facturas_mes): con cuota fija > 0, ya iniciadas (aunque sea
+        a mitad de mes -> prorrateo) y a las que les toca por periodicidad."""
+        candidatas = areas.filter(
+            fecha_creacion__date__lte=fin_mes, es_cuota_variable=False, cuota__gt=0,
+        ).filter(Q(fecha_inicial__isnull=True) | Q(fecha_inicial__lte=fin_mes))
+        return [
+            a.id for a in candidatas
+            if _debe_facturar_periodo(a.fecha_inicial, a.periodicidad_facturacion, anio_eval, mes_eval)
+        ]
+ 
+    def _locales_sin_factura(fin_mes, anio_eval, mes_eval):
+        """Locales que deberían tener factura de mantenimiento ese mes y no la
+        tienen. Mismas reglas que generar_facturas_mes: cuota > 0, y los locales
+        de un Grupo de Facturación cuentan como facturados cuando existe la
+        factura consolidada del grupo (locales_incluidos)."""
+        exigibles = set(
+            locales.filter(fecha_creacion__date__lte=fin_mes, cuota__gt=0)
+            .values_list("id", flat=True)
+        )
+        facturas_mes = Factura.objects.filter(
+            tipo_cuota="mantenimiento",
+            estatus__in=["pendiente", "cobrada", "cancelada"],
+        ).filter(
+            Q(fecha_emision__year=anio_eval, fecha_emision__month=mes_eval)
+            | Q(fecha_vencimiento__year=anio_eval, fecha_vencimiento__month=mes_eval)
+        ).filter(Q(local_id__in=exigibles) | Q(locales_incluidos__in=exigibles))
+        cubiertos = set(facturas_mes.values_list("local_id", flat=True))
+        cubiertos |= set(facturas_mes.values_list("locales_incluidos", flat=True))
+        return exigibles - cubiertos
+ 
     # Detectar meses faltantes -- un mes es faltante si algún local o área no tiene factura
     # (excluye propiedades dadas de alta DESPUÉS de ese mes -- fix ya aplicado antes)
     meses_faltantes_por_anio = {}
     for m in range(1, mes + 1):
         fin_de_mes = date(año, m + 1, 1) - timedelta(days=1) if m < 12 else date(año, 12, 31)
-
-        locales_del_mes = locales.filter(fecha_creacion__date__lte=fin_de_mes)
-        locales_ids = list(locales_del_mes.values_list("id", flat=True))
-        locales_con_factura = set(
-            Factura.objects.filter(
-                local_id__in=locales_ids,
-                tipo_cuota="mantenimiento",
-                estatus__in=["pendiente", "cobrada", "cancelada"],
-            )
-            .filter(
-                Q(fecha_emision__year=año, fecha_emision__month=m)
-                | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=m)
-            )
-            .values_list("local_id", flat=True)
-        )
-        falta_local = len(locales_con_factura) < len(locales_ids)
-
-        areas_del_mes = areas.filter(fecha_creacion__date__lte=fin_de_mes)
-        areas_ids = list(areas_del_mes.values_list("id", flat=True))
+ 
+        falta_local = len(_locales_sin_factura(fin_de_mes, año, m)) > 0
+ 
+        areas_ids = _areas_exigibles(fin_de_mes, año, m)
         areas_con_factura = set(
             Factura.objects.filter(
                 area_comun_id__in=areas_ids,
@@ -1055,34 +1092,21 @@ def confirmar_facturacion(request):
         falta_area = len(areas_con_factura) < len(areas_ids)
         if falta_local or falta_area:
             meses_faltantes_por_anio.setdefault(año, []).append(m)
-
+ 
     if meses_faltantes_por_anio:
         anio_permitido = min(meses_faltantes_por_anio.keys())
         mes_permitido = min(meses_faltantes_por_anio[anio_permitido])
     else:
         anio_permitido = año
         mes_permitido = mes
-
+ 
     fin_de_mes_permitido = (
         date(anio_permitido, mes_permitido + 1, 1) - timedelta(days=1)
         if mes_permitido < 12 else date(anio_permitido, 12, 31)
     )
-    locales_permitido = locales.filter(fecha_creacion__date__lte=fin_de_mes_permitido)
-    locales_ids_permitido = list(locales_permitido.values_list("id", flat=True))
-    locales_con_factura_permitido = set(
-        Factura.objects.filter(
-            local_id__in=locales_ids_permitido,
-            tipo_cuota="mantenimiento",
-            estatus__in=["pendiente", "cobrada", "cancelada"],
-        ).filter(
-            Q(fecha_emision__year=anio_permitido, fecha_emision__month=mes_permitido)
-            | Q(fecha_vencimiento__year=anio_permitido, fecha_vencimiento__month=mes_permitido)
-        ).values_list("local_id", flat=True)
-    )
-    total_locales = len(locales_ids_permitido) - len(locales_con_factura_permitido)
-
-    areas_permitido = areas.filter(fecha_creacion__date__lte=fin_de_mes_permitido)
-    areas_ids_permitido = list(areas_permitido.values_list("id", flat=True))
+    total_locales = len(_locales_sin_factura(fin_de_mes_permitido, anio_permitido, mes_permitido))
+ 
+    areas_ids_permitido = _areas_exigibles(fin_de_mes_permitido, anio_permitido, mes_permitido)
     areas_con_factura_permitido = set(
         Factura.objects.filter(
             area_comun_id__in=areas_ids_permitido,
@@ -1094,12 +1118,12 @@ def confirmar_facturacion(request):
         ).values_list("area_comun_id", flat=True)
     )
     total_areas = len(areas_ids_permitido) - len(areas_con_factura_permitido)
-
+ 
     faltantes_mensaje = []
     for anio_f, meses_f in sorted(meses_faltantes_por_anio.items()):
         meses_nombres = ", ".join([nombres_meses[m - 1] for m in meses_f])
         faltantes_mensaje.append(f"{anio_f}: {meses_nombres}")
-
+ 
     # ============================================================
     # NUEVO -- detecta propiedades con cuota ANUAL sin factura de ESTE año.
     # Es un chequeo independiente del backlog mensual: una propiedad anual
@@ -1119,7 +1143,7 @@ def confirmar_facturacion(request):
         areas_anuales_qs = AreaComun.objects.filter(
             empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True, cuota__gt=0
         )
-
+ 
     locales_anuales_ids = list(locales_anuales_qs.values_list("id", flat=True))
     locales_anuales_facturados_ids = set(
         Factura.objects.filter(
@@ -1130,7 +1154,7 @@ def confirmar_facturacion(request):
     locales_anuales_pendientes = locales_anuales_qs.exclude(
         id__in=locales_anuales_facturados_ids
     ).select_related("cliente", "empresa")
-
+ 
     areas_anuales_ids = list(areas_anuales_qs.values_list("id", flat=True))
     areas_anuales_facturadas_ids = set(
         Factura.objects.filter(
@@ -1141,9 +1165,9 @@ def confirmar_facturacion(request):
     areas_anuales_pendientes = areas_anuales_qs.exclude(
         id__in=areas_anuales_facturadas_ids
     ).select_related("cliente", "empresa")
-
+ 
     total_anuales_pendientes = locales_anuales_pendientes.count() + areas_anuales_pendientes.count()
-
+ 
     if request.method == "POST":
         # NUEVO -- acción dedicada para generar SOLO las cuotas anuales pendientes,
         # sin importar si hay un backlog de meses normales sin resolver todavía.
@@ -1158,24 +1182,24 @@ def confirmar_facturacion(request):
                 f"{omitidas} ya existían o no aplicaban.",
             )
             return redirect("facturar_mes")
-
+ 
         anio = int(request.POST.get("anio", anio_permitido))
         mes_post = int(request.POST.get("mes", mes_permitido))
         facturar_locales = "locales" in request.POST
         facturar_areas = "areas" in request.POST
-
+ 
         # Solo permite facturar el periodo más antiguo faltante
         if (anio, mes_post) != (anio_permitido, mes_permitido):
             messages.error(
                 request, "Solo puedes facturar el periodo más antiguo pendiente."
             )
             return redirect("facturar_mes")
-
+ 
         request.POST = request.POST.copy()
         request.POST["anio"] = anio
         request.POST["mes"] = mes_post
         return facturar_mes_actual(request, facturar_locales, facturar_areas)
-
+ 
     return render(
         request,
         "facturacion/confirmar_facturacion.html",
@@ -1194,6 +1218,7 @@ def confirmar_facturacion(request):
             "anio_actual_anuales": año,
         },
     )
+
 
 
 # vistas de grupos de facturación, para asignar locales a un grupo y facturar por grupo 06/08/26
@@ -1657,6 +1682,57 @@ def identificar_deposito(request, pago_id):
             facturas = facturas.filter(area_comun_id=area_id)
         facturas = facturas.order_by("cliente__nombre", "fecha_vencimiento")
 
+
+    # Enviar el depósito completo a Saldo a Favor (pago adelantado)
+    if request.method == "POST" and request.POST.get("accion") == "saldo_favor":
+        cliente = Cliente.objects.filter(
+            id=request.POST.get("cliente_id"), empresa=pago.empresa
+        ).first()
+        if not cliente:
+            messages.error(request, "Selecciona un cliente válido.")
+            return redirect("identificar_deposito", pago_id=pago.id)
+ 
+        local = area = None
+        tipo, _, prop_id = (request.POST.get("propiedad") or "").partition(":")
+        if tipo == "local" and prop_id.isdigit():
+            local = LocalComercial.objects.filter(
+                id=prop_id, empresa=pago.empresa, cliente=cliente
+            ).first()
+            if not local:
+                messages.error(request, "El local seleccionado no pertenece a ese cliente.")
+                return redirect("identificar_deposito", pago_id=pago.id)
+        elif tipo == "area" and prop_id.isdigit():
+            area = AreaComun.objects.filter(
+                id=prop_id, empresa=pago.empresa, cliente=cliente
+            ).first()
+            if not area:
+                messages.error(request, "El área seleccionada no pertenece a ese cliente.")
+                return redirect("identificar_deposito", pago_id=pago.id)
+ 
+        with transaction.atomic():
+            # El depósito conserva su fecha, banco y monto originales: solo se
+            # marca como identificado y se liga al saldo a favor.
+            SaldoAFavor.objects.create(
+                empresa=pago.empresa, cliente=cliente, local=local, area_comun=area,
+                monto_original=pago.monto, monto_disponible=pago.monto,
+                fecha_registro=pago.fecha_pago, origen_pago=pago,
+                observaciones=(pago.observaciones or "")[:255],
+                registrado_por=request.user,
+            )
+            pago.identificado = True
+            pago.observaciones = (
+                (pago.observaciones or "")
+                + f" Enviado a saldo a favor de {cliente.nombre} el {timezone.now().date()}"
+            )[:255]
+            pago.save()
+ 
+        messages.success(
+            request,
+            f"Depósito de ${pago.monto:,.2f} enviado a saldo a favor de {cliente.nombre}. "
+            "Se aplicará automáticamente al generar sus facturas.",
+        )
+        return redirect("lista_depositos_por_identificar")
+     
     # Asignación de depósito a factura
     if request.method == "POST" and "factura_id" in request.POST:
         factura_id = request.POST.get("factura_id")
@@ -1679,6 +1755,7 @@ def identificar_deposito(request, pago_id):
                 registrado_por=pago.registrado_por,
                 identificado=True,
                 empresa=pago.empresa,
+                cuenta_bancaria=pago.cuenta_bancaria,
             )
             messages.success(
                 request,
@@ -2829,13 +2906,13 @@ def grafico_ingresos_mensuales(request):
     mes = request.GET.get("mes", "")
 
     # Pagos de cuotas de mantenimiento (locales)
-    pagos_local = Pago.objects.filter(
+    pagos_local = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
         factura__tipo_cuota__in=["mantenimiento", "extraordinaria"],
         factura__activo=True,
         fecha_pago__year=anio,
     )
     # Pagos de cuotas de área común
-    pagos_area = Pago.objects.filter(
+    pagos_area = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
         factura__tipo_cuota__in=["renta", "deposito"],
         factura__activo=True,
         fecha_pago__year=anio,
@@ -2969,11 +3046,11 @@ def grafico_ingresos_anual(request):
     )
 
     # Pagos de cuotas de mantenimiento (locales)
-    pagos_local = Pago.objects.filter(
+    pagos_local = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
         factura__tipo_cuota__in=["mantenimiento", "extraordinaria"],
         factura__activo=True,
     )
-    pagos_area = Pago.objects.filter(
+    pagos_area = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
         factura__tipo_cuota__in=["renta", "deposito"], factura__activo=True
     )
     cobros_otros = CobroOtrosIngresos.objects.filter(factura__activo=True)

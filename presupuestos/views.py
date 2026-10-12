@@ -17,16 +17,13 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 
 #from django.db import models as djmodels
-from django.db.models import F, Q, Sum
+from django.db.models import Exists, F, OuterRef, Q, Sum
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.timezone import now
 from django.views.decorators.http import require_POST
-
-#from django.db.models.functions import TruncMonth, TruncYear
-#from .forms import PresupuestoCargaMasivaForm
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
@@ -35,6 +32,7 @@ from caja_chica.models import GastoCajaChica, ValeCaja
 from empleados.models import Empleado
 from empresas.models import Empresa
 from facturacion.models import (
+    FORMAS_PAGO_NO_INGRESO,
     CobroOtrosIngresos,
     Factura,
     Pago,
@@ -1324,10 +1322,20 @@ def reporte_presupuesto_vs_ingreso(request):
             presup_dict[(p.origen, None)][p.mes] = float(p.monto_presupuestado)
 
     # Ingresos reales
-    pagos_local = Pago.objects.filter(
-        factura__local__isnull=False, fecha_pago__year=anio
+    # Facturas de grupos de facturación y de pools de vacancia no tienen
+    # `local` propio (sus locales viven en locales_incluidos): también son
+    # ingreso de Locales. Exists() evita duplicar filas y inflar el Sum.
+    es_grupo = Exists(
+        Factura.locales_incluidos.through.objects.filter(factura_id=OuterRef("factura_id"))
     )
-    pagos_area = Pago.objects.filter(
+    # El pago de "saldo a favor" no es ingreso nuevo (el dinero ya se contó
+    # cuando se depositó).
+    pagos_local = (
+        Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
+        .annotate(es_grupo=es_grupo)
+        .filter(Q(factura__local__isnull=False) | Q(es_grupo=True), fecha_pago__year=anio)
+    )
+    pagos_area = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
         factura__area_comun__isnull=False, fecha_pago__year=anio
     )
     otros = CobroOtrosIngresos.objects.filter(fecha_cobro__year=anio)
@@ -1580,10 +1588,20 @@ def exportar_reporte_presupuesto_vs_ingreso(request):
             presup_dict[(p.origen, None)][p.mes] = float(p.monto_presupuestado)
 
     # Ingresos reales
-    pagos_local = Pago.objects.filter(
-        factura__local__isnull=False, fecha_pago__year=anio
+    # Facturas de grupos de facturación y de pools de vacancia no tienen
+    # `local` propio (sus locales viven en locales_incluidos): también son
+    # ingreso de Locales. Exists() evita duplicar filas y inflar el Sum.
+    es_grupo = Exists(
+        Factura.locales_incluidos.through.objects.filter(factura_id=OuterRef("factura_id"))
     )
-    pagos_area = Pago.objects.filter(
+    # El pago de "saldo a favor" no es ingreso nuevo (el dinero ya se contó
+    # cuando se depositó).
+    pagos_local = (
+        Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
+        .annotate(es_grupo=es_grupo)
+        .filter(Q(factura__local__isnull=False) | Q(es_grupo=True), fecha_pago__year=anio)
+    )
+    pagos_area = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
         factura__area_comun__isnull=False, fecha_pago__year=anio
     )
     otros = CobroOtrosIngresos.objects.filter(fecha_cobro__year=anio)

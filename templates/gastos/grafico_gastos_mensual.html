@@ -53,8 +53,7 @@
         <select name="tipo_gasto" class="form-select" onchange="this.form.submit()">
             <option value="todos" {% if tipo_gasto == 'todos' %}selected{% endif %}>Todos</option>
             <option value="pagos" {% if tipo_gasto == 'pagos' %}selected{% endif %}>Gastos generales</option>
-            <option value="caja" {% if tipo_gasto == 'caja' %}selected{% endif %}>Caja chica</option>
-            <option value="vales" {% if tipo_gasto == 'vales' %}selected{% endif %}>Vales de caja</option>
+            <option value="caja" {% if tipo_gasto == 'caja' or tipo_gasto == 'vales' %}selected{% endif %}>Fondeos de caja chica</option>
         </select>
     </div>
            <div class="col-md-2">
@@ -103,15 +102,9 @@ new Chart(ctx, {
                 type: 'bar'
             },
             {
-                label: 'Gastos Caja Chica',
+                label: 'Fondeos de Caja Chica',
                 data: {{ data_caja|safe }},
                 backgroundColor: 'rgba(255, 206, 86, 0.7)',
-                type: 'bar'
-            },
-            {
-                label: 'Gastos Vales de Caja',
-                data: {{ data_vales|safe }},
-                backgroundColor: 'rgba(75, 192, 192, 0.7)',
                 type: 'bar',
                 datalabels: {
                     anchor: 'end',
@@ -163,8 +156,8 @@ new Chart(ctx, {
         plugins: {
             datalabels: {
                 display: function(context) {
-                    // Solo mostrar en el último dataset de barra (Gastos Vales de Caja)
-                    return context.dataset.label === 'Gastos Vales de Caja';
+                    // Solo mostrar en el último dataset de barra (Fondeos de Caja Chica)
+                    return context.dataset.label === 'Fondeos de Caja Chica';
                 }
             },
             legend: { display: true },

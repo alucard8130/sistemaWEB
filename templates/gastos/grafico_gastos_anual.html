@@ -31,8 +31,7 @@
 <script>
 const years = {{ years|safe }};
 const pagosData = {{ pagos_data|safe }};
-const gastosCajaData = {{ gastos_caja_data|safe }};
-const valesCajaData = {{ vales_caja_data|safe }};
+const fondeosData = {{ fondeos_data|safe }};
 const presupuestosData = {{ presupuestos_data|safe }};
 const totalesAnio = {{ totales_anio|safe }};
 
@@ -49,15 +48,9 @@ const chart = new Chart(ctx, {
                 stack: 'gastos'
             },
             {
-                label: 'Gastos caja chica',
-                data: gastosCajaData,
+                label: 'Fondeos caja chica',
+                data: fondeosData,
                 backgroundColor: 'rgba(255, 206, 86, 0.7)',
-                stack: 'gastos'
-            },
-            {
-                label: 'Vales caja',
-                data: valesCajaData,
-                backgroundColor: 'rgba(75, 192, 192, 0.7)',
                 stack: 'gastos',
                 datalabels: {
                     anchor: 'end',
@@ -108,8 +101,8 @@ const chart = new Chart(ctx, {
             legend: { position: 'top' },
             datalabels: {
                 display: function(context) {
-                    // Solo mostrar en el último dataset de barra (Vales caja)
-                    return context.dataset.label === 'Vales caja';
+                    // Solo mostrar en el último dataset de barra (Fondeos caja chica)
+                    return context.dataset.label === 'Fondeos caja chica';
                 }
             }
         },

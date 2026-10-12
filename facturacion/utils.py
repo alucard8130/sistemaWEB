@@ -260,7 +260,10 @@ def _calcular_monto_periodo(cuota, periodicidad, fecha_inicial, periodo_año, pe
     Devuelve (monto, fue_prorrateado, dias_cubiertos, dias_totales).
     """
     multiplicador = MULTIPLICADOR_PERIODO.get(periodicidad, 1)
-
+    
+    if fecha_inicial is None:
+        return cuota * multiplicador, False, None, None
+    
     es_primer_periodo = (periodo_año == fecha_inicial.year and periodo_mes == fecha_inicial.month)
 
     if not es_primer_periodo or fecha_inicial.day == 1:
@@ -449,11 +452,14 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                 facturas_creadas += 1
 
     if facturar_areas:
+        # Un área que inicia a mitad de mes SÍ se factura ese mes (prorrateada),
+        # por eso se compara contra el ÚLTIMO día del mes, no contra el día 1.
+        fin_mes_factura = fecha_factura + relativedelta(months=1) - timedelta(days=1)
         todas_las_areas = AreaComun.objects.filter(
             empresa=empresa, activo=True, cliente__isnull=False,
             es_cuota_variable=False, cuota__gt=0,
         ).filter(
-            Q(fecha_inicial__isnull=True) | Q(fecha_inicial__lte=fecha_factura)
+            Q(fecha_inicial__isnull=True) | Q(fecha_inicial__lte=fin_mes_factura)
         ).select_related("cliente")
 
         areas_a_facturar = [
@@ -504,28 +510,6 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                     observaciones=observaciones,
                 ))
                 facturas_creadas += 1    
-            # else:
-            #     last_num_ac += 1
-            #     multiplicador = MULTIPLICADOR_PERIODO.get(area.periodicidad_facturacion, 1)
-            #     monto_periodo = area.cuota * multiplicador
-            #     mb, miva = calcular_iva_factura(monto_periodo, "renta")
-            #     if multiplicador == 1:
-            #         observaciones = "Cuota mensual"
-            #     else:
-            #         observaciones = (
-            #             f"Cuota {area.get_periodicidad_facturacion_display().lower()} "
-            #             f"(${area.cuota}/mes × {multiplicador})"
-            #         )
-            #     facturas_a_crear.append(Factura(
-            #         empresa=empresa, cliente=area.cliente, area_comun=area,
-            #         folio=f"AC-F{last_num_ac:05d}", fecha_emision=fecha_factura,
-            #         fecha_vencimiento=fecha_factura, monto=monto_periodo,
-            #         monto_base=mb, monto_iva=miva,
-            #         tipo_cuota="renta", estatus="pendiente",
-            #         observaciones=observaciones,
-            #     ))
-            #     facturas_creadas += 1
-
             if area.deposito and area.deposito > 0:
                 existe_deposito = Factura.objects.filter(
                     cliente=area.cliente, area_comun=area, tipo_cuota="deposito",
@@ -541,38 +525,6 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
                         tipo_cuota="deposito", estatus="pendiente",
                         observaciones="Depósito en garantía",
                     ))
-
-        # Cuota anual -- se revisa en CUALQUIER mes, mismo criterio que locales.
-        # areas_anuales = AreaComun.objects.filter(
-        #     empresa=empresa, activo=True, cliente__isnull=False, es_cuota_anual=True,
-        #     es_cuota_variable=False, cuota__gt=0,
-        # ).filter(
-        #     Q(fecha_inicial__isnull=True) | Q(fecha_inicial__lte=fecha_factura)
-        # ).select_related("cliente")
-
-        # areas_anuales_ids = list(areas_anuales.values_list("id", flat=True))
-        # areas_anuales_con_factura = set(
-        #     Factura.objects.filter(
-        #         area_comun_id__in=areas_anuales_ids, tipo_cuota="renta",
-        #         estatus__in=["pendiente", "cobrada"], fecha_emision__year=año,
-        #     ).values_list("area_comun_id", flat=True)
-        # )
-        # for area in areas_anuales:
-        #     if area.id not in areas_anuales_con_factura:
-        #         last_num_ac += 1
-        #         monto_anual = area.cuota * 12
-        #         # NUEVO -- bulk_create, desglose explícito.
-        #         mb, miva = calcular_iva_factura(monto_anual, "renta")
-        #         facturas_a_crear.append(Factura(
-        #             empresa=empresa, cliente=area.cliente, area_comun=area,
-        #             folio=f"AC-F{last_num_ac:05d}", fecha_emision=fecha_factura,
-        #             fecha_vencimiento=fecha_factura, monto=monto_anual,
-        #             monto_base=mb, monto_iva=miva,
-        #             tipo_cuota="renta", estatus="pendiente", 
-        #             observaciones=f"Cuota anual (${area.cuota}/mes × 12)"
-        #         ))
-        #         facturas_creadas += 1
-
     if facturas_a_crear:
         Factura.objects.bulk_create(facturas_a_crear, batch_size=50)
         # NUEVO -- aplica saldos a favor a cada factura recién creada

@@ -65,7 +65,7 @@ from amenidades.models import Amenidad, Reservacion
 from areas.models import AreaComun
 from caja_chica.models import FondeoCajaChica, GastoCajaChica, ValeCaja
 from clientes.models import Cliente
-from conciliaciones.utils import get_o_crear_periodo
+from conciliaciones.utils import calcular_saldo_acumulado_hasta, get_o_crear_periodo
 from core import settings
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
@@ -78,7 +78,7 @@ from facturacion.models import (
     Pago,
 )
 from facturacion.utils import debe_mostrar_recordatorio_facturacion
-from gastos.models import Gasto, PagoGasto, TipoGasto
+from gastos.models import Gasto, PagoGasto
 from locales.models import LocalComercial
 from presupuestos.models import Presupuesto, PresupuestoIngreso
 from principal.forms import TemaGeneralForm, VisitanteLoginForm
@@ -108,6 +108,573 @@ from .serializers import FacturaSerializer
 MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"]
 
 
+
+# def dashboard_inicio(request):
+#     NUEVO -- perfil se obtiene UNA sola vez, para cualquier tipo de
+#     usuario (incluido superusuario), y se reutiliza en el resto de la
+#     funcion -- corrige el UnboundLocalError de antes, donde 'perfil'
+#     solo existia dentro del bloque "not is_superuser".
+#     perfil = getattr(request.user, "perfilusuario", None)
+
+#     NUEVO -- si el usuario (o, para un superusuario, la empresa que
+#     tiene seleccionada en sesion) es de una escuela, redirige a su
+#     propio dashboard -- asi, sin importar por donde entre, cae en el
+#     lugar correcto.
+#     if request.user.is_superuser:
+#         empresa_id_sesion = request.session.get("empresa_id")
+#         empresa_sesion = (
+#             Empresa.objects.filter(id=empresa_id_sesion).first() if empresa_id_sesion else None
+#         )
+#         if empresa_sesion and empresa_sesion.segmento == "escuela":
+#             return redirect("dashboard_inicio_escuela")
+
+#     NUEVO -- redirige a los contadores directo a su panel dedicado 03/08/26
+#     if not request.user.is_superuser:
+#         perfil = getattr(request.user, "perfilusuario", None)
+
+#         NUEVO -- si es de una escuela, redirige antes que cualquier
+#         otra cosa.
+#         if perfil and perfil.empresa and perfil.empresa.segmento == "escuela":
+#             return redirect("dashboard_inicio_escuela")
+
+#         NUEVO -- primero verifica si debe cambiar contrasena
+#         if perfil and perfil.debe_cambiar_password:
+#             return redirect("cambiar_password_obligatorio")
+#         if perfil and perfil.es_contador:
+#             return redirect("panel_contador")
+
+#     hoy = date.today()
+#     mes_actual = hoy.month
+#     anio_actual = hoy.year
+
+#     Empresa
+#     if request.user.is_superuser:
+#         empresa_id = request.session.get("empresa_id")
+#         empresa = Empresa.objects.filter(id=empresa_id).first()
+#     else:
+#         empresa = request.user.perfilusuario.empresa
+
+#     ── INGRESOS DEL MES (cuotas + otros ingresos) ──
+#     ingresos_mes_cuotas = Pago.objects.filter(
+#         factura__empresa=empresa,
+#         fecha_pago__year=anio_actual,
+#         fecha_pago__month=mes_actual,
+#     ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
+#         "total"
+#     ] or Decimal("0")
+
+#     ingresos_mes_otros = CobroOtrosIngresos.objects.filter(
+#         factura__empresa=empresa,
+#         fecha_cobro__year=anio_actual,
+#         fecha_cobro__month=mes_actual,
+#     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
+#     ingresos_mes = ingresos_mes_cuotas + ingresos_mes_otros
+
+#     Mes anterior para delta (cuotas + otros ingresos)
+#     mes_ant = mes_actual - 1 if mes_actual > 1 else 12
+#     anio_ant = anio_actual if mes_actual > 1 else anio_actual - 1
+
+#     ingresos_mes_ant_cuotas = Pago.objects.filter(
+#         factura__empresa=empresa, fecha_pago__year=anio_ant, fecha_pago__month=mes_ant
+#     ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
+#         "total"
+#     ] or Decimal("0")
+
+#     ingresos_mes_ant_otros = CobroOtrosIngresos.objects.filter(
+#         factura__empresa=empresa, fecha_cobro__year=anio_ant, fecha_cobro__month=mes_ant
+#     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
+#     ingresos_mes_ant = ingresos_mes_ant_cuotas + ingresos_mes_ant_otros
+
+#     delta_ingresos = (
+#         round(float((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100), 1)
+#         if ingresos_mes_ant > 0
+#         else None
+#     )
+
+#     Subquery para pagos parciales (cuotas)
+#     total_pagado_sq = (
+#         Pago.objects.filter(factura=OuterRef("pk"))
+#         .values("factura")
+#         .annotate(total=Sum("monto"))
+#         .values("total")
+#     )
+
+#     Subquery para cobros parciales (otros ingresos)
+#     total_cobrado_otros_sq = (
+#         CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"))
+#         .values("factura")
+#         .annotate(total=Sum("monto"))
+#         .values("total")
+#     )
+
+#     Por cobrar del mes -- cuotas (facturas pendientes con vencimiento en el mes)
+#     por_cobrar_mes_cuotas = Factura.objects.filter(
+#         empresa=empresa,
+#         estatus="pendiente",
+#         activo=True,
+#         fecha_vencimiento__year=anio_actual,
+#         fecha_vencimiento__month=mes_actual,
+#     ).annotate(
+#         total_pagado_ann=Coalesce(
+#             Subquery(total_pagado_sq, output_field=DecimalField()),
+#             Value(0, output_field=DecimalField()),
+#         ),
+#         saldo_real=ExpressionWrapper(
+#             F("monto") - F("total_pagado_ann"), output_field=DecimalField()
+#         ),
+#     ).aggregate(total=Sum("saldo_real"))["total"] or Decimal("0")
+
+#     Por cobrar del mes -- otros ingresos
+#     por_cobrar_mes_otros = FacturaOtrosIngresos.objects.filter(
+#         empresa=empresa,
+#         estatus="pendiente",
+#         activo=True,
+#         fecha_vencimiento__year=anio_actual,
+#         fecha_vencimiento__month=mes_actual,
+#     ).annotate(
+#         total_cobrado_ann=Coalesce(
+#             Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
+#             Value(0, output_field=DecimalField()),
+#         ),
+#         saldo_real=ExpressionWrapper(
+#             F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
+#         ),
+#     ).aggregate(total=Sum("saldo_real"))["total"] or Decimal("0")
+
+#     por_cobrar_mes = por_cobrar_mes_cuotas + por_cobrar_mes_otros
+
+#     total_posible_ingresos = ingresos_mes + por_cobrar_mes
+#     pct_cobrado = (
+#         round(float(ingresos_mes / total_posible_ingresos * 100))
+#         if total_posible_ingresos > 0
+#         else 0
+#     )
+#     pct_por_cobrar = 100 - pct_cobrado
+
+#     ── GASTOS DEL MES ──
+#     gastos_pagados_mes = PagoGasto.objects.filter(
+#         gasto__empresa=empresa,
+#         fecha_pago__year=anio_actual,
+#         fecha_pago__month=mes_actual,
+#         monto__gt=0,
+#     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
+#     gastos_pendientes_mes = Gasto.objects.filter(
+#         empresa=empresa,
+#         fecha__year=anio_actual,
+#         fecha__month=mes_actual,
+#         estatus="pendiente",
+#     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
+#     gastos_mes_ant = PagoGasto.objects.filter(
+#         gasto__empresa=empresa,
+#         fecha_pago__year=anio_ant,
+#         fecha_pago__month=mes_ant,
+#         monto__gt=0,
+#     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+#     delta_gastos = (
+#         round(float((gastos_pagados_mes - gastos_mes_ant) / gastos_mes_ant * 100), 1)
+#         if gastos_mes_ant > 0
+#         else None
+#     )
+
+#     total_gastos_mes = gastos_pagados_mes + gastos_pendientes_mes
+#     resultado_mes = ingresos_mes - gastos_pagados_mes
+#     pct_gastos = (
+#         round(float(gastos_pagados_mes / ingresos_mes * 100)) if ingresos_mes > 0 else 0
+#     )
+#     pct_margen = 100 - pct_gastos
+
+#     Calcular cartera manualmente si no hay annotate_saldo
+#     facturas_pend_qs = Factura.objects.filter(
+#         empresa=empresa, estatus="pendiente", activo=True
+#     ).annotate(
+#         total_pagado_ann=Coalesce(
+#             Subquery(total_pagado_sq, output_field=DecimalField()),
+#             Value(0, output_field=DecimalField()),
+#         ),
+#         saldo_real=ExpressionWrapper(
+#             F("monto") - F("total_pagado_ann"), output_field=DecimalField()
+#         ),
+#     )
+
+#     facturas_otros_pend_qs = FacturaOtrosIngresos.objects.filter(
+#         empresa=empresa, estatus="pendiente", activo=True
+#     ).annotate(
+#         total_cobrado_ann=Coalesce(
+#             Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
+#             Value(0, output_field=DecimalField()),
+#         ),
+#         saldo_real=ExpressionWrapper(
+#             F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
+#         ),
+#     )
+
+#     ── CARTERA VENCIDA — todo en 1 sola consulta por tipo (antes eran ~14) ──
+#     fecha_30 = hoy - timedelta(days=30)
+#     fecha_60 = hoy - timedelta(days=60)
+#     fecha_90 = hoy - timedelta(days=90)
+#     fecha_180 = hoy - timedelta(days=180)
+
+#     resumen_cuotas = facturas_pend_qs.aggregate(
+#         total=Sum("saldo_real"),
+#         cantidad=Count("id"),
+#         b_0_30=Sum(
+#             Case(
+#                 When(fecha_vencimiento__gte=fecha_30, then=F("saldo_real")),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_31_60=Sum(
+#             Case(
+#                 When(
+#                     fecha_vencimiento__lt=fecha_30,
+#                     fecha_vencimiento__gte=fecha_60,
+#                     then=F("saldo_real"),
+#                 ),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_61_90=Sum(
+#             Case(
+#                 When(
+#                     fecha_vencimiento__lt=fecha_60,
+#                     fecha_vencimiento__gte=fecha_90,
+#                     then=F("saldo_real"),
+#                 ),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_91_180=Sum(
+#             Case(
+#                 When(
+#                     fecha_vencimiento__lt=fecha_90,
+#                     fecha_vencimiento__gte=fecha_180,
+#                     then=F("saldo_real"),
+#                 ),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_181_mas=Sum(
+#             Case(
+#                 When(fecha_vencimiento__lt=fecha_180, then=F("saldo_real")),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#     )
+
+#     resumen_otros = facturas_otros_pend_qs.aggregate(
+#         total=Sum("saldo_real"),
+#         cantidad=Count("id"),
+#         b_0_30=Sum(
+#             Case(
+#                 When(fecha_vencimiento__gte=fecha_30, then=F("saldo_real")),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_31_60=Sum(
+#             Case(
+#                 When(
+#                     fecha_vencimiento__lt=fecha_30,
+#                     fecha_vencimiento__gte=fecha_60,
+#                     then=F("saldo_real"),
+#                 ),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_61_90=Sum(
+#             Case(
+#                 When(
+#                     fecha_vencimiento__lt=fecha_60,
+#                     fecha_vencimiento__gte=fecha_90,
+#                     then=F("saldo_real"),
+#                 ),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_91_180=Sum(
+#             Case(
+#                 When(
+#                     fecha_vencimiento__lt=fecha_90,
+#                     fecha_vencimiento__gte=fecha_180,
+#                     then=F("saldo_real"),
+#                 ),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#         b_181_mas=Sum(
+#             Case(
+#                 When(fecha_vencimiento__lt=fecha_180, then=F("saldo_real")),
+#                 default=0,
+#                 output_field=DecimalField(),
+#             )
+#         ),
+#     )
+
+#     def _s(dic, key):
+#         return dic.get(key) or Decimal("0")
+
+#     cartera_vencida = _s(resumen_cuotas, "total") + _s(resumen_otros, "total")
+#     facturas_vencidas_count = (resumen_cuotas["cantidad"] or 0) + (
+#         resumen_otros["cantidad"] or 0
+#     )
+
+#     saldo_0_30 = _s(resumen_cuotas, "b_0_30") + _s(resumen_otros, "b_0_30")
+#     saldo_31_60 = _s(resumen_cuotas, "b_31_60") + _s(resumen_otros, "b_31_60")
+#     saldo_61_90 = _s(resumen_cuotas, "b_61_90") + _s(resumen_otros, "b_61_90")
+#     saldo_91_180 = _s(resumen_cuotas, "b_91_180") + _s(resumen_otros, "b_91_180")
+#     saldo_181_mas = _s(resumen_cuotas, "b_181_mas") + _s(resumen_otros, "b_181_mas")
+
+#     saldo_31_90 = float(saldo_31_60) + float(saldo_61_90)
+#     saldo_90_mas = float(saldo_91_180) + float(saldo_181_mas)
+
+#     ── TOP DEUDORES (cuotas + otros ingresos combinados) ──
+#     top_deudores = []
+
+#     for f in (
+#         facturas_pend_qs.select_related("cliente", "local", "area_comun")
+#         .prefetch_related("locales_incluidos")
+#         .order_by("-monto")[:10]
+#     ):
+#         dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
+#         if f.local:
+#             local_label = f.local.numero
+#         elif f.locales_incluidos.exists():
+#             local_label = "Grupo: " + ", ".join(
+#                 l.numero for l in f.locales_incluidos.all()
+#             )
+#         else:
+#             local_label = None
+#         top_deudores.append(
+#             {
+#                 "cliente__nombre": f.cliente.nombre if f.cliente else "—",
+#                 "local__numero": local_label,
+#                 "area_comun__numero": f.area_comun.numero if f.area_comun else None,
+#                 "saldo": float(f.monto),
+#                 "dias_vencido": max(dias, 0),
+#             }
+#         )
+
+#     for f in facturas_otros_pend_qs.select_related("cliente", "tipo_ingreso").order_by(
+#         "-monto"
+#     )[:10]:
+#         dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
+#         top_deudores.append(
+#             {
+#                 "cliente__nombre": f.cliente.nombre if f.cliente else "—",
+#                 "local__numero": None,
+#                 "area_comun__numero": f.tipo_ingreso.nombre
+#                 if f.tipo_ingreso
+#                 else "Otro ingreso",
+#                 "saldo": float(f.monto),
+#                 "dias_vencido": max(dias, 0),
+#             }
+#         )
+
+#     top_deudores = sorted(top_deudores, key=lambda x: x["saldo"], reverse=True)[:5]
+
+#     ── DATOS 6 MESES — agrupado, 4 consultas en total (antes eran ~24) ──
+#     meses_6 = []
+#     claves_mes = []  # lista de (año, mes) en el mismo orden que meses_6, preservando tu cálculo original
+#     for i in range(5, -1, -1):
+#         target = hoy.replace(day=1) - timedelta(days=30 * i)
+#         m, a = target.month, target.year
+#         meses_6.append(MESES[m - 1])
+#         claves_mes.append((a, m))
+
+#     fecha_rango_inicio = min(date(a, m, 1) for a, m in claves_mes)
+
+#     1 consulta: cobros de cuotas agrupados por mes
+#     cobrado_cuotas_qs = (
+#         Pago.objects.filter(
+#             factura__empresa=empresa, fecha_pago__gte=fecha_rango_inicio
+#         )
+#         .exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO)
+#         .annotate(mes_trunc=TruncMonth("fecha_pago"))
+#         .values("mes_trunc")
+#         .annotate(total=Sum("monto"))
+#     )
+#     cobrado_cuotas_dict = {
+#         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+#         for x in cobrado_cuotas_qs
+#     }
+
+#     1 consulta: cobros de otros ingresos agrupados por mes
+#     cobrado_otros_qs = (
+#         CobroOtrosIngresos.objects.filter(
+#             factura__empresa=empresa, fecha_cobro__gte=fecha_rango_inicio
+#         )
+#         .annotate(mes_trunc=TruncMonth("fecha_cobro"))
+#         .values("mes_trunc")
+#         .annotate(total=Sum("monto"))
+#     )
+#     cobrado_otros_dict = {
+#         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+#         for x in cobrado_otros_qs
+#     }
+
+#     1 consulta: facturas de cuotas pendientes agrupadas por mes de vencimiento
+#     porcobrar_cuotas_qs = (
+#         Factura.objects.filter(
+#             empresa=empresa,
+#             estatus="pendiente",
+#             activo=True,
+#             fecha_vencimiento__gte=fecha_rango_inicio,
+#         )
+#         .annotate(mes_trunc=TruncMonth("fecha_vencimiento"))
+#         .values("mes_trunc")
+#         .annotate(total=Sum("monto"))
+#     )
+#     porcobrar_cuotas_dict = {
+#         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+#         for x in porcobrar_cuotas_qs
+#     }
+
+#     1 consulta: facturas de otros ingresos pendientes agrupadas por mes
+#     porcobrar_otros_qs = (
+#         FacturaOtrosIngresos.objects.filter(
+#             empresa=empresa,
+#             estatus="pendiente",
+#             activo=True,
+#             fecha_vencimiento__gte=fecha_rango_inicio,
+#         )
+#         .annotate(mes_trunc=TruncMonth("fecha_vencimiento"))
+#         .values("mes_trunc")
+#         .annotate(total=Sum("monto"))
+#     )
+#     porcobrar_otros_dict = {
+#         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+#         for x in porcobrar_otros_qs
+#     }
+
+#     1 consulta: gastos pagados agrupados por mes
+#     gpagados_qs = (
+#         PagoGasto.objects.filter(
+#             gasto__empresa=empresa, fecha_pago__gte=fecha_rango_inicio, monto__gt=0
+#         )
+#         .annotate(mes_trunc=TruncMonth("fecha_pago"))
+#         .values("mes_trunc")
+#         .annotate(total=Sum("monto"))
+#     )
+#     gpagados_dict = {
+#         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+#         for x in gpagados_qs
+#     }
+
+#     1 consulta: gastos pendientes agrupados por mes
+#     gpendientes_qs = (
+#         Gasto.objects.filter(
+#             empresa=empresa, estatus="pendiente", fecha__gte=fecha_rango_inicio
+#         )
+#         .annotate(mes_trunc=TruncMonth("fecha"))
+#         .values("mes_trunc")
+#         .annotate(total=Sum("monto"))
+#     )
+#     gpendientes_dict = {
+#         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
+#         for x in gpendientes_qs
+#     }
+
+#     Arma las 4 listas finales, en el mismo orden que antes, leyendo de los diccionarios (sin más consultas)
+#     ingresos_cobrados_6 = []
+#     ingresos_porcobrar_6 = []
+#     gastos_pagados_6 = []
+#     gastos_pendientes_6 = []
+
+#     for a, m in claves_mes:
+#         cobrado = cobrado_cuotas_dict.get((a, m), 0) + cobrado_otros_dict.get((a, m), 0)
+#         porcobrar = porcobrar_cuotas_dict.get((a, m), 0) + porcobrar_otros_dict.get(
+#             (a, m), 0
+#         )
+#         gpagados = gpagados_dict.get((a, m), 0)
+#         gpendientes = gpendientes_dict.get((a, m), 0)
+
+#         ingresos_cobrados_6.append(cobrado)
+#         ingresos_porcobrar_6.append(porcobrar)
+#         gastos_pagados_6.append(gpagados)
+#         gastos_pendientes_6.append(gpendientes)
+
+#     mensaje_pago = None
+#     if request.GET.get("pago") == "ok":
+#         mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
+
+#     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
+
+#     mostrar_wizard = (
+#         request.user.perfilusuario.mostrar_wizard
+#         and not request.session.get("wizard_cerrado", False)
+#     )
+#     NUEVO: cuentas bancarias ya existentes (por si vienen del periodo demo)
+#     cuentas_existentes = CuentaBancaria.objects.filter(empresa=empresa, activa=True)
+
+#     return render(
+#         request,
+#         "pantalla_inicio.html",
+#         {
+#             "empresa": empresa,
+#             "hoy": hoy,
+#             "mes_nombre": MESES[mes_actual - 1],
+#             Ingresos
+#             "ingresos_mes": ingresos_mes,
+#             "por_cobrar_mes": por_cobrar_mes,
+#             "ingresos_mes_cuotas": ingresos_mes_cuotas,
+#             "ingresos_mes_otros": ingresos_mes_otros,
+#             "por_cobrar_mes_cuotas": por_cobrar_mes_cuotas,
+#             "por_cobrar_mes_otros": por_cobrar_mes_otros,
+#             "total_posible_ingresos": total_posible_ingresos,
+#             "pct_cobrado": pct_cobrado,
+#             "pct_por_cobrar": pct_por_cobrar,
+#             "delta_ingresos": delta_ingresos,
+#             Gastos
+#             "gastos_pagados_mes": gastos_pagados_mes,
+#             "gastos_pendientes_mes": gastos_pendientes_mes,
+#             "total_gastos_mes": total_gastos_mes,
+#             "delta_gastos": delta_gastos,
+#             Resultado
+#             "resultado_mes": resultado_mes,
+#             "pct_gastos": pct_gastos,
+#             "pct_margen": pct_margen,
+#             Cartera
+#             "cartera_vencida": cartera_vencida,
+#             "facturas_vencidas_count": facturas_vencidas_count,
+#             "saldo_0_30": saldo_0_30,
+#             "saldo_31_60": saldo_31_60,
+#             "saldo_61_90": saldo_61_90,
+#             "saldo_91_180": saldo_91_180,
+#             "saldo_181_mas": saldo_181_mas,
+#             "saldo_31_90": saldo_31_90,
+#             "saldo_90_mas": saldo_90_mas,
+#             Top deudores
+#             "top_deudores": top_deudores,
+#             Gráficas 6 meses
+#             "meses_6": json.dumps(meses_6),
+#             "ingresos_cobrados_6": json.dumps(ingresos_cobrados_6),
+#             "ingresos_porcobrar_6": json.dumps(ingresos_porcobrar_6),
+#             "gastos_pagados_6": json.dumps(gastos_pagados_6),
+#             "gastos_pendientes_6": json.dumps(gastos_pendientes_6),
+#             "mostrar_recordatorio": mostrar_recordatorio,
+#             "mostrar_wizard": mostrar_wizard,
+#             "mensaje_pago": mensaje_pago,
+#             "cuentas_existentes": cuentas_existentes,
+#             "regimen_choices": Empresa.REGIMEN_CHOICES,
+#             "bancos_choices": CuentaBancaria.BANCOS_CHOICES,
+#             "moneda_choices": CuentaBancaria.TIPO_MONEDA,
+#             "tipo_cuenta_choices": CuentaBancaria.TIPO_CUENTA,
+#             "STRIPE_PUBLIC_KEY": settings.STRIPE_PUBLIC_KEY,  # NUEVO
+#             'mostrar_tour_inicial': not perfil.ha_visto_tour_inicial if perfil else False,
+#         },
+#     )
 @login_required
 def dashboard_inicio(request):
     # NUEVO -- perfil se obtiene UNA sola vez, para cualquier tipo de
@@ -115,7 +682,7 @@ def dashboard_inicio(request):
     # funcion -- corrige el UnboundLocalError de antes, donde 'perfil'
     # solo existia dentro del bloque "not is_superuser".
     perfil = getattr(request.user, "perfilusuario", None)
-
+ 
     # NUEVO -- si el usuario (o, para un superusuario, la empresa que
     # tiene seleccionada en sesion) es de una escuela, redirige a su
     # propio dashboard -- asi, sin importar por donde entre, cae en el
@@ -127,33 +694,50 @@ def dashboard_inicio(request):
         )
         if empresa_sesion and empresa_sesion.segmento == "escuela":
             return redirect("dashboard_inicio_escuela")
-
+ 
     # NUEVO -- redirige a los contadores directo a su panel dedicado 03/08/26
     if not request.user.is_superuser:
         perfil = getattr(request.user, "perfilusuario", None)
-
+ 
         # NUEVO -- si es de una escuela, redirige antes que cualquier
         # otra cosa.
         if perfil and perfil.empresa and perfil.empresa.segmento == "escuela":
             return redirect("dashboard_inicio_escuela")
-
+ 
         # NUEVO -- primero verifica si debe cambiar contrasena
         if perfil and perfil.debe_cambiar_password:
             return redirect("cambiar_password_obligatorio")
         if perfil and perfil.es_contador:
             return redirect("panel_contador")
-
+ 
     hoy = date.today()
-    mes_actual = hoy.month
-    anio_actual = hoy.year
-
+ 
+    # NUEVO -- mes y año seleccionados (por defecto, el actual). Todos los
+    # indicadores de la pantalla se calculan para ese periodo. No se permite
+    # elegir meses futuros.
+    try:
+        mes_actual = int(request.GET.get("mes", hoy.month))
+        anio_actual = int(request.GET.get("anio", hoy.year))
+        if not (1 <= mes_actual <= 12) or anio_actual < 2000:
+            raise ValueError
+    except (TypeError, ValueError):
+        mes_actual, anio_actual = hoy.month, hoy.year
+    if (anio_actual, mes_actual) > (hoy.year, hoy.month):
+        mes_actual, anio_actual = hoy.month, hoy.year
+ 
+    es_mes_actual = (anio_actual, mes_actual) == (hoy.year, hoy.month)
+    ultimo_dia_mes = date(anio_actual, mes_actual, calendar.monthrange(anio_actual, mes_actual)[1])
+    # Fecha de corte de la cartera vencida y de los saldos: hoy si es el mes
+    # en curso; el último día del mes si se consulta un mes pasado.
+    ref = hoy if es_mes_actual else ultimo_dia_mes
+ 
     # Empresa
     if request.user.is_superuser:
         empresa_id = request.session.get("empresa_id")
         empresa = Empresa.objects.filter(id=empresa_id).first()
     else:
         empresa = request.user.perfilusuario.empresa
-
+ 
     # ── INGRESOS DEL MES (cuotas + otros ingresos) ──
     ingresos_mes_cuotas = Pago.objects.filter(
         factura__empresa=empresa,
@@ -162,37 +746,37 @@ def dashboard_inicio(request):
     ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
         "total"
     ] or Decimal("0")
-
+ 
     ingresos_mes_otros = CobroOtrosIngresos.objects.filter(
         factura__empresa=empresa,
         fecha_cobro__year=anio_actual,
         fecha_cobro__month=mes_actual,
     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
-
+ 
     ingresos_mes = ingresos_mes_cuotas + ingresos_mes_otros
-
+ 
     # Mes anterior para delta (cuotas + otros ingresos)
     mes_ant = mes_actual - 1 if mes_actual > 1 else 12
     anio_ant = anio_actual if mes_actual > 1 else anio_actual - 1
-
+ 
     ingresos_mes_ant_cuotas = Pago.objects.filter(
         factura__empresa=empresa, fecha_pago__year=anio_ant, fecha_pago__month=mes_ant
     ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
         "total"
     ] or Decimal("0")
-
+ 
     ingresos_mes_ant_otros = CobroOtrosIngresos.objects.filter(
         factura__empresa=empresa, fecha_cobro__year=anio_ant, fecha_cobro__month=mes_ant
     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
-
+ 
     ingresos_mes_ant = ingresos_mes_ant_cuotas + ingresos_mes_ant_otros
-
+ 
     delta_ingresos = (
         round(float((ingresos_mes - ingresos_mes_ant) / ingresos_mes_ant * 100), 1)
         if ingresos_mes_ant > 0
         else None
     )
-
+ 
     # Subquery para pagos parciales (cuotas)
     total_pagado_sq = (
         Pago.objects.filter(factura=OuterRef("pk"))
@@ -200,7 +784,7 @@ def dashboard_inicio(request):
         .annotate(total=Sum("monto"))
         .values("total")
     )
-
+ 
     # Subquery para cobros parciales (otros ingresos)
     total_cobrado_otros_sq = (
         CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"))
@@ -208,7 +792,7 @@ def dashboard_inicio(request):
         .annotate(total=Sum("monto"))
         .values("total")
     )
-
+ 
     # Por cobrar del mes -- cuotas (facturas pendientes con vencimiento en el mes)
     por_cobrar_mes_cuotas = Factura.objects.filter(
         empresa=empresa,
@@ -225,7 +809,7 @@ def dashboard_inicio(request):
             F("monto") - F("total_pagado_ann"), output_field=DecimalField()
         ),
     ).aggregate(total=Sum("saldo_real"))["total"] or Decimal("0")
-
+ 
     # Por cobrar del mes -- otros ingresos
     por_cobrar_mes_otros = FacturaOtrosIngresos.objects.filter(
         empresa=empresa,
@@ -242,9 +826,9 @@ def dashboard_inicio(request):
             F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
         ),
     ).aggregate(total=Sum("saldo_real"))["total"] or Decimal("0")
-
+ 
     por_cobrar_mes = por_cobrar_mes_cuotas + por_cobrar_mes_otros
-
+ 
     total_posible_ingresos = ingresos_mes + por_cobrar_mes
     pct_cobrado = (
         round(float(ingresos_mes / total_posible_ingresos * 100))
@@ -252,7 +836,7 @@ def dashboard_inicio(request):
         else 0
     )
     pct_por_cobrar = 100 - pct_cobrado
-
+ 
     # ── GASTOS DEL MES ──
     gastos_pagados_mes = PagoGasto.objects.filter(
         gasto__empresa=empresa,
@@ -260,14 +844,14 @@ def dashboard_inicio(request):
         fecha_pago__month=mes_actual,
         monto__gt=0,
     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
-
+ 
     gastos_pendientes_mes = Gasto.objects.filter(
         empresa=empresa,
         fecha__year=anio_actual,
         fecha__month=mes_actual,
         estatus="pendiente",
     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
-
+ 
     gastos_mes_ant = PagoGasto.objects.filter(
         gasto__empresa=empresa,
         fecha_pago__year=anio_ant,
@@ -279,45 +863,87 @@ def dashboard_inicio(request):
         if gastos_mes_ant > 0
         else None
     )
-
+ 
     total_gastos_mes = gastos_pagados_mes + gastos_pendientes_mes
     resultado_mes = ingresos_mes - gastos_pagados_mes
     pct_gastos = (
         round(float(gastos_pagados_mes / ingresos_mes * 100)) if ingresos_mes > 0 else 0
     )
     pct_margen = 100 - pct_gastos
-
+ 
     # Calcular cartera manualmente si no hay annotate_saldo
-    facturas_pend_qs = Factura.objects.filter(
-        empresa=empresa, estatus="pendiente", activo=True
-    ).annotate(
-        total_pagado_ann=Coalesce(
-            Subquery(total_pagado_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField()),
-        ),
-        saldo_real=ExpressionWrapper(
-            F("monto") - F("total_pagado_ann"), output_field=DecimalField()
-        ),
-    )
-
-    facturas_otros_pend_qs = FacturaOtrosIngresos.objects.filter(
-        empresa=empresa, estatus="pendiente", activo=True
-    ).annotate(
-        total_cobrado_ann=Coalesce(
-            Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
-            Value(0, output_field=DecimalField()),
-        ),
-        saldo_real=ExpressionWrapper(
-            F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
-        ),
-    )
-
+    if es_mes_actual:
+        # Mes en curso: igual que siempre (situación al día de hoy).
+        facturas_pend_qs = Factura.objects.filter(
+            empresa=empresa, estatus="pendiente", activo=True
+        ).annotate(
+            total_pagado_ann=Coalesce(
+                Subquery(total_pagado_sq, output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            ),
+            saldo_real=ExpressionWrapper(
+                F("monto") - F("total_pagado_ann"), output_field=DecimalField()
+            ),
+        )
+ 
+        facturas_otros_pend_qs = FacturaOtrosIngresos.objects.filter(
+            empresa=empresa, estatus="pendiente", activo=True
+        ).annotate(
+            total_cobrado_ann=Coalesce(
+                Subquery(total_cobrado_otros_sq, output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            ),
+            saldo_real=ExpressionWrapper(
+                F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
+            ),
+        )
+    else:
+        # Mes pasado: cartera AL CIERRE de ese mes. Se consideran las facturas
+        # vencidas a esa fecha y se restan solo los pagos hechos hasta esa fecha.
+        pagado_al_corte_sq = (
+            Pago.objects.filter(factura=OuterRef("pk"), fecha_pago__lte=ref)
+            .values("factura")
+            .annotate(total=Sum("monto"))
+            .values("total")
+        )
+        cobrado_otros_al_corte_sq = (
+            CobroOtrosIngresos.objects.filter(factura=OuterRef("pk"), fecha_cobro__lte=ref)
+            .values("factura")
+            .annotate(total=Sum("monto"))
+            .values("total")
+        )
+        facturas_pend_qs = Factura.objects.filter(
+            empresa=empresa, activo=True, estatus__in=["pendiente", "cobrada"],
+            fecha_vencimiento__lte=ref,
+        ).annotate(
+            total_pagado_ann=Coalesce(
+                Subquery(pagado_al_corte_sq, output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            ),
+            saldo_real=ExpressionWrapper(
+                F("monto") - F("total_pagado_ann"), output_field=DecimalField()
+            ),
+        ).filter(saldo_real__gt=0)
+ 
+        facturas_otros_pend_qs = FacturaOtrosIngresos.objects.filter(
+            empresa=empresa, activo=True, estatus__in=["pendiente", "cobrada"],
+            fecha_vencimiento__lte=ref,
+        ).annotate(
+            total_cobrado_ann=Coalesce(
+                Subquery(cobrado_otros_al_corte_sq, output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            ),
+            saldo_real=ExpressionWrapper(
+                F("monto") - F("total_cobrado_ann"), output_field=DecimalField()
+            ),
+        ).filter(saldo_real__gt=0)
+ 
     # ── CARTERA VENCIDA — todo en 1 sola consulta por tipo (antes eran ~14) ──
-    fecha_30 = hoy - timedelta(days=30)
-    fecha_60 = hoy - timedelta(days=60)
-    fecha_90 = hoy - timedelta(days=90)
-    fecha_180 = hoy - timedelta(days=180)
-
+    fecha_30 = ref - timedelta(days=30)
+    fecha_60 = ref - timedelta(days=60)
+    fecha_90 = ref - timedelta(days=90)
+    fecha_180 = ref - timedelta(days=180)
+ 
     resumen_cuotas = facturas_pend_qs.aggregate(
         total=Sum("saldo_real"),
         cantidad=Count("id"),
@@ -369,7 +995,7 @@ def dashboard_inicio(request):
             )
         ),
     )
-
+ 
     resumen_otros = facturas_otros_pend_qs.aggregate(
         total=Sum("saldo_real"),
         cantidad=Count("id"),
@@ -421,33 +1047,33 @@ def dashboard_inicio(request):
             )
         ),
     )
-
+ 
     def _s(dic, key):
-        return dic.get(key) or Decimal("0")
-
+        return dic.get(key) or Decimal("0")  # noqa: FURB157
+ 
     cartera_vencida = _s(resumen_cuotas, "total") + _s(resumen_otros, "total")
     facturas_vencidas_count = (resumen_cuotas["cantidad"] or 0) + (
         resumen_otros["cantidad"] or 0
     )
-
+ 
     saldo_0_30 = _s(resumen_cuotas, "b_0_30") + _s(resumen_otros, "b_0_30")
     saldo_31_60 = _s(resumen_cuotas, "b_31_60") + _s(resumen_otros, "b_31_60")
     saldo_61_90 = _s(resumen_cuotas, "b_61_90") + _s(resumen_otros, "b_61_90")
     saldo_91_180 = _s(resumen_cuotas, "b_91_180") + _s(resumen_otros, "b_91_180")
     saldo_181_mas = _s(resumen_cuotas, "b_181_mas") + _s(resumen_otros, "b_181_mas")
-
+ 
     saldo_31_90 = float(saldo_31_60) + float(saldo_61_90)
     saldo_90_mas = float(saldo_91_180) + float(saldo_181_mas)
-
+ 
     # ── TOP DEUDORES (cuotas + otros ingresos combinados) ──
     top_deudores = []
-
+ 
     for f in (
         facturas_pend_qs.select_related("cliente", "local", "area_comun")
         .prefetch_related("locales_incluidos")
         .order_by("-monto")[:10]
     ):
-        dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
+        dias = (ref - f.fecha_vencimiento).days if f.fecha_vencimiento < ref else 0
         if f.local:
             local_label = f.local.numero
         elif f.locales_incluidos.exists():
@@ -465,11 +1091,11 @@ def dashboard_inicio(request):
                 "dias_vencido": max(dias, 0),
             }
         )
-
+ 
     for f in facturas_otros_pend_qs.select_related("cliente", "tipo_ingreso").order_by(
         "-monto"
     )[:10]:
-        dias = (hoy - f.fecha_vencimiento).days if f.fecha_vencimiento < hoy else 0
+        dias = (ref - f.fecha_vencimiento).days if f.fecha_vencimiento < ref else 0
         top_deudores.append(
             {
                 "cliente__nombre": f.cliente.nombre if f.cliente else "—",
@@ -481,20 +1107,21 @@ def dashboard_inicio(request):
                 "dias_vencido": max(dias, 0),
             }
         )
-
+ 
     top_deudores = sorted(top_deudores, key=lambda x: x["saldo"], reverse=True)[:5]
-
+ 
     # ── DATOS 6 MESES — agrupado, 4 consultas en total (antes eran ~24) ──
     meses_6 = []
     claves_mes = []  # lista de (año, mes) en el mismo orden que meses_6, preservando tu cálculo original
     for i in range(5, -1, -1):
-        target = hoy.replace(day=1) - timedelta(days=30 * i)
+        # Mes seleccionado y los 5 anteriores (aritmética de meses exacta)
+        target = date(anio_actual, mes_actual, 1) - relativedelta(months=i)
         m, a = target.month, target.year
         meses_6.append(MESES[m - 1])
         claves_mes.append((a, m))
-
+ 
     fecha_rango_inicio = min(date(a, m, 1) for a, m in claves_mes)
-
+ 
     # 1 consulta: cobros de cuotas agrupados por mes
     cobrado_cuotas_qs = (
         Pago.objects.filter(
@@ -509,7 +1136,7 @@ def dashboard_inicio(request):
         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
         for x in cobrado_cuotas_qs
     }
-
+ 
     # 1 consulta: cobros de otros ingresos agrupados por mes
     cobrado_otros_qs = (
         CobroOtrosIngresos.objects.filter(
@@ -523,7 +1150,7 @@ def dashboard_inicio(request):
         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
         for x in cobrado_otros_qs
     }
-
+ 
     # 1 consulta: facturas de cuotas pendientes agrupadas por mes de vencimiento
     porcobrar_cuotas_qs = (
         Factura.objects.filter(
@@ -540,7 +1167,7 @@ def dashboard_inicio(request):
         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
         for x in porcobrar_cuotas_qs
     }
-
+ 
     # 1 consulta: facturas de otros ingresos pendientes agrupadas por mes
     porcobrar_otros_qs = (
         FacturaOtrosIngresos.objects.filter(
@@ -557,7 +1184,7 @@ def dashboard_inicio(request):
         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
         for x in porcobrar_otros_qs
     }
-
+ 
     # 1 consulta: gastos pagados agrupados por mes
     gpagados_qs = (
         PagoGasto.objects.filter(
@@ -571,7 +1198,7 @@ def dashboard_inicio(request):
         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
         for x in gpagados_qs
     }
-
+ 
     # 1 consulta: gastos pendientes agrupados por mes
     gpendientes_qs = (
         Gasto.objects.filter(
@@ -585,13 +1212,13 @@ def dashboard_inicio(request):
         (x["mes_trunc"].year, x["mes_trunc"].month): float(x["total"] or 0)
         for x in gpendientes_qs
     }
-
+ 
     # Arma las 4 listas finales, en el mismo orden que antes, leyendo de los diccionarios (sin más consultas)
     ingresos_cobrados_6 = []
     ingresos_porcobrar_6 = []
     gastos_pagados_6 = []
     gastos_pendientes_6 = []
-
+ 
     for a, m in claves_mes:
         cobrado = cobrado_cuotas_dict.get((a, m), 0) + cobrado_otros_dict.get((a, m), 0)
         porcobrar = porcobrar_cuotas_dict.get((a, m), 0) + porcobrar_otros_dict.get(
@@ -599,25 +1226,46 @@ def dashboard_inicio(request):
         )
         gpagados = gpagados_dict.get((a, m), 0)
         gpendientes = gpendientes_dict.get((a, m), 0)
-
+ 
         ingresos_cobrados_6.append(cobrado)
         ingresos_porcobrar_6.append(porcobrar)
         gastos_pagados_6.append(gpagados)
         gastos_pendientes_6.append(gpendientes)
-
+ 
     mensaje_pago = None
     if request.GET.get("pago") == "ok":
         mensaje_pago = "¡Tu suscripción se ha activado correctamente! Puedes empezar a usar el sistema."
-
+ 
     mostrar_recordatorio = debe_mostrar_recordatorio_facturacion(empresa)
-
+ 
     mostrar_wizard = (
         request.user.perfilusuario.mostrar_wizard
         and not request.session.get("wizard_cerrado", False)
     )
     # NUEVO: cuentas bancarias ya existentes (por si vienen del periodo demo)
     cuentas_existentes = CuentaBancaria.objects.filter(empresa=empresa, activa=True)
-
+ 
+    # NUEVO -- Saldo en bancos al cierre del mes seleccionado (cada cuenta
+    # activa y total). calcular_saldo_acumulado_hasta(cuenta, año, mes) devuelve
+    # el saldo antes del día 1 de ese mes, por eso se pide el mes siguiente.
+    if mes_actual == 12:
+        anio_sig, mes_sig = anio_actual + 1, 1
+    else:
+        anio_sig, mes_sig = anio_actual, mes_actual + 1
+    saldos_bancos = []
+    saldo_bancos_total = Decimal("0")
+    for cuenta in CuentaBancaria.objects.filter(empresa=empresa, activa=True).order_by("banco"):
+        try:
+            saldo_cuenta = calcular_saldo_acumulado_hasta(cuenta, anio_sig, mes_sig)
+        except Exception:
+            logging.getLogger(__name__).exception("No se pudo calcular el saldo de la cuenta %s", cuenta.pk)
+            continue
+        saldos_bancos.append({"cuenta": cuenta, "saldo": saldo_cuenta})
+        saldo_bancos_total += saldo_cuenta
+ 
+    anios_disponibles = list(range(max(hoy.year - 4, 2020), hoy.year + 1))
+    meses_opciones = [(n + 1, nombre) for n, nombre in enumerate(MESES)]
+ 
     return render(
         request,
         "pantalla_inicio.html",
@@ -625,6 +1273,15 @@ def dashboard_inicio(request):
             "empresa": empresa,
             "hoy": hoy,
             "mes_nombre": MESES[mes_actual - 1],
+            # Selector de periodo y saldo en bancos
+            "mes_sel": mes_actual,
+            "anio_sel": anio_actual,
+            "es_mes_actual": es_mes_actual,
+            "fecha_corte": ref,
+            "anios_disponibles": anios_disponibles,
+            "meses_opciones": meses_opciones,
+            "saldos_bancos": saldos_bancos,
+            "saldo_bancos_total": saldo_bancos_total,
             # Ingresos
             "ingresos_mes": ingresos_mes,
             "por_cobrar_mes": por_cobrar_mes,
@@ -1624,7 +2281,7 @@ def _find_perfil_from_checkout_session(session):
             user = User.objects.filter(id=int(client_ref)).first()
             if user:
                 perfil = PerfilUsuario.objects.filter(usuario=user).first()
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     return perfil
@@ -1723,7 +2380,7 @@ def stripe_webhook(request):
                 perfil.usuario.save(update_fields=["email"])
                 print(f"Email tomado de Stripe checkout: {email_stripe}")
 
-        tenia_suscripcion = bool(
+        tenia_suscripcion = bool(  # noqa: F841
             perfil.stripe_plus_subscription_id or perfil.stripe_premium_subscription_id
         )
 
@@ -1794,7 +2451,7 @@ def stripe_webhook(request):
 
         else:
             # fallback por coincidencia con ids guardados
-            if subscription_id == perfil.stripe_plus_subscription_id:
+            if subscription_id == perfil.stripe_plus_subscription_id:  # noqa: SIM114
                 pass
             elif subscription_id == perfil.stripe_premium_subscription_id:
                 pass
@@ -2057,7 +2714,7 @@ def guardar_datos_empresa(request):
         except ValueError:
             saldo_inicial = 0.0
 
-        if banco and numero_cuenta:
+        if banco and numero_cuenta:  # noqa: SIM102
             if not CuentaBancaria.objects.filter(
                 empresa=empresa, numero_cuenta=numero_cuenta
             ).exists():
@@ -2659,7 +3316,7 @@ def visitante_consulta_facturas(request):
             "factura_pendiente_id": factura_pendiente_id,
             "empresa": empresa,
             "nombre_cliente": nombre_cliente,
-            "facturas": facturas_paginadas,
+            "facturas": facturas_paginadas,  # noqa: F601
         },
     )
 
@@ -2797,9 +3454,6 @@ def visitante_timbrar_factura(request, pk):
         messages.error(request, "No tienes permiso para timbrar esta factura.")
         return redirect("visitante_consulta_facturas")
 
-    # Validar membresía
-    # if getattr(visitante, "membresia_tipo", "basica") not in ["plus", "premium"]:
-    #     return redirect("visitante_membresia_pago")
 
     empresa = factura.empresa
     if not empresa.es_premium:
@@ -2875,8 +3529,8 @@ def calcular_monto_a_cobrar_stripe(monto_neto_deseado):
     """
     monto_neto_deseado = Decimal(str(monto_neto_deseado))
     total = (monto_neto_deseado + COMISION_STRIPE_FIJA) / (
-        Decimal("1") - COMISION_STRIPE_PORCENTAJE
-    )  # noqa: FURB157
+        Decimal("1") - COMISION_STRIPE_PORCENTAJE  # noqa: FURB157
+    )  
     # Redondea HACIA ARRIBA al centavo -- así la empresa nunca recibe
     # ni un centavo menos del monto real de la factura por un
     # redondeo desfavorable.
@@ -3015,17 +3669,6 @@ def stripe_webhook_visitante(request):
     # comportamiento anterior.
     monto_neto_meta = metadata.get("monto_neto")
 
-    # try:
-    #     factura = Factura.objects.get(id=int(factura_id))
-    #     if event_type == "checkout.session.completed":
-    #         monto_pagado = obj.get("amount_total", 0) / 100.0
-    #         observaciones = f"ID transacción: {obj.get('payment_intent')}"
-    #     elif event_type == "payment_intent.succeeded":
-    #         monto_pagado = obj.get("amount", 0) / 100.0
-    #         observaciones = f"ID transacción: {obj.get('id')}"
-    #     else:
-    #         logger.info(f"Ignorando evento Stripe tipo: {event_type}")
-    #         return JsonResponse({"status": "ignored"})
     try:
         factura = Factura.objects.get(id=int(factura_id))
         if event_type == "checkout.session.completed":
@@ -5000,15 +5643,15 @@ def api_estado_resultados(request):
             .distinct()
         )
 
-    meses_anios_set = set(
+    meses_anios_set = set(  # noqa: C401
         (x["mes"], x["anio"]) for x in list(meses_anios) + list(meses_anios_otros)
     )
     meses_anios_list = sorted(
         [t for t in meses_anios_set if t[0] is not None and t[1] is not None],
         key=lambda x: (x[1], x[0]),
     )
-    meses_unicos = sorted(set(m for m, y in meses_anios_list if m))
-    anios_unicos = sorted(set(y for m, y in meses_anios_list if y))
+    meses_unicos = sorted(set(m for m, y in meses_anios_list if m))  # noqa: C401
+    anios_unicos = sorted(set(y for m, y in meses_anios_list if y))  # noqa: C401
 
     # --- Periodo por defecto ---
     if not periodo and not fecha_inicio and not fecha_fin and not mes and not anio:
@@ -5095,57 +5738,7 @@ def api_estado_resultados(request):
         pagos = pagos.filter(factura__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos_modo = gastos_modo.filter(gasto__empresa_id=empresa_id)
-
-    # --- Saldo inicial dinámico acumulado (AHORA incluye depósitos no identificados) ---
-    # saldo_inicial = saldo_inicial_empresa
-    # if empresa and empresa_id and fecha_inicio:
-    #     anio_inicio = empresa.fecha_creacion.year if hasattr(empresa, 'fecha_creacion') and empresa.fecha_creacion else fecha_inicio.year
-
-    #     if mes and anio:
-    #         anio_tope = int(anio)
-    #         mes_tope = int(mes) - 1
-    #         if mes_tope == 0:
-    #             anio_tope -= 1
-    #             mes_tope = 12
-    #     else:
-    #         if fecha_inicio.month == 1:
-    #             anio_tope = fecha_inicio.year - 1
-    #             mes_tope = 12
-    #         else:
-    #             anio_tope = fecha_inicio.year
-    #             mes_tope = fecha_inicio.month - 1
-
-    #     if anio_tope >= anio_inicio:
-    #         for y in range(anio_inicio, anio_tope + 1):
-    #             mes_fin_loop = mes_tope if y == anio_tope else 12
-    #             for m in range(1, mes_fin_loop + 1):
-    #                 fi = date(y, m, 1)
-    #                 ff = date(y, m + 1, 1) - timedelta(days=1) if m < 12 else date(y, 12, 31)
-    #                 ing = float(
-    #                     Pago.objects.exclude(forma_pago="nota_credito")
-    #                     .filter(factura__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-    #                     .aggregate(t=Sum("monto"))["t"] or 0
-    #                 ) + float(
-    #                     CobroOtrosIngresos.objects
-    #                     .filter(factura__empresa_id=empresa_id, fecha_cobro__gte=fi, fecha_cobro__lte=ff)
-    #                     .aggregate(t=Sum("monto"))["t"] or 0
-    #                 ) + float(
-    #                     # NUEVO: depósitos no identificados, igual que la vista web
-    #                     Pago.objects.filter(
-    #                         factura__isnull=True, identificado=False, empresa_id=empresa_id,
-    #                         fecha_pago__gte=fi, fecha_pago__lte=ff,
-    #                     ).aggregate(t=Sum("monto"))["t"] or 0
-    #                 )
-    #                 gto = float(
-    #                     PagoGasto.objects
-    #                     .filter(gasto__empresa_id=empresa_id, fecha_pago__gte=fi, fecha_pago__lte=ff)
-    #                     .aggregate(t=Sum("monto"))["t"] or 0
-    #                 ) + float(
-    #                     FondeoCajaChica.objects
-    #                     .filter(empresa_id=empresa_id, fecha__gte=fi, fecha__lte=ff)
-    #                     .aggregate(t=Sum("importe_cheque"))["t"] or 0
-    #                 )
-    #                 saldo_inicial += ing - gto
+        
     saldo_inicial = saldo_inicial_empresa
     if empresa and empresa_id and fecha_inicio:
         saldo_inicial = 0.0

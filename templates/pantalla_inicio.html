@@ -26,7 +26,8 @@
         .empresa-nombre { font-size: 1.1rem; font-weight: 700; }
         .empresa-sub { font-size: 0.75rem; opacity: 0.75; }
 
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .kpi-card.banco { border-top-color: #6c3483; }
         @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
 
         .kpi-card {
@@ -363,6 +364,25 @@ if (premiumBtn) {
         </div>
     </div>
 
+    <!-- SELECTOR DE PERIODO -->
+    <form method="get" class="d-flex align-items-center flex-wrap gap-2 mb-3">
+        <label class="fw-semibold small mb-0"><i class="bi bi-calendar3 me-1"></i>Periodo:</label>
+        <select name="mes" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+            {% for n, nombre in meses_opciones %}
+            <option value="{{ n }}" {% if n == mes_sel %}selected{% endif %}>{{ nombre }}</option>
+            {% endfor %}
+        </select>
+        <select name="anio" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+            {% for a in anios_disponibles %}
+            <option value="{{ a }}" {% if a == anio_sel %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+        {% if not es_mes_actual %}
+        <a href="{% url 'dashboard_inicio' %}" class="btn btn-sm btn-outline-secondary">Mes actual</a>
+        <span class="small text-muted">Cartera y saldos al {{ fecha_corte|date:"d/m/Y" }}</span>
+        {% endif %}
+    </form>
+
     <!-- KPI GRID -->
     <div class="kpi-grid">
 
@@ -486,7 +506,7 @@ if (premiumBtn) {
         <!-- CARTERA -->
         <div class="kpi-card cart">
             <i class="bi bi-exclamation-triangle-fill kpi-icon" style="color:#d4ac0d;"></i>
-            <div class="kpi-label"><i class="bi bi-clock-history me-1"></i>Cartera total vencida</div>
+            <div class="kpi-label"><i class="bi bi-clock-history me-1"></i>Cartera total vencida{% if not es_mes_actual %} al corte{% endif %}</div>
             <div class="kpi-val" style="color:#d4ac0d;">${{ cartera_vencida|floatformat:0|intcomma }}</div>
             <div class="kpi-sub">{{ facturas_vencidas_count }} facturas pendientes</div>
             <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
@@ -494,6 +514,22 @@ if (premiumBtn) {
                 <span class="ant-pill ant-60">31-90: ${{ saldo_31_90|floatformat:0|intcomma }}</span>
                 <span class="ant-pill ant-90">+90: ${{ saldo_90_mas|floatformat:0|intcomma }}</span>
             </div>
+        </div>
+
+        <!-- SALDO EN BANCOS -->
+        <div class="kpi-card banco">
+            <i class="bi bi-bank kpi-icon" style="color:#6c3483;"></i>
+            <div class="kpi-label"><i class="bi bi-bank2 me-1"></i>Saldo en bancos</div>
+            <div class="kpi-val {% if saldo_bancos_total >= 0 %}text-success{% else %}text-danger{% endif %}">${{ saldo_bancos_total|floatformat:0|intcomma }}</div>
+            <div class="kpi-sub">Al cierre de {{ mes_nombre }} {{ anio_sel }}</div>
+            {% for s in saldos_bancos %}
+            <div style="display:flex;justify-content:space-between;font-size:0.72rem;margin-top:3px;">
+                <span>{{ s.cuenta.get_banco_display }} {{ s.cuenta.numero_cuenta|slice:"-4:" }}</span>
+                <span>${{ s.saldo|floatformat:0|intcomma }}</span>
+            </div>
+            {% empty %}
+            <div class="kpi-sub">Sin cuentas bancarias activas</div>
+            {% endfor %}
         </div>
 
         <!-- RESULTADO -->

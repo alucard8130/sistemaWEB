@@ -31,7 +31,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from unidecode import unidecode
 
-from caja_chica.models import GastoCajaChica, ValeCaja
+from caja_chica.models import FondeoCajaChica
 from conciliaciones.utils import validar_periodo_abierto
 from empleados.models import Empleado
 from empresas.models import CuentaBancaria, Empresa
@@ -516,20 +516,6 @@ def gastos_lista(request):
     porc_pagadas = (num_pagadas / total_solicitudes * 100) if total_solicitudes else 0
     porc_pendientes = (num_pendientes / total_solicitudes * 100) if total_solicitudes else 0
     folio_comprobante = request.GET.get("folio_comprobante")
-
-
-    # Queryset final con anotaciones
-    # gastos = (
-    #     gastos_base.select_related(
-    #         "empresa", "proveedor", "empleado", "tipo_gasto",
-    #         "tipo_gasto__subgrupo", "tipo_gasto__subgrupo__grupo",
-    #     )
-    #     .annotate(
-    #         total_pagado_ann=Coalesce(Sum('pagos__monto'), Value(0, output_field=DecimalField())),
-    #         saldo_restante_ann=F('monto') - Coalesce(Sum('pagos__monto'), Value(0, output_field=DecimalField())),
-    #     )
-    #     .order_by('-saldo_restante_ann', '-fecha', '-id')  # Ordenar por saldo descendente, luego por fecha descendente y luego por ID descendente
-    # )
 
     # NUEVO -- acota también la LISTA (no solo los KPIs) al mismo rango
     # de fechas por default (año actual) -- evita que el JOIN+GROUP BY de
@@ -1194,87 +1180,75 @@ def grafico_gastos_mensual(request):
     mes_int = int(mes) if mes and str(mes).isdigit() else None
     es_super = request.user.is_superuser
     tipo_gasto=request.GET.get('tipo_gasto','todos')
-
+ 
     # Filtro por empresa si no es superusuario
     if es_super:
         pagos = PagoGasto.objects.all()
-        gastos_caja_chica = GastoCajaChica.objects.all()
-        vales_caja_chica = ValeCaja.objects.all()
+        # Caja chica se grafica por FONDEOS (dinero que salió a caja chica),
+        # no por gastos ni vales. Los fondeos por cobros en efectivo no salen de bancos.
+        fondeos = FondeoCajaChica.objects.exclude(origen="cobros_efectivo")
         presup_qs = Presupuesto.objects.filter(anio=anio)
     else:
         empresa = request.user.perfilusuario.empresa
         pagos = PagoGasto.objects.filter(gasto__empresa=empresa)
-        gastos_caja_chica = GastoCajaChica.objects.filter(fondeo__empresa=empresa)
-        vales_caja_chica = ValeCaja.objects.filter(fondeo__empresa=empresa)
+        fondeos = FondeoCajaChica.objects.filter(empresa=empresa).exclude(origen="cobros_efectivo")
         presup_qs = Presupuesto.objects.filter(anio=anio, empresa=empresa)
-
+ 
     # Aplica el filtro por tipo de gasto
     if tipo_gasto == 'pagos':
-        gastos_caja_chica = GastoCajaChica.objects.none()
-        vales_caja_chica = ValeCaja.objects.none()
-    elif tipo_gasto == 'caja':
+        fondeos = FondeoCajaChica.objects.none()
+    elif tipo_gasto in ('caja', 'vales'):  # 'vales' se conserva por enlaces viejos
         pagos = PagoGasto.objects.none()
-        vales_caja_chica = ValeCaja.objects.none()
-    elif tipo_gasto == 'vales':
-        pagos = PagoGasto.objects.none()
-        gastos_caja_chica = GastoCajaChica.objects.none()
-
+ 
     # Presupuesto mensual del año seleccionado
     presup_dict = {}
     for p in presup_qs:
         mes_p = int(p.mes)
         presup_dict[mes_p] = presup_dict.get(mes_p, 0.0) + float(p.monto or 0)
-
+ 
     # Filtro por año y mes
     pagos = pagos.filter(fecha_pago__year=anio)
-    gastos_caja_chica = gastos_caja_chica.filter(fecha__year=anio)
-    vales_caja_chica = vales_caja_chica.filter(fecha__year=anio)
-
+    fondeos = fondeos.filter(fecha__year=anio)
+ 
     if mes_int:
         pagos = pagos.filter(fecha_pago__month=mes_int)
-        gastos_caja_chica = gastos_caja_chica.filter(fecha__month=mes_int)
-        vales_caja_chica = vales_caja_chica.filter(fecha__month=mes_int)
-
+        fondeos = fondeos.filter(fecha__month=mes_int)
+ 
     # Agrupa por mes
     pagos_por_mes = pagos.annotate(mes=TruncMonth('fecha_pago')).values('mes').annotate(total=Sum('monto')).order_by('mes')
-    gastos_caja_chica_por_mes = gastos_caja_chica.annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('importe')).order_by('mes')
-    vales_caja_chica_por_mes = vales_caja_chica.annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('importe')).order_by('mes')
-
+    fondeos_por_mes = fondeos.annotate(mes=TruncMonth('fecha')).values('mes').annotate(total=Sum('importe_cheque')).order_by('mes')
+ 
     # Etiquetas y datos para el gráfico
     todos_los_meses = sorted(
     set(
         [x['mes'] for x in pagos_por_mes if x['mes'] is not None] +
-        [x['mes'] for x in gastos_caja_chica_por_mes if x['mes'] is not None] +
-        [x['mes'] for x in vales_caja_chica_por_mes if x['mes'] is not None]
+        [x['mes'] for x in fondeos_por_mes if x['mes'] is not None]
     )
 )
     labels_meses = [DateFormat(m).format('F Y') for m in todos_los_meses]
-
+ 
     #dict para acceso rápido a totales por mes
     pagos_dict = {x["mes"]: float(x["total"] or 0) for x in pagos_por_mes if x["mes"] is not None}
-    caja_dict = {x["mes"]: float(x["total"] or 0) for x in gastos_caja_chica_por_mes if x["mes"] is not None}
-    vales_dict = {x["mes"]: float(x["total"] or 0) for x in vales_caja_chica_por_mes if x["mes"] is not None}
-
+    caja_dict = {x["mes"]: float(x["total"] or 0) for x in fondeos_por_mes if x["mes"] is not None}
+ 
    
     data_gastos = [pagos_dict.get(m, 0.0) for m in todos_los_meses]
     data_caja = [caja_dict.get(m, 0.0) for m in todos_los_meses]
-    data_vales = [vales_dict.get(m, 0.0) for m in todos_los_meses]
     data_presupuesto = [float(presup_dict.get(m.month, 0.0)) for m in todos_los_meses]
-
-    # Suma total de egresos por mes (pagos + caja + vales)
-    totales_mes = [data_gastos[i] + data_caja[i] + data_vales[i] for i in range(len(data_gastos))]
-
+ 
+    # Suma total de egresos por mes (pagos + fondeos de caja chica)
+    totales_mes = [data_gastos[i] + data_caja[i] for i in range(len(data_gastos))]
+ 
     if not data_presupuesto:
         data_presupuesto = [0 for _ in labels_meses]
-
+ 
     # Si no hay datos, muestra un mes vacío
     if not labels_meses:
         labels_meses = ["Sin datos"]
         data_gastos = [0.0]
         data_caja = [0.0]
-        data_vales = [0.0]    
         data_presupuesto = [0.0]
-
+ 
     meses_lista = [
     {'num': 1, 'nombre': 'Enero'},
     {'num': 2, 'nombre': 'Febrero'},
@@ -1294,7 +1268,6 @@ def grafico_gastos_mensual(request):
         #'data_total_egresos': json.dumps(data_total_egresos),
         'data_gastos': json.dumps(data_gastos),
         'data_caja': json.dumps(data_caja),
-        'data_vales': json.dumps(data_vales),
         'data_presupuesto': json.dumps(data_presupuesto),
         'anio': anio,
         'mes': mes,
@@ -1302,6 +1275,7 @@ def grafico_gastos_mensual(request):
         'totales_mes': json.dumps(totales_mes),
         'tipo_gasto': tipo_gasto,
     })
+
 
 @login_required
 #grafico gastos comparativo anual
@@ -1314,25 +1288,17 @@ def grafico_gastos_anual(request):
         .annotate(total=Sum('monto'))
         .order_by('year')
     )
-
-    # Gastos caja chica agrupados por año
-    gastos_caja = (
-        GastoCajaChica.objects.filter(fondeo__empresa=empresa)
+ 
+    # Fondeos de caja chica agrupados por año (no incluye los de cobros en efectivo)
+    fondeos = (
+        FondeoCajaChica.objects.filter(empresa=empresa)
+        .exclude(origen="cobros_efectivo")
         .annotate(year=TruncYear('fecha'))
         .values('year')
-        .annotate(total=Sum('importe'))
+        .annotate(total=Sum('importe_cheque'))
         .order_by('year')
     )
-
-    # Vales caja agrupados por año
-    vales_caja = (
-        ValeCaja.objects.filter(fondeo__empresa=empresa)
-        .annotate(year=TruncYear('fecha'))
-        .values('year')
-        .annotate(total=Sum('importe'))
-        .order_by('year')
-    )
-
+ 
     # Presupuesto agrupado por año
     presupuestos = (
         Presupuesto.objects.filter(empresa=empresa)
@@ -1340,38 +1306,35 @@ def grafico_gastos_anual(request):
         .annotate(total=Sum('monto'))
         .order_by('anio')
     )
-
+ 
     # Unificar años
     years = sorted(
         set(
             [p['year'].year for p in pagos] +
-            [g['year'].year for g in gastos_caja] +
-            [v['year'].year for v in vales_caja] +
+            [g['year'].year for g in fondeos] +
             [b['anio'] for b in presupuestos]
         )
     )
-
+ 
     pagos_dict = {p['year'].year: float(p['total']) for p in pagos}
-    gastos_caja_dict = {g['year'].year: float(g['total']) for g in gastos_caja}
-    vales_caja_dict = {v['year'].year: float(v['total']) for v in vales_caja}
+    fondeos_dict = {g['year'].year: float(g['total']) for g in fondeos}
     presupuestos_dict = {b['anio']: float(b['total']) for b in presupuestos}
-
+ 
     pagos_data = [pagos_dict.get(y, 0) for y in years]
-    gastos_caja_data = [gastos_caja_dict.get(y, 0) for y in years]
-    vales_caja_data = [vales_caja_dict.get(y, 0) for y in years]
+    fondeos_data = [fondeos_dict.get(y, 0) for y in years]
     presupuestos_data = [presupuestos_dict.get(y, 0) for y in years]
-
-    totales_anio = [pagos_data[i] + gastos_caja_data[i] + vales_caja_data[i] for i in range(len(years))]
+ 
+    totales_anio = [pagos_data[i] + fondeos_data[i] for i in range(len(years))]
     
     context = {
         'years': json.dumps(years),
         'pagos_data': json.dumps(pagos_data),
-        'gastos_caja_data': json.dumps(gastos_caja_data),
-        'vales_caja_data': json.dumps(vales_caja_data),
+        'fondeos_data': json.dumps(fondeos_data),
         'presupuestos_data': json.dumps(presupuestos_data),
         'totales_anio': json.dumps(totales_anio),
 }
     return render(request, 'gastos/grafico_gastos_anual.html', context)
+
 
 
 def buscar_por_id_o_nombre(modelo, valor, campo="nombre"):
