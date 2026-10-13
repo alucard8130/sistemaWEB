@@ -160,13 +160,19 @@ MANUAL DE USUARIO COMPLETO:
         try:
             client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
             respuesta = client.messages.create(
-                model="claude-opus-4-6",
+                model="claude-sonnet-5-5",
                 max_tokens=1000,
-                system=system_prompt,
+                system=[
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
                 messages=[{"role": "user", "content": mensaje_texto}],
             )
             texto = respuesta.content[0].text.strip()
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
         if texto == "NO_ENCONTRADO" or not texto:
@@ -179,10 +185,10 @@ MANUAL DE USUARIO COMPLETO:
     def procesar_mensaje(
         self,
         mensaje_texto: str,
-        conversacion_id: int = None,
-        intencion_sugerida: str = None,
-        datos_comprobante: dict = None,
-    ) -> Dict[str, Any]:
+        conversacion_id: int = None,  # noqa: RUF013
+        intencion_sugerida: str = None,  # noqa: RUF013
+        datos_comprobante: dict = None,  # noqa: RUF013
+    ) -> Dict[str, Any]:  # noqa: UP006
         """Procesa mensaje usando el sistema de handlers"""
 
         nivel_empresa = self._nivel_empresa(self.empresa)

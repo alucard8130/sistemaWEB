@@ -44,7 +44,7 @@ def solicitud_publicidad_api(request):
             subject=asunto,
             message=mensaje,
             from_email=None,
-            recipient_list=['publicidad@gesacadmin.com'], # Tu correo
+            recipient_list=['adminsoftheron@gesacadmin.com'], # Tu correo
             fail_silently=False,
         )
         
