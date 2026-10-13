@@ -2234,7 +2234,14 @@ def dashboard_saldos(request):
     if cliente_id:
         facturas = facturas.filter(cliente_id=cliente_id)
     if origen == "local":
-        facturas = facturas.filter(local__isnull=False)
+        facturas = facturas.filter(
+            Q(local__isnull=False)
+            | Q(
+                local__isnull=True,
+                area_comun__isnull=True,
+                pk__in=Factura.locales_incluidos.through.objects.values("factura_id"),
+            )
+        )
 
     elif origen == "area":
         facturas = facturas.filter(area_comun__isnull=False)
@@ -2411,14 +2418,22 @@ def dashboard_saldos(request):
         # Top locales/áreas
         top_local_area = (
             facturas.annotate(
+                grupo_nombre=Subquery(
+                    Factura.locales_incluidos.through.objects.filter(
+                        factura_id=OuterRef("pk"),
+                        localcomercial__grupo_facturacion__isnull=False,
+                    ).values("localcomercial__grupo_facturacion__nombre")[:1]
+                ),
                 nombre_local_area=Coalesce(
                     F("local__numero"),
                     F("area_comun__numero"),
+                    F("grupo_nombre"),
                     output_field=CharField(),
                 ),
                 tipo_origen=Case(
                     When(local__isnull=False, then=Value("Local")),
                     When(area_comun__isnull=False, then=Value("Área")),
+                    When(grupo_nombre__isnull=False, then=Value("Grupo")),
                     default=Value(""),
                     output_field=CharField(),
                 ),
@@ -2463,14 +2478,22 @@ def dashboard_saldos(request):
     else:
         top_adeudos = (
             facturas.annotate(
+                grupo_nombre=Subquery(
+                    Factura.locales_incluidos.through.objects.filter(
+                        factura_id=OuterRef("pk"),
+                        localcomercial__grupo_facturacion__isnull=False,
+                    ).values("localcomercial__grupo_facturacion__nombre")[:1]
+                ),
                 nombre_local_area=Coalesce(
                     F("local__numero"),
                     F("area_comun__numero"),
+                    F("grupo_nombre"),
                     output_field=CharField(),
                 ),
                 tipo_origen=Case(
                     When(local__isnull=False, then=Value("Local")),
                     When(area_comun__isnull=False, then=Value("Área")),
+                    When(grupo_nombre__isnull=False, then=Value("Grupo")),
                     default=Value(""),
                     output_field=CharField(),
                 ),
