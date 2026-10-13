@@ -259,8 +259,8 @@ def crear_factura(request):
                             f"El local {factura.local.numero} pertenece al Grupo de "
                             f"Facturación '{factura.local.grupo_facturacion.nombre}' y ya se "
                             f"factura de forma consolidada cada mes. Crear una factura manual "
-                            f"aquí duplicaría el cobro -- edita el grupo en vez de facturar "
-                            f"individualmente, o contacta al administrador para autorizar de "
+                            f"aquí duplicaría el cobro --para facturar al grupo elige el origen "
+                            f"'Grupo Facturación', o contacta al administrador para autorizar de "
                             f"todas formas."
                         )
                     elif conflicto_tipo == "pool":
@@ -368,7 +368,7 @@ def crear_factura(request):
 
     else:
         initial = {}
-        for campo in ["cliente", "local", "area_comun", "tipo_cuota", "tipo_origen"]:
+        for campo in ["cliente", "local", "area_comun", "tipo_cuota", "tipo_origen", "grupo_facturacion"]:
             valor = request.GET.get(campo)
             if valor:
                 initial[campo] = valor

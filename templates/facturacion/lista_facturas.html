@@ -255,7 +255,8 @@
                                 </a>
                             {% endif %}
                             {% if factura.estatus != 'cancelada' %}
-                                <a href="{% url 'crear_factura' %}?cliente={{ factura.cliente.id }}{% if factura.local %}&local={{ factura.local.id }}&tipo_origen=local{% endif %}{% if factura.area_comun %}&area_comun={{ factura.area_comun.id }}&tipo_origen=area_comun{% endif %}&tipo_cuota={{ factura.tipo_cuota }}&next={{ request.get_full_path|urlencode }}" 
+                                <a href="{% url 'crear_factura' %}?cliente={{ factura.cliente.id }}
+                                {% if factura.local %}&local={{ factura.local.id }}&tipo_origen=local{% endif %}{% if factura.area_comun %}&area_comun={{ factura.area_comun.id }}&tipo_origen=area_comun{% endif %}{% if not factura.local and not factura.area_comun %}{% with g=factura.locales_incluidos.all|first %}{% if g and g.grupo_facturacion_id %}&tipo_origen=grupo&grupo_facturacion={{ g.grupo_facturacion_id }}{% endif %}{% endwith %}{% endif %}&tipo_cuota={{ factura.tipo_cuota }}&next={{ request.get_full_path|urlencode }}" 
                                    class="btn btn-xs btn-success reporte-link" title="Nueva factura">
                                     <i class="bi bi-plus-circle"></i>
                                 </a>
