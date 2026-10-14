@@ -200,7 +200,13 @@
             var overlay = document.getElementById('loading-overlay');
             var form = document.querySelector('form[enctype]');
             if (form && overlay) {
-                form.addEventListener('submit', function() { overlay.style.display = 'flex'; });
+                form.addEventListener('submit', function(e) {
+                    if (form.dataset.enviando === '1') { e.preventDefault(); return; }
+                    form.dataset.enviando = '1';
+                    var btn = form.querySelector('button[type="submit"]');
+                    if (btn) { btn.disabled = true; }
+                    overlay.style.display = 'flex';
+                });
             }
 
             // Calcula el monto: mensual = precio × meses (editable);

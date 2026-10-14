@@ -1,0 +1,55 @@
+{% extends 'leasing/base_leasing.html' %}
+{% load humanize leasing_tags %}
+{% block titulo %}Contratos{% endblock %}
+{% block contenido %}
+<header class="lc-hero">
+  <div><h1><i class="bi bi-file-earmark-text me-2"></i>Contratos</h1>
+  <div class="sub">{{ pagina.paginator.count }} contrato{{ pagina.paginator.count|pluralize }}</div></div>
+</header>
+
+<section class="lc-card">
+  <form method="get" class="lc-filtros">
+    <div><label for="q">Buscar</label><input id="q" name="q" value="{{ q }}" placeholder="Folio, contraparte, local o inmueble" size="34"></div>
+    <div><label for="rol">Tipo</label>
+      <select id="rol" name="rol"><option value="">Todos</option>
+      {% for k, n in roles %}<option value="{{ k }}" {% if rol == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+    <div><label for="estado">Estado</label>
+      <select id="estado" name="estado"><option value="">Todos</option>
+      {% for k, n in estados %}<option value="{{ k }}" {% if estado == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+    <button class="lc-btn" type="submit"><i class="bi bi-search"></i> Filtrar</button>
+    {% if q or rol or estado %}<a class="lc-btn sec" href="{% url 'leasing:contratos' %}">Limpiar</a>{% endif %}
+  </form>
+</section>
+
+<section class="lc-card">
+  <div class="lc-tabla-wrap">
+  <table class="lc-tabla">
+    <thead><tr><th>Folio</th><th>Tipo</th><th>Estado</th><th>Contraparte</th><th>Local / inmueble</th><th>Vigencia</th><th class="num">Renta actual</th></tr></thead>
+    <tbody>
+    {% for f in filas %}
+      <tr>
+        <td><a href="{% url 'leasing:contrato' f.c.pk %}"><strong>{{ f.c.folio }}</strong></a></td>
+        <td><span class="lc-b {{ f.c.rol|badge }}">{{ f.c.rol|rol_corto }}</span></td>
+        <td><span class="lc-b {{ f.c.estado|badge }}">{{ f.c.get_estado_display }}</span></td>
+        <td>{{ f.contraparte.razon_social|default:"—" }}</td>
+        <td>{% if f.unidad %}{{ f.unidad.clave }} <span class="suave">· {{ f.unidad.inmueble.nombre }}</span>{% else %}—{% endif %}</td>
+        <td>{% if f.v %}{{ f.v.fecha_inicio|date:"d/m/Y" }} – {{ f.v.fecha_fin|date:"d/m/Y"|default:"indeterminada" }}
+            {% if f.v.fecha_fin and f.c.estado == 'ACTIVO' %}{% with d=f.v.fecha_fin|dias_hasta %}{% if d >= 0 and d <= 90 %} <span class="lc-b lc-b-aviso">{{ d }} d</span>{% endif %}{% endwith %}{% endif %}
+            {% else %}—{% endif %}</td>
+        <td class="num">{% if f.renta %}${{ f.renta|floatformat:2|intcomma }}{% else %}—{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="lc-vacio">No hay contratos con esos filtros.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if pagina.has_other_pages %}
+  <div class="lc-paginas">
+    {% if pagina.has_previous %}<a href="?{{ qs_filtros }}&page={{ pagina.previous_page_number }}">‹ Anterior</a>{% endif %}
+    <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}<a href="?{{ qs_filtros }}&page={{ pagina.next_page_number }}">Siguiente ›</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

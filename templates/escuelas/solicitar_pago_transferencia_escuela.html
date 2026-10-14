@@ -142,5 +142,18 @@
             });
         })();
     </script>
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('form[enctype]');
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+        if (form.dataset.enviando === '1') { e.preventDefault(); return; }
+        form.dataset.enviando = '1';
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn) { btn.disabled = true; }
+    });
+});
+</script>
+
 </body>
 </html>

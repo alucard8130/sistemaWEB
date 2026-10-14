@@ -1,0 +1,11 @@
+{% load humanize leasing_tags %}
+<td class="num">${{ p.monto|floatformat:2|intcomma }}</td>
+<td><span class="lc-b {{ p.estado|badge }}">{{ p.get_estado_display }}</span></td>
+<td>
+  {% if p.estado == 'PROYECTADA' and perm_aprobar %}
+  <form method="post" action="{% url 'leasing:partida_aprobar' p.pk %}" class="m-0">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button class="lc-btn sec chico" type="submit" title="Aprobar (quien la creó no puede aprobarla)"><i class="bi bi-check2"></i> Aprobar</button>
+  </form>
+  {% endif %}
+</td>

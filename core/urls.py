@@ -446,6 +446,8 @@ urlpatterns = [
     path('contratos/', include('arrendamientos.urls')),
     #escuelas
     path('escuelas/', include('escuelas.urls')),
+    ## Leasing ##
+    path('leasing/', include('leasing.urls')),
 ]
 
     

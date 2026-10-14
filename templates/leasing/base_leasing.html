@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titulo %}Arrendamientos{% endblock %} — GESAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'leasing/css/leasing.css' %}">
+</head>
+<body class="lc-body">
+{% include 'navbar.html' %}
+<main class="lc">
+    {% for m in messages %}
+      <div class="lc-msg {{ m.tags }}">{{ m }}</div>
+    {% endfor %}
+
+    <nav class="lc-sub" aria-label="Secciones">
+      <a href="{% url 'leasing:inicio' %}" class="{% if seccion == 'inicio' %}activo{% endif %}"><i class="bi bi-speedometer2"></i> Inicio</a>
+      <a href="{% url 'leasing:contratos' %}" class="{% if seccion == 'contratos' %}activo{% endif %}"><i class="bi bi-file-earmark-text"></i> Contratos</a>
+      <a href="{% url 'leasing:calendario' %}" class="{% if seccion == 'calendario' %}activo{% endif %}"><i class="bi bi-calendar3"></i> Calendario de rentas</a>
+      <a href="{% url 'leasing:incidencias' %}" class="{% if seccion == 'incidencias' %}activo{% endif %}"><i class="bi bi-tools"></i> Mantenimiento</a>
+    </nav>
+
+    {% block contenido %}{% endblock %}
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

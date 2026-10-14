@@ -1,0 +1,71 @@
+{% extends 'leasing/base_leasing.html' %}
+{% load humanize leasing_tags %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<header class="lc-hero">
+  <div>
+    <h1><i class="bi bi-buildings me-2"></i>{{ empresa.nombre }}</h1>
+    <div class="sub">Control de arrendamientos y subarrendamientos · {{ hoy|date:"l j \d\e F \d\e Y" }}</div>
+  </div>
+  <a class="lc-btn sec" href="{% url 'leasing:contratos' %}">Ver contratos <i class="bi bi-arrow-right"></i></a>
+</header>
+
+<section class="lc-kpis">
+  <div class="lc-kpi ok"><div class="t">Contratos activos</div><div class="v">{{ kpi.activos }}</div><div class="n">{{ kpi.borradores }} en borrador</div></div>
+  <div class="lc-kpi"><div class="t">Ingresos esperados · {{ mes|date:"F" }}</div><div class="v">${{ kpi.ingresos_mes|floatformat:2|intcomma }}</div><div class="n">Rentas y subarriendos del mes</div></div>
+  <div class="lc-kpi"><div class="t">Egresos esperados · {{ mes|date:"F" }}</div><div class="v">${{ kpi.egresos_mes|floatformat:2|intcomma }}</div><div class="n">Rentas que pagamos</div></div>
+  <div class="lc-kpi {% if kpi.por_vencer %}aviso{% endif %}"><div class="t">Contratos por vencer</div><div class="v">{{ kpi.por_vencer }}</div><div class="n">en los próximos 90 días</div></div>
+  <div class="lc-kpi {% if kpi.por_aprobar %}aviso{% endif %}"><div class="t">Rentas por aprobar</div><div class="v">{{ kpi.por_aprobar }}</div><div class="n">vencen en 30 días o menos</div></div>
+  <div class="lc-kpi {% if kpi.urgentes %}alerta{% elif kpi.incidencias %}aviso{% endif %}"><div class="t">Incidencias abiertas</div><div class="v">{{ kpi.incidencias }}</div><div class="n">{{ kpi.urgentes }} urgentes</div></div>
+</section>
+
+<div class="lc-grid-2">
+  <section class="lc-card">
+    <h3 class="lc-t">Contratos por vencer <a class="accion" href="{% url 'leasing:contratos' %}?estado=ACTIVO">ver todos</a></h3>
+    {% if lista_vencer %}
+    <ul class="lc-lista">
+      {% for v in lista_vencer %}
+      <li><span><a href="{% url 'leasing:contrato' v.contrato.pk %}"><strong>{{ v.contrato.folio }}</strong></a> <span class="lc-b {{ v.contrato.rol|badge }}">{{ v.contrato.rol|rol_corto }}</span></span>
+          <span class="suave">{{ v.fecha_fin|date:"d/m/Y" }} · {{ v.fecha_fin|dias_hasta }} días</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="lc-vacio"><i class="bi bi-check-circle"></i> Ningún contrato vence en los próximos 90 días.</div>{% endif %}
+  </section>
+
+  <section class="lc-card">
+    <h3 class="lc-t">Rentas por aprobar <a class="accion" href="{% url 'leasing:calendario' %}">ir al calendario</a></h3>
+    {% if lista_aprobar %}
+    <ul class="lc-lista">
+      {% for p in lista_aprobar %}
+      <li><span><a href="{% url 'leasing:contrato' p.contrato.pk %}"><strong>{{ p.contrato.folio }}</strong></a> · {{ p.periodo|date:"m/Y" }}</span>
+          <span class="num">${{ p.monto|floatformat:2|intcomma }} <span class="suave">· vence {{ p.fecha_vencimiento|date:"d/m" }}</span></span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="lc-vacio"><i class="bi bi-check-circle"></i> No hay rentas pendientes de aprobar.</div>{% endif %}
+  </section>
+
+  <section class="lc-card">
+    <h3 class="lc-t">Obligaciones y fechas clave</h3>
+    {% if lista_obligaciones %}
+    <ul class="lc-lista">
+      {% for o in lista_obligaciones %}
+      <li><span><a href="{% url 'leasing:contrato' o.contrato.pk %}"><strong>{{ o.contrato.folio }}</strong></a> · {{ o.get_tipo_display }}</span>
+          <span class="{% if o.fecha_limite|dias_hasta < 0 %}lc-b lc-b-alerta{% else %}suave{% endif %}">{{ o.fecha_limite|date:"d/m/Y" }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="lc-vacio"><i class="bi bi-check-circle"></i> Sin obligaciones por atender.</div>{% endif %}
+  </section>
+
+  <section class="lc-card">
+    <h3 class="lc-t">Garantías por vencer (60 días)</h3>
+    {% if lista_garantias %}
+    <ul class="lc-lista">
+      {% for g in lista_garantias %}
+      <li><span><a href="{% url 'leasing:contrato' g.contrato.pk %}"><strong>{{ g.contrato.folio }}</strong></a> · {{ g.get_tipo_display }}</span>
+          <span class="suave">{{ g.vigencia_fin|date:"d/m/Y" }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="lc-vacio"><i class="bi bi-check-circle"></i> Ninguna garantía próxima a vencer.</div>{% endif %}
+  </section>
+</div>
+{% endblock %}

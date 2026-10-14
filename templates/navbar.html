@@ -9,7 +9,7 @@
   <i class="bi bi-list"></i> Menu
 </button>
 
-<div id="globalSidebarWrapper" class="global-sidebar-wrapper{% if empresa_actual.segmento == 'escuela' %} tema-campus{% endif %}">
+<div id="globalSidebarWrapper" class="global-sidebar-wrapper{% if empresa_actual.segmento == 'escuela' %} tema-campus{% elif empresa_actual.segmento == 'arrendamiento' %} tema-leasing{% endif %}">
   <div id="navbar-hover-zone"></div>
   {% if request.user.perfilusuario.es_contador %}
 
@@ -397,28 +397,25 @@
           <!-- Fin del menú exclusivo para Escuelas -->
            
           <!-- Menú exclusivo para Arrendamiento (ERP inmobiliario). Oracle EBS factura y contabiliza; aquí solo control. -->
-          {% if empresa_actual.segmento == 'arrendamiento' and request.user.is_staff %}
+         {% if empresa_actual.segmento == 'arrendamiento' and perms.leasing.view_contrato %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Arrendamientos">
               Leasing <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              <li><h6 class="dropdown-header">Contratos</h6></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_contrato_changelist' %}"><i class="bi bi-file-earmark-text me-2"></i>Contratos</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_relacionmaestrosub_changelist' %}"><i class="bi bi-diagram-2 me-2"></i>Subarriendos (maestro → sub)</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_partidacalendario_changelist' %}"><i class="bi bi-calendar3 me-2"></i>Calendario de rentas</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_garantia_changelist' %}"><i class="bi bi-shield-check me-2"></i>Garantías</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'leasing:inicio' %}"><i class="bi bi-speedometer2 me-2"></i>Inicio</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'leasing:contratos' %}"><i class="bi bi-file-earmark-text me-2"></i>Contratos</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'leasing:calendario' %}"><i class="bi bi-calendar3 me-2"></i>Calendario de rentas</a></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'leasing:incidencias' %}"><i class="bi bi-tools me-2"></i>Mantenimiento</a></li>
+              {% if request.user.is_staff %}
               <li><hr class="dropdown-divider"></li>
-              <li><h6 class="dropdown-header">Inmuebles</h6></li>
+              <li><h6 class="dropdown-header">Catálogos (administración)</h6></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_inmueble_changelist' %}"><i class="bi bi-building me-2"></i>Inmuebles</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_unidad_changelist' %}"><i class="bi bi-grid me-2"></i>Locales / unidades</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_contraparte_changelist' %}"><i class="bi bi-people me-2"></i>Contrapartes</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><h6 class="dropdown-header">Mantenimiento</h6></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_incidencia_changelist' %}"><i class="bi bi-tools me-2"></i>Incidencias / reparaciones</a></li>
-              <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_presupuestomantenimiento_changelist' %}"><i class="bi bi-cash-coin me-2"></i>Presupuesto de mantenimiento</a></li>
-              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_contrato_changelist' %}"><i class="bi bi-file-earmark-plus me-2"></i>Alta y edición de contratos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'admin:leasing_bitacoraauditoria_changelist' %}"><i class="bi bi-journal-check me-2"></i>Bitácora de auditoría</a></li>
+              {% endif %}
             </ul>
           </li>
           {% endif %}
@@ -986,4 +983,16 @@ body.dark-mode .tema-campus .navbar {
     flex-shrink: 0;
 }
 .campus-accent { color: #F6B26B; }
+
+/* ── TEMA ARRENDAMIENTO / La Comer (PALETA PROVISIONAL: mismos valores que static/leasing/css/leasing.css) ── */
+.tema-leasing .navbar {
+    background: linear-gradient(135deg, #6F1223 0%, #9B1B30 100%) !important;
+    box-shadow: 0 2px 12px rgba(111,18,35,0.22) !important;
+}
+.tema-leasing .navbar .dropdown-item:hover { background: #F7E9EC !important; color: #6F1223 !important; }
+.tema-leasing .navbar .dropdown-header {
+    color: #9B1B30 !important; background: #F7E9EC !important; border-left-color: #C99A2E !important;
+}
+.tema-leasing .notif-sistema-item { border-left-color: #9B1B30 !important; }
+body.dark-mode .tema-leasing .navbar { background: linear-gradient(135deg, #4A0C18 0%, #6F1223 100%) !important; }
 </style>

@@ -1,0 +1,161 @@
+/* ERP inmobiliario (segmento arrendamiento) — estilos.
+   PALETA PROVISIONAL: cambia solo las variables de :root (y .tema-leasing en navbar) con los
+   colores oficiales de La Comer. Todo el módulo las usa; no hay colores sueltos abajo. */
+:root {
+  --lc-marca: #9B1B30;        /* color principal (encabezados, botón primario, navbar) */
+  --lc-marca-osc: #6F1223;    /* variante oscura (degradados, hover) */
+  --lc-marca-claro: #F7E9EC;  /* fondo suave de la marca */
+  --lc-acento: #C99A2E;       /* acento (detalles, subarriendo) */
+  --lc-fondo: #F5F3F0;
+  --lc-superficie: #FFFFFF;
+  --lc-texto: #2B2626;
+  --lc-suave: #6B6464;
+  --lc-borde: #E4DFDA;
+  --lc-ok: #2E7D4F;     --lc-ok-bg: #E6F3EB;
+  --lc-aviso: #96620F;  --lc-aviso-bg: #FBF0DC;
+  --lc-alerta: #B3261E; --lc-alerta-bg: #FBE7E5;
+  --lc-info: #2F6690;   --lc-info-bg: #E5EFF7;
+  --lc-radio: 14px;
+  --lc-sombra: 0 2px 10px rgba(43, 38, 38, .07);
+}
+
+body.lc-body { font-family: 'Rubik', sans-serif; background: var(--lc-fondo); color: var(--lc-texto); }
+.lc { width: 100%; max-width: 1440px; margin: 0 auto; padding: 20px 20px 48px; }  /* width:100% porque body es flex en columna */
+.lc a { color: var(--lc-marca); text-decoration: none; }
+.lc a:hover { color: var(--lc-marca-osc); text-decoration: underline; }
+.lc h1, .lc h3 { color: var(--lc-texto); }
+.lc .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.lc .suave { color: var(--lc-suave); }
+
+/* Encabezado de página */
+.lc-hero {
+  background: linear-gradient(135deg, var(--lc-marca-osc) 0%, var(--lc-marca) 70%, var(--lc-acento) 140%);
+  color: #fff; border-radius: var(--lc-radio); padding: 20px 26px; margin-bottom: 18px;
+  display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+  box-shadow: var(--lc-sombra);
+}
+.lc-hero h1 { color: #fff; font-size: 1.35rem; font-weight: 700; margin: 0; }
+.lc-hero .sub { opacity: .85; font-size: .82rem; }
+.lc-hero a, .lc-hero a:hover { color: #fff; }
+
+/* Sub-navegación de sección */
+.lc-sub { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.lc-sub a {
+  padding: 6px 14px; border-radius: 999px; font-size: .82rem; font-weight: 500;
+  background: var(--lc-superficie); border: 1px solid var(--lc-borde); color: var(--lc-texto);
+}
+.lc-sub a:hover { text-decoration: none; border-color: var(--lc-marca); color: var(--lc-marca); }
+.lc-sub a.activo { background: var(--lc-marca); border-color: var(--lc-marca); color: #fff; }
+
+/* Tarjetas */
+.lc-card {
+  background: var(--lc-superficie); border: 1px solid var(--lc-borde); border-radius: var(--lc-radio);
+  box-shadow: var(--lc-sombra); padding: 16px 18px; margin-bottom: 16px;
+}
+.lc-card > h3 {  /* h3 (no h2): style.css global fuerza color/tamaño en h2 con !important */
+  font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--lc-marca); margin: 0 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--lc-marca-claro);
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.lc-card > h3 .accion { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .76rem; }
+
+/* KPIs */
+.lc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.lc-kpi {
+  background: var(--lc-superficie); border: 1px solid var(--lc-borde); border-left: 4px solid var(--lc-marca);
+  border-radius: var(--lc-radio); padding: 14px 16px; box-shadow: var(--lc-sombra);
+}
+.lc-kpi.aviso { border-left-color: var(--lc-aviso); }
+.lc-kpi.alerta { border-left-color: var(--lc-alerta); }
+.lc-kpi.ok { border-left-color: var(--lc-ok); }
+.lc-kpi .v { font-size: 1.55rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.lc-kpi .t { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--lc-suave); font-weight: 600; }
+.lc-kpi .n { font-size: .76rem; color: var(--lc-suave); margin-top: 2px; }
+
+/* Rejillas de página */
+.lc-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+.lc-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+.lc-grid-2 > .lc-card, .lc-grid-3 > .lc-card, .lc-col > .lc-card:last-child { margin-bottom: 0; }
+.lc-col { display: flex; flex-direction: column; gap: 16px; }
+
+/* Tablas */
+.lc-tabla-wrap { overflow-x: auto; }
+.lc-tabla-scroll { position: relative; max-height: 380px; overflow: auto; border: 1px solid var(--lc-borde); border-radius: 10px; }
+.lc-tabla { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.lc-tabla th {
+  text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--lc-suave);
+  font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--lc-borde); background: #FBFAF9;
+  position: sticky; top: 0; z-index: 1; white-space: nowrap;
+}
+.lc-tabla td { padding: 8px 10px; border-bottom: 1px solid #F0ECE8; vertical-align: middle; }
+.lc-tabla tr:hover td { background: #FBF8F6; }
+.lc-tabla tr.actual td { background: var(--lc-marca-claro); }
+.lc-tabla tr.cancelada td { opacity: .5; text-decoration: line-through; }
+
+/* Datos clave/valor */
+.lc-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: .85rem; }
+.lc-dl dt { color: var(--lc-suave); font-weight: 500; }
+.lc-dl dd { margin: 0; font-weight: 500; }
+
+/* Insignias */
+.lc-b { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+.lc-b-gris { background: #ECE8E4; color: #5A5350; }
+.lc-b-ok { background: var(--lc-ok-bg); color: var(--lc-ok); }
+.lc-b-aviso { background: var(--lc-aviso-bg); color: var(--lc-aviso); }
+.lc-b-alerta { background: var(--lc-alerta-bg); color: var(--lc-alerta); }
+.lc-b-info { background: var(--lc-info-bg); color: var(--lc-info); }
+.lc-b-marca { background: var(--lc-marca-claro); color: var(--lc-marca-osc); }
+.lc-b-acento { background: #F6EBCB; color: #7A5A0E; }
+
+/* Insignias sobre el encabezado oscuro */
+.lc-hero .lc-b { background: rgba(255,255,255,.92); color: var(--lc-marca-osc); }
+
+/* Botones */
+.lc-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 10px;
+  font-size: .82rem; font-weight: 600; border: 1px solid var(--lc-marca); background: var(--lc-marca);
+  color: #fff; cursor: pointer; line-height: 1.2;
+}
+.lc-btn:hover { background: var(--lc-marca-osc); color: #fff; text-decoration: none; }
+.lc-btn.sec { background: var(--lc-superficie); color: var(--lc-marca); }
+.lc-btn.sec:hover { background: var(--lc-marca-claro); color: var(--lc-marca-osc); }
+.lc-btn.chico { padding: 3px 10px; font-size: .74rem; border-radius: 8px; }
+.lc-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.lc-hero .lc-btn { background: #fff; color: var(--lc-marca-osc); border-color: #fff; }
+.lc-hero .lc-btn.sec { background: transparent; color: #fff; border-color: rgba(255,255,255,.6); }
+
+/* Formularios en línea */
+.lc-filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.lc-filtros label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--lc-suave); font-weight: 600; display: block; }
+.lc-filtros input, .lc-filtros select, .lc-inline input {
+  border: 1px solid var(--lc-borde); border-radius: 9px; padding: 6px 10px; font-size: .85rem; background: #fff;
+}
+.lc-filtros input, .lc-filtros select { height: 36px; }
+.lc-filtros input:focus, .lc-filtros select:focus, .lc-inline input:focus { outline: 2px solid var(--lc-marca-claro); border-color: var(--lc-marca); }
+.lc-inline { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+
+/* Barra de avance (m² de subarriendo) */
+.lc-barra { height: 8px; border-radius: 6px; background: #ECE8E4; overflow: hidden; }
+.lc-barra > span { display: block; height: 100%; background: var(--lc-marca); }
+.lc-barra.lleno > span { background: var(--lc-alerta); }
+
+.lc-vacio { color: var(--lc-suave); font-size: .84rem; padding: 6px 0; }
+.lc-lista { list-style: none; margin: 0; padding: 0; }
+.lc-lista li > .lc-b { align-self: center; }
+.lc-lista li { align-items: center; padding: 7px 0; border-bottom: 1px solid #F0ECE8; display: flex; justify-content: space-between; gap: 10px; font-size: .85rem; }
+.lc-lista li:last-child { border-bottom: 0; }
+
+.lc-aviso-form { background: var(--lc-aviso-bg); color: var(--lc-aviso); border-radius: 10px; padding: 8px 12px; font-size: .8rem; margin-top: 8px; }
+.lc-msg { border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; font-size: .86rem; border: 1px solid; }
+.lc-msg.success { background: var(--lc-ok-bg); color: var(--lc-ok); border-color: var(--lc-ok); }
+.lc-msg.warning { background: var(--lc-aviso-bg); color: var(--lc-aviso); border-color: var(--lc-aviso); }
+.lc-msg.error { background: var(--lc-alerta-bg); color: var(--lc-alerta); border-color: var(--lc-alerta); }
+.lc-msg.info { background: var(--lc-info-bg); color: var(--lc-info); border-color: var(--lc-info); }
+
+.lc-paginas { display: flex; gap: 6px; justify-content: center; margin-top: 14px; font-size: .84rem; }
+.lc-paginas a, .lc-paginas span { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--lc-borde); background: #fff; }
+
+@media (max-width: 767px) {
+  .lc { padding: 12px 10px 40px; }
+  .lc-grid-2, .lc-grid-3 { grid-template-columns: 1fr; }
+}

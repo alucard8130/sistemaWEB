@@ -489,8 +489,12 @@ if (premiumBtn) {
             {% endif %}
             <div class="gto-breakdown">
                 <div class="gto-row">
-                    <span class="label">✅ Pagados</span>
+                    <span class="label">✅ Solicitudes pagadas</span>
                     <span class="monto text-danger">${{ gastos_pagados_mes|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="gto-row">
+                    <span class="label">💵 Fondeos caja chica (incluidos)</span>
+                    <span class="monto text-danger">${{ fondeos_mes|floatformat:0|intcomma }}</span>
                 </div>
                 <div class="gto-row">
                     <span class="label">📋 Solicitudes pendientes</span>

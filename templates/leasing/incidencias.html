@@ -1,0 +1,56 @@
+{% extends 'leasing/base_leasing.html' %}
+{% load humanize leasing_tags %}
+{% block titulo %}Mantenimiento{% endblock %}
+{% block contenido %}
+<header class="lc-hero">
+  <div><h1><i class="bi bi-tools me-2"></i>Mantenimiento e incidencias</h1>
+  <div class="sub">Reparaciones, limpieza y proveedores · capex y opex</div></div>
+</header>
+
+<section class="lc-kpis">
+  {% for k, r in resumen.items %}
+  <div class="lc-kpi"><div class="t">{{ k }} · {{ r.n }} incidencia{{ r.n|pluralize }}</div>
+    <div class="v">${{ r.est|default:0|floatformat:2|intcomma }}</div><div class="n">estimado · real ${{ r.real|default:0|floatformat:2|intcomma }}</div></div>
+  {% endfor %}
+</section>
+
+<section class="lc-card">
+  <form method="get" class="lc-filtros">
+    <div><label for="estado">Estado</label>
+      <select id="estado" name="estado">
+        <option value="abiertas" {% if estado == 'abiertas' %}selected{% endif %}>Abiertas y en proceso</option>
+        {% for k, n in estados %}<option value="{{ k }}" {% if estado == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select></div>
+    <div><label for="prioridad">Prioridad</label>
+      <select id="prioridad" name="prioridad"><option value="">Todas</option>
+      {% for k, n in prioridades %}<option value="{{ k }}" {% if prioridad == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+    <button class="lc-btn" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+  </form>
+</section>
+
+<section class="lc-card">
+  <div class="lc-tabla-wrap">
+  <table class="lc-tabla">
+    <thead><tr><th>Fecha</th><th>Inmueble / local</th><th>Tipo</th><th>Prioridad</th><th>Estado</th><th>Proveedor</th><th>Gasto</th><th class="num">Estimado</th><th class="num">Real</th></tr></thead>
+    <tbody>
+    {% for i in incidencias %}
+      <tr>
+        <td>{{ i.fecha_reporte|date:"d/m/Y" }}</td>
+        <td>{{ i.inmueble.nombre }}{% if i.unidad %} <span class="suave">· {{ i.unidad.clave }}</span>{% endif %}
+            <div class="suave" style="font-size:.76rem">{{ i.descripcion|truncatechars:70 }}</div></td>
+        <td>{{ i.get_tipo_display }}</td>
+        <td><span class="lc-b {{ i.prioridad|badge }}">{{ i.get_prioridad_display }}</span></td>
+        <td><span class="lc-b {{ i.estado|badge }}">{{ i.get_estado_display }}</span></td>
+        <td>{{ i.proveedor|default:"—" }}</td>
+        <td><span class="lc-b {% if i.naturaleza_gasto == 'CAPEX' %}lc-b-marca{% else %}lc-b-gris{% endif %}">{{ i.naturaleza_gasto }}</span></td>
+        <td class="num">${{ i.costo_estimado|floatformat:2|intcomma }}</td>
+        <td class="num">${{ i.costo_real|floatformat:2|intcomma }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9" class="lc-vacio">Sin incidencias con esos filtros.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

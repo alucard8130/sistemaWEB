@@ -199,6 +199,9 @@ class PagoPorIdentificarForm(forms.ModelForm):
         super().__init__(*args, **kwargs)        
         if empresa:
             self.fields['cuenta_bancaria'].queryset = CuentaBancaria.objects.filter(empresa=empresa)
+        # Un depósito siempre entra a una cuenta: sin ella no suma en Saldos por Periodo ni en conciliación.
+        self.fields['cuenta_bancaria'].required = True
+        self.fields['cuenta_bancaria'].empty_label = "Selecciona la cuenta..."    
 
 
 class FacturaCargaMasivaForm(forms.Form):

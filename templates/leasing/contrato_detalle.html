@@ -1,0 +1,184 @@
+{% extends 'leasing/base_leasing.html' %}
+{% load humanize leasing_tags %}
+{% block titulo %}Contrato {{ c.folio }}{% endblock %}
+{% block contenido %}
+<header class="lc-hero">
+  <div>
+    <h1><i class="bi bi-file-earmark-text me-2"></i>Contrato {{ c.folio }}</h1>
+    <div class="sub">
+      <span class="lc-b">{{ c.rol|rol_corto }}</span>
+      <span class="lc-b {{ c.estado|badge }}">{{ c.get_estado_display }}</span>
+      {% if v %}· {{ v.fecha_inicio|date:"d/m/Y" }} – {{ v.fecha_fin|date:"d/m/Y"|default:"indeterminada" }}
+        {% if v.fecha_fin %}{% with d=v.fecha_fin|dias_hasta %}{% if d >= 0 %}· faltan {{ d }} días{% else %}· venció hace {{ d|cut:"-" }} días{% endif %}{% endwith %}{% endif %}{% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap align-items-center">
+    <a class="lc-btn sec" href="{% url 'leasing:contratos' %}"><i class="bi bi-arrow-left"></i> Contratos</a>
+    {% if c.estado == 'BORRADOR' and perm_activar %}
+      <form method="post" action="{% url 'leasing:contrato_activar' c.pk %}" class="m-0">{% csrf_token %}
+        <button class="lc-btn" type="submit" {% if not puede_activar %}disabled title="{{ motivo_activar }}"{% endif %}><i class="bi bi-check2-circle"></i> Activar contrato</button>
+      </form>
+    {% endif %}
+  </div>
+</header>
+{% if c.estado == 'BORRADOR' and not puede_activar and motivo_activar %}
+  <div class="lc-msg warning"><i class="bi bi-exclamation-triangle"></i> No se puede activar: {{ motivo_activar }}</div>
+{% endif %}
+
+{# ===== Una sola pantalla: tres columnas, sin pestañas ===== #}
+<div class="lc-grid-3">
+
+  <div class="lc-col">
+    <section class="lc-card">
+      <h3 class="lc-t">Datos del contrato</h3>
+      <dl class="lc-dl">
+        <dt>Tipo</dt><dd>{{ c.get_tipo_display }}</dd>
+        <dt>Moneda</dt><dd>{{ c.moneda }}</dd>
+        <dt>Entidad federativa</dt><dd>{{ c.entidad_federativa|default:"—" }}</dd>
+        {% if v %}
+        <dt>Firma</dt><dd>{{ v.fecha_firma|date:"d/m/Y"|default:"—" }}</dd>
+        <dt>Subarriendo</dt><dd>{{ v.get_subarriendo_permitido_display }}</dd>
+        <dt>Anticipo de rentas</dt><dd>{{ v.anticipo_rentas_meses }} meses</dd>
+        <dt>Inscribible (RPP)</dt><dd>{% if v.inscribible %}<span class="lc-b lc-b-aviso">Sí — validar</span>{% else %}No{% endif %}</dd>
+        {% endif %}
+        {% if c.oracle_contract_id %}<dt>ID Oracle</dt><dd>{{ c.oracle_contract_id }}</dd>{% endif %}
+      </dl>
+      {% if c.notas %}<p class="suave mt-2 mb-0" style="font-size:.82rem">{{ c.notas }}</p>{% endif %}
+    </section>
+
+    <section class="lc-card">
+      <h3 class="lc-t">Partes</h3>
+      {% for p in partes %}
+        <ul class="lc-lista"><li><span>{{ p.contraparte.razon_social }}<div class="suave" style="font-size:.74rem">{{ p.contraparte.rfc }}</div></span>
+          <span class="lc-b lc-b-gris">{{ p.get_rol_parte_display }}</span></li></ul>
+      {% empty %}<div class="lc-vacio">Sin partes registradas.</div>{% endfor %}
+    </section>
+
+    <section class="lc-card">
+      <h3 class="lc-t">Historial de versiones</h3>
+      <ul class="lc-lista">
+        {% for ver in versiones %}
+          <li><span>v{{ ver.numero }} · {{ ver.get_tipo_evento_display }}{% if ver.es_vigente %} <span class="lc-b lc-b-ok">vigente</span>{% endif %}</span>
+              <span class="suave">{{ ver.fecha_efectiva|date:"d/m/Y" }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <div class="lc-col">
+    <section class="lc-card">
+      <h3 class="lc-t">Términos financieros</h3>
+      {% for t in terminos %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between"><strong>{{ t.concepto.nombre }}</strong>
+            <span class="num"><strong>${{ t.monto|floatformat:2|intcomma }}</strong></span></div>
+          <div class="suave" style="font-size:.78rem">{{ t.get_frecuencia_display }} · vence el día {{ t.dia_vencimiento }} · desde {{ t.fecha_inicio|date:"d/m/Y" }}</div>
+          {% for e in t.escaladores.all %}
+            <div style="font-size:.78rem"><i class="bi bi-graph-up-arrow"></i>
+              {% if e.tipo == 'INPC' %}Ajuste por INPC cada {{ e.periodicidad_meses }} meses (rezago {{ e.rezago_meses }}){% elif e.tipo == 'FIJO_PCT' %}Incremento fijo {{ e.porcentaje_fijo|floatformat:"-2" }}% cada {{ e.periodicidad_meses }} meses{% else %}Ajuste a mercado (manual){% endif %}
+              desde {{ e.aplicar_desde|date:"m/Y" }}{% if e.piso_pct %} · piso {{ e.piso_pct|floatformat:"-2" }}%{% endif %}{% if e.tope_pct %} · tope {{ e.tope_pct|floatformat:"-2" }}%{% endif %}</div>
+          {% endfor %}
+        </div>
+      {% empty %}<div class="lc-vacio">Sin términos financieros.</div>{% endfor %}
+    </section>
+
+    <section class="lc-card">
+      <h3 class="lc-t">Locales / espacios</h3>
+      {% for u in unidades %}
+        <ul class="lc-lista"><li><span><strong>{{ u.unidad.clave }}</strong> <span class="suave">· {{ u.unidad.inmueble.nombre }}</span></span>
+          <span class="num">{{ u.m2_asignados|floatformat:2 }} m²</span></li></ul>
+      {% empty %}<div class="lc-vacio">Sin unidades asignadas.</div>{% endfor %}
+    </section>
+
+    <section class="lc-card">
+      <h3 class="lc-t">Subarriendo</h3>
+      {% if c.rol == 'SUBARRIENDO' %}
+        {% if maestro %}
+          <dl class="lc-dl">
+            <dt>Contrato maestro</dt><dd><a href="{% url 'leasing:contrato' maestro.pk %}">{{ maestro.folio }}</a></dd>
+            <dt>m² subarrendados</dt><dd>{{ relacion.m2_asignados|floatformat:2 }}</dd>
+            <dt>Consentimiento</dt><dd>{{ relacion.get_tipo_consentimiento_display }}</dd>
+          </dl>
+        {% else %}<div class="lc-vacio">Sin contrato maestro ligado.</div>{% endif %}
+      {% elif c.rol == 'EGRESO' %}
+        {% if m2_total %}
+          <div class="d-flex justify-content-between" style="font-size:.82rem"><span>{{ m2_subs|floatformat:2 }} de {{ m2_total|floatformat:2 }} m² subarrendados</span><span>{{ m2_subs|pct:m2_total }}%</span></div>
+          <div class="lc-barra {% if m2_subs|pct:m2_total >= 100 %}lleno{% endif %}"><span style="width:{{ m2_subs|pct:m2_total }}%"></span></div>
+        {% endif %}
+        <ul class="lc-lista mt-2">
+          {% for r in subs %}<li><a href="{% url 'leasing:contrato' r.sub.pk %}">{{ r.sub.folio }}</a><span class="num">{{ r.m2_asignados|floatformat:2 }} m²</span></li>
+          {% empty %}<li class="lc-vacio">Sin subarriendos sobre este contrato.</li>{% endfor %}
+        </ul>
+      {% else %}<div class="lc-vacio">Contrato de ingreso directo (no es subarriendo).</div>{% endif %}
+    </section>
+  </div>
+
+  <div class="lc-col">
+    <section class="lc-card">
+      <h3 class="lc-t">Garantías</h3>
+      {% for g in garantias %}
+        <ul class="lc-lista"><li><span>{{ g.get_tipo_display }}{% if g.emisor %} <span class="suave">· {{ g.emisor }}</span>{% endif %}</span>
+          <span class="num">${{ g.monto|floatformat:2|intcomma }}{% if g.vigencia_fin %} <span class="suave">· {{ g.vigencia_fin|date:"d/m/Y" }}</span>{% endif %}</span></li></ul>
+      {% empty %}<div class="lc-vacio">Sin garantías activas.</div>{% endfor %}
+    </section>
+
+    <section class="lc-card">
+      <h3 class="lc-t">Obligaciones y fechas clave</h3>
+      {% for o in obligaciones %}
+        <ul class="lc-lista"><li><span>{{ o.get_tipo_display }}{% if o.descripcion %} <span class="suave">· {{ o.descripcion|truncatechars:30 }}</span>{% endif %}</span>
+          <span><span class="lc-b {{ o.estado|badge }}">{{ o.get_estado_display }}</span> <span class="suave">{{ o.fecha_limite|date:"d/m/Y" }}</span></span></li></ul>
+      {% empty %}<div class="lc-vacio">Sin obligaciones registradas.</div>{% endfor %}
+    </section>
+
+    <section class="lc-card">
+      <h3 class="lc-t">Documentos</h3>
+      {% for d in documentos %}
+        <ul class="lc-lista"><li><span><i class="bi bi-file-earmark-pdf"></i> <a href="{{ d.archivo.url }}" target="_blank" rel="noopener">{{ d.titulo|default:d.get_categoria_display }}</a></span>
+          <span>{% if d.firmado %}<span class="lc-b lc-b-ok">firmado</span>{% endif %}</span></li></ul>
+      {% empty %}<div class="lc-vacio">Sin documentos. Se necesita el contrato firmado para activar.</div>{% endfor %}
+    </section>
+  </div>
+</div>
+
+{# ===== Calendario de rentas del contrato, a todo lo ancho ===== #}
+<section class="lc-card mt-3">
+  <h3 class="lc-t">Calendario de rentas
+    <span class="accion suave">{{ partidas|length }} partida{{ partidas|length|pluralize }}</span></h3>
+
+  {% if perm_generar and v and terminos %}
+  <form method="post" action="{% url 'leasing:contrato_generar' c.pk %}" class="lc-inline mb-3">{% csrf_token %}
+    <div class="lc-filtros"><div><label for="hasta">Generar hasta</label>
+      <input id="hasta" type="date" name="hasta" value="{{ hasta_default|date:'Y-m-d' }}" required></div></div>
+    <button class="lc-btn" type="submit"><i class="bi bi-calendar-plus"></i> Generar / actualizar calendario</button>
+    <span class="suave" style="font-size:.76rem">No toca rentas aprobadas. Si falta el INPC, avisa y no inventa la renta.</span>
+  </form>
+  {% endif %}
+
+  {% if partidas %}
+  <div class="lc-tabla-scroll">
+  <table class="lc-tabla">
+    <thead><tr><th>Periodo</th><th>Vence</th><th>Concepto</th><th class="num">Monto</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    {% for p in partidas %}
+      <tr class="{% if p == proxima %}actual{% endif %}{% if p.estado == 'CANCELADA' %} cancelada{% endif %}">
+        <td>{{ p.periodo|date:"m/Y" }}</td>
+        <td>{{ p.fecha_vencimiento|date:"d/m/Y" }}</td>
+        <td>{{ p.termino.concepto.nombre }}</td>
+        {% include 'leasing/_partida_fila.html' %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<div class="lc-vacio">Todavía no hay calendario. Genera las rentas esperadas con el botón de arriba.</div>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  // El calendario abre centrado en el periodo actual (sin mover la página).
+  (function () {
+    var caja = document.querySelector('.lc-tabla-scroll'), fila = document.querySelector('.lc-tabla tr.actual');
+    if (caja && fila) { caja.scrollTop = Math.max(0, fila.offsetTop - caja.clientHeight / 2); }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'leasing/base_leasing.html' %}
+{% load humanize leasing_tags %}
+{% block titulo %}Calendario de rentas{% endblock %}
+{% block contenido %}
+<header class="lc-hero">
+  <div><h1><i class="bi bi-calendar3 me-2"></i>Calendario de rentas · {{ mes|date:"F Y" }}</h1>
+  <div class="sub">Renta esperada: control y proyección. La facturación sigue en Oracle EBS.</div></div>
+  <div>
+    <a class="lc-btn sec" href="?mes={{ mes_ant|date:'Y-m' }}&estado={{ estado }}&sentido={{ sentido }}">‹ {{ mes_ant|date:"M" }}</a>
+    <a class="lc-btn sec" href="?mes={{ mes_sig|date:'Y-m' }}&estado={{ estado }}&sentido={{ sentido }}">{{ mes_sig|date:"M" }} ›</a>
+  </div>
+</header>
+
+<section class="lc-kpis">
+  <div class="lc-kpi ok"><div class="t">Ingresos esperados</div><div class="v">${{ total_ingresos|floatformat:2|intcomma }}</div></div>
+  <div class="lc-kpi"><div class="t">Egresos esperados</div><div class="v">${{ total_egresos|floatformat:2|intcomma }}</div></div>
+</section>
+
+<section class="lc-card">
+  <form method="get" class="lc-filtros">
+    <div><label for="mes">Mes</label><input id="mes" type="month" name="mes" value="{{ mes|date:'Y-m' }}"></div>
+    <div><label for="sentido">Sentido</label>
+      <select id="sentido" name="sentido"><option value="">Ingresos y egresos</option>
+      <option value="ingresos" {% if sentido == 'ingresos' %}selected{% endif %}>Ingresos</option>
+      <option value="egresos" {% if sentido == 'egresos' %}selected{% endif %}>Egresos</option></select></div>
+    <div><label for="estado">Estado</label>
+      <select id="estado" name="estado"><option value="">Todos</option>
+      {% for k, n in estados %}<option value="{{ k }}" {% if estado == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+    <button class="lc-btn" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+  </form>
+</section>
+
+<section class="lc-card">
+  <div class="lc-tabla-wrap">
+  <table class="lc-tabla">
+    <thead><tr><th>Vence</th><th>Contrato</th><th>Tipo</th><th>Concepto</th><th class="num">Monto</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    {% for p in partidas %}
+      <tr class="{% if p.estado == 'CANCELADA' %}cancelada{% endif %}">
+        <td>{{ p.fecha_vencimiento|date:"d/m/Y" }}</td>
+        <td><a href="{% url 'leasing:contrato' p.contrato.pk %}"><strong>{{ p.contrato.folio }}</strong></a></td>
+        <td><span class="lc-b {{ p.contrato.rol|badge }}">{{ p.contrato.rol|rol_corto }}</span></td>
+        <td>{{ p.termino.concepto.nombre }}</td>
+        {% include 'leasing/_partida_fila.html' %}
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="lc-vacio">Sin rentas en este periodo. Genera el calendario desde el contrato.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}
