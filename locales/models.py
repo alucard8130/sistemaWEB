@@ -1,7 +1,7 @@
 
 from django.db import models
 
-from catalogos.utils import generar_referencia_pago_propiedad
+from catalogos.utils import generar_referencia_corta, generar_referencia_pago_propiedad
 from empresas.models import Empresa
 
 
@@ -40,6 +40,7 @@ class LocalComercial(models.Model):
     ]
     tipo_propiedad = models.CharField(max_length=20, choices=TIPO_CHOICES)
     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
+    referencia_corta = models.CharField(max_length=7, unique=True, blank=True, null=True)
     proindiviso = models.DecimalField(
         max_digits=7, decimal_places=4, null=True, blank=True,
         help_text="Porcentaje de proindiviso de la propiedad (%)"
@@ -67,7 +68,14 @@ class LocalComercial(models.Model):
                 nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'L', self.numero)
                 intentos += 1
             self.referencia_pago = nueva_ref
+        if not self.referencia_corta:
+            self.referencia_corta = generar_referencia_corta()
         super().save(*args, **kwargs)
+
+    @property
+    def referencia_mostrar(self):
+        """Referencia que se muestra al cliente: la corta; si no hay, la larga (histórica)."""
+        return self.referencia_corta or self.referencia_pago
 
     def __str__(self):
         return f"{self.numero}"

@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import Sum
 
 from areas.models import AreaComun
+from catalogos.utils import generar_referencia_corta
 from clientes.models import Cliente
 from empresas.models import CuentaBancaria, Empresa
 from locales.models import LocalComercial
@@ -261,6 +262,7 @@ class GrupoFacturacion(models.Model):
     activo = models.BooleanField(default=True)
     # NUEVO -- referencia de pago propia del grupo (mismo formato que locales/areas, con tipo 'G').
     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
+    referencia_corta = models.CharField(max_length=7, unique=True, blank=True, null=True)
 
     class Meta:
         ordering = ['nombre']  # noqa: RUF012
@@ -274,7 +276,14 @@ class GrupoFacturacion(models.Model):
                 nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'G', self.nombre)
                 intentos += 1
             self.referencia_pago = nueva_ref
+        if not self.referencia_corta:
+            self.referencia_corta = generar_referencia_corta()
         super().save(*args, **kwargs)
+
+    @property
+    def referencia_mostrar(self):
+       """Referencia que se muestra al cliente: la corta; si no hay, la larga (histórica)."""
+       return self.referencia_corta or self.referencia_pago    
 
     def __str__(self):
         return f"{self.nombre} ({self.cliente.nombre})"

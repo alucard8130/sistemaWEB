@@ -13,3 +13,21 @@ def generar_referencia_pago_propiedad(cliente_id, tipo, numero):
     numero_saneado = re.sub(r'[^A-Za-z0-9]', '', numero or '').upper()[:8]
     sufijo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
     return f"RF-{cliente_id:05d}-{tipo}{numero_saneado}-{sufijo}"
+
+
+def generar_referencia_corta():
+    """Referencia de pago corta: 7 dígitos numéricos (cabe en el campo "Referencia numérica" de SPEI).
+    Única entre locales, áreas comunes y grupos de facturación. Nunca empieza con 0."""
+    from areas.models import AreaComun
+    from facturacion.models import GrupoFacturacion
+    from locales.models import LocalComercial
+
+    for _ in range(50):
+        ref = str(random.randint(1000000, 9999999))
+        if not (
+            LocalComercial.objects.filter(referencia_corta=ref).exists()
+            or AreaComun.objects.filter(referencia_corta=ref).exists()
+            or GrupoFacturacion.objects.filter(referencia_corta=ref).exists()
+        ):
+            return ref
+    raise ValueError("No fue posible generar una referencia corta única.")

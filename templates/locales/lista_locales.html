@@ -233,7 +233,7 @@
                                 <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar propiedad">
                                     <i class="bi bi-slash-circle"></i>
                                 </a>
-                                {% if local.referencia_pago %}
+                                {% if local.referencia_mostrar %}
                                 <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='local' propiedad_id=local.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de instrucciones de pago para esta propiedad">
                                     <i class="bi bi-qr-code"></i>
                                 </a>

@@ -543,7 +543,7 @@ def exportar_locales_excel(request):
         ws.cell(row=fila, column=12, value=float(local.proindiviso) if local.proindiviso is not None else None)
         ws.cell(row=fila, column=13, value=local.grupo_facturacion.nombre if local.grupo_facturacion else "")
         ws.cell(row=fila, column=14, value=local.pool_vacancia.nombre if local.pool_vacancia else "")
-        ws.cell(row=fila, column=15, value=local.referencia_pago or "")
+        ws.cell(row=fila, column=15, value=local.referencia_mostrar or "")
         ws.cell(row=fila, column=16, value=local.observaciones or "")
         ws.cell(row=fila, column=17, value=local.fecha_creacion.strftime("%d/%m/%Y") if local.fecha_creacion else "")
  

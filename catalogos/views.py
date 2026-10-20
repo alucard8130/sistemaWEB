@@ -19,7 +19,12 @@ from areas.models import AreaComun as AreaComunModel
 from clientes.models import Cliente  # ajusta el import real de tu app de clientes
 from core import settings
 from empresas.models import CuentaBancaria, Empresa
-from facturacion.models import Factura, GrupoFacturacion, TipoCuotaHomologacion, TipoOtroIngreso
+from facturacion.models import (
+    Factura,
+    GrupoFacturacion,
+    TipoCuotaHomologacion,
+    TipoOtroIngreso,
+)
 from gastos.forms import CargaMasivaCuentasForm
 from gastos.models import (
     CargaCatalogoFila,
@@ -695,15 +700,20 @@ def lista_catalogo_cuentas(request):
 
 
 ################## REFERENCIAS DE PAGO Y QR ##################
+def _limpiar_qr(texto):
+    """El QR SPEI usa '|' como separador: quita ese carácter y saltos de línea de los textos."""
+    return str(texto or '').replace('|', ' ').replace('\n', ' ').replace('\r', ' ').strip()
+
+
 def _generar_qr_spei(clabe, empresa_nombre, referencia, cliente_nombre, concepto_extra=''):
     buffer = BytesIO()
     contenido_qr = (
         f"SPEI|"
         f"{clabe or ''}|"
-        f"{empresa_nombre}|"
+        f"{_limpiar_qr(empresa_nombre)}|"
         f"|"
-        f"{referencia}|"
-        f"Pago {concepto_extra} {cliente_nombre}"
+        f"{_limpiar_qr(referencia)}|"
+        f"Pago {_limpiar_qr(concepto_extra)} {_limpiar_qr(cliente_nombre)}"
     )
     qr = segno.make_qr(contenido_qr, error='H')
     qr.save(buffer, kind='png', scale=4, border=2)
@@ -711,16 +721,16 @@ def _generar_qr_spei(clabe, empresa_nombre, referencia, cliente_nombre, concepto
 
 
 def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
+    numero = getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')
+    referencia = propiedad.referencia_mostrar  # corta (7 dígitos) o, si no hay, la larga histórica
     cuentas_con_qr = []
     for cuenta in cuentas:
         qr_base64 = _generar_qr_spei(
-            cuenta.clabe, cliente.empresa.nombre, propiedad.referencia_pago,
-            #cliente.nombre, f"{tipo_label} {propiedad.numero}"
-            cliente.nombre, f"{tipo_label} {getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')}"
-            
+            cuenta.clabe, cliente.empresa.nombre, referencia,
+            cliente.nombre, f"{tipo_label} {numero}"
         )
         cuentas_con_qr.append({
-            'banco': cuenta.banco,
+            'banco': cuenta.get_banco_display(),
             'numero_cuenta': cuenta.numero_cuenta,
             'clabe': cuenta.clabe or 'No configurado',
             'tipo_cuenta': cuenta.tipo_cuenta or '',
@@ -728,16 +738,17 @@ def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
         })
     return {
         'tipo_label': tipo_label,
-        'numero': getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', ''),
-        'referencia_pago': propiedad.referencia_pago,
+        'numero': numero,
+        'referencia_pago': referencia,
         'cuentas_con_qr': cuentas_con_qr,
     }
 
 
 #referencia de pago de una propiedad en especifico
+@login_required
 def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
     """
-    tipo: 'local' o 'area'
+    tipo: 'local', 'area' o 'grupo'
     """
     if tipo == 'local':
         propiedad = get_object_or_404(LocalComercial, pk=propiedad_id)
@@ -757,15 +768,22 @@ def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
         messages.warning(request, "Esta propiedad no tiene cliente asignado.")
         return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
 
-    if not propiedad.referencia_pago:
-        #messages.warning(request, f"'{propiedad.numero}' aún no tiene referencia de pago asignada.")
-        messages.warning(request, f"'{getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')}' aún no tiene referencia de pago asignada.")
+    # Solo se puede ver la propiedad de la empresa del usuario (superusuario: todas).
+    if not request.user.is_superuser:
+        perfil = getattr(request.user, 'perfilusuario', None)
+        if not perfil or perfil.empresa_id != cliente.empresa_id:
+            from django.http import Http404
+            raise Http404("Propiedad no encontrada.")
+
+    nombre_propiedad = getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')
+
+    if not propiedad.referencia_mostrar:
+        messages.warning(request, f"'{nombre_propiedad}' aún no tiene referencia de pago asignada.")
         return redirect(request.META.get('HTTP_REFERER', 'lista_locales'))
 
-    # NUEVO -- ahora respeta la selección del usuario (mostrar_en_referencia_pago),
-    # además de seguir excluyendo Inversión como regla dura, sin importar
-    # cómo esté marcado ese campo (para que nunca se pueda mostrar por
-    # accidente una cuenta de inversión).
+    # Respeta la selección del usuario (mostrar_en_referencia_pago), además de seguir
+    # excluyendo Inversión como regla dura, sin importar cómo esté marcado ese campo
+    # (para que nunca se pueda mostrar por accidente una cuenta de inversión).
     cuentas = CuentaBancaria.objects.filter(
         empresa=cliente.empresa, activa=True, mostrar_en_referencia_pago=True,
     ).exclude(tipo_cuenta='INVERSION')
@@ -781,5 +799,5 @@ def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
     html_string = render_to_string('catalogos/instrucciones_pago.html', contexto)
     pdf = HTML(string=html_string).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="referencia_pago_{propiedad.referencia_pago}.pdf"'
-    return response    
+    response['Content-Disposition'] = f'attachment; filename="referencia_pago_{propiedad.referencia_mostrar}.pdf"'
+    return response  

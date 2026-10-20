@@ -3,7 +3,7 @@ from django import forms
 from django.db import models
 from django.utils import timezone
 
-from catalogos.utils import generar_referencia_pago_propiedad
+from catalogos.utils import generar_referencia_corta, generar_referencia_pago_propiedad
 from empresas.models import Empresa
 
 
@@ -44,6 +44,7 @@ class AreaComun(models.Model):
     observaciones = models.CharField(max_length=255, blank=True, null=True)
     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota global? un solo pago")
     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
+    referencia_corta = models.CharField(max_length=7, unique=True, blank=True, null=True)
     es_cuota_variable = models.BooleanField(
         default=False,
         verbose_name="¿Cuota variable?",
@@ -73,7 +74,14 @@ class AreaComun(models.Model):
                 nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'A', self.numero)
                 intentos += 1
             self.referencia_pago = nueva_ref
+        if not self.referencia_corta:
+            self.referencia_corta = generar_referencia_corta()
         super().save(*args, **kwargs)
+
+    @property
+    def referencia_mostrar(self):
+        """Referencia que se muestra al cliente: la corta; si no hay, la larga (histórica)."""
+        return self.referencia_corta or self.referencia_pago
 
 
     @property
