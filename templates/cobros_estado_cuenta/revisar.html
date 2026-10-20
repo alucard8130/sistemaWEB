@@ -22,7 +22,7 @@
 {% include 'loading_overlay.html' %}
  {% if messages %}
   {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
                 <!-- Block for displaying messages -->
@@ -132,12 +132,17 @@
                             <div class="small text-muted mt-1">
                                 <i class="bi bi-shop me-1"></i>Local {{ mov.propiedad_local.numero }}
                             </div>
-                            <div class="small text-muted">{{ mov.propiedad_local.referencia_pago }}</div>
+                            <div class="small text-muted">{{ mov.propiedad_local.referencia_mostrar }}</div>
                         {% elif mov.propiedad_area %}
                             <div class="small text-muted mt-1">
                                 <i class="bi bi-building me-1"></i>Área {{ mov.propiedad_area.numero }}
                             </div>
-                            <div class="small text-muted">{{ mov.propiedad_area.referencia_pago }}</div>
+                            <div class="small text-muted">{{ mov.propiedad_area.referencia_mostrar }}</div>
+                        {% elif mov.propiedad_grupo %}
+                            <div class="small text-muted mt-1">
+                                <i class="bi bi-collection me-1"></i>Grupo {{ mov.propiedad_grupo.nombre }}
+                            </div>
+                            <div class="small text-muted">{{ mov.propiedad_grupo.referencia_mostrar }}</div>
                         {% endif %}
                     {% else %}
                         <div class="small text-muted">Sin cliente detectado</div>
@@ -208,6 +213,12 @@
                     <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="crear_factura_cuota">
+                        {% if mov.propiedad_grupo %}
+                        <div class="alert alert-info py-1 px-2 small mb-2">
+                            Movimiento identificado con el grupo <strong>{{ mov.propiedad_grupo.nombre }}</strong>.
+                            Para facturar un grupo usa "Asignar a factura existente"; aquí elige el local o área.
+                        </div>
+                        {% endif %}
                         <div class="mb-2">
                             {% if mov.cliente_asignado %}
                                 <input type="hidden" name="cliente_id" value="{{ mov.cliente_asignado.id }}"
@@ -332,7 +343,8 @@
         
 
         <!-- Ignorar -->
-        <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}">
+        <form method="post" action="{% url 'aplicar_movimiento_estado_cuenta' mov.pk %}"
+              onsubmit="return confirm('¿Ignorar este movimiento? Ya no podrá asignarse después.');">
             {% csrf_token %}
             <input type="hidden" name="accion" value="ignorar">
             <button type="submit" class="btn btn-outline-secondary btn-sm w-100 reporte-link">
@@ -353,7 +365,12 @@
             <div class="small text-muted mt-1">{{ mov.factura_otros_ingresos.folio }}</div>
         {% endif %}
     {% elif mov.estado == 'ignorado' %}
-        <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i> Ignorado</span>
+        {% if mov.pago_generado %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-question-circle me-1"></i> Registrado como no identificado</span>
+            <div class="small text-muted mt-1">Pago ID: {{ mov.pago_generado.id }}</div>
+        {% else %}
+            <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i> Ignorado</span>
+        {% endif %}
     {% endif %}
     {% if mov.estado == 'parcial' %}
     <span class="badge bg-info text-dark">
@@ -407,8 +424,8 @@
 <script src="{% static 'js/script.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const facturasPorCliente = {{ facturas_por_cliente_json|safe }};
-const propiedadesPorCliente = {{ propiedades_por_cliente_json|safe }};
+const facturasPorCliente = JSON.parse('{{ facturas_por_cliente_json|escapejs }}');
+const propiedadesPorCliente = JSON.parse('{{ propiedades_por_cliente_json|escapejs }}');
 
 function cargarFacturas(sel) {
     const clienteId = sel.value;
@@ -431,7 +448,8 @@ function cargarFacturas(sel) {
                 opt.dataset.tipo = 'cuota';
                 const local = f.local ? ` | Local ${f.local}` : '';
                 const area = f.area ? ` | Área ${f.area}` : '';
-                opt.textContent = `${f.folio} — ${f.concepto}${local}${area} — $${f.monto.toLocaleString('es-MX', {minimumFractionDigits:2})} — vence ${f.vencimiento}`;
+                const grupo = f.grupo ? ` | Grupo ${f.grupo}` : '';
+                opt.textContent = `${f.folio} — ${f.concepto}${local}${area}${grupo} — $${f.monto.toLocaleString('es-MX', {minimumFractionDigits:2})} — vence ${f.vencimiento}`;
                 grp.appendChild(opt);
             });
             factSel.appendChild(grp);
@@ -497,11 +515,6 @@ document.querySelectorAll('.cliente-sel').forEach(sel => {
 document.querySelectorAll('.cliente-local-sel').forEach(sel => {
     if (sel.value) cargarPropiedades(sel);
 });
-function toggleRetencion(sel) {
-    const movPk = sel.dataset.mov;
-    const bloque = document.querySelector(`.retencion-bloque-${movPk}`);
-    bloque.style.display = sel.value === 'rendimiento' ? 'block' : 'none';
-}
 </script>
 <script>
     // Mostrar overlay de carga al enviar formularios

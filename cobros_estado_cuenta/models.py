@@ -1,6 +1,5 @@
 
 # Create your models here.
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -33,7 +32,7 @@ class SesionEstadoCuenta(models.Model):
         return f"{self.banco_detectado} {self.periodo_inicio} al {self.periodo_fin}"
 
     class Meta:
-        ordering = ['-fecha_registro']
+        ordering = ['-fecha_registro']  # noqa: RUF012
         verbose_name = 'Sesión de estado de cuenta'
         verbose_name_plural = 'Sesiones de estado de cuenta'
 
@@ -70,9 +69,15 @@ class MovimientoEstadoCuenta(models.Model):
     # NUEVO: propiedad detectada por la IA
     propiedad_tipo = models.CharField(
         max_length=10,
-        choices=[('local', 'Local Comercial'), ('area', 'Área Común')],
+        #choices=[('local', 'Local Comercial'), ('area', 'Área Común')],
+        choices=[('local', 'Local Comercial'), ('area', 'Área Común'), ('grupo', 'Grupo de Facturación')],
         blank=True, null=True
     )
+    propiedad_grupo = models.ForeignKey(
+        'facturacion.GrupoFacturacion', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='movimientos_estado_cuenta'
+    )
+
     propiedad_local = models.ForeignKey(
         'locales.LocalComercial', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='movimientos_estado_cuenta'
@@ -122,7 +127,7 @@ class AplicacionMovimientoEstadoCuenta(models.Model):
     fecha_aplicacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['fecha_aplicacion']
+        ordering = ['fecha_aplicacion']  # noqa: RUF012
 
     def __str__(self):
         return f"{self.movimiento_id} — ${self.monto}"

@@ -17,10 +17,10 @@
     {% include 'navbar.html' %}
     {% include 'loading_overlay.html' %}
 
-    <div class="container-fluid mt-4 px-3" style="max-width: 780px;">
+    <div class="container-fluid mt-4 px-3" style="max-width: 980px;">
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
@@ -46,6 +46,7 @@
                         <th>Cliente</th>
                         <th>Locales</th>
                         <th>Cuota total</th>
+                        <th>Referencia de pago</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -56,15 +57,21 @@
                             <td>{{ grupo.cliente.nombre }}</td>
                             <td>{{ grupo.total_locales }}</td>
                             <td>${{ grupo.total_cuota|default:0|floatformat:2 }}</td>
+                            <td class="small fw-bold" style="font-family:monospace;">{{ grupo.referencia_mostrar|default:"—" }}</td>
                             <td>
                                 <a href="{% url 'editar_grupo_facturacion' grupo.id %}" class="btn btn-sm btn-outline-primary reporte-link">
                                     <i class="bi bi-pencil-square"></i> Editar locales
                                 </a>
+                                {% if grupo.referencia_mostrar %}
+                                <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='grupo' propiedad_id=grupo.id %}" class="btn btn-sm btn-outline-secondary" title="Instrucciones de pago (PDF)">
+                                    <i class="bi bi-qr-code"></i> Ref. de pago
+                                </a>
+                                {% endif %}
                             </td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 <i class="bi bi-collection fs-3 d-block mb-2"></i>
                                 No hay grupos de facturación registrados todavía.
                             </td>

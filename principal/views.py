@@ -51,6 +51,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.utils.html import escape
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from rest_framework.decorators import (
@@ -5582,7 +5583,7 @@ def enviar_recordatorio_morosidad(request):
     local_id = request.GET.get("local_id")
     area_id = request.GET.get("area_id")
     next_url = request.GET.get("next")
-
+ 
     # Validación de parámetros
     if local_id and not local_id.isdigit():
         messages.error(request, "ID de local inválido.")
@@ -5590,18 +5591,90 @@ def enviar_recordatorio_morosidad(request):
     if area_id and not area_id.isdigit():
         messages.error(request, "ID de área común inválido.")
         return redirect(next_url or "lista_facturas")
-
+ 
+    def facturas_base():
+        """Facturas pendientes limitadas a la empresa del usuario (superusuario: todas)."""
+        qs = Factura.objects.select_related(
+            "local", "area_comun", "empresa", "cliente"
+        ).filter(estatus="pendiente")
+        if not request.user.is_superuser:
+            qs = qs.filter(empresa=request.user.perfilusuario.empresa)
+        return qs
+ 
     def formato_importe(importe):
         return "${:,.2f}".format(round(importe, 2))  # noqa: UP032
-
+ 
+    def referencias_de_pago(facturas, empresa):
+        """Referencias de pago de las ubicaciones que aparecen en el aviso y cuentas donde depositar.
+        Factura de grupo -> referencia del grupo; factura de local/área -> la de esa propiedad."""
+        refs = OrderedDict()  # referencia -> etiqueta
+        for f in facturas:
+            if f.local_id:
+                ref = f.local.referencia_mostrar
+                if ref:
+                    refs[ref] = f"Local {f.local.numero}"
+            elif f.area_comun_id:
+                ref = f.area_comun.referencia_mostrar
+                if ref:
+                    refs[ref] = f"Área común {f.area_comun.numero}"
+            else:
+                locs = list(f.locales_incluidos.select_related("grupo_facturacion"))
+                grupo = next((l.grupo_facturacion for l in locs if l.grupo_facturacion_id), None)
+                if grupo and grupo.referencia_mostrar:
+                    refs[grupo.referencia_mostrar] = (
+                        f"Grupo {grupo.nombre} (locales: {', '.join(l.numero for l in locs)})"
+                    )
+                else:
+                    for l in locs:  # sin grupo identificable: referencia de cada local
+                        if l.referencia_mostrar:
+                            refs[l.referencia_mostrar] = f"Local {l.numero}"
+        cuentas = []
+        if empresa:
+            cuentas = list(
+                CuentaBancaria.objects.filter(
+                    empresa=empresa, activa=True, mostrar_en_referencia_pago=True
+                ).exclude(tipo_cuenta="INVERSION")
+            )
+        return refs, cuentas
+ 
     def construir_correo_html(
         cliente, facturas, empresa_nombre, email_empresa, tipo="local"
     ):
         total = sum(f.saldo_pendiente for f in facturas)
+        refs, cuentas_ref = referencias_de_pago(facturas, facturas[0].empresa if facturas else None)
+        bloque_referencias = ""
+        if refs:
+            filas_refs = "".join(
+                f'<tr><td style="padding:8px 12px; border-bottom:1px solid #eee; color:#444;">{escape(etq)}</td>'
+                f'<td style="padding:8px 12px; border-bottom:1px solid #eee; color:#152A52; font-weight:bold; font-family:monospace;">{escape(ref)}</td></tr>'
+                for ref, etq in refs.items()
+            )
+            filas_cuentas = "".join(
+                f'<li style="margin:2px 0;">{escape(c.get_banco_display())}'
+                + (f" — CLABE: <strong>{escape(c.clabe)}</strong>" if c.clabe else "")
+                + (f" — Cuenta: {escape(c.numero_cuenta)}" if c.numero_cuenta else "")
+                + "</li>"
+                for c in cuentas_ref
+            )
+            bloque_cuentas = (
+                f'<p style="margin:12px 0 4px 0; color:#555; font-size:13px;">Cuentas para depósito o transferencia:</p>'
+                f'<ul style="margin:0; padding-left:18px; color:#444; font-size:13px;">{filas_cuentas}</ul>'
+                if filas_cuentas else ""
+            )
+            bloque_referencias = f"""
+                        <tr>
+                            <td style="padding: 0 32px 24px 32px;">
+                                <p style="margin:0 0 8px 0; color:#152A52; font-weight:bold; font-size:14px;">Referencia de pago</p>
+                                <p style="margin:0 0 8px 0; color:#555; font-size:13px;">Use la referencia correspondiente en su depósito o transferencia para que su pago se identifique correctamente.</p>
+                                <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e0e0; border-radius:6px;">
+                                    {filas_refs}
+                                </table>
+                                {bloque_cuentas}
+                            </td>
+                        </tr>"""
         tipo_label = (
             "cuotas de local comercial" if tipo == "local" else "cuotas de área común"
         )
-
         filas_facturas = ""
         for factura in facturas:
             if tipo == "local":
@@ -5620,16 +5693,16 @@ def enviar_recordatorio_morosidad(request):
                     if factura.area_comun
                     else "Sin ubicación"
                 )
-
+ 
             filas_facturas += f"""
             <tr>
-                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{factura.folio}</td>
-                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{ubicacion}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{escape(factura.folio)}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{escape(ubicacion)}</td>
                 <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #444;">{factura.fecha_vencimiento}</td>
                 <td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #c0392b; font-weight: bold; text-align: right;">{formato_importe(factura.saldo_pendiente)}</td>
             </tr>
             """
-
+ 
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -5638,26 +5711,26 @@ def enviar_recordatorio_morosidad(request):
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding: 32px 0;">
                 <tr><td align="center">
                     <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-
+ 
                         <!-- Header -->
                         <tr>
                             <td style="background: #152A52; padding: 28px 32px; text-align: center;">
-                                <h1 style="margin:0; color:#ffffff; font-size:22px; letter-spacing:1px;">{empresa_nombre}</h1>
+                                <h1 style="margin:0; color:#ffffff; font-size:22px; letter-spacing:1px;">{escape(empresa_nombre)}</h1>
                                 <p style="margin:6px 0 0 0; color:#AFC0DC; font-size:13px;">Aviso de adeudo pendiente</p>
                             </td>
                         </tr>
-
+ 
                         <!-- Saludo -->
                         <tr>
                             <td style="padding: 28px 32px 16px 32px;">
-                                <p style="margin:0; color:#333; font-size:15px;">Estimado(a) <strong>{cliente.nombre}</strong>,</p>
+                                <p style="margin:0; color:#333; font-size:15px;">Estimado(a) <strong>{escape(cliente.nombre)}</strong>,</p>
                                 <p style="margin:12px 0 0 0; color:#555; font-size:14px; line-height:1.6;">
                                     Le informamos que tiene <strong>adeudos pendientes</strong> correspondientes a {tipo_label}.
                                     Le pedimos atender este aviso a la brevedad posible para evitar cargos adicionales.
                                 </p>
                             </td>
                         </tr>
-
+ 
                         <!-- Tabla de adeudos -->
                         <tr>
                             <td style="padding: 0 32px 24px 32px;">
@@ -5676,7 +5749,9 @@ def enviar_recordatorio_morosidad(request):
                                 </table>
                             </td>
                         </tr>
-
+ 
+                        {bloque_referencias}
+ 
                         <!-- Botón pago en línea -->
                         <tr>
                             <td style="padding: 0 32px 24px 32px; text-align:center;">
@@ -5687,7 +5762,7 @@ def enviar_recordatorio_morosidad(request):
                                 </a>
                             </td>
                         </tr>
-
+ 
                         <!-- Descarga de la app -->
                         <tr>
                             <td style="padding: 0 32px 28px 32px;">
@@ -5700,90 +5775,107 @@ def enviar_recordatorio_morosidad(request):
                                                style="display:inline-block; background:#000000; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:bold; margin: 0 6px;">
                                                 🍎 App Store
                                             </a>
-                                            <a href="https://devsoftheron.com.mx/beta"
-                                               style="display:inline-block; background:#2d7a27; color:#ffffff; text-decoration:none; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:bold; margin: 0 6px; opacity:0.7;">
-                                                🤖 Google Play (testers)
-                                            </a>
+                                          
                                         </td>
                                     </tr>
                                 </table>
                             </td>
                         </tr>
-
+ 
                         <!-- Comprobante -->
                         <tr>
                             <td style="padding: 0 32px 28px 32px;">
                                 <p style="margin:0; color:#555; font-size:13px; line-height:1.6; background:#fff8e1; border-left:4px solid #f9a825; padding:12px 16px; border-radius:4px;">
                                     ¿Ya realizó su pago? Envíe su comprobante a
-                                    <a href="mailto:{email_empresa}" style="color:#152A52; font-weight:bold;">{email_empresa}</a>
+                                    <a href="mailto:{escape(email_empresa)}" style="color:#152A52; font-weight:bold;">{escape(email_empresa)}</a>
                                     o súbalo directamente desde la app.
                                 </p>
                             </td>
                         </tr>
-
+ 
                         <!-- Footer -->
                         <tr>
                             <td style="background:#f0f4f8; padding:18px 32px; text-align:center; border-top:1px solid #e0e0e0;">
                                 <p style="margin:0; color:#888; font-size:12px;">
-                                    Este es un mensaje automático de <strong>{empresa_nombre}</strong>.<br>
+                                    Este es un mensaje automático de <strong>{escape(empresa_nombre)}</strong>.<br>
                                     Por favor no responda directamente a este correo.
                                 </p>
                             </td>
                         </tr>
-
+ 
                     </table>
                 </td></tr>
             </table>
         </body>
         </html>
         """
-        return html, formato_importe(total)
-
+        refs_texto = ""
+        if refs:
+            refs_texto = "\n\nReferencia de pago:\n" + "\n".join(
+                f"- {etq}: {ref}" for ref, etq in refs.items()
+            )
+        return html, formato_importe(total), refs_texto
+ 
+    def texto_plano_de(empresa_nombre, cliente, total_str, refs_texto):
+        return (
+            f"{empresa_nombre}\n\nEstimado {cliente.nombre}, tiene adeudos pendientes "
+            f"por un total de {total_str}.{refs_texto}\n\n"
+            f"Pague en línea: {settings.PORTAL_PAGOS_URL}/\n"
+            f"Descargue la app: https://apps.apple.com/us/app/gesac-condominos/id6756532273"
+        )
+ 
+    def resolver_email(request, cliente, next_url):
+        """Devuelve (email, respuesta). Si falta el email, respuesta es la pantalla de captura."""
+        email = cliente.email
+        if email:
+            return email, None, next_url
+        if request.method == "POST":
+            form = CapturarEmailForm(request.POST)
+            next_url = request.POST.get("next")
+            if form.is_valid():
+                email = form.cleaned_data["email"]
+                if cliente.nombre.strip().lower() != "venta al publico en general":
+                    cliente.email = email
+                    cliente.save()
+                return email, None, next_url
+            return None, render(
+                request,
+                "facturacion/capturar_email.html",
+                {"form": form, "cliente": cliente, "next": next_url},
+            ), next_url
+        form = CapturarEmailForm()
+        return None, render(
+            request,
+            "facturacion/capturar_email.html",
+            {"form": form, "cliente": cliente, "next": next_url},
+        ), next_url
+ 
     if local_id:
         local_id = int(local_id)
-        facturas = Factura.objects.filter(
-            Q(local_id=local_id) | Q(locales_incluidos__id=local_id),
-            estatus="pendiente",
-        ).distinct()
+        facturas = (
+            facturas_base()
+            .filter(Q(local_id=local_id) | Q(locales_incluidos__id=local_id))
+            .distinct()
+        )
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
-
+ 
         if not facturas:
             messages.warning(
                 request, "No hay adeudos pendientes para el local seleccionado."
             )
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
-        email = cliente.email
         email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
-        if not email:
-            if request.method == "POST":
-                form = CapturarEmailForm(request.POST)
-                next_url = request.POST.get("next")
-                if form.is_valid():
-                    email = form.cleaned_data["email"]
-                    if cliente.nombre.strip().lower() != "venta al publico en general":
-                        cliente.email = email
-                        cliente.save()
-                else:
-                    return render(
-                        request,
-                        "facturacion/capturar_email.html",
-                        {"form": form, "cliente": cliente, "next": next_url},
-                    )
-            else:
-                form = CapturarEmailForm()
-                return render(
-                    request,
-                    "facturacion/capturar_email.html",
-                    {"form": form, "cliente": cliente, "next": next_url},
-                )
-
+        email, respuesta, next_url = resolver_email(request, cliente, next_url)
+        if respuesta:
+            return respuesta
+ 
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
-        html_message, total_str = construir_correo_html(
+        html_message, total_str, refs_texto = construir_correo_html(
             cliente, facturas, empresa_nombre, email_empresa, tipo="local"
         )
-        texto_plano = f"{empresa_nombre}\n\nEstimado {cliente.nombre}, tiene adeudos pendientes por un total de {total_str}.\n\nPague en línea: {settings.PORTAL_PAGOS_URL}/\nDescargue la app: https://apps.apple.com/us/app/gesac-condominos/id6756532273"
-
+        texto_plano = texto_plano_de(empresa_nombre, cliente, total_str, refs_texto)
+ 
         send_mail(
             subject=f"⚠️ Recordatorio de adeudo pendiente — {empresa_nombre}",
             message=texto_plano,
@@ -5797,10 +5889,10 @@ def enviar_recordatorio_morosidad(request):
             f"Recordatorio enviado correctamente al cliente {cliente.nombre}.",
         )
         return redirect(next_url or "lista_facturas")
-
+ 
     elif area_id:
         area_id = int(area_id)
-        facturas = Factura.objects.filter(area_comun_id=area_id, estatus="pendiente")
+        facturas = facturas_base().filter(area_comun_id=area_id)
         facturas = [f for f in facturas if f.saldo_pendiente > 0]
         if not facturas:
             messages.warning(
@@ -5808,37 +5900,17 @@ def enviar_recordatorio_morosidad(request):
             )
             return redirect(next_url or "lista_facturas")
         cliente = facturas[0].cliente
-        email = cliente.email
         email_empresa = facturas[0].empresa.email if facturas[0].empresa else ""
-        if not email:
-            if request.method == "POST":
-                form = CapturarEmailForm(request.POST)
-                next_url = request.POST.get("next")
-                if form.is_valid():
-                    email = form.cleaned_data["email"]
-                    if cliente.nombre.strip().lower() != "venta al publico en general":
-                        cliente.email = email
-                        cliente.save()
-                else:
-                    return render(
-                        request,
-                        "facturacion/capturar_email.html",
-                        {"form": form, "cliente": cliente, "next": next_url},
-                    )
-            else:
-                form = CapturarEmailForm()
-                return render(
-                    request,
-                    "facturacion/capturar_email.html",
-                    {"form": form, "cliente": cliente, "next": next_url},
-                )
-
+        email, respuesta, next_url = resolver_email(request, cliente, next_url)
+        if respuesta:
+            return respuesta
+ 
         empresa_nombre = facturas[0].empresa.nombre if facturas[0].empresa else ""
-        html_message, total_str = construir_correo_html(
+        html_message, total_str, refs_texto = construir_correo_html(
             cliente, facturas, empresa_nombre, email_empresa, tipo="area"
         )
-        texto_plano = f"{empresa_nombre}\n\nEstimado {cliente.nombre}, tiene adeudos pendientes por un total de {total_str}.\n\nPague en línea: {settings.PORTAL_PAGOS_URL}/\nDescargue la app: https://apps.apple.com/us/app/gesac-condominos/id6756532273"
-
+        texto_plano = texto_plano_de(empresa_nombre, cliente, total_str, refs_texto)
+ 
         send_mail(
             subject=f"⚠️ Recordatorio de adeudo pendiente — {empresa_nombre}",
             message=texto_plano,
@@ -5852,7 +5924,7 @@ def enviar_recordatorio_morosidad(request):
             f"Recordatorio enviado correctamente al cliente {cliente.nombre} del área común {facturas[0].area_comun.numero if facturas[0].area_comun else ''}.",
         )
         return redirect(next_url or "lista_facturas")
-
+ 
     else:
         messages.error(
             request,

@@ -1,0 +1,491 @@
+diff --git a/areas/migrations/0028_areacomun_referencia_corta.py b/areas/migrations/0028_areacomun_referencia_corta.py
+new file mode 100644
+index 0000000..04aca05
+--- /dev/null
++++ b/areas/migrations/0028_areacomun_referencia_corta.py
+@@ -0,0 +1,16 @@
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('areas', '0027_areacomun_periodicidad_facturacion'),
++    ]
++
++    operations = [
++        migrations.AddField(
++            model_name='areacomun',
++            name='referencia_corta',
++            field=models.CharField(blank=True, max_length=7, null=True, unique=True),
++        ),
++    ]
+diff --git a/areas/models.py b/areas/models.py
+index 5c7df42..2ac5f97 100644
+--- a/areas/models.py
++++ b/areas/models.py
+@@ -3,7 +3,7 @@ from django import forms
+ from django.db import models
+ from django.utils import timezone
+ 
+-from catalogos.utils import generar_referencia_pago_propiedad
++from catalogos.utils import generar_referencia_corta, generar_referencia_pago_propiedad
+ from empresas.models import Empresa
+ 
+ 
+@@ -44,6 +44,7 @@ class AreaComun(models.Model):
+     observaciones = models.CharField(max_length=255, blank=True, null=True)
+     es_cuota_anual = models.BooleanField(default=False, verbose_name="¿Cuota global? un solo pago")
+     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
++    referencia_corta = models.CharField(max_length=7, unique=True, blank=True, null=True)
+     es_cuota_variable = models.BooleanField(
+         default=False,
+         verbose_name="¿Cuota variable?",
+@@ -73,8 +74,15 @@ class AreaComun(models.Model):
+                 nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'A', self.numero)
+                 intentos += 1
+             self.referencia_pago = nueva_ref
++        if not self.referencia_corta:
++            self.referencia_corta = generar_referencia_corta()
+         super().save(*args, **kwargs)
+ 
++    @property
++    def referencia_mostrar(self):
++        """Referencia que se muestra al cliente: la corta; si no hay, la larga (histórica)."""
++        return self.referencia_corta or self.referencia_pago
++
+ 
+     @property
+     def estado_contrato_actual(self):
+diff --git a/catalogos/utils.py b/catalogos/utils.py
+index 4e89797..b6ce097 100644
+--- a/catalogos/utils.py
++++ b/catalogos/utils.py
+@@ -12,4 +12,22 @@ def generar_referencia_pago_propiedad(cliente_id, tipo, numero):
+     """
+     numero_saneado = re.sub(r'[^A-Za-z0-9]', '', numero or '').upper()[:8]
+     sufijo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+-    return f"RF-{cliente_id:05d}-{tipo}{numero_saneado}-{sufijo}"
+\ No newline at end of file
++    return f"RF-{cliente_id:05d}-{tipo}{numero_saneado}-{sufijo}"
++
++
++def generar_referencia_corta():
++    """Referencia de pago corta: 7 dígitos numéricos (cabe en el campo "Referencia numérica" de SPEI).
++    Única entre locales, áreas comunes y grupos de facturación. Nunca empieza con 0."""
++    from areas.models import AreaComun
++    from facturacion.models import GrupoFacturacion
++    from locales.models import LocalComercial
++
++    for _ in range(50):
++        ref = str(random.randint(1000000, 9999999))
++        if not (
++            LocalComercial.objects.filter(referencia_corta=ref).exists()
++            or AreaComun.objects.filter(referencia_corta=ref).exists()
++            or GrupoFacturacion.objects.filter(referencia_corta=ref).exists()
++        ):
++            return ref
++    raise ValueError("No fue posible generar una referencia corta única.")
+diff --git a/catalogos/views.py b/catalogos/views.py
+index 002fd09..56e65a1 100644
+--- a/catalogos/views.py
++++ b/catalogos/views.py
+@@ -714,7 +714,7 @@ def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
+     cuentas_con_qr = []
+     for cuenta in cuentas:
+         qr_base64 = _generar_qr_spei(
+-            cuenta.clabe, cliente.empresa.nombre, propiedad.referencia_pago,
++            cuenta.clabe, cliente.empresa.nombre, propiedad.referencia_mostrar,
+             cliente.nombre, f"{tipo_label} {getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')}"
+         )
+         cuentas_con_qr.append({
+@@ -727,7 +727,7 @@ def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
+     return {
+         'tipo_label': tipo_label,
+         'numero': getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', ''),
+-        'referencia_pago': propiedad.referencia_pago,
++        'referencia_pago': propiedad.referencia_mostrar,
+         'cuentas_con_qr': cuentas_con_qr,
+     }
+ 
+@@ -756,7 +756,7 @@ def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
+         messages.warning(request, "Esta propiedad no tiene cliente asignado.")
+         return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
+ 
+-    if not propiedad.referencia_pago:
++    if not propiedad.referencia_mostrar:
+         messages.warning(request, f"'{getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')}' aún no tiene referencia de pago asignada.")
+         return redirect(request.META.get('HTTP_REFERER', 'lista_locales'))
+ 
+@@ -779,5 +779,5 @@ def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
+     html_string = render_to_string('catalogos/instrucciones_pago.html', contexto)
+     pdf = HTML(string=html_string).write_pdf()
+     response = HttpResponse(pdf, content_type='application/pdf')
+-    response['Content-Disposition'] = f'attachment; filename="referencia_pago_{propiedad.referencia_pago}.pdf"'
++    response['Content-Disposition'] = f'attachment; filename="referencia_pago_{propiedad.referencia_mostrar}.pdf"'
+     return response    
+\ No newline at end of file
+diff --git a/cobros_estado_cuenta/views.py b/cobros_estado_cuenta/views.py
+index cce4d6e..7b2cd99 100644
+--- a/cobros_estado_cuenta/views.py
++++ b/cobros_estado_cuenta/views.py
+@@ -168,6 +168,8 @@ def procesar_estado_cuenta_en_segundo_plano(sesion_id, archivo_bytes, archivo_no
+                     # propiedad_numero trae la referencia de pago del grupo (RF-...-G...)
+                     from facturacion.models import GrupoFacturacion
+                     propiedad_grupo = GrupoFacturacion.objects.filter(
++                        cliente=cliente, empresa=empresa, referencia_corta=propiedad_numero
++                    ).first() or GrupoFacturacion.objects.filter(
+                         cliente=cliente, empresa=empresa, referencia_pago=propiedad_numero
+                     ).first() or GrupoFacturacion.objects.filter(
+                         cliente=cliente, empresa=empresa, nombre=propiedad_numero
+@@ -413,16 +415,19 @@ Devuelve ÚNICAMENTE JSON válido, sin texto adicional, sin explicaciones:
+ Clientes de la empresa, con sus propiedades (locales y áreas comunes) para matching:
+ {clientes_json}
+ 
+-Cada propiedad tiene una referencia de pago única con el formato:
+-RF-{{cliente_id de 5 dígitos}}-{{L, A o G}}{{número de local/área (o nombre de grupo) saneado}}-{{sufijo aleatorio}}
+-Ejemplo: RF-00042-LD02-X7K3 → cliente 42, Local D02.
+-La letra G indica un GRUPO DE FACTURACIÓN (varios locales que se pagan juntos), ej. RF-00042-GCLINICA-X7K3.
++Cada propiedad (local, área o grupo de facturación) tiene una referencia de pago única ("referencia_pago"):
++un número de 7 dígitos, ej. 4827193. Las propiedades antiguas pueden tener además una referencia larga
++("referencia_larga") con formato RF-{{cliente_id de 5 dígitos}}-{{L, A o G}}{{número saneado}}-{{sufijo}},
++ej. RF-00042-LD02-X7K3 (cliente 42, Local D02). Cualquiera de las dos identifica la propiedad.
++Tipo "grupo" = GRUPO DE FACTURACIÓN (varios locales que se pagan juntos).
++La referencia de 7 dígitos solo cuenta como coincidencia si aparece como número completo e independiente
++(campo de referencia o concepto), NO como parte de otro número más largo (folios, rastreos, CLABE, etc.).
+ 
+ Reglas:
+ - Incluye SOLO abonos (columna ABONOS con valor positivo)
+ - confianza "alta": la referencia de pago exacta de alguna propiedad aparece en la descripción.
+   En este caso llena "propiedad_tipo" ("local", "area" o "grupo") y "propiedad_numero"
+-  (para tipo "grupo", pon en "propiedad_numero" la referencia_pago completa del grupo)"
++  (para tipo "grupo", pon en "propiedad_numero" la referencia del grupo tal como aparece en la lista)"
+ - confianza "media": el nombre del cliente coincide claramente en la descripción (aunque venga
+   abreviado, sin acentos o en otro orden). Si el concepto menciona un local/área que coincide
+   con una propiedad del cliente, llena también "propiedad_tipo"/"propiedad_numero"
+@@ -458,21 +463,24 @@ def extraer_movimientos_con_claude(archivo_bytes, filename, empresa):
+     for cliente in clientes_qs:
+         propiedades = []
+         for local in LocalComercial.objects.filter(cliente=cliente, activo=True):
+-            if local.referencia_pago:
++            if local.referencia_mostrar:
+                 propiedades.append({
+-                    'tipo': 'local', 'numero': local.numero, 'referencia_pago': local.referencia_pago,
++                    'tipo': 'local', 'numero': local.numero, 'referencia_pago': local.referencia_mostrar,
++                    'referencia_larga': local.referencia_pago,
+                 })
+         for area in AreaComun.objects.filter(cliente=cliente, activo=True):
+-            if area.referencia_pago:
++            if area.referencia_mostrar:
+                 propiedades.append({
+-                    'tipo': 'area', 'numero': area.numero, 'referencia_pago': area.referencia_pago,
++                    'tipo': 'area', 'numero': area.numero, 'referencia_pago': area.referencia_mostrar,
++                    'referencia_larga': area.referencia_pago,
+                 })
+         from facturacion.models import GrupoFacturacion
+         for grupo in GrupoFacturacion.objects.filter(cliente=cliente, activo=True):
+-            if grupo.referencia_pago:
++            if grupo.referencia_mostrar:
+                 propiedades.append({
+-                    'tipo': 'grupo', 'numero': grupo.referencia_pago, 'nombre': grupo.nombre,
+-                    'referencia_pago': grupo.referencia_pago,
++                    'tipo': 'grupo', 'numero': grupo.referencia_mostrar, 'nombre': grupo.nombre,
++                    'referencia_pago': grupo.referencia_mostrar,
++                    'referencia_larga': grupo.referencia_pago,
+                 })
+         clientes_data.append({
+             'id': cliente.id, 'nombre': cliente.nombre, 'rfc': cliente.rfc, 'propiedades': propiedades,
+diff --git a/facturacion/migrations/0060_grupofacturacion_referencia_corta.py b/facturacion/migrations/0060_grupofacturacion_referencia_corta.py
+new file mode 100644
+index 0000000..4d61a14
+--- /dev/null
++++ b/facturacion/migrations/0060_grupofacturacion_referencia_corta.py
+@@ -0,0 +1,16 @@
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('facturacion', '0059_llenar_referencia_grupos'),
++    ]
++
++    operations = [
++        migrations.AddField(
++            model_name='grupofacturacion',
++            name='referencia_corta',
++            field=models.CharField(blank=True, max_length=7, null=True, unique=True),
++        ),
++    ]
+diff --git a/facturacion/migrations/0061_llenar_referencias_cortas.py b/facturacion/migrations/0061_llenar_referencias_cortas.py
+new file mode 100644
+index 0000000..ee430ec
+--- /dev/null
++++ b/facturacion/migrations/0061_llenar_referencias_cortas.py
+@@ -0,0 +1,41 @@
++import random
++
++from django.db import migrations
++
++
++def llenar_referencias_cortas(apps, schema_editor):
++    """Asigna referencia corta (7 dígitos) a todos los locales, áreas y grupos existentes.
++    Las referencias largas (referencia_pago) se conservan y siguen siendo reconocidas."""
++    Local = apps.get_model('locales', 'LocalComercial')
++    Area = apps.get_model('areas', 'AreaComun')
++    Grupo = apps.get_model('facturacion', 'GrupoFacturacion')
++
++    usadas = set()
++    for Modelo in (Local, Area, Grupo):
++        usadas.update(Modelo.objects.exclude(referencia_corta__isnull=True).values_list('referencia_corta', flat=True))
++
++    def nueva():
++        for _ in range(100):
++            ref = str(random.randint(1000000, 9999999))
++            if ref not in usadas:
++                usadas.add(ref)
++                return ref
++        raise ValueError("No se pudo generar referencia corta única.")
++
++    for Modelo in (Local, Area, Grupo):
++        for obj in Modelo.objects.filter(referencia_corta__isnull=True).iterator():
++            obj.referencia_corta = nueva()
++            obj.save(update_fields=['referencia_corta'])
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('facturacion', '0060_grupofacturacion_referencia_corta'),
++        ('locales', '0021_localcomercial_referencia_corta'),
++        ('areas', '0028_areacomun_referencia_corta'),
++    ]
++
++    operations = [
++        migrations.RunPython(llenar_referencias_cortas, migrations.RunPython.noop),
++    ]
+diff --git a/facturacion/models.py b/facturacion/models.py
+index 6418d82..042edbe 100644
+--- a/facturacion/models.py
++++ b/facturacion/models.py
+@@ -261,6 +261,7 @@ class GrupoFacturacion(models.Model):
+     activo = models.BooleanField(default=True)
+     # NUEVO -- referencia de pago propia del grupo (mismo formato que locales/areas, con tipo 'G').
+     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
++    referencia_corta = models.CharField(max_length=7, unique=True, blank=True, null=True)
+ 
+     class Meta:
+         ordering = ['nombre']
+@@ -274,8 +275,16 @@ class GrupoFacturacion(models.Model):
+                 nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'G', self.nombre)
+                 intentos += 1
+             self.referencia_pago = nueva_ref
++        if not self.referencia_corta:
++            from catalogos.utils import generar_referencia_corta
++            self.referencia_corta = generar_referencia_corta()
+         super().save(*args, **kwargs)
+ 
++    @property
++    def referencia_mostrar(self):
++        """Referencia que se muestra al cliente: la corta; si no hay, la larga (histórica)."""
++        return self.referencia_corta or self.referencia_pago
++
+     def __str__(self):
+         return f"{self.nombre} ({self.cliente.nombre})"
+ 
+diff --git a/locales/migrations/0021_localcomercial_referencia_corta.py b/locales/migrations/0021_localcomercial_referencia_corta.py
+new file mode 100644
+index 0000000..ea00fce
+--- /dev/null
++++ b/locales/migrations/0021_localcomercial_referencia_corta.py
+@@ -0,0 +1,16 @@
++from django.db import migrations, models
++
++
++class Migration(migrations.Migration):
++
++    dependencies = [
++        ('locales', '0020_localcomercial_pool_vacancia'),
++    ]
++
++    operations = [
++        migrations.AddField(
++            model_name='localcomercial',
++            name='referencia_corta',
++            field=models.CharField(blank=True, max_length=7, null=True, unique=True),
++        ),
++    ]
+diff --git a/locales/models.py b/locales/models.py
+index 9d97fcb..85ccbc3 100644
+--- a/locales/models.py
++++ b/locales/models.py
+@@ -1,7 +1,7 @@
+ 
+ from django.db import models
+ 
+-from catalogos.utils import generar_referencia_pago_propiedad
++from catalogos.utils import generar_referencia_corta, generar_referencia_pago_propiedad
+ from empresas.models import Empresa
+ 
+ 
+@@ -40,6 +40,7 @@ class LocalComercial(models.Model):
+     ]
+     tipo_propiedad = models.CharField(max_length=20, choices=TIPO_CHOICES)
+     referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
++    referencia_corta = models.CharField(max_length=7, unique=True, blank=True, null=True)
+     proindiviso = models.DecimalField(
+         max_digits=7, decimal_places=4, null=True, blank=True,
+         help_text="Porcentaje de proindiviso de la propiedad (%)"
+@@ -67,8 +68,15 @@ class LocalComercial(models.Model):
+                 nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'L', self.numero)
+                 intentos += 1
+             self.referencia_pago = nueva_ref
++        if not self.referencia_corta:
++            self.referencia_corta = generar_referencia_corta()
+         super().save(*args, **kwargs)
+ 
++    @property
++    def referencia_mostrar(self):
++        """Referencia que se muestra al cliente: la corta; si no hay, la larga (histórica)."""
++        return self.referencia_corta or self.referencia_pago
++
+     def __str__(self):
+         return f"{self.numero}"
+         #return f"{self.numero} ({self.empresa.nombre})"
+diff --git a/locales/views.py b/locales/views.py
+index bf8a6b2..64c92a1 100644
+--- a/locales/views.py
++++ b/locales/views.py
+@@ -543,7 +543,7 @@ def exportar_locales_excel(request):
+         ws.cell(row=fila, column=12, value=float(local.proindiviso) if local.proindiviso is not None else None)
+         ws.cell(row=fila, column=13, value=local.grupo_facturacion.nombre if local.grupo_facturacion else "")
+         ws.cell(row=fila, column=14, value=local.pool_vacancia.nombre if local.pool_vacancia else "")
+-        ws.cell(row=fila, column=15, value=local.referencia_pago or "")
++        ws.cell(row=fila, column=15, value=local.referencia_mostrar or "")
+         ws.cell(row=fila, column=16, value=local.observaciones or "")
+         ws.cell(row=fila, column=17, value=local.fecha_creacion.strftime("%d/%m/%Y") if local.fecha_creacion else "")
+  
+diff --git a/principal/views.py b/principal/views.py
+index 4eb1279..ec35698 100644
+--- a/principal/views.py
++++ b/principal/views.py
+@@ -5600,20 +5600,20 @@ def enviar_recordatorio_morosidad(request):
+         refs = OrderedDict()  # referencia -> etiqueta
+         for f in facturas:
+             if f.local_id:
+-                if f.local.referencia_pago:
+-                    refs[f.local.referencia_pago] = f"Local {f.local.numero}"
++                if f.local.referencia_mostrar:
++                    refs[f.local.referencia_mostrar] = f"Local {f.local.numero}"
+             elif f.area_comun_id:
+-                if f.area_comun.referencia_pago:
+-                    refs[f.area_comun.referencia_pago] = f"Área común {f.area_comun.numero}"
++                if f.area_comun.referencia_mostrar:
++                    refs[f.area_comun.referencia_mostrar] = f"Área común {f.area_comun.numero}"
+             else:
+                 locs = list(f.locales_incluidos.select_related("grupo_facturacion"))
+                 grupo = next((l.grupo_facturacion for l in locs if l.grupo_facturacion_id), None)
+-                if grupo and grupo.referencia_pago:
+-                    refs[grupo.referencia_pago] = f"Grupo {grupo.nombre} (locales: {', '.join(l.numero for l in locs)})"
++                if grupo and grupo.referencia_mostrar:
++                    refs[grupo.referencia_mostrar] = f"Grupo {grupo.nombre} (locales: {', '.join(l.numero for l in locs)})"
+                 else:
+                     for l in locs:  # sin grupo identificable: referencia de cada local
+-                        if l.referencia_pago:
+-                            refs[l.referencia_pago] = f"Local {l.numero}"
++                        if l.referencia_mostrar:
++                            refs[l.referencia_mostrar] = f"Local {l.numero}"
+         cuentas = []
+         if empresa:
+             cuentas = list(
+@@ -5651,7 +5651,7 @@ def enviar_recordatorio_morosidad(request):
+                         <tr>
+                             <td style="padding: 0 32px 24px 32px;">
+                                 <p style="margin:0 0 8px 0; color:#152A52; font-weight:bold; font-size:14px;">Referencia de pago</p>
+-                                <p style="margin:0 0 8px 0; color:#555; font-size:13px;">Use la referencia correspondiente en su depósito o transferencia para que su pago se identifique correctamente.</p>
++                                <p style="margin:0 0 8px 0; color:#555; font-size:13px;">Capture la referencia correspondiente en el campo <strong>Referencia numérica</strong> de su transferencia (o en el concepto) para que su pago se identifique correctamente.</p>
+                                 <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e0e0; border-radius:6px;">
+                                     {filas_refs}
+                                 </table>
+diff --git a/templates/areas/lista_areas.html b/templates/areas/lista_areas.html
+index 0764e83..1d23acd 100644
+--- a/templates/areas/lista_areas.html
++++ b/templates/areas/lista_areas.html
+@@ -236,7 +236,7 @@
+                                 <i class="bi bi-slash-circle-fill"></i>
+                             </a>
+                             {% if area.status != 'disponible' %}
+-                                {% if area.referencia_pago %}
++                                {% if area.referencia_mostrar %}
+                                 <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='area' propiedad_id=area.id %}" class="btn-accion btn-qr" title="Instrucciones de pago (QR)">
+                                     <i class="bi bi-qr-code"></i>
+                                 </a>
+diff --git a/templates/catalogos/instrucciones_pago.html b/templates/catalogos/instrucciones_pago.html
+index 89b2c31..bc4d1c8 100644
+--- a/templates/catalogos/instrucciones_pago.html
++++ b/templates/catalogos/instrucciones_pago.html
+@@ -92,6 +92,7 @@
+             <div class="referencia-box">
+                 <div class="referencia-label">Referencia de pago para transferencias o depósitos:</div>
+                 <div class="referencia">{{ propiedad.referencia_pago }}</div>
++                <div style="font-size:0.85em; color:#666; margin-top:6px;">Captúrala en el campo <strong>"Referencia numérica"</strong> de tu transferencia (si tu banco no lo tiene, ponla en el concepto).</div>
+             </div>
+ 
+             <!-- Cuentas bancarias con QR para esta propiedad -->
+diff --git a/templates/cobros_estado_cuenta/revisar.html b/templates/cobros_estado_cuenta/revisar.html
+index 671fbe1..c329d18 100644
+--- a/templates/cobros_estado_cuenta/revisar.html
++++ b/templates/cobros_estado_cuenta/revisar.html
+@@ -132,17 +132,17 @@
+                             <div class="small text-muted mt-1">
+                                 <i class="bi bi-shop me-1"></i>Local {{ mov.propiedad_local.numero }}
+                             </div>
+-                            <div class="small text-muted">{{ mov.propiedad_local.referencia_pago }}</div>
++                            <div class="small text-muted">{{ mov.propiedad_local.referencia_mostrar }}</div>
+                         {% elif mov.propiedad_area %}
+                             <div class="small text-muted mt-1">
+                                 <i class="bi bi-building me-1"></i>Área {{ mov.propiedad_area.numero }}
+                             </div>
+-                            <div class="small text-muted">{{ mov.propiedad_area.referencia_pago }}</div>
++                            <div class="small text-muted">{{ mov.propiedad_area.referencia_mostrar }}</div>
+                         {% elif mov.propiedad_grupo %}
+                             <div class="small text-muted mt-1">
+                                 <i class="bi bi-collection me-1"></i>Grupo {{ mov.propiedad_grupo.nombre }}
+                             </div>
+-                            <div class="small text-muted">{{ mov.propiedad_grupo.referencia_pago }}</div>
++                            <div class="small text-muted">{{ mov.propiedad_grupo.referencia_mostrar }}</div>
+                         {% endif %}
+                     {% else %}
+                         <div class="small text-muted">Sin cliente detectado</div>
+diff --git a/templates/facturacion/lista_grupos_facturacion.html b/templates/facturacion/lista_grupos_facturacion.html
+index c900162..01e200d 100644
+--- a/templates/facturacion/lista_grupos_facturacion.html
++++ b/templates/facturacion/lista_grupos_facturacion.html
+@@ -57,12 +57,12 @@
+                             <td>{{ grupo.cliente.nombre }}</td>
+                             <td>{{ grupo.total_locales }}</td>
+                             <td>${{ grupo.total_cuota|default:0|floatformat:2 }}</td>
+-                            <td class="small">{{ grupo.referencia_pago|default:"—" }}</td>
++                            <td class="small">{{ grupo.referencia_mostrar|default:"—" }}</td>
+                             <td>
+                                 <a href="{% url 'editar_grupo_facturacion' grupo.id %}" class="btn btn-sm btn-outline-primary reporte-link">
+                                     <i class="bi bi-pencil-square"></i> Editar locales
+                                 </a>
+-                                {% if grupo.referencia_pago %}
++                                {% if grupo.referencia_mostrar %}
+                                 <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='grupo' propiedad_id=grupo.id %}" class="btn btn-sm btn-outline-secondary" title="Instrucciones de pago (PDF)">
+                                     <i class="bi bi-qr-code"></i> Ref. de pago
+                                 </a>
+diff --git a/templates/locales/lista_locales.html b/templates/locales/lista_locales.html
+index 6b91207..ba2e3cf 100644
+--- a/templates/locales/lista_locales.html
++++ b/templates/locales/lista_locales.html
+@@ -233,7 +233,7 @@
+                                 <a href="{% url 'eliminar_local' local.pk %}" class="btn btn-sm btn-outline-danger reporte-link" title="Inactivar propiedad">
+                                     <i class="bi bi-slash-circle"></i>
+                                 </a>
+-                                {% if local.referencia_pago %}
++                                {% if local.referencia_mostrar %}
+                                 <a href="{% url 'instrucciones_pago_propiedad_pdf' tipo='local' propiedad_id=local.id %}" class="btn btn-sm btn-outline-primary" title="Generar PDF de instrucciones de pago para esta propiedad">
+                                     <i class="bi bi-qr-code"></i>
+                                 </a>

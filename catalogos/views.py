@@ -19,7 +19,7 @@ from areas.models import AreaComun as AreaComunModel
 from clientes.models import Cliente  # ajusta el import real de tu app de clientes
 from core import settings
 from empresas.models import CuentaBancaria, Empresa
-from facturacion.models import Factura, TipoCuotaHomologacion, TipoOtroIngreso
+from facturacion.models import Factura, GrupoFacturacion, TipoCuotaHomologacion, TipoOtroIngreso
 from gastos.forms import CargaMasivaCuentasForm
 from gastos.models import (
     CargaCatalogoFila,
@@ -715,7 +715,9 @@ def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
     for cuenta in cuentas:
         qr_base64 = _generar_qr_spei(
             cuenta.clabe, cliente.empresa.nombre, propiedad.referencia_pago,
-            cliente.nombre, f"{tipo_label} {propiedad.numero}"
+            #cliente.nombre, f"{tipo_label} {propiedad.numero}"
+            cliente.nombre, f"{tipo_label} {getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')}"
+            
         )
         cuentas_con_qr.append({
             'banco': cuenta.banco,
@@ -726,7 +728,7 @@ def _armar_propiedad(propiedad, tipo_label, cliente, cuentas):
         })
     return {
         'tipo_label': tipo_label,
-        'numero': propiedad.numero,
+        'numero': getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', ''),
         'referencia_pago': propiedad.referencia_pago,
         'cuentas_con_qr': cuentas_con_qr,
     }
@@ -743,6 +745,9 @@ def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
     elif tipo == 'area':
         propiedad = get_object_or_404(AreaComunModel, pk=propiedad_id)
         tipo_label = 'Área Común'
+    elif tipo == 'grupo':
+        propiedad = get_object_or_404(GrupoFacturacion, pk=propiedad_id)
+        tipo_label = 'Grupo Facturacion'
     else:
         from django.http import Http404
         raise Http404("Tipo de propiedad no válido.")
@@ -753,7 +758,8 @@ def instrucciones_pago_propiedad_pdf(request, tipo, propiedad_id):
         return redirect(request.META.get('HTTP_REFERER', 'lista_clientes'))
 
     if not propiedad.referencia_pago:
-        messages.warning(request, f"'{propiedad.numero}' aún no tiene referencia de pago asignada.")
+        #messages.warning(request, f"'{propiedad.numero}' aún no tiene referencia de pago asignada.")
+        messages.warning(request, f"'{getattr(propiedad, 'numero', None) or getattr(propiedad, 'nombre', '')}' aún no tiene referencia de pago asignada.")
         return redirect(request.META.get('HTTP_REFERER', 'lista_locales'))
 
     # NUEVO -- ahora respeta la selección del usuario (mostrar_en_referencia_pago),

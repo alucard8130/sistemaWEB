@@ -259,9 +259,22 @@ class GrupoFacturacion(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='grupos_facturacion')
     nombre = models.CharField(max_length=100, help_text="Ej. 'Tiendas Soriana — Plaza Norte'")
     activo = models.BooleanField(default=True)
+    # NUEVO -- referencia de pago propia del grupo (mismo formato que locales/areas, con tipo 'G').
+    referencia_pago = models.CharField(max_length=32, unique=True, blank=True, null=True)
 
     class Meta:
-        ordering = ['nombre']
+        ordering = ['nombre']  # noqa: RUF012
+
+    def save(self, *args, **kwargs):
+        if not self.referencia_pago and self.cliente_id:
+            from catalogos.utils import generar_referencia_pago_propiedad
+            nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'G', self.nombre)
+            intentos = 0
+            while GrupoFacturacion.objects.filter(referencia_pago=nueva_ref).exists() and intentos < 5:
+                nueva_ref = generar_referencia_pago_propiedad(self.cliente_id, 'G', self.nombre)
+                intentos += 1
+            self.referencia_pago = nueva_ref
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nombre} ({self.cliente.nombre})"

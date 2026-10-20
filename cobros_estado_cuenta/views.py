@@ -12,7 +12,6 @@ import re
 import re as re_module
 import threading
 from collections import defaultdict
-from decimal import Decimal
 
 import anthropic
 import pandas as pd
@@ -49,11 +48,12 @@ from empresas.models import CuentaBancaria
 from facturacion.models import (
     Factura,
     FacturaOtrosIngresos,
+    GrupoFacturacion,
     LocalComercial,
     Pago,
     TipoOtroIngreso,
 )
-from gastos.models import Gasto, PagoGasto, TipoGasto
+from gastos.models import TipoGasto
 from proveedores.models import Proveedor
 
 from .models import (
@@ -63,6 +63,7 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 def procesar_estado_cuenta_en_segundo_plano(sesion_id, archivo_bytes, archivo_nombre):
     """
@@ -140,7 +141,7 @@ def procesar_estado_cuenta_en_segundo_plano(sesion_id, archivo_bytes, archivo_no
             fecha_str = abono.get('fecha')
             try:
                 fecha = datetime.date.fromisoformat(fecha_str) if fecha_str else sesion.periodo_inicio
-            except Exception:
+            except Exception:  # noqa: BLE001
                 fecha = sesion.periodo_inicio
 
             # Resolver la propiedad detectada (local o área) contra la BD
@@ -148,6 +149,7 @@ def procesar_estado_cuenta_en_segundo_plano(sesion_id, archivo_bytes, archivo_no
             propiedad_numero = abono.get('propiedad_numero')
             propiedad_local = None
             propiedad_area = None
+            propiedad_grupo = None
             propiedad_tipo_final = None
 
             if cliente and propiedad_tipo_raw and propiedad_numero:
@@ -163,6 +165,15 @@ def procesar_estado_cuenta_en_segundo_plano(sesion_id, archivo_bytes, archivo_no
                     ).first()
                     if propiedad_area:
                         propiedad_tipo_final = 'area'
+                elif propiedad_tipo_raw == 'grupo':
+                    # propiedad_numero trae la referencia de pago del grupo (RF-...-G...)
+                    propiedad_grupo = GrupoFacturacion.objects.filter(
+                        cliente=cliente, empresa=empresa, referencia_pago=propiedad_numero
+                    ).first() or GrupoFacturacion.objects.filter(
+                        cliente=cliente, empresa=empresa, nombre=propiedad_numero
+                    ).first()
+                    if propiedad_grupo:
+                        propiedad_tipo_final = 'grupo'
 
             MovimientoEstadoCuenta.objects.create(
                 sesion=sesion,
@@ -174,6 +185,7 @@ def procesar_estado_cuenta_en_segundo_plano(sesion_id, archivo_bytes, archivo_no
                 propiedad_tipo=propiedad_tipo_final,
                 propiedad_local=propiedad_local,
                 propiedad_area=propiedad_area,
+                propiedad_grupo=propiedad_grupo,
                 confianza_match=abono.get('confianza_match') or 'ninguna',
                 razon_match=abono.get('razon_match') or '',
                 estado='pendiente',
@@ -186,7 +198,7 @@ def procesar_estado_cuenta_en_segundo_plano(sesion_id, archivo_bytes, archivo_no
             sesion.estado = 'error'
             sesion.error_detalle = str(e)
             sesion.save()
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
     finally:
         connection.close()
@@ -360,7 +372,7 @@ Muestra de la tabla (primeras y últimas filas):
 def _extraer_abonos_lote_con_claude(client, lote_df, clientes_json, periodo_inicio=None, periodo_fin=None):
     """Extrae los abonos de un fragmento (lote) de la tabla."""
     texto_lote = lote_df.to_csv(index=False)
-
+ 
     if periodo_inicio and periodo_fin:
         contexto_periodo = (
             f"IMPORTANTE — CONTEXTO DE FECHAS: Este estado de cuenta corresponde al período "
@@ -374,20 +386,22 @@ def _extraer_abonos_lote_con_claude(client, lote_df, clientes_json, periodo_inic
             "No se pudo determinar el período del estado de cuenta de antemano. Si las fechas de los "
             "movimientos no incluyen año, usa tu mejor criterio basado en el contexto del documento."
         )
-
-    prompt = f"""Analiza este fragmento de un estado de cuenta bancario mexicano (formato tabla)
+ 
+    # Parte ESTÁTICA (igual en todos los lotes del archivo): instrucciones + clientes.
+    # Va primero y con cache_control para no volver a pagar la lista de clientes en cada lote.
+    prompt_estatico = f"""Analiza fragmentos de un estado de cuenta bancario mexicano (formato tabla)
 y extrae SOLO los abonos (depósitos, columna ABONOS con valor positivo).
-
+ 
 {contexto_periodo}
-
+ 
 Devuelve ÚNICAMENTE JSON válido, sin texto adicional, sin explicaciones:
-
+ 
 {{
   "abonos": [
     {{
       "fecha": "YYYY-MM-DD",
       "descripcion": "máximo 80 caracteres",
-      "referencia": "referencia corta",
+      "referencia": "referencia numérica o de rastreo del banco, si existe",
       "monto": 0.00,
       "cliente_id": null,
       "propiedad_tipo": null,
@@ -397,18 +411,25 @@ Devuelve ÚNICAMENTE JSON válido, sin texto adicional, sin explicaciones:
     }}
   ]
 }}
-
-Clientes de la empresa, con sus propiedades (locales y áreas comunes) para matching:
+ 
+Clientes de la empresa, con sus propiedades (locales, áreas comunes y grupos de facturación) para matching:
 {clientes_json}
-
-Cada propiedad tiene una referencia de pago única con el formato:
-RF-{{cliente_id de 5 dígitos}}-{{L o A}}{{número de local/área saneado}}-{{sufijo aleatorio}}
-Ejemplo: RF-00042-LD02-X7K3 → cliente 42, Local D02.
-
+ 
+Cada propiedad (local, área o grupo de facturación) tiene una referencia de pago única ("referencia_pago"):
+un número de 7 dígitos, ej. 4827193. Las propiedades antiguas pueden tener además una referencia larga
+("referencia_larga") con formato RF-{{cliente_id de 5 dígitos}}-{{L, A o G}}{{número saneado}}-{{sufijo}},
+ej. RF-00042-LD02-X7K3 (cliente 42, Local D02). Cualquiera de las dos identifica la propiedad.
+Tipo "grupo" = GRUPO DE FACTURACIÓN (varios locales que se pagan juntos).
+La referencia de 7 dígitos solo cuenta como coincidencia si aparece como número completo e independiente
+(campo de referencia o concepto), NO como parte de otro número más largo (folios, rastreos, CLABE, etc.).
+ 
 Reglas:
 - Incluye SOLO abonos (columna ABONOS con valor positivo)
-- confianza "alta": la referencia de pago exacta de alguna propiedad aparece en la descripción.
-  En este caso llena "propiedad_tipo" ("local" o "area") y "propiedad_numero"
+- confianza "alta": la referencia de pago exacta (corta o larga) de alguna propiedad aparece en la
+  descripción o en la referencia del movimiento.
+  En este caso llena "cliente_id", "propiedad_tipo" ("local", "area" o "grupo") y "propiedad_numero"
+  (para tipo "local" y "area", el número tal como aparece en la lista; para tipo "grupo", pon en
+  "propiedad_numero" la referencia del grupo tal como aparece en la lista)
 - confianza "media": el nombre del cliente coincide claramente en la descripción (aunque venga
   abreviado, sin acentos o en otro orden). Si el concepto menciona un local/área que coincide
   con una propiedad del cliente, llena también "propiedad_tipo"/"propiedad_numero"
@@ -417,58 +438,80 @@ Reglas:
 - confianza "ninguna": no se puede identificar
 - Normaliza nombres para comparar: ignora acentos, mayúsculas/minúsculas, comas y guiones
 - Procesa TODAS las filas de este fragmento, no omitas ninguna
-
-Fragmento de la tabla:
-{texto_lote}
 """
+ 
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=8000,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt_estatico, "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": f"Fragmento de la tabla:\n{texto_lote}"},
+            ],
+        }],
     )
     if not response.content:
         raise ValueError("Claude no devolvió contenido en la respuesta (lote de abonos).")
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        raise ValueError(
+            "La respuesta de Claude se truncó (lote demasiado grande). Reduce LOTE_TAMANO."
+        )
     data = _parsear_json_claude(response.content[0].text)
     return data.get('abonos', [])
 
 
 def extraer_movimientos_con_claude(archivo_bytes, filename, empresa):
     """Llama a Claude API para extraer los movimientos del archivo (CSV o Excel), en lotes."""
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-
-    from locales.models import LocalComercial
-    from areas.models import AreaComun
-
-    clientes_qs = Cliente.objects.filter(empresa=empresa, activo=True)
-    clientes_data = []
-    for cliente in clientes_qs:
-        propiedades = []
-        for local in LocalComercial.objects.filter(cliente=cliente, activo=True):
-            if local.referencia_pago:
-                propiedades.append({
-                    'tipo': 'local', 'numero': local.numero, 'referencia_pago': local.referencia_pago,
-                })
-        for area in AreaComun.objects.filter(cliente=cliente, activo=True):
-            if area.referencia_pago:
-                propiedades.append({
-                    'tipo': 'area', 'numero': area.numero, 'referencia_pago': area.referencia_pago,
-                })
-        clientes_data.append({
-            'id': cliente.id, 'nombre': cliente.nombre, 'rfc': cliente.rfc, 'propiedades': propiedades,
-        })
-    clientes_json = json.dumps(clientes_data, ensure_ascii=False)
-
     extension = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
     if extension not in ('csv', 'xls', 'xlsx'):
         raise ValueError(f"Tipo de archivo no soportado: .{extension}. Solo se aceptan CSV o Excel.")
-
+ 
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+ 
+    # Propiedades por cliente, cargadas de una vez (3 consultas en total, no 3 por cliente).
+    # Se manda la referencia corta (7 dígitos) como "referencia_pago" y, si existe, la larga
+    # histórica como "referencia_larga": cualquiera de las dos identifica la propiedad.
+    props_por_cliente = defaultdict(list)
+    for local in LocalComercial.objects.filter(empresa=empresa, activo=True):
+        if local.referencia_mostrar:
+            props_por_cliente[local.cliente_id].append({
+                'tipo': 'local', 'numero': local.numero,
+                'referencia_pago': local.referencia_mostrar,
+                'referencia_larga': local.referencia_pago,
+            })
+    for area in AreaComun.objects.filter(empresa=empresa, activo=True):
+        if area.referencia_mostrar:
+            props_por_cliente[area.cliente_id].append({
+                'tipo': 'area', 'numero': area.numero,
+                'referencia_pago': area.referencia_mostrar,
+                'referencia_larga': area.referencia_pago,
+            })
+    for grupo in GrupoFacturacion.objects.filter(empresa=empresa, activo=True):
+        if grupo.referencia_mostrar:
+            props_por_cliente[grupo.cliente_id].append({
+                # para grupos, "numero" lleva la referencia (así se resuelve después)
+                'tipo': 'grupo', 'numero': grupo.referencia_mostrar, 'nombre': grupo.nombre,
+                'referencia_pago': grupo.referencia_mostrar,
+                'referencia_larga': grupo.referencia_pago,
+            })
+ 
+    clientes_data = [
+        {
+            'id': c.id, 'nombre': c.nombre, 'rfc': c.rfc,
+            'propiedades': props_por_cliente.get(c.id, []),
+        }
+        for c in Cliente.objects.filter(empresa=empresa, activo=True)
+    ]
+    clientes_json = json.dumps(clientes_data, ensure_ascii=False)
+ 
     df = _leer_dataframe_excel_csv(archivo_bytes, filename)
-
+ 
     # 1) Encabezado (banco, cuenta, saldos, período) — solo con una muestra de filas
     encabezado = _extraer_encabezado_con_claude(client, df)
     periodo_inicio_hdr = encabezado.get('periodo_inicio')
     periodo_fin_hdr = encabezado.get('periodo_fin')
-
+ 
     # 2) Abonos, en lotes, pasando el período conocido para resolver fechas sin año
     abonos_totales = []
     for i in range(0, len(df), LOTE_TAMANO):
@@ -478,7 +521,7 @@ def extraer_movimientos_con_claude(archivo_bytes, filename, empresa):
             periodo_inicio=periodo_inicio_hdr, periodo_fin=periodo_fin_hdr
         )
         abonos_totales.extend(abonos_lote)
-
+ 
     # 3) Período final: preferir el del encabezado (explícito, con año); si no vino, calcular de los abonos
     if periodo_inicio_hdr and periodo_fin_hdr:
         periodo_inicio = periodo_inicio_hdr
@@ -488,13 +531,13 @@ def extraer_movimientos_con_claude(archivo_bytes, filename, empresa):
         for a in abonos_totales:
             try:
                 fechas_validas.append(datetime.date.fromisoformat(a.get('fecha')))
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
         periodo_inicio = min(fechas_validas).isoformat() if fechas_validas else None
         periodo_fin = max(fechas_validas).isoformat() if fechas_validas else None
-
+ 
     total_abonos = sum(float(a.get('monto') or 0) for a in abonos_totales)
-
+ 
     return {
         'banco': encabezado.get('banco', ''),
         'numero_cuenta': encabezado.get('numero_cuenta', ''),
@@ -621,24 +664,27 @@ def revisar_sesion(request, pk):
     else:
         empresa_perfil = perfil.empresa if perfil else None
         sesion = get_object_or_404(SesionEstadoCuenta, pk=pk, empresa=empresa_perfil)
-        
+ 
     empresa = perfil.empresa if perfil and not request.user.is_superuser else sesion.empresa
-
+ 
     # Filtro por estado (server-side ahora, ya no solo JS)
     filtro = request.GET.get('estado', 'todos')
+    # order_by con pk al final: 'fecha' y 'monto' se repiten y, sin desempate, la paginación
+    # puede duplicar u omitir movimientos entre páginas.
     movimientos_qs = sesion.movimientos.select_related(
-        'cliente_detectado', 'propiedad_local', 'propiedad_area'
-    ).all()
-
+        'cliente_detectado', 'propiedad_local', 'propiedad_area', 'propiedad_grupo',
+        'cliente_asignado', 'pago_generado',
+    ).order_by('fecha', 'monto', 'pk')
+ 
     if filtro == 'pendiente':
         movimientos_qs = movimientos_qs.filter(estado__in=['pendiente', 'parcial'])
-
     elif filtro == 'aplicado':
         movimientos_qs = movimientos_qs.filter(estado__in=['asignado_factura', 'factura_nueva'])
     elif filtro == 'ignorado':
         movimientos_qs = movimientos_qs.filter(estado='ignorado')
-    # 'todos' no filtra
-
+    else:
+        filtro = 'todos'  # valor inválido en la URL -> "todos"
+ 
     # Conteos para los botones (sobre el total de la sesión, no del filtro actual)
     conteos = {
         'todos': sesion.movimientos.count(),
@@ -646,63 +692,74 @@ def revisar_sesion(request, pk):
         'aplicado': sesion.movimientos.filter(estado__in=['asignado_factura', 'factura_nueva']).count(),
         'ignorado': sesion.movimientos.filter(estado='ignorado').count(),
     }
-
+ 
     paginator = Paginator(movimientos_qs, 20)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-
-
-    #movimientos = sesion.movimientos.all()
+ 
     clientes = Cliente.objects.filter(empresa=empresa, activo=True)
     tipos_ingreso = TipoOtroIngreso.objects.filter(empresa=empresa)
-
-     # --- Facturas por cliente: 2 consultas totales en vez de 2 por cliente ---
+ 
+    # --- Facturas por cliente: consultas totales, no por cliente ni por factura ---
     facturas_por_cliente = defaultdict(list)
-
+ 
+    # prefetch de pagos/locales_incluidos: saldo_pendiente suma los pagos de cada factura y,
+    # sin prefetch, hacía una consulta por factura.
     facturas_cuota = (
         Factura.objects.filter(empresa=empresa, estatus='pendiente', activo=True, cliente__in=clientes)
         .select_related('local', 'area_comun')
-        .order_by('-fecha_vencimiento')
+        .prefetch_related('pagos', 'locales_incluidos__grupo_facturacion')
+        .order_by('fecha_vencimiento', 'id')
     )
     for f in facturas_cuota:
+        grupo_nombre = None
+        if not f.local_id and not f.area_comun_id:
+            grupo_nombre = next(
+                (l.grupo_facturacion.nombre for l in f.locales_incluidos.all() if l.grupo_facturacion_id),
+                None,
+            )
         facturas_por_cliente[f.cliente_id].append({
             'id': f.id, 'tipo': 'cuota', 'folio': f.folio,
             'concepto': f.get_tipo_cuota_display(), 'monto': float(f.saldo_pendiente),
             'vencimiento': str(f.fecha_vencimiento),
             'local': f.local.numero if f.local else None,
             'area': f.area_comun.numero if f.area_comun else None,
+            'grupo': grupo_nombre,
         })
-
+ 
     facturas_otros = (
         FacturaOtrosIngresos.objects.filter(empresa=empresa, estatus='pendiente', activo=True, cliente__in=clientes)
         .select_related('tipo_ingreso')
-        .order_by('-fecha_vencimiento')
+        .prefetch_related('cobros')
+        .order_by('fecha_vencimiento', 'id')
     )
     for f in facturas_otros:
         facturas_por_cliente[f.cliente_id].append({
             'id': f.id, 'tipo': 'otros',
             'folio': f.folio, 'concepto': f.tipo_ingreso.nombre if f.tipo_ingreso else 'Otro ingreso',
             'monto': float(f.saldo), 'vencimiento': str(f.fecha_vencimiento),
-            'local': None, 'area': None,
+            'local': None, 'area': None, 'grupo': None,
         })
-
-    # Límite de 10 por cliente, igual que antes, ya en memoria (sin consultas extra)
+ 
+    # Las más ANTIGUAS primero (las que normalmente se van a cobrar) y hasta 30 por cliente.
+    # Antes se tomaban las 10 más recientes, y un cliente con más de 10 pendientes
+    # no podía seleccionar sus facturas más viejas.
     facturas_por_cliente = {
-        cid: sorted(lista, key=lambda x: x['vencimiento'], reverse=True)[:10]
+        cid: sorted(lista, key=lambda x: x['vencimiento'])[:30]
         for cid, lista in facturas_por_cliente.items()
     }
-
+ 
     # --- Propiedades por cliente: 2 consultas totales en vez de 2 por cliente ---
     propiedades_por_cliente = defaultdict(lambda: {'locales': [], 'areas': []})
-
+ 
     for local in LocalComercial.objects.filter(cliente__in=clientes, empresa=empresa).values('id', 'numero', 'cliente_id'):
         propiedades_por_cliente[local['cliente_id']]['locales'].append({'id': local['id'], 'numero': local['numero']})
-
+ 
     for area in AreaComun.objects.filter(cliente__in=clientes, empresa=empresa).values('id', 'numero', 'cliente_id'):
         propiedades_por_cliente[area['cliente_id']]['areas'].append({'id': area['id'], 'numero': area['numero']})
-
+ 
     propiedades_por_cliente = dict(propiedades_por_cliente)
-
+ 
     return render(request, 'cobros_estado_cuenta/revisar.html', {
         'sesion': sesion,
         'movimientos': page_obj,
@@ -716,6 +773,7 @@ def revisar_sesion(request, pk):
         'proveedores_bancos': Proveedor.objects.filter(empresa=empresa, activo=True).order_by('nombre'),
         'tipos_gasto': TipoGasto.objects.filter(empresa=empresa).order_by('nombre'),
     })
+
 
 
 @login_required
