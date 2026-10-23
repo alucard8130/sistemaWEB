@@ -3,12 +3,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">    
 
 {% load static %}
-<div id="globalSidebarBackdrop" class="global-sidebar-backdrop"></div>
-
-<button id="globalMenuToggle" type="button" class="btn btn-primary global-menu-toggle d-lg-none" aria-label="Abrir menu">
-  <i class="bi bi-list"></i> Menu
-</button>
-
 <div id="globalSidebarWrapper" class="global-sidebar-wrapper{% if empresa_actual.segmento == 'escuela' %} tema-campus{% elif empresa_actual.segmento == 'arrendamiento' %} tema-leasing{% endif %}">
   <div id="navbar-hover-zone"></div>
   {% if request.user.perfilusuario.es_contador %}
@@ -722,54 +716,6 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  document.body.classList.add('has-global-sidebar');
-
-  const sidebar = document.getElementById('globalSidebarWrapper');
-  const backdrop = document.getElementById('globalSidebarBackdrop');
-  const toggle = document.getElementById('globalMenuToggle');
-
-  if (!sidebar || !backdrop || !toggle) return;
-
-  const openMenu = () => {
-    sidebar.classList.add('is-open');
-    backdrop.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
-  };
-
-  const closeMenu = () => {
-    sidebar.classList.remove('is-open');
-    backdrop.classList.remove('is-open');
-    document.body.style.overflow = '';
-  };
-
-  toggle.addEventListener('click', function () {
-    if (sidebar.classList.contains('is-open')) closeMenu();
-    else openMenu();
-  });
-
-  backdrop.addEventListener('click', closeMenu);
-
-  sidebar.querySelectorAll('a.reporte-link, .dropdown-item, .nav-link').forEach(function (link) {
-    link.addEventListener('click', function () {
-      if (window.innerWidth < 992) {
-        closeMenu();
-      }
-    });
-  });
-
-  const media = window.matchMedia('(min-width: 992px)');
-  const onChange = function (e) {
-    if (e.matches) {
-      closeMenu();
-    }
-  };
-
-  if (media.addEventListener) media.addEventListener('change', onChange);
-  else media.addListener(onChange);
-});
-</script>
-<script>
         document.addEventListener('DOMContentLoaded', function () {
             function getCsrfToken() {
                 var input = document.querySelector('input[name=csrfmiddlewaretoken]');
@@ -995,4 +941,27 @@ body.dark-mode .tema-campus .navbar {
 }
 .tema-leasing .notif-sistema-item { border-left-color: #9B1B30 !important; }
 body.dark-mode .tema-leasing .navbar { background: linear-gradient(135deg, #4A0C18 0%, #6F1223 100%) !important; }
+/* ── MENÚ MÓVIL (iPhone/Android) ──
+   El navbar tiene fondo oscuro, pero el botón hamburguesa de Bootstrap (navbar-light)
+   dibuja el ícono en gris oscuro: no se veía. Se fuerza ícono y borde claros. */
+.navbar .navbar-toggler {
+    border-color: rgba(255,255,255,0.55) !important;
+    padding: 6px 10px !important;
+    -webkit-tap-highlight-color: transparent;
+}
+.navbar .navbar-toggler:focus { box-shadow: 0 0 0 3px rgba(255,255,255,0.25) !important; }
+.navbar .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255,255,255,0.95%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+@media (max-width: 991.98px) {
+    /* Menú largo: que se pueda desplazar dentro de la pantalla del teléfono */
+    .navbar .navbar-collapse {
+        max-height: calc(100vh - 70px);
+        max-height: calc(100dvh - 70px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .navbar .navbar-collapse .nav-link { padding: 10px 12px !important; font-size: 0.9rem !important; }
+    .navbar .dropdown-menu { box-shadow: none !important; margin-top: 2px !important; animation: none !important; }
+}
 </style>
