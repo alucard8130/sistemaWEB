@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from pandas.errors import EmptyDataError, ParserError
@@ -578,9 +579,19 @@ def conciliar_estado_con_sistema(
     }
 
 
+def _verificar_empresa_estado(request, estado):
+    """Superusuario ve todo; el resto solo estados de cuenta de su empresa."""
+    if request.user.is_superuser:
+        return
+    perfil = getattr(request.user, "perfilusuario", None)
+    if not perfil or not perfil.empresa_id or perfil.empresa_id != estado.empresa_id:
+        raise Http404
+
+
 @login_required
 def conciliar_estado_cuenta(request, estado_id):
-    estado = EstadoCuentaBancario.objects.get(id=estado_id)
+    estado = get_object_or_404(EstadoCuentaBancario, id=estado_id)
+    _verificar_empresa_estado(request, estado)
     if request.method == "POST":
         form = ConciliacionBancariaForm(request.POST)
         if form.is_valid():
@@ -605,6 +616,7 @@ def conciliar_estado_cuenta(request, estado_id):
 @login_required
 def resultado_conciliacion(request, estado_id):
     estado = get_object_or_404(EstadoCuentaBancario, id=estado_id)
+    _verificar_empresa_estado(request, estado)
     conciliacion = (
         ConciliacionBancaria.objects.filter(estado_cuenta=estado)
         .order_by("-fecha_conciliacion")

@@ -36,7 +36,7 @@ from django.db.models import (  # FloatField
     When,
 )
 from django.db.models.functions import Coalesce, TruncMonth, TruncYear
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -1470,6 +1470,10 @@ def lista_saldos_a_favor(request):
 @transaction.atomic
 def registrar_pago(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
+    if not request.user.is_superuser:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if not perfil or perfil.empresa_id != factura.empresa_id:
+            raise Http404
     empresa = factura.empresa
 
     if factura.estatus == "pagada" or factura.saldo_pendiente <= 0:

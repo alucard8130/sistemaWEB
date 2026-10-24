@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Sum
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from num2words import num2words
@@ -28,15 +28,28 @@ from .forms import (
 from .models import FondeoCajaChica, GastoCajaChica, ValeCaja
 
 
+def _verificar_empresa_caja(request, fondeo):
+    """Superusuario ve todo; el resto solo fondeos de su empresa."""
+    if request.user.is_superuser:
+        return
+    perfil = getattr(request.user, "perfilusuario", None)
+    if not perfil or not perfil.empresa_id or perfil.empresa_id != fondeo.empresa_id:
+        raise Http404
+
+
+@login_required
 def imprimir_vale_caja(request, vale_id):
     vale = get_object_or_404(ValeCaja, id=vale_id)
+    _verificar_empresa_caja(request, vale.fondeo)
     monto_letra = num2words(vale.importe, lang='es', to='currency', currency='MXN').capitalize()
     empresa = request.user.perfilusuario.empresa
     return render(request, "caja_chica/imprimir_vale_caja.html", {"vale": vale, "monto_letra": monto_letra, "empresa": empresa})
 
 
+@login_required
 def detalle_fondeo(request, fondeo_id):
     fondeo = get_object_or_404(FondeoCajaChica, id=fondeo_id)
+    _verificar_empresa_caja(request, fondeo)
     gastos = fondeo.gastocajachica_set.all()
     vales = fondeo.valecaja_set.all()
     return render(

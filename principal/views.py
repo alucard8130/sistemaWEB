@@ -45,7 +45,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Coalesce, ExtractMonth, ExtractYear, TruncMonth
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -3619,10 +3619,7 @@ FACTURAMA_PASS = os.getenv("FACTURAMA_PASSWORD")
 
 # configuracion modulo facturama
 def timbrar_factura_facturama(datos_factura):
-    url = (
-        "https://apisandbox.facturama.mx/api-lite/3/cfdis"  # URL de sandbox desarrollo
-    )
-    # url = 'https://api.facturama.mx/'  # URL de producción
+    url = f"{settings.FACTURAMA_HOST}/api-lite/3/cfdis"
     # print("JSON enviado a Facturama:", json.dumps(datos_factura, indent=2))
     # print("FACTURAMA_USER:", FACTURAMA_USER)
     # print("FACTURAMA_PASS:", FACTURAMA_PASS)
@@ -3631,6 +3628,7 @@ def timbrar_factura_facturama(datos_factura):
         auth=(FACTURAMA_USER, FACTURAMA_PASS),
         headers={"Content-Type": "application/json"},
         data=json.dumps(datos_factura),
+        timeout=settings.FACTURAMA_TIMEOUT,
     )
     # print("Status code:", response.status_code)
     # print("Response text:", response.text)
@@ -3966,9 +3964,19 @@ def timbrar_masivo_mes(request):
     )
 
 
+def _usuario_puede_ver_empresa(request, empresa_id):
+    """Superusuario ve todo; el resto solo su propia empresa."""
+    if request.user.is_superuser:
+        return True
+    perfil = getattr(request.user, "perfilusuario", None)
+    return bool(perfil and perfil.empresa_id and perfil.empresa_id == empresa_id)
+
+
 @login_required
 def descargar_factura_timbrada(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
+    if not _usuario_puede_ver_empresa(request, factura.empresa_id):
+        raise Http404
     if not factura.uuid:
         messages.error(request, "La factura no está timbrada.")
         return redirect("lista_facturas")
@@ -3978,27 +3986,20 @@ def descargar_factura_timbrada(request, pk):
     password = os.getenv("FACTURAMA_PASSWORD")
 
     # URLs para descargar XML y PDF
-    xml_url = (
-        f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/xml"  # desarrollo
-    )
-    pdf_url = (
-        f"https://apisandbox.facturama.mx/api-lite/3/cfdis/{uuid}/pdf"  # desarrollo
-    )
-
-    # xml_url = f"https://api.facturama.mx/api-lite/3/cfdis/{uuid}/xml"  #producción
-    # pdf_url = f"https://api.facturama.mx/api-lite/3/cfdis/{uuid}/pdf"  #producción
+    xml_url = f"{settings.FACTURAMA_HOST}/api-lite/3/cfdis/{uuid}/xml"
+    pdf_url = f"{settings.FACTURAMA_HOST}/api-lite/3/cfdis/{uuid}/pdf"
 
     # Descarga XML
-    xml_response = requests.get(xml_url, auth=(usuario, password))
+    xml_response = requests.get(
+        xml_url, auth=(usuario, password), timeout=settings.FACTURAMA_TIMEOUT
+    )
     xml_content = xml_response.content if xml_response.status_code == 200 else None
-    print("XML status:", xml_response.status_code)
-    print("XML response:", xml_response.text)
 
     # Descarga PDF
-    pdf_response = requests.get(pdf_url, auth=(usuario, password))
+    pdf_response = requests.get(
+        pdf_url, auth=(usuario, password), timeout=settings.FACTURAMA_TIMEOUT
+    )
     pdf_content = pdf_response.content if pdf_response.status_code == 200 else None
-    print("PDF status:", pdf_response.status_code)
-    print("PDF response:", pdf_response.text)
 
     if not xml_content and not pdf_content:
         messages.error(
@@ -4049,8 +4050,7 @@ def subir_csd_facturama(request):
                 key_b64 = base64.b64encode(key_file.read()).decode("utf-8")
 
                 # Llama a la API de Facturama
-                url = "https://apisandbox.facturama.mx/api-lite/csds"  # en desarrollo
-                # url = "https://api.facturama.mx/api-lite/csds" # en producción
+                url = f"{settings.FACTURAMA_HOST}/api-lite/csds"
                 data = {
                     "Rfc": rfc,
                     "Certificate": cert_b64,
@@ -4062,6 +4062,7 @@ def subir_csd_facturama(request):
                     auth=(usuario, password),
                     headers={"Content-Type": "application/json"},
                     data=json.dumps(data),
+                    timeout=settings.FACTURAMA_TIMEOUT,
                 )
                 if response.status_code == 200:
                     mensaje = (
@@ -4082,9 +4083,10 @@ def subir_csd_facturama(request):
 
 
 def obtener_csds_facturama(usuario, password):
-    url = "https://apisandbox.facturama.mx/api-lite/csds"  # URL de sandbox desarrollo
-    # url = "https://api.facturama.mx/api-lite/csds"  # URL de producción
-    response = requests.get(url, auth=(usuario, password))
+    url = f"{settings.FACTURAMA_HOST}/api-lite/csds"
+    response = requests.get(
+        url, auth=(usuario, password), timeout=settings.FACTURAMA_TIMEOUT
+    )
     if response.status_code == 200:
         return response.json()  # Lista de CSDs
     return []
@@ -4100,8 +4102,7 @@ def consultar_cfdis_facturama(
     status="active",
     page=0,
 ):
-    url = "https://apisandbox.facturama.mx/cfdi"  # URL de sandbox desarrollo
-    # url = "https://api.facturama.mx/cfdi"  # URL de producción
+    url = f"{settings.FACTURAMA_HOST}/cfdi"
     params = {"type": "issuedLite", "status": status, "page": page}
     if rfc_issuer:
         params["rfcIssuer"] = rfc_issuer
@@ -4118,7 +4119,9 @@ def consultar_cfdis_facturama(
 
     usuario = os.getenv("FACTURAMA_USER")
     password = os.getenv("FACTURAMA_PASSWORD")
-    response = requests.get(url, params=params, auth=(usuario, password))
+    response = requests.get(
+        url, params=params, auth=(usuario, password), timeout=settings.FACTURAMA_TIMEOUT
+    )
     if response.status_code == 200:
         return response.json()
     return []
@@ -4158,15 +4161,32 @@ def consulta_cfdis_facturama(request):
     )
 
 
+@login_required
 def descargar_cfdi_facturama(request, id):
+    # Si el CFDI pertenece a una factura registrada, solo su empresa (o un superusuario) puede bajarlo.
+    # Si no esta registrada (consulta directa a Facturama), solo personal staff.
+    facturas_ids = list(
+        Factura.objects.filter(facturama_id=id).values_list("empresa_id", flat=True)
+    ) + list(
+        FacturaOtrosIngresos.objects.filter(facturama_id=id).values_list(
+            "empresa_id", flat=True
+        )
+    )
+    if facturas_ids:
+        if not any(_usuario_puede_ver_empresa(request, e) for e in facturas_ids):
+            raise Http404
+    elif not request.user.is_staff:
+        raise Http404
+
     usuario = os.getenv("FACTURAMA_USER")
     password = os.getenv("FACTURAMA_PASSWORD")
-    base_url = "https://apisandbox.facturama.mx/cfdi"  # URL de sandbox desarrollo
-    # base_url = "https://api.facturama.mx/cfdi"  # URL de producción
+    base_url = f"{settings.FACTURAMA_HOST}/cfdi"
 
     # Descarga XML
     xml_url = f"{base_url}/xml/issuedLite/{id}"
-    xml_response = requests.get(xml_url, auth=(usuario, password))
+    xml_response = requests.get(
+        xml_url, auth=(usuario, password), timeout=settings.FACTURAMA_TIMEOUT
+    )
     xml_content = None
     if xml_response.status_code == 200:
         xml_json = xml_response.json()
@@ -4174,7 +4194,9 @@ def descargar_cfdi_facturama(request, id):
 
     # Descarga PDF
     pdf_url = f"{base_url}/pdf/issuedLite/{id}"
-    pdf_response = requests.get(pdf_url, auth=(usuario, password))
+    pdf_response = requests.get(
+        pdf_url, auth=(usuario, password), timeout=settings.FACTURAMA_TIMEOUT
+    )
     pdf_content = None
     if pdf_response.status_code == 200:
         pdf_json = pdf_response.json()
@@ -4478,17 +4500,27 @@ def create_payment_intent(request):
         return Response({"error": "Monto requerido"}, status=400)
     try:
         factura = Factura.objects.get(id=factura_id)
+        if factura.estatus != "pendiente":
+            return Response({"error": "La factura no admite pagos"}, status=400)
+        monto = Decimal(str(amount))
+        if monto <= 0 or monto > Decimal(str(factura.saldo_pendiente)) + Decimal("0.01"):
+            return Response({"error": "Monto invalido"}, status=400)
         empresa = factura.empresa
+        if not empresa.stripe_secret_key:
+            return Response({"error": "Pagos en linea no configurados"}, status=400)
         stripe.api_key = empresa.stripe_secret_key
         intent = stripe.PaymentIntent.create(
-            amount=int(float(amount) * 100),
+            amount=int(monto * 100),
             currency="mxn",
             payment_method_types=["card"],
             metadata={"factura_id": factura_id},
         )
         return Response({"client_secret": intent.client_secret})
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
+    except Factura.DoesNotExist:
+        return Response({"error": "Factura no encontrada"}, status=404)
+    except Exception:
+        logging.getLogger(__name__).exception("create_payment_intent")
+        return Response({"error": "No se pudo crear el pago"}, status=500)
 
 
 # API reporte ingresos vs gastos

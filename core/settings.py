@@ -15,10 +15,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG se controla desde .env (local: DEBUG=True para pruebas). En Render no existe => False.
 DEBUG = os.getenv("DEBUG", "False") == "True"
-#DEBUG = True
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS","gesac.up.railway.app,adminsoftheron.onrender.com,www.gesac.com.mx").split(",")
-#ALLOWED_HOSTS = ["192.168.0.159","*",".ngrok-free.dev"]  # For development purposes, change this in production
+
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "gesac.up.railway.app,adminsoftheron.onrender.com,www.gesac.com.mx",
+).split(",")
+if DEBUG:
+    # Solo en desarrollo
+    ALLOWED_HOSTS += ["localhost", "127.0.0.1", "192.168.0.159", ".ngrok-free.dev"]
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
@@ -118,32 +124,25 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 ####################BASE DE DATOS########################
 
-# desarrollo sqlite
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-# desarrollo postgres
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.getenv("DB_NAME"),  # nombre de tu base clonada
-#         "USER": os.getenv("DB_USER"),  # tu usuario de postgres
-#         "PASSWORD": os.getenv("DB_PASSWORD"),  # tu contraseña
-#         "HOST": os.getenv("DB_HOST", "localhost"),
-#         "PORT": os.getenv("DB_PORT", "5432"),
-#     }
-# }
-
-# produccion
-DATABASES = {
-    "default": dj_database_url.config(
-        default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
-    )
-}
+# Render define RENDER=true automaticamente: ahi se usa DATABASE_URL (produccion).
+# En local se usa la base clonada configurada con DB_* en el .env.
+if os.getenv("RENDER"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default="sqlite:///" + os.path.join(BASE_DIR, "db.sqlite3")
+        )
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),  # nombre de tu base clonada
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
+    }
 
 
 #######################EMAIL CONFIGURATION########################
@@ -200,7 +199,15 @@ LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/login/"
 
 
-if os.getenv("DEBUG", "True") == "False":
+# STRIPE_MODE=live|test fija el modo de forma explicita (recomendado en Render).
+# Si no esta definida se conserva la logica anterior (DEBUG=False explicito => test).
+_stripe_mode = os.getenv("STRIPE_MODE", "").strip().lower()
+if _stripe_mode in ("live", "test"):
+    _usar_stripe_test = _stripe_mode == "test"
+else:
+    _usar_stripe_test = os.getenv("DEBUG", "True") == "False"
+
+if _usar_stripe_test:
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY_TEST")
     STRIPE_ENDPOINT_SECRET = os.getenv("STRIPE_ENDPOINT_SECRET_TEST")
@@ -231,9 +238,22 @@ AWS_S3_REGION_NAME = os.getenv("DO_REGION")
 AWS_S3_ENDPOINT_URL = os.getenv("DO_ENDPOINT_URL")
 AWS_S3_ADDRESSING_STYLE = "virtual"
 AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = "public-read"
-AWS_QUERYSTRING_AUTH = False
-AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.nyc3.digitaloceanspaces.com"
+# Archivos privados: se sirven con URL firmada que caduca (comprobantes, estados de cuenta, CFDI)
+AWS_DEFAULT_ACL = "private"
+AWS_QUERYSTRING_AUTH = True
+AWS_QUERYSTRING_EXPIRE = 3600
+
+# Archivos subidos (MEDIA): a Spaces cuando hay credenciales; si no, disco local (desarrollo).
+if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
+    _default_storage = {"BACKEND": "storages.backends.s3.S3Storage"}
+else:
+    _default_storage = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
+
+STORAGES = {
+    "default": _default_storage,
+    # Igual que hoy en la practica (STATICFILES_STORAGE se ignora en Django 5.x)
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
 
 
 SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")
@@ -241,12 +261,20 @@ SENTRY_DSN = os.getenv("SENTRY_DSN_KEY")
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,  # Puedes bajarlo a 0.1 si no quieres rastreo de performance
+    traces_sample_rate=0.1,
     send_default_pii=True,  # Para capturar datos de usuario autenticado
 )
 
 FACTURAMA_USER = os.getenv("FACTURAMA_USER")
 FACTURAMA_PASSWORD = os.getenv("FACTURAMA_PASSWORD")
+# FACTURAMA_ENV=production usa api.facturama.mx; cualquier otro valor (o vacio) = sandbox.
+FACTURAMA_ENV = os.getenv("FACTURAMA_ENV", "sandbox").strip().lower()
+FACTURAMA_HOST = (
+    "https://api.facturama.mx"
+    if FACTURAMA_ENV == "production"
+    else "https://apisandbox.facturama.mx"
+)
+FACTURAMA_TIMEOUT = 30  # segundos
 
 
 PORTAL_PAGOS_URL = os.getenv(
@@ -258,6 +286,14 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 1800
 SESSION_SAVE_EVERY_REQUEST = True
+
+# Endurecimiento HTTPS: solo en Render (Render define RENDER=true automaticamente),
+# para no romper el login en local aunque ahi DEBUG=False.
+if os.getenv("RENDER"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 LOGGING = {
     'version': 1,
