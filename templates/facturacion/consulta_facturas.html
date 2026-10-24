@@ -323,7 +323,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if factura.estatus == 'pendiente' and factura.id == factura_pendiente_id and empresa.es_premium %}
+                                    {% if factura.estatus == 'pendiente' and factura.id == factura_pendiente_id %}
                                         <a href="{% url 'visitante_stripe_checkout' factura.id %}" class="btn btn-gradient btn-sm" title="Pagar factura">
                                             <i class="bi bi-credit-card"></i> Pagar
                                         </a>

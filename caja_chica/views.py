@@ -143,10 +143,10 @@ def registrar_gasto_caja_chica(request):
     fondeo_instance = None
 
     if fondeo_id:
-        try:
-            fondeo_instance = FondeoCajaChica.objects.get(id=fondeo_id)
-        except FondeoCajaChica.DoesNotExist:
-            fondeo_instance = None
+        qs_fondeo = FondeoCajaChica.objects.filter(id=fondeo_id)
+        if empresa:
+            qs_fondeo = qs_fondeo.filter(empresa=empresa)
+        fondeo_instance = qs_fondeo.first()
     if request.method == "POST":
         form = GastoCajaChicaForm(request.POST)
         if empresa:
@@ -674,7 +674,8 @@ def exportar_vales_caja_chica_excel(request):
 @login_required
 def recibo_fondeo_caja(request, fondeo_id):
     fondeo = get_object_or_404(FondeoCajaChica, pk=fondeo_id)
-    empresa = request.user.perfilusuario.empresa
+    _verificar_empresa_caja(request, fondeo)
+    empresa = fondeo.empresa
     monto_letra = num2words(fondeo.importe_cheque, lang='es', to='currency', currency='MXN').capitalize()
     return render(request, 'caja_chica/recibo_fondeo.html', {'fondeo': fondeo, 'monto_letra': monto_letra, 'empresa': empresa })
 

@@ -1159,18 +1159,25 @@ def reiniciar_sistema(request):
 @staff_member_required
 def respaldo_empresa_excel(request):
     # Si no hay empresa seleccionada, muestra el formulario
+    if request.user.is_superuser:
+        empresas_permitidas = Empresa.objects.all()
+    else:
+        perfil = getattr(request.user, "perfilusuario", None)
+        empresas_permitidas = Empresa.objects.filter(
+            id=perfil.empresa_id if perfil else None
+        )
+
     if request.method == "GET" and "empresa_id" not in request.GET:
-        empresas = Empresa.objects.all()
-        return render(request, "respaldo_empresas.html", {"empresas": empresas})
+        return render(request, "respaldo_empresas.html", {"empresas": empresas_permitidas})
 
     empresa_id = request.GET.get("empresa_id")
     try:
-        empresa = Empresa.objects.get(pk=empresa_id)
-    except Empresa.DoesNotExist:
+        empresa = empresas_permitidas.get(pk=empresa_id)
+    except (Empresa.DoesNotExist, ValueError):
         return render(
             request,
             "respaldo_empresas.html",
-            {"empresas": Empresa.objects.all(), "error": "Empresa no encontrada."},
+            {"empresas": empresas_permitidas, "error": "Empresa no encontrada."},
         )
 
     wb = openpyxl.Workbook()
@@ -2217,7 +2224,7 @@ def crear_ticket(request):
         titulo = request.POST["titulo"]
         descripcion = request.POST["descripcion"]
         empleado_id = request.POST["empleado_asignado"]
-        empleado = Empleado.objects.get(id=empleado_id)
+        empleado = get_object_or_404(empleados, id=empleado_id)
         ticket = TicketMantenimiento.objects.create(
             titulo=titulo, descripcion=descripcion, empleado_asignado=empleado
         )
@@ -2345,7 +2352,11 @@ def crear_ticket(request):
 
 @login_required
 def actualizar_ticket(request, ticket_id):
-    ticket = TicketMantenimiento.objects.get(id=ticket_id)
+    ticket = get_object_or_404(TicketMantenimiento, id=ticket_id)
+    _verificar_empresa(
+        request,
+        ticket.empleado_asignado.empresa_id if ticket.empleado_asignado_id else None,
+    )
     if request.method == "POST":
         ticket.estado = request.POST["estado"]
         ticket.solucion = request.POST.get("solucion", "")
@@ -2359,6 +2370,10 @@ def actualizar_ticket(request, ticket_id):
 @login_required
 def agregar_seguimiento(request, ticket_id):
     ticket = get_object_or_404(TicketMantenimiento, id=ticket_id)
+    _verificar_empresa(
+        request,
+        ticket.empleado_asignado.empresa_id if ticket.empleado_asignado_id else None,
+    )
     if request.method == "POST":
         comentario = request.POST["comentario"]
         SeguimientoTicket.objects.create(
@@ -2369,7 +2384,11 @@ def agregar_seguimiento(request, ticket_id):
 
 @login_required
 def detalle_ticket(request, ticket_id):
-    ticket = TicketMantenimiento.objects.get(id=ticket_id)
+    ticket = get_object_or_404(TicketMantenimiento, id=ticket_id)
+    _verificar_empresa(
+        request,
+        ticket.empleado_asignado.empresa_id if ticket.empleado_asignado_id else None,
+    )
     seguimientos = ticket.seguimientos.order_by("-fecha")
     return render(
         request,
@@ -3000,8 +3019,32 @@ def calcular_monto_a_cobrar_stripe(monto_neto_deseado):
 
 # Pago con Stripe para visitantes multiempresas
 def stripe_checkout_visitante(request, factura_id):
+    visitante_id = request.session.get("visitante_id")
+    if not visitante_id:
+        return redirect("visitante_login")
+    visitante = VisitanteAcceso.objects.filter(id=visitante_id).first()
+    if not visitante:
+        return redirect("visitante_login")
     factura = get_object_or_404(Factura, id=factura_id)
+    # Solo facturas de los locales/áreas del visitante (igual que el detalle y el timbrado)
+    tiene_acceso = (
+        factura.local in visitante.locales.all()
+        or factura.area_comun in visitante.areas.all()
+        or factura.locales_incluidos.filter(id__in=visitante.locales.all()).exists()
+    )
+    if not tiene_acceso:
+        messages.error(request, "No tienes permiso para pagar esta factura.")
+        return redirect("visitante_consulta_facturas")
     empresa = factura.empresa
+
+    # Primero el plan: el botón se muestra siempre; sin PREMIUM se avisa que lo contrate el administrador
+    if not empresa.es_premium:
+        messages.warning(
+            request,
+            "El pago en línea solo está disponible en la versión PREMIUM. "
+            "Avisa a tu administrador del condominio para que contrate este servicio.",
+        )
+        return redirect("visitante_consulta_facturas")
 
     # Verifica que la empresa tenga las claves de Stripe configuradas
     if not (
@@ -3011,17 +3054,9 @@ def stripe_checkout_visitante(request, factura_id):
     ):
         messages.error(
             request,
-            " PAGO EN LINEA no esta configurado. Contacta al administrador del condominio para su configuración.",
+            "El pago en línea aún no está configurado. Contacta al administrador del condominio.",
         )
         return redirect("visitante_consulta_facturas")
-    elif not empresa.es_premium:
-        messages.error(
-            request,
-            "Disponible en la versión PREMIUM del sistema./n Contacta al administrador del condominio para que contrate la version PREMIUM.",
-        )
-        return redirect(
-            "visitante_consulta_facturas"
-        )  # O la vista/lista que corresponda
 
     stripe.api_key = empresa.stripe_secret_key  # <-- Usa la clave secreta de la empresa
     # NUEVO -- según la configuración de la empresa, el cliente paga el
@@ -3605,6 +3640,7 @@ def aviso_crear(request):
 @login_required
 def aviso_eliminar(request, aviso_id):
     aviso = get_object_or_404(Aviso, id=aviso_id)
+    _verificar_empresa(request, aviso.empresa_id)
     if request.method == "POST":
         aviso.delete()
         return redirect("avisos_lista")
@@ -3972,6 +4008,12 @@ def _usuario_puede_ver_empresa(request, empresa_id):
     return bool(perfil and perfil.empresa_id and perfil.empresa_id == empresa_id)
 
 
+def _verificar_empresa(request, empresa_id):
+    """404 si el usuario no es superusuario y el registro es de otra empresa."""
+    if not _usuario_puede_ver_empresa(request, empresa_id):
+        raise Http404
+
+
 @login_required
 def descargar_factura_timbrada(request, pk):
     factura = get_object_or_404(Factura, pk=pk)
@@ -4225,6 +4267,7 @@ def descargar_cfdi_facturama(request, id):
 @login_required
 def timbrar_factura_otros_ingresos(request, pk):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=pk)
+    _verificar_empresa(request, factura.empresa_id)
     if factura.uuid:
         messages.info(request, "La factura ya está timbrada.")
         return redirect("lista_facturas_otros_ingresos")

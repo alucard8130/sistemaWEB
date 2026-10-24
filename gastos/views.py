@@ -22,7 +22,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Coalesce, TruncMonth, TruncYear
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateformat import DateFormat
 from django.utils.dateparse import parse_date
@@ -394,9 +394,19 @@ def tipo_gasto_crear(request):
     )
 
 
+def _verificar_empresa(request, empresa_id):
+    """404 si el usuario no es superusuario y el registro es de otra empresa."""
+    if request.user.is_superuser:
+        return
+    perfil = getattr(request.user, "perfilusuario", None)
+    if not perfil or not perfil.empresa_id or perfil.empresa_id != empresa_id:
+        raise Http404
+
+
 @login_required
 def tipo_gasto_editar(request, pk):
     tipo = get_object_or_404(TipoGasto, pk=pk)
+    _verificar_empresa(request, tipo.empresa_id)
     user = request.user
     perfil = getattr(user, "perfilusuario", None)
     if request.method == "POST":
@@ -423,6 +433,7 @@ def tipo_gasto_editar(request, pk):
 @login_required
 def tipo_gasto_eliminar(request, pk):
     tipo = get_object_or_404(TipoGasto, pk=pk)
+    _verificar_empresa(request, tipo.empresa_id)
     if request.method == "POST":
         try:
             tipo.delete()
@@ -733,6 +744,7 @@ def gasto_editar(request, pk):
 @login_required
 def gasto_eliminar(request, pk):
     gasto = get_object_or_404(Gasto, pk=pk)
+    _verificar_empresa(request, gasto.empresa_id)
     if request.method == "POST":
         gasto.delete()
         return redirect("gastos_lista")
@@ -742,6 +754,7 @@ def gasto_eliminar(request, pk):
 @login_required
 def registrar_pago_gasto(request, gasto_id):
     gasto = get_object_or_404(Gasto, pk=gasto_id)
+    _verificar_empresa(request, gasto.empresa_id)
     pagos = gasto.pagos.all()
     saldo_restante = gasto.monto - sum([p.monto for p in pagos])
     empresa = gasto.empresa
@@ -797,6 +810,7 @@ def registrar_pago_gasto(request, gasto_id):
 @login_required
 def gasto_detalle(request, pk):
     gasto = get_object_or_404(Gasto, pk=pk)
+    _verificar_empresa(request, gasto.empresa_id)
     pagos = gasto.pagos.all().order_by("fecha_pago")
     reversados_ids = set()
     folio_comprobante = gasto.folio_comprobante
@@ -832,6 +846,9 @@ def gasto_detalle(request, pk):
 def reversa_pago_gasto(request, pago_id, gasto_id):
     pago = get_object_or_404(PagoGasto, id=pago_id)
     gasto = get_object_or_404(Gasto, id=gasto_id)
+    if pago.gasto_id != gasto.id:
+        raise Http404
+    _verificar_empresa(request, gasto.empresa_id)
     next_url = request.GET.get("next")
 
     # Validar que la fecha del pago original esté en un período permitido
@@ -1705,6 +1722,7 @@ def exportar_gastos_lista_excel(request):
 @login_required
 def recibo_gasto(request, gasto_id):
     gasto = get_object_or_404(Gasto, pk=gasto_id)
+    _verificar_empresa(request, gasto.empresa_id)
     monto_letra = num2words(
         gasto.monto, lang="es", to="currency", currency="MXN"
     ).capitalize()

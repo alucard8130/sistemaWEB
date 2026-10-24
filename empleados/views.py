@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from reportlab.lib import colors
@@ -43,6 +43,15 @@ def empleado_crear(request):
     else:
         form = EmpleadoForm(user=request.user)
     return render(request, 'empleados/crear.html', {'form': form})
+
+
+def _verificar_empresa(request, empresa_id):
+    """404 si el usuario no es superusuario y el registro es de otra empresa."""
+    if request.user.is_superuser:
+        return
+    perfil = getattr(request.user, "perfilusuario", None)
+    if not perfil or not perfil.empresa_id or perfil.empresa_id != empresa_id:
+        raise Http404
 
 
 @login_required
@@ -368,6 +377,7 @@ def _bloque_firmas(*etiquetas):
 @login_required
 def generar_solicitud_vacaciones_pdf(request, incidencia_id):
     incidencia = get_object_or_404(Incidencia, id=incidencia_id, tipo="vacaciones")
+    _verificar_empresa(request, incidencia.empleado.empresa_id)
     empleado = incidencia.empleado
     empresa = getattr(empleado, "empresa", None)
 
@@ -418,6 +428,7 @@ def generar_solicitud_vacaciones_pdf(request, incidencia_id):
 @login_required
 def generar_solicitud_permiso_pdf(request, incidencia_id):
     incidencia = get_object_or_404(Incidencia, id=incidencia_id, tipo="permiso")
+    _verificar_empresa(request, incidencia.empleado.empresa_id)
     empleado = incidencia.empleado
     empresa = getattr(empleado, "empresa", None)
 
@@ -466,6 +477,7 @@ def generar_solicitud_permiso_pdf(request, incidencia_id):
 @login_required
 def generar_solicitud_prestamo_pdf(request, solicitud_id):
     solicitud = get_object_or_404(SolicitudPrestamo, id=solicitud_id)
+    _verificar_empresa(request, solicitud.empleado.empresa_id)
     empleado = solicitud.empleado
     empresa = getattr(empleado, "empresa", None)
 
@@ -598,6 +610,7 @@ def solicitudes_prestamo_lista(request):
 @login_required
 def solicitud_prestamo_cambiar_estatus(request, solicitud_id):
     solicitud = get_object_or_404(SolicitudPrestamo, id=solicitud_id)
+    _verificar_empresa(request, solicitud.empleado.empresa_id)
  
     if request.method == 'POST':
         nuevo_estatus = request.POST.get('estatus')
