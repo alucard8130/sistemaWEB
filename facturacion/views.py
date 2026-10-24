@@ -388,9 +388,19 @@ def crear_factura(request):
     )
 
 
+def _verificar_empresa(request, empresa_id):
+    """404 si el usuario no es superusuario y el registro es de otra empresa."""
+    if request.user.is_superuser:
+        return
+    perfil = getattr(request.user, "perfilusuario", None)
+    if not perfil or not perfil.empresa_id or perfil.empresa_id != empresa_id:
+        raise Http404
+
+
 @login_required
 def editar_factura(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
+    _verificar_empresa(request, factura.empresa_id)
     empresa = factura.empresa
     # Bloqueo si la factura está pagada
     if factura.estatus == "cobrada":
@@ -443,6 +453,7 @@ def editar_factura(request, factura_id):
 @login_required
 def eliminar_factura(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
+    _verificar_empresa(request, factura.empresa_id)
 
     # Solo permitir si está pendiente y no tiene pagos parciales
     pagos_validos = factura.pagos.exclude(forma_pago="nota_credito")
@@ -856,6 +867,7 @@ def verificacion_facturacion(request):
 
 
 # exporta a excel el estado de cuenta de facturas cuotas pendientes con saldo mayor a cero, filtradas por local, area, empresa y año
+@login_required
 def exportar_estado_cuenta_excel(request):
     local_id = request.GET.get("local_id")
     area_id = request.GET.get("area_id")
@@ -1470,10 +1482,7 @@ def lista_saldos_a_favor(request):
 @transaction.atomic
 def registrar_pago(request, factura_id):
     factura = get_object_or_404(Factura, pk=factura_id)
-    if not request.user.is_superuser:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if not perfil or perfil.empresa_id != factura.empresa_id:
-            raise Http404
+    _verificar_empresa(request, factura.empresa_id)
     empresa = factura.empresa
 
     if factura.estatus == "pagada" or factura.saldo_pendiente <= 0:
@@ -1574,6 +1583,7 @@ def facturas_detalle(request, pk):
         Factura.objects.select_related("local", "area_comun", "cliente").prefetch_related("locales_incluidos"),
         pk=pk,
     )
+    _verificar_empresa(request, factura.empresa_id)
     cobros = factura.pagos.all().order_by("fecha_pago")
     reversados_ids = set()
     for cobro in cobros:
@@ -1608,6 +1618,9 @@ def facturas_detalle(request, pk):
 def reversa_cobro_erroneo(request, pago_id, factura_id):
     pago = get_object_or_404(Pago, id=pago_id)
     factura = get_object_or_404(Factura, id=factura_id)
+    if pago.factura_id != factura.id:
+        raise Http404
+    _verificar_empresa(request, factura.empresa_id)
     next_url = request.GET.get("next")
 
     if request.method == "POST":
@@ -1684,6 +1697,7 @@ def registrar_deposito_por_identificar(request):
 @login_required
 def identificar_deposito(request, pago_id):
     pago = get_object_or_404(Pago, id=pago_id, factura__isnull=True, identificado=False)
+    _verificar_empresa(request, pago.empresa_id)
 
     # Siempre carga todos los clientes, locales y áreas de la empresa
     clientes = Cliente.objects.filter(empresa=pago.empresa).only("id", "nombre")
@@ -1765,6 +1779,8 @@ def identificar_deposito(request, pago_id):
     if request.method == "POST" and "factura_id" in request.POST:
         factura_id = request.POST.get("factura_id")
         factura = get_object_or_404(Factura, id=factura_id)
+        if factura.empresa_id != pago.empresa_id:
+            raise Http404
         saldo_pendiente = Decimal(str(factura.saldo_pendiente))
 
         if pago.monto > saldo_pendiente:
@@ -4457,6 +4473,7 @@ def crear_factura_otros_ingresos(request):
 @login_required
 def eliminar_factura_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+    _verificar_empresa(request, factura.empresa_id)
 
     # NUEVO -- se compara el MONTO NETO cobrado (no si existen registros).
     # Un cobro reversado crea un registro compensatorio negativo, así que
@@ -4574,6 +4591,7 @@ def lista_facturas_otros_ingresos(request):
 @login_required
 def registrar_cobro_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+    _verificar_empresa(request, factura.empresa_id)
     empresa = factura.empresa
 
     if factura.estatus == "cobrada" or factura.saldo <= 0:
@@ -4653,6 +4671,7 @@ def registrar_cobro_otros_ingresos(request, factura_id):
 @login_required
 def detalle_factura_otros_ingresos(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+    _verificar_empresa(request, factura.empresa_id)
     cobros = factura.cobros.all().order_by("fecha_cobro")
     reversados_ids = set()
     for cobro in cobros:
@@ -4687,6 +4706,9 @@ def detalle_factura_otros_ingresos(request, factura_id):
 def reversa_cobro_erroneo_otros_ingresos(request, pago_id, factura_id):
     cobro = get_object_or_404(CobroOtrosIngresos, id=pago_id)
     factura = get_object_or_404(FacturaOtrosIngresos, id=factura_id)
+    if cobro.factura_id != factura.id:
+        raise Http404
+    _verificar_empresa(request, factura.empresa_id)
     next_url = request.GET.get("next")
 
     if request.method == "POST":
@@ -5078,6 +5100,7 @@ def recibo_factura(request, factura_id):
         Factura.objects.select_related("local", "area_comun", "cliente", "empresa").prefetch_related("locales_incluidos"),
         pk=factura_id,
     )
+    _verificar_empresa(request, factura.empresa_id)
     cliente = factura.cliente
     empresa = factura.empresa
     return render(
@@ -5099,6 +5122,9 @@ def recibo_pago(request, pago_id):
             "factura__cliente", "factura__empresa", "empresa",
         ).prefetch_related("factura__locales_incluidos"),
         pk=pago_id,
+    )
+    _verificar_empresa(
+        request, pago.empresa_id or (pago.factura.empresa_id if pago.factura_id else None)
     )
     factura = pago.factura
 
@@ -5139,6 +5165,7 @@ def recibo_pago(request, pago_id):
 @login_required
 def recibo_factura_otras_cuotas(request, factura_id):
     factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+    _verificar_empresa(request, factura.empresa_id)
     cliente = factura.cliente
     empresa = factura.empresa
     return render(
@@ -5155,6 +5182,7 @@ def recibo_factura_otras_cuotas(request, factura_id):
 @login_required
 def recibo_pago_otras_cuotas(request, pago_id):
     pago = get_object_or_404(CobroOtrosIngresos, pk=pago_id)
+    _verificar_empresa(request, pago.factura.empresa_id)
     factura = pago.factura
     cliente = factura.cliente
     empresa = factura.empresa
