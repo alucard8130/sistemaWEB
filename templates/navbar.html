@@ -965,3 +965,60 @@ body.dark-mode .tema-leasing .navbar { background: linear-gradient(135deg, #4A0C
     .navbar .dropdown-menu { box-shadow: none !important; margin-top: 2px !important; animation: none !important; }
 }
 </style>
+
+<!-- Seguro global contra doble envío de formularios POST (doble clic / Enter repetido).
+     - Solo actúa en formularios POST que se envían de verdad (si otro código cancela
+       el envío por validación o confirmación, no se bloquea nada).
+     - Los botones se deshabilitan DESPUÉS de que el navegador arma los datos, así no
+       se pierde el name/value del botón presionado.
+     - Se libera solo a los 10 s (descargas Excel/PDF no cambian la página) y al volver
+       con "Atrás".
+     - Para excluir un formulario: <form data-permitir-reenvio>. -->
+<script>
+(function () {
+    if (window.__gesacGuardEnvio) return;
+    window.__gesacGuardEnvio = true;
+    var BLOQUEO_MS = 10000;
+
+    function liberar(form) {
+        form.removeAttribute('data-enviando');
+        form.querySelectorAll('[data-bloqueado-por-envio]').forEach(function (b) {
+            b.disabled = false;
+            b.removeAttribute('data-bloqueado-por-envio');
+        });
+    }
+
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        if (!form || form.tagName !== 'FORM') return;
+        if (e.defaultPrevented) return;
+        if ((form.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+        if (form.hasAttribute('data-permitir-reenvio')) return;
+        var destino = (e.submitter && e.submitter.getAttribute('formtarget')) || form.getAttribute('target');
+        if (destino && destino !== '_self') return;
+
+        if (form.getAttribute('data-enviando') === '1') {
+            e.preventDefault();
+            return;
+        }
+
+        setTimeout(function () {
+            if (e.defaultPrevented) return;
+            form.setAttribute('data-enviando', '1');
+            form.querySelectorAll('button[type=submit], button:not([type]), input[type=submit]').forEach(function (b) {
+                if (!b.disabled) {
+                    b.disabled = true;
+                    b.setAttribute('data-bloqueado-por-envio', '1');
+                }
+            });
+            setTimeout(function () { liberar(form); }, BLOQUEO_MS);
+        }, 0);
+    });
+
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) {
+            document.querySelectorAll('form[data-enviando]').forEach(liberar);
+        }
+    });
+})();
+</script>
