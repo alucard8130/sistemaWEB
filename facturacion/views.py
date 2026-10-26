@@ -5713,6 +5713,16 @@ def exportar_poliza_ingresos(request):
             return monto_pago - iva_este_pago, iva_este_pago
 
         for pago in pagos_cuotas:
+            # Depósito sin factura (sin identificar, anticipo, rendimiento): no hay
+            # tipo de cuota ni cuenta de ingreso. Se reporta en "Sin homologar"
+            # en lugar de truenar la póliza.
+            if pago.factura is None:
+                pendientes_homologar.append({
+                    'fecha': pago.fecha_pago, 'tipo': 'Depósito sin factura',
+                    'monto': pago.monto, 'falta': 'Cuenta contable para depósitos sin factura',
+                })
+                continue
+
             cuenta_banco = getattr(pago.cuenta_bancaria, 'cuenta_contable', None) if pago.cuenta_bancaria else None
             cuenta_ingreso = homologaciones_cuota.get(pago.factura.tipo_cuota)
 
