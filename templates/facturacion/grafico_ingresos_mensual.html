@@ -86,6 +86,7 @@
         const dataLocal = {{ data_local|safe }};
         const dataArea = {{ data_area|safe }};
         const dataOtros = {{ data_otros|safe }};
+        const dataDepositos = {{ data_depositos|safe }};
         const totalesMes = {{ totales_mes|safe }};
         const dataPresupuesto = {{ data_presupuesto|safe }};
 
@@ -105,6 +106,12 @@
                         label: 'Cuotas área común',
                         data: dataArea,
                         backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                        stack: 'ingresos'
+                    },
+                    {
+                        label: 'Depósitos y anticipos',
+                        data: dataDepositos,
+                        backgroundColor: 'rgba(153, 102, 255, 0.7)',
                         stack: 'ingresos'
                     },
                     {

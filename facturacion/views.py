@@ -3043,12 +3043,29 @@ def grafico_ingresos_mensuales(request):
         .order_by("mes")
     )
 
+    # Depósitos sin factura (sin identificar, anticipos, rendimientos): también
+    # son dinero que entró al banco.
+    pagos_dep = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
+        factura__isnull=True, fecha_pago__year=anio
+    )
+    if empresa:
+        pagos_dep = pagos_dep.filter(empresa=empresa)
+    if mes:
+        pagos_dep = pagos_dep.filter(fecha_pago__month=int(mes))
+    pagos_dep = (
+        pagos_dep.annotate(mes=TruncMonth("fecha_pago"))
+        .values("mes")
+        .annotate(total=Sum("monto"))
+        .order_by("mes")
+    )
+
     # Unificar meses
     meses = sorted(
         set(
             [x["mes"] for x in pagos_local if x["mes"]]
             + [x["mes"] for x in pagos_area if x["mes"]]
             + [x["mes"] for x in cobros_otros if x["mes"]]
+            + [x["mes"] for x in pagos_dep if x["mes"]]
         )
     )
 
@@ -3092,8 +3109,16 @@ def grafico_ingresos_mensuales(request):
         data_local = [0 for _ in meses]
         data_area = [0 for _ in meses]
 
+    dep_dict = {x["mes"]: float(x["total"] or 0) for x in pagos_dep if x["mes"]}
+    # Con un filtro por tipo de ingreso se muestra solo ese tipo.
+    data_depositos = [
+        0 if tipo_ingreso in ("locales", "areas", "otros") else dep_dict.get(m, 0)
+        for m in meses
+    ]
+
     totales_mes = [
-        data_local[i] + data_area[i] + data_otros[i] for i in range(len(data_local))
+        data_local[i] + data_area[i] + data_otros[i] + data_depositos[i]
+        for i in range(len(data_local))
     ]
 
     meses_lista = [
@@ -3116,6 +3141,7 @@ def grafico_ingresos_mensuales(request):
         "data_local": json.dumps(data_local),
         "data_area": json.dumps(data_area),
         "data_otros": json.dumps(data_otros),
+        "data_depositos": json.dumps(data_depositos),
         "totales_mes": json.dumps(totales_mes),
         "data_presupuesto": json.dumps(presup_data),
         "anio": anio,
@@ -3168,12 +3194,26 @@ def grafico_ingresos_anual(request):
         .order_by("anio")
     )
 
+    # Depósitos sin factura (sin identificar, anticipos, rendimientos)
+    pagos_dep = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
+        factura__isnull=True
+    )
+    if empresa:
+        pagos_dep = pagos_dep.filter(empresa=empresa)
+    pagos_dep = (
+        pagos_dep.annotate(anio=TruncYear("fecha_pago"))
+        .values("anio")
+        .annotate(total=Sum("monto"))
+        .order_by("anio")
+    )
+
     # Unificar años
     anios = sorted(
         set(
             [x["anio"].year for x in pagos_local if x["anio"]]
             + [x["anio"].year for x in pagos_area if x["anio"]]
             + [x["anio"].year for x in cobros_otros if x["anio"]]
+            + [x["anio"].year for x in pagos_dep if x["anio"]]
         )
     )
 
@@ -3201,9 +3241,12 @@ def grafico_ingresos_anual(request):
     data_local = [local_dict.get(a, 0) for a in anios]
     data_area = [area_dict.get(a, 0) for a in anios]
     data_otros = [otros_dict.get(a, 0) for a in anios]
+    dep_dict = {x["anio"].year: float(x["total"] or 0) for x in pagos_dep if x["anio"]}
+    data_depositos = [dep_dict.get(a, 0) for a in anios]
     data_presupuesto_anio = [presup_anual_dict.get(a, 0) for a in anios]
     totales_anio = [
-        data_local[i] + data_area[i] + data_otros[i] for i in range(len(anios))
+        data_local[i] + data_area[i] + data_otros[i] + data_depositos[i]
+        for i in range(len(anios))
     ]
 
     context = {
@@ -3211,6 +3254,7 @@ def grafico_ingresos_anual(request):
         "data_local": json.dumps(data_local),
         "data_area": json.dumps(data_area),
         "data_otros": json.dumps(data_otros),
+        "data_depositos": json.dumps(data_depositos),
         "totales_anio": json.dumps(totales_anio),
         "data_presupuesto_anio": json.dumps(data_presupuesto_anio),
     }

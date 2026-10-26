@@ -293,6 +293,7 @@ def dashboard_inicio(request):
         fecha__year=anio_ant,
         fecha__month=mes_ant,
     ).aggregate(total=Sum("importe_cheque"))["total"] or Decimal("0")  # noqa: FURB157
+    solicitudes_pagadas_mes = gastos_pagados_mes  # sin fondeos
     gastos_pagados_mes += fondeos_mes
     
     gastos_pendientes_mes = Gasto.objects.filter(
@@ -758,6 +759,7 @@ def dashboard_inicio(request):
             # Gastos
             "gastos_pagados_mes": gastos_pagados_mes,
             "fondeos_mes": fondeos_mes,
+            "solicitudes_pagadas_mes": solicitudes_pagadas_mes,
             "gastos_pendientes_mes": gastos_pendientes_mes,
             "total_gastos_mes": total_gastos_mes,
             "delta_gastos": delta_gastos,
