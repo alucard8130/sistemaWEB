@@ -155,12 +155,21 @@ def reporte_ingresos_vs_gastos(request):
     )
 
     if empresa_id:
-        pagos = pagos.filter(factura__empresa_id=empresa_id)
+        # Incluye el depósito origen de un saldo a favor (factura=None pero
+        # identificado=True); los NO identificados van en su propia línea.
+        pagos = pagos.filter(
+            Q(factura__empresa_id=empresa_id)
+            | Q(factura__isnull=True, identificado=True, empresa_id=empresa_id)
+        )
         pagos_gastos = pagos_gastos.filter(gasto__empresa_id=empresa_id)
         cobros_otros = cobros_otros.filter(factura__empresa_id=empresa_id)
         gastos_caja_chica = gastos_caja_chica.filter(fondeo__empresa_id=empresa_id)
         vales_caja_chica = vales_caja_chica.filter(fondeo__empresa_id=empresa_id)
         pagos_por_identificar = pagos_por_identificar.filter(empresa_id=empresa_id)
+    else:
+        # Sin empresa (superusuario): los no identificados ya se suman aparte;
+        # sin esto se contaban dos veces.
+        pagos = pagos.exclude(factura__isnull=True, identificado=False)
 
     if fecha_inicio:
         pagos = pagos.filter(fecha_pago__gte=fecha_inicio)
@@ -209,6 +218,15 @@ def reporte_ingresos_vs_gastos(request):
                 When(factura__local__isnull=False, then=Value("Propiedades")),
                 When(factura__area_comun__isnull=False, then=Value("Áreas Comunes")),
                 When(es_grupo=True, then=Value("Propiedades")),
+                When(
+                    Exists(SaldoAFavor.objects.filter(origen_pago=OuterRef("pk"))),
+                    then=Value("Anticipos / Saldos a favor"),
+                ),
+                When(
+                    factura__isnull=True,
+                    forma_pago="rendimiento_inversion",
+                    then=Value("Rendimientos de inversión"),
+                ),
                 default=Value("Sin origen"),
                 output_field=CharField(),
             )

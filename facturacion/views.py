@@ -1696,6 +1696,16 @@ def registrar_deposito_por_identificar(request):
 
 @login_required
 def identificar_deposito(request, pago_id):
+    # En POST se bloquea la fila del depósito dentro de una transacción: un doble
+    # clic (o dos pestañas) espera al primero y ya lo ve identificado -> 404.
+    if request.method == "POST":
+        with transaction.atomic():
+            Pago.objects.select_for_update().filter(id=pago_id).first()
+            return _identificar_deposito(request, pago_id)
+    return _identificar_deposito(request, pago_id)
+
+
+def _identificar_deposito(request, pago_id):
     pago = get_object_or_404(Pago, id=pago_id, factura__isnull=True, identificado=False)
     _verificar_empresa(request, pago.empresa_id)
 
@@ -1778,17 +1788,26 @@ def identificar_deposito(request, pago_id):
     # Asignación de depósito a factura
     if request.method == "POST" and "factura_id" in request.POST:
         factura_id = request.POST.get("factura_id")
-        factura = get_object_or_404(Factura, id=factura_id)
+        factura = get_object_or_404(Factura.objects.select_for_update(), id=factura_id)
         if factura.empresa_id != pago.empresa_id:
             raise Http404
-        saldo_pendiente = Decimal(str(factura.saldo_pendiente))
+        if factura.estatus != "pendiente":
+            messages.error(
+                request, f"La factura {factura.folio} no está pendiente de pago."
+            )
+            return redirect("identificar_deposito", pago_id=pago.id)
+        ya_pagado = factura.pagos.aggregate(t=Sum("monto"))["t"] or Decimal("0")
+        saldo_pendiente = factura.monto - ya_pagado
+        if saldo_pendiente <= 0:
+            messages.error(request, f"La factura {factura.folio} ya no tiene saldo.")
+            return redirect("identificar_deposito", pago_id=pago.id)
 
         if pago.monto > saldo_pendiente:
             pago.monto -= saldo_pendiente
             pago.observaciones = (
                 (pago.observaciones or "")
-                + f"Deposito parcialmente asignado a {factura.folio} el {timezone.now().date()}"
-            )
+                + f" Deposito parcialmente asignado a {factura.folio} el {timezone.now().date()}"
+            )[-255:]
             pago.save()
             Pago.objects.create(
                 factura=factura,
@@ -1809,8 +1828,9 @@ def identificar_deposito(request, pago_id):
             pago.factura = factura
             pago.identificado = True
             pago.observaciones = (
-                pago.observaciones or ""
-            ) + f"Deposito identificado el {timezone.now().date()}"
+                (pago.observaciones or "")
+                + f" Deposito identificado el {timezone.now().date()}"
+            )[-255:]
             pago.save()
             messages.success(
                 request,

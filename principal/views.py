@@ -173,8 +173,10 @@ def dashboard_inicio(request):
         empresa = request.user.perfilusuario.empresa
  
     # ── INGRESOS DEL MES (cuotas + otros ingresos) ──
+    # Incluye depósitos sin factura (por identificar y anticipos): todo lo que
+    # entró al banco, igual que el estado de resultados.
     ingresos_mes_cuotas = Pago.objects.filter(
-        factura__empresa=empresa,
+        Q(factura__empresa=empresa) | Q(factura__isnull=True, empresa=empresa),
         fecha_pago__year=anio_actual,
         fecha_pago__month=mes_actual,
     ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
@@ -194,7 +196,9 @@ def dashboard_inicio(request):
     anio_ant = anio_actual if mes_actual > 1 else anio_actual - 1
  
     ingresos_mes_ant_cuotas = Pago.objects.filter(
-        factura__empresa=empresa, fecha_pago__year=anio_ant, fecha_pago__month=mes_ant
+        Q(factura__empresa=empresa) | Q(factura__isnull=True, empresa=empresa),
+        fecha_pago__year=anio_ant,
+        fecha_pago__month=mes_ant,
     ).exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).aggregate(total=Sum("monto"))[
         "total"
     ] or Decimal("0")
@@ -271,12 +275,11 @@ def dashboard_inicio(request):
     )
     pct_por_cobrar = 100 - pct_cobrado
  
-    # ── GASTOS DEL MES ──
+    # ── GASTOS DEL MES ── (los reversos son pagos negativos: se netean, igual que en el estado de resultados)
     gastos_pagados_mes = PagoGasto.objects.filter(
         gasto__empresa=empresa,
         fecha_pago__year=anio_actual,
         fecha_pago__month=mes_actual,
-        monto__gt=0,
     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")  # noqa: FURB157
 
     fondeos_mes = FondeoCajaChica.objects.filter(
@@ -303,7 +306,6 @@ def dashboard_inicio(request):
         gasto__empresa=empresa,
         fecha_pago__year=anio_ant,
         fecha_pago__month=mes_ant,
-        monto__gt=0,
     ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
 
     gastos_mes_ant += fondeos_mes_ant
@@ -637,7 +639,7 @@ def dashboard_inicio(request):
     # 1 consulta: gastos pagados agrupados por mes
     gpagados_qs = (
         PagoGasto.objects.filter(
-            gasto__empresa=empresa, fecha_pago__gte=fecha_rango_inicio, monto__gt=0
+            gasto__empresa=empresa, fecha_pago__gte=fecha_rango_inicio
         )
         .annotate(mes_trunc=TruncMonth("fecha_pago"))
         .values("mes_trunc")
