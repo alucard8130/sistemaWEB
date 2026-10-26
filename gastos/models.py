@@ -205,6 +205,9 @@ class PagoGasto(models.Model):
 
     class Meta:
         ordering = ['-fecha_pago']
+        indexes = [  # noqa: RUF012
+            models.Index(fields=['fecha_pago'], name='pagogasto_fecha_pago_idx'),
+        ]
 
     def __str__(self):
         return f'Pago de ${self.monto} para solicitud {self.gasto.id}'

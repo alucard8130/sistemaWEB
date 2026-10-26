@@ -26,3 +26,16 @@ def nombre_mes(numero):
         return meses[int(numero)-1]
     except:
         return ""
+
+
+@register.filter
+def sin_page(querydict):
+    """Query string actual sin el parámetro 'page'.
+
+    Se usa en los enlaces de paginación: '?page=N&{{ request.GET|sin_page }}'.
+    Con request.GET.urlencode el 'page' viejo viajaba duplicado y Django
+    tomaba el último, por lo que 'Anterior'/'Siguiente' no avanzaban.
+    """
+    params = querydict.copy()
+    params.pop("page", None)
+    return params.urlencode()

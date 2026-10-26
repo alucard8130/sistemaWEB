@@ -72,6 +72,10 @@ class Factura(models.Model):
     class Meta:
         ordering = ['-fecha_emision']  # noqa: RUF012
         unique_together = ('folio', 'empresa')  # Folio único por empresa
+        indexes = [  # noqa: RUF012
+            models.Index(fields=['empresa', 'estatus', 'fecha_vencimiento'], name='fac_emp_est_venc_idx'),
+            models.Index(fields=['fecha_emision'], name='fac_fecha_emision_idx'),
+        ]
 
     # NUEVO -- cubre cualquier factura creada/editada con .create() o
     # .save() normal (Crear Factura manual, Grupos, Pools de Vacancia,
@@ -164,6 +168,11 @@ class Pago(models.Model):
                 kwargs["update_fields"] = [*update_fields, "empresa"]
         super().save(*args, **kwargs)
 
+    class Meta:
+        indexes = [  # noqa: RUF012
+            models.Index(fields=['fecha_pago'], name='pago_fecha_pago_idx'),
+        ]
+
     def __str__(self):
         if self.factura:
             return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
@@ -254,6 +263,11 @@ class CobroOtrosIngresos(models.Model):
     registrado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     observaciones = models.CharField(max_length=255, blank=True, null=True)
     cuenta_bancaria = models.ForeignKey(CuentaBancaria, on_delete=models.PROTECT, related_name='cobros_oi',default=None, null=True, blank=True)
+
+    class Meta:
+        indexes = [  # noqa: RUF012
+            models.Index(fields=['fecha_cobro'], name='cobro_oi_fecha_cobro_idx'),
+        ]
 
     def __str__(self):
         return f"Cobro de ${self.monto} para {self.factura.folio} el {self.fecha_cobro}"

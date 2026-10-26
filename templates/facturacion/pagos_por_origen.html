@@ -1,5 +1,6 @@
 {% load static %}
 {% load humanize %}
+{% load dashboard_extras %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -278,7 +279,7 @@
             <ul class="pagination pagination-sm">
                 {% if pagos.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ pagos.previous_page_number }}&{{ request.GET.urlencode }}">
+                        <a class="page-link" href="?page={{ pagos.previous_page_number }}&{{ request.GET|sin_page }}">
                             <i class="bi bi-chevron-left"></i> Anterior
                         </a>
                     </li>
@@ -290,7 +291,7 @@
                 </li>
                 {% if pagos.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ pagos.next_page_number }}&{{ request.GET.urlencode }}">
+                        <a class="page-link" href="?page={{ pagos.next_page_number }}&{{ request.GET|sin_page }}">
                             Siguiente <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>
