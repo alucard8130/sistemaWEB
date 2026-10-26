@@ -151,6 +151,16 @@ class Pago(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.SET_NULL, null=True, blank=True)
     cuenta_bancaria = models.ForeignKey(CuentaBancaria, on_delete=models.PROTECT, related_name='pagos', default=None, null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        # Todo pago ligado a una factura lleva la empresa de esa factura
+        # (la conciliación bancaria y otros reportes filtran por Pago.empresa).
+        if self.empresa_id is None and self.factura_id:
+            self.empresa_id = self.factura.empresa_id
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None and "empresa" not in update_fields:
+                kwargs["update_fields"] = [*update_fields, "empresa"]
+        super().save(*args, **kwargs)
+
     def __str__(self):
         if self.factura:
             return f"Pago de ${self.monto} a {self.factura.folio} el {self.fecha_pago}"
