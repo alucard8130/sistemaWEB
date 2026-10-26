@@ -312,7 +312,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
         locales_con_factura = set(
             Factura.objects.filter(
                 local_id__in=locales_ids, tipo_cuota="mantenimiento",
-                estatus__in=["pendiente", "cobrada"],
+                estatus__in=["pendiente", "cobrada", "cancelada"],
             ).filter(
                 Q(fecha_emision__year=año, fecha_emision__month=mes)
                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
@@ -347,7 +347,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
 
             ya_facturado_grupo = Factura.objects.filter(
                 empresa=empresa, locales_incluidos__in=locales_grupo,
-                tipo_cuota="mantenimiento", estatus__in=["pendiente", "cobrada"],
+                tipo_cuota="mantenimiento", estatus__in=["pendiente", "cobrada", "cancelada"],
             ).filter(
                 Q(fecha_emision__year=año, fecha_emision__month=mes)
                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
@@ -393,7 +393,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
 
             ya_facturado_pool = Factura.objects.filter(
                 empresa=empresa, pool_vacancia=pool,
-                estatus__in=["pendiente", "cobrada"],
+                estatus__in=["pendiente", "cobrada", "cancelada"],
             ).filter(
                 Q(fecha_emision__year=año, fecha_emision__month=mes)
                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)
@@ -432,7 +432,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
         locales_anuales_con_factura = set(
             Factura.objects.filter(
                 local_id__in=locales_anuales_ids, tipo_cuota="mantenimiento",
-                estatus__in=["pendiente", "cobrada"], fecha_emision__year=año,
+                estatus__in=["pendiente", "cobrada", "cancelada"], fecha_emision__year=año,
             ).values_list("local_id", flat=True)
         )
         for local in locales_anuales:
@@ -471,7 +471,7 @@ def generar_facturas_mes(empresa, año, mes, facturar_locales=True, facturar_are
         areas_con_factura = set(
             Factura.objects.filter(
                 area_comun_id__in=areas_ids, tipo_cuota="renta",
-                estatus__in=["pendiente", "cobrada"],
+                estatus__in=["pendiente", "cobrada", "cancelada"],
             ).filter(
                 Q(fecha_emision__year=año, fecha_emision__month=mes)
                 | Q(fecha_vencimiento__year=año, fecha_vencimiento__month=mes)

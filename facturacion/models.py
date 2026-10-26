@@ -101,6 +101,8 @@ class Factura(models.Model):
   
 
     def actualizar_estatus(self):
+        if self.estatus == 'cancelada':  # una cancelada nunca se reactiva por pagos
+            return
         total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
        
         if total_pagado >= self.monto:
@@ -221,6 +223,8 @@ class FacturaOtrosIngresos(models.Model):
         return sum(c.monto for c in self.cobros.all())
     
     def actualizar_estatus(self):
+        if self.estatus == 'cancelada':  # una cancelada nunca se reactiva por pagos
+            return
         total_cobrado = self.cobros.aggregate(total=Sum('monto'))['total'] or 0
 
         if total_cobrado >= self.monto:

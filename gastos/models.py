@@ -177,6 +177,8 @@ class Gasto(models.Model):
 
     
     def actualizar_estatus(self):
+        if self.estatus == 'cancelada':  # una cancelada nunca se reactiva por pagos
+            return
         total_pagado = self.pagos.aggregate(total=Sum('monto'))['total'] or 0
         if total_pagado >= self.monto:
             self.estatus = 'pagada'
