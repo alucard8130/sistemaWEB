@@ -4600,6 +4600,7 @@ def lista_facturas_otros_ingresos(request):
         FacturaOtrosIngresos.objects.select_related(
             "cliente", "empresa", "tipo_ingreso"
         )
+        .prefetch_related("cobros")  # evita 1 consulta por factura (saldo)
         .all()
         .order_by("-fecha_vencimiento")
     )
@@ -5067,9 +5068,11 @@ def exportar_lista_facturas_otros_ingresos_excel(request):
     fecha_inicio = request.GET.get("fecha_inicio")
     fecha_fin = request.GET.get("fecha_fin")
 
-    facturas = FacturaOtrosIngresos.objects.select_related(
-        "empresa", "cliente", "tipo_ingreso"
-    ).all()
+    facturas = (
+        FacturaOtrosIngresos.objects.select_related("empresa", "cliente", "tipo_ingreso")
+        .prefetch_related("cobros")  # evita 1 consulta por factura (saldo)
+        .all()
+    )
 
     if not request.user.is_superuser:
         facturas = facturas.filter(empresa=request.user.perfilusuario.empresa)
