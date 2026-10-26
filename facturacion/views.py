@@ -1481,7 +1481,9 @@ def lista_saldos_a_favor(request):
 @login_required
 @transaction.atomic
 def registrar_pago(request, factura_id):
-    factura = get_object_or_404(Factura, pk=factura_id)
+    # Bloquea la factura hasta terminar la transacción: dos pagos simultáneos
+    # (doble clic, dos pestañas) se hacen en fila y el segundo ve el saldo real.
+    factura = get_object_or_404(Factura.objects.select_for_update(), pk=factura_id)
     _verificar_empresa(request, factura.empresa_id)
     empresa = factura.empresa
 
@@ -4609,8 +4611,12 @@ def lista_facturas_otros_ingresos(request):
 
 # registrar cobro de otros ingresos
 @login_required
+@transaction.atomic
 def registrar_cobro_otros_ingresos(request, factura_id):
-    factura = get_object_or_404(FacturaOtrosIngresos, pk=factura_id)
+    # Bloqueo de la factura: evita cobros simultáneos que excedan el saldo.
+    factura = get_object_or_404(
+        FacturaOtrosIngresos.objects.select_for_update(), pk=factura_id
+    )
     _verificar_empresa(request, factura.empresa_id)
     empresa = factura.empresa
 

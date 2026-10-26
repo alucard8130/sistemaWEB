@@ -96,7 +96,8 @@ class Factura(models.Model):
         if self.estatus == 'cancelada':
             return 0
         if self.estatus in ('cobrada', 'pendiente'):
-            return float(self.monto) - float(self.total_pagado)
+            # Resta exacta en Decimal y luego a float: evita centavos fantasma (1e-14)
+            return float(Decimal(self.monto) - Decimal(self.total_pagado))
         return 0
   
 
