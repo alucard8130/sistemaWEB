@@ -818,6 +818,17 @@ def estado_sesion_json(request, pk):
 
 @login_required
 def aplicar_movimiento(request, movimiento_pk):
+    """Envoltorio: serializa la aplicación de un movimiento. Bloquea la fila
+    del movimiento dentro de una transacción para que un doble clic o dos
+    pestañas no apliquen el mismo saldo dos veces."""
+    if request.method != 'POST':
+        return _aplicar_movimiento(request, movimiento_pk)
+    with transaction.atomic():
+        MovimientoEstadoCuenta.objects.select_for_update().filter(pk=movimiento_pk).first()
+        return _aplicar_movimiento(request, movimiento_pk)
+
+
+def _aplicar_movimiento(request, movimiento_pk):
     perfil = getattr(request.user, 'perfilusuario', None)
     if request.user.is_superuser:
         movimiento = get_object_or_404(MovimientoEstadoCuenta, pk=movimiento_pk)
@@ -892,7 +903,7 @@ def aplicar_movimiento(request, movimiento_pk):
 
         with transaction.atomic():
             if tipo_factura == 'cuota':
-                factura = get_object_or_404(Factura, pk=factura_id, empresa=empresa)
+                factura = get_object_or_404(Factura.objects.select_for_update(), pk=factura_id, empresa=empresa)
                 monto_a_aplicar = min(factura.saldo_pendiente, movimiento.saldo_restante)
 
                 if monto_a_aplicar <= 0:
@@ -935,7 +946,7 @@ def aplicar_movimiento(request, movimiento_pk):
 
             elif tipo_factura == 'otros':
                 from facturacion.models import CobroOtrosIngresos
-                factura_oi = get_object_or_404(FacturaOtrosIngresos, pk=factura_id, empresa=empresa)
+                factura_oi = get_object_or_404(FacturaOtrosIngresos.objects.select_for_update(), pk=factura_id, empresa=empresa)
                 monto_a_aplicar = min(factura_oi.saldo, movimiento.saldo_restante)
 
                 if monto_a_aplicar <= 0:

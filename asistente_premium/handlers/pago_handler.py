@@ -2,6 +2,7 @@
 import re
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+from django.db import transaction
 from typing import Dict, List, Any, Optional
 from .base_handler import BaseHandler
 from facturacion.models import Factura, Pago
@@ -148,20 +149,36 @@ class AsignarPagoHandler(BaseHandler):
         fecha_pago = self.datos.get('fecha_pago') or date.today().isoformat()
 
         try:
-            pago = Pago.objects.create(
-                factura=factura,
-                empresa=self.empresa,
-                fecha_pago=fecha_pago,
-                monto=self.datos['monto'],
-                forma_pago=self.datos['forma_pago'],
-                cuenta_bancaria=cuenta,
-                observaciones=self.datos.get('observaciones') or 'cobro aplicado Sherlock',
-                registrado_por=self.usuario,
-                identificado=True,
-            )
+            with transaction.atomic():
+                # Bloqueo de la factura y revalidación del saldo: evita
+                # sobrepagar si otro cobro entró entre la validación y aquí.
+                factura = Factura.objects.select_for_update().get(pk=factura.pk)
+                saldo_actual = Decimal(str(factura.saldo_pendiente))
+                if self.datos['monto'] > saldo_actual:
+                    msg = (
+                        f"El monto (${self.datos['monto']:,.2f}) excede el saldo "
+                        f"pendiente actual de la factura (${saldo_actual:,.2f})"
+                    )
+                    return {
+                        'exito': False,
+                        'errores': {'monto': msg},
+                        'mensaje': '❌ ' + msg,
+                    }
 
-            factura.actualizar_estatus()
-            factura.refresh_from_db()
+                pago = Pago.objects.create(
+                    factura=factura,
+                    empresa=self.empresa,
+                    fecha_pago=fecha_pago,
+                    monto=self.datos['monto'],
+                    forma_pago=self.datos['forma_pago'],
+                    cuenta_bancaria=cuenta,
+                    observaciones=self.datos.get('observaciones') or 'cobro aplicado Sherlock',
+                    registrado_por=self.usuario,
+                    identificado=True,
+                )
+
+                factura.actualizar_estatus()
+                factura.refresh_from_db()
 
             mensaje = (
                 f"✅ ¡Cobro de ${pago.monto:,.2f} registrado en la factura {factura.folio}!\n"

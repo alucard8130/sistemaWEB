@@ -3170,34 +3170,54 @@ def stripe_webhook_visitante(request):
     monto_neto_meta = metadata.get("monto_neto")
 
     try:
-        factura = Factura.objects.get(id=int(factura_id))
-        if event_type == "checkout.session.completed":
-            if monto_neto_meta:
-                monto_pagado = float(monto_neto_meta)
+        with transaction.atomic():
+            # Bloqueo de la factura: evita que dos eventos de Stripe
+            # (o un reintento) se procesen al mismo tiempo.
+            factura = Factura.objects.select_for_update().get(id=int(factura_id))
+            if event_type == "checkout.session.completed":
+                if monto_neto_meta:
+                    monto_pagado = float(monto_neto_meta)
+                else:
+                    monto_pagado = obj.get("amount_total", 0) / 100.0
+                observaciones = f"ID transacción: {obj.get('payment_intent')}"
+            elif event_type == "payment_intent.succeeded":
+                if monto_neto_meta:
+                    monto_pagado = float(monto_neto_meta)
+                else:
+                    monto_pagado = obj.get("amount", 0) / 100.0
+                observaciones = f"ID transacción: {obj.get('id')}"
             else:
-                monto_pagado = obj.get("amount_total", 0) / 100.0
-            observaciones = f"ID transacción: {obj.get('payment_intent')}"
-        elif event_type == "payment_intent.succeeded":
-            if monto_neto_meta:
-                monto_pagado = float(monto_neto_meta)
-            else:
-                monto_pagado = obj.get("amount", 0) / 100.0
-            observaciones = f"ID transacción: {obj.get('id')}"
-        else:
-            logger.info(f"Ignorando evento Stripe tipo: {event_type}")
-            return JsonResponse({"status": "ignored"})
+                logger.info(f"Ignorando evento Stripe tipo: {event_type}")
+                return JsonResponse({"status": "ignored"})
 
-        # Registra el pago y actualiza el estado
-        Pago.objects.create(
-            factura=factura,
-            monto=monto_pagado,
-            forma_pago="stripe",
-            fecha_pago=timezone.now(),
-            registrado_por=None,
-            observaciones=observaciones,
-        )
-        factura.actualizar_estatus()
-        factura.save()
+            # Idempotencia: Stripe puede mandar el mismo cobro como
+            # checkout.session.completed Y payment_intent.succeeded, o
+            # reintentar el evento. Si ya existe un pago con ese ID de
+            # transacción en esta factura, no se registra otra vez.
+            id_transaccion = observaciones.replace("ID transacción: ", "").strip()
+            if (
+                id_transaccion
+                and id_transaccion != "None"
+                and Pago.objects.filter(
+                    factura=factura,
+                    forma_pago="stripe",
+                    observaciones__contains=id_transaccion,
+                ).exists()
+            ):
+                logger.info(f"Pago Stripe duplicado ignorado: {id_transaccion}")
+                return JsonResponse({"status": "duplicate"})
+
+            # Registra el pago y actualiza el estado
+            Pago.objects.create(
+                factura=factura,
+                monto=monto_pagado,
+                forma_pago="stripe",
+                fecha_pago=timezone.now(),
+                registrado_por=None,
+                observaciones=observaciones,
+            )
+            factura.actualizar_estatus()
+            factura.save()
     except Factura.DoesNotExist:
         logger.error(f"Factura no encontrada: {factura_id}")
         return HttpResponse(status=400)
