@@ -2748,15 +2748,40 @@ def dashboard_pagos(request):
         .order_by("anio")
     )
 
+    # Depósitos sin factura (sin identificar, anticipos, rendimientos): también
+    # son dinero que entró al banco. No tienen origen (local/área/otros) ni
+    # cliente, así que solo se muestran en la vista "Todas" y sin filtro de cliente.
+    meses_dep = {}
+    if origen in (None, "", "todos", "Todo", "Todos") and not cliente_id:
+        pagos_dep = Pago.objects.exclude(forma_pago__in=FORMAS_PAGO_NO_INGRESO).filter(
+            factura__isnull=True
+        )
+        if empresa:
+            pagos_dep = pagos_dep.filter(empresa=empresa)
+        if anio:
+            pagos_dep = pagos_dep.filter(fecha_pago__year=anio)
+        if mes:
+            pagos_dep = pagos_dep.filter(fecha_pago__month=mes)
+        meses_dep = {
+            x["mes"]: x["total"]
+            for x in pagos_dep.annotate(mes=TruncMonth("fecha_pago"))
+            .values("mes")
+            .annotate(total=Sum("monto"))
+            if x["mes"]
+        }
+
     # Unifica meses de ambos queryset
     meses_cuotas = {p["mes"]: p["total"] for p in pagos_por_mes}
     meses_otros = {o["mes"]: o["total"] for o in otros_por_mes}
-    todos_los_meses = sorted(set(list(meses_cuotas.keys()) + list(meses_otros.keys())))
+    todos_los_meses = sorted(
+        set(list(meses_cuotas.keys()) + list(meses_otros.keys()) + list(meses_dep.keys()))
+    )
 
     # Prepara datos alineados
     labels_meses = [DateFormat(m).format("F Y") for m in todos_los_meses]
     data_cuotas = [meses_cuotas.get(m, 0) for m in todos_los_meses]
     data_otros = [meses_otros.get(m, 0) for m in todos_los_meses]
+    data_depositos = [float(meses_dep.get(m, 0) or 0) for m in todos_los_meses]
 
     # --- PRESUPUESTO DE INGRESOS POR MES ---
 
@@ -2940,7 +2965,8 @@ def dashboard_pagos(request):
 
     total_pagos = pagos.aggregate(total=Sum("monto"))["total"] or 0
     total_otros = otros_cobros.aggregate(total=Sum("monto"))["total"] or 0
-    total_general = total_pagos + total_otros
+    total_depositos = sum(float(v or 0) for v in meses_dep.values())
+    total_general = total_pagos + total_otros + Decimal(str(total_depositos))
 
     return render(
         request,
@@ -2968,6 +2994,8 @@ def dashboard_pagos(request):
             "labels_meses": labels_meses,
             "data_cuotas": data_cuotas,
             "data_otros": data_otros,
+            "data_depositos": data_depositos,
+            "total_depositos": total_depositos,
             "data_presupuesto": data_presupuesto,
             "data_cuotas_anio": data_cuotas_anio_list,
             "data_otros_anio": data_otros_anio_list,
