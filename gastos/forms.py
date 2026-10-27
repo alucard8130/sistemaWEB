@@ -99,7 +99,7 @@ class GastoForm(forms.ModelForm):
 
     class Meta:
         model = Gasto
-        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto' ,'retencion_iva', 'retencion_isr', 'observaciones']  # noqa: RUF012
+        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'folio_comprobante', 'retencion_iva', 'retencion_isr', 'observaciones']  # noqa: RUF012
         widgets = {  # noqa: RUF012
             'proveedor': forms.Select(attrs={
                 'class': 'form-select'
@@ -126,6 +126,11 @@ class GastoForm(forms.ModelForm):
             'retencion_isr': forms.NumberInput(attrs={
                 'class': 'form-control', 'title': "Ingrese el importe de retención de ISR, si aplica. Ejemplo: 100 para $100 si la factura tiene ISR Retenido o es retencion de ISR por nomina."
             }),
+            'folio_comprobante': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Opcional',
+                'title': "Folio de la factura del proveedor. Si lo capturas, el sistema evita registrar dos veces la misma factura.",
+            }),
             'descripcion': forms.Textarea(attrs={
                 'rows':2,
                 'class': 'form-control'
@@ -140,6 +145,7 @@ class GastoForm(forms.ModelForm):
             'descripcion': 'Descripción del gasto',
             'fecha': 'Fecha Solicitud',
             'monto': 'Importe',
+            'folio_comprobante': 'Folio de la factura (opcional)',
             'retencion_iva': 'Retención IVA (serv profesionales)',
             'retencion_isr': 'Retención ISR (nomina o servicios profesionales)',
         }
@@ -220,6 +226,23 @@ class GastoForm(forms.ModelForm):
         # Opcional: si quieres que uno de los dos sea obligatorio siempre
         if not proveedor and not empleado:
             raise forms.ValidationError('Debes seleccionar un proveedor o un empleado.')
+
+        # Duplicado REAL: la misma factura (mismo folio) del mismo proveedor ya
+        # registrada en otra solicitud activa. Las canceladas no cuentan.
+        folio = (cleaned_data.get('folio_comprobante') or '').strip()
+        cleaned_data['folio_comprobante'] = folio or None
+        if folio and proveedor:
+            repetidas = Gasto.objects.filter(
+                proveedor=proveedor, folio_comprobante__iexact=folio
+            ).exclude(estatus='cancelada')
+            if self.instance.pk:
+                repetidas = repetidas.exclude(pk=self.instance.pk)
+            existente = repetidas.first()
+            if existente:
+                self.add_error(
+                    'folio_comprobante',
+                    f'Este folio ya está registrado para este proveedor en la solicitud folio {existente.id}.',
+                )
         return cleaned_data
 
 

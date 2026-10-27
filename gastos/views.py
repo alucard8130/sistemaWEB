@@ -611,7 +611,7 @@ def gasto_nuevo(request):
                     monto=gasto.monto,
                     fecha__year=gasto.fecha.year,
                     fecha__month=gasto.fecha.month,
-                ).exclude(estatus="cancelado")
+                ).exclude(estatus="cancelada")
 
                 if origen == "proveedor" and gasto.proveedor_id:
                     duplicado_qs = duplicado_qs.filter(proveedor_id=gasto.proveedor_id)
@@ -632,43 +632,6 @@ def gasto_nuevo(request):
                         f"La solicitud se guardó de todas formas -- verifica que no sea un duplicado real."
                     )
                     # NOTA: SIN return aquí -- el flujo sigue de largo hacia el guardado.
-
-                # posible PARTICIÓN de una sola factura: mismo proveedor/empleado,
-                # mismo mes, pero monto DISTINTO -- este SÍ sigue bloqueando hasta
-                # que se confirme con el checkbox (es un flujo distinto, a propósito).
-                otro_qs = Gasto.objects.filter(
-                    empresa=gasto.empresa,
-                    fecha__year=gasto.fecha.year,
-                    fecha__month=gasto.fecha.month,
-                ).exclude(estatus="cancelado")
-
-                if origen == "proveedor" and gasto.proveedor_id:
-                    otro_qs = otro_qs.filter(proveedor_id=gasto.proveedor_id)
-                elif origen == "empleado" and gasto.empleado_id:
-                    otro_qs = otro_qs.filter(empleado_id=gasto.empleado_id)
-                else:
-                    otro_qs = Gasto.objects.none()
-
-                otro = otro_qs.exclude(monto=gasto.monto).first()
-                confirmar_particion = request.POST.get("confirmar_particion") == "1"
-
-                if otro and not confirmar_particion:
-                    nombre_origen = gasto.proveedor.nombre if origen == "proveedor" and gasto.proveedor else (
-                        gasto.empleado.nombre if origen == "empleado" and gasto.empleado else "este origen"
-                    )
-                    messages.warning(
-                        request,
-                        f"⚠️ Ya existe otra solicitud este mes con {nombre_origen} "
-                        f"(folio {otro.id}, monto ${otro.monto}). "
-                        f"Si es la MISMA factura que quieres partir en varios pagos, "
-                        f"NO crees una solicitud nueva — registra los pagos parciales "
-                        f"contra la solicitud existente conforme lo permita tu flujo de caja. "
-                        f"Si de verdad es una factura DISTINTA, marca la casilla de confirmación y guarda de nuevo."
-                    )
-                    return render(request, "gastos/form.html", {
-                        "form": form, "modo": "crear",
-                        "mostrar_confirmacion_particion": True,
-                    })
 
             # validar presupuesto disponible del tipo de gasto para todo el año
             if gasto.fecha and gasto.tipo_gasto_id:

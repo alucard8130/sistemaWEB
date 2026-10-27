@@ -184,18 +184,6 @@
                     {% endif %}
                 {% endfor %}
 
-                {% if mostrar_confirmacion_particion %}
-                <div class="alert-particion">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="confirmar_particion" value="1" id="confirmarParticion">
-                        <label class="form-check-label" for="confirmarParticion">
-                            Confirmo que esta es una factura <strong>DISTINTA</strong> a la solicitud existente
-                            del mismo proveedor/empleado este mes, no una partición de la misma factura.
-                        </label>
-                    </div>
-                </div>
-                {% endif %}
-
                 <div class="d-flex justify-content-between mt-4 pt-2 border-top">
                     <button type="button" class="btn-gesac-outline" onclick="prevStepGasto()">
                         <i class="bi bi-arrow-left me-1"></i> Anterior
@@ -262,9 +250,10 @@
         mostrarOrigen();
         document.getElementById("id_origen_tipo").addEventListener("change", mostrarOrigen);
 
-        // Si el servidor detectó una posible partición, salta directo al Paso 2
-        // para que el usuario vea el checkbox sin tener que dar clic en "Siguiente" de nuevo
-        if (document.getElementById('confirmarParticion')) {
+        // Si el servidor devolvió errores en campos del Paso 2 (por ejemplo, un
+        // folio de factura repetido), salta directo al Paso 2 para que el
+        // usuario vea el mensaje sin tener que dar clic en "Siguiente" de nuevo.
+        if (document.querySelector('#step2 .text-danger')) {
             document.getElementById('step1').style.display = 'none';
             document.getElementById('step2').style.display = 'block';
             document.getElementById('pill-1').classList.remove('active');
@@ -277,6 +266,11 @@
         var step2 = document.getElementById('step2');
         var inputs = step2.querySelectorAll('input, select, textarea');
         inputs.forEach(function(field) {
+            // El folio de la factura es opcional: nunca se marca como obligatorio.
+            if (field.name === "folio_comprobante") {
+                field.classList.remove('is-invalid');
+                return;
+            }
             if (field.type !== "hidden" && field.offsetParent !== null && !field.value.trim()) {
                 field.classList.add('is-invalid');
                 valid2 = false;
