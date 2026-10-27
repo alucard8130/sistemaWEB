@@ -287,6 +287,15 @@ def incidencia_editar(request, pk):
 
 @login_required
 def incidencia_cancelar(request, pk):
+    # Eliminar cambia datos: solo por POST (con token CSRF), nunca por un
+    # simple enlace, para que no se pueda borrar abriendo una dirección.
+    if request.method != 'POST':
+        messages.error(request, "Para eliminar una incidencia usa el botón de la lista.")
+        return redirect('incidencias_lista')
+    perfil = getattr(request.user, 'perfilusuario', None)
+    if perfil and perfil.es_contador and not request.user.is_superuser:
+        messages.error(request, "No tienes permiso para eliminar incidencias.")
+        return redirect('incidencias_lista')
     incidencia = get_object_or_404(Incidencia, pk=pk)
     if not request.user.is_superuser and incidencia.empleado.empresa != request.user.perfilusuario.empresa:
         messages.error(request, "No tienes permiso para eliminar esta incidencia.")

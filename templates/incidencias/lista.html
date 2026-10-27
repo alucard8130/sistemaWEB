@@ -200,9 +200,12 @@
                                     <a href="{% url 'incidencia_editar' i.id %}" class="btn-accion btn-editar reporte-link" title="Editar">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
-                                    <a href="{% url 'incidencia_cancelar' i.id %}" class="btn-accion btn-eliminar reporte-link" title="Eliminar">
-                                        <i class="bi bi-x-circle"></i>
-                                    </a>
+                                    <form method="post" action="{% url 'incidencia_cancelar' i.id %}" class="form-eliminar-incidencia d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-accion btn-eliminar p-0" title="Eliminar">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </form>
                                     {% endif %}
                                 </div>
                             </td>
@@ -276,8 +279,8 @@
 
             // Link de eliminar -- solo muestra el overlay si el usuario
             // confirma; si cancela, la pantalla se queda igual.
-            document.querySelectorAll('a.btn-eliminar').forEach(function(link) {
-                link.addEventListener('click', function(e) {
+            document.querySelectorAll('form.form-eliminar-incidencia').forEach(function(form) {
+                form.addEventListener('submit', function(e) {
                     if (confirm('¿Estás seguro de eliminar esta incidencia?')) {
                         mostrarOverlay();
                     } else {

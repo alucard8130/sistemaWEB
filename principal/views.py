@@ -92,7 +92,6 @@ from .models import (
     Aviso,
     CapturarEmailForm,
     ConfiguracionMembresia,
-    Evento,
     PagoMembresiaTransferencia,
     PerfilUsuario,
     SeguimientoTicket,
@@ -1482,78 +1481,6 @@ def reporte_auditoria(request):
     return render(
         request, "auditoria/reporte.html", {"auditorias": queryset, "modelo": modelo}
     )
-
-
-@csrf_exempt
-@login_required
-def crear_evento(request):
-    if request.method == "POST":
-        empresa = request.user.perfilusuario.empresa
-        data = json.loads(request.body)
-        evento = Evento.objects.create(
-            empresa=empresa,
-            titulo=data.get("titulo"),
-            fecha=data.get("fecha"),
-            descripcion=data.get("descripcion"),
-            creado_por=request.user,
-        )
-
-        evento.save()
-        return JsonResponse({"ok": True, "id": evento.id})
-    return JsonResponse({"ok": False}, status=400)
-
-
-@csrf_exempt
-@login_required
-def eliminar_evento(request, evento_id):
-    if request.method == "POST":
-        try:
-            evento = Evento.objects.get(
-                id=evento_id, empresa=request.user.perfilusuario.empresa
-            )
-            evento.delete()
-            return JsonResponse({"ok": True})
-        except Evento.DoesNotExist:
-            return JsonResponse({"ok": False, "error": "No encontrado"}, status=404)
-    return JsonResponse({"ok": False}, status=400)
-
-
-@csrf_exempt
-@login_required
-def enviar_correo_evento(request, evento_id):
-    if request.method == "POST":
-        correo_destino = request.POST.get("correo")
-        archivos = request.FILES.getlist("archivos")
-        try:
-            evento = Evento.objects.get(
-                id=evento_id, empresa=request.user.perfilusuario.empresa
-            )
-            if correo_destino:
-                cuerpo_html = render_to_string(
-                    "correo_evento.html", {"evento": evento, "empresa": evento.empresa}
-                )
-                email = EmailMessage(
-                    subject=f"Nuevo evento: {evento.titulo}",
-                    body=cuerpo_html,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[correo_destino],
-                )
-                email.content_subtype = "html"
-                for archivo in archivos:
-                    email.attach(archivo.name, archivo.read(), archivo.content_type)
-                email.send(fail_silently=False)
-                evento.enviado_correo = True
-                evento.save()
-                return JsonResponse({"ok": True})
-            else:
-                return JsonResponse(
-                    {"ok": False, "error": "Correo no proporcionado"}, status=400
-                )
-        except Evento.DoesNotExist:
-            return JsonResponse(
-                {"ok": False, "error": "Evento no encontrado"}, status=404
-            )
-    return JsonResponse({"ok": False}, status=400)
 
 
 ###########################APP REGISTRO DE USUARIO GESAC  y ERP ESCUELAS ########################
