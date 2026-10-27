@@ -26,7 +26,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
-from django.core.mail import EmailMessage, send_mail
+from django.core.mail import EmailMessage, EmailMultiAlternatives, send_mail
 from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import (
@@ -1559,6 +1559,65 @@ def enviar_correo_evento(request, evento_id):
 ###########################APP REGISTRO DE USUARIO GESAC  y ERP ESCUELAS ########################
 # registro usuario demo, crea empresa demo y asigna perfil de usuario demo GESAC
 
+def _enviar_bienvenida_registro(request, user, nombre, segmento):
+    """Correo de bienvenida al usuario que se registra solo (cuenta demo).
+    Nunca incluye la contraseña. Si el envío falla, el registro NO se afecta."""
+    if not user.email:
+        return
+    try:
+        login_url = request.build_absolute_uri(reverse("login"))
+        if segmento == "habitacional":
+            sistema = "la administración de tu condominio"
+            demo = "un condominio de demostración"
+        else:
+            sistema = "la administración de tus locales y cuotas"
+            demo = "una empresa de demostración"
+        primer_nombre = (nombre or user.username).strip().split(" ")[0]
+        web_url = "https://devsoftheron.com.mx/gestor_administrativo"
+
+        texto = (
+            f"Hola {primer_nombre},\n\n"
+            f"¡Bienvenido a GESAC! Tu cuenta se creó correctamente.\n\n"
+            f"Tu usuario es: {user.username}\n"
+            f"Inicia sesión aquí: {login_url}\n\n"
+            f"Por seguridad, nunca te pedimos tu contraseña por correo.\n\n"
+            f"Para que conozcas el sistema, ya te dejamos {demo} para que "
+            f"explores todo lo necesario para llevar {sistema}: "
+            f"facturación, cobranza, gastos y reportes.\n\n"
+            f"Conoce más sobre GESAC (Sistema Administrativo Condominal): {web_url}\n\n"
+            f"Si tienes dudas, responde a este correo y con gusto te ayudamos.\n\n"
+            f"Saludos,\nEquipo GESAC"
+        )
+        html = (
+            f"<div style=\"font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#222\">"
+            f"<h2 style=\"color:#0d6efd\">¡Bienvenido a GESAC, {escape(primer_nombre)}!</h2>"
+            f"<p>Tu cuenta se creó correctamente.</p>"
+            f"<p><b>Tu usuario:</b> {escape(user.username)}</p>"
+            f"<p><a href=\"{escape(login_url)}\" style=\"background:#0d6efd;color:#fff;"
+            f"padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block\">"
+            f"Iniciar sesión</a></p>"
+            f"<p>Para que conozcas el sistema, ya te dejamos {demo} para que "
+            f"explores todo lo necesario para llevar {sistema}: facturación, cobranza, "
+            f"gastos y reportes.</p>"
+            f"<p>Conoce más sobre GESAC: <a href=\"{web_url}\">"
+            f"Sistema Administrativo Condominal — GESAC</a></p>"
+            f"<p style=\"color:#666;font-size:13px\">Por seguridad, nunca te pedimos tu "
+            f"contraseña por correo. Si tienes dudas, responde a este correo y con gusto "
+            f"te ayudamos.</p>"
+            f"<p>Saludos,<br>Equipo GESAC</p></div>"
+        )
+        msg = EmailMultiAlternatives(
+            subject="Bienvenido a GESAC",
+            body=texto,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email],
+        )
+        msg.attach_alternative(html, "text/html")
+        msg.send(fail_silently=True)
+    except Exception:
+        logging.getLogger("django").exception("No se pudo enviar el correo de bienvenida")
+
+
 def registro_usuario(request):
     mensaje = ""
     if request.method == "POST":
@@ -1653,6 +1712,11 @@ def registro_usuario(request):
                 [settings.EMAIL_HOST_USER],
                 fail_silently=True,
             )
+
+            # Correo de bienvenida al nuevo usuario (condominios y comercial;
+            # escuelas tienen su propia marca y login).
+            if segmento in ("comercial", "habitacional"):
+                _enviar_bienvenida_registro(request, user, nombre, segmento)
 
             messages.success(
                 request,

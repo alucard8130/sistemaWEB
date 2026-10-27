@@ -268,6 +268,10 @@ def subgrupo_gasto_crear(request):
 
 @login_required
 def subgrupo_gasto_eliminar(request, pk):
+    # Los subgrupos son catálogo global: solo el superusuario puede borrarlos.
+    if not request.user.is_superuser:
+        messages.error(request, "Solo el superusuario puede eliminar subgrupos de gasto.")
+        return redirect("subgrupos_gasto_lista")
     subgrupo = get_object_or_404(SubgrupoGasto, pk=pk)
     if request.method == "POST":
         try:

@@ -62,9 +62,11 @@
                             <td>{{ sub.grupo.nombre }}</td>
                             <td>{{ sub.nombre }}</td>
                             <td>
+                                {% if request.user.is_superuser %}
                                 <a href="{% url 'subgrupo_gasto_eliminar' sub.pk %}"class="btn btn-sm btn-outline-danger" title="Eliminar">
                                     <i class="bi bi-trash3"></i>
                                 </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
