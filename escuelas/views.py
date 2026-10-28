@@ -17,7 +17,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
-from django.utils.timezone import now
+from django.utils.timezone import localdate, now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
@@ -399,16 +399,14 @@ def importar_cartera_vencida(request):
  
     if request.method == 'POST':
         archivo = request.FILES.get('archivo_excel')
-        fecha_corte_raw = request.POST.get('fecha_corte')
  
         if not archivo:
             messages.error(request, "Selecciona un archivo Excel.")
             return redirect('importar_cartera_vencida')
  
-        try:
-            fecha_corte = date.fromisoformat(fecha_corte_raw) if fecha_corte_raw else date.today()  # noqa: DTZ011
-        except ValueError:
-            fecha_corte = date.today()  # noqa: DTZ011
+        # El reporte de Academic+ no trae fecha: el corte es el dia en que se
+        # sube el archivo (fecha local de Mexico, no la del servidor en UTC).
+        fecha_corte = localdate()
  
         try:
             wb = xlrd.open_workbook(file_contents=archivo.read())
@@ -481,7 +479,7 @@ def importar_cartera_vencida(request):
         'alumnos_deudores': alumnos_deudores,
         'ultima_fecha': ultima_fecha,
         'fechas_disponibles': fechas_disponibles,
-        'hoy': date.today(),  # noqa: DTZ011
+        'hoy': localdate(),
     })
 
 
@@ -956,6 +954,39 @@ def estado_resultados_escuela(request):
 
 
 
+_MESES_CARTERA = (
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO",
+    "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+)
+
+
+def _concepto_limpio_cartera(concepto):
+    """Convierte el concepto tal cual viene de Academic+ en una categoria
+    estable para agrupar. Ej.: '02/11  COLEGIATURA OCTUBRE' -> 'COLEGIATURA';
+    '04/01  COMEDOR TALLERES' -> 'COMEDOR TALLERES'; 'INSCRIPCIÓN-' -> 'INSCRIPCIÓN'.
+    Devuelve (clave, etiqueta): la clave ignora acentos y mayusculas."""
+    import re
+    from unidecode import unidecode
+
+    texto = (concepto or "").upper().strip()
+    texto = re.sub(r"^\d+\s*/\s*\d+\s+", "", texto)       # prefijo '02/11 '
+    texto = re.sub(r"[\s\-]+$", "", texto)                 # guiones/espacios finales
+    palabras = texto.split()
+    while palabras and unidecode(palabras[-1]) in _MESES_CARTERA:
+        palabras.pop()                                      # mes al final
+    texto = " ".join(palabras).strip() or "SIN CONCEPTO"
+    clave = unidecode(texto)
+
+    menores = {"DE", "DEL", "LA", "EL", "Y", "EN"}
+    etiqueta = " ".join(
+        p.lower() if p in menores
+        else p if (len(p) <= 2 or any(c.isdigit() for c in p))
+        else p.capitalize()
+        for p in texto.split()
+    )
+    return clave, etiqueta[:1].upper() + etiqueta[1:]
+
+
 @login_required
 @requiere_membresia_activa_escuela
 def reporte_cartera_vencida_comparativo(request):
@@ -968,17 +999,27 @@ def reporte_cartera_vencida_comparativo(request):
         CarteraVencida.objects.filter(empresa=empresa)
         .values_list('fecha_corte', flat=True).distinct().order_by('fecha_corte')
     )
-    categorias = CarteraVencida.CATEGORIA_CHOICES
- 
+    # Una fila por cada concepto (sin agrupar en 'Otro'): se limpia el texto de
+    # Academic+ (sin '02/11' ni mes) y se suma por fecha de corte.
     datos_qs = (
         CarteraVencida.objects.filter(empresa=empresa)
-        .values('fecha_corte', 'categoria')
+        .values('fecha_corte', 'concepto')
         .annotate(total=Sum('monto'))
     )
-    matriz = {c: {f: Decimal('0') for f in fechas_corte} for c, _ in categorias}
+    etiquetas = {}
+    matriz = {}
     for d in datos_qs:
-        if d['categoria'] in matriz:
-            matriz[d['categoria']][d['fecha_corte']] = d['total'] or Decimal('0')
+        clave, etiqueta = _concepto_limpio_cartera(d['concepto'])
+        etiquetas.setdefault(clave, etiqueta)
+        fila = matriz.setdefault(clave, {f: Decimal('0') for f in fechas_corte})
+        fila[d['fecha_corte']] += d['total'] or Decimal('0')
+
+    ultima = fechas_corte[-1] if fechas_corte else None
+    claves = sorted(
+        matriz,
+        key=lambda c: (-(matriz[c][ultima] if ultima else 0), etiquetas[c]),
+    )
+    categorias = [(c, etiquetas[c]) for c in claves]
  
     totales_por_fecha = [
         sum(matriz[c][f] for c, _ in categorias) for f in fechas_corte

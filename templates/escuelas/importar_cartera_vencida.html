@@ -78,18 +78,14 @@
         </div>
 
         <div class="formato-card">
-            <i class="bi bi-check-circle-fill me-1"></i><strong>Sube el reporte de Deudores tal cual lo exportas de Academic+</strong> -- indica la fecha de corte del reporte (por default hoy). Cada mes queda guardado por separado, sin borrar los anteriores.
+            <i class="bi bi-check-circle-fill me-1"></i><strong>Sube el reporte de Deudores tal cual lo exportas de Academic+</strong> -- la fecha de corte se toma automáticamente del día en que lo subes ({{ hoy|date:"d/m/Y" }}). Cada corte queda guardado por separado; si subes otro el mismo día, reemplaza al de ese día.
         </div>
 
         <div class="form-card">
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="row g-3">
-                    <div class="col-md-5">
-                        <label class="form-label">Fecha de corte</label>
-                        <input type="date" name="fecha_corte" class="form-control" value="{{ hoy|date:'Y-m-d' }}" required>
-                    </div>
-                    <div class="col-md-7">
+                    <div class="col-12">
                         <label class="form-label">Archivo de Deudores (.xls)</label>
                         <input type="file" name="archivo_excel" class="form-control" accept=".xls" required>
                     </div>

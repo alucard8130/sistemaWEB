@@ -101,33 +101,44 @@ def importar_ingresos_excel(request):
                 + ' | '.join(parseo['descuadres']),
             )
             return redirect('importar_ingresos_excel')
+        if parseo['errores']:
+            messages.error(
+                request,
+                'No se importó nada porque hay filas que no se pudieron leer (corrígelas en el archivo): '
+                + ' | '.join(parseo['errores'][:8]),
+            )
+            return redirect('importar_ingresos_excel')
         if not parseo['filas']:
             messages.warning(request, 'El archivo no tenía cobros para importar.')
             return redirect('importar_ingresos_excel')
 
-        hay_banco = any(not iu.es_efectivo(f['forma_pago']) for f in parseo['filas'])
-        cuenta = None
-        if hay_banco:
-            cuenta = cuentas.filter(pk=cuenta_id).first() if cuenta_id.isdigit() else None
-            if not cuenta:
-                messages.error(request, 'El archivo trae cobros por banco (transferencia / tarjeta): elige la cuenta bancaria donde se depositaron.')
-                return redirect('importar_ingresos_excel')
+        # Cuenta por defecto (opcional): solo se usa si la columna "Cuenta Depósito"
+        # del archivo no existe o no coincide con una cuenta registrada.
+        cuenta_defecto = cuentas.filter(pk=cuenta_id).first() if cuenta_id.isdigit() else None
+        errores_cuenta = iu.resolver_cuentas(parseo, cuentas, cuenta_defecto)
+        if errores_cuenta:
+            messages.error(request, 'No se importó nada. ' + ' | '.join(errores_cuenta))
+            return redirect('importar_ingresos_excel')
+        cuenta = cuenta_defecto
 
         # Reglas de fechas del sistema (no futuras, no anios anteriores).
-        for fecha in sorted({f['fecha'] for f in parseo['filas']}):
-            ok, error = validar_periodo_abierto(cuenta, fecha)
+        pares = {(f['cuenta'], f['fecha']) for f in parseo['filas']}
+        for cta, fecha in sorted(pares, key=lambda p: (p[1], p[0].pk if p[0] else 0)):
+            ok, error = validar_periodo_abierto(cta, fecha)
             if not ok:
                 messages.error(request, f"{error} (Fecha Abono {fecha.strftime('%d/%m/%Y')}). No se importó nada.")
                 return redirect('importar_ingresos_excel')
 
         # Aviso (no bloquea) si algun cobro cae en un mes con periodo bancario cerrado.
         avisos_cerrado = []
-        if cuenta:
-            meses = {(f['fecha'].year, f['fecha'].month) for f in parseo['filas'] if not iu.es_efectivo(f['forma_pago'])}
-            for anio, mes in sorted(meses):
-                p = SaldoCuentaPeriodo.objects.filter(cuenta=cuenta, anio=anio, mes=mes, cerrado=True).first()
-                if p:
-                    avisos_cerrado.append(f'{p.nombre_mes()} {anio}')
+        meses = {
+            (f['cuenta'], f['fecha'].year, f['fecha'].month)
+            for f in parseo['filas'] if f['cuenta'] is not None
+        }
+        for cta, anio, mes in sorted(meses, key=lambda m: (m[1], m[2], m[0].pk)):
+            p = SaldoCuentaPeriodo.objects.filter(cuenta=cta, anio=anio, mes=mes, cerrado=True).first()
+            if p:
+                avisos_cerrado.append(f'{p.nombre_mes()} {anio} ({cta})')
 
         try:
             with transaction.atomic():

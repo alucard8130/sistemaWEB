@@ -65,6 +65,8 @@ class IngresoEscuela(models.Model):
     ]
     recibo = models.CharField(max_length=30, blank=True, null=True, db_index=True)
     nivel = models.CharField(max_length=30, blank=True, default='')
+    grado = models.CharField(max_length=30, blank=True, default='')
+    grupo = models.CharField(max_length=30, blank=True, default='')
     # Concepto "limpio" (sin mes, ciclo, talla ni zona) para reportes por categoria.
     rubro = models.CharField(max_length=60, blank=True, default='', db_index=True)
     fuente = models.CharField(max_length=20, choices=FUENTE_CHOICES, blank=True, default='')

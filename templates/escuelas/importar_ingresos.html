@@ -60,7 +60,8 @@
             <i class="bi bi-info-circle-fill me-1"></i><strong>Cómo se registra cada cobro</strong>
             <ul class="mb-0 mt-2" style="padding-left:18px;">
                 <li><strong>Efectivo</strong> nunca va a bancos: se suma a la <strong>caja chica</strong> en un fondeo por fuente y por mes (sin responsable).</li>
-                <li><strong>Transferencia y tarjeta</strong> entran a la cuenta bancaria que elijas, al <strong>100%</strong>. La comisión del portal la registras tú como gasto.</li>
+                <li><strong>Transferencia y tarjeta</strong> entran, al <strong>100%</strong>, a la cuenta de la columna <strong>Cuenta Depósito</strong> del archivo (si está registrada en Bancos). La comisión del portal la registras tú como gasto.</li>
+                <li>También se guardan el <strong>Grado</strong> y el <strong>Grupo</strong> de cada alumno.</li>
                 <li>Se usa la <strong>Fecha Abono</strong> del archivo tal cual (fecha del banco).</li>
                 <li>Si vuelves a subir el mismo archivo no se duplica nada. Los subtotales del archivo se validan antes de importar.</li>
             </ul>
@@ -80,9 +81,9 @@
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Cuenta bancaria donde se depositó <span class="text-muted fw-normal">(si hay transferencias / tarjetas)</span></label>
+                        <label class="form-label">Cuenta por defecto <span class="text-muted fw-normal">(opcional: solo si el archivo no trae Cuenta Depósito o no coincide)</span></label>
                         <select name="cuenta_bancaria" class="form-control">
-                            <option value="">-- Sin cuenta (solo efectivo) --</option>
+                            <option value="">-- Usar la Cuenta Depósito del archivo --</option>
                             {% for c in cuentas %}
                             <option value="{{ c.id }}">{{ c }}</option>
                             {% endfor %}

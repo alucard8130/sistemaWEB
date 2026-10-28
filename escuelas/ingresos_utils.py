@@ -201,7 +201,60 @@ def bucket_antiguedad(meses):
 _COLUMNAS_DEFAULT = {
     'RECIBO': 0, 'MATRICULA': 1, 'NOMBRE DEL ALUMNO': 2, 'CONCEPTO': 3,
     'NIVEL': 4, 'GRADO': 5, 'GRUPO': 6, 'FECHA ABONO': 7, 'IMPORTE': 8,
+    'CUENTA DEPOSITO': 9,
 }
+_RE_TOTAL_FINAL = re.compile(r'^(GRAN )?TOTAL:?$')
+
+
+def _solo_relleno(vals):
+    """True si las celdas con texto son solo puntos suspensivos ('…', '...')."""
+    return all(norm(v).strip('.…') == '' for v in vals)
+
+
+def _cuenta_texto(valor):
+    """'0109311165' -> '0109311165'; 65509026612.0 -> '65509026612'."""
+    if valor in ('', None):
+        return ''
+    if isinstance(valor, float):
+        return str(int(valor)) if valor == int(valor) else str(valor)
+    t = str(valor).strip()
+    return t[:-2] if re.fullmatch(r'\d+\.0', t) else t
+
+
+def _digitos(texto):
+    return re.sub(r'\D', '', str(texto or ''))
+
+
+def resolver_cuentas(parseo, cuentas, cuenta_defecto=None):
+    """Asigna f['cuenta'] (CuentaBancaria) a cada cobro NO efectivo segun la
+    columna 'Cuenta Deposito' del archivo (compara contra numero de cuenta o
+    CLABE). Si no coincide usa cuenta_defecto. Devuelve lista de errores
+    (cuentas del archivo que no existen en el sistema y sin cuenta por defecto)."""
+    indice = {}
+    for c in cuentas:
+        for campo in (c.numero_cuenta, getattr(c, 'clabe', '')):
+            d = _digitos(campo).lstrip('0')
+            if d:
+                indice.setdefault(d, c)
+    sin_cuenta = Counter()
+    for f in parseo['filas']:
+        f['cuenta'] = None
+        if es_efectivo(f['forma_pago']):
+            continue
+        d = _digitos(f.get('cuenta_deposito')).lstrip('0')
+        cuenta = indice.get(d) if d else None
+        if cuenta is None and d:
+            # la CLABE contiene el numero de cuenta
+            cuenta = next((c for k, c in indice.items() if len(k) > len(d) and d in k), None)
+        if cuenta is None:
+            cuenta = cuenta_defecto
+        if cuenta is None:
+            sin_cuenta[f.get('cuenta_deposito') or '(vacía)'] += 1
+        f['cuenta'] = cuenta
+    return [
+        f"Cuenta '{k}' ({n} cobro(s)) no está registrada en Bancos: da de alta esa cuenta o elige una cuenta por defecto."
+        for k, n in sin_cuenta.items()
+    ]
 
 
 def parsear_detalle_pagos(wb):
@@ -236,7 +289,7 @@ def parsear_detalle_pagos(wb):
             if forma is not None:
                 subtotales[forma] = _dec(no_vacios[-1])
             continue
-        if ptxt.startswith('GRAN TOTAL'):
+        if _RE_TOTAL_FINAL.match(ptxt):
             gran_total = _dec(no_vacios[-1])
             continue
         if ptxt == 'RECIBO':
@@ -244,10 +297,10 @@ def parsear_detalle_pagos(wb):
                 if v != '' and norm(v) in cols:
                     cols[norm(v)] = idx
             continue
-        if len(no_vacios) == 1 and isinstance(primero, str):
+        if isinstance(primero, str) and ptxt and _solo_relleno(no_vacios[1:]):
             forma = primero.strip()
             continue
-        if forma is None or hoja.ncols < 9:
+        if hoja.ncols < 9:
             continue
 
         def celda(nombre, vals=vals):
@@ -256,8 +309,19 @@ def parsear_detalle_pagos(wb):
 
         concepto = str(celda('CONCEPTO') or '').strip()
         importe_raw = celda('IMPORTE')
+        cuenta_dep = _cuenta_texto(celda('CUENTA DEPOSITO'))
         if not concepto or importe_raw in ('', None):
+            if _texto_id(celda('RECIBO')):
+                errores.append(f"Fila {i + 1}: recibo {_texto_id(celda('RECIBO'))} sin concepto o importe; no se importó.")
             continue
+        if forma is None:
+            # El archivo nuevo no trae encabezado de seccion para el efectivo
+            # (primer bloque): se identifica por la columna Cuenta Deposito.
+            if norm(cuenta_dep) == 'EFECTIVO':
+                forma = 'EFECTIVO'
+            else:
+                errores.append(f"Fila {i + 1}: no se pudo identificar la forma de pago; no se importó.")
+                continue
 
         monto = _dec(importe_raw)
         if monto is None:
@@ -283,6 +347,9 @@ def parsear_detalle_pagos(wb):
             'alumno': str(celda('NOMBRE DEL ALUMNO') or '').strip(),
             'concepto': concepto,
             'nivel': str(celda('NIVEL') or '').strip(),
+            'grado': str(celda('GRADO') or '').strip(),
+            'grupo': str(celda('GRUPO') or '').strip(),
+            'cuenta_deposito': cuenta_dep,
             'fecha': fecha,
             'monto': monto,
         }
@@ -350,6 +417,11 @@ def importar_filas(*, empresa, usuario, fuente, archivo_nombre, cuenta_bancaria,
     nuevas = [f for f in filas if f['clave'] not in claves_existentes]
     duplicadas = len(filas) - len(nuevas)
 
+    cuentas_lote = {f['cuenta'].pk: f['cuenta'] for f in nuevas if f.get('cuenta')}
+    if len(cuentas_lote) == 1:
+        cuenta_bancaria = next(iter(cuentas_lote.values()))
+    elif len(cuentas_lote) > 1:
+        cuenta_bancaria = None  # varias cuentas: el detalle queda en cada ingreso
     lote = LoteImportacionIngresos.objects.create(
         empresa=empresa, fuente=fuente, archivo=archivo_nombre,
         cuenta_bancaria=cuenta_bancaria, importado_por=usuario,
@@ -404,7 +476,8 @@ def importar_filas(*, empresa, usuario, fuente, archivo_nombre, cuenta_bancaria,
             alumno=f['alumno'] or None, matricula=f['matricula'] or None,
             recibo=f['recibo'] or None, nivel=f['nivel'],
             origen='cobranza', fuente=fuente, es_efectivo=efvo,
-            cuenta_bancaria=None if efvo else cuenta_bancaria,
+            grado=f.get('grado', ''), grupo=f.get('grupo', ''),
+            cuenta_bancaria=None if efvo else (f.get('cuenta') or cuenta_bancaria),
             fondeo=fondeos.get((f['fecha'].year, f['fecha'].month)) if efvo else None,
             lote=lote, clave_unica=f['clave'],
             importado_por=usuario, archivo_origen=archivo_nombre,
