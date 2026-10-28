@@ -243,8 +243,12 @@ AWS_DEFAULT_ACL = "private"
 AWS_QUERYSTRING_AUTH = True
 AWS_QUERYSTRING_EXPIRE = 3600
 
-# Archivos subidos (MEDIA): a Spaces cuando hay credenciales; si no, disco local (desarrollo).
-if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
+# Archivos subidos (MEDIA): disco local por defecto. Spaces solo se usa si se
+# activa EXPLICITAMENTE con USAR_SPACES=true (ademas de tener las credenciales),
+# para que unas variables DO_* olvidadas en un .env no manden los archivos a un
+# Space que no existe.
+_usar_spaces = os.getenv("USAR_SPACES", "").lower() in ("1", "true", "yes", "si")
+if _usar_spaces and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
     _default_storage = {"BACKEND": "storages.backends.s3.S3Storage"}
 else:
     _default_storage = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
