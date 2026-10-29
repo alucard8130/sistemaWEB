@@ -201,8 +201,7 @@
             var form = document.querySelector('form[enctype]');
             if (form && overlay) {
                 form.addEventListener('submit', function(e) {
-                    if (form.dataset.enviando === '1') { e.preventDefault(); return; }
-                    form.dataset.enviando = '1';
+                    // El doble envio ya lo bloquea el seguro global del navbar (data-enviando).
                     var btn = form.querySelector('button[type="submit"]');
                     if (btn) { btn.disabled = true; }
                     overlay.style.display = 'flex';
