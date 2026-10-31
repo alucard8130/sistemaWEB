@@ -58,6 +58,10 @@
         
             <form method="post" autocomplete="off" >
                 {% csrf_token %}
+                {# Campo trampa anti-bots: las personas no lo ven; si viene lleno, se descarta el registro #}
+                <div style="position:absolute;left:-9999px;" aria-hidden="true">
+                    <label>No llenar este campo<input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label>
+                </div>
 
                 <div class="mb-3">
                     <label class="form-label">¿Qué tipo de condominio administras?</label>

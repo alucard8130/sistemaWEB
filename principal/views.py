@@ -5,6 +5,7 @@ import io
 import json
 import locale
 import logging
+import re
 import os
 import zipfile
 from datetime import date, datetime, timedelta
@@ -26,8 +27,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage, EmailMultiAlternatives, send_mail
 from django.core.paginator import Paginator
+from django.core.validators import validate_email
 from django.db import models, transaction
 from django.db.models import (
     Case,
@@ -1545,13 +1549,47 @@ def _enviar_bienvenida_registro(request, user, nombre, segmento):
         logging.getLogger("django").exception("No se pudo enviar el correo de bienvenida")
 
 
+_RE_ENLACE_SPAM = re.compile(r"(https?:|www\.|://|<|>)", re.IGNORECASE)
+_REGISTROS_MAX_POR_HORA = 5
+
+
+def _ip_cliente(request):
+    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    return (xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR", "")) or "?"
+
+
+def _validar_registro_antibot(request, nombre, username, email, nombre_escuela):
+    """Devuelve un mensaje de error si el registro parece spam o abuso; si no, ''."""
+    clave = f"registro_intentos:{_ip_cliente(request)}"
+    cache.add(clave, 0, 3600)
+    try:
+        intentos = cache.incr(clave)
+    except ValueError:
+        intentos = 1
+    if intentos > _REGISTROS_MAX_POR_HORA:
+        return "Demasiados intentos de registro desde esta conexión. Intenta de nuevo más tarde."
+    for texto in (nombre, username, nombre_escuela):
+        if _RE_ENLACE_SPAM.search(texto or ""):
+            return "Los datos no pueden contener enlaces ni los símbolos < >."
+    if len(nombre) > 100 or len(username) > 150 or len(nombre_escuela) > 150:
+        return "Alguno de los datos es demasiado largo."
+    try:
+        validate_email(email)
+    except ValidationError:
+        return "Escribe un correo electrónico válido."
+    return ""
+
+
 def registro_usuario(request):
     mensaje = ""
     if request.method == "POST":
-        nombre = request.POST["nombre"]
-        username = request.POST["username"]
-        password = request.POST["password"]
-        email = request.POST["email"].strip()
+        # Campo trampa (honeypot): solo los bots lo llenan. Se finge exito sin crear nada.
+        if request.POST.get("sitio_web", "").strip():
+            return redirect("login")
+        nombre = request.POST.get("nombre", "").strip()
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        email = request.POST.get("email", "").strip()
         segmento = request.POST.get("segmento", "comercial")
         nombre_escuela = request.POST.get("nombre_escuela", "").strip()  # NUEVO
         confirmar_duplicado = request.POST.get("confirmar_duplicado") == "1"  # NUEVO
@@ -1575,7 +1613,11 @@ def registro_usuario(request):
                         empresa_parecida = existente
                         break
  
-        if empresa_parecida:
+        mensaje_antibot = _validar_registro_antibot(request, nombre, username, email, nombre_escuela)
+
+        if mensaje_antibot:
+            mensaje = mensaje_antibot
+        elif empresa_parecida:
             mensaje = (
                 f'Ya existe una cuenta registrada con un nombre muy parecido a '
                 f'"{nombre_escuela}". Si tú trabajas en esa misma escuela, pide a '
