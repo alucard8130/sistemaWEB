@@ -105,7 +105,7 @@
                         </span>
                         {% elif estado == "vencida" %}
                         <span style="background:rgba(220,53,69,0.35);color:#ffe3e6;padding:1px 9px;border-radius:20px;font-size:0.65rem;font-weight:600;">
-                            <i class="bi bi-exclamation-triangle-fill"></i> Vencida desde {{ request.user.perfilusuario.fecha_vencimiento|date:"d/m/Y" }}
+                            <i class="bi bi-exclamation-triangle-fill"></i> Vencida desde {{ request.user.perfilusuario.fecha_vencimiento|date:"d/m/Y" }} · gracia hasta {{ request.user.perfilusuario.fecha_vencimiento|limite_gracia_escuela|date:"d/m/Y" }}
                         </span>
                         {% endif %}
                         {% endwith %}

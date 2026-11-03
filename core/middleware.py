@@ -23,7 +23,7 @@ class EmpresaSeleccionMiddleware:
 
 #middleware de bloqueo de membresía#############
 
-DIAS_GRACIA_BLOQUEO = 4
+from core.gracia import DIAS_GRACIA_BLOQUEO, es_escuela, limite_gracia  # noqa: E402, F401
 
 # Nombres de URL que SIEMPRE deben quedar accesibles aunque la cuenta
 # este bloqueada -- si falta alguno aqui, el usuario queda atrapado
@@ -73,5 +73,4 @@ class MembresiaBloqueoMiddleware:
         if not perfil.fecha_vencimiento:
             return False
 
-        limite_bloqueo = timezone.now() - timedelta(days=DIAS_GRACIA_BLOQUEO)
-        return perfil.fecha_vencimiento < limite_bloqueo    
+        return timezone.now() > limite_gracia(perfil.fecha_vencimiento, es_escuela(perfil))    

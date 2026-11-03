@@ -11,6 +11,8 @@ from datetime import timedelta
 from django.urls import reverse
 from django.utils import timezone
 
+from core.gracia import es_escuela, limite_gracia
+
 from areas.models import AreaComun
 from escuelas.models import CarteraVencida
 from facturacion.utils import debe_mostrar_recordatorio_facturacion
@@ -31,10 +33,18 @@ def _generar_alertas_automaticas(request):
     if perfil.tipo_usuario not in ('demo', 'gratis') and perfil.fecha_vencimiento:
         ahora = timezone.now()
         pronto = ahora + timedelta(days=7)
+        escuela = es_escuela(perfil)
+        if escuela:
+            aviso_gracia = (
+                'Tienes gracia hasta el '
+                f'{timezone.localtime(limite_gracia(perfil.fecha_vencimiento, True)).strftime("%d/%m/%Y")}.'
+            )
+        else:
+            aviso_gracia = 'Tienes 4 dias de gracia'
         if perfil.fecha_vencimiento < ahora:
             alertas.append({
                 'titulo': 'Tu membresía venció',
-                'mensaje': f'Venció el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva para seguir usando el sistema.Tienes 4 dias de gracia',
+                'mensaje': f'Venció el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva para seguir usando el sistema.{aviso_gracia}',
                 'url': reverse('solicitar_pago_transferencia'),
                 'icono': 'exclamation-triangle-fill',
                 'color': '#9C2B2B',
@@ -42,7 +52,7 @@ def _generar_alertas_automaticas(request):
         elif perfil.fecha_vencimiento <= pronto:
             alertas.append({
                 'titulo': 'Tu membresía está por vencer',
-                'mensaje': f'Vence el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva a tiempo para no perder el acceso.Tienes 4 dias de gracia',
+                'mensaje': f'Vence el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva a tiempo para no perder el acceso.{aviso_gracia}',
                 'url': reverse('solicitar_pago_transferencia'),
                 'icono': 'hourglass-split',
                 'color': '#8A6D00',
