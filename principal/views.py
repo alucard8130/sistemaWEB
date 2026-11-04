@@ -1815,6 +1815,35 @@ def _safe_cancel_subscription(subscription_id):
             raise
 
 
+# Sincroniza a los usuarios invitados con la membresia de la empresa.
+# Cada invitado tiene su propio PerfilUsuario con una COPIA del plan y del
+# vencimiento del dueno al momento de aceptar la invitacion; si solo se
+# renueva el perfil del dueno, los invitados quedan vencidos.
+def sincronizar_miembros_empresa(perfil):
+    """Copia tipo_usuario y fecha_vencimiento del perfil que renovo a los
+    demas usuarios de su empresa (excluye contadores). Solo extiende:
+    nunca acorta la vigencia de un miembro que ya la tenga mas larga."""
+    if not perfil.empresa_id or not perfil.fecha_vencimiento:
+        return 0
+    miembros = (
+        PerfilUsuario.objects.filter(empresa_id=perfil.empresa_id)
+        .exclude(pk=perfil.pk)
+        .exclude(es_contador=True)
+    )
+    actualizados = 0
+    for m in miembros:
+        if m.fecha_vencimiento and m.fecha_vencimiento >= perfil.fecha_vencimiento \
+                and m.tipo_usuario == perfil.tipo_usuario:
+            continue
+        if m.fecha_vencimiento and m.fecha_vencimiento > perfil.fecha_vencimiento:
+            continue
+        m.tipo_usuario = perfil.tipo_usuario
+        m.fecha_vencimiento = perfil.fecha_vencimiento
+        m.save(update_fields=["tipo_usuario", "fecha_vencimiento"])
+        actualizados += 1
+    return actualizados
+
+
 # Webhook de Stripe pago sistema de suscripciones GESAC
 def _renovar_vencimiento(perfil, dias=30):
     """
@@ -1914,6 +1943,7 @@ def stripe_webhook(request):
 
         _sync_membership_state(perfil)
         perfil.save()
+        sincronizar_miembros_empresa(perfil)
 
         if perfil.usuario and not perfil.usuario.is_active:
             perfil.usuario.is_active = True
@@ -1971,6 +2001,7 @@ def stripe_webhook(request):
 
         _sync_membership_state(perfil)
         perfil.save()
+        sincronizar_miembros_empresa(perfil)
         print("Renovación automática procesada correctamente.")
 
     return HttpResponse(status=200)
@@ -6335,6 +6366,7 @@ def confirmar_pago_transferencia(request, pago_id):
             perfil.tipo_usuario = pago.plan_solicitado
             _renovar_vencimiento_transferencia(perfil, meses=pago.meses_cubiertos)
             perfil.save()
+            sincronizar_miembros_empresa(perfil)
 
             # NUEVO -- la empresa también se marca en el campo correcto
             # según el plan confirmado -- otras partes del sistema (los
