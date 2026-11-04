@@ -6186,9 +6186,15 @@ def _renovar_vencimiento_transferencia(perfil, meses=1):
 def solicitar_pago_transferencia(request):
     perfil = get_object_or_404(PerfilUsuario, usuario=request.user)
  
-    es_escuela = (
-        request.resolver_match
-        and request.resolver_match.url_name == "solicitar_pago_transferencia_escuela"
+    # NUEVO -- un usuario de Campus SIEMPRE ve el formulario de Campus, sin
+    # importar por cual URL llego (alertas, pantalla de cuenta bloqueada,
+    # navbar...). Antes solo dependia del nombre de la URL.
+    es_escuela = bool(
+        (
+            request.resolver_match
+            and request.resolver_match.url_name == "solicitar_pago_transferencia_escuela"
+        )
+        or (perfil.empresa and perfil.empresa.segmento == "escuela")
     )
  
     config = ConfiguracionMembresia.obtener()

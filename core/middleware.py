@@ -31,7 +31,8 @@ from core.gracia import DIAS_GRACIA_BLOQUEO, es_escuela, limite_gracia  # noqa: 
 # tu urls.py.
 URLS_PERMITIDAS_BLOQUEADO = {
     'login', 'logout', 'cuenta_bloqueada',
-    'solicitar_pago_transferencia', 'crear_sesion_pago', 'crear_sesion_pago_premium',
+    'solicitar_pago_transferencia', 'solicitar_pago_transferencia_escuela', 'membresia_vencida_escuela',
+    'crear_sesion_pago', 'crear_sesion_pago_premium',
     'stripe_webhook',
     'password_reset', 'password_reset_done', 'password_reset_confirm', 'password_reset_complete',
 }
@@ -43,6 +44,11 @@ class MembresiaBloqueoMiddleware:
 
     def __call__(self, request):
         if self._debe_bloquear(request):
+            # NUEVO -- Campus tiene su propia pantalla de membresia vencida
+            # (precio y pago de Campus); cuenta_bloqueada es de Condominios.
+            perfil = getattr(request.user, 'perfilusuario', None)
+            if perfil and es_escuela(perfil):
+                return redirect('membresia_vencida_escuela')
             return redirect('cuenta_bloqueada')
         return self.get_response(request)
 

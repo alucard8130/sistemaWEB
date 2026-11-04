@@ -64,7 +64,7 @@
 
         <div class="modalidad" role="radiogroup" aria-label="Modalidad de pago">
             <label>
-                <input type="radio" name="modalidad_vista" value="mensual" checked>
+                <input type="radio" name="modalidad" form="formPagoCampus" value="mensual" checked>
                 <span class="op">
                     <span class="t">Mensual</span><br>
                     <span class="p">${{ config.precio_plus_escuela|floatformat:2|intcomma }} + IVA</span><br>
@@ -72,7 +72,7 @@
                 </span>
             </label>
             <label>
-                <input type="radio" name="modalidad_vista" value="anual">
+                <input type="radio" name="modalidad" form="formPagoCampus" value="anual">
                 <span class="op">
                     <span class="badge-gratis">1 MES GRATIS</span><br>
                     <span class="t">Anual</span><br>
@@ -93,9 +93,8 @@
         </div>
 
         <div class="form-card">
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" id="formPagoCampus">
                 {% csrf_token %}
-                <input type="hidden" name="modalidad" id="modalidad" value="mensual">
 
                 <div class="mb-3">
                     <label class="form-label">Monto a transferir</label>
@@ -130,16 +129,22 @@
                 mensual: { txt: "${{ config.precio_plus_escuela_con_iva|floatformat:2|intcomma }}", ayuda: "Este es el monto exacto de tu mensualidad -- transfiere esta cantidad." },
                 anual:   { txt: "${{ precio_anual_con_iva|floatformat:2|intcomma }}", ayuda: "Pago anual: 12 meses de membresía pagando solo 11 -- transfiere esta cantidad." }
             };
-            var hidden = document.getElementById("modalidad");
             var campo = document.getElementById("monto_mostrado");
             var ayuda = document.getElementById("monto_ayuda");
-            document.querySelectorAll('input[name="modalidad_vista"]').forEach(function (r) {
-                r.addEventListener("change", function () {
-                    hidden.value = r.value;
-                    campo.value = montos[r.value].txt;
-                    ayuda.textContent = montos[r.value].ayuda;
-                });
+            // El boton marcado es la unica fuente de verdad (se envia con el
+            // formulario). Se sincroniza el monto mostrado al cargar y al
+            // volver con "atras", cuando el navegador restaura la seleccion.
+            function sincronizar() {
+                var marcado = document.querySelector('input[name="modalidad"]:checked');
+                var clave = marcado ? marcado.value : "mensual";
+                campo.value = montos[clave].txt;
+                ayuda.textContent = montos[clave].ayuda;
+            }
+            document.querySelectorAll('input[name="modalidad"]').forEach(function (r) {
+                r.addEventListener("change", sincronizar);
             });
+            window.addEventListener("pageshow", sincronizar);
+            sincronizar();
         })();
     </script>
     <script>

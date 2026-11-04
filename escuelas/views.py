@@ -22,7 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 
-from caja_chica.models import FondeoCajaChica
+from caja_chica.models import FondeoCajaChica, GastoCajaChica
 from conciliaciones.utils import calcular_saldo_acumulado_hasta
 from empresas.models import CuentaBancaria
 from gastos.models import Gasto
@@ -921,27 +921,69 @@ def estado_resultados_escuela(request):
         ingresos_qs = ingresos_qs.filter(fecha__lte=fecha_fin)
         gastos_qs = gastos_qs.filter(fecha__lte=fecha_fin)
  
-    ingresos_por_categoria = OrderedDict()
-    for x in ingresos_qs.values('categoria').annotate(total=Sum('monto')).order_by('-total'):
-        etiqueta = dict(IngresoEscuela.CATEGORIA_CHOICES).get(x['categoria'], x['categoria'])
-        ingresos_por_categoria[etiqueta] = float(x['total'] or 0)
-    total_ingresos = float(sum(ingresos_por_categoria.values()))
- 
-    gastos_por_categoria = OrderedDict()
-    for x in gastos_qs.values('tipo_gasto__nombre').annotate(total=Sum('monto')).order_by('-total'):
-        etiqueta = x['tipo_gasto__nombre'] or 'Sin categoría'
-        gastos_por_categoria[etiqueta] = float(x['total'] or 0)
-    total_gastos = float(sum(gastos_por_categoria.values()))
- 
-    resultado_neto = total_ingresos - total_gastos
- 
+    # NUEVO -- caja chica: los gastos pagados en efectivo salen de fondeos
+    # con origen 'cobros_efectivo'; los de fondeos con cheque/transferencia
+    # (origen 'banco') cuentan como gasto de bancos. Los vales no se
+    # incluyen (son anticipos pendientes de comprobar).
+    cc_qs = GastoCajaChica.objects.filter(fondeo__empresa=empresa)
+    if fecha_inicio:
+        cc_qs = cc_qs.filter(fecha__gte=fecha_inicio)
+    if fecha_fin:
+        cc_qs = cc_qs.filter(fecha__lte=fecha_fin)
+
+    etiquetas_cat = dict(IngresoEscuela.CATEGORIA_CHOICES)
+
+    def _ingresos_cat(qs):
+        out = OrderedDict()
+        for x in qs.values('categoria').annotate(total=Sum('monto')).order_by('-total'):
+            out[etiquetas_cat.get(x['categoria'], x['categoria'])] = float(x['total'] or 0)
+        return out
+
+    def _sumar_gastos(*partes):
+        """partes: (queryset, campo_nombre_tipo, campo_monto)."""
+        acum = {}
+        for qs, campo_tipo, campo_monto in partes:
+            for x in qs.values(campo_tipo).annotate(total=Sum(campo_monto)):
+                etiqueta = x[campo_tipo] or 'Sin categoría'
+                acum[etiqueta] = acum.get(etiqueta, 0) + float(x['total'] or 0)
+        return OrderedDict(sorted(acum.items(), key=lambda kv: -kv[1]))
+
+    def _seccion(clave, titulo, icono, ing_qs, gastos_cat):
+        ing_cat = _ingresos_cat(ing_qs)
+        t_ing = float(sum(ing_cat.values()))
+        t_gas = float(sum(gastos_cat.values()))
+        return {
+            'clave': clave, 'titulo': titulo, 'icono': icono,
+            'ingresos_por_categoria': ing_cat, 'gastos_por_categoria': gastos_cat,
+            'total_ingresos': t_ing, 'total_gastos': t_gas,
+            'resultado_neto': t_ing - t_gas,
+        }
+
+    gastos_efectivo = _sumar_gastos(
+        (cc_qs.filter(fondeo__origen='cobros_efectivo'), 'tipo_gasto__nombre', 'importe'),
+    )
+    gastos_bancos = _sumar_gastos(
+        (gastos_qs, 'tipo_gasto__nombre', 'monto'),
+        (cc_qs.filter(fondeo__origen='banco'), 'tipo_gasto__nombre', 'importe'),
+    )
+    gastos_todos = _sumar_gastos(
+        (gastos_qs, 'tipo_gasto__nombre', 'monto'),
+        (cc_qs, 'tipo_gasto__nombre', 'importe'),
+    )
+
+    secciones = [
+        _seccion('efectivo', 'Efectivo', 'bi-cash-coin', ingresos_qs.filter(es_efectivo=True), gastos_efectivo),
+        _seccion('bancos', 'Bancos', 'bi-bank', ingresos_qs.filter(es_efectivo=False), gastos_bancos),
+        _seccion('consolidado', 'Consolidado', 'bi-diagram-3', ingresos_qs, gastos_todos),
+    ]
+    vista = request.GET.get('vista')
+    if vista not in {x['clave'] for x in secciones}:
+        vista = 'consolidado'
+
     return render(request, 'escuelas/estado_resultados.html', {
         'empresa': empresa,
-        'ingresos_por_categoria': ingresos_por_categoria,
-        'gastos_por_categoria': gastos_por_categoria,
-        'total_ingresos': total_ingresos,
-        'total_gastos': total_gastos,
-        'resultado_neto': resultado_neto,
+        'secciones': secciones,
+        'vista': vista,
         'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d') if fecha_inicio else '',
         'fecha_fin': fecha_fin.strftime('%Y-%m-%d') if fecha_fin else '',
         'mes': str(mes or ''),

@@ -34,6 +34,7 @@ def _generar_alertas_automaticas(request):
         ahora = timezone.now()
         pronto = ahora + timedelta(days=7)
         escuela = es_escuela(perfil)
+        url_renovar = reverse('solicitar_pago_transferencia_escuela' if escuela else 'solicitar_pago_transferencia')
         if escuela:
             aviso_gracia = (
                 'Tienes gracia hasta el '
@@ -45,7 +46,7 @@ def _generar_alertas_automaticas(request):
             alertas.append({
                 'titulo': 'Tu membresía venció',
                 'mensaje': f'Venció el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva para seguir usando el sistema.{aviso_gracia}',
-                'url': reverse('solicitar_pago_transferencia'),
+                'url': url_renovar,
                 'icono': 'exclamation-triangle-fill',
                 'color': '#9C2B2B',
             })
@@ -53,7 +54,7 @@ def _generar_alertas_automaticas(request):
             alertas.append({
                 'titulo': 'Tu membresía está por vencer',
                 'mensaje': f'Vence el {perfil.fecha_vencimiento.strftime("%d/%m/%Y")} -- renueva a tiempo para no perder el acceso.{aviso_gracia}',
-                'url': reverse('solicitar_pago_transferencia'),
+                'url': url_renovar,
                 'icono': 'hourglass-split',
                 'color': '#8A6D00',
             })

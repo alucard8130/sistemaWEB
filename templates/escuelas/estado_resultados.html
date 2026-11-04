@@ -40,6 +40,8 @@
         .card-panel h6 { font-weight: 700; color: #0F5132; margin-bottom: 14px; }
         .categoria-item { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
         .categoria-item:last-child { border-bottom: none; }
+        .er-tabs .nav-link { color: #146C43; font-weight: 600; font-size: 0.9rem; border-radius: 10px; }
+        .er-tabs .nav-link.active { background: #146C43; color: white; }
         .categoria-total { display: flex; justify-content: space-between; padding-top: 10px; margin-top: 4px; border-top: 2px solid #146C43; font-weight: 700; }
     </style>
 </head>
@@ -66,11 +68,12 @@
 
         <div class="filtro-card">
             <div class="mb-3">
-                <a href="?periodo=mes_actual" class="btn-periodo {% if periodo == 'mes_actual' %}activo{% endif %}">Mes actual</a>
-                <a href="?periodo=periodo_actual" class="btn-periodo {% if periodo == 'periodo_actual' %}activo{% endif %}">Año a la fecha</a>
+                <a href="?periodo=mes_actual&vista={{ vista }}" class="btn-periodo {% if periodo == 'mes_actual' %}activo{% endif %}">Mes actual</a>
+                <a href="?periodo=periodo_actual&vista={{ vista }}" class="btn-periodo {% if periodo == 'periodo_actual' %}activo{% endif %}">Año a la fecha</a>
             </div>
 
             <form method="get" class="row g-2 align-items-end">
+                <input type="hidden" name="vista" id="er-vista" value="{{ vista }}">
                 <div class="col-auto">
                     <label class="form-label">Mes específico</label>
                     <select name="mes">
@@ -103,58 +106,82 @@
             </form>
         </div>
 
-        <div class="row-resultado">
-            <div class="card-total">
-                <div class="label">Total Ingresos</div>
-                <div class="valor valor-verde">${{ total_ingresos|floatformat:2|intcomma }}</div>
+        <ul class="nav nav-pills er-tabs mb-3" role="tablist">
+            {% for s in secciones %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if s.clave == vista %}active{% endif %}" data-bs-toggle="pill"
+                        data-bs-target="#er-{{ s.clave }}" data-vista="{{ s.clave }}" type="button" role="tab">
+                    <i class="bi {{ s.icono }} me-1"></i>{{ s.titulo }}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="tab-content">
+        {% for s in secciones %}
+        <div class="tab-pane fade {% if s.clave == vista %}show active{% endif %}" id="er-{{ s.clave }}" role="tabpanel">
+            <div class="row-resultado">
+                <div class="card-total">
+                    <div class="label">Total Ingresos</div>
+                    <div class="valor valor-verde">${{ s.total_ingresos|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="card-total">
+                    <div class="label">Total Gastos</div>
+                    <div class="valor valor-rojo">${{ s.total_gastos|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="card-total">
+                    <div class="label">Resultado Neto</div>
+                    <div class="valor {% if s.resultado_neto >= 0 %}valor-verde{% else %}valor-rojo{% endif %}">
+                        {% if s.resultado_neto >= 0 %}+{% endif %}${{ s.resultado_neto|floatformat:2|intcomma }}
+                    </div>
+                </div>
             </div>
-            <div class="card-total">
-                <div class="label">Total Gastos</div>
-                <div class="valor valor-rojo">${{ total_gastos|floatformat:2|intcomma }}</div>
+
+            <div class="card-panel">
+                <h6><i class="bi bi-graph-up-arrow me-1"></i>Ingresos por categoría — {{ s.titulo }}</h6>
+                {% for categoria, monto in s.ingresos_por_categoria.items %}
+                <div class="categoria-item">
+                    <span>{{ categoria }}</span>
+                    <strong>${{ monto|floatformat:2|intcomma }}</strong>
+                </div>
+                {% empty %}
+                <div class="text-muted small">No hay ingresos en este periodo.</div>
+                {% endfor %}
+                <div class="categoria-total">
+                    <span>Total Ingresos</span>
+                    <span class="valor-verde">${{ s.total_ingresos|floatformat:2|intcomma }}</span>
+                </div>
             </div>
-            <div class="card-total">
-                <div class="label">Resultado Neto</div>
-                <div class="valor {% if resultado_neto >= 0 %}valor-verde{% else %}valor-rojo{% endif %}">
-                    {% if resultado_neto >= 0 %}+{% endif %}${{ resultado_neto|floatformat:2|intcomma }}
+
+            <div class="card-panel">
+                <h6><i class="bi bi-graph-down-arrow me-1"></i>Gastos por categoría — {{ s.titulo }}</h6>
+                {% for categoria, monto in s.gastos_por_categoria.items %}
+                <div class="categoria-item">
+                    <span>{{ categoria }}</span>
+                    <strong>${{ monto|floatformat:2|intcomma }}</strong>
+                </div>
+                {% empty %}
+                <div class="text-muted small">No hay gastos en este periodo.</div>
+                {% endfor %}
+                <div class="categoria-total">
+                    <span>Total Gastos</span>
+                    <span class="valor-rojo">${{ s.total_gastos|floatformat:2|intcomma }}</span>
                 </div>
             </div>
         </div>
-
-        <div class="card-panel">
-            <h6><i class="bi bi-graph-up-arrow me-1"></i>Ingresos por categoría</h6>
-            {% for categoria, monto in ingresos_por_categoria.items %}
-            <div class="categoria-item">
-                <span>{{ categoria }}</span>
-                <strong>${{ monto|floatformat:2|intcomma }}</strong>
-            </div>
-            {% empty %}
-            <div class="text-muted small">No hay ingresos en este periodo.</div>
-            {% endfor %}
-            <div class="categoria-total">
-                <span>Total Ingresos</span>
-                <span class="valor-verde">${{ total_ingresos|floatformat:2|intcomma }}</span>
-            </div>
-        </div>
-
-        <div class="card-panel">
-            <h6><i class="bi bi-graph-down-arrow me-1"></i>Gastos por categoría</h6>
-            {% for categoria, monto in gastos_por_categoria.items %}
-            <div class="categoria-item">
-                <span>{{ categoria }}</span>
-                <strong>${{ monto|floatformat:2|intcomma }}</strong>
-            </div>
-            {% empty %}
-            <div class="text-muted small">No hay gastos en este periodo.</div>
-            {% endfor %}
-            <div class="categoria-total">
-                <span>Total Gastos</span>
-                <span class="valor-rojo">${{ total_gastos|floatformat:2|intcomma }}</span>
-            </div>
+        {% endfor %}
         </div>
     </div>
 
     {% include 'tool_bar.html' %}
     <script src="{% static 'js/script.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.er-tabs [data-vista]').forEach(function (b) {
+            b.addEventListener('shown.bs.tab', function () {
+                document.getElementById('er-vista').value = b.dataset.vista;
+            });
+        });
+    </script>
 </body>
 </html>
