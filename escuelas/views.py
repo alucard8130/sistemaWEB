@@ -29,7 +29,7 @@ from gastos.models import Gasto
 from principal.models import ConfiguracionMembresia
 
 from .decoradores import requiere_membresia_activa_escuela
-from .ingresos_utils import COMISION_REFERENCIA, tipo_tarjeta_merchant
+from .ingresos_utils import COMISION_REFERENCIA, RUBRO_SIN_CLASIFICAR, normalizar_rubro, tipo_tarjeta_merchant
 from .models import (
     Alumno,
     CarteraVencida,
@@ -931,13 +931,18 @@ def estado_resultados_escuela(request):
     if fecha_fin:
         cc_qs = cc_qs.filter(fecha__lte=fecha_fin)
 
-    etiquetas_cat = dict(IngresoEscuela.CATEGORIA_CHOICES)
-
     def _ingresos_cat(qs):
-        out = OrderedDict()
-        for x in qs.values('categoria').annotate(total=Sum('monto')).order_by('-total'):
-            out[etiquetas_cat.get(x['categoria'], x['categoria'])] = float(x['total'] or 0)
-        return out
+        """Ingresos con detalle: por rubro (Colegiatura, Cafeteria, Transporte,
+        Talleres...) en vez de 'Otro'. Lo que no cae en ningun rubro conocido
+        se muestra por su concepto limpio (sin fecha ni mes)."""
+        acum = {}
+        for x in qs.values('rubro', 'concepto').annotate(total=Sum('monto')):
+            rubro = x['rubro'] or normalizar_rubro(x['concepto'])
+            if rubro == RUBRO_SIN_CLASIFICAR:
+                _clave, etiqueta = _concepto_limpio_cartera(x['concepto'])
+                rubro = etiqueta or RUBRO_SIN_CLASIFICAR
+            acum[rubro] = acum.get(rubro, 0) + float(x['total'] or 0)
+        return OrderedDict(sorted(acum.items(), key=lambda kv: -kv[1]))
 
     def _sumar_gastos(*partes):
         """partes: (queryset, campo_nombre_tipo, campo_monto)."""
