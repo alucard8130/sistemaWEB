@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from .forms import CuentaBancariaForm, EmpresaForm
 from .models import CuentaBancaria, Empresa
@@ -149,4 +150,17 @@ def cuenta_bancaria_toggle_referencia_pago(request, cuenta_id):
     return redirect('cuentas_bancarias_lista')
 
 
-
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+@require_POST
+def cambiar_empresa_superusuario(request):
+    """Selector de empresa del superusuario: deja la empresa elegida como
+    activa en la sesion y regresa al inicio (que redirige al dashboard
+    propio del segmento, por ejemplo Campus)."""
+    # Sin mensajes flash: el nombre de la empresa activa ya se ve en el
+    # selector del menu, y algunos dashboards no muestran los mensajes, por
+    # lo que quedaban pendientes y aparecian despues (por ejemplo en el login).
+    empresa = Empresa.objects.filter(pk=request.POST.get('empresa_id')).first()
+    if empresa:
+        request.session['empresa_id'] = empresa.pk
+    return redirect('dashboard_inicio')

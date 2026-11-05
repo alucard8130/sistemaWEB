@@ -124,7 +124,7 @@
       </button>
 
       <div class="collapse navbar-collapse" id="navbarOpciones">
-        <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center mx-auto">
+        <ul class="navbar-nav mb-2 mb-lg-0 align-items-lg-center mx-auto{% if request.user.is_superuser %} nav-superusuario{% endif %}">
 
           {% if request.user.is_staff %}
           <li class="nav-item dropdown">
@@ -147,7 +147,7 @@
               <li><a class="dropdown-item" href="{% url 'lista_usuarios_visitantes' %}">Usuarios Condominos</a></li>
             </ul>
           </li>
-          {% else %}
+          {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-catalogos" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Catalogos">
               Catálogos <i style="font-size: 1.5em;"></i>
@@ -173,7 +173,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'proveedor_lista' %}"><i class="bi bi-truck me-2"></i>Proveedores</a></li>
               <li><hr class="dropdown-divider"></li>
               {% if empresa_actual.segmento == 'comercial' or empresa_actual.segmento == 'habitacional' %}
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_plantillas' %}"><i class="bi bi-chat-square-text me-2"></i>Plantillas de Cobranza</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-chat-square-text me-2"></i>Plantillas de Cobranza (PREMIUM)</a></li>
@@ -181,7 +181,6 @@
               {% endif %}
             </ul>
           </li>
-          {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" id="tour-tesoreria" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Tesorería">
               Tesorería <i style="font-size: 1.5em;"></i>
@@ -189,7 +188,7 @@
             <ul class="dropdown-menu">
               <li><h6 class="dropdown-header">Cuentas Bancarias</h6></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cuentas_bancarias_lista' %}"><i class="bi bi-bank me-2"></i>Cuentas Bancarias</a></li>
-              {% if request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_plus or empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:saldos_periodo' %}"><i class="bi bi-calendar me-2"></i>Saldos por período</a></li>
               {% if request.user.is_staff %}
               <li><a class="dropdown-item reporte-link" href="{% url 'conciliaciones:reiniciar_saldos_cuentas' %}"><i class="bi bi-arrow-counterclockwise me-2"></i>Reiniciar saldos</a></li>
@@ -271,7 +270,7 @@
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'verificacion_facturacion' %}" title="Verificación de facturación por local y área"><i class="bi bi-check2-circle me-2"></i>Verificación Facturación</a></li>
               <li><hr class="dropdown-divider"></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'timbrar_masivo_mes' %}"><i class="bi bi-file-earmark-check-fill me-2"></i>Timbrado Masivo</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-check-fill me-2"></i>Timbrado Masivo (PREMIUM)</a></li>
@@ -293,7 +292,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_depositos_por_identificar' %}" title="Asignar Deposito no identificado"><i class="bi bi-question-circle me-2"></i>Depositos no identificados</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_saldos_a_favor' %}" title="Busca saldos a favor de clientes"><i class="bi bi-piggy-bank-fill me-2"></i>Saldos a Favor</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_inversion' %}" title="Reporte de Inversiones"><i class="bi bi-cash-stack me-2"></i>Inversiones</a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
                   <li><a class="dropdown-item reporte-link" href="{% url 'lista_sesiones_estado_cuenta' %}">
                       <i class="bi bi-bank me-1"></i> Cobro cuotas por IA
                   </a></li>
@@ -302,7 +301,7 @@
                       <i class="bi bi-bank me-1"></i> Cobro cuotas por IA (PREMIUM)
                   </a></li>
               {% endif %}
-              {% if request.user.perfilusuario.empresa.es_plus or request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_plus or empresa_actual.es_premium %}
                 <li><a class="dropdown-item reporte-link" href="{% url 'lista_cortes_estacionamiento' %}">
                     <i class="bi bi-p-circle me-1"></i>Estacionamiento
                 </a></li>
@@ -314,14 +313,14 @@
               {% if request.user.is_superuser %}
               <li><a class="dropdown-item reporte-link" href="{% url 'carga_masiva_facturas_cobradas' %}">Carga Cuotas Cobradas</a></li>
               {% endif %}
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_ingresos' %}" title="Exportar Póliza de Ingresos"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Ingresos (PREMIUM)</a></li>
               {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><h6 class="dropdown-header">Cartera vencida</h6></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_cobranza' %}"><i class="bi bi-telephone-outbound me-2"></i>Gestion Cobranza</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-telephone-outbound me-2"></i>Gestion Cobranza (PREMIUM)</a></li>
@@ -329,7 +328,7 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_saldos_antiguedad' %}"><i class="bi bi-file-text me-2"></i>Reporte Antiguedad Saldos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'cartera_vencida_por_origen' %}"><i class="bi bi-file-text me-2"></i>Reporte Detalle Saldos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'dashboard_saldos' %}"><i class="bi bi-bar-chart me-2"></i>Grafico Cartera </a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_cartera_vencida' %}"><i class="bi bi-exclamation-triangle me-2"></i>Comparativo Cartera</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-exclamation-triangle me-2"></i>Comparativo Cartera (PREMIUM)</a></li>
@@ -429,7 +428,7 @@
               {% endif %}
               <li><a class="dropdown-item reporte-link" href="{% url 'grafico_gastos_mensual' %}"><i class="bi bi-bar-chart me-2"></i>Grafico de Gastos</a></li>
               <li><hr class="dropdown-divider"></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'exportar_poliza_gastos' %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Gastos</a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Póliza de Gastos (PREMIUM)</a></li>
@@ -444,14 +443,14 @@
               Nomina <i style="font-size: 1.5em;"></i>
             </a>
             <ul class="dropdown-menu">
-              {% if request.user.perfilusuario.empresa.es_premium  %}
+              {% if empresa_actual.es_premium  %}
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_dispersiones_nomina' %}"><i class="bi bi-cash-coin me-2"></i>Dispersión de Nómina</a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#"><i class="bi bi-cash-coin me-2"></i>Dispersión de Nómina (PREMIUM)</a></li>
               {% endif %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'incidencias_lista' %}"><i class="bi bi-list-ul me-2"></i>Incidencias</a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_asistencia' %}"><i class="bi bi-file-text me-2"></i>Reporte Asistencia</a></li>
               {% else %}
                 <li><a class="dropdown-item disabled" href="#"><i class="bi bi-file-text me-2"></i>Reporte Asistencia (PREMIUM)</a></li>
@@ -496,7 +495,7 @@
             </a>
             <ul class="dropdown-menu">
               <li><a class="dropdown-item reporte-link" href="{% url 'lista_temas' %}"><i class="bi bi-list-ul me-2"></i>Asuntos Generales</a></li>
-              {% if request.user.perfilusuario.empresa.es_premium %}
+              {% if empresa_actual.es_premium %}
               <li><a class="dropdown-item reporte-link" href="{% url 'avisos_lista' %}"><i class="bi bi-bell me-2"></i>Avisos App GESAC</a></li>
               {% else %}
               <li><a class="dropdown-item disabled" href="#"><i class="bi bi-bell me-2"></i>Avisos App GESAC (PREMIUM)</a></li>
@@ -542,6 +541,23 @@
       </div>
       
       <div class="d-flex align-items-center gap-3">
+        {# Selector de empresa activa -- solo superusuario (compacto, a la derecha) #}
+        {% if request.user.is_superuser and grupos_empresas %}
+        <div class="dropdown selector-empresa-su">
+          <a class="btn btn-sm dropdown-toggle selector-empresa-btn" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Empresa activa: {{ empresa_actual.nombre }}">
+            <i class="bi bi-building me-1"></i><span class="selector-empresa-nombre">{{ empresa_actual.nombre|default:"Elegir empresa" }}</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end" style="max-height:70vh; overflow-y:auto; min-width:240px;">
+            <li><form method="post" action="{% url 'cambiar_empresa_superusuario' %}" id="form-cambiar-empresa" class="d-none">{% csrf_token %}</form></li>
+            {% for g in grupos_empresas %}
+            <li><h6 class="dropdown-header">{{ g.titulo }}</h6></li>
+            {% for e in g.empresas %}
+            <li><button type="submit" form="form-cambiar-empresa" name="empresa_id" value="{{ e.id }}" class="dropdown-item{% if e.id == empresa_actual.id %} active{% endif %}">{{ e.nombre }}</button></li>
+            {% endfor %}
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
         <!-- AQUÍ va el bloque nuevo de notificaciones del sistema -->
         <span id="tour-campanita" class="dropdown d-inline-block position-relative">
             {% csrf_token %}
@@ -799,6 +815,37 @@ document.addEventListener('DOMContentLoaded', function () {
 .navbar .nav-link:hover {
     color: white !important;
     background: rgba(255,255,255,0.12) !important;
+}
+/* Superusuario: tiene un menu mas (Super Usuario) -- se compacta para que no se desborde. */
+.navbar .navbar-nav.nav-superusuario .nav-link {
+    padding: 6px 6px !important;
+    font-size: 0.76rem !important;
+}
+@media (min-width: 992px) {
+    /* Si no caben en una fila, los menus pasan a una segunda fila en vez de salirse de la pantalla. */
+    .navbar .navbar-nav.nav-superusuario {
+        flex: 1 1 0;
+        min-width: 0;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+.selector-empresa-btn {
+    color: #fde68a !important;
+    background: rgba(255,255,255,0.10) !important;
+    border: 1px solid rgba(253,230,138,0.45) !important;
+    border-radius: 8px !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    max-width: 190px;
+    white-space: nowrap;
+}
+.selector-empresa-btn .selector-empresa-nombre {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
 }
 .navbar .nav-link.active {
     color: white !important;

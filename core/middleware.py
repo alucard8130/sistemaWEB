@@ -21,6 +21,28 @@ class EmpresaSeleccionMiddleware:
 
 
 
+class EmpresaSuperusuarioMiddleware:
+    """El superusuario siempre trabaja con UNA empresa activa (guardada en
+    sesion como 'empresa_id', que es lo que leen las pantallas). Si todavia
+    no ha elegido ninguna, se le deja la de su propio perfil -- o, si no
+    tiene, la primera empresa -- y la cambia con el selector del menu."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = request.user
+        if user.is_authenticated and user.is_superuser and not request.session.get('empresa_id'):
+            perfil = getattr(user, 'perfilusuario', None)
+            empresa_id = getattr(perfil, 'empresa_id', None)
+            if not empresa_id:
+                from empresas.models import Empresa
+                empresa_id = Empresa.objects.order_by('id').values_list('id', flat=True).first()
+            if empresa_id:
+                request.session['empresa_id'] = empresa_id
+        return self.get_response(request)
+
+
 #middleware de bloqueo de membresía#############
 
 from core.gracia import DIAS_GRACIA_BLOQUEO, es_escuela, limite_gracia  # noqa: E402, F401

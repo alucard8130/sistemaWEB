@@ -86,6 +86,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.EmpresaSuperusuarioMiddleware",  # empresa activa del superusuario
     "core.middleware.MembresiaBloqueoMiddleware", # Middleware para bloquear el acceso a usuarios con membresía vencida
 ]
 
