@@ -21,7 +21,7 @@ from conciliaciones.utils import validar_periodo_abierto
 from empresas.models import CuentaBancaria
 
 from . import ingresos_utils as iu
-from .decoradores import requiere_membresia_activa_escuela
+from .decoradores import empresa_activa, requiere_membresia_activa_escuela
 from .models import Alumno, CarteraVencida, IngresoEscuela, LoteImportacionIngresos
 
 CERO = Decimal('0.00')
@@ -31,10 +31,10 @@ CERO = Decimal('0.00')
 # Helpers
 # ----------------------------------------------------------------------------
 def _empresa_escuela(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa or perfil.empresa.segmento != 'escuela':
+    empresa = empresa_activa(request)
+    if not empresa or empresa.segmento != 'escuela':
         return None
-    return perfil.empresa
+    return empresa
 
 
 def _fecha_get(request, nombre, defecto):

@@ -28,7 +28,7 @@ from empresas.models import CuentaBancaria
 from gastos.models import Gasto
 from principal.models import ConfiguracionMembresia
 
-from .decoradores import requiere_membresia_activa_escuela
+from .decoradores import empresa_activa, requiere_membresia_activa_escuela
 from .ingresos_utils import COMISION_REFERENCIA, RUBRO_SIN_CLASIFICAR, normalizar_rubro, tipo_tarjeta_merchant
 from .models import (
     Alumno,
@@ -167,8 +167,8 @@ def _parsear_roster(wb):
 @login_required
 @requiere_membresia_activa_escuela
 def importar_roster_alumnos(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa:
+    empresa = empresa_activa(request)
+    if not empresa:
         messages.error(request, "No tienes una empresa asociada.")
         return redirect('dashboard_inicio')
  
@@ -203,7 +203,7 @@ def importar_roster_alumnos(request):
             for a in alumnos_parseados:
                 matriculas_en_archivo.add(a['matricula'])
                 _obj, creado = Alumno.objects.update_or_create(
-                    empresa=perfil.empresa,
+                    empresa=empresa,
                     matricula=a['matricula'],
                     defaults={
                         'nombre': a['nombre'],
@@ -222,7 +222,7 @@ def importar_roster_alumnos(request):
                     actualizados += 1
  
             bajas = (
-                Alumno.objects.filter(empresa=perfil.empresa, nivel=nivel_del_archivo, activo=True)
+                Alumno.objects.filter(empresa=empresa, nivel=nivel_del_archivo, activo=True)
                 .exclude(matricula__in=matriculas_en_archivo)
             )
             total_bajas = bajas.count()
@@ -234,10 +234,10 @@ def importar_roster_alumnos(request):
         messages.success(request, mensaje)
         return redirect('importar_roster_alumnos')
  
-    total_activos = Alumno.objects.filter(empresa=perfil.empresa, activo=True).count()
-    total_preescolar = Alumno.objects.filter(empresa=perfil.empresa, activo=True, nivel='preescolar').count()
-    total_primaria = Alumno.objects.filter(empresa=perfil.empresa, activo=True, nivel='primaria').count()
-    bajas_recientes = Alumno.objects.filter(empresa=perfil.empresa, activo=False).order_by('-fecha_baja_detectada')[:10]
+    total_activos = Alumno.objects.filter(empresa=empresa, activo=True).count()
+    total_preescolar = Alumno.objects.filter(empresa=empresa, activo=True, nivel='preescolar').count()
+    total_primaria = Alumno.objects.filter(empresa=empresa, activo=True, nivel='primaria').count()
+    bajas_recientes = Alumno.objects.filter(empresa=empresa, activo=False).order_by('-fecha_baja_detectada')[:10]
  
     return render(request, 'escuelas/importar_roster_alumnos.html', {
         'total_activos': total_activos,
@@ -293,8 +293,8 @@ def _parsear_altas(wb):
 @login_required
 @requiere_membresia_activa_escuela
 def importar_altas_alumnos(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa:
+    empresa = empresa_activa(request)
+    if not empresa:
         messages.error(request, "No tienes una empresa asociada.")
         return redirect('dashboard_inicio')
  
@@ -324,7 +324,7 @@ def importar_altas_alumnos(request):
         with transaction.atomic():
             for a in altas_parseadas:
                 _obj, creado = Alumno.objects.update_or_create(
-                    empresa=perfil.empresa,
+                    empresa=empresa,
                     matricula=a['matricula'],
                     defaults={
                         'nombre': a['nombre'],
@@ -347,7 +347,7 @@ def importar_altas_alumnos(request):
         return redirect('importar_altas_alumnos')
  
     altas_recientes = Alumno.objects.filter(
-        empresa=perfil.empresa, fecha_alta__isnull=False,
+        empresa=empresa, fecha_alta__isnull=False,
     ).order_by('-fecha_alta')[:20]
  
     return render(request, 'escuelas/importar_altas_alumnos.html', {
@@ -392,8 +392,8 @@ def _parsear_deudores(wb):
 @login_required
 @requiere_membresia_activa_escuela
 def importar_cartera_vencida(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa:
+    empresa = empresa_activa(request)
+    if not empresa:
         messages.error(request, "No tienes una empresa asociada.")
         return redirect('dashboard_inicio')
  
@@ -423,7 +423,7 @@ def importar_cartera_vencida(request):
             return redirect('importar_cartera_vencida')
  
         with transaction.atomic():
-            CarteraVencida.objects.filter(empresa=perfil.empresa, fecha_corte=fecha_corte).delete()
+            CarteraVencida.objects.filter(empresa=empresa, fecha_corte=fecha_corte).delete()
  
             nuevos = []
             for d in deudores_parseados:
@@ -436,7 +436,7 @@ def importar_cartera_vencida(request):
                     categoria = 'otro'
  
                 nuevos.append(CarteraVencida(
-                    empresa=perfil.empresa,
+                    empresa=empresa,
                     fecha_corte=fecha_corte,
                     matricula=d['matricula'],
                     nombre_alumno=d['nombre'],
@@ -456,21 +456,21 @@ def importar_cartera_vencida(request):
         return redirect('importar_cartera_vencida')
  
     ultima_fecha = (
-        CarteraVencida.objects.filter(empresa=perfil.empresa)
+        CarteraVencida.objects.filter(empresa=empresa)
         .order_by('-fecha_corte').values_list('fecha_corte', flat=True).first()
     )
 
-    resumen = CarteraVencida.objects.filter(empresa=perfil.empresa, fecha_corte=ultima_fecha).aggregate(
+    resumen = CarteraVencida.objects.filter(empresa=empresa, fecha_corte=ultima_fecha).aggregate(
         total=Sum('monto'),
     ) if ultima_fecha else {'total': None}
     total_cartera = resumen['total'] or Decimal('0')  # noqa: FURB157
     alumnos_deudores = (
-        CarteraVencida.objects.filter(empresa=perfil.empresa, fecha_corte=ultima_fecha)
+        CarteraVencida.objects.filter(empresa=empresa, fecha_corte=ultima_fecha)
         .values('matricula').distinct().count()
     ) if ultima_fecha else 0
 
     fechas_disponibles = list(
-        CarteraVencida.objects.filter(empresa=perfil.empresa)
+        CarteraVencida.objects.filter(empresa=empresa)
         .values_list('fecha_corte', flat=True).distinct().order_by('-fecha_corte')
     )
 
@@ -489,11 +489,9 @@ def importar_cartera_vencida(request):
 @login_required
 @requiere_membresia_activa_escuela
 def dashboard_inicio_escuela(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa or perfil.empresa.segmento != 'escuela':
+    empresa = empresa_activa(request)
+    if not empresa or empresa.segmento != 'escuela':
         return redirect('dashboard_inicio')
- 
-    empresa = perfil.empresa
     hoy = date.today()  # noqa: DTZ011
  
     try:
@@ -688,11 +686,9 @@ def dashboard_inicio_escuela(request):
 @login_required
 @requiere_membresia_activa_escuela
 def dashboard_admisiones(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa or perfil.empresa.segmento != 'escuela':
+    empresa = empresa_activa(request)
+    if not empresa or empresa.segmento != 'escuela':
         return redirect('dashboard_inicio')
- 
-    empresa = perfil.empresa
     solicitudes = SolicitudAdmision.objects.filter(empresa=empresa)
  
     conteo_por_etapa = []
@@ -715,10 +711,9 @@ def dashboard_admisiones(request):
 @login_required
 @requiere_membresia_activa_escuela
 def matriz_presupuesto_ingresos_escuela(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa or perfil.empresa.segmento != 'escuela':
+    empresa = empresa_activa(request)
+    if not empresa or empresa.segmento != 'escuela':
         return redirect('dashboard_inicio')
-    empresa = perfil.empresa
  
     anios_con_presupuesto = list(
         PresupuestoIngresoEscuela.objects.filter(empresa=empresa)
@@ -831,10 +826,9 @@ def matriz_presupuesto_ingresos_escuela(request):
 @login_required
 @requiere_membresia_activa_escuela
 def estado_resultados_escuela(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa or perfil.empresa.segmento != 'escuela':
+    empresa = empresa_activa(request)
+    if not empresa or empresa.segmento != 'escuela':
         return redirect('dashboard_inicio')
-    empresa = perfil.empresa
  
     hoy = datetime.date.today()  # noqa: DTZ011
     fecha_inicio = request.GET.get('fecha_inicio')
@@ -1037,10 +1031,9 @@ def _concepto_limpio_cartera(concepto):
 @login_required
 @requiere_membresia_activa_escuela
 def reporte_cartera_vencida_comparativo(request):
-    perfil = getattr(request.user, 'perfilusuario', None)
-    if not perfil or not perfil.empresa or perfil.empresa.segmento != 'escuela':
+    empresa = empresa_activa(request)
+    if not empresa or empresa.segmento != 'escuela':
         return redirect('dashboard_inicio')
-    empresa = perfil.empresa
  
     fechas_corte = list(
         CarteraVencida.objects.filter(empresa=empresa)
