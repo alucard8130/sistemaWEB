@@ -396,13 +396,62 @@ def _asignar_claves(filas):
 # ----------------------------------------------------------------------------
 # Alta de ingresos
 # ----------------------------------------------------------------------------
-def numero_fondeo_efectivo(fuente, anio, mes):
+_MESES_TXT = r'ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE'
+_RUIDO_FONDO = re.compile(
+    r'\b(' + _MESES_TXT + r')\b'                 # mes
+    r'|\b\d{4}\s*-\s*\d{4}\b'                    # ciclo 2026-2027
+    r'|\bZ[A-Z]\b'                                 # zona de transporte
+    r'|\b(COMPLETO|MEDIO|MEDIA)\b'                 # modalidad
+    r'|\bT\s?\d{1,2}\b'                            # talla T16
+    r'|\bMODULO\s*\d+\b'
+    r'|\b(MATERNAL|KINDER|PREESCOLAR|PRIMARIA|PRIM|SECUNDARIA|SEC|PREPA|PREPARATORIA)\b'
+    r'|\b\d+\b'
+)
+# Familias que el cliente quiere en un solo fondo aunque el concepto varie
+# (club/seguro/inscripcion de natacion, cada prenda de uniforme, zonas de transporte).
+# Ademas, categoria_fondo junta todos los talleres y todas las certificaciones.
+_FAMILIAS_FONDO = {'Natación': 'NATACION', 'Uniformes': 'UNIFORMES', 'Transporte': 'TRANSPORTE'}
+
+
+def categoria_fondo(concepto):
+    """Categoria del fondo de efectivo IPC, tomada del concepto del archivo:
+    se quita mes, ciclo, talla, zona y grado; asi las categorias cambian
+    solas segun lo que traiga cada reporte."""
+    rubro = normalizar_rubro(concepto)
+    if rubro in _FAMILIAS_FONDO:
+        return _FAMILIAS_FONDO[rubro]
+    n = norm(concepto)
+    if 'TALLER' in n:
+        return 'TALLERES'
+    if 'CERTIFIC' in n and 'CURSO' not in n:  # "CURSO CERTIFICACION INGLES" va aparte
+        return 'CERTIFICACIONES'
+    c = _RUIDO_FONDO.sub(' ', n)
+    c = re.sub(r'\s+', ' ', c).strip(' -.')
+    return c or 'SIN CLASIFICAR'
+
+
+def numero_fondeo_efectivo(fuente, anio, mes, categoria=None):
+    """Numero del fondo de efectivo. IPC lleva un fondo por categoria y mes
+    (EFE-IPC-UNIFORMES-2026-10); Cafeteria y Colegiaturas, uno por mes."""
+    if fuente == 'ipc' and categoria:
+        sufijo = f'-{anio}-{mes:02d}'
+        slug = re.sub(r'[^A-Z0-9]+', '_', norm(categoria)).strip('_')
+        maxlen = 50 - len('EFE-IPC-') - len(sufijo)
+        if len(slug) > maxlen:  # conserva unicidad al truncar
+            h = hashlib.sha1(slug.encode()).hexdigest()[:4]  # noqa: S324
+            slug = slug[:maxlen - 5] + '_' + h
+        return f'EFE-IPC-{slug}{sufijo}'
     return f'EFE-{fuente.upper()}-{anio}-{mes:02d}'
+
+
+def _rubro_fondo(fuente, concepto):
+    """Categoria que separa los fondos de efectivo (solo IPC)."""
+    return categoria_fondo(concepto) if fuente == 'ipc' else None
 
 
 def importar_filas(*, empresa, usuario, fuente, archivo_nombre, cuenta_bancaria, parseo):
     """Crea el lote, los IngresoEscuela y suma el efectivo a los fondeos de
-    caja chica (uno por fuente y mes, sin responsable). Debe llamarse dentro de
+    caja chica (uno por fuente y mes; en IPC, uno por rubro y mes; sin responsable). Debe llamarse dentro de
     transaction.atomic(). Devuelve un dict-resumen."""
     from caja_chica.models import FondeoCajaChica
 
@@ -428,18 +477,19 @@ def importar_filas(*, empresa, usuario, fuente, archivo_nombre, cuenta_bancaria,
         filas=len(nuevas), filas_duplicadas=duplicadas,
     )
 
-    # Fondeos de efectivo: (anio, mes) -> {total, max_fecha}
+    # Fondeos de efectivo: (anio, mes, rubro) -> {total, max_fecha}
+    # (rubro solo aplica a IPC; en las demas fuentes es None)
     efectivo_por_mes = defaultdict(lambda: {'total': CERO, 'max_fecha': None})
     for f in nuevas:
         if es_efectivo(f['forma_pago']):
-            g = efectivo_por_mes[(f['fecha'].year, f['fecha'].month)]
+            g = efectivo_por_mes[(f['fecha'].year, f['fecha'].month, _rubro_fondo(fuente, f['concepto']))]
             g['total'] += f['monto']
             if g['max_fecha'] is None or f['fecha'] > g['max_fecha']:
                 g['max_fecha'] = f['fecha']
 
     fondeos = {}
-    for (anio, mes), g in efectivo_por_mes.items():
-        numero = numero_fondeo_efectivo(fuente, anio, mes)
+    for (anio, mes, rubro_f), g in efectivo_por_mes.items():
+        numero = numero_fondeo_efectivo(fuente, anio, mes, rubro_f)
         fondeo = (
             FondeoCajaChica.objects.select_for_update()
             .filter(empresa=empresa, numero_cheque=numero).first()
@@ -457,7 +507,7 @@ def importar_filas(*, empresa, usuario, fuente, archivo_nombre, cuenta_bancaria,
         if g['max_fecha'] > fondeo.fecha:
             fondeo.fecha = g['max_fecha']
         fondeo.save()
-        fondeos[(anio, mes)] = fondeo
+        fondeos[(anio, mes, rubro_f)] = fondeo
 
     total_ef = total_bco = CERO
     objetos = []
@@ -478,7 +528,7 @@ def importar_filas(*, empresa, usuario, fuente, archivo_nombre, cuenta_bancaria,
             origen='cobranza', fuente=fuente, es_efectivo=efvo,
             grado=f.get('grado', ''), grupo=f.get('grupo', ''),
             cuenta_bancaria=None if efvo else (f.get('cuenta') or cuenta_bancaria),
-            fondeo=fondeos.get((f['fecha'].year, f['fecha'].month)) if efvo else None,
+            fondeo=fondeos.get((f['fecha'].year, f['fecha'].month, _rubro_fondo(fuente, f['concepto']))) if efvo else None,
             lote=lote, clave_unica=f['clave'],
             importado_por=usuario, archivo_origen=archivo_nombre,
         ))
