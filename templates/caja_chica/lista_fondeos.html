@@ -212,13 +212,9 @@
                         <tr>
                             <td>
                                 <span class="badge-cheque">{{ fondeo.numero_cheque }}</span>
-                            {% comment %} </td>
+                            </td>
                             <td style="color:#6b7280;">{{ fondeo.fecha|date:"d/M/y"|upper }}</td>
                             <td style="font-weight:700;">${{ fondeo.importe_cheque|floatformat:2|intcomma }}</td>
-                            <td>
-                                <div style="font-weight:600;font-size:0.8rem;">{{ fondeo.cuenta_bancaria }}</div>
-                            </td>
-                            <td style="font-size:0.8rem;">{{ fondeo.empleado_asignado.nombre }}</td> {% endcomment %}
                             <td>
                                 {% if fondeo.origen == 'cobros_efectivo' %}
                                 <span class="badge bg-warning text-dark">Cobros en efectivo · {{ fondeo.get_fuente_display }}</span>
