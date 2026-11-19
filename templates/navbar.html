@@ -1010,6 +1010,26 @@ body.dark-mode .tema-leasing .navbar { background: linear-gradient(135deg, #4A0C
     }
     .navbar .navbar-collapse .nav-link { padding: 10px 12px !important; font-size: 0.9rem !important; }
     .navbar .dropdown-menu { box-shadow: none !important; margin-top: 2px !important; animation: none !important; }
+    /* Selector de empresa (superusuario): en el telefono el menu ocupa el ancho de la
+       pantalla, debajo de la barra, y los nombres largos se parten en vez de cortarse. */
+    .navbar .selector-empresa-su { position: static; }
+    .navbar .selector-empresa-su .dropdown-menu {
+        position: absolute !important;
+        top: 100% !important;
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        transform: none !important;
+        margin-top: 4px !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18) !important;
+    }
+    .navbar .selector-empresa-su .dropdown-item {
+        white-space: normal;
+        padding-top: 9px;
+        padding-bottom: 9px;
+    }
 }
 </style>
 
