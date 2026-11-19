@@ -484,7 +484,9 @@
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_presupuesto_vs_ingreso' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo Ppto vs Ingresos</a></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'comparativo_anual_ingresos' %}"><i class="bi bi-bar-chart me-2"></i>Comparativo anual Ppto Ing</a></li>
               {% endif %}
+              {% if empresa_actual.segmento != 'escuela' %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_ingresos_vs_gastos' %}"><i class="bi bi-bar-chart me-2"></i>Grafico Ingresos vs Gastos</a></li>
+              {% endif %}
             </ul>
           </li>
 
