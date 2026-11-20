@@ -24,6 +24,8 @@ from django.db.models import (
 from django.db.models.functions import Coalesce, TruncMonth, TruncYear
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.http import urlencode
 from django.utils.dateformat import DateFormat
 from django.utils.dateparse import parse_date
 from num2words import num2words
@@ -583,9 +585,9 @@ def gastos_lista(request):
     })
 
 
-def _segmento_activo(request):
-    """Segmento de la empresa con la que se esta trabajando (superusuario: la
-    que eligio en el selector; los demas: la de su perfil)."""
+def _empresa_trabajo(request):
+    """Empresa con la que se esta trabajando (superusuario: la que eligio en el
+    selector; los demas: la de su perfil)."""
     user = request.user
     empresa = None
     if user.is_superuser:
@@ -595,7 +597,83 @@ def _segmento_activo(request):
     if empresa is None:
         perfil = getattr(user, "perfilusuario", None)
         empresa = perfil.empresa if perfil else None
-    return getattr(empresa, "segmento", None)
+    return empresa
+
+
+def _segmento_activo(request):
+    return getattr(_empresa_trabajo(request), "segmento", None)
+
+
+_AREAS_ESCUELA = {"liceo": "Liceo", "ipc": "IPC", "cafeteria": "Cafetería"}
+
+
+@login_required
+def gastos_reclasificar_area(request):
+    """GESAC Campus: asigna o cambia el area (Liceo / IPC / Cafeteria) de varios
+    gastos a la vez. Solo cambia la clasificacion del estado de resultados, no
+    toca montos, pagos ni estatus."""
+    empresa = _empresa_trabajo(request)
+    if empresa is None or empresa.segmento != "escuela":
+        return redirect("gastos_lista")
+
+    filtros = {
+        "filtro": request.POST.get("filtro") if request.method == "POST" else request.GET.get("filtro", "sin"),
+        "fecha_inicio": (request.POST if request.method == "POST" else request.GET).get("fecha_inicio", ""),
+        "fecha_fin": (request.POST if request.method == "POST" else request.GET).get("fecha_fin", ""),
+        "q": (request.POST if request.method == "POST" else request.GET).get("q", "").strip(),
+    }
+    if filtros["filtro"] not in ("sin", "todos", *_AREAS_ESCUELA):
+        filtros["filtro"] = "sin"
+    qs_filtros = urlencode({k: v for k, v in filtros.items() if v})
+
+    if request.method == "POST":
+        destino = request.POST.get("area_destino", "")
+        ids = [i for i in request.POST.getlist("ids") if i.isdigit()]
+        if destino not in ("sin", *_AREAS_ESCUELA):
+            messages.error(request, "Elige el área a la que quieres pasar los gastos.")
+        elif not ids:
+            messages.warning(request, "Selecciona al menos un gasto.")
+        else:
+            n = (
+                Gasto.objects.filter(pk__in=ids, empresa=empresa)
+                .exclude(estatus="cancelada")
+                .update(area_escuela="" if destino == "sin" else destino)
+            )
+            nombre = "Sin asignar" if destino == "sin" else _AREAS_ESCUELA[destino]
+            messages.success(request, f"{n} gasto(s) reclasificado(s) a: {nombre}.")
+        url = reverse("gastos_reclasificar_area")
+        return redirect(f"{url}?{qs_filtros}" if qs_filtros else url)
+
+    base = Gasto.objects.filter(empresa=empresa).exclude(estatus="cancelada")
+    conteo = {x["area_escuela"]: x["n"] for x in base.values("area_escuela").annotate(n=Count("id"))}
+    qs = base.select_related("proveedor", "empleado", "tipo_gasto")
+    if filtros["filtro"] == "sin":
+        qs = qs.filter(area_escuela="")
+    elif filtros["filtro"] in _AREAS_ESCUELA:
+        qs = qs.filter(area_escuela=filtros["filtro"])
+    desde = parse_date(filtros["fecha_inicio"]) if filtros["fecha_inicio"] else None
+    hasta = parse_date(filtros["fecha_fin"]) if filtros["fecha_fin"] else None
+    if desde:
+        qs = qs.filter(fecha__gte=desde)
+    if hasta:
+        qs = qs.filter(fecha__lte=hasta)
+    if filtros["q"]:
+        qs = qs.filter(
+            Q(descripcion__icontains=filtros["q"])
+            | Q(proveedor__nombre__icontains=filtros["q"])
+            | Q(empleado__nombre__icontains=filtros["q"])
+            | Q(tipo_gasto__nombre__icontains=filtros["q"])
+        )
+    page = Paginator(qs.order_by("-fecha", "-id"), 100).get_page(request.GET.get("page"))
+    return render(request, "gastos/reclasificar_area.html", {
+        "page": page,
+        "filtros": filtros,
+        "qs_filtros": qs_filtros,
+        "areas": _AREAS_ESCUELA,
+        "n_sin": conteo.get("", 0),
+        "n_total": sum(conteo.values()),
+        "total_pagina": sum((g.monto for g in page), Decimal("0")),
+    })
 
 
 #solicitud de gasto nueva

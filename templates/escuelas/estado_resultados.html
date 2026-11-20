@@ -144,7 +144,9 @@
             {% for a in s.areas %}
             <div class="card-panel area-bloque">
                 <div class="area-encabezado">
-                    <h6 class="mb-0"><i class="bi {{ a.icono }} me-2"></i>{{ a.titulo }} — {{ s.titulo }}</h6>
+                    <h6 class="mb-0"><i class="bi {{ a.icono }} me-2"></i>{{ a.titulo }} — {{ s.titulo }}
+                        {% if a.clave == 'sin_asignar' %}<a href="{% url 'gastos_reclasificar_area' %}" class="btn btn-sm btn-outline-success ms-2"><i class="bi bi-diagram-2 me-1"></i>Reclasificar</a>{% endif %}
+                    </h6>
                     <div class="area-resumen">
                         <span>Ingresos <strong class="valor-verde">${{ a.total_ingresos|floatformat:2|intcomma }}</strong></span>
                         <span>Gastos <strong class="valor-rojo">${{ a.total_gastos|floatformat:2|intcomma }}</strong></span>

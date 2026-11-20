@@ -1,0 +1,166 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reclasificar gastos por área</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        .barra-accion { position: sticky; bottom: 0; background: white; border-top: 2px solid #146C43; padding: 10px 14px; box-shadow: 0 -4px 14px rgba(0,0,0,0.08); z-index: 5; }
+        .chip-area { border-radius: 20px; padding: 3px 12px; font-size: 0.78rem; font-weight: 600; }
+        .tabla-reclasificar td, .tabla-reclasificar th { font-size: 0.85rem; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="container-fluid mt-2 px-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+            <h4 class="mb-0"><i class="bi bi-diagram-2 me-2"></i>Reclasificar gastos por área</h4>
+            <a href="{% url 'estado_resultados_escuela' %}" class="btn btn-outline-secondary btn-sm reporte-link"><i class="bi bi-file-text me-1"></i>Estado de resultados</a>
+        </div>
+        <p class="text-muted small mb-3">
+            Elige el área (Liceo, IPC o Cafetería) de cada gasto para que el estado de resultados lo cuente donde corresponde.
+            Solo cambia la clasificación; no modifica montos, pagos ni estatus.
+            <strong>{{ n_sin }}</strong> gasto(s) sin asignar de {{ n_total }}.
+        </p>
+
+        <form method="get" class="row g-2 align-items-end mb-3">
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Mostrar</label>
+                <select name="filtro" class="form-select form-select-sm">
+                    <option value="sin" {% if filtros.filtro == 'sin' %}selected{% endif %}>Sin asignar</option>
+                    <option value="todos" {% if filtros.filtro == 'todos' %}selected{% endif %}>Todos</option>
+                    {% for clave, nombre in areas.items %}
+                    <option value="{{ clave }}" {% if filtros.filtro == clave %}selected{% endif %}>{{ nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Desde</label>
+                <input type="date" name="fecha_inicio" value="{{ filtros.fecha_inicio }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Hasta</label>
+                <input type="date" name="fecha_fin" value="{{ filtros.fecha_fin }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label small mb-1">Buscar (proveedor, cuenta, descripción)</label>
+                <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-search me-1"></i>Filtrar</button>
+            </div>
+        </form>
+
+        <form method="post" id="form-reclasificar">
+            {% csrf_token %}
+            <input type="hidden" name="filtro" value="{{ filtros.filtro }}">
+            <input type="hidden" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
+            <input type="hidden" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+            <input type="hidden" name="q" value="{{ filtros.q }}">
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover tabla-reclasificar">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:34px;"><input type="checkbox" id="marcar-todos" class="form-check-input" title="Marcar todos de esta página"></th>
+                            <th>Fecha</th>
+                            <th>Proveedor / Empleado</th>
+                            <th>Cuenta de gasto</th>
+                            <th>Descripción</th>
+                            <th class="text-end">Importe</th>
+                            <th>Estatus</th>
+                            <th>Área actual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in page %}
+                        <tr>
+                            <td><input type="checkbox" name="ids" value="{{ g.id }}" class="form-check-input fila-check"></td>
+                            <td>{{ g.fecha|date:"d/m/Y" }}</td>
+                            <td>{% if g.proveedor %}{{ g.proveedor.nombre }}{% elif g.empleado %}{{ g.empleado.nombre }}{% else %}—{% endif %}</td>
+                            <td>{{ g.tipo_gasto.nombre }}</td>
+                            <td>{{ g.descripcion|truncatechars:60 }}</td>
+                            <td class="text-end">${{ g.monto|floatformat:2|intcomma }}</td>
+                            <td>{{ g.get_estatus_display }}</td>
+                            <td>
+                                {% if g.area_escuela %}
+                                <span class="chip-area bg-success-subtle text-success-emphasis">{{ g.get_area_escuela_display }}</span>
+                                {% else %}
+                                <span class="chip-area bg-warning-subtle text-warning-emphasis">Sin asignar</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">No hay gastos con este filtro.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page.paginator.num_pages > 1 %}
+            <nav class="d-flex justify-content-center gap-2 my-2">
+                {% if page.has_previous %}<a class="btn btn-outline-secondary btn-sm reporte-link" href="?{{ qs_filtros }}&page={{ page.previous_page_number }}">&laquo; Anterior</a>{% endif %}
+                <span class="align-self-center small text-muted">Página {{ page.number }} de {{ page.paginator.num_pages }} ({{ page.paginator.count }} gastos)</span>
+                {% if page.has_next %}<a class="btn btn-outline-secondary btn-sm reporte-link" href="?{{ qs_filtros }}&page={{ page.next_page_number }}">Siguiente &raquo;</a>{% endif %}
+            </nav>
+            {% endif %}
+
+            <div class="barra-accion d-flex flex-wrap align-items-center gap-2">
+                <span class="small"><strong id="contador">0</strong> seleccionado(s)</span>
+                <select name="area_destino" id="area-destino" class="form-select form-select-sm" style="max-width:220px;" required>
+                    <option value="">Pasar a…</option>
+                    {% for clave, nombre in areas.items %}
+                    <option value="{{ clave }}">{{ nombre }}</option>
+                    {% endfor %}
+                    <option value="sin">Sin asignar</option>
+                </select>
+                <button type="submit" id="btn-aplicar" class="btn btn-success btn-sm" disabled>
+                    <i class="bi bi-check-circle me-1"></i>Aplicar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        var checks = Array.prototype.slice.call(document.querySelectorAll('.fila-check'));
+        var todos = document.getElementById('marcar-todos');
+        var contador = document.getElementById('contador');
+        var boton = document.getElementById('btn-aplicar');
+        var destino = document.getElementById('area-destino');
+        function actualizar() {
+            var n = checks.filter(function (c) { return c.checked; }).length;
+            contador.textContent = n;
+            boton.disabled = !(n > 0 && destino.value);
+        }
+        todos.addEventListener('change', function () {
+            checks.forEach(function (c) { c.checked = todos.checked; });
+            actualizar();
+        });
+        checks.forEach(function (c) { c.addEventListener('change', actualizar); });
+        destino.addEventListener('change', actualizar);
+        actualizar();
+    })();
+    </script>
+</body>
+</html>

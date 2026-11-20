@@ -19,6 +19,7 @@ urlpatterns = [
     ),
     path("", views.gastos_lista, name="gastos_lista"),
     path("nuevo/", views.gasto_nuevo, name="gasto_nuevo"),
+    path("reclasificar-area/", views.gastos_reclasificar_area, name="gastos_reclasificar_area"),
     path("<int:pk>/editar/", views.gasto_editar, name="gasto_editar"),
     path("<int:pk>/eliminar/", views.gasto_eliminar, name="gasto_eliminar"),
     path(

@@ -421,6 +421,9 @@
             <ul class="dropdown-menu">
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item reporte-link" href="{% url 'gastos_lista' %}"><i class="bi bi-list-ul me-2"></i>Solicitudes de Gasto</a></li>
+              {% if empresa_actual.segmento == 'escuela' %}
+              <li><a class="dropdown-item reporte-link" href="{% url 'gastos_reclasificar_area' %}"><i class="bi bi-diagram-2 me-2"></i>Reclasificar gastos por área</a></li>
+              {% endif %}
               <li><a class="dropdown-item reporte-link" href="{% url 'reporte_pagos_gastos' %}"><i class="bi bi-file-text me-2"></i>Reporte Pagos Solicitudes</a></li>
               <li><hr class="dropdown-divider"></li>
               {% if request.user.is_superuser %}
