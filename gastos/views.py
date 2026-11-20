@@ -583,11 +583,26 @@ def gastos_lista(request):
     })
 
 
+def _segmento_activo(request):
+    """Segmento de la empresa con la que se esta trabajando (superusuario: la
+    que eligio en el selector; los demas: la de su perfil)."""
+    user = request.user
+    empresa = None
+    if user.is_superuser:
+        empresa_id = request.session.get("empresa_id")
+        if empresa_id:
+            empresa = Empresa.objects.filter(pk=empresa_id).first()
+    if empresa is None:
+        perfil = getattr(user, "perfilusuario", None)
+        empresa = perfil.empresa if perfil else None
+    return getattr(empresa, "segmento", None)
+
+
 #solicitud de gasto nueva
 @login_required
 def gasto_nuevo(request):
     if request.method == "POST":
-        form = GastoForm(request.POST or None, request.FILES, user=request.user)
+        form = GastoForm(request.POST or None, request.FILES, user=request.user, segmento=_segmento_activo(request))
         if form.is_valid():
             gasto = form.save(commit=False)
             origen = form.cleaned_data["origen_tipo"]
@@ -676,6 +691,7 @@ def gasto_nuevo(request):
     else:
         form = GastoForm(
             user=request.user,
+            segmento=_segmento_activo(request),
         )
         if not request.user.is_superuser:
             form.fields["empresa"].initial = request.user.perfilusuario.empresa
@@ -697,12 +713,13 @@ def gasto_editar(request, pk):
             instance=gasto,
             user=request.user,
             modo="editar",
+            segmento=_segmento_activo(request),
         )
         if form.is_valid():
             form.save()
             return redirect("gastos_lista")
     else:
-        form = GastoForm(instance=gasto, user=request.user, modo="editar")
+        form = GastoForm(instance=gasto, user=request.user, modo="editar", segmento=_segmento_activo(request))
     return render(
         request, "gastos/form.html", {"form": form, "modo": "editar", "gasto": gasto}
     )

@@ -136,6 +136,17 @@ class Gasto(models.Model):
     observaciones = models.TextField(blank=True, null=True)
     retencion_iva = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     retencion_isr = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # GESAC Campus: a que area pertenece el gasto, para separar el estado de
+    # resultados (Liceo / IPC / Cafeteria). Vacio = sin asignar (y en el resto
+    # de los segmentos no se usa).
+    AREA_ESCUELA_CHOICES = [  # noqa: RUF012
+        ('liceo', 'Liceo'),
+        ('ipc', 'IPC'),
+        ('cafeteria', 'Cafetería'),
+    ]
+    area_escuela = models.CharField(
+        max_length=12, choices=AREA_ESCUELA_CHOICES, blank=True, default='',
+    )
 
     def __str__(self):
         return f"{self.fecha} - {self.tipo_gasto} - ${self.monto}"  

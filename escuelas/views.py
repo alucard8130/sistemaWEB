@@ -834,7 +834,11 @@ _AREAS_ER = [
 ]
 _AREAS_ER_CLAVES = [a[0] for a in _AREAS_ER]
 _RUBROS_LICEO = {'Colegiatura', 'Colegiatura anual', 'Inscripción'}
-_AREA_POR_FUENTE = {'colegiaturas': 'liceo', 'ipc': 'ipc', 'cafeteria': 'cafeteria'}
+# fuente del fondo de caja chica (colegiaturas/ipc/cafeteria) o area capturada en el
+# gasto (liceo/ipc/cafeteria) -> area del estado de resultados. Vacio = sin asignar.
+_AREA_POR_FUENTE = {
+    'colegiaturas': 'liceo', 'ipc': 'ipc', 'cafeteria': 'cafeteria', 'liceo': 'liceo',
+}
 
 
 def _area_ingreso(rubro, fuente):
@@ -1004,11 +1008,11 @@ def estado_resultados_escuela(request):
         (cc_qs.filter(fondeo__origen='cobros_efectivo'), 'tipo_gasto__nombre', 'importe', 'fondeo__fuente'),
     )
     gastos_bancos = _sumar_gastos(
-        (gastos_qs, 'tipo_gasto__nombre', 'monto', None),
+        (gastos_qs, 'tipo_gasto__nombre', 'monto', 'area_escuela'),
         (cc_qs.filter(fondeo__origen='banco'), 'tipo_gasto__nombre', 'importe', 'fondeo__fuente'),
     )
     gastos_todos = _sumar_gastos(
-        (gastos_qs, 'tipo_gasto__nombre', 'monto', None),
+        (gastos_qs, 'tipo_gasto__nombre', 'monto', 'area_escuela'),
         (cc_qs, 'tipo_gasto__nombre', 'importe', 'fondeo__fuente'),
     )
 

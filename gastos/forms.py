@@ -99,7 +99,7 @@ class GastoForm(forms.ModelForm):
 
     class Meta:
         model = Gasto
-        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'descripcion', 'fecha', 'monto', 'folio_comprobante', 'retencion_iva', 'retencion_isr', 'observaciones']  # noqa: RUF012
+        fields = ['empresa','origen_tipo', 'proveedor', 'empleado', 'tipo_gasto', 'area_escuela', 'descripcion', 'fecha', 'monto', 'folio_comprobante', 'retencion_iva', 'retencion_isr', 'observaciones']  # noqa: RUF012
         widgets = {  # noqa: RUF012
             'proveedor': forms.Select(attrs={
                 'class': 'form-select'
@@ -111,6 +111,9 @@ class GastoForm(forms.ModelForm):
                 'class': 'form-select'
             }),
             'tipo_gasto': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'area_escuela': forms.Select(attrs={
                 'class': 'form-select'
             }),
             'fecha': forms.DateInput(attrs={
@@ -142,6 +145,7 @@ class GastoForm(forms.ModelForm):
         }
         labels = {  # noqa: RUF012
             'tipo_gasto': 'Cuenta de Gasto',
+            'area_escuela': 'Área del gasto (Liceo / IPC / Cafetería)',
             'descripcion': 'Descripción del gasto',
             'fecha': 'Fecha Solicitud',
             'monto': 'Importe',
@@ -155,7 +159,14 @@ class GastoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         modo = kwargs.pop('modo', None)
         user = kwargs.pop('user', None)
+        segmento = kwargs.pop('segmento', None)
         super().__init__(*args, **kwargs)
+
+        # El area solo se captura en GESAC Campus; en los demas segmentos no aparece.
+        if segmento == 'escuela':
+            self.fields['area_escuela'].required = True
+        else:
+            del self.fields['area_escuela']
 
         if not user or not user.is_superuser:
             self.fields['empresa'].widget = forms.HiddenInput()
