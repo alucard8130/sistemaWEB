@@ -823,6 +823,28 @@ def matriz_presupuesto_ingresos_escuela(request):
     })
 
 
+# Areas del estado de resultados de Campus. Liceo = colegiaturas e inscripciones;
+# Cafeteria; IPC = todo lo demas. 'sin_asignar' recibe los gastos que no dicen
+# a que area pertenecen (gastos pagados por bancos).
+_AREAS_ER = [
+    ('liceo', 'Liceo', 'bi-mortarboard'),
+    ('ipc', 'IPC', 'bi-grid-3x3-gap'),
+    ('cafeteria', 'Cafetería', 'bi-cup-hot'),
+    ('sin_asignar', 'Gastos generales (sin asignar)', 'bi-question-circle'),
+]
+_AREAS_ER_CLAVES = [a[0] for a in _AREAS_ER]
+_RUBROS_LICEO = {'Colegiatura', 'Colegiatura anual', 'Inscripción'}
+_AREA_POR_FUENTE = {'colegiaturas': 'liceo', 'ipc': 'ipc', 'cafeteria': 'cafeteria'}
+
+
+def _area_ingreso(rubro, fuente):
+    if rubro == 'Cafetería' or fuente == 'cafeteria':
+        return 'cafeteria'
+    if rubro in _RUBROS_LICEO:
+        return 'liceo'
+    return 'ipc'
+
+
 @login_required
 @requiere_membresia_activa_escuela
 def estado_resultados_escuela(request):
@@ -926,48 +948,68 @@ def estado_resultados_escuela(request):
         cc_qs = cc_qs.filter(fecha__lte=fecha_fin)
 
     def _ingresos_cat(qs):
-        """Ingresos con detalle: por rubro (Colegiatura, Cafeteria, Transporte,
-        Talleres...) en vez de 'Otro'. Lo que no cae en ningun rubro conocido
-        se muestra por su concepto limpio (sin fecha ni mes)."""
-        acum = {}
-        for x in qs.values('rubro', 'concepto').annotate(total=Sum('monto')):
+        """Ingresos con detalle por area (Liceo / IPC / Cafeteria) y, dentro de
+        cada una, por rubro (Colegiatura, Transporte, Talleres...). Lo que no cae
+        en ningun rubro conocido se muestra por su concepto limpio (sin fecha ni
+        mes). Devuelve {area: OrderedDict(rubro -> monto)}."""
+        acum = {a: {} for a in _AREAS_ER_CLAVES}
+        for x in qs.values('rubro', 'concepto', 'fuente').annotate(total=Sum('monto')):
             rubro = x['rubro'] or normalizar_rubro(x['concepto'])
+            area = _area_ingreso(rubro, x['fuente'])
             if rubro == RUBRO_SIN_CLASIFICAR:
                 _clave, etiqueta = _concepto_limpio_cartera(x['concepto'])
                 rubro = etiqueta or RUBRO_SIN_CLASIFICAR
-            acum[rubro] = acum.get(rubro, 0) + float(x['total'] or 0)
-        return OrderedDict(sorted(acum.items(), key=lambda kv: -kv[1]))
+            acum[area][rubro] = acum[area].get(rubro, 0) + float(x['total'] or 0)
+        return {a: OrderedDict(sorted(v.items(), key=lambda kv: -kv[1])) for a, v in acum.items()}
 
     def _sumar_gastos(*partes):
-        """partes: (queryset, campo_nombre_tipo, campo_monto)."""
-        acum = {}
-        for qs, campo_tipo, campo_monto in partes:
-            for x in qs.values(campo_tipo).annotate(total=Sum(campo_monto)):
+        """partes: (queryset, campo_nombre_tipo, campo_monto, campo_fuente).
+        Devuelve {area: OrderedDict(tipo de gasto -> monto)}. El area sale de la
+        fuente del fondo de caja chica; los gastos de bancos (sin fuente) y los
+        de fondos con cheque/transferencia van a 'sin_asignar'."""
+        acum = {a: {} for a in _AREAS_ER_CLAVES}
+        for qs, campo_tipo, campo_monto, campo_fuente in partes:
+            campos = [campo_tipo] + ([campo_fuente] if campo_fuente else [])
+            for x in qs.values(*campos).annotate(total=Sum(campo_monto)):
                 etiqueta = x[campo_tipo] or 'Sin categoría'
-                acum[etiqueta] = acum.get(etiqueta, 0) + float(x['total'] or 0)
-        return OrderedDict(sorted(acum.items(), key=lambda kv: -kv[1]))
+                area = _AREA_POR_FUENTE.get(x[campo_fuente], 'sin_asignar') if campo_fuente else 'sin_asignar'
+                acum[area][etiqueta] = acum[area].get(etiqueta, 0) + float(x['total'] or 0)
+        return {a: OrderedDict(sorted(v.items(), key=lambda kv: -kv[1])) for a, v in acum.items()}
 
-    def _seccion(clave, titulo, icono, ing_qs, gastos_cat):
-        ing_cat = _ingresos_cat(ing_qs)
-        t_ing = float(sum(ing_cat.values()))
-        t_gas = float(sum(gastos_cat.values()))
+    def _seccion(clave, titulo, icono, ing_qs, gastos_por_area):
+        ing_por_area = _ingresos_cat(ing_qs)
+        areas = []
+        for a_clave, a_titulo, a_icono in _AREAS_ER:
+            ing_cat = ing_por_area[a_clave]
+            gas_cat = gastos_por_area[a_clave]
+            if a_clave not in ('liceo', 'ipc') and not ing_cat and not gas_cat:
+                continue  # cafeteria / sin asignar solo si tienen movimientos
+            t_ing = float(sum(ing_cat.values()))
+            t_gas = float(sum(gas_cat.values()))
+            areas.append({
+                'clave': a_clave, 'titulo': a_titulo, 'icono': a_icono,
+                'ingresos_por_categoria': ing_cat, 'gastos_por_categoria': gas_cat,
+                'total_ingresos': t_ing, 'total_gastos': t_gas,
+                'resultado_neto': t_ing - t_gas,
+            })
+        t_ing = sum(a['total_ingresos'] for a in areas)
+        t_gas = sum(a['total_gastos'] for a in areas)
         return {
-            'clave': clave, 'titulo': titulo, 'icono': icono,
-            'ingresos_por_categoria': ing_cat, 'gastos_por_categoria': gastos_cat,
+            'clave': clave, 'titulo': titulo, 'icono': icono, 'areas': areas,
             'total_ingresos': t_ing, 'total_gastos': t_gas,
             'resultado_neto': t_ing - t_gas,
         }
 
     gastos_efectivo = _sumar_gastos(
-        (cc_qs.filter(fondeo__origen='cobros_efectivo'), 'tipo_gasto__nombre', 'importe'),
+        (cc_qs.filter(fondeo__origen='cobros_efectivo'), 'tipo_gasto__nombre', 'importe', 'fondeo__fuente'),
     )
     gastos_bancos = _sumar_gastos(
-        (gastos_qs, 'tipo_gasto__nombre', 'monto'),
-        (cc_qs.filter(fondeo__origen='banco'), 'tipo_gasto__nombre', 'importe'),
+        (gastos_qs, 'tipo_gasto__nombre', 'monto', None),
+        (cc_qs.filter(fondeo__origen='banco'), 'tipo_gasto__nombre', 'importe', 'fondeo__fuente'),
     )
     gastos_todos = _sumar_gastos(
-        (gastos_qs, 'tipo_gasto__nombre', 'monto'),
-        (cc_qs, 'tipo_gasto__nombre', 'importe'),
+        (gastos_qs, 'tipo_gasto__nombre', 'monto', None),
+        (cc_qs, 'tipo_gasto__nombre', 'importe', 'fondeo__fuente'),
     )
 
     secciones = [

@@ -43,6 +43,10 @@
         .er-tabs .nav-link { color: #146C43; font-weight: 600; font-size: 0.9rem; border-radius: 10px; }
         .er-tabs .nav-link.active { background: #146C43; color: white; }
         .categoria-total { display: flex; justify-content: space-between; padding-top: 10px; margin-top: 4px; border-top: 2px solid #146C43; font-weight: 700; }
+        .area-encabezado { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 20px; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; }
+        .area-resumen { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: #6b7280; }
+        .area-resumen strong { margin-left: 4px; }
+        .area-subtitulo { font-size: 0.78rem; font-weight: 700; color: #146C43; text-transform: uppercase; margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -137,37 +141,51 @@
                 </div>
             </div>
 
-            <div class="card-panel">
-                <h6><i class="bi bi-graph-up-arrow me-1"></i>Ingresos por categoría — {{ s.titulo }}</h6>
-                {% for categoria, monto in s.ingresos_por_categoria.items %}
-                <div class="categoria-item">
-                    <span>{{ categoria }}</span>
-                    <strong>${{ monto|floatformat:2|intcomma }}</strong>
+            {% for a in s.areas %}
+            <div class="card-panel area-bloque">
+                <div class="area-encabezado">
+                    <h6 class="mb-0"><i class="bi {{ a.icono }} me-2"></i>{{ a.titulo }} — {{ s.titulo }}</h6>
+                    <div class="area-resumen">
+                        <span>Ingresos <strong class="valor-verde">${{ a.total_ingresos|floatformat:2|intcomma }}</strong></span>
+                        <span>Gastos <strong class="valor-rojo">${{ a.total_gastos|floatformat:2|intcomma }}</strong></span>
+                        <span>Resultado <strong class="{% if a.resultado_neto >= 0 %}valor-verde{% else %}valor-rojo{% endif %}">{% if a.resultado_neto >= 0 %}+{% endif %}${{ a.resultado_neto|floatformat:2|intcomma }}</strong></span>
+                    </div>
                 </div>
-                {% empty %}
-                <div class="text-muted small">No hay ingresos en este periodo.</div>
-                {% endfor %}
-                <div class="categoria-total">
-                    <span>Total Ingresos</span>
-                    <span class="valor-verde">${{ s.total_ingresos|floatformat:2|intcomma }}</span>
-                </div>
-            </div>
 
-            <div class="card-panel">
-                <h6><i class="bi bi-graph-down-arrow me-1"></i>Gastos por categoría — {{ s.titulo }}</h6>
-                {% for categoria, monto in s.gastos_por_categoria.items %}
-                <div class="categoria-item">
-                    <span>{{ categoria }}</span>
-                    <strong>${{ monto|floatformat:2|intcomma }}</strong>
-                </div>
-                {% empty %}
-                <div class="text-muted small">No hay gastos en este periodo.</div>
-                {% endfor %}
-                <div class="categoria-total">
-                    <span>Total Gastos</span>
-                    <span class="valor-rojo">${{ s.total_gastos|floatformat:2|intcomma }}</span>
+                <div class="row g-4">
+                    <div class="col-12 col-lg-6">
+                        <div class="area-subtitulo"><i class="bi bi-graph-up-arrow me-1"></i>Ingresos por categoría</div>
+                        {% for categoria, monto in a.ingresos_por_categoria.items %}
+                        <div class="categoria-item">
+                            <span>{{ categoria }}</span>
+                            <strong>${{ monto|floatformat:2|intcomma }}</strong>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">No hay ingresos en este periodo.</div>
+                        {% endfor %}
+                        <div class="categoria-total">
+                            <span>Total Ingresos</span>
+                            <span class="valor-verde">${{ a.total_ingresos|floatformat:2|intcomma }}</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="area-subtitulo"><i class="bi bi-graph-down-arrow me-1"></i>Gastos por categoría</div>
+                        {% for categoria, monto in a.gastos_por_categoria.items %}
+                        <div class="categoria-item">
+                            <span>{{ categoria }}</span>
+                            <strong>${{ monto|floatformat:2|intcomma }}</strong>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">No hay gastos en este periodo.</div>
+                        {% endfor %}
+                        <div class="categoria-total">
+                            <span>Total Gastos</span>
+                            <span class="valor-rojo">${{ a.total_gastos|floatformat:2|intcomma }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
         {% endfor %}
         </div>
