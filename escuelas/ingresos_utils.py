@@ -135,6 +135,16 @@ _REGLAS_RUBRO = [
     ('UNIFORME', 'Uniformes'),
     ('SHORT', 'Uniformes'),
     ('MANDIL', 'Uniformes'),
+    ('BLUSA', 'Uniformes'),
+    ('FALDA', 'Uniformes'),
+    ('JUMPER', 'Uniformes'),
+    ('CAMISA', 'Uniformes'),
+    ('CALCETA', 'Uniformes'),
+    ('SUDADERA', 'Uniformes'),
+    ('GORRA', 'Uniformes'),
+    ('BUFANDA', 'Uniformes'),
+    ('CUADERNO', 'Cuadernos'),
+    ('BOLETO', 'Eventos'),
 ]
 RUBRO_SIN_CLASIFICAR = 'Sin clasificar'
 
@@ -410,7 +420,8 @@ _RUIDO_FONDO = re.compile(
 # Familias que el cliente quiere en un solo fondo aunque el concepto varie
 # (club/seguro/inscripcion de natacion, cada prenda de uniforme, zonas de transporte).
 # Ademas, categoria_fondo junta todos los talleres y todas las certificaciones.
-_FAMILIAS_FONDO = {'Natación': 'NATACION', 'Uniformes': 'UNIFORMES', 'Transporte': 'TRANSPORTE'}
+_FAMILIAS_FONDO = {'Natación': 'NATACION', 'Uniformes': 'UNIFORMES', 'Transporte': 'TRANSPORTE',
+                   'Cuadernos': 'CUADERNOS', 'Eventos': 'EVENTOS'}
 
 
 def categoria_fondo(concepto):
