@@ -586,5 +586,53 @@ def deshacer_lote(lote):
     lote.delete()  # CASCADE borra los IngresoEscuela del lote
 
 
+def fondeo_efectivo_para(empresa, fuente, fecha, categoria=None):
+    """Fondo de caja chica (por cobros en efectivo) donde cae un cobro; lo crea si
+    no existe. Mismo criterio de numeracion que el importador. Dentro de atomic()."""
+    from caja_chica.models import FondeoCajaChica
+
+    numero = numero_fondeo_efectivo(fuente, fecha.year, fecha.month, categoria)
+    fondeo = (
+        FondeoCajaChica.objects.select_for_update()
+        .filter(empresa=empresa, numero_cheque=numero).first()
+    )
+    if fondeo is None:
+        fondeo = FondeoCajaChica.objects.create(
+            empresa=empresa, numero_cheque=numero, importe_cheque=CERO, saldo=CERO,
+            fecha=datetime.date(fecha.year, fecha.month, 1),
+            origen='cobros_efectivo', fuente=fuente,
+            empleado_asignado=None, cuenta_bancaria=None,
+        )
+    return fondeo
+
+
+def sumar_a_fondeo(fondeo, monto, fecha):
+    fondeo.importe_cheque += monto
+    fondeo.saldo += monto
+    if fecha > fondeo.fecha:
+        fondeo.fecha = fecha
+    fondeo.save()
+
+
+def restar_de_fondeo(fondeo, monto):
+    """Revierte un cobro en efectivo. ValueError si la caja ya gasto ese dinero.
+    Si el fondo queda vacio y sin movimientos, se borra."""
+    from caja_chica.models import FondeoCajaChica
+
+    fondeo = FondeoCajaChica.objects.select_for_update().get(pk=fondeo.pk)
+    if fondeo.saldo < monto:
+        raise ValueError(
+            f"La caja chica '{fondeo.numero_cheque}' ya gastó parte de este efectivo "
+            f"(saldo ${fondeo.saldo:,.2f}, este ingreso aportó ${monto:,.2f}). "
+            "Primero cancela o ajusta esos gastos."
+        )
+    fondeo.importe_cheque -= monto
+    fondeo.saldo -= monto
+    if fondeo.importe_cheque <= 0 and not fondeo.gastocajachica_set.exists() and not fondeo.valecaja_set.exists():
+        fondeo.delete()
+    else:
+        fondeo.save()
+
+
 def primer_y_ultimo_dia(anio, mes):
     return datetime.date(anio, mes, 1), datetime.date(anio, mes, calendar.monthrange(anio, mes)[1])

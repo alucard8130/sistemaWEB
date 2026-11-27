@@ -39,6 +39,7 @@ class IngresoEscuela(models.Model):
     ORIGEN_CHOICES = [  # noqa: RUF012
         ('cobranza', 'Reporte de Cobranza'),
         ('fiserv', 'Plataforma Academic (Fiserv)'),
+        ('manual', 'Otro ingreso (captura manual)'),
     ]
     matricula = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     origen = models.CharField(max_length=20, choices=ORIGEN_CHOICES, blank=True, null=True)
@@ -87,6 +88,13 @@ class IngresoEscuela(models.Model):
         'LoteImportacionIngresos', on_delete=models.CASCADE, null=True, blank=True,
         related_name='ingresos',
     )
+    # Otros ingresos capturados a mano (origen='manual'): tipo que el usuario
+    # crea en su catalogo y quien pago (texto libre, opcional).
+    tipo_otro_ingreso = models.ForeignKey(
+        'facturacion.TipoOtroIngreso', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ingresos_escuela',
+    )
+    pagador = models.CharField(max_length=255, blank=True, default='')
     # Huella de la fila (recibo+matricula+concepto+importe+fecha+n.o de
     # ocurrencia) para que re-subir el mismo archivo NO duplique ingresos.
     clave_unica = models.CharField(max_length=40, blank=True, null=True)

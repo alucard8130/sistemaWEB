@@ -841,7 +841,9 @@ _AREA_POR_FUENTE = {
 }
 
 
-def _area_ingreso(rubro, fuente):
+def _area_ingreso(rubro, fuente, origen=None):
+    if origen == 'manual':  # otros ingresos: el usuario eligio el area al capturarlos
+        return _AREA_POR_FUENTE.get(fuente, 'ipc')
     if rubro == 'Cafetería' or fuente == 'cafeteria':
         return 'cafeteria'
     if rubro in _RUBROS_LICEO:
@@ -957,9 +959,9 @@ def estado_resultados_escuela(request):
         en ningun rubro conocido se muestra por su concepto limpio (sin fecha ni
         mes). Devuelve {area: OrderedDict(rubro -> monto)}."""
         acum = {a: {} for a in _AREAS_ER_CLAVES}
-        for x in qs.values('rubro', 'concepto', 'fuente').annotate(total=Sum('monto')):
+        for x in qs.values('rubro', 'concepto', 'fuente', 'origen').annotate(total=Sum('monto')):
             rubro = x['rubro'] or normalizar_rubro(x['concepto'])
-            area = _area_ingreso(rubro, x['fuente'])
+            area = _area_ingreso(rubro, x['fuente'], x['origen'])
             if rubro == RUBRO_SIN_CLASIFICAR:
                 _clave, etiqueta = _concepto_limpio_cartera(x['concepto'])
                 rubro = etiqueta or RUBRO_SIN_CLASIFICAR

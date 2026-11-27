@@ -1,0 +1,119 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar otro ingreso — ERP Escolar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .er-header { background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%); color: white; border-radius: 16px; padding: 22px 28px; margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2); }
+        .er-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .er-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .card-panel { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px 22px; margin-bottom: 20px; }
+        .form-label { font-weight: 600; font-size: 0.78rem; color: #146C43; text-transform: uppercase; margin-bottom: 4px; }
+        .btn-gesac { background: linear-gradient(135deg, #146C43, #0F5132); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-weight: 600; font-size: 0.88rem; }
+        .btn-gesac:hover { color: white; opacity: .92; }
+        .tabla-oi td, .tabla-oi th { font-size: 0.85rem; vertical-align: middle; }
+        .chip { border-radius: 20px; padding: 3px 12px; font-size: 0.76rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 760px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="er-header">
+            <div class="er-titulo"><i class="bi bi-cash-coin me-2"></i>{% if ingreso %}Editar otro ingreso{% else %}Registrar otro ingreso{% endif %}</div>
+            <div class="er-subtitulo">Siempre se registra como cobrado al momento. El efectivo suma a la caja chica del área; lo depositado va a su cuenta bancaria.</div>
+        </div>
+
+        <div class="card-panel">
+            <form method="post" id="form-oi" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                <div class="row g-3">
+                    <div class="col-12 col-md-6"><label class="form-label">{{ form.fecha.label }}</label>{{ form.fecha }}<div class="text-danger small">{{ form.fecha.errors }}</div></div>
+                    <div class="col-12 col-md-6"><label class="form-label">{{ form.monto.label }}</label>{{ form.monto }}<div class="text-danger small">{{ form.monto.errors }}</div></div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">{{ form.tipo.label }}</label>
+                        <div class="d-flex gap-2">
+                            {{ form.tipo }}
+                            <button type="button" class="btn btn-outline-success btn-sm text-nowrap" id="btn-nuevo-tipo"><i class="bi bi-plus-lg"></i> Nuevo</button>
+                        </div>
+                        <div id="caja-nuevo-tipo" class="d-none mt-2">
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="nuevo-tipo-nombre" class="form-control" maxlength="100" placeholder="Ej. Renta de salón">
+                                <button type="button" class="btn btn-success" id="btn-guardar-tipo">Guardar tipo</button>
+                            </div>
+                            <div class="text-danger small" id="error-tipo"></div>
+                        </div>
+                        <div class="text-danger small">{{ form.tipo.errors }}</div>
+                    </div>
+                    <div class="col-12 col-md-6"><label class="form-label">{{ form.area.label }}</label>{{ form.area }}<div class="text-danger small">{{ form.area.errors }}</div></div>
+
+                    <div class="col-12 col-md-6"><label class="form-label">{{ form.forma_pago.label }}</label>{{ form.forma_pago }}<div class="text-danger small">{{ form.forma_pago.errors }}</div></div>
+                    <div class="col-12 col-md-6" id="grupo-cuenta"><label class="form-label">{{ form.cuenta_bancaria.label }}</label>{{ form.cuenta_bancaria }}<div class="text-danger small">{{ form.cuenta_bancaria.errors }}</div></div>
+
+                    <div class="col-12 col-md-6"><label class="form-label">{{ form.pagador.label }}</label>{{ form.pagador }}</div>
+                    <div class="col-12 col-md-6"><label class="form-label">{{ form.comentario.label }}</label>{{ form.comentario }}</div>
+                </div>
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <a href="{% url 'escuela_otros_ingresos_lista' %}" class="btn btn-outline-secondary btn-sm reporte-link"><i class="bi bi-arrow-left me-1"></i>Cancelar</a>
+                    <button type="submit" class="btn-gesac"><i class="bi bi-check-circle me-1"></i>{% if ingreso %}Guardar cambios{% else %}Registrar{% endif %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        var forma = document.getElementById('id_forma_pago');
+        var grupoCuenta = document.getElementById('grupo-cuenta');
+        function cuenta() { grupoCuenta.style.display = (forma.value === 'Efectivo') ? 'none' : ''; }
+        forma.addEventListener('change', cuenta); cuenta();
+
+        var caja = document.getElementById('caja-nuevo-tipo');
+        var nombre = document.getElementById('nuevo-tipo-nombre');
+        var error = document.getElementById('error-tipo');
+        document.getElementById('btn-nuevo-tipo').addEventListener('click', function () {
+            caja.classList.toggle('d-none'); nombre.focus();
+        });
+        document.getElementById('btn-guardar-tipo').addEventListener('click', function () {
+            error.textContent = '';
+            var datos = new FormData();
+            datos.append('nombre', nombre.value);
+            datos.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            fetch("{% url 'escuela_tipo_otro_ingreso_crear' %}", {method: 'POST', body: datos, headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (!j.success) { error.textContent = j.error || 'No se pudo crear el tipo.'; return; }
+                    var sel = document.getElementById('id_tipo');
+                    var existe = Array.prototype.some.call(sel.options, function (o) { return o.value == j.id; });
+                    if (!existe) { sel.add(new Option(j.nombre, j.id)); }
+                    sel.value = j.id; nombre.value = ''; caja.classList.add('d-none');
+                })
+                .catch(function () { error.textContent = 'No se pudo crear el tipo.'; });
+        });
+        nombre.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btn-guardar-tipo').click(); } });
+    })();
+    </script>
+</body>
+</html>

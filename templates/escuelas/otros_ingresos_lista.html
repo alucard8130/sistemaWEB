@@ -1,0 +1,108 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Otros ingresos — ERP Escolar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background: #f0f4f9; }
+        .er-header { background: linear-gradient(135deg, #0F5132 0%, #146C43 60%, #D9812C 100%); color: white; border-radius: 16px; padding: 22px 28px; margin-bottom: 20px; box-shadow: 0 6px 24px rgba(15,81,50,0.2); }
+        .er-titulo { font-size: 1.3rem; font-weight: 700; margin: 0; }
+        .er-subtitulo { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .card-panel { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px 22px; margin-bottom: 20px; }
+        .form-label { font-weight: 600; font-size: 0.78rem; color: #146C43; text-transform: uppercase; margin-bottom: 4px; }
+        .btn-gesac { background: linear-gradient(135deg, #146C43, #0F5132); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-weight: 600; font-size: 0.88rem; }
+        .btn-gesac:hover { color: white; opacity: .92; }
+        .tabla-oi td, .tabla-oi th { font-size: 0.85rem; vertical-align: middle; }
+        .chip { border-radius: 20px; padding: 3px 12px; font-size: 0.76rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'loading_overlay.html' %}
+
+    <div class="container-fluid mt-3 px-3 pb-5" style="max-width: 1100px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="er-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="er-titulo"><i class="bi bi-cash-coin me-2"></i>Otros ingresos</div>
+                <div class="er-subtitulo">Ingresos cobrados al momento que no vienen de Academic+ (donativos, rentas, intereses, eventos…)</div>
+            </div>
+            <a href="{% url 'escuela_otro_ingreso_nuevo' %}" class="btn btn-light btn-sm reporte-link fw-semibold"><i class="bi bi-plus-lg me-1"></i>Registrar ingreso</a>
+        </div>
+
+        <div class="card-panel">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-6 col-md-2"><label class="form-label">Desde</label><input type="date" name="desde" value="{{ desde }}" class="form-control form-control-sm"></div>
+                <div class="col-6 col-md-2"><label class="form-label">Hasta</label><input type="date" name="hasta" value="{{ hasta }}" class="form-control form-control-sm"></div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label">Tipo</label>
+                    <select name="tipo" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for t in tipos %}<option value="{{ t.id }}" {% if tipo_sel == t.id|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label">Área</label>
+                    <select name="area" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        {% for clave, nombre in areas %}<option value="{{ clave }}" {% if area_sel == clave %}selected{% endif %}>{{ nombre }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-2"><button type="submit" class="btn-gesac w-100"><i class="bi bi-search me-1"></i>Filtrar</button></div>
+            </form>
+        </div>
+
+        <div class="card-panel">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover tabla-oi mb-0">
+                    <thead class="table-light">
+                        <tr><th>Fecha</th><th>Tipo</th><th>Área</th><th>Quién pagó</th><th>Forma / cuenta</th><th>Comentario</th><th class="text-end">Monto</th><th class="text-end">Acciones</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for f in filas %}
+                        <tr>
+                            <td>{{ f.fecha|date:"d/m/Y" }}</td>
+                            <td>{{ f.rubro }}</td>
+                            <td><span class="chip bg-success-subtle text-success-emphasis">{{ f.area_nombre }}</span></td>
+                            <td>{{ f.pagador|default:"—" }}</td>
+                            <td>{{ f.forma_pago }}{% if f.es_efectivo %} <span class="text-muted small">· caja {{ f.fondeo.numero_cheque|default:"—" }}</span>{% elif f.cuenta_bancaria %} <span class="text-muted small">· {{ f.cuenta_bancaria }}</span>{% endif %}</td>
+                            <td>{% if f.concepto != f.rubro %}{{ f.concepto }}{% else %}—{% endif %}</td>
+                            <td class="text-end fw-semibold">${{ f.monto|floatformat:2|intcomma }}</td>
+                            <td class="text-end text-nowrap">
+                                <a href="{% url 'escuela_otro_ingreso_editar' f.id %}" class="btn btn-outline-secondary btn-sm reporte-link" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <form method="post" action="{% url 'escuela_otro_ingreso_eliminar' f.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar este ingreso?');">
+                                    {% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar"><i class="bi bi-trash3"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">No hay otros ingresos en este periodo.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if filas %}
+                    <tfoot><tr class="table-light"><td colspan="6" class="fw-bold">Total</td><td class="text-end fw-bold">${{ total|floatformat:2|intcomma }}</td><td></td></tr></tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% include 'tool_bar.html' %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

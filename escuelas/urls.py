@@ -23,6 +23,12 @@ from escuelas.views_ingresos import (
     reporte_ingresos_categoria,
     reporte_ingresos_forma_pago,
 )
+from escuelas.views_otros_ingresos import (
+    otro_ingreso_eliminar,
+    otro_ingreso_form,
+    otros_ingresos_lista,
+    tipo_otro_ingreso_crear,
+)
 from principal.forms import EmpresaAuthenticationForm
 from principal.views import registro_usuario, solicitar_pago_transferencia
 
@@ -48,6 +54,11 @@ urlpatterns = [
     path('alumnos/cartera-vencida/', importar_cartera_vencida, name='importar_cartera_vencida'),
     path('presupuesto-ingresos/', matriz_presupuesto_ingresos_escuela, name='matriz_presupuesto_ingresos_escuela'),
     path('estado-resultados/', estado_resultados_escuela, name='estado_resultados_escuela'),
+    path('otros-ingresos/', otros_ingresos_lista, name='escuela_otros_ingresos_lista'),
+    path('otros-ingresos/nuevo/', otro_ingreso_form, name='escuela_otro_ingreso_nuevo'),
+    path('otros-ingresos/<int:pk>/editar/', otro_ingreso_form, name='escuela_otro_ingreso_editar'),
+    path('otros-ingresos/<int:pk>/eliminar/', otro_ingreso_eliminar, name='escuela_otro_ingreso_eliminar'),
+    path('otros-ingresos/tipos/crear/', tipo_otro_ingreso_crear, name='escuela_tipo_otro_ingreso_crear'),
     path('cartera-vencida/comparativo/', reporte_cartera_vencida_comparativo, name='reporte_cartera_vencida_comparativo'),
     path(
         'escuelas/restaurar-password/',
