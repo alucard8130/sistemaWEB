@@ -794,8 +794,14 @@ def gasto_editar(request, pk):
             segmento=_segmento_activo(request),
         )
         if form.is_valid():
-            form.save()
-            return redirect("gastos_lista")
+            fecha_ok = True
+            if 'fecha' in form.changed_data:  # solo si cambio la fecha (editar un gasto viejo sin tocarla sigue permitido)
+                fecha_ok, error_fecha = validar_periodo_abierto(None, form.cleaned_data.get('fecha'), user=request.user)
+                if not fecha_ok:
+                    form.add_error('fecha', error_fecha)
+            if fecha_ok:
+                form.save()
+                return redirect("gastos_lista")
     else:
         form = GastoForm(instance=gasto, user=request.user, modo="editar", segmento=_segmento_activo(request))
     return render(
@@ -836,7 +842,7 @@ def registrar_pago_gasto(request, gasto_id):
             # Validar período cerrado
             fecha_pago = pago.fecha_pago
             cuenta_bancaria = pago.cuenta_bancaria
-            if fecha_pago and cuenta_bancaria:
+            if fecha_pago:
                 periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha_pago)
                 if not periodo_valido:
                     form.add_error(None, error_periodo)

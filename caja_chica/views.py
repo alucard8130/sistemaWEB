@@ -99,7 +99,7 @@ def fondeo_caja_chica(request):
                 # Validar período cerrado
                 fecha = form.cleaned_data.get('fecha')
                 cuenta_bancaria = form.cleaned_data.get('cuenta_bancaria')
-                if fecha and cuenta_bancaria:
+                if fecha:
                     periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
                     if not periodo_valido:
                         form.add_error(None, error_periodo)
@@ -159,7 +159,7 @@ def registrar_gasto_caja_chica(request):
             # Validar período cerrado — cuenta bancaria viene del fondeo
             fecha = gasto.fecha
             cuenta_bancaria = fondeo.cuenta_bancaria if fondeo else None
-            if fecha and cuenta_bancaria:
+            if fecha:
                 periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
                 if not periodo_valido:
                     form.add_error(None, error_periodo)
@@ -206,7 +206,7 @@ def generar_vale_caja(request):
             # Validar período cerrado — cuenta bancaria viene del fondeo
             fecha = vale.fecha
             cuenta_bancaria = fondeo.cuenta_bancaria if fondeo else None
-            if fecha and cuenta_bancaria:
+            if fecha:
                 periodo_valido, error_periodo = validar_periodo_abierto(cuenta_bancaria, fecha)
                 if not periodo_valido:
                     form.add_error(None, error_periodo)
