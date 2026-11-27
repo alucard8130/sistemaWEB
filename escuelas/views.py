@@ -833,7 +833,7 @@ _AREAS_ER = [
     ('sin_asignar', 'Gastos generales (sin asignar)', 'bi-question-circle'),
 ]
 _AREAS_ER_CLAVES = [a[0] for a in _AREAS_ER]
-_RUBROS_LICEO = {'Colegiatura', 'Colegiatura anual', 'Inscripción'}
+_RUBROS_LICEO = {'Colegiatura', 'Colegiatura anual', 'Inscripción', 'Gastos administrativos', 'Seguro escolar'}
 # fuente del fondo de caja chica (colegiaturas/ipc/cafeteria) o area capturada en el
 # gasto (liceo/ipc/cafeteria) -> area del estado de resultados. Vacio = sin asignar.
 _AREA_POR_FUENTE = {
